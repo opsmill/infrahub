@@ -4,7 +4,6 @@ import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -13,12 +12,13 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
+import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
 import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchMergeButtonProps = {
-  branch: Branch;
+  branch: BranchDetail;
 };
 
 export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
@@ -36,7 +36,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
-  const hasOngoingTask = taskData?.count > 0;
+  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
 
   // Reset local state when server confirms no ongoing merge task
   useEffect(() => {

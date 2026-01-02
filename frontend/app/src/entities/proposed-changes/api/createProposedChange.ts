@@ -1,6 +1,6 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-export const CREATE_PROPOSED_CHANGE = gql`
+export const CREATE_PROPOSED_CHANGE = graphql(`
   mutation CoreProposedChangeCreate(
     $name: String!
     $isDraft: Boolean
@@ -26,4 +26,4 @@ export const CREATE_PROPOSED_CHANGE = gql`
       ok
     }
   }
-`;
+`);

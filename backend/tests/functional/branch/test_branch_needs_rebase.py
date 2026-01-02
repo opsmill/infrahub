@@ -69,7 +69,8 @@ class TestNeedsRebaseStatus(TestInfrahubApp):
 
         # Check branch status is now OPEN
         branch_after = await Branch.get_by_name(name=branch_name, db=db)
-        assert branch_after.branched_from is not None and branch.branched_from != branch_after.branched_from
+        assert branch_after.branched_from is not None
+        assert branch.branched_from != branch_after.branched_from
         assert branch_after.status == BranchStatus.OPEN
 
         # We should still be able to delete the branch

@@ -1186,6 +1186,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "generic_nothing",
             "height",
             "is_alive",
+            "name",
             "lifespan",
             "nothing",
             "profile_name",
@@ -1393,9 +1394,12 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert set(updated_schema.attribute_names) == {
             "age",
             "eye_color",
+            "height",
             "is_alive",
+            "name",
             "profile_name",
             "profile_priority",
+            "shape",
             "size",
             "value",
             "weight",
@@ -1404,6 +1408,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             kind="ProfilePretendLifeform", branch=default_branch.name, refresh=True
         )
         assert set(updated_lifeform_profile_schema.attribute_names) == {
+            "shape",
             "size",
             "is_alive",
             "profile_name",
@@ -1420,13 +1425,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert person_profile_1.weight.value is None
 
         with pytest.raises(AttributeError):
-            _ = person_profile_1.height
-        with pytest.raises(AttributeError):
             _ = person_profile_1.description
         with pytest.raises(AttributeError):
             _ = person_profile_1.nothing
-        with pytest.raises(AttributeError):
-            _ = person_profile_1.shape
         with pytest.raises(AttributeError):
             _ = person_profile_1.lifespan
         with pytest.raises(AttributeError):
@@ -1437,8 +1438,6 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert lifeform_profile_1.is_alive.value is None
         assert lifeform_profile_1.value.value == 84
 
-        with pytest.raises(AttributeError):
-            _ = lifeform_profile_1.shape
         with pytest.raises(AttributeError):
             _ = lifeform_profile_1.lifespan
         with pytest.raises(AttributeError):

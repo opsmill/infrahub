@@ -42,10 +42,8 @@ export function Component() {
     hasNextPage,
     isFetchingNextPage,
   } = useGetEvents({
-    filters: {
-      ...queryFilters,
-      level: 0,
-    },
+    ...queryFilters,
+    level: 0,
   });
 
   if (isPending) {

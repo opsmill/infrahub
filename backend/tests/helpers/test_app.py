@@ -63,7 +63,7 @@ class TestInfrahub:
         return branch
 
 
-class TestInfrahubApp(TestInfrahub):
+class TestInfrahubAppBase(TestInfrahub):
     @pytest.fixture(scope="class")
     def api_admin_token(self) -> str:
         return str(UUIDT())
@@ -101,22 +101,6 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.cache = cache
         with dependency_provider.scope(build_cache, lambda: cache):
             yield cache
-
-    @pytest.fixture(scope="class", autouse=True)
-    async def workflow_local(
-        self, prefect: Generator[str, None, None], dependency_provider: Provider
-    ) -> AsyncGenerator[WorkflowLocalExecution, None]:
-        original = config.OVERRIDE.workflow
-        workflow = WorkflowLocalExecution()
-        await setup_task_manager()
-        config.OVERRIDE.workflow = workflow
-        with dependency_provider.scope(build_workflow, lambda: workflow):
-            yield workflow
-        config.OVERRIDE.workflow = original
-
-    @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
-        return app.state.service
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
@@ -283,3 +267,39 @@ class TestInfrahubApp(TestInfrahub):
             await asyncio.sleep(1)
 
         pytest.fail(f"unable to find prefect event '{event_name}'")
+
+
+class TestInfrahubApp(TestInfrahubAppBase):
+    @pytest.fixture(scope="class", autouse=True)
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[WorkflowLocalExecution, None]:
+        original = config.OVERRIDE.workflow
+        workflow = WorkflowLocalExecution()
+        await setup_task_manager()
+        config.OVERRIDE.workflow = workflow
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
+        config.OVERRIDE.workflow = original
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+        return app.state.service
+
+
+class TestInfrahubAppWithoutLocalWorkflow(TestInfrahubAppBase):
+    @pytest.fixture(scope="class")
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[WorkflowLocalExecution, None]:
+        original = config.OVERRIDE.workflow
+        workflow = WorkflowLocalExecution()
+        await setup_task_manager()
+        config.OVERRIDE.workflow = workflow
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
+        config.OVERRIDE.workflow = original
+
+    @pytest.fixture(scope="class")
+    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+        return app.state.service

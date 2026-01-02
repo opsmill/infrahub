@@ -54,7 +54,7 @@ class InfrahubServices:
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
         component: InfrahubComponent | None = None,
-    ):
+    ) -> None:
         """
         This method should not be called directly, use `new` instead for a proper initialization.
         """

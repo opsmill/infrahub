@@ -1,17 +1,14 @@
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
-
 import {
   type GetBranchDetailsFromApiParams,
   getBranchDetailsFromApi,
 } from "@/entities/branches/api/get-branch-details-from-api";
-import {
-  type InfrahubBranchResponse,
-  mapInfrahubBranchNodeToBranch,
-} from "@/entities/branches/domain/branch.mappers";
+import { type BranchDetail, mapToBranchDetail } from "@/entities/branches/domain/branch.mappers";
 
 export type GetBranchDetailsParams = GetBranchDetailsFromApiParams;
 
-export type GetBranchDetails = (params: GetBranchDetailsParams) => Promise<Branch>;
+export type GetBranchDetailsResult = BranchDetail;
+
+export type GetBranchDetails = (params: GetBranchDetailsParams) => Promise<GetBranchDetailsResult>;
 
 export const getBranchDetails: GetBranchDetails = async (params) => {
   const { data, errors } = await getBranchDetailsFromApi(params);
@@ -20,10 +17,9 @@ export const getBranchDetails: GetBranchDetails = async (params) => {
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const response = data as InfrahubBranchResponse;
-  const branch = response?.InfrahubBranch?.edges[0]?.node;
+  const branch = data?.InfrahubBranch?.edges[0]?.node;
 
   if (!branch) throw new Error(`Branch ${params.branchName} not found`);
 
-  return mapInfrahubBranchNodeToBranch(branch);
+  return mapToBranchDetail(branch);
 };

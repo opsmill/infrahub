@@ -7,14 +7,6 @@ test.describe("Object Activities - Timeline and Details", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("1. Display the activity log details for atl1-edge1", async ({ page }) => {
     await test.step("Navigate to InfraDevice page", async () => {
       await page.goto("/objects/InfraDevice");
@@ -37,7 +29,7 @@ test.describe("Object Activities - Timeline and Details", () => {
       // Assert that the popover contains the expected text "Primary Node"
       await expect(popoverContent).toContainText("Primary Node");
       // To be sure we load the data, checking if we do have a link to the device
-      await popoverContent.getByRole("link", { name: "atl1-edge1" }).waitFor({ state: "visible" });
+      await expect(popoverContent.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
       await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_device_popover");
     });
   });

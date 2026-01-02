@@ -1,25 +1,19 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type {
-  Branch_DeleteMutation,
-  Branch_DeleteMutationVariables,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const BRANCH_DELETE = gql`
+const BRANCH_DELETE = graphql(`
   mutation BRANCH_DELETE($name: String) {
     BranchDelete(data: { name: $name }) {
       ok
     }
   }
-`;
+`);
 
-export interface DeleteBranchFromApiParams {
-  name: string;
-}
+export type DeleteBranchFromApiParams = VariablesOf<typeof BRANCH_DELETE>;
 
 export function deleteBranchFromApi(params: DeleteBranchFromApiParams) {
-  return graphqlClient.mutate<Branch_DeleteMutation, Branch_DeleteMutationVariables>({
+  return graphqlClient.mutate({
     mutation: BRANCH_DELETE,
     variables: params,
   });

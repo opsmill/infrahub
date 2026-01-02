@@ -84,7 +84,7 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeChoicesChecker(ConstraintCheckerInterface):
     query_classes = [AttributeChoicesUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

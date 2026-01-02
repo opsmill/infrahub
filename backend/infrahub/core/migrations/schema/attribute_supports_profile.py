@@ -34,7 +34,7 @@ class ProfilesAttributeAddMigrationQuery(AttributeMigrationQuery, AttributeAddQu
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         node_kinds = _get_node_kinds(migration.new_schema)
         super().__init__(
             migration=migration,
@@ -54,7 +54,7 @@ class ProfilesAttributeRemoveMigrationQuery(AttributeMigrationQuery, AttributeRe
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         node_kinds = _get_node_kinds(migration.new_schema)
         super().__init__(
             migration=migration,
