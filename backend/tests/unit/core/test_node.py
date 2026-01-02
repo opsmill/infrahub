@@ -1059,7 +1059,8 @@ async def test_node_create_with_object_template_with_profile(
     await device.save(db=db)
 
     # Verify device attributes
-    assert device.id and device.db_id
+    assert device.id
+    assert device.db_id
     assert device.name.value == "par-th2-br01"
     assert device.node_changelog.attributes["name"].value_update_status == DiffAction.ADDED
     assert "source" not in device.node_changelog.attributes["name"].properties
