@@ -12,10 +12,12 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
+    AttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
 )
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -288,8 +290,6 @@ def test_convert_from_number_to_text_parameters() -> None:
 
 def test_convert_from_to_base_parameters() -> None:
     """Test converting to base AttributeParameters class."""
-    from infrahub.core.schema.attribute_parameters import AttributeParameters
-
     text_params = TextAttributeParameters(regex="test", min_length=5)
     base_params = AttributeParameters.convert_from(text_params)
     assert isinstance(base_params, AttributeParameters)
@@ -318,8 +318,6 @@ def test_convert_from_number_pool_to_number_parameters() -> None:
 
 def test_attribute_schema_kind_change_text_to_number() -> None:
     """Test that changing AttributeSchema kind from Text to Number handles parameters."""
-    from infrahub.core.schema.attribute_schema import AttributeSchema
-
     # Create a Text attribute with parameters
     text_attr = AttributeSchema(
         name="test_attr",
@@ -344,8 +342,6 @@ def test_attribute_schema_kind_change_text_to_number() -> None:
 
 def test_attribute_schema_kind_change_number_to_text() -> None:
     """Test that changing AttributeSchema kind from Number to Text handles parameters."""
-    from infrahub.core.schema.attribute_schema import AttributeSchema
-
     # Create a Number attribute with parameters
     number_attr = AttributeSchema(
         name="test_attr",
@@ -370,8 +366,6 @@ def test_attribute_schema_kind_change_number_to_text() -> None:
 
 def test_attribute_schema_kind_change_with_parameters_object() -> None:
     """Test kind change when AttributeParameters object is passed directly (not dict)."""
-    from infrahub.core.schema.attribute_schema import AttributeSchema
-
     text_params = TextAttributeParameters(regex="test")
 
     # This simulates a case where parameters is an object (not a dict) and kind doesn't match
