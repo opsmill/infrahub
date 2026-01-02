@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 
 import { apiClient } from "@/shared/api/rest/client";
 import DynamicForm from "@/shared/components/form/dynamic-form";
+import { LabelFormField } from "@/shared/components/form/fields/common";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
@@ -171,7 +172,7 @@ export function CoreFileForm({
   return (
     <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
       <div className="mb-4">
-        <label className="mb-2 block font-medium text-gray-700 text-sm">File</label>
+        <LabelFormField label="File" className="mb-1" />
         {selectedFile && FileIconComponent ? (
           <div className="rounded-md border border-gray-200 px-3 py-2">
             <div className="flex items-center gap-2">
