@@ -182,7 +182,10 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
 
 @pytest.fixture(scope="class")
 async def default_branch_scope_class(
-    reset_registry_scope_class, local_storage_dir_scope_class, empty_database_scope_class, db: InfrahubDatabase
+    reset_registry_scope_class: None,
+    local_storage_dir_scope_class: Path,
+    empty_database_scope_class: None,
+    db: InfrahubDatabase,
 ) -> Branch:
     return await do_default_branch(db=db)
 
@@ -272,7 +275,7 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 @pytest.fixture(scope="class")
 async def register_core_models_schema_scope_class(
-    default_branch_scope_class: Branch, register_internal_models_schema_scope_class
+    default_branch_scope_class: Branch, register_internal_models_schema_scope_class: SchemaBranch
 ) -> SchemaBranch:
     return await do_register_core_models_schema(branch=default_branch_scope_class)
 
@@ -536,7 +539,7 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
 
 @pytest.fixture(scope="class")
 async def group_schema_scope_class(
-    db: InfrahubDatabase, default_branch_scope_class: Branch, data_schema_scope_class
+    db: InfrahubDatabase, default_branch_scope_class: Branch, data_schema_scope_class: None
 ) -> None:
     do_group_schema(branch=default_branch_scope_class)
 

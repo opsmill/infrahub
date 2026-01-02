@@ -1739,8 +1739,8 @@ async def criticality_schema(
 async def criticality_schema_scope_class(
     db: InfrahubDatabase,
     default_branch_scope_class: Branch,
-    group_schema_scope_class,
-    data_schema_scope_class,
+    group_schema_scope_class: None,
+    data_schema_scope_class: None,
     criticality_schema_root_scope_class: SchemaRoot,
 ) -> NodeSchema:
     return do_criticality_schema(branch=default_branch_scope_class, schema_root=criticality_schema_root_scope_class)
