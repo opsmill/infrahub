@@ -73,7 +73,7 @@ class DeleteDuplicatedRelationshipEdges(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, migrated_kind_nodes_only: bool = True, **kwargs: Any):
+    def __init__(self, migrated_kind_nodes_only: bool = True, **kwargs: Any) -> None:
         self.migrated_kind_nodes_only = migrated_kind_nodes_only
         super().__init__(**kwargs)
 

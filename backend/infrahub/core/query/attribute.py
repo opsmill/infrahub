@@ -31,7 +31,7 @@ class AttributeQuery(Query):
         at: Timestamp | str | None = None,
         branch: Branch | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
 
@@ -171,7 +171,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         prop_name: str,
         prop_id: str | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.prop_name = prop_name
         self.prop_id = prop_id
 
@@ -246,7 +246,7 @@ class AttributeClearNodePropertyQuery(AttributeQuery):
         self,
         prop_name: str,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.prop_name = prop_name
 
         super().__init__(**kwargs)

@@ -21,7 +21,7 @@ class NodeProfilesApplier:
     3. Profile priority determines which profile wins when multiple profiles set the same attribute
     """
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch):
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
 

@@ -14,7 +14,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
         self,
         migration: SchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         new_node = SchemaNodeInfo(
             name=migration.new_schema.name,
             namespace=migration.new_schema.namespace,

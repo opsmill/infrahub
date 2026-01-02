@@ -16,6 +16,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
     await page.getByRole("menuitem", { name: "Tenant" }).click();
+    await expect(page.getByRole("heading", { name: "Tenant" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
 
     dateBeforeTest = new Date();

@@ -215,7 +215,7 @@ def props(x: Any) -> dict[str, Any]:
 
 
 class SubclassWithMeta_Meta(type):
-    _meta = None
+    _meta: Any = None
 
     def __str__(cls) -> str:
         if cls._meta:
@@ -229,7 +229,7 @@ class SubclassWithMeta_Meta(type):
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     """This class improves __init_subclass__ to receive automatically the options from meta"""
 
-    def __init_subclass__(cls, **meta_options: dict[str, Any]) -> None:
+    def __init_subclass__(cls, **meta_options: Any) -> None:
         """This method just terminates the super() chain"""
         _Meta = getattr(cls, "Meta", None)
         _meta_props = {}
@@ -254,5 +254,5 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
                 super_class.__init_subclass_with_meta__(**options)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options: dict[str, Any]) -> None:
+    def __init_subclass_with_meta__(cls, **meta_options: Any) -> None:
         """This method just terminates the super() chain"""

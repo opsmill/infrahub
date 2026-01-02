@@ -101,7 +101,8 @@ async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDa
     await query.execute(db=db)
     for result in query.results:
         print(result)
-        assert len(result.data) == 1 and result.data[0] == "Edges state is correct"
+        assert len(result.data) == 1
+        assert result.data[0] == "Edges state is correct"
 
 
 async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:

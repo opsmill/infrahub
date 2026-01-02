@@ -16,10 +16,10 @@ from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import WIDGET
-from tests.node_creation import create_and_save
 
 
 async def test_query_NodeGetListQuery(
@@ -679,91 +679,6 @@ async def test_query_NodeGetListQuery_pagination_order_by(
     assert widget_schema.order_by == ["name__value"]
 
 
-async def test_query_NodeGetListQuery_order_by_created_at(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, person_alfred_main, branch: Branch
-) -> None:
-    """Test ordering by created_at ASC and DESC."""
-    schema = registry.schema.get(name="TestCar", branch=branch)
-
-    new_car = await create_and_save(
-        db=db,
-        schema="TestCar",
-        branch=branch,
-        name="batmobile",
-        nbr_seats=5,
-        is_electric=False,
-        owner=person_alfred_main.id,
-    )
-
-    # Test ASC order
-    query_asc = await NodeGetListQuery.init(
-        db=db,
-        branch=branch,
-        schema=schema,
-        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
-    )
-    await query_asc.execute(db=db)
-    node_ids_asc = query_asc.get_node_ids()
-
-    # ASC order should match fixture creation order
-    assert node_ids_asc == [car_accord_main.id, car_camry_main.id, car_volt_main.id, new_car.id]
-
-    # Test DESC order
-    query_desc = await NodeGetListQuery.init(
-        db=db,
-        branch=branch,
-        schema=schema,
-        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
-    )
-    await query_desc.execute(db=db)
-    node_ids_desc = query_desc.get_node_ids()
-
-    # DESC order should be reverse of fixture creation order
-    assert node_ids_desc == [new_car.id, car_volt_main.id, car_camry_main.id, car_accord_main.id]
-
-
-async def test_query_NodeGetListQuery_order_by_updated_at(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, branch: Branch
-) -> None:
-    """Test ordering by updated_at ASC and DESC."""
-    # Modify camry to make it the most recently updated
-    camry = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
-    camry.name.value = "Updated Camry"
-    await camry.save(db=db)
-
-    schema = registry.schema.get(name="TestCar", branch=branch)
-
-    # Test DESC order
-    query_desc = await NodeGetListQuery.init(
-        db=db,
-        branch=branch,
-        schema=schema,
-        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
-    )
-    await query_desc.execute(db=db)
-    node_ids_desc = query_desc.get_node_ids()
-
-    # Camry was updated last, so it should be first; camry and volt retain original order (volt newer)
-    assert node_ids_desc == [car_camry_main.id, car_volt_main.id, car_accord_main.id]
-
-    # Test ASC order
-    query_asc = await NodeGetListQuery.init(
-        db=db,
-        branch=branch,
-        schema=schema,
-        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.ASC)),
-    )
-    await query_asc.execute(db=db)
-    node_ids_asc = query_asc.get_node_ids()
-
-    # ASC order should be reverse of DESC
-    assert node_ids_asc == [
-        car_accord_main.id,
-        car_volt_main.id,
-        car_camry_main.id,
-    ]
-
-
 async def test_query_NodeGetListQuery_metadata_order_pagination(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema
 ) -> None:
@@ -919,3 +834,368 @@ async def test_query_NodeGetListQuery_metadata_order_pagination(
         paginated_branch_updated_ids.extend(result_ids)
 
     assert paginated_branch_updated_ids == expected_branch_updated_desc
+
+
+async def test_query_NodeGetListQuery_metadata_filtering(
+    db: InfrahubDatabase, criticality_schema, branch: Branch
+) -> None:
+    """Test all metadata filtering scenarios without ordering."""
+    schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
+    user_id_1 = "test-user-1"
+    user_id_2 = "test-user-2"
+    user_id_3 = "test-user-3"
+
+    # Create 4 nodes with different user_ids and timestamps between each
+    node1 = await Node.init(db=db, branch=branch, schema=schema)
+    await node1.new(db=db, name="node-1", level=10)
+    await node1.save(db=db, user_id=user_id_1)
+    timestamp_after_1 = Timestamp().to_string()
+
+    node2 = await Node.init(db=db, branch=branch, schema=schema)
+    await node2.new(db=db, name="node-2", level=20)
+    await node2.save(db=db, user_id=user_id_2)
+
+    node3 = await Node.init(db=db, branch=branch, schema=schema)
+    await node3.new(db=db, name="node-3", level=100)
+    await node3.save(db=db, user_id=user_id_3)
+    timestamp_after_3 = Timestamp().to_string()
+
+    node4 = await Node.init(db=db, branch=branch, schema=schema)
+    await node4.new(db=db, name="node-4", level=40)
+    await node4.save(db=db, user_id=user_id_3)
+
+    # Update node1 after all nodes created (different updated_at)
+    timestamp_before_update = Timestamp().to_string()
+    node1_updated = await NodeManager.get_one(db=db, branch=branch, id=node1.id)
+    node1_updated.level.value = 15
+    await node1_updated.save(db=db)
+
+    # Test 1: Filter created_at__after timestamp_after_1 -> {node2, node3, node4}
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_at__after": timestamp_after_1},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node2.id, node3.id, node4.id}
+
+    # Test 2: Filter created_at__before timestamp_after_3 -> {node1, node2, node3}
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_at__before": timestamp_after_3},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node1.id, node2.id, node3.id}
+
+    # Test 3: Filter updated_at__after timestamp_before_update -> {node1}
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__updated_at__after": timestamp_before_update},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node1.id}
+
+    # Test 4: Filter created_by__value user_id_1 -> {node1}
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_by__value": user_id_1},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node1.id}
+
+    # Test 5: Filter created_by__ids [user_id_1, user_id_2] -> {node1, node2}
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_by__ids": [user_id_1, user_id_2]},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node1.id, node2.id}
+
+    # Test 6: Combined metadata + attribute filter: created_at__after + level__value
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_at__after": timestamp_after_1, "level__value": 100},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node3.id}
+
+    # Test 7: Filter created_at__before + created_at__after
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={
+            "node_metadata__created_at__after": timestamp_after_1,
+            "node_metadata__created_at__before": timestamp_after_3,
+        },
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node2.id, node3.id}
+
+
+async def test_query_NodeGetListQuery_metadata_ordering(
+    db: InfrahubDatabase, criticality_schema, branch: Branch
+) -> None:
+    """Test metadata ordering without filtering."""
+    schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
+
+    # Create 4 nodes at different times
+    node1 = await Node.init(db=db, branch=branch, schema=schema)
+    await node1.new(db=db, name="order-1", level=1)
+    await node1.save(db=db)
+
+    node2 = await Node.init(db=db, branch=branch, schema=schema)
+    await node2.new(db=db, name="order-2", level=2)
+    await node2.save(db=db)
+
+    node3 = await Node.init(db=db, branch=branch, schema=schema)
+    await node3.new(db=db, name="order-3", level=3)
+    await node3.save(db=db)
+
+    node4 = await Node.init(db=db, branch=branch, schema=schema)
+    await node4.new(db=db, name="order-4", level=4)
+    await node4.save(db=db)
+
+    # Update node2 after all created (changes updated_at order)
+    node2_updated = await NodeManager.get_one(db=db, branch=branch, id=node2.id)
+    node2_updated.level.value = 20
+    await node2_updated.save(db=db)
+
+    # Test 1: Order created_at ASC -> [node1, node2, node3, node4]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node1.id, node2.id, node3.id, node4.id]
+
+    # Test 2: Order created_at DESC -> [node4, node3, node2, node1]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node4.id, node3.id, node2.id, node1.id]
+
+    # Test 3: Order updated_at DESC -> [node2, node4, node3, node1] (node2 updated last)
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node2.id, node4.id, node3.id, node1.id]
+
+    # Test 4: Order updated_at ASC -> [node1, node3, node4, node2]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.ASC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node1.id, node3.id, node4.id, node2.id]
+
+
+async def test_query_NodeGetListQuery_metadata_filter_and_order(
+    db: InfrahubDatabase, criticality_schema, branch: Branch
+) -> None:
+    """Test combined filtering and ordering scenarios."""
+    schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
+    user_id_target = "target-user"
+    user_id_other = "other-user"
+
+    # Create 4 nodes with different user_ids and timestamps
+    node1 = await Node.init(db=db, branch=branch, schema=schema)
+    await node1.new(db=db, name="combo-1", level=1)
+    await node1.save(db=db, user_id=user_id_target)
+    timestamp_after_1 = Timestamp().to_string()
+
+    node2 = await Node.init(db=db, branch=branch, schema=schema)
+    await node2.new(db=db, name="combo-2", level=2)
+    await node2.save(db=db, user_id=user_id_other)
+
+    node3 = await Node.init(db=db, branch=branch, schema=schema)
+    await node3.new(db=db, name="combo-3", level=3)
+    await node3.save(db=db, user_id=user_id_target)
+
+    node4 = await Node.init(db=db, branch=branch, schema=schema)
+    await node4.new(db=db, name="combo-4", level=4)
+    await node4.save(db=db, user_id=user_id_other)
+
+    # Update node3 after all created
+    timestamp_before_update = Timestamp().to_string()
+    node3_updated = await NodeManager.get_one(db=db, branch=branch, id=node3.id)
+    node3_updated.level.value = 30
+    await node3_updated.save(db=db)
+
+    # Test 1: Filter created_at__after ts1 + order created_at DESC -> [node4, node3, node2]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_at__after": timestamp_after_1},
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node4.id, node3.id, node2.id]
+
+    # Test 2: Filter created_at__after ts1 + order created_at ASC -> [node2, node3, node4]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_at__after": timestamp_after_1},
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node2.id, node3.id, node4.id]
+
+    # Test 3: Filter created_by__value target + order created_at DESC -> [node3, node1]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_by__value": user_id_target},
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node3.id, node1.id]
+
+    # Test 4: Filter updated_at__after + order updated_at DESC -> [node3]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__updated_at__after": timestamp_before_update},
+        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node3.id]
+
+    # Test 5: Filter created_at__after ts1 + order updated_at DESC (cross-field) -> [node3, node4, node2]
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={"node_metadata__created_at__after": timestamp_after_1},
+        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [node3.id, node4.id, node2.id]
+
+
+async def test_query_NodeGetListQuery_metadata_branch_agnostic(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_branch_agnostic_schema: dict,
+) -> None:
+    """Test branch_agnostic=True and branch-agnostic nodes."""
+    # Load the branch-agnostic schema (TestCar is AGNOSTIC, TestPerson is AWARE)
+    schema_root = SchemaRoot(**car_person_branch_agnostic_schema)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    person_schema = registry.schema.get_node_schema("TestPerson", branch=default_branch, duplicate=False)
+    car_schema = registry.schema.get_node_schema("TestCar", branch=default_branch, duplicate=False)
+
+    # Create TestPerson on default branch (required for TestCar relationship)
+    person = await Node.init(db=db, branch=default_branch, schema=person_schema)
+    await person.new(db=db, name="car-owner")
+    await person.save(db=db)
+
+    # Create 3 TestCar nodes (AGNOSTIC) on default branch with timestamps between
+    car1 = await Node.init(db=db, branch=default_branch, schema=car_schema)
+    await car1.new(db=db, name="car-1", agnostic_owner=person.id)
+    await car1.save(db=db)
+    timestamp_after_car1 = Timestamp().to_string()
+
+    car2 = await Node.init(db=db, branch=default_branch, schema=car_schema)
+    await car2.new(db=db, name="car-2", agnostic_owner=person.id)
+    await car2.save(db=db)
+
+    car3 = await Node.init(db=db, branch=default_branch, schema=car_schema)
+    await car3.new(db=db, name="car-3", agnostic_owner=person.id)
+    await car3.save(db=db)
+
+    # Create user branch
+    user_branch = await create_branch(branch_name="agnostic-test-branch", db=db)
+    branch_car_schema = registry.schema.get_node_schema("TestCar", branch=user_branch, duplicate=False)
+    branch_person_schema = registry.schema.get_node_schema("TestPerson", branch=user_branch, duplicate=False)
+
+    # Create 2 more TestCar nodes on user branch (still AGNOSTIC, so they're global)
+    car4 = await Node.init(db=db, branch=user_branch, schema=branch_car_schema)
+    await car4.new(db=db, name="car-4", agnostic_owner=person.id)
+    await car4.save(db=db)
+
+    car5 = await Node.init(db=db, branch=user_branch, schema=branch_car_schema)
+    await car5.new(db=db, name="car-5", agnostic_owner=person.id)
+    await car5.save(db=db)
+
+    # Test 1: Query TestCar from user branch - all 5 cars visible (agnostic nodes)
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=user_branch,
+        schema=branch_car_schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car1.id, car2.id, car3.id, car4.id, car5.id]
+
+    # Test 2: Filter created_at__after on agnostic nodes (set - no ordering)
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=user_branch,
+        schema=branch_car_schema,
+        filters={"node_metadata__created_at__after": timestamp_after_car1},
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {car2.id, car3.id, car4.id, car5.id}
+
+    # Test 3: Order created_at DESC on agnostic nodes (list - ordered)
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=user_branch,
+        schema=branch_car_schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car5.id, car4.id, car3.id, car2.id, car1.id]
+
+    # Test 4: Query with branch_agnostic=True on user branch - same results for agnostic nodes
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=user_branch,
+        schema=branch_car_schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+        branch_agnostic=True,
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car1.id, car2.id, car3.id, car4.id, car5.id]
+
+    # Test 5: Query TestPerson (AWARE) from user branch with branch_agnostic=True
+    # The person was created on default branch, should be visible with branch_agnostic=True
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=user_branch,
+        schema=branch_person_schema,
+        branch_agnostic=True,
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {person.id}

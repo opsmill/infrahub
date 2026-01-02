@@ -15,6 +15,8 @@ const BRANCH_CREATE = graphql(`
         status
         sync_with_git
         is_default
+        status
+        has_schema_changes
       }
     }
   }

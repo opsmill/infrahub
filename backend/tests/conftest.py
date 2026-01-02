@@ -110,7 +110,7 @@ def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     pytest_asyncio_tests = (item for item in items if pytest_asyncio.is_async_test(item))
     session_scope_marker = pytest.mark.asyncio(loop_scope="session")
     for async_test in pytest_asyncio_tests:
@@ -1644,14 +1644,16 @@ def git_global_config_env_setting() -> Generator[Any, None, None]:
         tmp_git_config = tmpfile.name
 
     os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
-    assert os.getenv("GIT_CONFIG_GLOBAL") is not None and os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
+    assert os.getenv("GIT_CONFIG_GLOBAL") is not None
+    assert os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
     config.SETTINGS.git.global_config_file = tmp_git_config
 
     yield tmp_git_config
 
     if previous_git_config_global:
         os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
-        assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
+        assert os.getenv("GIT_CONFIG_GLOBAL")
+        assert os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
     else:
         os.environ.pop("GIT_CONFIG_GLOBAL", None)
         assert os.getenv("GIT_CONFIG_GLOBAL") is None
