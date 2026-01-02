@@ -41,10 +41,10 @@ export function FileDropzone({
     <div
       {...getRootProps()}
       className={classNames(
-        "flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors cursor-pointer",
-        isDragActive && !isDragReject && "border-custom-blue-500 bg-custom-blue-50",
+        "flex cursor-pointer flex-col items-center justify-center rounded-md border p-6 transition-colors",
+        isDragActive && !isDragReject && "border-custom-blue-500 bg-gray-100",
         isDragReject && "border-red-500 bg-red-50",
-        !isDragActive && !isDragReject && "border-gray-300 hover:border-gray-400",
+        !isDragActive && !isDragReject && "border-gray-300 hover:border-custom-blue-500",
         disabled && "cursor-not-allowed opacity-50",
         className
       )}
@@ -53,22 +53,21 @@ export function FileDropzone({
       <Icon
         icon={isDragActive ? "mdi:file-upload" : "mdi:cloud-upload-outline"}
         className={classNames(
-          "text-4xl mb-2",
+          "mb-2 text-4xl",
           isDragActive && !isDragReject && "text-custom-blue-500",
           isDragReject && "text-red-500",
           !isDragActive && "text-gray-400"
         )}
       />
-      {isDragActive ? (
-        <p className="text-sm text-gray-600">Drop the file here...</p>
-      ) : (
-        <>
-          <p className="text-sm text-gray-600">Drag and drop a file here, or click to select</p>
-          <p className="text-xs text-gray-400 mt-1">
-            {maxSize ? `Max file size: ${Math.round(maxSize / 1024 / 1024)}MB` : ""}
-          </p>
-        </>
-      )}
+      <p className="text-gray-600 text-sm">
+        {isDragActive ? "Drop the file here..." : "Drag and drop a file here, or click to select"}
+      </p>
+      <p className={classNames("mt-1 text-xs", isDragActive ? "invisible" : "text-gray-400")}>
+        PDF, YAML, JSON, TXT, CSV, images, and more
+      </p>
+      <p className={classNames("mt-0.5 text-xs", isDragActive ? "invisible" : "text-gray-400")}>
+        Max file size: 10MB
+      </p>
     </div>
   );
 }
