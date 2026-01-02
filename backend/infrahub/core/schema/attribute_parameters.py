@@ -24,6 +24,26 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
 class AttributeParameters(HashableModel):
     model_config = ConfigDict(extra="forbid")
 
+    @classmethod
+    def convert_from(cls, source: AttributeParameters) -> Self:
+        """Convert from another AttributeParameters subclass.
+
+        When changing attribute kinds, parameters convert between different subclasses
+        (e.g., TextAttributeParameters -> NumberAttributeParameters).
+        Fields from the source that don't exist in the target are silently dropped.
+        Fields with the same name in both classes are preserved.
+
+        Args:
+            source: The source AttributeParameters instance to convert from
+
+        Returns:
+            A new instance of the target class with compatible fields populated
+        """
+        target_fields = set(cls.model_fields.keys())
+        source_data = source.model_dump()
+        filtered_data = {k: v for k, v in source_data.items() if k in target_fields}
+        return cls(**filtered_data)
+
 
 class TextAttributeParameters(AttributeParameters):
     regex: str | None = Field(
