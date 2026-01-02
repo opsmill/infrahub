@@ -1,3 +1,11 @@
+import { Icon } from "@iconify-icon/react";
+import { PencilLineIcon } from "lucide-react";
+import { useState } from "react";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { ButtonWithTooltip, LinkButton } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
@@ -9,7 +17,11 @@ import {
 } from "@/entities/generators/constants";
 import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator-definition-run-button";
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { NodeObject } from "@/entities/nodes/types";
+import type { Permission } from "@/entities/permission/types";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -17,10 +29,21 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 type DetailsButtonsProps = {
   schema: ModelSchema;
   objectDetailsData: NodeObject;
+  permission: Permission;
   className?: string;
 };
 
-export function DetailsButtons({ schema, objectDetailsData, className }: DetailsButtonsProps) {
+export function DetailsButtons({
+  schema,
+  objectDetailsData,
+  permission,
+  className,
+}: DetailsButtonsProps) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const nodeLabel = getNodeLabel(objectDetailsData);
+  const isEditAllowed = permission.update.isAllowed;
+
   return (
     <>
       <div className={classNames("flex items-center gap-2", className)}>
@@ -34,18 +57,60 @@ export function DetailsButtons({ schema, objectDetailsData, className }: Details
             groupId={objectDetailsData.targets.node.id}
           />
         )}
-
         {isOfKind(GENERATOR_INSTANCE_KIND, schema) && (
           <GeneratorRunButton
             generatorId={objectDetailsData.definition.node.id}
             targetNodeIds={[objectDetailsData.object.node.id]}
           />
         )}
-
         {isOfKind(GENERIC_REPOSITORY_KIND, schema) && (
           <RepositoryActionMenu repositoryId={objectDetailsData.id} />
         )}
+
+        <ButtonWithTooltip
+          variant="outline"
+          size="sm"
+          disabled={!isEditAllowed}
+          onClick={() => setIsEditModalOpen(true)}
+          tooltipContent={!isEditAllowed ? permission.update.message : undefined}
+          tooltipEnabled={!isEditAllowed}
+        >
+          <PencilLineIcon className="mr-1 size-3.5" />
+          Edit
+        </ButtonWithTooltip>
+
+        <LinkButton
+          variant="outline"
+          size="sm"
+          to={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
+        >
+          <Icon icon="mdi:code-json" className="mr-1" />
+          Schema
+        </LinkButton>
       </div>
+
+      <SlideOver
+        title={
+          <SlideOverTitle
+            schema={schema}
+            currentObjectLabel={nodeLabel}
+            title={`Edit ${nodeLabel}`}
+            subtitle={schema.description}
+          />
+        }
+        open={isEditModalOpen}
+        setOpen={setIsEditModalOpen}
+      >
+        <ObjectItemEditComponent
+          closeDrawer={() => setIsEditModalOpen(false)}
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+            setIsEditModalOpen(false);
+          }}
+          objectId={objectDetailsData.id!}
+          objectname={schema.kind!}
+        />
+      </SlideOver>
     </>
   );
 }
