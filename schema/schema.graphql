@@ -6337,10 +6337,10 @@ type DiffAttribute {
   contains_conflict: Boolean!
   last_changed_at: DateTime!
   name: String!
-  num_added: Int
-  num_conflicts: Int
-  num_removed: Int
-  num_updated: Int
+  num_added: Int!
+  num_conflicts: Int!
+  num_removed: Int!
+  num_updated: Int!
   path_identifier: String!
   properties: [DiffProperty!]
   status: DiffAction!
@@ -6353,10 +6353,10 @@ type DiffNode {
   kind: String!
   label: String!
   last_changed_at: DateTime
-  num_added: Int
-  num_conflicts: Int
-  num_removed: Int
-  num_updated: Int
+  num_added: Int!
+  num_conflicts: Int!
+  num_removed: Int!
+  num_updated: Int!
   parent: DiffNodeParent
   path_identifier: String!
   relationships: [DiffRelationship!]!
@@ -6389,10 +6389,10 @@ type DiffRelationship {
   label: String
   last_changed_at: DateTime
   name: String!
-  num_added: Int
-  num_conflicts: Int
-  num_removed: Int
-  num_updated: Int
+  num_added: Int!
+  num_conflicts: Int!
+  num_removed: Int!
+  num_updated: Int!
   path_identifier: String!
   status: DiffAction!
 }
@@ -6401,10 +6401,10 @@ type DiffSingleRelationship {
   conflict: ConflictDetails
   contains_conflict: Boolean!
   last_changed_at: DateTime
-  num_added: Int
-  num_conflicts: Int
-  num_removed: Int
-  num_updated: Int
+  num_added: Int!
+  num_conflicts: Int!
+  num_removed: Int!
+  num_updated: Int!
   path_identifier: String!
   peer_id: String!
   peer_label: String
@@ -6418,12 +6418,12 @@ type DiffTree {
   from_time: DateTime!
   name: String
   nodes: [DiffNode!]
-  num_added: Int
-  num_conflicts: Int
-  num_removed: Int
+  num_added: Int!
+  num_conflicts: Int!
+  num_removed: Int!
   num_untracked_base_changes: Int
   num_untracked_diff_changes: Int
-  num_updated: Int
+  num_updated: Int!
   to_time: DateTime!
 }
 
@@ -6438,13 +6438,13 @@ type DiffTreeSummary {
   base_branch: String!
   diff_branch: String!
   from_time: DateTime!
-  num_added: Int
-  num_conflicts: Int
-  num_removed: Int
-  num_unchanged: Int
+  num_added: Int!
+  num_conflicts: Int!
+  num_removed: Int!
+  num_unchanged: Int!
   num_untracked_base_changes: Int
   num_untracked_diff_changes: Int
-  num_updated: Int
+  num_updated: Int!
   to_time: DateTime!
 }
 
