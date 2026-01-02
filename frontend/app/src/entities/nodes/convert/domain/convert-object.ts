@@ -15,5 +15,10 @@ export const convertObject: ConvertObject = async (params) => {
     throw new Error(errors[0].message);
   }
 
-  return data.ConvertObjectType.node;
+  const nodeConverted = data?.ConvertObjectType?.node;
+  if (!nodeConverted) {
+    throw new Error("Node converted is empty");
+  }
+
+  return nodeConverted as NodeCore;
 };

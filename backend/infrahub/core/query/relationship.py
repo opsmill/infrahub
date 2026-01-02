@@ -159,7 +159,7 @@ class RelationshipQuery(Query):
         branch: Branch | None = None,
         at: Timestamp | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         if not source and not source_id:
             raise ValueError("Either source or source_id must be provided.")
         if not rel and not rel_id:
@@ -278,7 +278,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         destination: Node = None,
         destination_id: UUID | None = None,
         **kwargs,
-    ):
+    ) -> None:
         if not destination and not destination_id:
             raise ValueError("Either destination or destination_id must be provided.")
 
@@ -399,7 +399,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         flag_properties_to_update: dict[str, bool],
         node_properties_to_update: dict[str, str],
         **kwargs,
-    ):
+    ) -> None:
         if not flag_properties_to_update and not node_properties_to_update:
             raise ValueError("Either flag_properties_to_update or node_properties_to_update must be set")
         self.flag_properties_to_update = flag_properties_to_update
@@ -557,7 +557,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
     insert_return = False
     raise_error_if_empty = False
 
-    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs):
+    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs) -> None:
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         super().__init__(**kwargs)
@@ -690,7 +690,7 @@ class RelationshipGetPeerQuery(Query):
         at: Timestamp | str | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         **kwargs,
-    ):
+    ) -> None:
         if not source and not source_ids:
             raise ValueError("Either source or source_ids must be provided.")
         if not rel and not rel_type:
@@ -1134,7 +1134,7 @@ class RelationshipCountPerNodeQuery(Query):
         identifier: str,
         direction: RelationshipDirection,
         **kwargs,
-    ):
+    ) -> None:
         self.node_ids = node_ids
         self.identifier = identifier
         self.direction = direction
@@ -1198,7 +1198,7 @@ class RelationshipDeleteAllQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, node_id: str, **kwargs):
+    def __init__(self, node_id: str, **kwargs) -> None:
         self.node_id = node_id
         super().__init__(**kwargs)
 
@@ -1371,7 +1371,7 @@ class GetAllPeersIds(Query):
     type: QueryType = QueryType.READ
     insert_return = False
 
-    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs):
+    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs) -> None:
         self.node_id = node_id
         self.exclude_identifiers = exclude_identifiers
         super().__init__(**kwargs)

@@ -794,6 +794,10 @@ class RelationshipValidatorList:
         self._relationships_count -= 1
         return result
 
+    def replace(self, rel_to_insert: Relationship, rel_to_remove: Relationship) -> None:
+        self._relationships.remove(rel_to_remove)
+        self._relationships.append(rel_to_insert)
+
     def remove(self, value: Relationship) -> None:
         if self.min_count and self._relationships_count - 1 < self.min_count:
             self._raise_too_few()
@@ -1410,3 +1414,45 @@ class RelationshipManager:
 
         if self.name == "children" and not schema.children:  # type: ignore[union-attr]
             raise ValidationError({self.name: f"Not supported to assign some children for {schema.kind}"})
+
+    async def update_relationships(
+        self,
+        db: InfrahubDatabase,
+        relationships_to_remove: list[Relationship],
+        relationships_to_insert: list[Relationship],
+    ) -> bool:
+        is_changed = False
+        len_rels_to_remove = len(relationships_to_remove)
+        len_rels_to_insert = len(relationships_to_insert)
+
+        if len_rels_to_remove and not len_rels_to_insert:
+            for rel_to_remove in relationships_to_remove:
+                if rel_to_remove.peer_id:
+                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=db)
+            is_changed = True
+        elif len_rels_to_insert and not len_rels_to_remove:
+            for rel_to_insert in relationships_to_insert:
+                self._relationships.append(rel_to_insert)
+            is_changed = True
+        elif len_rels_to_remove == len_rels_to_insert:
+            for rel_to_remove, rel_to_insert in zip(relationships_to_remove, relationships_to_insert, strict=True):
+                self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
+            is_changed = True
+        elif len_rels_to_remove > len_rels_to_insert:
+            for rel_to_remove, rel_to_insert in zip(
+                relationships_to_remove[:len_rels_to_insert], relationships_to_insert, strict=True
+            ):
+                self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
+            for rel_to_remove in relationships_to_remove[len_rels_to_insert:]:
+                if rel_to_remove.peer_id:
+                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=db)
+            is_changed = True
+        elif len_rels_to_insert > len_rels_to_remove:
+            for rel_to_insert, rel_to_remove in zip(
+                relationships_to_insert[:len_rels_to_remove], relationships_to_remove, strict=True
+            ):
+                self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
+            for rel_to_insert in relationships_to_insert[len_rels_to_remove:]:
+                self._relationships.append(rel_to_insert)
+            is_changed = True
+        return is_changed

@@ -152,7 +152,7 @@ class InfrahubDatabase:
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: AsyncTransaction | None = None,
         queries_names_to_config: dict[str, QueryConfig] | None = None,
-    ):
+    ) -> None:
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
         self._session: AsyncSession | None = session

@@ -26,7 +26,7 @@ class DiffQuery(Query):
         diff_from: Timestamp | str = None,
         diff_to: Timestamp | str = None,
         **kwargs,
-    ):
+    ) -> None:
         """A diff is always in the context of a branch"""
 
         if not diff_from and branch.is_default:
@@ -59,7 +59,7 @@ class DiffCountChanges(Query):
         diff_from: Timestamp,
         diff_to: Timestamp,
         **kwargs,
-    ):
+    ) -> None:
         self.branch_names = branch_names
         self.diff_from = diff_from
         self.diff_to = diff_to
@@ -122,7 +122,7 @@ class DiffCalculationQuery(DiffQuery):
         current_node_field_specifiers: NodeFieldSpecifierMap | None = None,
         new_node_field_specifiers: NodeFieldSpecifierMap | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.base_branch = base_branch
         self.diff_branch_from_time = diff_branch_from_time
         self.current_node_field_specifiers = current_node_field_specifiers

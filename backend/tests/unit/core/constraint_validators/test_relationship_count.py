@@ -179,7 +179,7 @@ async def test_query_update_on_branch_failure(
     car_yaris_main: Node,
     person_john_main,
 ) -> None:
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+    branch = await create_branch(branch_name="branch2", db=db)
     person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=default_branch)
     car = await Node.init(db=db, schema="TestCar", branch=branch)
     await car.new(db=db, name="NewCar", nbr_seats=4, is_electric=True, owner=person_john)
@@ -234,7 +234,7 @@ async def test_query_update_on_branch_success(
     car_yaris_main: Node,
     person_john_main,
 ) -> None:
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+    branch = await create_branch(branch_name="branch2", db=db)
     person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     await person_john.cars.update(db=db, data=[car_accord_main.id, car_volt_main.id])
     await person_john.save(db=db)
@@ -267,7 +267,7 @@ async def test_query_delete_on_branch_failure(
     person_john_main,
     person_jane_main,
 ) -> None:
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+    branch = await create_branch(branch_name="branch2", db=db)
     old_car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     await old_car.delete(db=db)
 
@@ -331,7 +331,7 @@ async def test_query_delete_on_branch_success(
     car_yaris_main: Node,
     person_john_main,
 ) -> None:
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+    branch = await create_branch(branch_name="branch2", db=db)
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     await car.delete(db=db)
 
@@ -373,7 +373,7 @@ async def test_hierarchical_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
 ) -> None:
     paris_site = hierarchical_location_data_simple["paris"]
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+    branch = await create_branch(branch_name="branch2", db=db)
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="LocationSite", field_name="children")
     site_schema = registry.schema.get(name="LocationSite", branch=branch, duplicate=False)
 

@@ -1,20 +1,21 @@
 import { ListBoxItem, type ListBoxItemProps } from "react-aria-components";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Col, Row } from "@/shared/components/container";
+import { DateDisplay } from "@/shared/components/display/date-display";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDate } from "@/shared/utils/date";
 
+import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/branch.mappers";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchMetadata } from "@/entities/branches/ui/branch-list-item/branch-metadata";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 interface BranchListItemProps extends ListBoxItemProps {
-  branch: Branch;
+  branch: BranchListItemType;
 }
 
 export function BranchListItem({ branch, className, ...props }: BranchListItemProps) {
@@ -24,7 +25,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       href={constructPath(`/branches/${branch.name}`)}
       className={classNames(
         focusVisibleStyle,
-        "flex flex-wrap items-center gap-6 px-6 py-4",
+        "grid grid-cols-[minmax(200px,1fr)_auto_1fr] items-center gap-4 px-6 py-4",
         "border border-transparent not-last:border-b-gray-200",
         "first:rounded-t-lg last:rounded-b-lg",
         "hover:bg-neutral-100",
@@ -32,9 +33,9 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       )}
       {...props}
     >
-      <Col className="min-w-1/3 flex-1 gap-0 text-sm">
+      <Col className="min-w-0 gap-0 text-sm">
         <Row className="shrink-0">
-          <span className="font-semibold">{branch.name}</span>
+          <span className="truncate font-semibold">{branch.name}</span>
 
           {branch.is_default ? (
             <BranchDefaultBadge />
@@ -48,18 +49,26 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
         <p className="truncate text-gray-600 text-xs">{branch.description}</p>
       </Col>
 
-      {branch.sync_with_git && <BranchGitSyncBadge />}
+      <div className="min-w-8">{branch.sync_with_git && <BranchGitSyncBadge />}</div>
 
-      <Row className="ml-auto gap-6">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
         <BranchMetadata
           label="last rebase"
-          value={branch.branched_from ? formatFullDate(branch.branched_from) : "-"}
+          value={branch.branched_from && <DateDisplay date={branch.branched_from} hideDefault />}
         />
         <BranchMetadata
           label="created at"
-          value={branch.created_at ? formatFullDate(branch.created_at) : "-"}
+          value={branch.created_at && <DateDisplay date={branch.created_at} hideDefault />}
         />
-      </Row>
+        <BranchMetadata
+          label="last update"
+          value={branch.updated_at && <DateDisplay date={branch.updated_at} hideDefault />}
+        />
+        <BranchMetadata
+          label="created by"
+          value={branch.created_by && getNodeLabel(branch.created_by)}
+        />
+      </div>
     </ListBoxItem>
   );
 }

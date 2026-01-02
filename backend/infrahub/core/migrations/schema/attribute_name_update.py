@@ -14,7 +14,7 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         new_attr = AttributeInfo(
             name=migration.new_attribute_schema.name,
             node_kind=migration.new_schema.kind,

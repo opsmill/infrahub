@@ -9,7 +9,9 @@ from typing_extensions import Self
 
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.relationship.constraints.profiles_removal import RelationshipProfileRemovalConstraint
 from infrahub.core.schema import ProfileSchema
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -144,6 +146,12 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         db = graphql_context.db
         workflow_service = graphql_context.active_service.workflow
         related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
+
+        profile_schema: ProfileSchema = obj.get_schema()  # type: ignore[assignment]
+        component_registry = get_component_registry()
+        constraint = await component_registry.get_component(RelationshipProfileRemovalConstraint, db=db, branch=branch)
+        await constraint.validate_profile_deletion(profile=obj, profile_schema=profile_schema)
+
         deleted = await super()._delete_obj(graphql_context=graphql_context, branch=branch, obj=obj)
         await cls._send_profile_refresh_workflows(
             db=db, workflow_service=workflow_service, branch_name=branch.name, obj=obj, node_ids=list(related_node_ids)
