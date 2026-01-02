@@ -1,4 +1,3 @@
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { store } from "@/shared/stores";
 
 import {
@@ -6,14 +5,15 @@ import {
   getBranchesFromApi,
 } from "@/entities/branches/api/get-branches-from-api";
 import {
+  type BranchListItem,
   type InfrahubBranchResponse,
-  mapInfrahubBranchNodeToBranch,
+  mapToBranchListItem,
 } from "@/entities/branches/domain/branch.mappers";
 import { branchesState } from "@/entities/branches/stores";
 
 export type GetBranchesParams = GetBranchesFromApiParams;
 
-export type GetBranchesResult = Array<Branch>;
+export type GetBranchesResult = Array<BranchListItem>;
 
 export type GetBranches = (params?: GetBranchesParams) => Promise<GetBranchesResult>;
 
@@ -26,8 +26,7 @@ export const getBranches: GetBranches = async (params = {}) => {
   }
 
   const response = data as InfrahubBranchResponse;
-  const branches: Branch[] =
-    response?.InfrahubBranch?.edges.map(({ node }) => mapInfrahubBranchNodeToBranch(node)) ?? [];
+  const branches = response?.InfrahubBranch?.edges.map((edge) => mapToBranchListItem(edge)) ?? [];
 
   return branches;
 };
@@ -41,8 +40,10 @@ export const getAllBranches = async (): Promise<GetBranchesResult> => {
   }
 
   const response = data as InfrahubBranchResponse;
-  const branches: Branch[] =
-    response?.InfrahubBranch?.edges.map(({ node }) => mapInfrahubBranchNodeToBranch(node)) ?? [];
+  const branches =
+    response?.InfrahubBranch?.edges.map(({ node, node_metadata }) =>
+      mapToBranchListItem({ node, node_metadata })
+    ) ?? [];
 
   store.set(branchesState, branches);
 

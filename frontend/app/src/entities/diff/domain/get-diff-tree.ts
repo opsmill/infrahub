@@ -1,20 +1,19 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import type { graphql } from "gql.tada";
 
-import type { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
+import type { DiffTree } from "@/shared/api/graphql/generated/graphql";
 import type { PaginationParams } from "@/shared/api/types";
 
 import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
-
-import { treeQueryKeys } from "./diff.query-keys";
+import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
 
 export const DIFF_TREE_PER_PAGE = 300;
 
-export type GetDiffTreeParams = PaginationParams & {
-  branchName: string;
-  filters?: DiffTreeQueryFilters;
-};
+export interface GetDiffTreeParams
+  extends PaginationParams,
+    GetDiffTreeInfiniteQueryOptionsParams {}
 
-export type GetDiffTree = (params: GetDiffTreeParams) => Promise<DiffTree>;
+export type GetDiffTree = (params: GetDiffTreeParams) => Promise<DiffTree | null>;
 
 export const getDiffTree: GetDiffTree = async ({
   branchName,
@@ -29,7 +28,7 @@ export const getDiffTree: GetDiffTree = async ({
 
 export type GetDiffTreeInfiniteQueryOptionsParams = {
   branchName: string;
-  filters?: DiffTreeQueryFilters;
+  filters?: ReturnType<typeof graphql.scalar<"DiffTreeQueryFilters">>;
 };
 
 export const getDiffTreeInfiniteQueryOptions = ({

@@ -150,7 +150,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.getByRole("link", { name: "Devices 10" }).click();
     });
     await page.getByRole("link", { name: "atl1", exact: true }).first().click();
-    await expect(page.getByText("Nameatl1")).toBeVisible();
+    await expect(page.getByTestId("object-details").getByText("Nameatl1")).toBeVisible();
     expect(page.url()).toContain("/objects/LocationSite/");
   });
 });

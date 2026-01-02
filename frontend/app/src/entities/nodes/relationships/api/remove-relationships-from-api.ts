@@ -1,9 +1,9 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-export const REMOVE_RELATIONSHIP = gql`
+const REMOVE_RELATIONSHIP = graphql(`
   mutation RelationshipRemove(
     $objectId: String!
     $relationshipName: String!
@@ -13,13 +13,11 @@ export const REMOVE_RELATIONSHIP = gql`
       ok
     }
   }
-`;
+`);
 
-export type RemoveRelationshipFromApiParams = BranchContextParams & {
-  objectId: string;
-  relationshipName: string;
-  relationshipIds: Array<{ id: string }>;
-};
+export interface RemoveRelationshipFromApiParams
+  extends BranchContextParams,
+    VariablesOf<typeof REMOVE_RELATIONSHIP> {}
 
 export const removeRelationshipsFromApi = ({
   objectId,

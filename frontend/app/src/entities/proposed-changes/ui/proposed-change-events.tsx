@@ -12,16 +12,16 @@ import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 export const ProposedChangeEvents = () => {
   const { proposedChangeId } = useParams();
 
-  const { isPending, data, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useGetEvents({
-    filters: {
+  const { isPending, data, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useGetEvents(
+    {
       primaryNodeIds: proposedChangeId ? [proposedChangeId] : undefined,
       eventType: PROPOSED_CHANGE_EVENTS,
       order: "ASC",
     },
-    config: {
+    {
       refetchInterval: 10_000,
-    },
-  });
+    }
+  );
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 

@@ -23,7 +23,7 @@ class NATSCache(InfrahubCache):
         jetstream: nats.js.JetStreamContext,
         kv: dict[int, nats.js.kv.KeyValue],
         kv_buckets: dict[str, KVTTL],
-    ):
+    ) -> None:
         self.connection = connection
         self.jetstream = jetstream
         self.kv = kv

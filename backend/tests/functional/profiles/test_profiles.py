@@ -689,7 +689,7 @@ class TestProfiles(TestInfrahubApp):
             kind=f"Profile{TestKind.DEVICE}",
             profile_name=f"high-priority-profile-{branch.name}",
             profile_priority=500,  # Lower priority number than device_profile_1 (1001)
-            airflow="High priority airflow",
+            airflow="Mixed",
             weight=999,
         )
         await profile_2.save()

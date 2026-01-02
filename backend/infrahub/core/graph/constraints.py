@@ -165,7 +165,7 @@ class ConstraintManagerBase:
     constraint_node_class: Optional[type[ConstraintItem]] = ConstraintItem
     constraint_rel_class: Optional[type[ConstraintItem]] = ConstraintItem
 
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
         self.nodes: list[ConstraintItem] = []
