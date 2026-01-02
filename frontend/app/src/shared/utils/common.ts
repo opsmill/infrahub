@@ -67,3 +67,14 @@ export const getTextColor = (background?: string) => {
 export function warnUnexpectedType(x: never) {
   console.warn(`unexpected type ${x}`);
 }
+
+export function formatFileSize(bytes: number | undefined | null): string {
+  if (bytes === undefined || bytes === null) return "";
+  if (bytes === 0) return "0 B";
+
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / 1024 ** i;
+
+  return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}

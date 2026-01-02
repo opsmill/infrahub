@@ -1,43 +1,6 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  FileIcon,
-  FileImageIcon,
-  FileJsonIcon,
-  FileSpreadsheetIcon,
-  FileTextIcon,
-  FileTypeIcon,
-} from "lucide-react";
-
 import { FileActionMenu } from "@/shared/components/inputs/file-action-menu";
-
-const FILE_TYPE_ICONS: Record<string, LucideIcon> = {
-  "image/png": FileImageIcon,
-  "image/jpeg": FileImageIcon,
-  "image/gif": FileImageIcon,
-  "image/svg+xml": FileImageIcon,
-  "application/pdf": FileTypeIcon,
-  "application/json": FileJsonIcon,
-  "application/yaml": FileTextIcon,
-  "text/markdown": FileTextIcon,
-  "text/plain": FileTextIcon,
-  "text/csv": FileSpreadsheetIcon,
-};
-
-function formatFileSize(bytes: number | undefined): string {
-  if (bytes === undefined || bytes === null) return "";
-  if (bytes === 0) return "0 B";
-
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const size = bytes / 1024 ** i;
-
-  return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
-function getFileIcon(contentType: string | undefined): LucideIcon {
-  if (!contentType) return FileIcon;
-  return FILE_TYPE_ICONS[contentType] ?? FileIcon;
-}
+import { formatFileSize } from "@/shared/utils/common";
+import { getFileIcon } from "@/shared/utils/file";
 
 export interface ExistingFileData {
   id: string;
