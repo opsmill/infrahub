@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -336,7 +335,7 @@ class QueryStat:
         return cls(**data)
 
 
-class Query(ABC):
+class Query:
     name: str = "base-query"
     type: QueryType
 
@@ -403,8 +402,12 @@ class Query(ABC):
 
         return query
 
-    @abstractmethod
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        # Avoid using this method for new queries and look at migrating older queries. The
+        # problem here is that we loose so much information with the `**kwargs` we should instead
+        # populate this information via the constructor and anything done within the existing query_init methods
+        # could either be handled within __init__ or via dedicated methods within each Query class where appropriate,
+        # i.e. things might need to happend in a certain order or we just want to separate the logic better.
         raise NotImplementedError
 
     def get_context(self) -> dict[str, str]:
