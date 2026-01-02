@@ -57,6 +57,7 @@ export function DetailsButtons({
             groupId={objectDetailsData.targets.node.id}
           />
         )}
+
         {isOfKind(GENERATOR_INSTANCE_KIND, schema) && (
           <GeneratorRunButton
             generatorId={objectDetailsData.definition.node.id}
