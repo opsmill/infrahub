@@ -4,6 +4,7 @@ import { useState } from "react";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ObjectForm from "@/shared/components/form/object-form";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { FileCard } from "@/entities/nodes/object/ui/object-details/object-data-display/file-card";
@@ -67,6 +68,7 @@ function FileOneRow({
   permission,
 }: FileOneRowProps) {
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
 
   const fileNode = relationshipData.node;
@@ -105,7 +107,38 @@ function FileOneRow({
             )}
           </>
         ) : (
-          "-"
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              disabled={!canEdit}
+              onClick={() => setShowAddForm(true)}
+              data-testid="add-file-button"
+            >
+              <Icon icon="mdi:plus" className="mr-1" />
+              Add file
+            </Button>
+
+            {showAddForm && peerSchema && (
+              <SlideOver
+                title={
+                  <SlideOverTitle schema={peerSchema} currentObjectLabel={undefined} title="Add File" />
+                }
+                open={true}
+                setOpen={() => setShowAddForm(false)}
+              >
+                <ObjectForm
+                  kind={peerSchema.kind as string}
+                  onSuccess={async () => {
+                    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+                    setShowAddForm(false);
+                  }}
+                  onCancel={() => setShowAddForm(false)}
+                />
+              </SlideOver>
+            )}
+          </>
         )
       }
     />
@@ -126,6 +159,7 @@ function FileManyRow({
   permission,
 }: FileManyRowProps) {
   const [editingFile, setEditingFile] = useState<FileNodeData | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
 
   const fileEdges = relationshipData.edges;
@@ -155,11 +189,32 @@ function FileManyRow({
             size="sm"
             className="w-fit"
             disabled={!permission.update.isAllowed}
+            onClick={() => setShowAddForm(true)}
             data-testid="add-file-button"
           >
             <Icon icon="mdi:plus" className="mr-1" />
             Add file
           </Button>
+
+          {/* Add file slide-over */}
+          {showAddForm && peerSchema && (
+            <SlideOver
+              title={
+                <SlideOverTitle schema={peerSchema} currentObjectLabel={undefined} title="Add File" />
+              }
+              open={true}
+              setOpen={() => setShowAddForm(false)}
+            >
+              <ObjectForm
+                kind={peerSchema.kind as string}
+                onSuccess={async () => {
+                  await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+                  setShowAddForm(false);
+                }}
+                onCancel={() => setShowAddForm(false)}
+              />
+            </SlideOver>
+          )}
 
           {/* Edit file slide-over */}
           {editingFile && peerSchema && (
