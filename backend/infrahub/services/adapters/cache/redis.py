@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
+from redis import UsernamePasswordCredentialProvider
 
 from infrahub import config
 from infrahub.services.adapters.cache import InfrahubCache
@@ -13,11 +14,16 @@ if TYPE_CHECKING:
 
 class RedisCache(InfrahubCache):
     def __init__(self) -> None:
+        credential_provider: UsernamePasswordCredentialProvider | None = None
+        if config.SETTINGS.cache.username and config.SETTINGS.cache.password:
+            credential_provider = UsernamePasswordCredentialProvider(
+                username=config.SETTINGS.cache.username, password=config.SETTINGS.cache.password
+            )
         self.connection = redis.Redis(
             host=config.SETTINGS.cache.address,
             port=config.SETTINGS.cache.service_port,
             db=config.SETTINGS.cache.database,
-            password=config.SETTINGS.cache.password,
+            credential_provider=credential_provider,
             ssl=config.SETTINGS.cache.tls_enabled,
             ssl_cert_reqs="optional" if not config.SETTINGS.cache.tls_insecure else "none",
             ssl_check_hostname=not config.SETTINGS.cache.tls_insecure,
