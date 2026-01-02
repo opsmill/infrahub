@@ -173,46 +173,42 @@ export function CoreFileForm({
       <div className="mb-4">
         <label className="mb-2 block font-medium text-gray-700 text-sm">File</label>
         {selectedFile && FileIconComponent ? (
-          <div className="rounded-md border bg-gray-50 p-3">
-            <div className="flex items-center justify-between">
-              <FileIconComponent className="mr-3 size-5 shrink-0 text-gray-500" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-gray-700 text-sm">{selectedFile.name}</p>
-                <div className="mt-1 flex items-center gap-2 text-gray-500 text-xs">
-                  <span>{formatFileSize(selectedFile.size)}</span>
-                  <span>•</span>
-                  <span>{selectedFile.type || "Unknown type"}</span>
-                  <span>•</span>
-                  <span>Added {new Date().toLocaleDateString()}</span>
-                </div>
-              </div>
-              <div className="ml-4 flex items-center gap-1">
+          <div className="rounded-md border border-gray-200 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <FileIconComponent className="size-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 flex-1 truncate text-gray-700 text-sm">
+                {selectedFile.name}
+              </span>
+              <div className="flex items-center gap-0.5">
                 <button
                   type="button"
                   onClick={handleViewFile}
-                  className="rounded p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                  className="rounded p-1 text-gray-400 hover:text-gray-600"
                   title="View file"
                 >
-                  <EyeIcon className="size-4" />
+                  <EyeIcon className="size-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={handleReplaceFile}
-                  className="rounded p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                  className="rounded p-1 text-gray-400 hover:text-gray-600"
                   title="Replace file"
                 >
-                  <RefreshCwIcon className="size-4" />
+                  <RefreshCwIcon className="size-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={handleRemoveFile}
-                  className="rounded p-1.5 text-gray-500 hover:bg-red-100 hover:text-red-600"
+                  className="rounded p-1 text-gray-400 hover:text-red-500"
                   title="Remove file"
                 >
-                  <Trash2Icon className="size-4" />
+                  <Trash2Icon className="size-3.5" />
                 </button>
               </div>
             </div>
+            <p className="mt-1 truncate pl-6 text-gray-400 text-xs">
+              {formatFileSize(selectedFile.size)} • {selectedFile.type || "Unknown type"}
+            </p>
             <input
               ref={fileInputRef}
               type="file"
