@@ -11,7 +11,7 @@ import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
-  FILE_GENERIC_KIND,
+  FILE_ATTACHMENT_KIND,
   GLOBAL_PERMISSION_OBJECT,
   NUMBER_POOL_OBJECT,
   OBJECT_PERMISSION_OBJECT,
@@ -134,8 +134,8 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <NodeRelationshipMatchForm schema={schema} {...props} />;
   }
 
-  // Route CoreFile kinds to dedicated file form with dropzone
-  if (isOfKind(FILE_GENERIC_KIND, schema)) {
+  // Route BuiltinFileAttachment kinds to dedicated file form with dropzone
+  if (isOfKind(FILE_ATTACHMENT_KIND, schema)) {
     return <CoreFileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
