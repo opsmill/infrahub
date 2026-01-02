@@ -4688,7 +4688,6 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   approved_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreChangeComment!
-  created_by: NestedEdgedCoreGenericAccount!
   """None"""
   description: TextAttribute
   """None (required)"""
@@ -18494,38 +18493,6 @@ type Query {
     comments__text__source__id: ID
     comments__text__value: String
     comments__text__values: [String]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID

@@ -109,7 +109,7 @@ export function Component() {
     return <LoadingIndicator className="h-full" />;
   }
 
-  const { proposedChangeData, tasksCount } = data ?? {};
+  const { proposedChangeData, tasksCount, metadata } = data ?? {};
 
   const tabs = [
     {
@@ -180,15 +180,10 @@ export function Component() {
         description={
           <div className="inline-flex items-center gap-1 text-xs">
             <Link
-              to={getObjectDetailsUrl(
-                proposedChangeData?.created_by?.node?.__typename,
-                proposedChangeData?.created_by?.node?.id
-              )}
+              to={getObjectDetailsUrl(metadata?.created_by?.__typename, metadata?.created_by?.id)}
               className="font-semibold text-custom-blue-green"
             >
-              {proposedChangeData?.created_by?.node
-                ? getNodeLabel(proposedChangeData.created_by.node)
-                : ""}
+              {metadata?.created_by ? getNodeLabel(metadata.created_by) : ""}
             </Link>
             wants to merge
             <Link to={constructPath(`/branches/${proposedChangeData.source_branch?.value}`)}>
