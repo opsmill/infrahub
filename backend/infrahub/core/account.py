@@ -54,11 +54,15 @@ class AccountGlobalPermissionQuery(Query):
     name: str = "account_global_permissions"
     type: QueryType = QueryType.READ
 
-    def __init__(self, account_id: str, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        account_id: str,
+        branch: Branch | None = None,
+        branch_agnostic: bool = False,
+    ) -> None:
+        super().__init__(branch=branch, branch_agnostic=branch_agnostic)
         self.account_id = account_id
-        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -66,7 +70,6 @@ class AccountGlobalPermissionQuery(Query):
         )
         self.params.update(branch_params)
 
-        # ruff: noqa: E501
         query = """
         MATCH (account:%(generic_account_node)s)
         WHERE account.uuid = $account_id
@@ -293,7 +296,7 @@ class AccountObjectPermissionQuery(Query):
 
 
 async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    query1 = await AccountGlobalPermissionQuery.init(db=db, branch=branch, account_id=account_id, branch_agnostic=True)
+    query1 = AccountGlobalPermissionQuery(branch=branch, account_id=account_id, branch_agnostic=True)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 
