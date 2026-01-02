@@ -743,9 +743,16 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN201",   # Missing return type annotation for public function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
-    "PLR0915",  # Too many statements
     "PT021",    # Use `yield` instead of `request.addfinalizer`
 ]
+
+"backend/tests/db_snapshot.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915",  # Too many statements
+]
+
 
 "backend/tests/helpers/**.py" = [
     ##################################################################################################
