@@ -57,7 +57,7 @@ class IPPrefixSubnetFetch(Query):
         obj: IPNetworkType,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
@@ -146,7 +146,7 @@ class IPPrefixIPAddressFetch(Query):
         obj: IPNetworkType,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
@@ -246,7 +246,7 @@ class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
 
-    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs):
+    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs) -> None:
         self.ip_prefixes = ip_prefixes
         self.allocated_kinds: list[str] = []
         self.allocated_kinds_rel: list[str] = []
@@ -326,7 +326,7 @@ class IPPrefixReconcileQuery(Query):
         namespace: Node | str | None = None,
         node_uuid: str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.ip_value = ip_value
         self.ip_uuid = node_uuid
         self.namespace_id = _get_namespace_id(namespace)

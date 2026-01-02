@@ -28,7 +28,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
     In both cases, it will perform checks only if peers are being removed from the relationship being changed.
     """
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name if branch else registry.default_branch)

@@ -9,19 +9,19 @@ class BaseOptions:
 
     _frozen: bool = False
 
-    def __init__(self, class_type):
+    def __init__(self, class_type) -> None:
         self.class_type = class_type
 
     def freeze(self) -> None:
         self._frozen = True
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name, value) -> None:
         if not self._frozen:
             super().__setattr__(name, value)
         else:
             raise Exception(f"Can't modify frozen Options {self}")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={repr(self.name)}>"
 
 
@@ -52,7 +52,7 @@ class BaseNodeOptions(BaseOptions):
 
 
 class ObjectNodeMeta(BaseNodeMeta):
-    def __new__(mcs, name_, bases, namespace, **options):
+    def __new__(mcs, name_, bases, namespace, **options) -> type:
         # Note: it's safe to pass options as keyword arguments as they are still type-checked by NodeOptions.
 
         # We create this type, to then overload it with the dataclass attrs

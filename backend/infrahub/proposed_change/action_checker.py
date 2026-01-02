@@ -125,7 +125,7 @@ class ActionRule:
 
 
 class ActionRulesEvaluator:
-    def __init__(self, rules: list[ActionRule]):
+    def __init__(self, rules: list[ActionRule]) -> None:
         self.rules = rules
 
     async def evaluate(

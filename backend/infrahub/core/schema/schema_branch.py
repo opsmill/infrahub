@@ -93,7 +93,7 @@ class SchemaBranch:
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
-    ):
+    ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}

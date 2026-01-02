@@ -24,7 +24,7 @@ log = get_logger()
 class DiffHierarchyEnricher(DiffEnricherInterface):
     """Add hierarchy and parent/component nodes to diff even if the higher-level nodes are unchanged"""
 
-    def __init__(self, db: InfrahubDatabase, parent_adder: DiffParentNodeAdder):
+    def __init__(self, db: InfrahubDatabase, parent_adder: DiffParentNodeAdder) -> None:
         self.db = db
         self.parent_adder = parent_adder
 
