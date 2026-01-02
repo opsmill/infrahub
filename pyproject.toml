@@ -571,7 +571,6 @@ ignore = [
     "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
-    "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead
 ]
@@ -742,13 +741,18 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN001",   # Missing type annotation for function argument
     "ANN201",   # Missing return type annotation for public function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
-    "PLR0915",  # Too many statements
-    "PT018",    # Assertion should be broken down into multiple parts
     "PT021",    # Use `yield` instead of `request.addfinalizer`
 ]
+
+"backend/tests/db_snapshot.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915",  # Too many statements
+]
+
 
 "backend/tests/helpers/**.py" = [
     ##################################################################################################
@@ -756,7 +760,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC109", # Async function definition with a `timeout` parameter
-    "PT018",    # Assertion should be broken down into multiple parts
 ]
 
 "backend/tests/fixtures/**.py" = [
@@ -778,7 +781,6 @@ allow-dunder-method-names = [
     "PLR0915",  # Too many statements
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT018",    # Assertion should be broken down into multiple parts
 ]
 
 "backend/tests/integration/**.py" = [
@@ -824,7 +826,6 @@ allow-dunder-method-names = [
     "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT018",    # Assertion should be broken down into multiple parts
 ]
 
 "backend/tests/query_benchmark/**.py" = [
@@ -1045,7 +1046,6 @@ no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 not-iterable = "ignore"
 possibly-missing-attribute = "ignore"
-redundant-cast = "ignore"
 unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
