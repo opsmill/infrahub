@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class NodeAttributeAddChecker(ConstraintCheckerInterface):
     query_classes = [NodeNotPresentValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

@@ -31,7 +31,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
      - changes to properties (IS_PROTECTED, etc) of a cardinality=one relationship are consolidated as well
     """
 
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
         self._node_schema_map: dict[str, MainSchemaTypes] = {}
 

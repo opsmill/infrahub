@@ -36,7 +36,7 @@ class DiffMerger:
         destination_branch: Branch,
         diff_repository: DiffRepository,
         serializer: DiffMergeSerializer,
-    ):
+    ) -> None:
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         self.db = db

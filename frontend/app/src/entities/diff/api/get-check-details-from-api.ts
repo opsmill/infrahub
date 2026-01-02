@@ -1,12 +1,8 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type {
-  Get_Check_DetailsQuery,
-  Get_Check_DetailsQueryVariables,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-const GET_CHECK_DETAILS = gql`
+const GET_CHECK_DETAILS = graphql(`
   query GET_CHECK_DETAILS($id: ID!) {
     CoreCheck(ids: [$id]) {
       edges {
@@ -68,12 +64,12 @@ const GET_CHECK_DETAILS = gql`
       }
     }
   }
-`;
+`);
 
-export interface GetCheckDetailsFromApiParams extends Get_Check_DetailsQueryVariables {}
+export type GetCheckDetailsFromApiParams = VariablesOf<typeof GET_CHECK_DETAILS>;
 
 export const getCheckDetailsFromApi = async (variables: GetCheckDetailsFromApiParams) => {
-  return graphqlClient.query<Get_Check_DetailsQuery, Get_Check_DetailsQueryVariables>({
+  return graphqlClient.query({
     query: GET_CHECK_DETAILS,
     variables,
   });

@@ -29,7 +29,7 @@ class DiffDataCheckSynchronizer:
         conflicts_extractor: DiffConflictsExtractor,
         conflict_recorder: ObjectConflictValidatorRecorder,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         self.db = db
         self.conflicts_extractor = conflicts_extractor
         self.conflict_recorder = conflict_recorder

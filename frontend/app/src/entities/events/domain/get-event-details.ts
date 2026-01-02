@@ -10,9 +10,7 @@ export type GetEventDetails = (params: GetEventDetailsParams) => Promise<EventTy
 
 export const getEventDetails: GetEventDetails = async ({ id }) => {
   const { data, errors } = await getEventsFromApi({
-    filters: {
-      ids: [id],
-    },
+    ids: [id],
   });
 
   if (errors && errors[0]) {

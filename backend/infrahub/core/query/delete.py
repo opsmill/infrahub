@@ -11,7 +11,7 @@ class DeleteAfterTimeQuery(Query):
     insert_return: bool = False
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, timestamp: Timestamp, **kwargs: Any):
+    def __init__(self, timestamp: Timestamp, **kwargs: Any) -> None:
         self.timestamp = timestamp
         super().__init__(**kwargs)
 

@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import ExitStack
-from typing import Any, Generator
+from typing import Any, AsyncGenerator, Generator
 from uuid import UUID
 
 import pytest
@@ -10,6 +10,9 @@ from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
 from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
+from prefect.events.worker import EventsWorker
+from prefect.logging.handlers import APILogWorker
+from prefect.results import _default_storages
 from prefect.workers.base import BaseWorkerResult
 
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN
@@ -22,11 +25,11 @@ from infrahub.workflows.models import WorkerPoolDefinition
 from tests.helpers.constants import (
     PORT_PREFECT,
 )
-from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.utils import start_prefect_server_container
 
 
-class TestWorkerInfrahubAsync(TestInfrahubApp):
+class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
     @classmethod
     async def wait_for_flow(
         cls, client: PrefectClient, work_pool_id: UUID, interval: int = 1, timeout: int = 10
@@ -114,7 +117,7 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         prefect_client: PrefectClient,
         work_pool: WorkPool,
         git_global_config_env_setting: Any,
-    ) -> InfrahubWorkerAsync:
+    ) -> AsyncGenerator[InfrahubWorkerAsync, None]:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
 
         await worker.setup(client=client, metric_port=0)
@@ -124,4 +127,11 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         active_workers = await prefect_client.read_workers_for_work_pool(work_pool_name=work_pool.name)
         assert active_workers[0].name == worker.name
 
-        return worker
+        yield worker
+
+        # Clear local worker instances to avoid issues with multiple test classes running in the same pytest worker
+        EventsWorker.drain_all()
+        APILogWorker.drain_all()
+
+        # Clear local worker result storage cache
+        _default_storages.clear()

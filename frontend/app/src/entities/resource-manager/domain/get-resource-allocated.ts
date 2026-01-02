@@ -33,6 +33,6 @@ export const getResourceAllocated: GetResourceAllocated = async (params) => {
 
   return {
     nodes: allocatedData.edges.map(({ node }) => node),
-    count: allocatedData.count,
+    count: allocatedData.count as number,
   };
 };

@@ -228,7 +228,7 @@ class Migration013DeleteUsernamePasswordGenericSchema(DeleteElementInSchemaQuery
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -245,7 +245,7 @@ class Migration013DeleteUsernamePasswordReadWriteSchema(DeleteElementInSchemaQue
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -262,7 +262,7 @@ class Migration013DeleteUsernamePasswordReadOnlySchema(DeleteElementInSchemaQuer
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -277,7 +277,7 @@ class Migration013DeleteUsernamePasswordReadOnlySchema(DeleteElementInSchemaQuer
 class Migration013AddInternalStatusData(AttributeAddQuery):
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(

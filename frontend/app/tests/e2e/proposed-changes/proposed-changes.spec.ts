@@ -75,7 +75,7 @@ test.describe("/proposed-changes", () => {
         await test.step("display created proposed change details", async () => {
           await page.getByText(pcName, { exact: true }).click();
           await expect(page.getByText("Source branch" + pcBranchName)).toBeVisible();
-          await expect(page.getByText("Stateopen")).toBeVisible();
+          await expect(page.getByRole("row", { name: "State open" })).toBeVisible();
           await expect(page.getByRole("cell", { name: "Created by" })).toBeVisible();
           await expect(page.getByRole("cell", { name: "Created at" })).toBeVisible();
           await expect(page.getByRole("cell", { name: "Updated by" })).toBeVisible();

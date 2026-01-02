@@ -1,0 +1,25 @@
+---
+title: Release 1.6.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.6.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>December 22nd, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.6.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.6.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+<!-- vale off -->
+- Fix Migration041 to determine edge uniqueness correctly and  account for incoming Relationship edges. Add new migration to un-delete improperly deleted Relationship metadata. This would only be a problem for Relationships between schemas that have both had their name, namespace, or kind updated multiple times. ([#7916](https://github.com/opsmill/infrahub/issues/7916))
+<!-- vale on -->

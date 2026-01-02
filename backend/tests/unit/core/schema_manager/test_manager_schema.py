@@ -225,12 +225,14 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
 ) -> None:
     schema = SchemaBranch(cache={}, name="test")
     animal_schema = animal_person_schema_dict["generics"][0]
-    assert animal_schema["name"] == "Animal" and animal_schema["namespace"] == "Test"
+    assert animal_schema["name"] == "Animal"
+    assert animal_schema["namespace"] == "Test"
     animal_schema["uniqueness_constraints"] = None
     animal_schema["human_friendly_id"] = None
 
     dog_schema = animal_person_schema_dict["nodes"][0]
-    assert dog_schema["name"] == "Dog" and dog_schema["namespace"] == "Test"
+    assert dog_schema["name"] == "Dog"
+    assert dog_schema["namespace"] == "Test"
     dog_schema["uniqueness_constraints"] = uniqueness_constraints
     dog_schema["human_friendly_id"] = human_friendly_id
     expected_uniqueness_constraints = []
@@ -608,7 +610,8 @@ async def test_schema_branch_generate_weight(schema_all_in_one) -> None:
     in_both, in_first, in_second = compare_lists(second_weights, third_weights)
     assert in_first == []
     assert sorted(in_both) == sorted(second_weights)
-    assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
+    assert len(in_second) == 1
+    assert in_second[0].startswith(new_attr2_partial_id)
 
 
 def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema) -> None:
@@ -723,11 +726,26 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
     node_profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert set(node_profile.attribute_names) == {"profile_name", "profile_priority", "description", "mybool"}
-    assert set(node_profile.relationship_names) == {"badges", "related_nodes", "status", "tags"}
+    assert set(node_profile.attribute_names) == {
+        "profile_name",
+        "profile_priority",
+        "level",
+        "color",
+        "description",
+        "my_generic_name",
+        "mybool",
+        "local_attr",
+    }
+    assert set(node_profile.relationship_names) == {"badges", "primary_tag", "related_nodes", "status", "tags"}
     generic_profile = schema.get(name="ProfileInfraGenericInterface", duplicate=False)
-    assert set(generic_profile.attribute_names) == {"profile_name", "profile_priority", "mybool"}
-    assert set(generic_profile.relationship_names) == {"badges", "related_nodes", "status"}
+    assert set(generic_profile.attribute_names) == {
+        "profile_name",
+        "profile_priority",
+        "my_generic_name",
+        "mybool",
+        "local_attr",
+    }
+    assert set(generic_profile.relationship_names) == {"badges", "primary_tag", "related_nodes", "status"}
     core_profile_schema = schema.get("CoreProfile")
     core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {

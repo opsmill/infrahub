@@ -2,22 +2,13 @@ import type { NodeMetadata } from "@/entities/nodes/types";
 import {
   getProposedChangeDetailsFromApi,
   type ProposedChangeDetailsFromApiParams,
-  type ProposedChangeDetailsFromApiResponse,
 } from "@/entities/proposed-changes/api/get-proposed-change-details-from-api";
 
 export type GetProposedChangeDetailsParams = ProposedChangeDetailsFromApiParams;
 
-export type GetProposedChangeDetailsResponse = {
-  tasksCount: number;
-  metadata: NodeMetadata;
-  proposedChangeData: ProposedChangeDetailsFromApiResponse["CoreProposedChange"]["edges"][0]["node"];
-};
+export type GetProposedChangeDetailsResponse = Awaited<ReturnType<typeof getProposedChangeDetails>>;
 
-export type GetProposedChangeDetails = (
-  params: GetProposedChangeDetailsParams
-) => Promise<GetProposedChangeDetailsResponse>;
-
-export const getProposedChangeDetails: GetProposedChangeDetails = async (params) => {
+export const getProposedChangeDetails = async (params: GetProposedChangeDetailsParams) => {
   const { data, errors } = await getProposedChangeDetailsFromApi(params);
 
   if (errors) {
@@ -30,9 +21,14 @@ export const getProposedChangeDetails: GetProposedChangeDetails = async (params)
     throw new Error("No proposed change found");
   }
 
+  const proposedChangeMetadata = data.CoreProposedChange.edges[0]?.node_metadata;
+  if (!proposedChangeMetadata) {
+    throw new Error("No proposed change metadata found");
+  }
+
   return {
     proposedChangeData,
-    metadata: data.CoreProposedChange.edges?.[0]?.node_metadata,
+    metadata: proposedChangeMetadata as NodeMetadata,
     tasksCount: data.InfrahubTask.count,
   };
 };
