@@ -1,4 +1,4 @@
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
 import { useGetAppInfo } from "@/entities/config/domain/get-app-info.query";

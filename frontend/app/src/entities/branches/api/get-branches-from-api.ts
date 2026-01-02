@@ -35,6 +35,22 @@ const GET_BRANCHES = graphql(`
             value
           }
         }
+        node_metadata {
+          created_at
+          created_by {
+            id
+            display_label
+            hfid
+            __typename
+          }
+          updated_at
+          updated_by {
+            id
+            display_label
+            hfid
+            __typename
+          }
+        }
       }
     }
   }

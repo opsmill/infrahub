@@ -3,7 +3,7 @@ import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
 import type { ReactElement } from "react";
 
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 

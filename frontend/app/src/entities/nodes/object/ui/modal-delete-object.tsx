@@ -1,15 +1,12 @@
 import { useState } from "react";
-import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-
-import { ALERT_TYPES, Alert } from "../ui/alert";
-import ModalDelete from "./modal-delete";
 
 interface iProps {
   label?: string | null;
@@ -22,7 +19,6 @@ interface iProps {
 
 export default function ModalDeleteObject({ label, rowToDelete, open, close, onDelete }: iProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { objectKind } = useParams();
   const deleteObject = useDeleteObjectMutation();
 
   const objectDisplay =
@@ -51,8 +47,6 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
       },
       {
         onSuccess: async () => {
-          if (objectKind) await graphqlClient.refetchQueries({ include: [objectKind!] });
-
           if (onDelete) await onDelete();
 
           close();

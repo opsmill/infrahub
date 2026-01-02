@@ -3,7 +3,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -12,12 +11,13 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
+import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
 import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchValidateButtonProps = {
-  branch: Branch;
+  branch: BranchDetail;
 };
 
 export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {

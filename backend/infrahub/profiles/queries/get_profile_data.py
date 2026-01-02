@@ -34,7 +34,7 @@ class GetProfileDataQuery(Query):
         attr_names: list[str],
         relationship_filters: list[RelationshipFilter] | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.profile_ids = profile_ids
         self.attr_names = attr_names

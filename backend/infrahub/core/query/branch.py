@@ -17,7 +17,7 @@ class DeleteBranchRelationshipsQuery(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, branch_name: str, **kwargs: Any):
+    def __init__(self, branch_name: str, **kwargs: Any) -> None:
         self.branch_name = branch_name
         super().__init__(**kwargs)
 

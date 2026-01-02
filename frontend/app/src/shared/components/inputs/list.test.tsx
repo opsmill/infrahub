@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
 
-import { render } from "../../../tests/components/render";
+import { render } from "../../../../tests/components/render";
 import { List } from "./list";
 
 describe("List Component", () => {

@@ -578,8 +578,12 @@ RETURN r1, r2
     assert len(results) == 1
     r1 = results[0].get("r1")
     r2 = results[0].get("r2")
-    assert r1.get("status") == "active" and r1.get("branch") == branch.name and r1.get("to") is not None
-    assert r2.get("status") == "active" and r2.get("branch") == branch.name and r2.get("to") is not None
+    assert r1.get("status") == "active"
+    assert r1.get("branch") == branch.name
+    assert r1.get("to") is not None
+    assert r2.get("status") == "active"
+    assert r2.get("branch") == branch.name
+    assert r2.get("to") is not None
 
 
 async def test_can_create_relationship_with_min_count_only(

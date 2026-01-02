@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/installation',
             'guides/production-deployment',
+            'guides/configuration-changes',
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
