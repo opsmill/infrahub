@@ -13,12 +13,18 @@ if TYPE_CHECKING:
 
 
 class InfrahubObjectTypeOptions(ObjectTypeOptions):
-    model = None
+    model: type | None = None
 
 
 class InfrahubObjectType(ObjectType):
     @classmethod
-    def __init_subclass_with_meta__(cls, model=None, interfaces=(), _meta=None, **options) -> None:
+    def __init_subclass_with_meta__(
+        cls,
+        model: type | None = None,
+        interfaces: tuple[type, ...] = (),
+        _meta: InfrahubObjectTypeOptions | None = None,
+        **options: Any,
+    ) -> None:
         if not _meta:
             _meta = InfrahubObjectTypeOptions(cls)
 
