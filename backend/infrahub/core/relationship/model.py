@@ -1192,6 +1192,9 @@ class RelationshipManager:
         await self._validate_hierarchy()
         update_at = Timestamp(at)
 
+        # Use provided timestamp or fall back to instance timestamp
+        update_at = Timestamp(at)
+
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(db=db) if rel.peer_id}
         self._relationships.clear()
