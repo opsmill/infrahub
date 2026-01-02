@@ -1,14 +1,13 @@
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore, NodeMetadata } from "@/entities/nodes/types";
 import {
   getProposedChangesFromApi,
   type ProposedChangesFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
 
-export type ProposedChangeItem = {
+export type ProposedChangeNode = {
   id: string;
   display_label: string;
   name: { value: string };
-  created_by: { node: { display_label: string } };
   state: { value: string };
   is_draft: { value: string };
   _updated_at: string;
@@ -16,6 +15,12 @@ export type ProposedChangeItem = {
   approved_by: { edges: Array<{ node: NodeCore }> };
   total_comments: { value: number };
   validations: { count: number };
+};
+
+export type ProposedChangeItem = {
+  id: string;
+  node: ProposedChangeNode;
+  metadata: NodeMetadata;
 };
 
 export type GetProposedChangesParams = ProposedChangesFromApiParams;
@@ -35,5 +40,11 @@ export const getProposedChanges: GetProposedChanges = async (params) => {
 
   const schemaKindToQuery = params.schema.kind as string;
 
-  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
+  return (
+    data[schemaKindToQuery]?.edges?.map((edge: any) => ({
+      id: edge.node.id,
+      node: edge.node,
+      metadata: edge.node_metadata,
+    })) ?? []
+  );
 };

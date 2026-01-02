@@ -1,15 +1,10 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const BRANCH_REBASE = gql`
+const BRANCH_REBASE = graphql(`
   mutation BRANCH_REBASE($name: String, $waitUntilCompletion: Boolean!) {
-    BranchRebase (
-      wait_until_completion: $waitUntilCompletion
-      data: {
-        name: $name
-      }
-    ) {
+    BranchRebase(wait_until_completion: $waitUntilCompletion, data: { name: $name }) {
       ok
       object {
         id
@@ -18,6 +13,7 @@ export const BRANCH_REBASE = gql`
         origin_branch
         branched_from
         created_at
+        status
         sync_with_git
         is_default
         has_schema_changes
@@ -27,7 +23,7 @@ export const BRANCH_REBASE = gql`
       }
     }
   }
-`;
+`);
 
 export type RebaseBranchFromApiParams = {
   branchName: string;

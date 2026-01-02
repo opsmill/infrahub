@@ -49,9 +49,9 @@ export const ProposedChangeDetails = ({
     pollInterval: 10_000,
   });
 
-  const rejectedBy = proposedChangeData?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
-  const approvedBy = proposedChangeData?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
-  const reviewers = proposedChangeData?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
+  const rejectedBy = proposedChangeData?.rejected_by?.edges?.map((edge) => edge.node) ?? [];
+  const approvedBy = proposedChangeData?.approved_by?.edges?.map((edge) => edge.node) ?? [];
+  const reviewers = proposedChangeData?.reviewers?.edges?.map((edge) => edge.node) ?? [];
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangeData?.state?.value;
@@ -96,25 +96,16 @@ export const ProposedChangeDetails = ({
     },
     {
       name: "Created by",
-      value: (
-        <Tooltip
-          content={
-            proposedChangeData?.created_by?.node
-              ? getNodeLabel(proposedChangeData.created_by.node)
-              : ""
-          }
-          enabled
-        >
+      value: metadata.created_by ? (
+        <Tooltip content={getNodeLabel(metadata.created_by)} enabled>
           <Avatar
             size={"sm"}
-            name={
-              proposedChangeData?.created_by?.node
-                ? getNodeLabel(proposedChangeData.created_by.node)
-                : ""
-            }
+            name={getNodeLabel(metadata.created_by)}
             className="bg-custom-blue-green"
           />
         </Tooltip>
+      ) : (
+        "-"
       ),
     },
     {
@@ -198,17 +189,11 @@ export const ProposedChangeDetails = ({
             <CardWithBorder contentClassName="" data-testid="pc-description">
               <CardWithBorder.Title className="flex items-center gap-2">
                 <Avatar
-                  name={
-                    proposedChangeData?.created_by?.node
-                      ? getNodeLabel(proposedChangeData.created_by.node)
-                      : ""
-                  }
+                  name={metadata.created_by ? getNodeLabel(metadata.created_by) : ""}
                   size="sm"
                 />
 
-                {proposedChangeData?.created_by?.node
-                  ? getNodeLabel(proposedChangeData.created_by.node)
-                  : ""}
+                {metadata.created_by ? getNodeLabel(metadata.created_by) : ""}
 
                 <DateDisplay
                   date={proposedChangeData.description.updated_at}

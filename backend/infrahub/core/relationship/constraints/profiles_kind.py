@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class RelationshipProfilesKindConstraint(RelationshipManagerConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name if branch else registry.default_branch)

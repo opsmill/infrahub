@@ -4688,7 +4688,6 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   approved_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreChangeComment!
-  created_by: NestedEdgedCoreGenericAccount!
   """None"""
   description: TextAttribute
   """None (required)"""
@@ -10496,6 +10495,8 @@ type ProcessRepository {
 type ProfileBuiltinIPAddress implements CoreNode & CoreProfile & LineageSource {
   _updated_at: DateTime
   """None"""
+  address: IPHost
+  """None"""
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -10519,6 +10520,7 @@ type ProfileBuiltinIPAddressCreate {
 }
 
 input ProfileBuiltinIPAddressCreateInput {
+  address: TextAttributeCreate
   description: TextAttributeCreate
   id: String
   ip_namespace: RelatedNodeInput
@@ -10541,6 +10543,7 @@ type ProfileBuiltinIPAddressUpdate {
 }
 
 input ProfileBuiltinIPAddressUpdateInput {
+  address: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -10559,6 +10562,7 @@ type ProfileBuiltinIPAddressUpsert {
 }
 
 input ProfileBuiltinIPAddressUpsertInput {
+  address: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -10586,6 +10590,8 @@ type ProfileBuiltinIPPrefix implements CoreNode & CoreProfile & LineageSource {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None"""
   member_type: Dropdown
+  """None"""
+  prefix: IPNetwork
   """None (required)"""
   profile_name: TextAttribute
   """None"""
@@ -10608,6 +10614,7 @@ input ProfileBuiltinIPPrefixCreateInput {
   is_pool: CheckboxAttributeCreate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeCreate
+  prefix: TextAttributeCreate
   profile_name: TextAttributeCreate
   profile_priority: NumberAttributeCreate
   related_nodes: [RelatedIPPrefixNodeInput]
@@ -10634,6 +10641,7 @@ input ProfileBuiltinIPPrefixUpdateInput {
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeUpdate
+  prefix: TextAttributeUpdate
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPPrefixNodeInput]
@@ -10655,6 +10663,7 @@ input ProfileBuiltinIPPrefixUpsertInput {
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeUpdate
+  prefix: TextAttributeUpdate
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPPrefixNodeInput]
@@ -18484,38 +18493,6 @@ type Query {
     comments__text__source__id: ID
     comments__text__value: String
     comments__text__values: [String]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -22067,6 +22044,12 @@ type Query {
     partial_match: Boolean
   ): PaginatedLineageSource!
   ProfileBuiltinIPAddress(
+    address__is_protected: Boolean
+    address__isnull: Boolean
+    address__owner__id: ID
+    address__source__id: ID
+    address__value: String
+    address__values: [String]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -22233,6 +22216,12 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
+    prefix__is_protected: Boolean
+    prefix__isnull: Boolean
+    prefix__owner__id: ID
+    prefix__source__id: ID
+    prefix__value: String
+    prefix__values: [String]
     profile_name__is_protected: Boolean
     profile_name__isnull: Boolean
     profile_name__owner__id: ID

@@ -26,10 +26,25 @@ class RemoveIsVisibleRelationshipQuery(Query):
         self.add_to_query(query)
 
 
+class RemoveIsVisibleFromDiffsQuery(Query):
+    name = "remove_is_visible_from_diffs"
+    type = QueryType.WRITE
+    insert_return = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = """
+        MATCH (diff_prop:DiffProperty {property_type: "IS_VISIBLE"})
+        CALL (diff_prop) {
+            DETACH DELETE diff_prop
+        } IN TRANSACTIONS
+        """
+        self.add_to_query(query)
+
+
 class Migration049(GraphMigration):
     name: str = "049_remove_is_visible_relationship"
     minimum_version: int = 48
-    queries: Sequence[type[Query]] = [RemoveIsVisibleRelationshipQuery]
+    queries: Sequence[type[Query]] = [RemoveIsVisibleRelationshipQuery, RemoveIsVisibleFromDiffsQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

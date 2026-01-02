@@ -509,7 +509,6 @@ class CoreProposedChange(CoreTaskTarget):
     approved_by: RelationshipManager
     rejected_by: RelationshipManager
     reviewers: RelationshipManager
-    created_by: RelationshipManager
     comments: RelationshipManager
     threads: RelationshipManager
     validations: RelationshipManager
