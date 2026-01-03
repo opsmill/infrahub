@@ -38,6 +38,14 @@ core_webhook = GenericSchema(
             description="The event type that triggers the webhook",
         ),
         Attr(
+            name="active",
+            kind="Boolean",
+            description="Indicates if this webhook is enabled",
+            optional=False,
+            default_value=True,
+            order_weight=1750,
+        ),
+        Attr(
             name="branch_scope",
             kind="Dropdown",
             choices=[

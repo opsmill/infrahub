@@ -123,7 +123,7 @@ async def configure_webhook_all() -> None:
 
 @flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
 async def configure_webhook_one(
-    webhook_name: str,  # noqa: ARG001
+    webhook_name: str,
     event_data: dict,
 ) -> None:
     log = get_run_logger()
@@ -132,6 +132,21 @@ async def configure_webhook_one(
     trigger = WebhookTriggerDefinition.from_object(webhook)
 
     async with get_prefect_client(sync_client=False) as prefect_client:
+        existing_automations = await prefect_client.read_automations_by_name(trigger.generate_name())
+        existing_automation = existing_automations[0] if existing_automations else None
+
+        # If webhook is inactive, delete the automation if it exists
+        if not webhook.active.value:
+            if existing_automation:
+                await prefect_client.delete_automation(automation_id=existing_automation.id)
+                log.info(f"Automation {trigger.generate_name()} deleted (webhook disabled)")
+            else:
+                log.info(f"Webhook {webhook_name} is disabled, no automation to delete")
+
+            cache = await get_cache()
+            await cache.delete(key=f"webhook:{webhook.id}")
+            return
+
         # Query the deployment associated with the trigger to have its ID
         deployment_name = trigger.get_deployment_names()[0]
         deployment = await prefect_client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
@@ -143,9 +158,6 @@ async def configure_webhook_one(
             trigger=trigger.trigger.get_prefect(),
             actions=[action.get(deployment.id) for action in trigger.actions],
         )
-
-        existing_automations = await prefect_client.read_automations_by_name(trigger.generate_name())
-        existing_automation = existing_automations[0] if existing_automations else None
 
         if existing_automation:
             await prefect_client.update_automation(automation_id=existing_automation.id, automation=automation)

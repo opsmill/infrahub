@@ -1773,6 +1773,8 @@ input CoreCredentialUpdateInput {
 """A webhook that connects to an external integration"""
 type CoreCustomWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   _updated_at: DateTime
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttribute
   branch_scope: Dropdown
   description: TextAttribute
   display_label: String
@@ -1801,6 +1803,8 @@ type CoreCustomWebhookCreate {
 }
 
 input CoreCustomWebhookCreateInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeCreate
   branch_scope: TextAttributeCreate
   description: TextAttributeCreate
   """The event type that triggers the webhook"""
@@ -1829,6 +1833,8 @@ type CoreCustomWebhookUpdate {
 }
 
 input CoreCustomWebhookUpdateInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeUpdate
   branch_scope: TextAttributeUpdate
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
@@ -1853,6 +1859,8 @@ type CoreCustomWebhookUpsert {
 }
 
 input CoreCustomWebhookUpsertInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeUpdate
   branch_scope: TextAttributeUpdate
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
@@ -5604,6 +5612,8 @@ input CoreStandardGroupUpsertInput {
 """A webhook that connects to an external integration"""
 type CoreStandardWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   _updated_at: DateTime
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttribute
   branch_scope: Dropdown
   description: TextAttribute
   display_label: String
@@ -5631,6 +5641,8 @@ type CoreStandardWebhookCreate {
 }
 
 input CoreStandardWebhookCreateInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeCreate
   branch_scope: TextAttributeCreate
   description: TextAttributeCreate
   """The event type that triggers the webhook"""
@@ -5658,6 +5670,8 @@ type CoreStandardWebhookUpdate {
 }
 
 input CoreStandardWebhookUpdateInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeUpdate
   branch_scope: TextAttributeUpdate
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
@@ -5681,6 +5695,8 @@ type CoreStandardWebhookUpsert {
 }
 
 input CoreStandardWebhookUpsertInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeUpdate
   branch_scope: TextAttributeUpdate
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
@@ -6236,6 +6252,8 @@ input CoreValidatorUpdateInput {
 
 """A webhook that connects to an external integration"""
 interface CoreWebhook {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttribute
   branch_scope: Dropdown
   description: TextAttribute
   display_label: String
@@ -6261,6 +6279,8 @@ type CoreWebhookUpdate {
 }
 
 input CoreWebhookUpdateInput {
+  """Indicates if this webhook is enabled"""
+  active: CheckboxAttributeUpdate
   branch_scope: TextAttributeUpdate
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
@@ -14056,6 +14076,12 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreCredential!
   CoreCustomWebhook(
+    active__is_protected: Boolean
+    active__isnull: Boolean
+    active__owner__id: ID
+    active__source__id: ID
+    active__value: Boolean
+    active__values: [Boolean]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -21177,6 +21203,12 @@ type Query {
     subscribers__isnull: Boolean
   ): PaginatedCoreStandardGroup!
   CoreStandardWebhook(
+    active__is_protected: Boolean
+    active__isnull: Boolean
+    active__owner__id: ID
+    active__source__id: ID
+    active__value: Boolean
+    active__values: [Boolean]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -22726,6 +22758,12 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreValidator!
   CoreWebhook(
+    active__is_protected: Boolean
+    active__isnull: Boolean
+    active__owner__id: ID
+    active__source__id: ID
+    active__value: Boolean
+    active__values: [Boolean]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
