@@ -141,36 +141,6 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# yq YAML Processor (optional - failure won't block setup)
-# ------------------------------------------------------------------------------
-echo ""
-echo "Installing yq YAML processor..."
-if command -v yq &> /dev/null; then
-    echo "yq already installed: $(yq --version)"
-else
-    install_yq() {
-        if command -v apt-get &> /dev/null; then
-            sudo apt-get install yq -y 2>/dev/null || {
-                # Install via binary if apt package not available
-                YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d '"' -f 4)
-                sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
-                sudo chmod +x /usr/local/bin/yq
-            }
-        elif command -v brew &> /dev/null; then
-            brew install yq
-        else
-            echo "Warning: Could not install yq automatically"
-            return 1
-        fi
-    }
-    if install_yq; then
-        echo "yq installed"
-    else
-        echo "Warning: yq installation failed (optional, continuing...)"
-    fi
-fi
-
-# ------------------------------------------------------------------------------
 # Set Environment Variables (if ENV_FILE is provided)
 # ------------------------------------------------------------------------------
 if [ -n "$ENV_FILE" ]; then
