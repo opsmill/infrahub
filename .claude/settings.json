@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dev/script.sh"
+            "command": "dev/setup-environment.sh"
           }
         ]
       }
