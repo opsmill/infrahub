@@ -42,7 +42,7 @@ core_account_token = NodeSchema(
     uniqueness_constraints=[["token__value"]],
     documentation="/topics/auth",
     attributes=[
-        Attr(name="name", kind="Text", description="Display name for the token", optional=True),
+        Attr(name="name", kind="Text", optional=True),
         Attr(name="token", kind="Text", description="The authentication token value", unique=True),
         Attr(name="expiration", kind="DateTime", description="Date and time when the token expires", optional=True),
     ],
@@ -129,19 +129,9 @@ core_credential = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     documentation="/topics/auth",
     attributes=[
-        Attr(
-            name="name", kind="Text", description="Unique identifier for the credential", unique=True, order_weight=1000
-        ),
-        Attr(
-            name="label", kind="Text", description="Display label for the credential", optional=True, order_weight=2000
-        ),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the credential",
-            optional=True,
-            order_weight=3000,
-        ),
+        Attr(name="name", kind="Text", unique=True, order_weight=1000),
+        Attr(name="label", kind="Text", optional=True, order_weight=2000),
+        Attr(name="description", kind="Text", optional=True, order_weight=3000),
     ],
 )
 
@@ -160,10 +150,10 @@ core_generic_account = GenericSchema(
     documentation="/topics/auth",
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", description="Unique username for the account", unique=True),
+        Attr(name="name", kind="Text", unique=True),
         Attr(name="password", kind="HashedPassword", description="Hashed password for authentication", unique=False),
-        Attr(name="label", kind="Text", description="Display label for the account", optional=True),
-        Attr(name="description", kind="Text", description="Description of the account", optional=True),
+        Attr(name="label", kind="Text", optional=True),
+        Attr(name="description", kind="Text", optional=True),
         Attr(
             name="account_type",
             kind="Text",

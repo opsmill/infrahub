@@ -28,14 +28,8 @@ core_resource_pool = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     attributes=[
-        Attr(name="name", kind="Text", description="Unique name of the resource pool", order_weight=1000, unique=True),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the resource pool",
-            optional=True,
-            order_weight=2000,
-        ),
+        Attr(name="name", kind="Text", order_weight=1000, unique=True),
+        Attr(name="description", kind="Text", optional=True, order_weight=2000),
     ],
 )
 

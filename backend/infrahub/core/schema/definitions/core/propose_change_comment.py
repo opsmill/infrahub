@@ -47,7 +47,7 @@ core_thread = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     include_in_menu=False,
     attributes=[
-        Attr(name="label", kind="Text", description="Display label for the thread", optional=True),
+        Attr(name="label", kind="Text", optional=True),
         Attr(
             name="resolved",
             kind="Boolean",

@@ -27,13 +27,8 @@ core_proposed_change = NodeSchema(
     inherit_from=[InfrahubKind.TASKTARGET],
     documentation="/topics/proposed-change",
     attributes=[
-        Attr(name="name", kind="Text", description="Title of the proposed change", optional=False),
-        Attr(
-            name="description",
-            kind="TextArea",
-            description="Detailed description of the proposed change",
-            optional=True,
-        ),
+        Attr(name="name", kind="Text", optional=False),
+        Attr(name="description", kind="TextArea", optional=True),
         Attr(
             name="source_branch", kind="Text", description="Name of the branch containing the changes", optional=False
         ),

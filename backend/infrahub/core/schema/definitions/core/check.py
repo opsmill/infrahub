@@ -26,8 +26,8 @@ core_check_definition = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="name", kind="Text", description="Unique identifier for this check definition", unique=True),
-        Attr(name="description", kind="Text", description="Description of what this check validates", optional=True),
+        Attr(name="name", kind="Text", unique=True),
+        Attr(name="description", kind="Text", optional=True),
         Attr(name="file_path", kind="Text", description="Path to the Python file containing the check class"),
         Attr(name="class_name", kind="Text", description="Name of the Python class implementing the check"),
         Attr(

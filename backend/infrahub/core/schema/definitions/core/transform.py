@@ -26,11 +26,9 @@ core_transform = GenericSchema(
     documentation="/topics/proposed-change",
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", description="Unique identifier for the transformation", unique=True),
-        Attr(name="label", kind="Text", description="Display label for the transformation", optional=True),
-        Attr(
-            name="description", kind="Text", description="Description of what this transformation does", optional=True
-        ),
+        Attr(name="name", kind="Text", unique=True),
+        Attr(name="label", kind="Text", optional=True),
+        Attr(name="description", kind="Text", optional=True),
         Attr(name="timeout", kind="Number", description="Maximum execution time in seconds", default_value=60),
     ],
     relationships=[

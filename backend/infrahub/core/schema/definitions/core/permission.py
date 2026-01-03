@@ -26,7 +26,7 @@ core_base_permission = GenericSchema(
     include_in_menu=False,
     generate_profile=False,
     attributes=[
-        Attr(name="description", kind="Text", description="Description of the permission", optional=True),
+        Attr(name="description", kind="Text", optional=True),
         Attr(
             name="identifier",
             kind="Text",
@@ -67,12 +67,7 @@ core_object_permission = NodeSchema(
             description="Namespace of the object type this permission applies to",
             order_weight=2000,
         ),
-        Attr(
-            name="name",
-            kind="Text",
-            description="Name of the object type this permission applies to",
-            order_weight=3000,
-        ),
+        Attr(name="name", kind="Text", order_weight=3000),
         Attr(
             name="action",
             kind="Text",
@@ -135,7 +130,7 @@ core_account_role = NodeSchema(
     display_labels=["name__value"],
     human_friendly_id=["name__value"],
     generate_profile=False,
-    attributes=[Attr(name="name", kind="Text", description="Unique name of the role", unique=True)],
+    attributes=[Attr(name="name", kind="Text", unique=True)],
     relationships=[
         Rel(
             name="groups",

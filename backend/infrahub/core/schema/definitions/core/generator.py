@@ -28,8 +28,8 @@ core_generator_definition = NodeSchema(
     inherit_from=[InfrahubKind.TASKTARGET],
     documentation="/topics/generator",
     attributes=[
-        Attr(name="name", kind="Text", description="Unique identifier for this generator definition", unique=True),
-        Attr(name="description", kind="Text", description="Description of what this generator creates", optional=True),
+        Attr(name="name", kind="Text", unique=True),
+        Attr(name="description", kind="Text", optional=True),
         Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the generator"),
         Attr(name="file_path", kind="Text", description="Path to the Python file containing the generator class"),
         Attr(name="class_name", kind="Text", description="Name of the Python class implementing the generator"),
@@ -98,7 +98,7 @@ core_generator_instance = NodeSchema(
     inherit_from=[InfrahubKind.TASKTARGET],
     documentation="/topics/generator",
     attributes=[
-        Attr(name="name", kind="Text", description="Name of this generator instance"),
+        Attr(name="name", kind="Text"),
         Attr(
             name="status",
             kind="Text",

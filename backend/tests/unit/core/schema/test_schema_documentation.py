@@ -23,10 +23,14 @@ GENERIC_SCHEMAS = [SchemaNodeTestCase(name=schema.kind, schema=schema) for schem
 
 ALL_SCHEMAS = NODE_SCHEMAS + GENERIC_SCHEMAS
 
+# Attributes with self-explanatory names that don't require descriptions
+SELF_EXPLANATORY_ATTRIBUTES = {"name", "label", "description"}
+
 NODE_ATTRIBUTE_SCHEMAS = [
     SchemaAttributeTestCase(name=f"{schema.kind}.{attribute.name}", schema=attribute)
     for schema in core_models_mixed["nodes"] + core_models_mixed["generics"]
     for attribute in schema.attributes
+    if attribute.name not in SELF_EXPLANATORY_ATTRIBUTES
 ]
 
 

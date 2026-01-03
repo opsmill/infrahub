@@ -29,7 +29,7 @@ core_propose_change_validator = GenericSchema(
     display_labels=["label__value"],
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="label", kind="Text", description="Display label for the validator", optional=True),
+        Attr(name="label", kind="Text", optional=True),
         Attr(
             name="state",
             kind="Text",
@@ -197,8 +197,8 @@ core_check = GenericSchema(
     label="Check",
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="name", kind="Text", description="Internal name of the check", optional=True),
-        Attr(name="label", kind="Text", description="Display label for the check", optional=True),
+        Attr(name="name", kind="Text", optional=True),
+        Attr(name="label", kind="Text", optional=True),
         Attr(name="origin", kind="Text", description="Source that created this check", optional=False),
         Attr(
             name="kind",

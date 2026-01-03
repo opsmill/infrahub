@@ -16,7 +16,7 @@ builtin_tag = NodeSchema(
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", description="Unique name of the tag", unique=True),
-        Attr(name="description", kind="Text", description="Description of what the tag represents", optional=True),
+        Attr(name="name", kind="Text", unique=True),
+        Attr(name="description", kind="Text", optional=True),
     ],
 )

@@ -28,9 +28,9 @@ core_group = GenericSchema(
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", description="Unique identifier for the group", unique=True),
-        Attr(name="label", kind="Text", description="Display label for the group", optional=True),
-        Attr(name="description", kind="Text", description="Description of the group", optional=True),
+        Attr(name="name", kind="Text", unique=True),
+        Attr(name="label", kind="Text", optional=True),
+        Attr(name="description", kind="Text", optional=True),
         Attr(
             name="group_type",
             kind="Text",

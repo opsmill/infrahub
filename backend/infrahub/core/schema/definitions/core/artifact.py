@@ -47,7 +47,7 @@ core_artifact = NodeSchema(
     inherit_from=[InfrahubKind.TASKTARGET],
     documentation="/topics/artifact",
     attributes=[
-        Attr(name="name", kind="Text", description="Name of the artifact"),
+        Attr(name="name", kind="Text"),
         Attr(
             name="status",
             kind="Text",
@@ -115,14 +115,9 @@ core_artifact_definition = NodeSchema(
     inherit_from=[InfrahubKind.TASKTARGET],
     documentation="/topics/artifact",
     attributes=[
-        Attr(name="name", kind="Text", description="Unique identifier for this artifact definition", unique=True),
+        Attr(name="name", kind="Text", unique=True),
         Attr(name="artifact_name", kind="Text", description="Name template for generated artifacts"),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of what this artifact definition produces",
-            optional=True,
-        ),
+        Attr(name="description", kind="Text", optional=True),
         Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the transformation"),
         Attr(
             name="content_type",

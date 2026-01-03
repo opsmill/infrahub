@@ -24,12 +24,8 @@ generic_menu_item = GenericSchema(
             regex=NAMESPACE_REGEX,
             order_weight=1000,
         ),
-        Attr(
-            name="name", kind="Text", description="Unique name of the menu item within its namespace", order_weight=1000
-        ),
-        Attr(
-            name="label", kind="Text", description="Display label shown in the menu", optional=True, order_weight=2000
-        ),
+        Attr(name="name", kind="Text", order_weight=1000),
+        Attr(name="label", kind="Text", optional=True, order_weight=2000),
         Attr(
             name="kind",
             kind="Text",
@@ -38,13 +34,7 @@ generic_menu_item = GenericSchema(
             order_weight=2500,
         ),
         Attr(name="path", kind="Text", description="URL path for the menu item", optional=True, order_weight=2500),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the menu item",
-            optional=True,
-            order_weight=3000,
-        ),
+        Attr(name="description", kind="Text", optional=True, order_weight=3000),
         Attr(
             name="icon", kind="Text", description="Icon identifier for the menu item", optional=True, order_weight=4000
         ),

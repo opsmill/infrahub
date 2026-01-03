@@ -28,7 +28,7 @@ core_webhook = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", description="Unique name of the webhook", unique=True, order_weight=1000),
+        Attr(name="name", kind="Text", unique=True, order_weight=1000),
         Attr(
             name="event_type",
             kind="Text",
@@ -81,13 +81,7 @@ core_webhook = GenericSchema(
             description="Only send node mutation events for nodes of this kind",
             order_weight=2250,
         ),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the webhook",
-            optional=True,
-            order_weight=2500,
-        ),
+        Attr(name="description", kind="Text", optional=True, order_weight=2500),
         Attr(name="url", kind="URL", description="Target URL to send webhook requests to", order_weight=3000),
         Attr(
             name="validate_certificates",
