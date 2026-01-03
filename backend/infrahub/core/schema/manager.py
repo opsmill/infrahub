@@ -281,7 +281,6 @@ class SchemaManager(NodeManager):
         self,
         schema: SchemaBranch,
         db: InfrahubDatabase,
-        at: Timestamp,
         branch: Branch | str | None = None,
         limit: list[str] | None = None,
         user_id: str = SYSTEM_USER_ID,
