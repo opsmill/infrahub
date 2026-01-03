@@ -53,35 +53,26 @@ if command -v gh &> /dev/null; then
     echo "GitHub CLI already installed: $(gh --version | head -n1)"
 else
     install_gh() {
-        # Try direct binary download first (most reliable across environments)
-        if command -v curl &> /dev/null; then
-            GH_VERSION=$(curl -sL https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
-            if [ -n "$GH_VERSION" ]; then
-                ARCH=$(uname -m)
-                case "$ARCH" in
-                    x86_64) ARCH="amd64" ;;
-                    aarch64|arm64) ARCH="arm64" ;;
-                esac
-                OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-                curl -sLO "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
-                    && tar -xzf "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
-                    && sudo mv "gh_${GH_VERSION}_${OS}_${ARCH}/bin/gh" /usr/local/bin/ \
-                    && rm -rf "gh_${GH_VERSION}_${OS}_${ARCH}" "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
-                    && return 0
-            fi
-        fi
-        # Fallback to package managers
-        if command -v brew &> /dev/null; then
-            brew install gh
-        elif command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install gh -y
-        elif command -v dnf &> /dev/null; then
-            sudo dnf install gh -y
-        else
-            echo "Warning: Could not install GitHub CLI automatically"
-            echo "  https://github.com/cli/cli#installation"
+        # Download binary directly from GitHub releases
+        if ! command -v curl &> /dev/null; then
+            echo "Warning: curl not found, cannot install GitHub CLI"
             return 1
         fi
+        GH_VERSION=$(curl -sL https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+        if [ -z "$GH_VERSION" ]; then
+            echo "Warning: Could not determine GitHub CLI version"
+            return 1
+        fi
+        ARCH=$(uname -m)
+        case "$ARCH" in
+            x86_64) ARCH="amd64" ;;
+            aarch64|arm64) ARCH="arm64" ;;
+        esac
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        curl -sLO "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
+            && tar -xzf "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
+            && sudo mv "gh_${GH_VERSION}_${OS}_${ARCH}/bin/gh" /usr/local/bin/ \
+            && rm -rf "gh_${GH_VERSION}_${OS}_${ARCH}" "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz"
     }
     if install_gh; then
         echo "GitHub CLI installed"
