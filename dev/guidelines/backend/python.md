@@ -50,23 +50,55 @@ Pydantic is appropriate when you need:
 
 ### Dataclasses (Internal Structures)
 
-Use dataclasses for internal data structures that don't require validation or serialization:
+Use dataclasses for internal data structures that don't require validation or serialization.
+
+**Prefer frozen dataclasses** (`frozen=True`) when instances don't need to be mutated after creation. Frozen dataclasses are immutable, memory efficient, hashable, and make code easier to reason about:
 
 ```python
-# ✅ Good - Internal data transfer
+# ✅ Good - Frozen dataclass for immutable data
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(frozen=True)
 class QueryContext:
     branch_name: str
     at_time: str | None = None
     include_deleted: bool = False
 
+# ✅ Good - Mutable dataclass only when mutation is required
 @dataclass
-class NodeDiff:
+class NodeDiffBuilder:
     node_id: str
-    changed_attributes: list[str]
-    previous_values: dict[str, Any]
+    changed_attributes: list[str]  # Will be appended to during processing
+```
+
+**Document attributes with inline docstrings** below each attribute, not in the class docstring:
+
+```python
+# ✅ Good - Attribute docstrings below each field
+@dataclass(frozen=True)
+class RelationshipPeerData:
+    branch: str
+
+    source_id: UUID
+    """UUID of the Source Node."""
+
+    peer_kind: str
+    """Kind of the Peer Node."""
+
+    rel_node_db_id: str | None = None
+    """Internal DB ID of the Relationship Node."""
+
+# ❌ Bad - Attributes documented in class docstring
+@dataclass(frozen=True)
+class RelationshipPeerData:
+    """Data about a relationship peer.
+
+    Attributes:
+        source_id: UUID of the Source Node.
+        peer_id: UUID of the Peer Node.
+    """
+    source_id: UUID
+    peer_id: UUID
 ```
 
 Dataclasses are appropriate when you need:
@@ -74,6 +106,8 @@ Dataclasses are appropriate when you need:
 - Simple internal data containers
 - Lightweight objects without validation overhead
 - Data passed between internal functions/classes
+
+Use `frozen=True` unless you have a specific reason to mutate instances (e.g., builder pattern, accumulating results during iteration).
 
 ### Avoid Plain Dictionaries
 

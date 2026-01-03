@@ -14,7 +14,7 @@ from infrahub.core.changelog.models import (
 )
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
@@ -1124,6 +1124,25 @@ class RelationshipGetByIdentifierQuery(Query):
             yield data
 
 
+@dataclass(frozen=True)
+class RelationshipCountPerNodeResult:
+    """Result from RelationshipCountPerNodeQuery containing peer count info."""
+
+    peer_uuid: str
+    """UUID of the peer node."""
+
+    count: int
+    """Number of relationship peers for this node."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> RelationshipCountPerNodeResult:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            peer_uuid=result.get_as_type("peer_node.uuid", str),
+            count=result.get_as_type("nbr_peers", int),
+        )
+
+
 class RelationshipCountPerNodeQuery(Query):
     name = "relationship_count_per_node"
     type: QueryType = QueryType.READ
@@ -1172,16 +1191,51 @@ class RelationshipCountPerNodeQuery(Query):
         self.order_by = ["peer_node.uuid"]
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
+    def get_data(self) -> list[RelationshipCountPerNodeResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of RelationshipCountPerNodeResult containing peer count info.
+        """
+        return [RelationshipCountPerNodeResult.from_db(result) for result in self.get_results()]
+
     async def get_count_per_peer(self) -> dict[str, int]:
         data: dict[str, int] = {}
-        for result in self.results:
-            data[result.get("peer_node.uuid")] = result.get("nbr_peers")
+        for item in self.get_data():
+            data[item.peer_uuid] = item.count
 
         for node_id in self.node_ids:
             if node_id not in data:
                 data[node_id] = 0
 
         return data
+
+
+@dataclass(frozen=True)
+class RelationshipDeleteAllQueryResult:
+    """Result from RelationshipDeleteAllQuery containing deleted relationship info."""
+
+    uuid: str
+    """UUID of the peer node whose relationship was deleted."""
+
+    kind: str
+    """Kind/type of the peer node."""
+
+    rel_identifier: str
+    """Relationship schema identifier name."""
+
+    rel_direction: str
+    """Direction of the relationship ("outbound" or "inbound")."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> RelationshipDeleteAllQueryResult:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            uuid=result.get_as_type("uuid", str),
+            kind=result.get_as_type("kind", str),
+            rel_identifier=result.get_as_type("rel_identifier", str),
+            rel_direction=result.get_as_type("rel_direction", str),
+        )
 
 
 class RelationshipDeleteAllQuery(Query):
@@ -1314,50 +1368,52 @@ class RelationshipDeleteAllQuery(Query):
         }
         self.add_to_query(query)
 
+    def get_data(self) -> list[RelationshipDeleteAllQueryResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of RelationshipDeleteAllQueryResult containing deleted relationship info.
+        """
+        return [RelationshipDeleteAllQueryResult.from_db(result) for result in self.get_results()]
+
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
     ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
-        rel_identifier_to_changelog_mapper = {}
+        rel_identifier_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
 
-        for result in self.get_results():
-            peer_uuid = result.data["uuid"]
-            if peer_uuid == self.node_id:
+        for item in self.get_data():
+            if item.uuid == self.node_id:
                 continue
 
-            rel_identifier = result.data["rel_identifier"]
-            kind = result.data["kind"]
             deleted_rel_schemas = [
-                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == rel_identifier
+                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == item.rel_identifier
             ]
 
             if len(deleted_rel_schemas) == 0:
                 continue  # TODO Unidirectional relationship changelog should be handled, cf IFC-1319.
 
             if len(deleted_rel_schemas) > 2:
-                log.error(f"Duplicated relationship schema with identifier {rel_identifier}")
+                log.error(f"Duplicated relationship schema with identifier {item.rel_identifier}")
                 continue
 
             if len(deleted_rel_schemas) == 2:
                 # Hierarchical schema nodes have 2 relationships with `parent_child` identifiers,
                 # which are differentiated by their direction within the database.
-                # assert rel_identifier != PARENT_CHILD_IDENTIFIER
-
-                rel_direction = result.data["rel_direction"]
                 deleted_rel_schema = (
                     deleted_rel_schemas[0]
-                    if deleted_rel_schemas[0].direction.value == rel_direction
+                    if deleted_rel_schemas[0].direction.value == item.rel_direction
                     else deleted_rel_schemas[1]
                 )
             else:
                 deleted_rel_schema = deleted_rel_schemas[0]
 
             try:
-                changelog_mapper = rel_identifier_to_changelog_mapper[rel_identifier]
+                changelog_mapper = rel_identifier_to_changelog_mapper[item.rel_identifier]
             except KeyError:
                 changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
-                rel_identifier_to_changelog_mapper[rel_identifier] = changelog_mapper
+                rel_identifier_to_changelog_mapper[item.rel_identifier] = changelog_mapper
 
-            changelog_mapper.delete_relationship(peer_id=peer_uuid, peer_kind=kind, rel_schema=deleted_rel_schema)
+            changelog_mapper.delete_relationship(peer_id=item.uuid, peer_kind=item.kind, rel_schema=deleted_rel_schema)
 
         return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
 

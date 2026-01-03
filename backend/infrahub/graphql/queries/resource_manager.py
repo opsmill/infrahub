@@ -130,17 +130,16 @@ class PoolAllocated(ObjectType):
             node_fields = edges.get("node", {})
 
             nodes = []
-            for result in query.get_results():
-                child_node = result.get_node("child")
-                child_value_node = result.get_node("av")
-                node_id = str(child_node.get("uuid"))
-
-                child_ip_value = child_value_node.get("value")
-                kind = child_node.get("kind")
-                branch_name = str(result.get("branch"))
-
+            for item in query.get_data():
                 nodes.append(
-                    {"node": {"id": node_id, "kind": kind, "branch": branch_name, "display_label": child_ip_value}}
+                    {
+                        "node": {
+                            "id": item.child_uuid,
+                            "kind": item.child_kind,
+                            "branch": item.branch,
+                            "display_label": item.ip_value,
+                        }
+                    }
                 )
 
             if "identifier" in node_fields:
@@ -158,10 +157,8 @@ class PoolAllocated(ObjectType):
                 await identifier_query.execute(db=graphql_context.db)
 
                 reservations = {}
-                for result in identifier_query.get_results():
-                    reservation = result.get_rel("reservation")
-                    allocated = result.get_node("allocated")
-                    reservations[allocated.get("uuid")] = reservation.get("identifier")
+                for item in identifier_query.get_data():
+                    reservations[item.allocated_uuid] = item.identifier
 
                 for node in nodes:
                     node["node"]["identifier"] = reservations.get(node["node"]["id"])
@@ -284,13 +281,13 @@ async def resolve_number_pool_allocation(
     if "edges" in fields:
         await query.execute(db=db)
         edges = []
-        for entry in query.results:
+        for item in query.get_data():
             node = {
                 "node": {
-                    "id": entry.get_as_optional_type("id", str),
+                    "id": item.id,
                     "kind": pool.node.value,  # type: ignore[attr-defined]
-                    "branch": entry.get_as_optional_type("branch", str),
-                    "display_label": entry.get_as_optional_type("value", int),
+                    "branch": item.branch,
+                    "display_label": item.value,
                 }
             }
             edges.append(node)
