@@ -99,12 +99,7 @@ core_generator_instance = NodeSchema(
     documentation="/topics/generator",
     attributes=[
         Attr(name="name", kind="Text"),
-        Attr(
-            name="status",
-            kind="Text",
-            description="Current execution status of the generator instance",
-            enum=GeneratorInstanceStatus.available_types(),
-        ),
+        Attr(name="status", kind="Text", enum=GeneratorInstanceStatus.available_types()),
     ],
     relationships=[
         Rel(

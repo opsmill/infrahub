@@ -28,22 +28,8 @@ builtin_ipam = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     attributes=[
-        Attr(
-            name="name",
-            kind="Text",
-            description="Unique name of the IP namespace",
-            unique=True,
-            branch=BranchSupportType.AWARE,
-            order_weight=1000,
-        ),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the IP namespace",
-            optional=True,
-            branch=BranchSupportType.AWARE,
-            order_weight=2000,
-        ),
+        Attr(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE, order_weight=1000),
+        Attr(name="description", kind="Text", optional=True, branch=BranchSupportType.AWARE, order_weight=2000),
     ],
     relationships=[
         Rel(
@@ -89,14 +75,7 @@ builtin_ip_prefix = GenericSchema(
             branch=BranchSupportType.AWARE,
             order_weight=1000,
         ),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the IP prefix",
-            optional=True,
-            branch=BranchSupportType.AWARE,
-            order_weight=2000,
-        ),
+        Attr(name="description", kind="Text", optional=True, branch=BranchSupportType.AWARE, order_weight=2000),
         Attr(
             name="member_type",
             kind="Dropdown",
@@ -225,14 +204,7 @@ builtin_ip_address = GenericSchema(
             branch=BranchSupportType.AWARE,
             order_weight=1000,
         ),
-        Attr(
-            name="description",
-            kind="Text",
-            description="Description of the IP address",
-            optional=True,
-            branch=BranchSupportType.AWARE,
-            order_weight=2000,
-        ),
+        Attr(name="description", kind="Text", optional=True, branch=BranchSupportType.AWARE, order_weight=2000),
     ],
     relationships=[
         Rel(

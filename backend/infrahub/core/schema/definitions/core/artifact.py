@@ -48,12 +48,7 @@ core_artifact = NodeSchema(
     documentation="/topics/artifact",
     attributes=[
         Attr(name="name", kind="Text"),
-        Attr(
-            name="status",
-            kind="Text",
-            description="Current status of the artifact generation",
-            enum=ArtifactStatus.available_types(),
-        ),
+        Attr(name="status", kind="Text", enum=ArtifactStatus.available_types()),
         Attr(
             name="content_type",
             kind="Text",

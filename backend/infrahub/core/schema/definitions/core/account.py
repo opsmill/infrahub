@@ -67,22 +67,8 @@ core_password_credential = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.CREDENTIAL],
     attributes=[
-        Attr(
-            name="username",
-            kind="Text",
-            description="Username for authentication",
-            optional=True,
-            branch=BranchSupportType.AGNOSTIC,
-            order_weight=6000,
-        ),
-        Attr(
-            name="password",
-            kind="Password",
-            description="Password for authentication",
-            optional=True,
-            branch=BranchSupportType.AGNOSTIC,
-            order_weight=7000,
-        ),
+        Attr(name="username", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=6000),
+        Attr(name="password", kind="Password", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=7000),
     ],
 )
 
@@ -151,7 +137,7 @@ core_generic_account = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     attributes=[
         Attr(name="name", kind="Text", unique=True),
-        Attr(name="password", kind="HashedPassword", description="Hashed password for authentication", unique=False),
+        Attr(name="password", kind="HashedPassword", unique=False),
         Attr(name="label", kind="Text", optional=True),
         Attr(name="description", kind="Text", optional=True),
         Attr(
@@ -164,7 +150,6 @@ core_generic_account = GenericSchema(
         Attr(
             name="status",
             kind="Dropdown",
-            description="Current status of the account",
             choices=[
                 DropdownChoice(
                     name=AccountStatus.ACTIVE.value,

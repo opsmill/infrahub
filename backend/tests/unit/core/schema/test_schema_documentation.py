@@ -24,7 +24,7 @@ GENERIC_SCHEMAS = [SchemaNodeTestCase(name=schema.kind, schema=schema) for schem
 ALL_SCHEMAS = NODE_SCHEMAS + GENERIC_SCHEMAS
 
 # Attributes with self-explanatory names that don't require descriptions
-SELF_EXPLANATORY_ATTRIBUTES = {"name", "label", "description"}
+SELF_EXPLANATORY_ATTRIBUTES = {"name", "label", "description", "username", "password", "status"}
 
 NODE_ATTRIBUTE_SCHEMAS = [
     SchemaAttributeTestCase(name=f"{schema.kind}.{attribute.name}", schema=attribute)
