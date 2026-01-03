@@ -4,11 +4,70 @@
 
 set -e  # Exit on any error
 
+# ------------------------------------------------------------------------------
+# Environment Detection
+# ------------------------------------------------------------------------------
+# Detect the current execution environment
+# Returns: "claude-code-web", "ci", or "local"
+detect_environment() {
+    # Claude Code on the web sets CLAUDE_ENV_FILE for session hooks
+    if [ -n "$CLAUDE_ENV_FILE" ]; then
+        echo "claude-code-web"
+        return
+    fi
+
+    # GitHub Actions
+    if [ -n "$GITHUB_ACTIONS" ]; then
+        echo "ci-github"
+        return
+    fi
+
+    # GitLab CI
+    if [ -n "$GITLAB_CI" ]; then
+        echo "ci-gitlab"
+        return
+    fi
+
+    # Add additional environment checks here as needed
+    # Example:
+    # if [ -n "$SOME_OTHER_ENV_VAR" ]; then
+    #     echo "some-other-environment"
+    #     return
+    # fi
+
+    echo "local"
+}
+
+# List of environments where this script should run
+# Add new environments to this list as needed
+SUPPORTED_ENVIRONMENTS="claude-code-web"
+
+CURRENT_ENV=$(detect_environment)
+
+# Check if current environment is supported
+is_supported_environment() {
+    for env in $SUPPORTED_ENVIRONMENTS; do
+        if [ "$CURRENT_ENV" = "$env" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+if ! is_supported_environment; then
+    echo "Skipping environment setup (running in '$CURRENT_ENV', supported: $SUPPORTED_ENVIRONMENTS)"
+    exit 0
+fi
+
+# ------------------------------------------------------------------------------
+# Setup
+# ------------------------------------------------------------------------------
 # Get the project directory (parent of dev/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "Setting up Infrahub development environment..."
+echo "Environment: $CURRENT_ENV"
 echo "Project directory: $PROJECT_DIR"
 
 # Change to project root
