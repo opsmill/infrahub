@@ -26,8 +26,8 @@ core_base_permission = GenericSchema(
     include_in_menu=False,
     generate_profile=False,
     attributes=[
-        Attr(name="description", kind="Text", optional=True),
-        Attr(name="identifier", kind="Text", read_only=True, optional=True, allow_override=AllowOverrideType.NONE),
+        Attr(name="description", kind="Text", description="Description of the permission", optional=True),
+        Attr(name="identifier", kind="Text", description="Unique identifier for the permission", read_only=True, optional=True, allow_override=AllowOverrideType.NONE),
     ],
     relationships=[
         Rel(
@@ -54,11 +54,12 @@ core_object_permission = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.BASEPERMISSION],
     attributes=[
-        Attr(name="namespace", kind="Text", order_weight=2000),
-        Attr(name="name", kind="Text", order_weight=3000),
+        Attr(name="namespace", kind="Text", description="Namespace of the object type this permission applies to", order_weight=2000),
+        Attr(name="name", kind="Text", description="Name of the object type this permission applies to", order_weight=3000),
         Attr(
             name="action",
             kind="Text",
+            description="The action this permission grants or denies",
             enum=PermissionAction.available_types(),
             default_value=PermissionAction.ANY.value,
             order_weight=4000,
@@ -91,6 +92,7 @@ core_global_permission = NodeSchema(
         Attr(
             name="action",
             kind="Dropdown",
+            description="The global action this permission grants or denies",
             choices=[DropdownChoice(name=permission.value) for permission in GlobalPermissions],
             order_weight=2000,
         ),
@@ -116,7 +118,7 @@ core_account_role = NodeSchema(
     display_labels=["name__value"],
     human_friendly_id=["name__value"],
     generate_profile=False,
-    attributes=[Attr(name="name", kind="Text", unique=True)],
+    attributes=[Attr(name="name", kind="Text", description="Unique name of the role", unique=True)],
     relationships=[
         Rel(
             name="groups",

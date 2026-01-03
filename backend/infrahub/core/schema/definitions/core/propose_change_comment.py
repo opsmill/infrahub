@@ -23,8 +23,8 @@ core_propose_change_comment = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="text", kind="TextArea", unique=False, optional=False),
-        Attr(name="created_at", kind="DateTime", optional=True),
+        Attr(name="text", kind="TextArea", description="Content of the comment", unique=False, optional=False),
+        Attr(name="created_at", kind="DateTime", description="Timestamp when the comment was created", optional=True),
     ],
     relationships=[
         Rel(
@@ -47,9 +47,9 @@ core_thread = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     include_in_menu=False,
     attributes=[
-        Attr(name="label", kind="Text", optional=True),
-        Attr(name="resolved", kind="Boolean", default_value=False),
-        Attr(name="created_at", kind="DateTime", optional=True),
+        Attr(name="label", kind="Text", description="Display label for the thread", optional=True),
+        Attr(name="resolved", kind="Boolean", description="Whether the thread has been marked as resolved", default_value=False),
+        Attr(name="created_at", kind="DateTime", description="Timestamp when the thread was created", optional=True),
     ],
     relationships=[
         Rel(
@@ -101,9 +101,9 @@ core_file_thread = NodeSchema(
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
     attributes=[
-        Attr(name="file", kind="Text", optional=True),
-        Attr(name="commit", kind="Text", optional=True),
-        Attr(name="line_number", kind="Number", optional=True),
+        Attr(name="file", kind="Text", description="Path to the file being discussed", optional=True),
+        Attr(name="commit", kind="Text", description="Git commit hash the thread refers to", optional=True),
+        Attr(name="line_number", kind="Number", description="Line number in the file being discussed", optional=True),
     ],
     relationships=[
         Rel(
@@ -126,9 +126,9 @@ core_artifact_thread = NodeSchema(
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
     attributes=[
-        Attr(name="artifact_id", kind="Text", optional=True),
-        Attr(name="storage_id", kind="Text", optional=True),
-        Attr(name="line_number", kind="Number", optional=True),
+        Attr(name="artifact_id", kind="Text", description="Unique identifier of the artifact being discussed", optional=True),
+        Attr(name="storage_id", kind="Text", description="ID of the artifact in the object store", optional=True),
+        Attr(name="line_number", kind="Number", description="Line number in the artifact being discussed", optional=True),
     ],
 )
 
@@ -142,7 +142,7 @@ core_object_thread = NodeSchema(
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
     attributes=[
-        Attr(name="object_path", kind="Text", optional=False),
+        Attr(name="object_path", kind="Text", description="Path to the object being discussed", optional=False),
     ],
 )
 

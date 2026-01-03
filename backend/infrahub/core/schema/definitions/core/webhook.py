@@ -28,7 +28,7 @@ core_webhook = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", unique=True, order_weight=1000),
+        Attr(name="name", kind="Text", description="Unique name of the webhook", unique=True, order_weight=1000),
         Attr(
             name="event_type",
             kind="Text",
@@ -48,6 +48,7 @@ core_webhook = GenericSchema(
         Attr(
             name="branch_scope",
             kind="Dropdown",
+            description="Which branches should trigger this webhook",
             choices=[
                 DropdownChoice(
                     name="all_branches",
@@ -83,13 +84,15 @@ core_webhook = GenericSchema(
         Attr(
             name="description",
             kind="Text",
+            description="Description of the webhook",
             optional=True,
             order_weight=2500,
         ),
-        Attr(name="url", kind="URL", order_weight=3000),
+        Attr(name="url", kind="URL", description="Target URL to send webhook requests to", order_weight=3000),
         Attr(
             name="validate_certificates",
             kind="Boolean",
+            description="Whether to validate SSL/TLS certificates",
             default_value=True,
             optional=True,
             order_weight=5000,
@@ -111,7 +114,7 @@ core_standard_webhook = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="shared_key", kind="Password", unique=False, order_weight=4000),
+        Attr(name="shared_key", kind="Password", description="Shared secret key for webhook authentication", unique=False, order_weight=4000),
     ],
 )
 
@@ -129,7 +132,7 @@ core_custom_webhook = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="shared_key", kind="Password", unique=False, optional=True, order_weight=4000),
+        Attr(name="shared_key", kind="Password", description="Shared secret key for webhook authentication", unique=False, optional=True, order_weight=4000),
     ],
     relationships=[
         Rel(

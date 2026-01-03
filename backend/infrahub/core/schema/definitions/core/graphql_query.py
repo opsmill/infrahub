@@ -26,9 +26,9 @@ core_graphql_query = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     documentation="/topics/graphql",
     attributes=[
-        Attr(name="name", kind="Text", unique=True),
-        Attr(name="description", kind="Text", optional=True),
-        Attr(name="query", kind="TextArea"),
+        Attr(name="name", kind="Text", description="Unique identifier for the query", unique=True),
+        Attr(name="description", kind="Text", description="Description of what this query does", optional=True),
+        Attr(name="query", kind="TextArea", description="The GraphQL query string"),
         Attr(name="variables", kind="JSON", description="variables in use in the query", optional=True, read_only=True),
         Attr(
             name="operations",

@@ -28,8 +28,8 @@ core_resource_pool = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     attributes=[
-        Attr(name="name", kind="Text", order_weight=1000, unique=True),
-        Attr(name="description", kind="Text", optional=True, order_weight=2000),
+        Attr(name="name", kind="Text", description="Unique name of the resource pool", order_weight=1000, unique=True),
+        Attr(name="description", kind="Text", description="Description of the resource pool", optional=True, order_weight=2000),
     ],
 )
 
@@ -73,12 +73,13 @@ core_ip_prefix_pool = NodeSchema(
         Attr(
             name="default_member_type",
             kind="Text",
+            description="Default member type for allocated prefixes",
             enum=["prefix", "address"],
             default_value="prefix",
             optional=True,
             order_weight=3000,
         ),
-        Attr(name="default_prefix_type", kind="Text", optional=True, order_weight=4000),
+        Attr(name="default_prefix_type", kind="Text", description="Default prefix type schema to use when allocating", optional=True, order_weight=4000),
     ],
     relationships=[
         Rel(

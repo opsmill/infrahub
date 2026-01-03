@@ -42,9 +42,9 @@ core_account_token = NodeSchema(
     uniqueness_constraints=[["token__value"]],
     documentation="/topics/auth",
     attributes=[
-        Attr(name="name", kind="Text", optional=True),
-        Attr(name="token", kind="Text", unique=True),
-        Attr(name="expiration", kind="DateTime", optional=True),
+        Attr(name="name", kind="Text", description="Display name for the token", optional=True),
+        Attr(name="token", kind="Text", description="The authentication token value", unique=True),
+        Attr(name="expiration", kind="DateTime", description="Date and time when the token expires", optional=True),
     ],
     relationships=[
         Rel(
@@ -67,10 +67,11 @@ core_password_credential = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.CREDENTIAL],
     attributes=[
-        Attr(name="username", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=6000),
+        Attr(name="username", kind="Text", description="Username for authentication", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=6000),
         Attr(
             name="password",
             kind="Password",
+            description="Password for authentication",
             optional=True,
             branch=BranchSupportType.AGNOSTIC,
             order_weight=7000,
@@ -88,7 +89,7 @@ core_refresh_token = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="expiration", kind="DateTime", optional=False),
+        Attr(name="expiration", kind="DateTime", description="Date and time when the refresh token expires", optional=False),
     ],
     relationships=[
         Rel(
@@ -116,9 +117,9 @@ core_credential = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     documentation="/topics/auth",
     attributes=[
-        Attr(name="name", kind="Text", unique=True, order_weight=1000),
-        Attr(name="label", kind="Text", optional=True, order_weight=2000),
-        Attr(name="description", kind="Text", optional=True, order_weight=3000),
+        Attr(name="name", kind="Text", description="Unique identifier for the credential", unique=True, order_weight=1000),
+        Attr(name="label", kind="Text", description="Display label for the credential", optional=True, order_weight=2000),
+        Attr(name="description", kind="Text", description="Description of the credential", optional=True, order_weight=3000),
     ],
 )
 
@@ -137,19 +138,21 @@ core_generic_account = GenericSchema(
     documentation="/topics/auth",
     uniqueness_constraints=[["name__value"]],
     attributes=[
-        Attr(name="name", kind="Text", unique=True),
-        Attr(name="password", kind="HashedPassword", unique=False),
-        Attr(name="label", kind="Text", optional=True),
-        Attr(name="description", kind="Text", optional=True),
+        Attr(name="name", kind="Text", description="Unique username for the account", unique=True),
+        Attr(name="password", kind="HashedPassword", description="Hashed password for authentication", unique=False),
+        Attr(name="label", kind="Text", description="Display label for the account", optional=True),
+        Attr(name="description", kind="Text", description="Description of the account", optional=True),
         Attr(
             name="account_type",
             kind="Text",
+            description="Type of account (user, script, etc.)",
             default_value=AccountType.USER.value,
             enum=AccountType.available_types(),
         ),
         Attr(
             name="status",
             kind="Dropdown",
+            description="Current status of the account",
             choices=[
                 DropdownChoice(
                     name=AccountStatus.ACTIVE.value,
