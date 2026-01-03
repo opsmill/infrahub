@@ -75,6 +75,7 @@ export function DetailsButtons({
           onClick={() => setIsEditModalOpen(true)}
           tooltipContent={!isEditAllowed ? permission.update.message : undefined}
           tooltipEnabled={!isEditAllowed}
+          data-testid="edit-button"
         >
           <PencilLineIcon className="mr-1 size-3.5" />
           Edit
