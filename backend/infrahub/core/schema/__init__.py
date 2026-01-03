@@ -147,12 +147,21 @@ class SchemaRoot(BaseModel):
                     item.id = str(uuid.uuid4())
 
     def merge(self, schema: SchemaRoot) -> SchemaRoot:
-        """Return a new `SchemaRoot` after merging `self` with `schema`."""
-        return SchemaRoot.model_validate(deep_merge_dict(dicta=self.model_dump(), dictb=schema.model_dump()))
+        """Return a new `SchemaRoot` after merging `self` with `schema`.
+
+        Uses context to bypass 'inherited' validation since we're working with
+        already-validated internal data that may contain internal fields like 'inherited'.
+        """
+        merged_data = deep_merge_dict(dicta=self.model_dump(), dictb=schema.model_dump())
+        return SchemaRoot.model_validate(merged_data, context={"internal": True})
 
     def duplicate(self) -> SchemaRoot:
-        """Return a duplicate of the current schema."""
-        return SchemaRoot.model_validate(self.model_dump())
+        """Return a duplicate of the current schema.
+
+        Uses context to bypass 'inherited' validation since we're working with
+        already-validated internal data that may contain internal fields like 'inherited'.
+        """
+        return SchemaRoot.model_validate(self.model_dump(), context={"internal": True})
 
 
 internal_schema = internal.to_dict()

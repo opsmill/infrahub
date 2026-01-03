@@ -1,0 +1,34 @@
+{
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "City",
+            "namespace": "Location",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "region",
+                    "peer": "LocationRegion",
+                    "cardinality": "one",
+                    "optional": true,
+                    "inherited": true
+                }
+            ]
+        },
+        {
+            "name": "Region",
+            "namespace": "Location",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text"
+                }
+            ]
+        }
+    ]
+}

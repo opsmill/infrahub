@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection
@@ -23,6 +23,16 @@ if TYPE_CHECKING:
 class RelationshipSchema(GeneratedRelationshipSchema):
     _exclude_from_hash: list[str] = ["filters"]
     _sort_by: list[str] = ["name"]
+
+    @field_validator("inherited")
+    @classmethod
+    def inherited_is_internal(cls, v: bool, info: ValidationInfo) -> bool:
+        # Skip validation for internal operations (e.g., duplicate, merge)
+        if info.context and info.context.get("internal"):
+            return v
+        if v is True:
+            raise ValueError("'inherited' is an internal property that must not be provided in user schemas")
+        return v
 
     @property
     def is_attribute(self) -> bool:

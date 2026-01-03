@@ -91,6 +91,16 @@ class AttributeSchema(GeneratedAttributeSchema):
             raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
 
+    @field_validator("inherited")
+    @classmethod
+    def inherited_is_internal(cls, v: bool, info: ValidationInfo) -> bool:
+        # Skip validation for internal operations (e.g., duplicate, merge)
+        if info.context and info.context.get("internal"):
+            return v
+        if v is True:
+            raise ValueError("'inherited' is an internal property that must not be provided in user schemas")
+        return v
+
     @model_validator(mode="before")
     @classmethod
     def validate_dropdown_choices(cls, values: Any) -> Any:

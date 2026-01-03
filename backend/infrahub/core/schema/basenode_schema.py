@@ -9,7 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict, ValidationInfo, field_validator
 
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
@@ -120,7 +120,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @field_validator("attributes", mode="before")
     @classmethod
-    def set_attribute_type(cls, raw_attributes: Any) -> Any:
+    def set_attribute_type(cls, raw_attributes: Any, info: ValidationInfo) -> Any:
         if not isinstance(raw_attributes, list):
             return raw_attributes
         attribute_schemas_with_types: list[Any] = []
@@ -131,12 +131,14 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             if isinstance(raw_attr, dict):
                 kind = raw_attr.get("kind")
                 attribute_type_class = get_attribute_schema_class_for_kind(kind=kind)
-                attribute_schemas_with_types.append(attribute_type_class(**raw_attr))
+                # Pass context to nested model for proper validation
+                attribute_schemas_with_types.append(attribute_type_class.model_validate(raw_attr, context=info.context))
                 continue
 
             expected_attr_schema_class = get_attribute_schema_class_for_kind(kind=raw_attr.kind)
             if not isinstance(raw_attr, expected_attr_schema_class):
-                final_attr = expected_attr_schema_class(**raw_attr.model_dump())
+                # Pass context to nested model for proper validation
+                final_attr = expected_attr_schema_class.model_validate(raw_attr.model_dump(), context=info.context)
             else:
                 final_attr = raw_attr
             attribute_schemas_with_types.append(final_attr)

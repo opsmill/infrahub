@@ -319,6 +319,58 @@ async def test_schema_load_endpoint_not_valid_simple_05(
     )
 
 
+async def test_schema_load_endpoint_inherited_attribute_not_valid(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    helper,
+) -> None:
+    """Test that loading a schema with inherited=True on an attribute fails.
+
+    The 'inherited' flag is an internal property that should only be set by the
+    system during schema processing. Users should not provide this in their schemas.
+    Fixes GitHub issue #8014.
+    """
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("inherited_attr_not_valid.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "inherited" in response.json()["detail"][0]["msg"]
+    assert "internal property" in response.json()["detail"][0]["msg"]
+
+
+async def test_schema_load_endpoint_inherited_relationship_not_valid(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    helper,
+) -> None:
+    """Test that loading a schema with inherited=True on a relationship fails.
+
+    The 'inherited' flag is an internal property that should only be set by the
+    system during schema processing. Users should not provide this in their schemas.
+    Fixes GitHub issue #8014.
+    """
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("inherited_rel_not_valid.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "inherited" in response.json()["detail"][0]["msg"]
+    assert "internal property" in response.json()["detail"][0]["msg"]
+
+
 async def test_schema_load_endpoint_not_valid_with_generics_02(
     db: InfrahubDatabase,
     client: TestClient,

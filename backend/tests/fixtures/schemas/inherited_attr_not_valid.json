@@ -1,0 +1,20 @@
+{
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "City",
+            "namespace": "Location",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text"
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "inherited": true
+                }
+            ]
+        }
+    ]
+}
