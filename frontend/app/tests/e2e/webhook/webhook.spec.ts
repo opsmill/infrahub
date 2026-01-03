@@ -83,7 +83,8 @@ test.describe("/objects/CoreWebhook", () => {
         await expect(
           page.getByTestId("object-header").getByText("Ansible EDA", { exact: true })
         ).toBeVisible();
-        await page.getByTestId("delete-button").click();
+        await page.getByTestId("object-details-menu").click();
+        await page.getByRole("menuitem", { name: "Delete" }).click();
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText("Object Ansible EDA deleted")).toBeVisible();
         await page.getByText("No Standard Webhook found").click();
