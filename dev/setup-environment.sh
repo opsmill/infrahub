@@ -52,28 +52,33 @@ echo "Installing GitHub CLI (gh)..."
 if command -v gh &> /dev/null; then
     echo "GitHub CLI already installed: $(gh --version | head -n1)"
 else
-    # Detect package manager and install (non-fatal)
     install_gh() {
-        if command -v apt-get &> /dev/null; then
-            # Debian/Ubuntu
-            (type -p wget >/dev/null || sudo apt-get install wget -y) \
-                && sudo mkdir -p -m 755 /etc/apt/keyrings \
-                && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-                && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-                && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-                && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-                && sudo apt-get update \
-                && sudo apt-get install gh -y
-        elif command -v dnf &> /dev/null; then
-            # Fedora/RHEL
-            sudo dnf install 'dnf-command(config-manager)' -y \
-                && sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo \
-                && sudo dnf install gh -y
-        elif command -v brew &> /dev/null; then
-            # macOS with Homebrew
+        # Try direct binary download first (most reliable across environments)
+        if command -v curl &> /dev/null; then
+            GH_VERSION=$(curl -sL https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+            if [ -n "$GH_VERSION" ]; then
+                ARCH=$(uname -m)
+                case "$ARCH" in
+                    x86_64) ARCH="amd64" ;;
+                    aarch64|arm64) ARCH="arm64" ;;
+                esac
+                OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+                curl -sLO "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
+                    && tar -xzf "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
+                    && sudo mv "gh_${GH_VERSION}_${OS}_${ARCH}/bin/gh" /usr/local/bin/ \
+                    && rm -rf "gh_${GH_VERSION}_${OS}_${ARCH}" "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
+                    && return 0
+            fi
+        fi
+        # Fallback to package managers
+        if command -v brew &> /dev/null; then
             brew install gh
+        elif command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install gh -y
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install gh -y
         else
-            echo "Warning: Could not detect package manager. Please install GitHub CLI manually:"
+            echo "Warning: Could not install GitHub CLI automatically"
             echo "  https://github.com/cli/cli#installation"
             return 1
         fi
