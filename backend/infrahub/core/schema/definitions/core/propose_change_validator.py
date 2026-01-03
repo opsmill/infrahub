@@ -31,7 +31,11 @@ core_propose_change_validator = GenericSchema(
     attributes=[
         Attr(name="label", kind="Text", description="Display label for the validator", optional=True),
         Attr(
-            name="state", kind="Text", description="Current execution state of the validator", enum=ValidatorState.available_types(), default_value=ValidatorState.QUEUED.value
+            name="state",
+            kind="Text",
+            description="Current execution state of the validator",
+            enum=ValidatorState.available_types(),
+            default_value=ValidatorState.QUEUED.value,
         ),
         Attr(
             name="conclusion",
@@ -248,8 +252,19 @@ core_data_check = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
         Attr(name="conflicts", kind="JSON", description="Details of detected data conflicts between branches"),
-        Attr(name="keep_branch", kind="Text", description="Which branch data to keep when resolving conflicts", enum=BranchConflictKeep.available_types(), optional=True),
-        Attr(name="enriched_conflict_id", kind="Text", description="Unique identifier for the enriched conflict", optional=True),
+        Attr(
+            name="keep_branch",
+            kind="Text",
+            description="Which branch data to keep when resolving conflicts",
+            enum=BranchConflictKeep.available_types(),
+            optional=True,
+        ),
+        Attr(
+            name="enriched_conflict_id",
+            kind="Text",
+            description="Unique identifier for the enriched conflict",
+            optional=True,
+        ),
     ],
 )
 
@@ -277,7 +292,12 @@ core_schema_check = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
         Attr(name="conflicts", kind="JSON", description="Details of detected schema conflicts"),
-        Attr(name="enriched_conflict_id", kind="Text", description="Unique identifier for the enriched conflict", optional=True),
+        Attr(
+            name="enriched_conflict_id",
+            kind="Text",
+            description="Unique identifier for the enriched conflict",
+            optional=True,
+        ),
     ],
 )
 
@@ -327,6 +347,11 @@ core_generator_check = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="instance", kind="Text", description="Identifier of the generator instance being checked", optional=False),
+        Attr(
+            name="instance",
+            kind="Text",
+            description="Identifier of the generator instance being checked",
+            optional=False,
+        ),
     ],
 )

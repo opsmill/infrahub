@@ -33,9 +33,27 @@ core_generator_definition = NodeSchema(
         Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the generator"),
         Attr(name="file_path", kind="Text", description="Path to the Python file containing the generator class"),
         Attr(name="class_name", kind="Text", description="Name of the Python class implementing the generator"),
-        Attr(name="convert_query_response", kind="Boolean", description="Whether to convert the GraphQL response to SDK objects", optional=True, default_value=False),
-        Attr(name="execute_in_proposed_change", kind="Boolean", description="Whether to run this generator in proposed changes", optional=True, default_value=True),
-        Attr(name="execute_after_merge", kind="Boolean", description="Whether to run this generator after a merge", optional=True, default_value=True),
+        Attr(
+            name="convert_query_response",
+            kind="Boolean",
+            description="Whether to convert the GraphQL response to SDK objects",
+            optional=True,
+            default_value=False,
+        ),
+        Attr(
+            name="execute_in_proposed_change",
+            kind="Boolean",
+            description="Whether to run this generator in proposed changes",
+            optional=True,
+            default_value=True,
+        ),
+        Attr(
+            name="execute_after_merge",
+            kind="Boolean",
+            description="Whether to run this generator after a merge",
+            optional=True,
+            default_value=True,
+        ),
     ],
     relationships=[
         Rel(
@@ -81,7 +99,12 @@ core_generator_instance = NodeSchema(
     documentation="/topics/generator",
     attributes=[
         Attr(name="name", kind="Text", description="Name of this generator instance"),
-        Attr(name="status", kind="Text", description="Current execution status of the generator instance", enum=GeneratorInstanceStatus.available_types()),
+        Attr(
+            name="status",
+            kind="Text",
+            description="Current execution status of the generator instance",
+            enum=GeneratorInstanceStatus.available_types(),
+        ),
     ],
     relationships=[
         Rel(

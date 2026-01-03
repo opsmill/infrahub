@@ -11,7 +11,16 @@ core_object_template = GenericSchema(
     display_labels=["template_name__value"],
     default_filter="template_name__value",
     uniqueness_constraints=[["template_name__value"]],
-    attributes=[Attr(name="template_name", kind="Text", description="Unique name identifier for the template", optional=False, unique=True, order_weight=1000)],
+    attributes=[
+        Attr(
+            name="template_name",
+            kind="Text",
+            description="Unique name identifier for the template",
+            optional=False,
+            unique=True,
+            order_weight=1000,
+        )
+    ],
 )
 
 core_object_component_template = GenericSchema(
@@ -23,5 +32,13 @@ core_object_component_template = GenericSchema(
     label="Object Component Templates",
     display_labels=["template_name__value"],
     default_filter="template_name__value",
-    attributes=[Attr(name="template_name", kind="Text", description="Name identifier for the component template", optional=False, order_weight=1000)],
+    attributes=[
+        Attr(
+            name="template_name",
+            kind="Text",
+            description="Name identifier for the component template",
+            optional=False,
+            order_weight=1000,
+        )
+    ],
 )

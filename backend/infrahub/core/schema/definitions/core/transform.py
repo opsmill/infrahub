@@ -28,7 +28,9 @@ core_transform = GenericSchema(
     attributes=[
         Attr(name="name", kind="Text", description="Unique identifier for the transformation", unique=True),
         Attr(name="label", kind="Text", description="Display label for the transformation", optional=True),
-        Attr(name="description", kind="Text", description="Description of what this transformation does", optional=True),
+        Attr(
+            name="description", kind="Text", description="Description of what this transformation does", optional=True
+        ),
         Attr(name="timeout", kind="Number", description="Maximum execution time in seconds", default_value=60),
     ],
     relationships=[
@@ -92,6 +94,12 @@ core_transform_python = NodeSchema(
     attributes=[
         Attr(name="file_path", kind="Text", description="Path to the Python file in the repository"),
         Attr(name="class_name", kind="Text", description="Name of the Python class implementing the transformation"),
-        Attr(name="convert_query_response", kind="Boolean", description="Whether to convert the GraphQL response to SDK objects", optional=True, default_value=False),
+        Attr(
+            name="convert_query_response",
+            kind="Boolean",
+            description="Whether to convert the GraphQL response to SDK objects",
+            optional=True,
+            default_value=False,
+        ),
     ],
 )

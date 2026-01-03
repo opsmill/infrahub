@@ -28,9 +28,21 @@ core_proposed_change = NodeSchema(
     documentation="/topics/proposed-change",
     attributes=[
         Attr(name="name", kind="Text", description="Title of the proposed change", optional=False),
-        Attr(name="description", kind="TextArea", description="Detailed description of the proposed change", optional=True),
-        Attr(name="source_branch", kind="Text", description="Name of the branch containing the changes", optional=False),
-        Attr(name="destination_branch", kind="Text", description="Name of the branch to merge changes into", optional=False),
+        Attr(
+            name="description",
+            kind="TextArea",
+            description="Detailed description of the proposed change",
+            optional=True,
+        ),
+        Attr(
+            name="source_branch", kind="Text", description="Name of the branch containing the changes", optional=False
+        ),
+        Attr(
+            name="destination_branch",
+            kind="Text",
+            description="Name of the branch to merge changes into",
+            optional=False,
+        ),
         Attr(
             name="state",
             kind="Text",
@@ -39,9 +51,21 @@ core_proposed_change = NodeSchema(
             default_value=ProposedChangeState.OPEN.value,
             optional=True,
         ),
-        Attr(name="is_draft", kind="Boolean", description="Whether the proposed change is still a draft", optional=False, default_value=False),
+        Attr(
+            name="is_draft",
+            kind="Boolean",
+            description="Whether the proposed change is still a draft",
+            optional=False,
+            default_value=False,
+        ),
         # Ideally we should support some "runtime-attribute" that could not even be stored in the database.
-        Attr(name="total_comments", kind="Number", description="Total number of comments on this proposed change", optional=True, read_only=True),
+        Attr(
+            name="total_comments",
+            kind="Number",
+            description="Total number of comments on this proposed change",
+            optional=True,
+            read_only=True,
+        ),
     ],
     relationships=[
         Rel(

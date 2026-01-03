@@ -17,16 +17,59 @@ generic_menu_item = GenericSchema(
     display_labels=["label__value"],
     generate_profile=False,
     attributes=[
-        Attr(name="namespace", kind="Text", description="Namespace for the menu item", regex=NAMESPACE_REGEX, order_weight=1000),
-        Attr(name="name", kind="Text", description="Unique name of the menu item within its namespace", order_weight=1000),
-        Attr(name="label", kind="Text", description="Display label shown in the menu", optional=True, order_weight=2000),
-        Attr(name="kind", kind="Text", description="Kind of object this menu item links to", optional=True, order_weight=2500),
+        Attr(
+            name="namespace",
+            kind="Text",
+            description="Namespace for the menu item",
+            regex=NAMESPACE_REGEX,
+            order_weight=1000,
+        ),
+        Attr(
+            name="name", kind="Text", description="Unique name of the menu item within its namespace", order_weight=1000
+        ),
+        Attr(
+            name="label", kind="Text", description="Display label shown in the menu", optional=True, order_weight=2000
+        ),
+        Attr(
+            name="kind",
+            kind="Text",
+            description="Kind of object this menu item links to",
+            optional=True,
+            order_weight=2500,
+        ),
         Attr(name="path", kind="Text", description="URL path for the menu item", optional=True, order_weight=2500),
-        Attr(name="description", kind="Text", description="Description of the menu item", optional=True, order_weight=3000),
-        Attr(name="icon", kind="Text", description="Icon identifier for the menu item", optional=True, order_weight=4000),
-        Attr(name="protected", kind="Boolean", description="Whether the menu item is protected from modification", default_value=False, read_only=True, order_weight=5000),
-        Attr(name="order_weight", kind="Number", description="Ordering weight for menu item placement", default_value=2000, order_weight=6000),
-        Attr(name="required_permissions", kind="List", description="List of permissions required to view this menu item", optional=True, order_weight=7000),
+        Attr(
+            name="description",
+            kind="Text",
+            description="Description of the menu item",
+            optional=True,
+            order_weight=3000,
+        ),
+        Attr(
+            name="icon", kind="Text", description="Icon identifier for the menu item", optional=True, order_weight=4000
+        ),
+        Attr(
+            name="protected",
+            kind="Boolean",
+            description="Whether the menu item is protected from modification",
+            default_value=False,
+            read_only=True,
+            order_weight=5000,
+        ),
+        Attr(
+            name="order_weight",
+            kind="Number",
+            description="Ordering weight for menu item placement",
+            default_value=2000,
+            order_weight=6000,
+        ),
+        Attr(
+            name="required_permissions",
+            kind="List",
+            description="List of permissions required to view this menu item",
+            optional=True,
+            order_weight=7000,
+        ),
         Attr(
             name="section",
             kind="Text",

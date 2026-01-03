@@ -67,7 +67,14 @@ core_password_credential = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.CREDENTIAL],
     attributes=[
-        Attr(name="username", kind="Text", description="Username for authentication", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=6000),
+        Attr(
+            name="username",
+            kind="Text",
+            description="Username for authentication",
+            optional=True,
+            branch=BranchSupportType.AGNOSTIC,
+            order_weight=6000,
+        ),
         Attr(
             name="password",
             kind="Password",
@@ -89,7 +96,12 @@ core_refresh_token = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="expiration", kind="DateTime", description="Date and time when the refresh token expires", optional=False),
+        Attr(
+            name="expiration",
+            kind="DateTime",
+            description="Date and time when the refresh token expires",
+            optional=False,
+        ),
     ],
     relationships=[
         Rel(
@@ -117,9 +129,19 @@ core_credential = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     documentation="/topics/auth",
     attributes=[
-        Attr(name="name", kind="Text", description="Unique identifier for the credential", unique=True, order_weight=1000),
-        Attr(name="label", kind="Text", description="Display label for the credential", optional=True, order_weight=2000),
-        Attr(name="description", kind="Text", description="Description of the credential", optional=True, order_weight=3000),
+        Attr(
+            name="name", kind="Text", description="Unique identifier for the credential", unique=True, order_weight=1000
+        ),
+        Attr(
+            name="label", kind="Text", description="Display label for the credential", optional=True, order_weight=2000
+        ),
+        Attr(
+            name="description",
+            kind="Text",
+            description="Description of the credential",
+            optional=True,
+            order_weight=3000,
+        ),
     ],
 )
 

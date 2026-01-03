@@ -31,7 +31,14 @@ core_group = GenericSchema(
         Attr(name="name", kind="Text", description="Unique identifier for the group", unique=True),
         Attr(name="label", kind="Text", description="Display label for the group", optional=True),
         Attr(name="description", kind="Text", description="Description of the group", optional=True),
-        Attr(name="group_type", kind="Text", description="Type of group (default or internal)", enum=["default", "internal"], default_value="default", optional=False),
+        Attr(
+            name="group_type",
+            kind="Text",
+            description="Type of group (default or internal)",
+            enum=["default", "internal"],
+            default_value="default",
+            optional=False,
+        ),
     ],
     relationships=[
         Rel(

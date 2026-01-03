@@ -48,7 +48,12 @@ core_thread = GenericSchema(
     include_in_menu=False,
     attributes=[
         Attr(name="label", kind="Text", description="Display label for the thread", optional=True),
-        Attr(name="resolved", kind="Boolean", description="Whether the thread has been marked as resolved", default_value=False),
+        Attr(
+            name="resolved",
+            kind="Boolean",
+            description="Whether the thread has been marked as resolved",
+            default_value=False,
+        ),
         Attr(name="created_at", kind="DateTime", description="Timestamp when the thread was created", optional=True),
     ],
     relationships=[
@@ -126,9 +131,16 @@ core_artifact_thread = NodeSchema(
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
     attributes=[
-        Attr(name="artifact_id", kind="Text", description="Unique identifier of the artifact being discussed", optional=True),
+        Attr(
+            name="artifact_id",
+            kind="Text",
+            description="Unique identifier of the artifact being discussed",
+            optional=True,
+        ),
         Attr(name="storage_id", kind="Text", description="ID of the artifact in the object store", optional=True),
-        Attr(name="line_number", kind="Number", description="Line number in the artifact being discussed", optional=True),
+        Attr(
+            name="line_number", kind="Number", description="Line number in the artifact being discussed", optional=True
+        ),
     ],
 )
 

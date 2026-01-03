@@ -30,7 +30,12 @@ core_check_definition = NodeSchema(
         Attr(name="description", kind="Text", description="Description of what this check validates", optional=True),
         Attr(name="file_path", kind="Text", description="Path to the Python file containing the check class"),
         Attr(name="class_name", kind="Text", description="Name of the Python class implementing the check"),
-        Attr(name="timeout", kind="Number", description="Maximum execution time in seconds before the check times out", default_value=60),
+        Attr(
+            name="timeout",
+            kind="Number",
+            description="Maximum execution time in seconds before the check times out",
+            default_value=60,
+        ),
         Attr(name="parameters", kind="JSON", description="Additional parameters to pass to the check", optional=True),
     ],
     relationships=[

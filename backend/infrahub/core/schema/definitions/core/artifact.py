@@ -117,9 +117,19 @@ core_artifact_definition = NodeSchema(
     attributes=[
         Attr(name="name", kind="Text", description="Unique identifier for this artifact definition", unique=True),
         Attr(name="artifact_name", kind="Text", description="Name template for generated artifacts"),
-        Attr(name="description", kind="Text", description="Description of what this artifact definition produces", optional=True),
+        Attr(
+            name="description",
+            kind="Text",
+            description="Description of what this artifact definition produces",
+            optional=True,
+        ),
         Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the transformation"),
-        Attr(name="content_type", kind="Text", description="MIME type of the generated artifacts", enum=ContentType.available_types()),
+        Attr(
+            name="content_type",
+            kind="Text",
+            description="MIME type of the generated artifacts",
+            enum=ContentType.available_types(),
+        ),
     ],
     relationships=[
         Rel(

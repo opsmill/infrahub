@@ -114,7 +114,13 @@ core_standard_webhook = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="shared_key", kind="Password", description="Shared secret key for webhook authentication", unique=False, order_weight=4000),
+        Attr(
+            name="shared_key",
+            kind="Password",
+            description="Shared secret key for webhook authentication",
+            unique=False,
+            order_weight=4000,
+        ),
     ],
 )
 
@@ -132,7 +138,14 @@ core_custom_webhook = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="shared_key", kind="Password", description="Shared secret key for webhook authentication", unique=False, optional=True, order_weight=4000),
+        Attr(
+            name="shared_key",
+            kind="Password",
+            description="Shared secret key for webhook authentication",
+            unique=False,
+            optional=True,
+            order_weight=4000,
+        ),
     ],
     relationships=[
         Rel(

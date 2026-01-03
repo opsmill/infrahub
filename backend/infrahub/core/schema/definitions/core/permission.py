@@ -27,7 +27,14 @@ core_base_permission = GenericSchema(
     generate_profile=False,
     attributes=[
         Attr(name="description", kind="Text", description="Description of the permission", optional=True),
-        Attr(name="identifier", kind="Text", description="Unique identifier for the permission", read_only=True, optional=True, allow_override=AllowOverrideType.NONE),
+        Attr(
+            name="identifier",
+            kind="Text",
+            description="Unique identifier for the permission",
+            read_only=True,
+            optional=True,
+            allow_override=AllowOverrideType.NONE,
+        ),
     ],
     relationships=[
         Rel(
@@ -54,8 +61,18 @@ core_object_permission = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.BASEPERMISSION],
     attributes=[
-        Attr(name="namespace", kind="Text", description="Namespace of the object type this permission applies to", order_weight=2000),
-        Attr(name="name", kind="Text", description="Name of the object type this permission applies to", order_weight=3000),
+        Attr(
+            name="namespace",
+            kind="Text",
+            description="Namespace of the object type this permission applies to",
+            order_weight=2000,
+        ),
+        Attr(
+            name="name",
+            kind="Text",
+            description="Name of the object type this permission applies to",
+            order_weight=3000,
+        ),
         Attr(
             name="action",
             kind="Text",
