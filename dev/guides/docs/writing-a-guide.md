@@ -1,6 +1,6 @@
 # Writing a Documentation Guide
 
-> Part of: `dev/guides/` | Related: `dev/guidelines/documentation.md`, `dev/guidelines/markdown.md`
+> Part of: `dev/guides/` | Related: [Documentation Guidelines](../../guidelines/documentation.md), [Markdown Standards](../../guidelines/markdown.md)
 
 Step-by-step guide for writing a how-to guide in the Infrahub documentation.
 
@@ -126,7 +126,7 @@ When a task can be accomplished multiple ways:
 2. Include programmatic alternatives (GraphQL, Python SDK)
 3. Include CLI method when applicable
 
-Use tabs to organize alternative methods. See `dev/guidelines/markdown.md` for tab syntax.
+Use tabs to organize alternative methods. See [Markdown Standards](../../guidelines/markdown.md) for tab syntax.
 
 ### Complex Workflows
 
@@ -159,14 +159,14 @@ Before submitting your guide:
 - [ ] No words like "easy", "simple", or "just"
 - [ ] Links to related topics/references are provided
 - [ ] Technical terms are defined on first use
-- [ ] Code blocks have language tags (see `dev/guidelines/markdown.md`)
-- [ ] Screenshots have descriptive alt text (see `dev/guidelines/markdown.md`)
+- [ ] Code blocks have language tags (see [Markdown Standards](../../guidelines/markdown.md))
+- [ ] Screenshots have descriptive alt text (see [Markdown Standards](../../guidelines/markdown.md))
 - [ ] Passes `uv run invoke docs.lint`
 - [ ] Builds without errors with `uv run invoke docs.build`
 
 ## Writing Style
 
-Follow the guide writing style from `dev/guidelines/documentation.md`:
+Follow the guide writing style from [Documentation Guidelines](../../guidelines/documentation.md):
 
 - **Direct and imperative**: Use commands that tell the user what to do
 - **Task-focused**: Stay focused on the specific goal without digressing
@@ -198,8 +198,8 @@ The repository URL configuration is done in the .infrahub.yml file.
 
 1. **Choose documentation type** - Confirm this should be a guide (not a topic)
 2. **Review this guide** - Understand the structure and patterns
-3. **Review general guidelines** - See `dev/guidelines/documentation.md`
-4. **Review markdown standards** - See `dev/guidelines/markdown.md`
+3. **Review general guidelines** - See [Documentation Guidelines](../../guidelines/documentation.md)
+4. **Review markdown standards** - See [Markdown Standards](../../guidelines/markdown.md)
 5. **Create the .mdx file** in `docs/docs/guides/`
 6. **Add to navigation** by editing `sidebars.ts`
 7. **Lint before committing**: `uv run invoke docs.lint`
@@ -208,7 +208,7 @@ The repository URL configuration is done in the .infrahub.yml file.
 
 ## See Also
 
-- `dev/guidelines/documentation.md` - General documentation writing guidelines
-- `dev/guidelines/markdown.md` - Markdown formatting standards
+- [Documentation Guidelines](../../guidelines/documentation.md) - General documentation writing guidelines
+- [Markdown Standards](../../guidelines/markdown.md) - Markdown formatting standards
 - `docs/docs/guides/AGENTS.md` - Agent instructions for writing guides
-- `dev/guides/docs/writing-a-topic.md` - Step-by-step guide for writing topics
+- [Writing a Topic](writing-a-topic.md) - Step-by-step guide for writing topics
