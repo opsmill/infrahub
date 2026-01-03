@@ -396,11 +396,7 @@ class IPPrefixReconcileQueryResult:
 
         def get_collection_uuids(label: str) -> tuple[str, ...]:
             """Extract UUIDs from a node collection (may contain None from COLLECT)."""
-            return tuple(
-                str(n.get("uuid"))
-                for n in result.get_node_collection(label)
-                if n and n.get("uuid")
-            )
+            return tuple(str(n.get("uuid")) for n in result.get_node_collection(label) if n and n.get("uuid"))
 
         return cls(
             ip_node_uuid=get_optional_node_uuid("ip_node"),

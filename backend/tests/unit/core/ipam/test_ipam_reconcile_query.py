@@ -509,9 +509,7 @@ async def test_reconcile_parent_child_identification(
             assert data.calculated_parent_uuid is None
         else:
             assert parent == prefix_id_map.get(data.calculated_parent_uuid)
-        assert prefix_children == {
-            prefix_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in prefix_id_map
-        }
+        assert prefix_children == {prefix_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in prefix_id_map}
         assert address_children == {
             address_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in address_id_map
         }
