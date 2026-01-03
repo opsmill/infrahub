@@ -6,7 +6,7 @@ rolled back to their original state.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any, Generator, Sequence
 
 import httpx
 import pytest
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
+    from infrahub.core.migrations.query import MigrationBaseQuery
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -40,7 +41,13 @@ class BrokenMigration(SchemaMigration):
     name: str = "broken_migration"
     queries: list = []  # Required field, but we won't use it since we override execute
 
-    async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:
+    async def execute(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: Timestamp,
+        queries: Sequence[type[MigrationBaseQuery]] | None = None,
+    ) -> MigrationResult:
         """Raise an error to simulate a migration failure."""
         raise ValueError("Simulated migration failure - this is intentional for testing")
 

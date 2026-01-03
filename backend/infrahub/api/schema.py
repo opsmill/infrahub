@@ -24,6 +24,7 @@ from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
     SchemaDiff,
+    SchemaUpdateConstraintInfo,
     SchemaUpdateValidationResult,
 )
 from infrahub.core.schema import (
@@ -291,6 +292,121 @@ async def get_json_schema_by_kind(
     return json_schema
 
 
+async def _validate_migrations(
+    branch: Branch,
+    candidate_schema: SchemaBranch,
+    constraints: list[SchemaUpdateConstraintInfo],
+    service: InfrahubServices,
+    context: InfrahubContext,
+) -> None:
+    validate_migration_data = SchemaValidateMigrationData(
+        branch=branch,
+        schema_branch=candidate_schema,
+        constraints=constraints,
+    )
+    responses = await service.workflow.execute_workflow(
+        workflow=SCHEMA_VALIDATE_MIGRATION,
+        context=context,
+        expected_return=list[SchemaValidatorPathResponseData],
+        parameters={"message": validate_migration_data},
+    )
+    error_messages = [violation.message for response in responses for violation in response.violations]
+    if error_messages:
+        raise SchemaNotValidError(",\n".join(error_messages))
+
+
+async def _updated_schema_and_migrate(
+    db: InfrahubDatabase,
+    branch: Branch,
+    origin_schema: SchemaBranch,
+    candidate_schema: SchemaBranch,
+    result: SchemaUpdateValidationResult,
+    service: InfrahubServices,
+    context: InfrahubContext,
+    user_id: str,
+) -> str:
+    # ----------------------------------------------------------
+    # Update the schema
+    # ----------------------------------------------------------
+    log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
+
+    schema_load_at = Timestamp()
+
+    await registry.schema.update_schema_branch(
+        schema=candidate_schema,
+        db=db,
+        branch=branch.name,
+        diff=result.diff,
+        limit=result.diff.all,
+        update_db=True,
+        at=schema_load_at,
+    )
+    branch.update_schema_hash()
+    log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
+
+    # NOTE shouldn't be required anymore, will need to cleanup later
+    if not branch.is_isolated and not branch.is_default and branch.has_schema_changes:
+        branch.is_isolated = True
+        log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
+
+    await branch.save(db=db, user_id=user_id)
+    updated_branch = registry.schema.get_schema_branch(name=branch.name)
+    updated_hash = updated_branch.get_hash()
+
+    # ----------------------------------------------------------
+    # Run the migrations (with rollback on failure)
+    # ----------------------------------------------------------
+    apply_migration_data = SchemaApplyMigrationData(
+        branch=branch,
+        new_schema=candidate_schema,
+        previous_schema=origin_schema,
+        migrations=result.migrations,
+        at=schema_load_at,
+        user_id=user_id,
+    )
+
+    migration_error_msgs: list[str] = []
+    migration_exception: Exception | None = None
+
+    try:
+        migration_error_msgs = await service.workflow.execute_workflow(
+            workflow=SCHEMA_APPLY_MIGRATION,
+            context=context,
+            expected_return=list[str],
+            parameters={"message": apply_migration_data},
+        )
+    except Exception as exc:
+        migration_exception = exc
+
+    if not migration_error_msgs and not migration_exception:
+        return updated_hash
+    if migration_exception:
+        log.error(
+            "Schema migration failed, beginning rollback",
+            branch=branch.name,
+            error=str(migration_exception),
+        )
+    else:
+        log.error("Schema migration returned errors, beginning rollback", branch=branch.name)
+
+    # Rollback database changes (no transaction - rollback may be large)
+    rollback_query = await SchemaLoadRollbackQuery.init(db=db, branch=branch, target_branch=branch, at=schema_load_at)
+    await rollback_query.execute(db=db)
+
+    # Restore original schema in registry
+    registry.schema.set_schema_branch(name=branch.name, schema=origin_schema)
+
+    # Reset the schema hash on the branch
+    branch.update_schema_hash()
+    await branch.save(db=db)
+
+    log.info("Schema rollback completed", branch=branch.name)
+
+    if migration_exception:
+        raise migration_exception
+    raise MigrationError(message=",\n".join(migration_error_msgs))
+
+
 @router.post("/load")
 async def load_schema(
     request: Request,
@@ -340,105 +456,25 @@ async def load_schema(
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
-        validate_migration_data = SchemaValidateMigrationData(
+        await _validate_migrations(
             branch=branch,
-            schema_branch=candidate_schema,
+            candidate_schema=candidate_schema,
             constraints=result.constraints,
-        )
-        responses = await service.workflow.execute_workflow(
-            workflow=SCHEMA_VALIDATE_MIGRATION,
+            service=service,
             context=context,
-            expected_return=list[SchemaValidatorPathResponseData],
-            parameters={"message": validate_migration_data},
         )
-        error_messages = [violation.message for response in responses for violation in response.violations]
-        if error_messages:
-            raise SchemaNotValidError(",\n".join(error_messages))
 
-        schema_load_at = Timestamp()
-
-        # ----------------------------------------------------------
-        # Update the schema
-        # ----------------------------------------------------------
         origin_schema = branch_schema.duplicate()
-        log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
-
-        schema_load_at = Timestamp()
-
-        await registry.schema.update_schema_branch(
-            schema=candidate_schema,
+        updated_hash = await _updated_schema_and_migrate(
             db=db,
-            branch=branch.name,
-            diff=result.diff,
-            limit=result.diff.all,
-            update_db=True,
-            at=schema_load_at,
-        )
-        branch.update_schema_hash()
-        log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
-
-        # NOTE shouldn't be required anymore, will need to cleanup later
-        if not branch.is_isolated and not branch.is_default and branch.has_schema_changes:
-            branch.is_isolated = True
-            log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
-
-        await branch.save(db=db, user_id=account_session.account_id)
-        updated_branch = registry.schema.get_schema_branch(name=branch.name)
-        updated_hash = updated_branch.get_hash()
-
-        # ----------------------------------------------------------
-        # Run the migrations (with rollback on failure)
-        # ----------------------------------------------------------
-        apply_migration_data = SchemaApplyMigrationData(
             branch=branch,
-            new_schema=candidate_schema,
-            previous_schema=origin_schema,
-            migrations=result.migrations,
+            origin_schema=origin_schema,
+            candidate_schema=candidate_schema,
+            result=result,
+            service=service,
+            context=context,
             user_id=account_session.account_id,
-            at=schema_load_at,
         )
-
-        migration_error_msgs: list[str] = []
-        migration_exception: Exception | None = None
-
-        try:
-            migration_error_msgs = await service.workflow.execute_workflow(
-                workflow=SCHEMA_APPLY_MIGRATION,
-                context=context,
-                expected_return=list[str],
-                parameters={"message": apply_migration_data},
-            )
-        except Exception as exc:
-            migration_exception = exc
-
-        if migration_error_msgs or migration_exception:
-            if migration_exception:
-                log.error(
-                    "Schema migration failed, beginning rollback",
-                    branch=branch.name,
-                    error=str(migration_exception),
-                )
-            else:
-                log.error("Schema migration returned errors, beginning rollback", branch=branch.name)
-
-            # Rollback database changes (no transaction - rollback may be large)
-            rollback_query = await SchemaLoadRollbackQuery.init(
-                db=db, branch=branch, target_branch=branch, at=schema_load_at
-            )
-            await rollback_query.execute(db=db)
-
-            # Restore original schema in registry
-            registry.schema.set_schema_branch(name=branch.name, schema=origin_schema)
-
-            # Reset the schema hash on the branch
-            branch.update_schema_hash()
-            await branch.save(db=db)
-
-            log.info("Schema rollback completed", branch=branch.name)
-
-            if migration_exception:
-                raise migration_exception
-            raise MigrationError(message=",\n".join(migration_error_msgs))
 
     await service.component.refresh_schema_hash(branches=[branch.name])
 
