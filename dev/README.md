@@ -44,40 +44,40 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 ## Current Guidelines
 
-- **Repository Organization**: `guidelines/repository-organization.md` - How to organize content in dev/
-- **Python Backend**: `guidelines/backend/python.md`
-- **TypeScript Frontend**: `guidelines/frontend/typescript.md`
-- **Git Workflow**: `guidelines/git-workflow.md`
-- **Markdown Formatting**: `guidelines/markdown.md`
-- **Writing Documentation**: `guidelines/documentation.md` - How to write user-facing documentation
+- **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
+- **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
+- **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
+- **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
+- **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
+- **Writing Documentation**: [guidelines/documentation.md](guidelines/documentation.md) - How to write user-facing documentation
 
 ## Current Knowledge
 
-Backend architecture documentation in `knowledge/backend/`:
+Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 
-- `architecture.md` - Backend architecture overview
-- `testing.md` - Testing infrastructure and patterns
-- `events.md` - Events system
-- `async-tasks.md` - Asynchronous tasks (Prefect)
-- `message-bus.md` - Message bus system
+- [architecture.md](knowledge/backend/architecture.md) - Backend architecture overview
+- [testing.md](knowledge/backend/testing.md) - Testing infrastructure and patterns
+- [events.md](knowledge/backend/events.md) - Events system
+- [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
+- [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 
 ## Current Guides
 
-Backend guides in `guides/backend/`:
+Backend guides in [guides/backend/](guides/backend/):
 
-- `creating-events.md` - How to create new events
-- `creating-async-tasks.md` - How to create async tasks
-- `creating-messages.md` - How to create message bus messages
+- [creating-events.md](guides/backend/creating-events.md) - How to create new events
+- [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
+- [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
 
 ## Current Commands
 
-Available agent commands in `commands/`:
+Available agent commands in [commands/](commands/):
 
-- `_shared.md` - Shared instructions for all flows
-- `new-component.md` - React component creation flow
-- `guided-task.md` - General task flow
-- `add-docs.md` - Documentation flow
-- `fix-bug.md` - Bug fixing flow
-- `fix-github-issue.md` - GitHub issue fixing
-- `fix-mypy-module.md` - Mypy type fixes
-- `fix-ruff-rule.md` - Ruff linting fixes
+- [_shared.md](commands/_shared.md) - Shared instructions for all flows
+- [new-component.md](commands/new-component.md) - React component creation flow
+- [guided-task.md](commands/guided-task.md) - General task flow
+- [add-docs.md](commands/add-docs.md) - Documentation flow
+- [fix-bug.md](commands/fix-bug.md) - Bug fixing flow
+- [fix-github-issue.md](commands/fix-github-issue.md) - GitHub issue fixing
+- [fix-mypy-module.md](commands/fix-mypy-module.md) - Mypy type fixes
+- [fix-ruff-rule.md](commands/fix-ruff-rule.md) - Ruff linting fixes

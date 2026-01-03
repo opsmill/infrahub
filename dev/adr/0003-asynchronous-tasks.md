@@ -87,6 +87,6 @@ Key implementation locations:
 
 See also:
 
-- `dev/knowledge/backend/async-tasks.md` - How the async task system works
-- `dev/guides/backend/creating-async-tasks.md` - How to create a new workflow
-- `dev/adr/0002-events-system.md` - Event-driven automation triggers
+- [Async Tasks Knowledge](../knowledge/backend/async-tasks.md) - How the async task system works
+- [Creating Workflows Guide](../guides/backend/creating-async-tasks.md) - How to create a new workflow
+- [ADR-0002: Events System](0002-events-system.md) - Event-driven automation triggers

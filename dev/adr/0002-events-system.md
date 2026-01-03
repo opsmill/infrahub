@@ -96,5 +96,5 @@ Key implementation locations:
 
 See also:
 
-- `dev/knowledge/backend/events.md` - How the event system works
-- `dev/guides/backend/creating-events.md` - How to create a new event
+- [Events Knowledge](../knowledge/backend/events.md) - How the event system works
+- [Creating Events Guide](../guides/backend/creating-events.md) - How to create a new event

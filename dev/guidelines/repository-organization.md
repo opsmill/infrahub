@@ -1,6 +1,6 @@
 # Repository Organization
 
-> Part of: `dev/guidelines/` | Related: `dev/adr/0001-context-nuggets-pattern.md`, `dev/README.md`
+> Part of: `dev/guidelines/` | Related: [ADR-0001: Context Nuggets](../adr/0001-context-nuggets-pattern.md), [Dev README](../README.md)
 
 Comprehensive guidelines for organizing content in the `dev/` directory using the Context Nuggets pattern. This structure enables both humans and AI agents to find what they need, when they need it.
 
@@ -604,6 +604,6 @@ dev/
 
 ## See Also
 
-- `dev/adr/0001-context-nuggets-pattern.md` - Decision record for this pattern
-- `dev/README.md` - Quick navigation guide
-- `AGENTS.md` - Root-level map and glossary
+- [ADR-0001: Context Nuggets Pattern](../adr/0001-context-nuggets-pattern.md) - Decision record for this pattern
+- [Dev README](../README.md) - Quick navigation guide
+- [AGENTS.md](../../AGENTS.md) - Root-level map and glossary

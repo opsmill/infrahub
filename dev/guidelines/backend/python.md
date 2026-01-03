@@ -1,6 +1,6 @@
 # Python Coding Standards
 
-> Part of: `dev/guidelines/backend/` | Related: `dev/knowledge/backend/architecture.md`
+> Part of: `dev/guidelines/backend/` | Related: [Backend Architecture](../../knowledge/backend/architecture.md)
 
 Coding standards for the Python backend.
 
@@ -171,5 +171,5 @@ Exceptions where positional arguments are acceptable:
 
 ## See Also
 
-- `dev/knowledge/backend/architecture.md` - Backend architecture overview
-- `dev/guidelines/git-workflow.md` - Git workflow and commit conventions
+- [Backend Architecture](../../knowledge/backend/architecture.md) - Backend architecture overview
+- [Git Workflow](../git-workflow.md) - Git workflow and commit conventions

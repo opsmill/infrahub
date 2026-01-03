@@ -83,7 +83,7 @@ Key implementation locations:
 
 See also:
 
-- `dev/knowledge/backend/message-bus.md` - How the message bus works
-- `dev/guides/backend/creating-messages.md` - How to create a new message
-- `dev/adr/0002-events-system.md` - Event system (uses message bus for internal dispatch)
-- `dev/adr/0003-asynchronous-tasks.md` - Workflow system (preferred for most async operations)
+- [Message Bus Knowledge](../knowledge/backend/message-bus.md) - How the message bus works
+- [Creating Messages Guide](../guides/backend/creating-messages.md) - How to create a new message
+- [ADR-0002: Events System](0002-events-system.md) - Event system (uses message bus for internal dispatch)
+- [ADR-0003: Asynchronous Tasks](0003-asynchronous-tasks.md) - Workflow system (preferred for most async operations)
