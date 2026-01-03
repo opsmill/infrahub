@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.6.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.2) - 2025-12-22
+
+### Fixed
+
+- Fix Migration041 to determine edge uniqueness correctly and  account for incoming Relationship edges. Add new migration to un-delete improperly deleted Relationship metadata. This would only be a problem for Relationships between schemas that have both had their name, namespace, or kind updated multiple times. ([#7916](https://github.com/opsmill/infrahub/issues/7916))
+
 ## [Infrahub - v1.6.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.1) - 2025-12-11
 
 ### Added

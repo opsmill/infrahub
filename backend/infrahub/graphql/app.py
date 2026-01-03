@@ -172,9 +172,9 @@ class InfrahubGraphQLApp:
 
         response = handler(request)
         if isawaitable(response):
-            return await cast("Awaitable[Response]", response)
+            return await response
 
-        return cast("Response", response)
+        return response
 
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession

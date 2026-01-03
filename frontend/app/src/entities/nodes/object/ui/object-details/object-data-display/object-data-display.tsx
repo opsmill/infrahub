@@ -56,7 +56,9 @@ export function ObjectDataDisplay({
   };
 
   const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInDetailedView(objectSchema.relationships ?? []);
+  const relationships = getRelationshipsVisibleInDetailedView(
+    objectSchema.relationships ?? []
+  ).filter((rel) => rel.name !== "member_of_groups" && rel.kind !== "Profile");
   const fields = sortByOrderWeight([...attributes, ...relationships]);
 
   return (

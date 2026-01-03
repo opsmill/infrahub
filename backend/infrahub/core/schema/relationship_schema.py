@@ -38,11 +38,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
     @property
     def support_profiles(self) -> bool:
-        return (
-            self.read_only is False
-            and self.optional is True
-            and self.kind in {RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE}
-        )
+        return self.read_only is False and self.kind in {RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE}
 
     def to_dict(self) -> dict:
         data = self.model_dump(exclude_unset=True, exclude_none=True)

@@ -21,7 +21,7 @@ dependencies = [
     "testcontainers>=4.8,<4.9",
     "psutil",
     "pytest",
-    "httpx<0.28",
+    "httpx>=0.20",
     "pydantic>=2.10.6,<3",
     "prefect-client==3.6.7",
 ]

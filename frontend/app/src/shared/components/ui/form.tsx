@@ -47,9 +47,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
       // Stop logic if there is no context to prevent the slide over close
       if (!slideOverContext?.setPreventClose) return;
 
-      if (!currentForm.formState.isDirty) return;
-
-      slideOverContext?.setPreventClose(true);
+      slideOverContext.setPreventClose(currentForm.formState.isDirty);
     }, [currentForm.formState.isDirty]);
 
     return (
@@ -60,10 +58,11 @@ export const Form = React.forwardRef<FormRef, FormProps>(
               event.stopPropagation();
             }
 
-            if (onSubmit) currentForm.handleSubmit(onSubmit)(event);
-
-            if (slideOverContext?.setPreventClose) {
-              slideOverContext?.setPreventClose(false);
+            if (onSubmit) {
+              currentForm.handleSubmit(async (data) => {
+                await onSubmit(data);
+                currentForm.reset(data);
+              })(event);
             }
           }}
           className={classNames("space-y-4", className)}

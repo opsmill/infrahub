@@ -108,7 +108,7 @@ dev = [
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.6",
-    "ty==0.0.4",
+    "ty==0.0.8",
 ]
 
 # test-scale = [
@@ -567,7 +567,6 @@ ignore = [
     "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
-    "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead
 ]
@@ -623,9 +622,7 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
     "ANN003", # Missing type annotation for `**kwargs`
-    "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 
@@ -732,8 +729,84 @@ allow-dunder-method-names = [
     "ARG001",  # Unused function argument
     "ARG002",  # Unused method argument
     "ARG003",  # Unused class method argument
+]
+
+"backend/tests/*.py" = [
     ##################################################################################################
-    # Review and change the below later                                                              #
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN201",   # Missing return type annotation for public function
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "PT021",    # Use `yield` instead of `request.addfinalizer`
+]
+
+"backend/tests/db_snapshot.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915",  # Too many statements
+]
+
+
+"backend/tests/helpers/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ASYNC109", # Async function definition with a `timeout` parameter
+]
+
+"backend/tests/fixtures/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN001",   # Missing type annotation for function argument
+    "ANN201",   # Missing return type annotation for public function
+]
+
+"backend/tests/functional/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN001",   # Missing type annotation for function argument
+    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+    "ASYNC109", # Async function definition with a `timeout` parameter
+    "PLR0915",  # Too many statements
+    "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+]
+
+"backend/tests/integration/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN001",   # Missing type annotation for function argument
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+    "PLR0915",  # Too many statements
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
+]
+
+"backend/tests/scale/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN001",   # Missing type annotation for function argument
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+]
+
+"backend/tests/unit/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
     ##################################################################################################
     "ANN001",   # Missing type annotation for function argument
     "ANN002",   # Missing type annotation for `*args`
@@ -741,16 +814,22 @@ allow-dunder-method-names = [
     "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
-    "ASYNC109", # Async function definition with a `timeout` parameter
     "PLR0915",  # Too many statements
     "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
-    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
     "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
-    "PT018",    # Assertion should be broken down into multiple parts
-    "PT021",    # Use `yield` instead of `request.addfinalizer`
+]
+
+"backend/tests/query_benchmark/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN001",   # Missing type annotation for function argument
+    "ANN202",   # Missing return type annotation for private function
+    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -873,7 +952,7 @@ invalid-parameter-default = "ignore"
 invalid-return-type = "ignore"
 invalid-type-form = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 unresolved-import = "ignore"
@@ -902,7 +981,7 @@ include = ["models/**"]
 invalid-argument-type = "ignore"
 missing-argument = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 too-many-positional-arguments = "ignore"
 unresolved-import = "ignore"
@@ -936,7 +1015,7 @@ invalid-parameter-default = "ignore"
 invalid-return-type = "ignore"
 invalid-type-form = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 not-iterable = "ignore"
 possibly-missing-attribute = "ignore"
 unknown-argument = "ignore"
@@ -958,10 +1037,9 @@ invalid-context-manager = "ignore"
 invalid-method-override = "ignore"
 invalid-return-type = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 not-iterable = "ignore"
 possibly-missing-attribute = "ignore"
-redundant-cast = "ignore"
 unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
@@ -1232,7 +1310,7 @@ invalid-assignment = "ignore"
 invalid-method-override = "ignore"
 invalid-return-type = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 
@@ -1250,7 +1328,7 @@ invalid-return-type = "ignore"
 invalid-type-arguments = "ignore"
 missing-argument = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 not-iterable = "ignore"
 possibly-missing-attribute = "ignore"
 unknown-argument = "ignore"
@@ -1271,7 +1349,7 @@ invalid-await = "ignore"
 invalid-method-override = "ignore"
 invalid-return-type = "ignore"
 no-matching-overload = "ignore"
-non-subscriptable = "ignore"
+not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"

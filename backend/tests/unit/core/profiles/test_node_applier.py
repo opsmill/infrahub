@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from typing import Any
 
@@ -271,16 +272,16 @@ class ChildThingFixtures:
 
 
 @pytest.fixture
-async def child_and_thing_schema(db: InfrahubDatabase, branch: Branch) -> SchemaRoot:
-    THING.relationships[0].optional = True
-    schema_root = SchemaRoot(nodes=[CHILD, THING])
+async def child_and_thing_schema(db: InfrahubDatabase, branch: Branch) -> None:
+    thing_copy = copy.deepcopy(THING)
+    thing_copy.relationships[0].optional = True
+    schema_root = SchemaRoot(nodes=[CHILD, thing_copy])
     await load_schema(db=db, schema=schema_root, branch_name=branch.name)
-    return schema_root
 
 
 @pytest.fixture
 async def child_and_thing_nodes(
-    db: InfrahubDatabase, branch: Branch, child_and_thing_schema: SchemaRoot
+    db: InfrahubDatabase, branch: Branch, child_and_thing_schema: None
 ) -> ChildThingFixtures:
     child_node_schema = registry.schema.get_node_schema(name=CHILD.kind, branch=branch, duplicate=False)
     thing_node_schema = registry.schema.get_node_schema(name=THING.kind, branch=branch, duplicate=False)
@@ -922,3 +923,61 @@ async def test_node_from_template_with_profile_precedence(
     # Node should get description from profile (template didn't define it)
     assert node.description.value == "From profile"
     assert node.description.source_id == crit_profile.id
+
+
+async def test_node_with_cardinality_one_relationship_profile_updated_on_profile_update(
+    db: InfrahubDatabase, default_branch, car_person_schema
+) -> None:
+    person_schema = registry.schema.get("TestPerson", branch=default_branch.name)
+
+    john = await Node.init(db=db, branch=default_branch.name, schema=person_schema)
+    await john.new(db=db, name="John")
+    await john.save(db=db)
+
+    peter = await Node.init(db=db, branch=default_branch.name, schema=person_schema)
+    await peter.new(db=db, name="Peter")
+    await peter.save(db=db)
+
+    car_profile_schema = registry.schema.get("ProfileTestCar", branch=default_branch.name)
+
+    car_profile = await Node.init(db=db, branch=default_branch, schema=car_profile_schema)
+    await car_profile.new(db=db, profile_name="car profile", driver=john.id, profile_priority=1000)
+    await car_profile.save(db=db)
+
+    car_schema = registry.schema.get("TestCar", branch=default_branch.name)
+
+    car = await Node.init(db=db, branch=default_branch.name, schema=car_schema)
+    await car.new(db=db, name="Sample car", owner=john.id, profiles=[car_profile.id])
+    await car.save(db=db)
+
+    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await node_applier.apply_profiles(node=car)
+
+    peer = await car.driver.get_peer(db=db)
+    assert peer.id == john.id
+
+    car_profile = await NodeManager.get_one(db=db, id=car_profile.id, kind="ProfileTestCar")
+    await car_profile.driver.update(db=db, data=peter.id)
+    await car_profile.save(db=db)
+
+    peer = await car_profile.driver.get_peer(db=db)
+    assert peer.id == peter.id
+
+    car = await NodeManager.get_one(db=db, id=car.id, kind="TestCar")
+    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await node_applier.apply_profiles(node=car)
+    await car.save(db=db)
+
+    peer = await car.driver.get_peer(db=db)
+    assert peer.id == peter.id
+
+    updated_car = await NodeManager.get_one(db=db, id=car.id, kind="TestCar")
+    await _validate_node_profile_relationships(
+        db=db,
+        schema=car_schema,
+        original_node=car,
+        updated_node=updated_car,
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(name="driver", peers=[peter], source_uuid=car_profile.id),
+        ],
+    )

@@ -49,7 +49,9 @@ log = get_logger()
 
 
 class DiffRepository:
-    def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000):
+    def __init__(
+        self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000
+    ) -> None:
         self.db = db
         self.deserializer = deserializer
         self.max_save_batch_size = max_save_batch_size

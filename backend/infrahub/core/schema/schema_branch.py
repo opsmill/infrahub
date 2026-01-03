@@ -54,7 +54,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, TextAttributeParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -93,7 +93,7 @@ class SchemaBranch:
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
-    ):
+    ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
@@ -501,11 +501,76 @@ class SchemaBranch:
 
         return fields or None
 
+    def _text_attr_needs_reconciliation(self, attr: AttributeSchema) -> bool:
+        """Check if a Text attribute needs reconciliation between deprecated fields and parameters."""
+        if not isinstance(attr.parameters, TextAttributeParameters):
+            return False
+        return (
+            attr.regex != attr.parameters.regex
+            or attr.min_length != attr.parameters.min_length
+            or attr.max_length != attr.parameters.max_length
+        )
+
+    def _reconcile_text_attr(self, attr: AttributeSchema) -> None:
+        """Reconcile a single Text attribute's deprecated fields with parameters.
+
+        Parameters take precedence over deprecated top-level fields when both are set.
+        """
+        if not isinstance(attr.parameters, TextAttributeParameters):
+            return
+
+        # Sync regex: parameters takes precedence
+        if attr.parameters.regex is not None:
+            attr.regex = attr.parameters.regex
+        elif attr.regex is not None:
+            attr.parameters.regex = attr.regex
+
+        # Sync min_length: parameters takes precedence
+        if attr.parameters.min_length is not None:
+            attr.min_length = attr.parameters.min_length
+        elif attr.min_length is not None:
+            attr.parameters.min_length = attr.min_length
+
+        # Sync max_length: parameters takes precedence
+        if attr.parameters.max_length is not None:
+            attr.max_length = attr.parameters.max_length
+        elif attr.max_length is not None:
+            attr.parameters.max_length = attr.max_length
+
+    def _reconcile_text_attribute_parameters(self, schema: SchemaRoot | None = None) -> None:
+        """Reconcile regex, min_length, max_length between deprecated fields and parameters for Text attributes.
+
+        Args:
+            schema: If provided, reconcile incoming schema data before merging.
+                   If None, reconcile already-loaded schemas (e.g., from database).
+        """
+        if schema:
+            # Incoming schema: modify in place
+            for item in schema.nodes + schema.generics:
+                for attr in item.attributes:
+                    self._reconcile_text_attr(attr)
+            return
+
+        # Loaded schemas: need to duplicate before modifying
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if not any(self._text_attr_needs_reconciliation(attr) for attr in node.attributes):
+                continue
+
+            node = node.duplicate()
+            for attr in node.attributes:
+                self._reconcile_text_attr(attr)
+            self.set(name=name, schema=node)
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
+        # Reconcile deprecated text attribute parameters before merging
+        self._reconcile_text_attribute_parameters(schema)
+
         for item in schema.nodes + schema.generics:
             try:
                 if item.id:
@@ -545,6 +610,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
+        self._reconcile_text_attribute_parameters()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
