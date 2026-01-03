@@ -45,63 +45,74 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# GitHub CLI
+# GitHub CLI (optional - failure won't block setup)
 # ------------------------------------------------------------------------------
 echo ""
 echo "Installing GitHub CLI (gh)..."
-if ! command -v gh &> /dev/null; then
-    # Detect package manager and install
-    if command -v apt-get &> /dev/null; then
-        # Debian/Ubuntu
-        (type -p wget >/dev/null || sudo apt-get install wget -y) \
-            && sudo mkdir -p -m 755 /etc/apt/keyrings \
-            && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-            && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-            && sudo apt-get update \
-            && sudo apt-get install gh -y
-        echo "GitHub CLI installed"
-    elif command -v dnf &> /dev/null; then
-        # Fedora/RHEL
-        sudo dnf install 'dnf-command(config-manager)' -y
-        sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-        sudo dnf install gh -y
-        echo "GitHub CLI installed"
-    elif command -v brew &> /dev/null; then
-        # macOS with Homebrew
-        brew install gh
+if command -v gh &> /dev/null; then
+    echo "GitHub CLI already installed: $(gh --version | head -n1)"
+else
+    # Detect package manager and install (non-fatal)
+    install_gh() {
+        if command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu
+            (type -p wget >/dev/null || sudo apt-get install wget -y) \
+                && sudo mkdir -p -m 755 /etc/apt/keyrings \
+                && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+                && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+                && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+                && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+                && sudo apt-get update \
+                && sudo apt-get install gh -y
+        elif command -v dnf &> /dev/null; then
+            # Fedora/RHEL
+            sudo dnf install 'dnf-command(config-manager)' -y \
+                && sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo \
+                && sudo dnf install gh -y
+        elif command -v brew &> /dev/null; then
+            # macOS with Homebrew
+            brew install gh
+        else
+            echo "Warning: Could not detect package manager. Please install GitHub CLI manually:"
+            echo "  https://github.com/cli/cli#installation"
+            return 1
+        fi
+    }
+    if install_gh; then
         echo "GitHub CLI installed"
     else
-        echo "Warning: Could not detect package manager. Please install GitHub CLI manually:"
-        echo "  https://github.com/cli/cli#installation"
+        echo "Warning: GitHub CLI installation failed (optional, continuing...)"
     fi
-else
-    echo "GitHub CLI already installed: $(gh --version | head -n1)"
 fi
 
 # ------------------------------------------------------------------------------
-# yq YAML Processor (useful for working with YAML configs)
+# yq YAML Processor (optional - failure won't block setup)
 # ------------------------------------------------------------------------------
 echo ""
 echo "Installing yq YAML processor..."
-if ! command -v yq &> /dev/null; then
-    if command -v apt-get &> /dev/null; then
-        sudo apt-get install yq -y 2>/dev/null || {
-            # Install via binary if apt package not available
-            YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d '"' -f 4)
-            sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
-            sudo chmod +x /usr/local/bin/yq
-        }
-        echo "yq installed"
-    elif command -v brew &> /dev/null; then
-        brew install yq
+if command -v yq &> /dev/null; then
+    echo "yq already installed: $(yq --version)"
+else
+    install_yq() {
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get install yq -y 2>/dev/null || {
+                # Install via binary if apt package not available
+                YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d '"' -f 4)
+                sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+                sudo chmod +x /usr/local/bin/yq
+            }
+        elif command -v brew &> /dev/null; then
+            brew install yq
+        else
+            echo "Warning: Could not install yq automatically"
+            return 1
+        fi
+    }
+    if install_yq; then
         echo "yq installed"
     else
-        echo "Warning: Could not install yq automatically"
+        echo "Warning: yq installation failed (optional, continuing...)"
     fi
-else
-    echo "yq already installed: $(yq --version)"
 fi
 
 # ------------------------------------------------------------------------------
