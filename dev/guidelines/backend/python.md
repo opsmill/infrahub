@@ -1,6 +1,6 @@
 # Python Coding Standards
 
-> Part of: `dev/guidelines/backend/` | Related: `dev/knowledge/backend/architecture.md`
+> Part of: `dev/guidelines/backend/` | Related: [Backend Architecture](../../knowledge/backend/architecture.md)
 
 Coding standards for the Python backend.
 
@@ -140,6 +140,28 @@ class MyQuery(Query):
 - Use `str | None` for optional strings (Python 3.10+)
 - Use `list[Type]` instead of `List[Type]` (Python 3.9+)
 
+## Function Call Style
+
+Always use keyword arguments when calling functions and methods. This improves readability and makes code more resilient to parameter reordering:
+
+```python
+# ✅ Good - explicit keyword arguments
+await query.execute(db=db)
+node = await load_resource(db=db, resource_id=resource_id)
+await perform_operation(db=db, resource=resource)
+
+# ❌ Bad - positional arguments
+await query.execute(db)
+node = await load_resource(db, resource_id)
+await perform_operation(db, resource)
+```
+
+Exceptions where positional arguments are acceptable:
+
+- Single-argument functions: `len(items)`, `str(value)`
+- Well-known stdlib patterns: `range(10)`, `print("message")`
+- First argument when it's unambiguous: `log.info("message")`
+
 ## Testing
 
 - Unit tests: no external dependencies except database
@@ -149,5 +171,5 @@ class MyQuery(Query):
 
 ## See Also
 
-- `dev/knowledge/backend/architecture.md` - Backend architecture overview
-- `dev/guidelines/git-workflow.md` - Git workflow and commit conventions
+- [Backend Architecture](../../knowledge/backend/architecture.md) - Backend architecture overview
+- [Git Workflow](../git-workflow.md) - Git workflow and commit conventions
