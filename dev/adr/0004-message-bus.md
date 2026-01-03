@@ -42,11 +42,10 @@ We implement a message bus using **RabbitMQ** (primary) or **NATS** (alternative
 
 | Use Case | Message Bus | Prefect Workflow |
 |----------|-------------|------------------|
-| Rapid response needed | Yes | No |
+| Rapid response needed (< 1s) | Yes | No |
 | Broadcast to all workers | Yes | No |
-| Long-running operations | No | Yes |
-| User-visible execution | No | Yes |
-| Requires observability/UI | No | Yes |
+| Long-running operations (> 1s) | No | Yes |
+| Needs execution tracking in UI | No | Yes |
 | Database modifications | Avoid | Yes |
 
 ## Consequences
@@ -64,7 +63,7 @@ We implement a message bus using **RabbitMQ** (primary) or **NATS** (alternative
 
 - **Infrastructure overhead**: Requires deploying and managing message broker
 - **Delivery guarantees**: Message ordering and delivery require careful configuration
-- **Debugging complexity**: Distributed message flow harder to trace than direct calls
+- **Debugging complexity**: Distributed message flow harder to trace than direct calls (mitigated when distributed tracing is enabled)
 - **Monitoring needs**: Requires dedicated observability for message queues
 - **Potential message loss**: Without proper configuration, messages may be lost
 

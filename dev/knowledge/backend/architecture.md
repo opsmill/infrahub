@@ -6,10 +6,10 @@ High-level overview of the Infrahub backend architecture.
 
 ## Tech Stack
 
-- **Framework:** FastAPI 0.121.1 (async-first)
-- **Database:** Neo4j 5.28 (graph database)
+- **Framework:** FastAPI (async-first)
+- **Database:** Neo4j (graph database)
 - **API:** GraphQL (primary) + REST
-- **Python:** 3.12 with Pydantic 2.10
+- **Python:** Python 3 with Pydantic
 
 ## Core Concepts
 

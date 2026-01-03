@@ -31,7 +31,7 @@ The task system consists of:
 
 ### Declarative Workflow Catalogue
 
-We adopt a declarative model where all workflows are centralized in a single catalogue. Every flow must be declared as a `WorkflowDefinition` in this registry, specifying its name, type, module path, and optional scheduling/concurrency configuration.
+We adopt a declarative model where all workflows are centralized in a single catalogue. Every flow must be declared as a `WorkflowDefinition` in this catalogue, specifying its name, type, module path, and optional scheduling/concurrency configuration.
 
 This centralized approach provides:
 
@@ -61,6 +61,7 @@ This pattern enables identical code across environments while avoiding Prefect d
 - **Concurrency control**: Built-in support for concurrency limits and collision strategies
 - **Cron scheduling**: Native support for scheduled workflow execution
 - **Centralized catalogue**: Single location for all workflow definitions improves discoverability and maintainability
+- **Import isolation**: Using string module paths in the catalogue avoids circular import issues that would occur if all workflows were imported in a single file
 
 ### Negative
 
@@ -78,10 +79,10 @@ This pattern enables identical code across environments while avoiding Prefect d
 
 Key implementation locations:
 
-- Workflow definitions: `backend/infrahub/workflows/catalogue.py`
-- Workflow models: `backend/infrahub/workflows/models.py`
-- Constants & types: `backend/infrahub/workflows/constants.py`
-- Initialization: `backend/infrahub/workflows/initialization.py`
+- Workflow definitions: [`backend/infrahub/workflows/catalogue.py`](../../../backend/infrahub/workflows/catalogue.py)
+- Workflow models: [`backend/infrahub/workflows/models.py`](../../../backend/infrahub/workflows/models.py)
+- Constants & types: [`backend/infrahub/workflows/constants.py`](../../../backend/infrahub/workflows/constants.py)
+- Initialization: [`backend/infrahub/workflows/initialization.py`](../../../backend/infrahub/workflows/initialization.py)
 - Task functions: Various `tasks.py` files across the codebase
 
 See also:

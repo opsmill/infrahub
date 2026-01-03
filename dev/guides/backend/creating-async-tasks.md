@@ -105,11 +105,11 @@ MY_WORKFLOW = WorkflowDefinition(
 )
 ```
 
-Then add it to the `WORKFLOWS` list:
+Then add it to the `WORKFLOWS` list in **alphabetical order** for readability:
 
 ```python
 WORKFLOWS = [
-    # ... existing workflows
+    # ... existing workflows (alphabetically ordered)
     MY_WORKFLOW,
 ]
 ```
@@ -196,9 +196,9 @@ async def process_resource(db: InfrahubDatabase, resource_id: str) -> None:
 async def my_workflow(resource_id: str, context: InfrahubContext) -> None:
     database = await get_database()
     async with database.start_session() as db:
-        is_valid = await validate_resource(db, resource_id)
+        is_valid = await validate_resource(db=db, resource_id=resource_id)
         if is_valid:
-            await process_resource(db, resource_id)
+            await process_resource(db=db, resource_id=resource_id)
 ```
 
 ## Complete Example
@@ -230,8 +230,8 @@ async def process_resource(
     database = await get_database()
     async with database.start_session() as db:
         # Load and process the resource
-        resource = await load_resource(db, resource_id)
-        await perform_operation(db, resource)
+        resource = await load_resource(db=db, resource_id=resource_id)
+        await perform_operation(db=db, resource=resource)
 
     log.info(f"Completed processing resource {resource_id}")
 ```

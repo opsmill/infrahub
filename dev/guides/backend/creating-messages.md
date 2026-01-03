@@ -104,12 +104,6 @@ RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
     # ... existing responses
     "my.domain.action": MyDomainActionResponse,
 }
-
-# Optional: Set priority (default is 3)
-PRIORITY_MAP = {
-    # ... existing priorities
-    "my.domain.action": 4,  # Higher priority
-}
 ```
 
 ### Step 5: Create the Operation Handler

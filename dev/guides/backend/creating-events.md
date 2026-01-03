@@ -133,16 +133,7 @@ Use this when the event should trigger:
 - Cache invalidation
 - Other internal operations
 
-### Step 6: Export the Event
-
-Add your event to the module's `__init__.py` if creating a new file:
-
-```python
-# In backend/infrahub/events/__init__.py
-from .domain_action import MyDomainActionEvent
-```
-
-### Step 7: Emit the Event
+### Step 6: Emit the Event
 
 Emit your event from application code using `InfrahubEventService`:
 
@@ -200,6 +191,15 @@ class BranchCreatedEvent(InfrahubEvent):
         return [RefreshRegistryBranches()]
 ```
 
+## Verification
+
+After implementing your event:
+
+- [ ] Emit the event from your code and verify it appears in Prefect events
+- [ ] Verify any message bus messages returned by `get_messages()` are triggered
+- [ ] Check that event payloads contain expected resource/related data
+- [ ] Run unit tests covering event creation
+
 ## Quality Checklist
 
 Before submitting your event:
@@ -210,7 +210,6 @@ Before submitting your event:
 - [ ] `get_resource()` includes `prefect.resource.id`
 - [ ] All resource/related values are strings
 - [ ] Docstring describes when event is generated
-- [ ] Event is exported from module `__init__.py`
 - [ ] Tests cover event creation and emission
 - [ ] Code passes `uv run invoke lint`
 
@@ -218,4 +217,5 @@ Before submitting your event:
 
 - [Events Knowledge](../../knowledge/backend/events.md) - How the event system works
 - [ADR-0002: Prefect Events System](../../adr/0002-events-system.md) - Architectural decision
+- [Creating Messages](creating-messages.md) - How to create message bus messages (used by `get_messages()`)
 - [Python Coding Standards](../../guidelines/backend/python.md) - Code style requirements
