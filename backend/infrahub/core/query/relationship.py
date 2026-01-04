@@ -1367,6 +1367,7 @@ class RelationshipDeleteAllQuery(Query):
             "peer_node_metadata_update": peer_node_metadata_update,
         }
         self.add_to_query(query)
+        self.return_labels = ["uuid", "kind", "rel_identifier", "rel_direction"]
 
     def get_data(self) -> list[RelationshipDeleteAllQueryResult]:
         """Return results as typed dataclass instances.
