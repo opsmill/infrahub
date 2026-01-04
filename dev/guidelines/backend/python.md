@@ -174,6 +174,36 @@ class MyQuery(Query):
 - Use `str | None` for optional strings (Python 3.10+)
 - Use `list[Type]` instead of `List[Type]` (Python 3.9+)
 
+## Python Version Compatibility
+
+The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
+
+### datetime.UTC (Python 3.11+)
+
+The `datetime.UTC` constant was introduced in Python 3.11. For Python 3.10 compatibility, use `timezone.utc` instead:
+
+```python
+# ❌ Bad - Python 3.11+ only
+from datetime import UTC, datetime
+now = datetime.now(UTC)
+
+# ✅ Good - Works in Python 3.10+
+from datetime import datetime, timezone
+now = datetime.now(timezone.utc)
+```
+
+### Other Version-Specific Features
+
+When using newer Python features, verify they're available in the minimum supported version:
+
+| Feature | Minimum Version |
+|---------|-----------------|
+| `datetime.UTC` | 3.11 |
+| `str \| None` union syntax | 3.10 |
+| `list[Type]` generic syntax | 3.9 |
+| `match` statements | 3.10 |
+| `Self` type hint | 3.11 (use `typing_extensions.Self` for 3.10) |
+
 ## Function Call Style
 
 Always use keyword arguments when calling functions and methods. This improves readability and makes code more resilient to parameter reordering:
