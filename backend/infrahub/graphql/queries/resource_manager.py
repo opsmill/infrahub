@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
 
@@ -129,7 +129,7 @@ class PoolAllocated(ObjectType):
 
             node_fields = edges.get("node", {})
 
-            nodes = []
+            nodes: list[dict[str, dict[str, str | None]]] = []
             for item in query.get_data():
                 nodes.append(
                     {
@@ -151,17 +151,21 @@ class PoolAllocated(ObjectType):
                 identifier_query_class = identifier_query_map.get(pool.get_kind())
                 if not identifier_query_class:
                     raise ValidationError(input_value=f"This query doesn't get support {pool.get_kind()}")
-                identifier_query = await identifier_query_class.init(
-                    db=graphql_context.db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
+                identifier_query = cast(
+                    "IPAddressPoolGetIdentifiers | PrefixPoolGetIdentifiers",
+                    await identifier_query_class.init(
+                        db=graphql_context.db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
+                    ),
                 )
                 await identifier_query.execute(db=graphql_context.db)
 
-                reservations = {}
-                for item in identifier_query.get_data():
-                    reservations[item.allocated_uuid] = item.identifier
+                reservations: dict[str, str] = {}
+                for identifier_item in identifier_query.get_data():
+                    reservations[identifier_item.allocated_uuid] = identifier_item.identifier
 
                 for node in nodes:
-                    node["node"]["identifier"] = reservations.get(node["node"]["id"])
+                    node_id = cast("str", node["node"]["id"])
+                    node["node"]["identifier"] = reservations.get(node_id)
 
             response["edges"] = nodes
 
