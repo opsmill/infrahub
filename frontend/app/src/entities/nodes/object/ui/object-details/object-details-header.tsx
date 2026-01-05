@@ -1,65 +1,84 @@
+import { RefreshCwIcon } from "lucide-react";
+
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
-import Content from "@/shared/components/layout/content";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { classNames } from "@/shared/utils/common";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
-import { ObjectDetailsButton } from "@/entities/nodes/object/ui/object-details-button";
-import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
+import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttribute } from "@/entities/nodes/types";
+import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
+import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
 interface ObjectDetailsHeaderProps {
-  schema: ModelSchema;
+  objectSchema: ModelSchema;
   objectId: string;
+  permission: Permission;
 }
 
-export function ObjectDetailsHeader({ schema, objectId }: ObjectDetailsHeaderProps) {
+export function ObjectDetailsHeader({
+  objectSchema,
+  objectId,
+  permission,
+}: ObjectDetailsHeaderProps) {
   const {
-    data: objectDetailsData,
+    data: objectData,
     isPending,
     isRefetching,
     error,
-  } = useGetObject({ objectSchema: schema, objectId });
+  } = useGetObject({ objectSchema, objectId });
+
+  if (isPending) {
+    return (
+      <HeaderContainer>
+        <Skeleton className="h-8 w-60" />
+        <Skeleton className="ml-auto h-8 w-25" />
+      </HeaderContainer>
+    );
+  }
 
   if (error) return null;
 
-  const title = isPending ? (
-    <Skeleton className="h-6 w-60" />
-  ) : (
-    <Row>
-      {objectDetailsData ? getNodeLabel(objectDetailsData) : `${schema.label} not found`}
-      <NodeMetadataPopover objectId={objectId} objectKind={schema.kind!} />
-      <ObjectDetailsButton
-        id={objectId}
-        objectKind={schema.kind!}
-        data-testid="object-details-button"
-        hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
-      />
-    </Row>
-  );
-
   return (
-    <Content.CardTitle
-      title={title}
-      description={
-        (objectDetailsData?.description as NodeAttribute | undefined)?.value ?? schema.description
-      }
-      isReloadLoading={isRefetching}
-      reload={async () => {
-        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-      }}
-      end={
-        <ObjectHelpButton
-          kind={schema.kind}
-          documentationUrl={schema.documentation}
-          className="ml-auto"
-        />
-      }
-      data-testid="object-header"
-    />
+    <HeaderContainer>
+      <h2 className="truncate font-semibold text-xl">{getNodeLabel(objectData)}</h2>
+      <NodeMetadataPopover objectId={objectId} objectKind={objectSchema.kind!} />
+
+      <Button
+        size="icon"
+        variant="ghost"
+        className="text-gray-500"
+        isLoading={isRefetching}
+        onClick={() => queryClient.invalidateQueries({ queryKey: objectQueryKeys.all })}
+      >
+        <RefreshCwIcon className={classNames("size-3.5", isRefetching && "animate-spin")} />
+      </Button>
+
+      <DetailsButtons
+        schema={objectSchema}
+        objectDetailsData={objectData}
+        permission={permission}
+        className="ml-auto"
+      />
+
+      <ObjectDetailsMenu
+        objectSchema={objectSchema}
+        objectData={objectData}
+        permission={permission}
+      />
+    </HeaderContainer>
+  );
+}
+
+export function HeaderContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <Row className="w-full p-3 pb-1.5" data-testid="object-header">
+      {children}
+    </Row>
   );
 }

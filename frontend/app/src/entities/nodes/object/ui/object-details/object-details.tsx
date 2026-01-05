@@ -24,7 +24,13 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
   useTitle(`${getNodeLabel(objectData)} details`);
 
   if (qspTab) {
-    return <ObjectDetailsTabContent objectSchema={objectSchema} objectDetailsData={objectData} />;
+    return (
+      <ObjectDetailsTabContent
+        objectSchema={objectSchema}
+        objectDetailsData={objectData}
+        permission={permission}
+      />
+    );
   }
 
   return (
