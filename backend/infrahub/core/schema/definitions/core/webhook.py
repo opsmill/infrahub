@@ -48,6 +48,7 @@ core_webhook = GenericSchema(
         Attr(
             name="branch_scope",
             kind="Dropdown",
+            description="Which branches should trigger this webhook",
             choices=[
                 DropdownChoice(
                     name="all_branches",
@@ -80,16 +81,12 @@ core_webhook = GenericSchema(
             description="Only send node mutation events for nodes of this kind",
             order_weight=2250,
         ),
-        Attr(
-            name="description",
-            kind="Text",
-            optional=True,
-            order_weight=2500,
-        ),
-        Attr(name="url", kind="URL", order_weight=3000),
+        Attr(name="description", kind="Text", optional=True, order_weight=2500),
+        Attr(name="url", kind="URL", description="Target URL to send webhook requests to", order_weight=3000),
         Attr(
             name="validate_certificates",
             kind="Boolean",
+            description="Whether to validate SSL/TLS certificates",
             default_value=True,
             optional=True,
             order_weight=5000,
@@ -111,7 +108,13 @@ core_standard_webhook = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="shared_key", kind="Password", unique=False, order_weight=4000),
+        Attr(
+            name="shared_key",
+            kind="Password",
+            description="Shared secret key for webhook authentication",
+            unique=False,
+            order_weight=4000,
+        ),
     ],
 )
 
@@ -129,7 +132,14 @@ core_custom_webhook = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
     attributes=[
-        Attr(name="shared_key", kind="Password", unique=False, optional=True, order_weight=4000),
+        Attr(
+            name="shared_key",
+            kind="Password",
+            description="Shared secret key for webhook authentication",
+            unique=False,
+            optional=True,
+            order_weight=4000,
+        ),
     ],
     relationships=[
         Rel(
