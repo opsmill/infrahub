@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType
 
 
 def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
@@ -97,7 +97,7 @@ def schema_all_in_one():
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "inherit_from": ["InfraGenericInterface"],
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AGNOSTIC.value,
@@ -110,7 +110,7 @@ def schema_all_in_one():
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
@@ -119,7 +119,7 @@ def schema_all_in_one():
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -135,7 +135,7 @@ def schema_all_in_one():
             },
             {
                 "name": "Status",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -143,7 +143,7 @@ def schema_all_in_one():
             },
             {
                 "name": "Badge",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "branch": BranchSupportType.LOCAL.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -152,7 +152,7 @@ def schema_all_in_one():
             {
                 "name": "StandardGroup",
                 "namespace": "Core",
-                "inherit_from": [InfrahubKind.GENERICGROUP],
+                "inherit_from": ["CoreGroup"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
@@ -177,7 +177,7 @@ def schema_all_in_one():
                 "relationships": [
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": False,
@@ -186,13 +186,13 @@ def schema_all_in_one():
                     },
                     {
                         "name": "status",
-                        "peer": "BuiltinStatus",
+                        "peer": "TestingStatus",
                         "optional": True,
                         "cardinality": "one",
                     },
                     {
                         "name": "badges",
-                        "peer": "BuiltinBadge",
+                        "peer": "TestingBadge",
                         "optional": True,
                         "cardinality": "many",
                     },
@@ -247,7 +247,7 @@ def schema_criticality_tag():
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -259,14 +259,14 @@ def schema_criticality_tag():
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -276,7 +276,7 @@ def schema_criticality_tag():
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
