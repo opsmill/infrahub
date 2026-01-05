@@ -13,7 +13,7 @@ from prefect.logging import get_run_logger
 
 from infrahub.message_bus.types import KVTTL
 from infrahub.trigger.models import TriggerType
-from infrahub.trigger.setup import setup_triggers_specific
+from infrahub.trigger.setup import gather_all_automations, setup_triggers_specific
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_http
 from infrahub.workflows.utils import add_tags
 
@@ -132,7 +132,10 @@ async def configure_webhook_one(
     trigger = WebhookTriggerDefinition.from_object(webhook)
 
     async with get_prefect_client(sync_client=False) as prefect_client:
-        existing_automations = await prefect_client.read_automations_by_name(trigger.generate_name())
+        all_automations = await gather_all_automations(client=prefect_client)
+        existing_automations = [
+            automation for automation in all_automations if automation.name == trigger.generate_name()
+        ]
         existing_automation = existing_automations[0] if existing_automations else None
 
         # If webhook is inactive, delete the automation if it exists
@@ -180,7 +183,8 @@ async def delete_webhook_automation(
     async with get_prefect_client(sync_client=False) as prefect_client:
         automation_name = WebhookTriggerDefinition.generate_name_from_id(id=webhook_id)
 
-        existing_automations = await prefect_client.read_automations_by_name(automation_name)
+        all_automations = await gather_all_automations(client=prefect_client)
+        existing_automations = [automation for automation in all_automations if automation.name == automation_name]
         existing_automation = existing_automations[0] if existing_automations else None
 
         if existing_automation:
