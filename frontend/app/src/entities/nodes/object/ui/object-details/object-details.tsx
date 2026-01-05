@@ -1,10 +1,12 @@
 import { useQueryState } from "nuqs";
 
+import { Col } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
+import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
@@ -37,13 +39,20 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
         objectSchema={objectSchema}
         objectData={objectData}
         permission={permission}
-        className="grow overflow-x-hidden p-0 md:col-span-2"
+        className="shrink-0 grow overflow-x-hidden p-0 md:col-span-2"
       />
-      <ObjectActivitiesCard
-        objectKind={objectData.__typename}
-        objectId={objectData.id}
-        className="overflow-x-hidden p-0"
-      />
+      <Col>
+        <ObjectProfilesGroupsCard
+          objectSchema={objectSchema}
+          objectData={objectData}
+          permission={permission}
+        />
+        <ObjectActivitiesCard
+          objectKind={objectData.__typename}
+          objectId={objectData.id}
+          className="overflow-x-hidden p-0"
+        />
+      </Col>
     </div>
   );
 }

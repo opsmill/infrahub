@@ -1,6 +1,6 @@
 # Writing a Documentation Topic
 
-> Part of: `dev/guides/docs/` | Related: `dev/guidelines/documentation.md`, `dev/guidelines/markdown.md`
+> Part of: `dev/guides/docs/` | Related: [Documentation Guidelines](../../guidelines/documentation.md), [Markdown Standards](../../guidelines/markdown.md)
 
 Step-by-step guide for writing a topic/explanation document in the Infrahub documentation.
 
@@ -240,7 +240,7 @@ Use notification blocks appropriately in topics:
 
 **Note**: Avoid `success` and `danger` blocks in topics - they're more appropriate for guides.
 
-See `dev/guidelines/markdown.md` for notification block syntax.
+See [Markdown Standards](../../guidelines/markdown.md) for notification block syntax.
 
 ## Quality Checklist
 
@@ -262,7 +262,7 @@ Before submitting your topic:
 
 ## Writing Style
 
-Follow the topic writing style from `dev/guidelines/documentation.md`:
+Follow the topic writing style from [Documentation Guidelines](../../guidelines/documentation.md):
 
 - **Discursive and reflective**: Invite understanding through explanation
 - **Contextual**: Provide background and rationale
@@ -299,8 +299,8 @@ To validate schema, run the validation command. Schema validation is important.
 
 1. **Choose documentation type** - Confirm this should be a topic (not a guide)
 2. **Review this guide** - Understand the structure and patterns
-3. **Review general guidelines** - See `dev/guidelines/documentation.md`
-4. **Review markdown standards** - See `dev/guidelines/markdown.md`
+3. **Review general guidelines** - See [Documentation Guidelines](../../guidelines/documentation.md)
+4. **Review markdown standards** - See [Markdown Standards](../../guidelines/markdown.md)
 5. **Create the .mdx file** in `docs/docs/topics/`
 6. **Add to navigation** by editing `sidebars.ts`
 7. **Lint before committing**: `uv run invoke docs.lint`
@@ -309,7 +309,7 @@ To validate schema, run the validation command. Schema validation is important.
 
 ## See Also
 
-- `dev/guidelines/documentation.md` - General documentation writing guidelines
-- `dev/guidelines/markdown.md` - Markdown formatting standards
-- `dev/guides/docs/writing-a-guide.md` - Guide for writing guides
+- [Documentation Guidelines](../../guidelines/documentation.md) - General documentation writing guidelines
+- [Markdown Standards](../../guidelines/markdown.md) - Markdown formatting standards
+- [Writing a Guide](writing-a-guide.md) - Guide for writing guides
 - `docs/docs/topics/AGENTS.md` - Agent instructions for writing topics

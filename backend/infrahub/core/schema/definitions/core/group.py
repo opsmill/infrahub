@@ -31,7 +31,14 @@ core_group = GenericSchema(
         Attr(name="name", kind="Text", unique=True),
         Attr(name="label", kind="Text", optional=True),
         Attr(name="description", kind="Text", optional=True),
-        Attr(name="group_type", kind="Text", enum=["default", "internal"], default_value="default", optional=False),
+        Attr(
+            name="group_type",
+            kind="Text",
+            description="Type of group (default or internal)",
+            enum=["default", "internal"],
+            default_value="default",
+            optional=False,
+        ),
     ],
     relationships=[
         Rel(
@@ -111,7 +118,7 @@ core_graphql_query_group = NodeSchema(
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
     attributes=[
-        Attr(name="parameters", kind="JSON", optional=True),
+        Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the group", optional=True),
     ],
     relationships=[
         Rel(
