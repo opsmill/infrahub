@@ -135,7 +135,9 @@ CALL (has_value_e) {
     SET has_value_e.to = $at
 }
         """ % {
-            "schema_kinds": f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}",
+            "schema_kinds": (
+                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
+            ),
             "branch_filter": branch_filter,
             "new_attr_value_labels": new_attr_value_labels,
         }

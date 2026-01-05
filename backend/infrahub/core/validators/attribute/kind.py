@@ -51,7 +51,10 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
-        """ % {"branch_filter": branch_filter, "node_kinds": f"{self.node_schema.kind}|Profile{self.node_schema.kind}"}
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kinds": f"{self.node_schema.kind}|Profile{self.node_schema.kind}|Template{self.node_schema.kind}",
+        }
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship.branch as value_branch"]
