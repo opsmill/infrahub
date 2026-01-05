@@ -127,11 +127,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         if not isinstance(value, expected_parameters_class) and isinstance(value, AttributeParameters):
             return expected_parameters_class.convert_from(value)
         if isinstance(value, dict):
-            # Filter dict to only include fields that exist in the expected class
-            # This handles kind changes when parameters is serialized as a dict (e.g., from model_dump())
-            target_fields = set(expected_parameters_class.model_fields.keys())
-            filtered_data = {k: v for k, v in value.items() if k in target_fields}
-            return expected_parameters_class(**filtered_data)
+            return expected_parameters_class.convert_from_dict(source_data=value)
         return value
 
     @model_validator(mode="after")
