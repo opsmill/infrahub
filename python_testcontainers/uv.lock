@@ -511,7 +511,7 @@ wheels = [
 
 [[package]]
 name = "infrahub-testcontainers"
-version = "1.7.0b0"
+version = "1.7.0rc0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -531,7 +531,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = "<0.28" },
+    { name = "httpx", specifier = ">=0.20" },
     { name = "prefect-client", specifier = "==3.6.7" },
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2.10.6,<3" },

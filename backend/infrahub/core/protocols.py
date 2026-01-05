@@ -221,6 +221,7 @@ class CoreValidator(CoreNode):
 class CoreWebhook(CoreNode):
     name: String
     event_type: Enum
+    active: Boolean
     branch_scope: Dropdown
     node_kind: StringOptional
     description: StringOptional

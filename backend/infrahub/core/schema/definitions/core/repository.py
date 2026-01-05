@@ -40,12 +40,14 @@ core_repository = NodeSchema(
         Attr(
             name="default_branch",
             kind="Text",
+            description="Default branch name in the Git repository",
             default_value="main",
             order_weight=6000,
         ),
         Attr(
             name="commit",
             kind="Text",
+            description="Current commit hash being tracked",
             optional=True,
             branch=BranchSupportType.LOCAL,
             order_weight=7000,
@@ -75,6 +77,7 @@ core_read_only_repository = NodeSchema(
         Attr(
             name="ref",
             kind="Text",
+            description="Git reference (branch or tag) to track",
             default_value="main",
             branch=BranchSupportType.AWARE,
             order_weight=6000,
@@ -82,6 +85,7 @@ core_read_only_repository = NodeSchema(
         Attr(
             name="commit",
             kind="Text",
+            description="Current commit hash being tracked",
             optional=True,
             branch=BranchSupportType.AWARE,
             order_weight=7000,
@@ -107,6 +111,7 @@ core_generic_repository = GenericSchema(
             name="name",
             regex=r"^[^/]*$",
             kind="Text",
+            description="Unique name identifier for the repository",
             unique=True,
             branch=BranchSupportType.AGNOSTIC,
             order_weight=1000,
@@ -115,6 +120,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="description",
             kind="Text",
+            description="Description of the repository",
             optional=True,
             branch=BranchSupportType.AGNOSTIC,
             order_weight=2000,
@@ -123,6 +129,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="location",
             kind="Text",
+            description="URL or path to the Git repository",
             unique=True,
             branch=BranchSupportType.AGNOSTIC,
             order_weight=3000,
@@ -131,6 +138,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="internal_status",
             kind="Dropdown",
+            description="Internal status of the repository on this branch",
             choices=[
                 DropdownChoice(
                     name=RepositoryInternalStatus.STAGING.value,
@@ -160,6 +168,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="operational_status",
             kind="Dropdown",
+            description="Connectivity status of the repository",
             choices=[
                 DropdownChoice(
                     name=RepositoryOperationalStatus.UNKNOWN.value,
@@ -200,6 +209,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="sync_status",
             kind="Dropdown",
+            description="Current synchronization status of the repository",
             choices=[
                 DropdownChoice(
                     name=RepositorySyncStatus.UNKNOWN.value,

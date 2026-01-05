@@ -84,7 +84,7 @@ fix: resolve sidebar collapse issue [IFC-2847]
 
 ## Changelog
 
-Add changelog fragments to `changelog/` using Towncrier. See `dev/guidelines/changelog.md` for change types and examples.
+Add changelog fragments to `changelog/` using Towncrier. See [Changelog Guidelines](changelog.md) for change types and examples.
 
 ## Pull Requests
 
@@ -104,5 +104,5 @@ Add changelog fragments to `changelog/` using Towncrier. See `dev/guidelines/cha
 
 ## See Also
 
-- `dev/guidelines/changelog.md` - Changelog entry guidelines
+- [Changelog Guidelines](changelog.md) - Changelog entry guidelines
 - `docs/docs/development/git-best-practices.mdx` - Comprehensive Git guide (submodules, troubleshooting, advanced workflows)

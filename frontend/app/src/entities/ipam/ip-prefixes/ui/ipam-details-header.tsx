@@ -9,6 +9,7 @@ import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/n
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
 import type {
   NodeAttribute,
   NodeCore,
@@ -94,11 +95,17 @@ export function IpamDetailsHeader({
         })}
       </Row>
 
+      <DetailsButtons
+        schema={ipPrefixSchema}
+        objectDetailsData={ipPrefixNode}
+        permission={permission}
+        className="ml-auto"
+      />
+
       <ObjectDetailsMenu
         objectSchema={ipPrefixSchema}
         objectData={ipPrefixNode}
         permission={permission}
-        className="ml-auto"
       />
     </Row>
   );

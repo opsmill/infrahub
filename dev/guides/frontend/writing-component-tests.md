@@ -1,6 +1,6 @@
 # Writing Component Tests
 
-> Part of: `dev/guides/frontend/` | Related: `dev/guidelines/frontend/typescript.md`
+> Part of: `dev/guides/frontend/` | Related: [TypeScript Standards](../../guidelines/frontend/typescript.md)
 
 Step-by-step guide for writing React component tests following the project's testing patterns and best practices.
 
@@ -305,8 +305,8 @@ Before submitting your component tests:
 
 ## Related Resources
 
-- `dev/guides/frontend/writing-unit-tests.md` - Guide for writing unit tests
-- `dev/guidelines/frontend/typescript.md` - TypeScript coding standards
+- [Writing Unit Tests](writing-unit-tests.md) - Guide for writing unit tests
+- [TypeScript Standards](../../guidelines/frontend/typescript.md) - TypeScript coding standards
 - `frontend/app/tests/components/render.tsx` - Custom render helper implementation
 - Vitest documentation - [vitest.dev](https://vitest.dev)
 - Testing Library documentation - [testing-library.com](https://testing-library.com)
