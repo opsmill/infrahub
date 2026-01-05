@@ -97,10 +97,10 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
             "generate_template": True,
             "generate_profile": True,
             "attributes": [
-                {"name": "text_value", "kind": "Text", "optional": True},
-                {"name": "text_area_value", "kind": "TextArea", "optional": True},
-                {"name": "list_value", "kind": "List", "optional": True},
-                {"name": "url_value", "kind": "URL", "optional": True},
+                {"name": "text_value", "kind": "Text"},
+                {"name": "text_area_value", "kind": "TextArea"},
+                {"name": "list_value", "kind": "List"},
+                {"name": "url_value", "kind": "URL"},
             ],
         }
 
@@ -117,8 +117,8 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_thing_illegal_updates(self, schema_thing: dict[str, Any]) -> dict[str, Any]:
         updated_schema = deepcopy(schema_thing)
-        updated_schema["attributes"][0]["kind"] = "TextArea"
-        updated_schema["attributes"][1]["kind"] = "Text"
+        updated_schema["attributes"][0]["kind"] = "JSON"
+        updated_schema["attributes"][1]["kind"] = "List"
         return updated_schema
 
     @pytest.fixture(scope="class")
@@ -310,6 +310,8 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     ) -> None:
         response = await client.schema.load(schemas=[schema_step_02], branch=branch.name)
         assert response.errors
+        error_messages: list[str] = response.errors["errors"][0]["message"].split("\n")
+        assert len(error_messages) == 8
         assert all(
             em.startswith(
                 (
