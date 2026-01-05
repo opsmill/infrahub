@@ -56,7 +56,7 @@ test.describe("Object update", () => {
 
       // Verify updates in view
       await expect(page.getByText("Nameatl1-core1-new-name")).toBeVisible();
-      await expect(page.getByTestId("object-header").getByText("New description")).toBeVisible();
+      await expect(page.getByText("New description")).toBeVisible();
       await expect(page.getByRole("link", { name: "AS174 174" })).toBeVisible();
       await expect(page.getByText("StatusMaintenance")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
