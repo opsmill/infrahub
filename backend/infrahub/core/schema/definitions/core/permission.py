@@ -30,7 +30,7 @@ core_base_permission = GenericSchema(
         Attr(
             name="identifier",
             kind="Text",
-            description="Unique identifier for the permission",
+            description="Identifier for the permission",
             read_only=True,
             optional=True,
             allow_override=AllowOverrideType.NONE,
