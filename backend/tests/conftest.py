@@ -449,12 +449,40 @@ def prefect_container(request: pytest.FixtureRequest, load_settings_before_sessi
     return start_prefect_server_container(request)
 
 
+@pytest.fixture(scope="class")
+def prefect_container_class(
+    request: pytest.FixtureRequest, load_settings_before_session: None
+) -> dict[int, int] | None:
+    return start_prefect_server_container(request)
+
+
 @pytest.fixture(scope="module")
 def prefect(
     prefect_container: dict[int, int] | None, reload_settings_before_each_module: None
 ) -> Generator[str, None, None]:
     if prefect_container:
         server_port = prefect_container[PORT_PREFECT]
+        server_api_url = f"http://localhost:{server_port}/api"
+    else:
+        server_api_url = f"http://localhost:{PORT_PREFECT}/api"
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            prefect_settings.temporary_settings(
+                updates={
+                    prefect_settings.PREFECT_API_URL: server_api_url,
+                }
+            )
+        )
+        yield server_api_url
+
+
+@pytest.fixture(scope="class")
+def prefect_class(
+    prefect_container_class: dict[int, int] | None, reload_settings_before_each_module: None
+) -> Generator[str, None, None]:
+    if prefect_container_class:
+        server_port = prefect_container_class[PORT_PREFECT]
         server_api_url = f"http://localhost:{server_port}/api"
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"

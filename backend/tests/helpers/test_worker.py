@@ -1,11 +1,9 @@
 import asyncio
-from contextlib import ExitStack
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator
 from uuid import UUID
 
 import pytest
 from infrahub_sdk import InfrahubClient
-from prefect import settings as prefect_settings
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
@@ -22,11 +20,7 @@ from infrahub.workers.infrahub_async import (
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.initialization import setup_blocks
 from infrahub.workflows.models import WorkerPoolDefinition
-from tests.helpers.constants import (
-    PORT_PREFECT,
-)
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
-from tests.helpers.utils import start_prefect_server_container
 
 
 class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
@@ -62,34 +56,8 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
         )
 
     @pytest.fixture(scope="class")
-    def prefect_container_class(
-        self, request: pytest.FixtureRequest, load_settings_before_session: Any
-    ) -> dict[int, int] | None:
-        return start_prefect_server_container(request)
-
-    @pytest.fixture(scope="class")
-    def prefect_server(
-        self, prefect_container_class: dict[int, int] | None, reload_settings_before_each_module: Any
-    ) -> Generator[str, None, None]:
-        if prefect_container_class:
-            server_port = prefect_container_class[PORT_PREFECT]
-            server_api_url = f"http://localhost:{server_port}/api"
-        else:
-            server_api_url = f"http://localhost:{PORT_PREFECT}/api"
-
-        with ExitStack() as stack:
-            stack.enter_context(
-                prefect_settings.temporary_settings(
-                    updates={
-                        prefect_settings.PREFECT_API_URL: server_api_url,
-                    }
-                )
-            )
-            yield server_api_url
-
-    @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_server: str) -> PrefectClient:
-        return PrefectClient(api=prefect_server)
+    async def prefect_client(self, prefect_class: str) -> PrefectClient:
+        return PrefectClient(api=prefect_class)
 
     @pytest.fixture(scope="class")
     async def work_pool(self, prefect_client: PrefectClient) -> WorkPool:
