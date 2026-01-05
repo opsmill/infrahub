@@ -1,5 +1,6 @@
+import type { AccountTokenEdge, AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
+
 import { getAccountTokenFromApi } from "@/entities/user-profile/api/get-account-token-from-api";
-import { AccountTokenEdge, AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
 
 export type GetInfrahubAccountToken = () => Array<AccountTokenNode>;
 

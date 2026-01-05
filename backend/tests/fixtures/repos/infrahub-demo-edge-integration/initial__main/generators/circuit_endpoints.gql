@@ -1,0 +1,22 @@
+query circuit_endpoints($circuit_id: String!) {
+  InfraCircuit(circuit_id__value: $circuit_id) {
+    edges {
+      node @expand {
+        __typename
+        id
+        provider {
+          node {
+            __typename
+            id
+            name {value}
+          }
+        }
+        circuit_id {value}
+        vendor_id {value}
+        endpoints {
+          count
+        }
+      }
+    }
+  }
+}

@@ -1,41 +1,41 @@
-import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
-import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
-import { branchesState } from "@/entities/branches/stores";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useAtom, useAtomValue } from "jotai";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
-import { Badge } from "@/shared/components/display/badge";
-import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
-import { List } from "@/shared/components/table/list";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
+import { useGetBranchDetails } from "@/entities/branches/domain/get-branch-details.query";
+import { branchesState } from "@/entities/branches/stores";
+import { BranchAttributes } from "@/entities/branches/ui/branch-details/branch-attributes";
+import { BranchMergeButton } from "@/entities/branches/ui/branch-merge-button";
+import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
+import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import {
   BRANCH_MERGE_WORKFLOW,
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
-} from "../../tasks/constants";
-import { TaskDisplay } from "../../tasks/ui/task-display";
-import { BranchMergeButton } from "./branch-merge-button";
-import { BranchRebaseButton } from "./branch-rebase-button";
-import { BranchValidateButton } from "./branch-validate-button";
+} from "@/entities/tasks/constants";
+import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
-export const BranchDetails = () => {
-  const { "*": branchName } = useParams();
+interface BranchDetailsProps {
+  branchName: string;
+}
+export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const date = useAtomValue(datetimeAtom);
   const { isAuthenticated } = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
@@ -44,6 +44,20 @@ export const BranchDetails = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
+
+  if (isPending) {
+    return <LoadingIndicator className="h-[239px]" />;
+  }
+
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching the branch details." />;
+  }
+
+  if (!branch) {
+    return <NoDataFound message={`Branch ${branchName} does not exists.`} />;
+  }
 
   const branchAction = async ({ successMessage, errorMessage, mutation }: any) => {
     if (!branchName) return;
@@ -73,61 +87,15 @@ export const BranchDetails = () => {
     }
   };
 
-  const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });
-
-  if (loading) {
-    return <LoadingIndicator className="h-[239px]" />;
-  }
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching the branch details." />;
-  }
-
-  const branchData = data?.Branch;
-
-  if (!branchData || branchData.length === 0) {
-    return <NoDataFound message={`Branch ${branchName} does not exists.`} />;
-  }
-
-  const branch = branchData[0];
-
-  const columns = [
-    {
-      name: "name",
-      label: "Name",
-    },
-    {
-      name: "origin_branch",
-      label: "Origin branch",
-    },
-    {
-      name: "branched_at",
-      label: "Started at",
-    },
-    {
-      name: "created_at",
-      label: "Completed at",
-    },
-  ];
-
-  const row = {
-    values: {
-      name: branch.name,
-      origin_branch: <Badge className="text-sm">{branch.origin_branch}</Badge>,
-      branched_at: <DateDisplay date={branch.branched_at} />,
-      created_at: <DateDisplay date={branch.created_at} />,
-    },
-  };
-
   return (
     <div className="flex flex-col gap-4">
-      <List columns={columns} row={row} />
+      <BranchAttributes branch={branch} />
 
       <div className="flex flex-col gap-4">
         <div>
           {branch?.name && (
             <>
-              <div className="flex flex-1 flex-col md:flex-row gap-4">
+              <div className="flex flex-1 flex-col gap-4 md:flex-row">
                 <BranchMergeButton branch={branch} />
 
                 <LinkButton
@@ -137,7 +105,7 @@ export const BranchDetails = () => {
                     }
                   }}
                   className={classNames(
-                    (!isAuthenticated || branch.is_default) && "opacity-50 cursor-not-allowed"
+                    (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
                   )}
                   to={constructPath("/proposed-changes/new", [
                     { name: QSP.SOURCE_BRANCH, value: branch?.name },
@@ -152,7 +120,7 @@ export const BranchDetails = () => {
                 <BranchValidateButton branch={branch} />
 
                 <Button
-                  disabled={!isAuthenticated || branch.is_default}
+                  disabled={!isAuthenticated || !!branch.is_default}
                   onClick={() => setDisplayModal(true)}
                   variant={"danger"}
                 >

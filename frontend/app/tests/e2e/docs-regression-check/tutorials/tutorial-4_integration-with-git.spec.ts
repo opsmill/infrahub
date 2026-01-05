@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { saveScreenshotForDocs } from "../../../utils";
 
@@ -34,7 +35,7 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
       await expect(page.getByText("Generic Device object")).toBeVisible();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
-      await page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true }).click();
+      await page.getByRole("link", { name: "Ethernet1", exact: true }).first().click();
     });
 
     await test.step("Update the interface Ethernet 1 for atl1-edge1", async () => {

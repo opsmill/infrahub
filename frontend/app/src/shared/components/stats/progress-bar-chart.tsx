@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export const ProgressBar = ({ className, value, ...props }: ProgressPrimitive.ProgressProps) => (
   <ProgressPrimitive.Root
@@ -31,9 +32,9 @@ interface ProgressBarChartProps extends HTMLAttributes<HTMLDivElement> {
 
 export default function ProgressBarChart({ value, className, ...props }: ProgressBarChartProps) {
   return (
-    <div className={classNames("w-full flex items-center gap-2", className)} {...props}>
-      <ProgressBar value={sanitizeProgressBarValue(value)} className="grow h-2" />
-      <span className="text-custom-blue-700 font-medium">{value}%</span>
+    <div className={classNames("flex w-full items-center gap-2", className)} {...props}>
+      <ProgressBar value={sanitizeProgressBarValue(value)} className="h-2 grow" />
+      <span className="font-medium text-custom-blue-700">{value}%</span>
     </div>
   );
 }

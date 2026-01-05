@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Role management - READ", () => {
@@ -19,14 +20,14 @@ test.describe("Role management - READ", () => {
       await expect(
         page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Groups" })
       ).toBeVisible();
-      await expect(page.getByRole("cell", { name: "Operations Team" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Operations Team" }).first()).toBeVisible();
     });
 
     await test.step("check roles view", async () => {
       await page.getByRole("link", { name: "Roles" }).click();
       await expect(page.getByText("General Access")).toBeVisible();
-      await expect(page.getByText("Infrahub Users")).toBeVisible();
-      await expect(page.getByText("global:edit_default_branch:")).toBeVisible();
+      await expect(page.getByText("Infrahub Users").first()).toBeVisible();
+      await expect(page.getByText("global:edit_default_branch:").first()).toBeVisible();
       await expect(page.getByRole("cell", { name: "1" }).first()).toBeVisible();
     });
 

@@ -1,14 +1,16 @@
-import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
-import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
-import { getPermission } from "@/entities/permission/utils";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
+
+import useQuery from "@/shared/api/graphql/useQuery";
+import { PROFILE_KIND, TASK_OBJECT } from "@/shared/config/constants";
+
+import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
+import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { getPermission } from "@/entities/permission/utils";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export const useObjectDetails = (schema: ModelSchema, objectId: string) => {
   const generics = useAtomValue(genericSchemasAtom);
@@ -25,7 +27,7 @@ export const useObjectDetails = (schema: ModelSchema, objectId: string) => {
           taskKind: TASK_OBJECT,
           columns,
           relationshipsTabs,
-          objectid: objectId,
+          objectId,
           // Do not query profiles on profiles nodes
           queryProfiles:
             !profileGenericSchema?.used_by?.includes(schema?.kind!) &&

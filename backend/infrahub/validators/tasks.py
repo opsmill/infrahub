@@ -1,18 +1,19 @@
 from typing import Any, TypeVar, cast
 
+from infrahub_sdk.client import InfrahubClient
 from infrahub_sdk.protocols import CoreValidator
 
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
-from infrahub.services import InfrahubServices
+from infrahub.workers.dependencies import get_event_service
 
 from .events import send_start_validator
 
 ValidatorType = TypeVar("ValidatorType", bound=CoreValidator)
 
 
-async def start_validator(
-    service: InfrahubServices,
+async def start_validator[ValidatorType: CoreValidator](
+    client: InfrahubClient,
     validator: CoreValidator | None,
     validator_type: type[ValidatorType],
     proposed_change: str,
@@ -25,17 +26,15 @@ async def start_validator(
         validator.started_at.value = ""
         validator.completed_at.value = ""
         await validator.save()
-        validator = cast(ValidatorType, validator)
+        validator = cast("ValidatorType", validator)
     else:
         data["proposed_change"] = proposed_change
-        validator = await service.client.create(
-            kind=validator_type,
-            data=data,
-        )
+        validator = await client.create(kind=validator_type, data=data)
         await validator.save()
 
+    event_service = await get_event_service()
     await send_start_validator(
-        service=service, validator=validator, proposed_change_id=proposed_change, context=context
+        event_service=event_service, validator=validator, proposed_change_id=proposed_change, context=context
     )
 
     return validator

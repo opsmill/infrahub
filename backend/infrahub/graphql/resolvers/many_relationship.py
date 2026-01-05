@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
-from infrahub_sdk.utils import deep_merge_dict, extract_fields
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
@@ -11,6 +10,8 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.utils import has_any_key
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -33,7 +34,7 @@ class ManyRelationshipResolver:
         parent_id: str,
         node_schema: NodeSchema,
     ) -> list[str]:
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             query = await NodeGetHierarchyQuery.init(
                 db=dbs,
                 direction=RelationshipHierarchyDirection.DESCENDANTS,
@@ -55,7 +56,7 @@ class ManyRelationshipResolver:
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
     ) -> int:
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             return await NodeManager.count_peers(
                 db=dbs,
                 ids=ids,
@@ -81,14 +82,14 @@ class ManyRelationshipResolver:
         This resolver is used for paginated responses and as such we redefined the requested
         fields by only reusing information below the 'node' key.
         """
-        # Extract the InfraHub schema by inspecting the GQL Schema
+        # Extract the Infrahub schema by inspecting the GQL Schema
 
         node_schema: MainSchemaTypes = info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
 
         graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
         property_fields = edges.get("properties", {})
@@ -99,7 +100,7 @@ class ManyRelationshipResolver:
         filters = {
             f"{info.field_name}__{key}": value
             for key, value in kwargs.items()
-            if "__" in key and value or key in ["id", "ids"]
+            if ("__" in key and value) or key in ["id", "ids"]
         }
 
         response: dict[str, Any] = {"edges": [], "count": None}
@@ -194,7 +195,10 @@ class ManyRelationshipResolver:
         offset: int | None = None,
         limit: int | None = None,
     ) -> list[dict[str, Any]] | None:
-        async with db.start_session() as dbs:
+        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
+        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
+
+        async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
                 ids=ids,
@@ -208,6 +212,8 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
+                include_source=include_source,
+                include_owner=include_owner,
             )
             if not objs:
                 return None
@@ -225,17 +231,11 @@ class ManyRelationshipResolver:
         filters: dict[str, Any],
         node_fields: dict[str, Any],
     ) -> list[dict[str, Any]] | None:
-        if node_fields and "display_label" in node_fields:
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=rel_schema.peer)
-            if display_label_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
-
         if node_fields and "hfid" in node_fields:
-            peer_schema = db.schema.get(name=rel_schema.peer, branch=branch, duplicate=False)
-            hfid_fields = peer_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=hfid_fields)
+            node_fields["human_friendly_id"] = None
+
+        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
+        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
 
         query_params = QueryPeerParams(
             branch=branch,
@@ -245,6 +245,8 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
+            include_source=include_source,
+            include_owner=include_owner,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]
@@ -257,7 +259,7 @@ class ManyRelationshipResolver:
             all_peer_rels.extend(node_peer_rels)
         if not all_peer_rels:
             return None
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             return [
                 await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)
                 for obj in all_peer_rels

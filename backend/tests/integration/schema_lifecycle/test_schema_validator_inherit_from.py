@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -109,6 +110,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await starbuck.new(db=db, name="Kara", height=175, description="Starbuck", homeworld="Caprica")
         await starbuck.save(db=db)
 
+        deleted_person = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_person.new(db=db, name="Deleted", height=175, homeworld="Caprica")
+        await deleted_person.save(db=db)
+        await deleted_person.delete(db=db)
+
         gaius = await Node.init(schema=PERSON_KIND, db=db)
         await gaius.new(db=db, name="Gaius", height=155, description="'Scientist'", homeworld="Aerilon")
         await gaius.save(db=db)
@@ -179,7 +185,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "nodes": [schema_car_base, schema_person_base, schema_03_cylon_robot],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
@@ -187,7 +193,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(cylons) == 2
         assert len(cars) == 1
 
-    async def test_step_02_add_generic(self, client: InfrahubClient, initial_dataset, schema_step_02_add_generic):
+    async def test_step_02_add_generic(
+        self, client: InfrahubClient, initial_dataset, schema_step_02_add_generic
+    ) -> None:
         success, _ = await client.schema.check(schemas=[schema_step_02_add_generic])
         assert success is True
 
@@ -197,10 +205,14 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         initial_dataset,
         schema_step_03_remove_generic,
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_03_remove_generic])
         assert success is False
         assert len(response["errors"]) == 1
         error = response["errors"][0]
         assert "Node-level 'inherit_from' constraint violation on schema 'SchemaNode'" in error["message"]
         assert "The error relates to field inherit_from=['TestingHumanoid']." in error["message"]
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

@@ -1,17 +1,21 @@
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
+import { gql, useQuery } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
+
 import { Avatar } from "@/shared/components/display/avatar";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Tabs } from "@/shared/components/tabs";
+import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
-import { gql, useQuery } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { StringParam, useQueryParam } from "use-query-params";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
+
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
 import TabUpdatePassword from "./tab-update-password";
@@ -49,7 +53,7 @@ const renderContent = (tab: string | null | undefined) => {
 };
 
 export function UserProfilePage() {
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
   const schemaList = useAtomValue(genericSchemasAtom);
   useTitle("Profile");
 
@@ -94,9 +98,9 @@ export function UserProfilePage() {
             <Avatar name={profile?.name?.value} />
 
             <div className="ml-2">
-              <h3>{profile?.display_label}</h3>
+              <h3>{profile ? getNodeLabel(profile) : ""}</h3>
 
-              <p className="text-sm text-gray-500">{profile?.description?.value ?? "-"}</p>
+              <p className="text-gray-500 text-sm">{profile?.description?.value ?? "-"}</p>
             </div>
           </div>
         }

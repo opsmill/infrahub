@@ -1,11 +1,12 @@
-import { getProfiles } from "@/entities/nodes/api/getProfiles";
-import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { NodeSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect, useId } from "react";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ProfileData } from "@/shared/components/form/object-form";
+import type { ProfileData } from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -20,10 +21,12 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useEffect, useId } from "react";
+
+import { getProfiles } from "@/entities/nodes/api/getProfiles";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { NodeSchema } from "@/entities/schema/types";
 
 type ProfilesSelectorProps = {
   schema: NodeSchema;
@@ -39,12 +42,6 @@ export const ProfilesSelector = ({
   onChange,
 }: ProfilesSelectorProps) => {
   const id = useId();
-
-  useEffect(() => {
-    if (!value && defaultValue) {
-      onChange(defaultValue);
-    }
-  }, [defaultValue]);
 
   const genericSchemas = useAtomValue(genericSchemasAtom);
   const profileSchemas = useAtomValue(profileSchemasAtom);
@@ -68,7 +65,9 @@ export const ProfilesSelector = ({
   const profilesList = kindList
     .map((profile) => {
       // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find((profileSchema) => profileSchema.name === profile);
+      const profileSchema = profileSchemas.find(
+        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
+      );
 
       // Get attributes for query + form data
       const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
@@ -94,10 +93,6 @@ export const ProfilesSelector = ({
 
   const { data, error, loading } = useQuery(query);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
-
-  if (error) return <ErrorScreen message={error.message} />;
-
   // Get all profiles name to retrieve the information from the result
   const profilesNameList: string[] = profilesList
     .map((profile) => profile?.name ?? "")
@@ -112,6 +107,26 @@ export const ProfilesSelector = ({
     []
   );
 
+  useEffect(() => {
+    if (!value && defaultValue && profiles.length && !loading) {
+      const defaultProfiles = defaultValue
+        .map((defaultProfile) => {
+          return profiles.find((profile) => {
+            return profile.id === defaultProfile.id;
+          });
+        })
+        .filter((profile): profile is ProfileData => {
+          return !!profile?.id;
+        });
+
+      onChange(defaultProfiles);
+    }
+  }, [defaultValue, loading, profiles, value, onChange]);
+
+  if (loading) return <LoadingIndicator className="p-4" />;
+
+  if (error) return <ErrorScreen message={error.message} />;
+
   if (!profiles || profiles.length === 0) return null;
 
   const selectedValues = value ?? [];
@@ -125,9 +140,9 @@ export const ProfilesSelector = ({
   };
 
   return (
-    <div className="p-4 bg-gray-100">
+    <div className="bg-gray-100 p-4">
       <Label htmlFor={id}>
-        Select profiles <span className="text-xs italic text-gray-500 ml-1">optional</span>
+        Select profiles <span className="ml-1 text-gray-500 text-xs italic">optional</span>
       </Label>
 
       <Combobox>
@@ -135,14 +150,14 @@ export const ProfilesSelector = ({
           <div
             className={classNames(
               inputStyle,
-              "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+              "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
               "cursor-pointer"
             )}
           >
-            <div className="grow flex flex-wrap gap-2">
+            <div className="flex grow flex-wrap gap-2">
               {selectedValues?.map((profile) => (
                 <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                  {profile.display_label}
+                  {getNodeLabel(profile)}
 
                   <Button
                     size="icon"
@@ -151,7 +166,7 @@ export const ProfilesSelector = ({
                       e.stopPropagation();
                       handleRemove(profile);
                     }}
-                    className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                    className="h-4 w-4 text-gray-500 hover:text-gray-800"
                     aria-label="Remove"
                     data-testid="remove-option"
                   >
@@ -163,7 +178,7 @@ export const ProfilesSelector = ({
 
             {loading && <Spinner className="ml-auto" />}
 
-            <button id={id} type="button" className="text-gray-600 outline-hidden w-3.5 h-3.5">
+            <button id={id} type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />
             </button>
           </div>
@@ -177,10 +192,10 @@ export const ProfilesSelector = ({
               .map((item) => (
                 <ComboboxItem
                   key={item.id}
-                  value={item.display_label}
+                  value={getNodeLabel(item)}
                   onSelect={() => handleChange(item)}
                 >
-                  {item.display_label}
+                  {getNodeLabel(item)}
                 </ComboboxItem>
               ))}
           </ComboboxList>

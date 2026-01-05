@@ -32,7 +32,7 @@ class IPAddressPoolInput(GenericPoolInput):
     prefixlen = Int(required=False)
 
 
-class PrefixPoolInput(GenericPoolInput):
+class IPPrefixPoolInput(GenericPoolInput):
     size = Int(required=False)
     member_type = String(required=False)
     prefix_type = String(required=False)
@@ -47,10 +47,10 @@ class RelatedIPAddressNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
-class RelatedPrefixNodeInput(InputObjectType):
+class RelatedIPPrefixNodeInput(InputObjectType):
     id = String(required=False)
     hfid = Field(List(of_type=String), required=False)
-    from_pool = Field(PrefixPoolInput, required=False)
+    from_pool = Field(IPPrefixPoolInput, required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)

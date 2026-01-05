@@ -1,0 +1,51 @@
+---
+title: Infrahub Configuration
+description: Configuration options for Infrahub
+---
+
+{/*THIS FILE IS GENERATED AUTOMATICALLY, DO NOT EDIT MANUALLY*/}
+{/*SEE - invoke docs.generate-config and infrahub_config.j2*/}
+
+# Infrahub configuration
+
+The Infrahub containers have a number of environmental variables available at runtime to affect their behavior.
+
+Here are a few common methods of setting configuration:
+
+- Exporting in a shell, example: `export INFRAHUB_ADDRESS="http://localhost:8000"`
+- Using a [`.env` file](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/#env-file)
+- Using a `.toml` configuration file (setting names use lowercase with underscores, e.g., `address = "http://localhost:8000"`)
+- Using [direnv](https://direnv.net/)
+
+:::note
+
+`infrahubctl` has it's own environmental variables. See the [infrahubctl documentation]($(base_url)infrahubctl/infrahubctl#environment-variables) for more information.
+
+:::
+{% for section in sections %}
+
+## {{ section.name | title | replace("_", " ") }}
+
+{% if section.description %}
+{{ section.description }}
+
+{% endif %}
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+{% for parameter in section.parameters %}
+| `{{ parameter.env }}` | {{ parameter.description }} | {{ parameter.type }} | {{ parameter.default }} |
+{% endfor %}
+
+{%- for parameter in section.parameters %}
+{% if parameter.nested_parameters %}
+
+### {{ parameter.env or parameter.name | upper }}
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+{% for nested in parameter.nested_parameters %}
+| `{{ nested.env or nested.name | upper | replace(" ", "_") }}` | {{ nested.description }} | {{ nested.type }} | {{ nested.default }} |
+{% endfor -%}
+  {% endif -%}
+{% endfor -%}
+{% endfor -%}

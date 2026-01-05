@@ -1,6 +1,7 @@
+import { forwardRef, type InputHTMLAttributes } from "react";
+
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { InputHTMLAttributes, forwardRef } from "react";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
 

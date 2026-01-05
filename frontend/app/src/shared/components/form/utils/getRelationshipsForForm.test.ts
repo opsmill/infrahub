@@ -1,6 +1,8 @@
-import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { describe, expect, it } from "vitest";
-import { buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
+
+import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
+
+import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
 describe("getRelationshipsForForm", () => {
   it("returns an empty array if the provided relationships array is empty", () => {
@@ -17,9 +19,9 @@ describe("getRelationshipsForForm", () => {
   it("returns a relationship if cardinality is one and kind is not Template", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "one", kind: "Generic" }),
-      buildRelationshipSchema({ cardinality: "one", kind: "Attribute" }),
-      buildRelationshipSchema({ cardinality: "one", kind: "Parent" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Generic" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Attribute" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Parent" }),
     ];
 
     // WHEN
@@ -32,8 +34,8 @@ describe("getRelationshipsForForm", () => {
   it("excludes relationships with cardinality one and kind Template", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "one", kind: "Template" }),
-      buildRelationshipSchema({ cardinality: "one", kind: "Generic" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Template" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Generic" }),
     ];
 
     // WHEN
@@ -46,8 +48,8 @@ describe("getRelationshipsForForm", () => {
   it("returns a relationship of cardinality many if kind is Attribute or Parent", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "many", kind: "Attribute" }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Parent" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Attribute" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Parent" }),
     ];
 
     // WHEN
@@ -60,11 +62,11 @@ describe("getRelationshipsForForm", () => {
   it("should not return a relationship of cardinality many if kind is Generic/Component/Hierarchy", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "many", kind: "Generic" }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Component" }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Hierarchy" }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Group" }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Profile" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Generic" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Component" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Hierarchy" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Group" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Profile" }),
     ];
 
     // WHEN
@@ -77,13 +79,13 @@ describe("getRelationshipsForForm", () => {
   it("returns a relationship of cardinality many if it's mandatory field", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "many", kind: "Attribute", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Parent", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Hierarchy", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Group", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Profile", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Attribute", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Parent", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Hierarchy", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Group", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Profile", optional: false }),
     ];
 
     // WHEN
@@ -96,11 +98,11 @@ describe("getRelationshipsForForm", () => {
   it("When update, returns only relationships of cardinality one or with kind Attribute or Parent", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "one", kind: "Generic" }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Attribute", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Parent", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Generic" }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Attribute", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Parent", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
     ];
     const isUpdate = true;
 
@@ -114,9 +116,9 @@ describe("getRelationshipsForForm", () => {
   it("When update, excludes mandatory relationships that are not of kind Attribute or Parent", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
-      buildRelationshipSchema({ cardinality: "many", kind: "Hierarchy", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Generic", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Component", optional: false }),
+      generateRelationshipSchema({ cardinality: "many", kind: "Hierarchy", optional: false }),
     ];
     const isUpdate = true;
 
@@ -130,8 +132,8 @@ describe("getRelationshipsForForm", () => {
   it("When update, excludes relationships with cardinality one and kind Template", () => {
     // GIVEN
     const relationships = [
-      buildRelationshipSchema({ cardinality: "one", kind: "Template" }),
-      buildRelationshipSchema({ cardinality: "one", kind: "Generic" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Template" }),
+      generateRelationshipSchema({ cardinality: "one", kind: "Generic" }),
     ];
     const isUpdate = true;
 

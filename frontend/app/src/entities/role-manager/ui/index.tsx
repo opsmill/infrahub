@@ -1,16 +1,17 @@
+import { Icon } from "@iconify-icon/react";
+
+import useQuery from "@/shared/api/graphql/useQuery";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Tabs } from "@/shared/components/tabs-routes";
 import {
   ACCOUNT_GENERIC_OBJECT,
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_ROLE_OBJECT,
   GLOBAL_PERMISSION_OBJECT,
   OBJECT_PERMISSION_OBJECT,
-} from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_COUNTS } from "@/entities/role-manager/api/getCounts";
-import useQuery from "@/shared/api/graphql/useQuery";
-import { Tabs } from "@/shared/components/tabs-routes";
+} from "@/shared/config/constants";
 
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Icon } from "@iconify-icon/react";
+import { GET_ROLE_MANAGEMENT_COUNTS } from "@/entities/role-manager/api/getCounts";
 
 export function RoleManagementNavigation() {
   const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_COUNTS);

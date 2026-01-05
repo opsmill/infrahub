@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphql.type.definition import GraphQLNonNull
-from infrahub_sdk.utils import extract_fields
 from opentelemetry import trace
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.utils import has_any_key
 
 from ..models import OrderModel
 from ..parser import extract_selection
@@ -26,10 +27,10 @@ async def account_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = extract_graphql_fields(info=info)
     graphql_context: GraphqlContext = info.context
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         results = await NodeManager.query(
             schema=InfrahubKind.GENERICACCOUNT,
             filters={"ids": [graphql_context.account_session.account_id]},
@@ -90,7 +91,7 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     graphql_context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = extract_graphql_fields(info=info)
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
@@ -99,10 +100,10 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
+        if ("__" in key and value) or key in ["id", "ids"]
     }
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
@@ -155,10 +156,10 @@ async def default_paginated_list_resolver(
         else info.return_type.graphene_type._meta.schema
     )
 
-    fields = await extract_selection(info.field_nodes[0], schema=schema)
+    fields = await extract_selection(info=info, schema=schema)
 
     graphql_context: GraphqlContext = info.context
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         response: dict[str, Any] = {"edges": []}
         filters = {
             key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
@@ -166,6 +167,8 @@ async def default_paginated_list_resolver(
 
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
+        if "hfid" in node_fields:
+            node_fields["human_friendly_id"] = None
 
         permission_set: dict[str, Any] | None = None
         permissions = (
@@ -183,6 +186,9 @@ async def default_paginated_list_resolver(
 
         objs = []
         if edges or "hfid" in filters:
+            include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
+            include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
+
             objs = await NodeManager.query(
                 db=db,
                 schema=schema,
@@ -193,8 +199,8 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_source=True,
-                include_owner=True,
+                include_source=include_source,
+                include_owner=include_owner,
                 partial_match=partial_match,
                 order=order,
             )
@@ -277,7 +283,7 @@ async def hierarchy_resolver(
     graphql_context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = extract_graphql_fields(info=info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
 
@@ -288,12 +294,12 @@ async def hierarchy_resolver(
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
+        if ("__" in key and value) or key in ["id", "ids"]
     }
 
     response: dict[str, Any] = {"edges": [], "count": None}
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         if "count" in fields:
             response["count"] = await NodeManager.count_hierarchy(
                 db=db,

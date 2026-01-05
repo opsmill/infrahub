@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -13,7 +15,6 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.adapters.message_bus import BusSimulator
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -55,8 +56,6 @@ class TestDiffMerge(TestInfrahubApp):
             manufacturer=dmc,
         )
         await delorean.save(db=db)
-
-        bus_simulator.service._cache = RedisCache()
 
         return {
             "doc_brown": doc_brown,
@@ -127,7 +126,7 @@ class TestDiffMerge(TestInfrahubApp):
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         delorean_id = initial_dataset["delorean"].get_id()
         marty_id = initial_dataset["marty"].get_id()
 
@@ -160,11 +159,11 @@ class TestDiffMerge(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
         delete_on_branch: bool,
-    ):
+    ) -> None:
         new_person = await Node.init(db=db, schema=PERSON_KIND)
         await new_person.new(db=db, name="Chuck Berry")
         await new_person.save(db=db)
-        diff_branch = await create_branch(db=db, branch_name="branch2")
+        diff_branch = await create_branch(db=db, branch_name=f"branch-{uuid.uuid4()}")
         if delete_on_branch:
             delete_branch = diff_branch
             update_branch = default_branch

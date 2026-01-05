@@ -1,11 +1,13 @@
 import pytest
 from deepdiff import DeepDiff
+from infrahub_sdk import InfrahubClient
 from whenever import Instant
 
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.helpers.test_app import TestInfrahubApp
-from tests.integration.conftest import load_infrastructure_schema
+from tests.helpers.test_client import InfrahubTestClient
+from tests.integration.conftest import IntegrationHelper, load_infrastructure_schema
 from tests.test_data import dataset01 as ds01
 
 main_branch = "main"
@@ -219,17 +221,19 @@ state = State()
 
 class TestUserWorkflow01(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
-    async def dataset01(self, db: InfrahubDatabase, client):
+    async def dataset01(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
         await load_infrastructure_schema(db=db)
         await ds01.load_data(db=db, nbr_devices=2)
-        GraphQLSchemaManager.clear_cache()
+        graphql_registry.clear_cache()
 
-    async def test_initialize_state(self):
+    async def test_initialize_state(self) -> None:
         state.data["spine1_id"] = None
         state.data["spine1_lo0_id"] = None
         state.data["time_start"] = None
 
-    async def test_query_all_devices(self, test_client, integration_helper):
+    async def test_query_all_devices(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         """
         Query all devices to ensure that we have some data in the database
         and overall that everything is working correctly
@@ -253,7 +257,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         # Initialize the start time
         state.data["time_start"] = Instant.now()
 
-    async def test_query_spine1_loobpack0(self, test_client, integration_helper):
+    async def test_query_spine1_loobpack0(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         """
         Query Loopback0 interface on spine one to ensure that the filters are working properly and to store:
             - the ID of the interface to reuse later
@@ -281,7 +287,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         state.data["spine1_lo0_id"] = intfs[0]["node"]["id"]
         state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
-    async def test_query_spine1_ethernet1(self, test_client, integration_helper):
+    async def test_query_spine1_ethernet1(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         """
         Query Ethernet1 to gather its ID
         """
@@ -310,7 +318,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         state.data["spine1_eth1_id"] = intfs[0]["node"]["id"]
         state.data["spine1_eth1_description_start"] = intfs[0]["node"]["description"]["value"]
 
-    async def test_create_first_branch(self, test_client, integration_helper):
+    async def test_create_first_branch(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         """
         Create a first Branch from Main
         """
@@ -331,9 +341,9 @@ class TestUserWorkflow01(TestInfrahubApp):
 
     async def test_update_intf_description_branch1(
         self,
-        test_client,
-        integration_helper,
-    ):
+        test_client: InfrahubTestClient,
+        integration_helper: IntegrationHelper,
+    ) -> None:
         """
         Update the description of the interface in the new branch and validate that its being properly updated
         """
@@ -374,9 +384,11 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-        state.data["time_after_intf_update_branch1"] = Instant.now().format_common_iso()
+        state.data["time_after_intf_update_branch1"] = Instant.now().format_iso()
 
-    async def test_update_intf_description_main(self, test_client, integration_helper):
+    async def test_update_intf_description_main(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         """
         Update the description of the interface Ethernet1 in the main branch and validate that its being properly updated
         """
@@ -415,7 +427,9 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-    async def test_validate_diff_after_description_update(self, test_client, integration_helper):
+    async def test_validate_diff_after_description_update(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -506,7 +520,9 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert DeepDiff(expected_result, result["data"]["DiffTree"], ignore_order=True).to_dict() == {}
 
-    async def test_update_intf_description_branch1_again(self, test_client, integration_helper):
+    async def test_update_intf_description_branch1_again(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         """
         Update the description of the interface in the new branch again and validate that its being properly updated
         """
@@ -546,7 +562,9 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-    async def test_validate_diff_again_after_description_update(self, test_client, integration_helper):
+    async def test_validate_diff_again_after_description_update(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -637,7 +655,9 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert DeepDiff(expected_result, result["data"]["DiffTree"], ignore_order=True).to_dict() == {}
 
-    async def test_create_second_branch(self, test_client, integration_helper):
+    async def test_create_second_branch(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -652,7 +672,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         result = response.json()["data"]
         assert result["BranchCreate"]["ok"]
 
-    async def test_update_intf_description_main_after_branch2(self, test_client, integration_helper):
+    async def test_update_intf_description_main_after_branch2(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         assert state.data["spine1_eth1_id"]
         headers = await integration_helper.admin_headers()
 
@@ -724,7 +746,7 @@ class TestUserWorkflow01(TestInfrahubApp):
         assert len(intfs) == 1
         assert intfs[0]["node"]["description"]["value"] == old_description
 
-    async def test_rebase_branch2(self, test_client, integration_helper):
+    async def test_rebase_branch2(self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper) -> None:
         """
         Rebase Branch 2
         """
@@ -769,7 +791,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         assert len(intfs) == 1
         assert intfs[0]["node"]["description"]["value"] == main_description
 
-    async def test_query_spine1_lo0_at_start_time(self, test_client, integration_helper):
+    async def test_query_spine1_lo0_at_start_time(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         intf_name = "Loopback0"
@@ -781,7 +805,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                     "intf_name": intf_name,
                 },
             },
-            params={"at": state.data["time_start"].format_common_iso()},
+            params={"at": state.data["time_start"].format_iso()},
             headers=headers,
         )
         assert response.status_code == 200
@@ -795,7 +819,9 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
-    async def test_add_new_interface_in_first_branch(self, test_client, integration_helper):
+    async def test_add_new_interface_in_first_branch(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -822,7 +848,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         assert result["InfraInterfaceL3Create"]["object"]["name"]["value"] == "Ethernet8"
         state.data["spine1_ethernet8_id"] = result["InfraInterfaceL3Create"]["object"]["id"]
 
-    async def test_validate_diff_after_new_interface(self, test_client, integration_helper):
+    async def test_validate_diff_after_new_interface(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -965,6 +993,7 @@ class TestUserWorkflow01(TestInfrahubApp):
         expected_new_attributes = {
             "mtu": "1500",
             "description": "New interface added in Branch1",
+            "display_label": "Ethernet8",
             "lacp_priority": "32768",
             "enabled": "True",
             "name": "Ethernet8",
@@ -972,6 +1001,7 @@ class TestUserWorkflow01(TestInfrahubApp):
             "speed": "1000",
             "status": "active",
             "lacp_rate": "Normal",
+            "human_friendly_id": '["spine1","Ethernet8"]',
         }
         expected_new_interface = {
             "uuid": state.data["spine1_ethernet8_id"],
@@ -984,7 +1014,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                 "relationship_name": "interfaces",
             },
             "contains_conflict": False,
-            "num_added": 10,
+            "num_added": 12,
             "num_removed": 0,
             "num_updated": 0,
             "num_conflicts": 0,
@@ -1070,7 +1100,9 @@ class TestUserWorkflow01(TestInfrahubApp):
             == {}
         )
 
-    async def test_merge_first_branch_into_main(self, test_client, integration_helper):
+    async def test_merge_first_branch_into_main(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         # Expected description for Loopback0 after the merge
         headers = await integration_helper.admin_headers()
 

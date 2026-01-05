@@ -4,14 +4,14 @@ import subprocess  # noqa: S404
 import sys
 from itertools import islice
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
+from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
-from prefect.logging.loggers import disable_run_logger
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -28,6 +28,7 @@ from infrahub.core.attribute import (
     StringOptional,
 )
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -40,15 +41,12 @@ from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
     create_root_node,
-    first_time_initialization,
-    initialization,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.protocols_base import CoreNode
-from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -62,15 +60,16 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_workflow
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
 
 
 @pytest.fixture(scope="module", autouse=True)
-def load_component_dependency_registry():
+def load_component_dependency_registry() -> None:
     build_component_registry()
 
 
@@ -128,12 +127,6 @@ def prefect_test_fixture():
             yield
 
 
-@pytest.fixture(scope="session")
-def prefect_test(prefect_test_fixture):
-    with disable_run_logger():
-        yield
-
-
 @pytest.fixture
 def git_sources_dir(default_branch, tmp_path: Path) -> Path:
     source_dir = tmp_path / "sources"
@@ -152,6 +145,14 @@ def git_repos_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def reset_graphql_schema_between_tests() -> Generator:
+    """This fixture can be used when testing with GraphQL enums as the schema looks completely different."""
+    graphql_registry.clear_cache()
+    yield
+    graphql_registry.clear_cache()
+
+
+@pytest.fixture
 async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> InfrahubRepository:
     FileRepo(name="test_base", sources_directory=git_sources_dir)
 
@@ -160,7 +161,6 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
-        service=await InfrahubServices.new(),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
@@ -280,7 +280,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     branch1 = Branch(
         name="branch1",
-        status="OPEN",
+        status=BranchStatus.OPEN.value,
         description="Second Branch",
         is_default=False,
         sync_with_git=False,
@@ -502,7 +502,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     branch1 = Branch(
         name="branch1",
-        status="OPEN",
+        status=BranchStatus.OPEN.value,
         description="Second Branch",
         is_default=False,
         sync_with_git=False,
@@ -729,7 +729,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     for branch_name, description, created_at, branched_from in branches:
         obj = Branch(
             name=branch_name,
-            status="OPEN",
+            status=BranchStatus.OPEN.value,
             description=description,
             is_default=False,
             sync_with_git=False,
@@ -1641,69 +1641,6 @@ async def group_group1_main(
 
 
 @pytest.fixture
-async def group_group1_members_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_jim_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group1", members=[person_john_main, person_jim_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
-async def group_group2_members_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_albert_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group2", members=[person_john_main, person_albert_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
-async def group_group1_subscribers_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_jim_main: Node,
-    person_albert_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
-async def group_group2_subscribers_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_jim_main: Node,
-    car_volt_main: Node,
-    car_accord_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
 async def optional_attr_uniqueness_constraint_schema(
     db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
@@ -1711,10 +1648,10 @@ async def optional_attr_uniqueness_constraint_schema(
         name="AttrOptionalUniquenessSchema",
         namespace="Test",
         branch=BranchSupportType.AWARE.value,
-        uniqueness_constraints=[["name__value"]],
+        uniqueness_constraints=[["name__value", "description__value"]],
         attributes=[
             AttributeSchema(name="name", kind="Text", optional=True),
-            AttributeSchema(name="description", kind="Text", optional=True),
+            AttributeSchema(name="description", kind="TextArea", optional=True),
         ],
     )
     registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
@@ -1784,7 +1721,7 @@ async def all_attribute_default_types_schema(
 
 
 @pytest.fixture
-async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
+async def criticality_schema_root(register_core_models_schema: None) -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1804,6 +1741,7 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
         "display_labels": ["label__value"],
         "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
+        "generate_template": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
@@ -1824,11 +1762,22 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
         ],
     }
     node = NodeSchema(**node_schema)
+    return SchemaRoot(nodes=[node], generics=[generic])
 
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-    registry.schema.set(name=generic.kind, schema=generic, branch=default_branch.name)
+
+@pytest.fixture
+async def criticality_schema(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    group_schema,
+    data_schema,
+    criticality_schema_root: SchemaRoot,
+) -> NodeSchema:
+    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get(name=node.kind, branch=default_branch.name)
+    return registry.schema.get_node_schema(
+        name=criticality_schema_root.nodes[0].kind, branch=default_branch.name, duplicate=False
+    )
 
 
 @pytest.fixture
@@ -1877,7 +1826,9 @@ async def criticality_high(db: InfrahubDatabase, default_branch: Branch, critica
 
 
 @pytest.fixture
-async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GenericSchema:
+async def generic_vehicule_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> GenericSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Vehicule",
         "namespace": "Test",
@@ -2156,42 +2107,6 @@ async def hierarchical_location_schema_simple(
 
 
 @pytest.fixture
-async def location_generic_protocol():
-    class LocationGeneric(CoreNode):
-        name: String
-        status: StringOptional
-        things: RelationshipManager
-        parent: RelationshipManager
-        children: RelationshipManager
-
-    return LocationGeneric
-
-
-@pytest.fixture
-async def location_site_protocol(location_generic_protocol):
-    class LocationSite(location_generic_protocol):
-        pass
-
-    return LocationSite
-
-
-@pytest.fixture
-async def location_region_protocol(location_generic_protocol):
-    class LocationRegion(location_generic_protocol):
-        pass
-
-    return LocationRegion
-
-
-@pytest.fixture
-async def location_rack_protocol(location_generic_protocol):
-    class LocationRack(location_generic_protocol):
-        pass
-
-    return LocationRack
-
-
-@pytest.fixture
 async def hierarchical_location_schema(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
 ) -> None: ...
@@ -2359,12 +2274,6 @@ async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db) -> None:
 
 
 @pytest.fixture
-async def init_db(empty_database, db: InfrahubDatabase) -> None:
-    await first_time_initialization(db=db)
-    await initialization(db=db)
-
-
-@pytest.fixture
 async def init_nodes_registry(db: InfrahubDatabase) -> None:
     registry.node["Node"] = Node
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
@@ -2505,7 +2414,7 @@ async def ipam_schema() -> SchemaRoot:
                 "order_by": ["prefix__value"],
                 "display_labels": ["prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX],
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
             {
                 "name": "IPAddress",
@@ -3009,16 +2918,17 @@ async def prefix_pool_01(
 
 
 @pytest.fixture
-def workflow_local():
+def workflow_local(dependency_provider: Provider):
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
-    yield workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 
 @pytest.fixture
-async def generic_car_person_schema(default_branch: Branch, data_schema):
+async def generic_car_person_schema(default_branch: Branch, data_schema) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {

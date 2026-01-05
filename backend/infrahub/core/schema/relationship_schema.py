@@ -9,6 +9,7 @@ from infrahub import config
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
+from infrahub.exceptions import InitializationError
 
 from .generated.relationship_schema import GeneratedRelationshipSchema
 
@@ -57,6 +58,11 @@ class RelationshipSchema(GeneratedRelationshipSchema):
             raise ValueError("RelationshipSchema is not initialized")
         return self.identifier
 
+    def get_id(self) -> str:
+        if not self.id:
+            raise InitializationError("The relationship schema has not been saved yet and doesn't have an id")
+        return self.id
+
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
 
@@ -85,7 +91,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         include_match: bool = True,
         param_prefix: str | None = None,
         partial_match: bool = False,
-        support_profiles: bool = False,  # noqa: ARG002
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
 

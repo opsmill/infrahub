@@ -1,12 +1,8 @@
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import Label, { LabelProps } from "@/shared/components/ui/label";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { classNames } from "@/shared/utils/common";
 import { Slot } from "@radix-ui/react-slot";
 import React, {
   createContext,
-  FormHTMLAttributes,
-  HTMLAttributes,
+  type FormHTMLAttributes,
+  type HTMLAttributes,
   use,
   useEffect,
   useId,
@@ -14,13 +10,18 @@ import React, {
 } from "react";
 import {
   Controller,
-  ControllerProps,
+  type ControllerProps,
   FormProvider,
-  UseFormReturn,
+  type UseFormReturn,
   useForm,
   useFormContext,
 } from "react-hook-form";
-import { SlideOverContext } from "../display/slide-over";
+
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { SlideOverContext } from "@/shared/components/display/slide-over";
+import Label, { type LabelProps } from "@/shared/components/ui/label";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
 
@@ -84,7 +85,7 @@ export const FormField = (props: ControllerProps) => {
 
   return (
     <FormFieldContext value={{ id, name: props.name }}>
-      <Controller control={control} {...props} shouldUnregister />
+      <Controller control={control} shouldUnregister {...props} />
     </FormFieldContext>
   );
 };
@@ -109,7 +110,7 @@ export const FormInput = React.forwardRef<
       id={id}
       className={classNames(
         error &&
-          "border-red-500 focus:border-red-500 focus:ring-red-500/25 focus-within:border-red-500 focus-within:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
+          "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/25 focus:border-red-500 focus:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
         className
       )}
       aria-invalid={!!error}
@@ -134,7 +135,7 @@ export const FormMessage = ({
 
   return (
     <p
-      className={classNames("text-sm text-gray-600", error && "text-red-600", className)}
+      className={classNames("text-gray-600 text-sm", error && "text-red-600", className)}
       data-cy={error && "field-error-message"}
       {...props}
     >

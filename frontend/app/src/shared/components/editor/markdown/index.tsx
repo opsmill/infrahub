@@ -1,7 +1,9 @@
+import { type FC, forwardRef, useRef, useState } from "react";
+
 import { focusWithinStyle } from "@/shared/components/ui/style";
 import { useCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { classNames } from "@/shared/utils/common";
-import { FC, forwardRef, useRef, useState } from "react";
+
 import { MarkdownEditorHeader } from "./markdown-editor-header";
 import { MarkdownRender } from "./markdown-render";
 
@@ -41,7 +43,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
       return (
         <MarkdownRender
           markdownText={codeMirror.view?.state?.doc.toString()}
-          className="w-full bg-gray-100 min-h-10 rounded-md p-2 text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 cursor-not-allowed"
+          className="min-h-10 w-full cursor-not-allowed rounded-md bg-gray-100 p-2 text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset"
         />
       );
     }
@@ -55,13 +57,13 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
             type="button"
             onClick={() => codeMirror.view?.focus()} // for E2E
             onFocus={() => codeMirror.view?.focus()}
-            className="w-0 h-0 m-0 p-0 block"
+            className="m-0 block h-0 w-0 p-0"
           />
         )}
 
         <div
           className={classNames(
-            " bg-white rounded-md border border-gray-300 shadow-xs",
+            "rounded-md border border-gray-300 bg-white shadow-xs",
             focusWithinStyle,
             className
           )}

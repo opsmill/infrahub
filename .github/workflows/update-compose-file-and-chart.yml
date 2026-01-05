@@ -18,8 +18,11 @@ on:
       - closed
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   update-docker-compose:
     runs-on: ubuntu-latest
+    needs: prepare-environment
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true &&
@@ -28,35 +31,35 @@ jobs:
 
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v6"
         with:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install poetry==1.8.5
-          poetry config virtualenvs.prefer-active-python true
-      - name: "Install Package"
-        run: "poetry install --all-extras"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: "Check prerelease type"
         id: release
         run: |
-          echo is_prerelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_prerelease))") >> "$GITHUB_OUTPUT"
-          echo is_devrelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_devrelease))") >> "$GITHUB_OUTPUT"
+          echo is_prerelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$(uv version --short)').is_prerelease))") >> "$GITHUB_OUTPUT"
+          echo is_devrelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$(uv version --short)').is_devrelease))") >> "$GITHUB_OUTPUT"
 
       - name: "Update Docker Env variable in docker-compose.yml file"
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        run: "poetry run invoke release.gen-config-env -u"
+        run: "uv run invoke release.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        run: "poetry run invoke release.update-docker-compose"
+        run: "uv run invoke release.update-docker-compose"
       - name: "Update Versions in python_testcontainers/pyproject.toml"
-        run: "poetry run invoke release.update-test-containers"
+        run: "uv run invoke release.update-test-containers"
       - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
         with:
@@ -72,7 +75,7 @@ jobs:
 
       - name: Checkout infrahub-helm
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: opsmill/infrahub-helm
           path: helm
@@ -80,7 +83,7 @@ jobs:
 
       - name: "Update AppVersion in helm/chart.yaml file"
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        run: "poetry run invoke release.update-helm-chart"
+        run: "uv run invoke release.update-helm-chart"
 
       - name: Commit helm
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0

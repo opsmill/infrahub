@@ -1,11 +1,13 @@
-import { components } from "@/shared/api/rest/types.generated";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
+import type { components } from "@/shared/api/rest/types.generated";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import Modal, { ModalTitle } from "@/shared/components/modals/modal";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
 import { ModelDisplay } from "./styled";
 
 export const ComputedAttributeDisplay = ({
@@ -38,7 +40,7 @@ export const ComputedAttributeDisplay = ({
         </Button>
 
         <Modal setOpen={setOpen} open={isOpen}>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="mb-2 flex items-center gap-2">
             <ModalTitle>Jinja2 Template</ModalTitle>
 
             <Tooltip enabled content="Download template">

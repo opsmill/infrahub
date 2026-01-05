@@ -467,6 +467,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/schema.graphql": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Graphql Schema */
+        get: operations["get_graphql_schema_schema_graphql_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -519,8 +536,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -639,8 +661,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -768,8 +795,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -870,8 +902,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -963,6 +1000,13 @@ export interface components {
             /** Display Label */
             display_label?: string | null;
         };
+        /** AttributeParameters */
+        AttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+        };
         /** AttributeSchema */
         "AttributeSchema-Input": {
             /**
@@ -999,17 +1043,17 @@ export interface components {
             choices?: components["schemas"]["DropdownChoice"][] | null;
             /**
              * Regex
-             * @description Regex uses to limit the characters allowed in for the attributes.
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
              */
             regex?: string | null;
             /**
              * Max Length
-             * @description Set a maximum number of characters allowed for a given attribute.
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
              */
             max_length?: number | null;
             /**
              * Min Length
-             * @description Set a minimum number of characters allowed for a given attribute.
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
              */
             min_length?: number | null;
             /**
@@ -1063,6 +1107,11 @@ export interface components {
              * @default any
              */
             allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Parameters
+             * @description Extra parameters specific to this kind of attribute
+             */
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1105,17 +1154,17 @@ export interface components {
             choices?: components["schemas"]["DropdownChoice"][] | null;
             /**
              * Regex
-             * @description Regex uses to limit the characters allowed in for the attributes.
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
              */
             regex?: string | null;
             /**
              * Max Length
-             * @description Set a maximum number of characters allowed for a given attribute.
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
              */
             max_length?: number | null;
             /**
              * Min Length
-             * @description Set a minimum number of characters allowed for a given attribute.
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
              */
             min_length?: number | null;
             /**
@@ -1169,6 +1218,11 @@ export interface components {
              * @default any
              */
             allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Parameters
+             * @description Extra parameters specific to this kind of attribute
+             */
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1249,7 +1303,6 @@ export interface components {
              */
             transform?: string | null;
         } & (unknown & unknown);
-        /** ComputedAttribute */
         "ComputedAttribute-Output": Record<string, never>;
         /**
          * ComputedAttributeKind
@@ -1263,6 +1316,9 @@ export interface components {
             analytics: components["schemas"]["AnalyticsSettings"];
             experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
             sso: components["schemas"]["SSOInfo"];
+            /** Installation Type */
+            installation_type: string;
+            policy: components["schemas"]["PolicySettings"];
         };
         /**
          * DiffAction
@@ -1291,6 +1347,12 @@ export interface components {
              * @default false
              */
             graphql_enums: boolean;
+            /**
+             * Value Db Index
+             * @deprecated
+             * @default false
+             */
+            value_db_index: boolean;
         };
         /**
          * GenericSchema
@@ -1343,8 +1405,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1488,9 +1555,11 @@ export interface components {
         };
         /** LoggingSettings */
         LoggingSettings: {
-            /** @default {
+            /**
+             * @default {
              *       "enable": false
-             *     } */
+             *     }
+             */
             remote: components["schemas"]["RemoteLoggingSettings"];
         };
         /** MainSettings */
@@ -1540,6 +1609,12 @@ export interface components {
              * @description Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.
              */
             public_url?: string | null;
+            /**
+             * Schema Strict Mode
+             * @description Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.
+             * @default true
+             */
+            schema_strict_mode: boolean;
         };
         /** Menu */
         Menu: {
@@ -1550,11 +1625,30 @@ export interface components {
         };
         /** MenuItemList */
         MenuItemList: {
+            /** Id */
+            id?: string | null;
             /**
-             * Identifier
-             * @description Unique identifier for this menu item
+             * Namespace
+             * @description Namespace of the menu item
              */
-            identifier: string;
+            namespace: string;
+            /**
+             * Name
+             * @description Name of the menu item
+             */
+            name: string;
+            /**
+             * Description
+             * @description Description of the menu item
+             * @default
+             */
+            description: string;
+            /**
+             * Protected
+             * @description Whether the menu item is protected
+             * @default false
+             */
+            protected: boolean;
             /**
              * Label
              * @description Title of the menu item
@@ -1592,6 +1686,8 @@ export interface components {
              * @description Child objects
              */
             children?: components["schemas"]["MenuItemList"][];
+            /** Identifier */
+            readonly identifier: string;
         };
         /**
          * MenuSection
@@ -1659,8 +1755,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1736,6 +1837,52 @@ export interface components {
              */
             children?: string | null;
         };
+        /** NumberAttributeParameters */
+        NumberAttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Min Value
+             * @description Set a minimum value allowed.
+             */
+            min_value?: number | null;
+            /**
+             * Max Value
+             * @description Set a maximum value allowed.
+             */
+            max_value?: number | null;
+            /**
+             * Excluded Values
+             * @description List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'
+             */
+            excluded_values?: string | null;
+        };
+        /** NumberPoolParameters */
+        NumberPoolParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * End Range
+             * @description End range for numbers for the associated NumberPool
+             * @default 9223372036854776000
+             */
+            end_range: number;
+            /**
+             * Start Range
+             * @description Start range for numbers for the associated NumberPool
+             * @default 1
+             */
+            start_range: number;
+            /**
+             * Number Pool Id
+             * @description The ID of the numberpool associated with this attribute
+             */
+            number_pool_id?: string | null;
+        };
         /** PasswordCredential */
         PasswordCredential: {
             /**
@@ -1749,12 +1896,25 @@ export interface components {
              */
             password: string;
         };
+        /** PolicySettings */
+        PolicySettings: {
+            /**
+             * Required Proposed Change Approvals
+             * @description Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)
+             * @default 0
+             */
+            required_proposed_change_approvals: number;
+            /**
+             * Revoke Proposed Change Approvals
+             * @description Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.)
+             * @default false
+             */
+            revoke_proposed_change_approvals: boolean;
+        };
         /** QueryPayload */
         QueryPayload: {
             /** Variables */
-            variables?: {
-                [key: string]: string;
-            };
+            variables?: Record<string, never>;
         };
         /**
          * RelationshipCardinality
@@ -1835,6 +1995,16 @@ export interface components {
              * @default 0
              */
             max_count: number;
+            /**
+             * Common Parent
+             * @description Name of a parent relationship on the peer schema that must share the same related object with the object's parent.
+             */
+            common_parent?: string | null;
+            /**
+             * Common Relatives
+             * @description List of relationship names on the peer schema for which all objects must share the same set of peers.
+             */
+            common_relatives?: string[] | null;
             /**
              * Order Weight
              * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
@@ -1968,10 +2138,12 @@ export interface components {
             generics?: components["schemas"]["GenericSchema"][];
             /** Nodes */
             nodes?: components["schemas"]["NodeSchema"][];
-            /** @default {
+            /**
+             * @default {
              *       "state": "present",
              *       "nodes": []
-             *     } */
+             *     }
+             */
             extensions: components["schemas"]["SchemaExtension"];
         };
         /** SchemaNamespace */
@@ -2014,15 +2186,75 @@ export interface components {
             /** @description The modifications to the schema */
             diff: components["schemas"]["SchemaDiff"];
             /**
+             * Warnings
+             * @description Warnings encountered while loading the schema
+             */
+            warnings?: components["schemas"]["SchemaWarning"][];
+            /**
              * Schema Updated
              * @description Indicates if the loading of the schema changed the existing schema
              */
             readonly schema_updated: boolean;
         };
+        /** SchemaWarning */
+        SchemaWarning: {
+            /** @description The type of warning */
+            type: components["schemas"]["SchemaWarningType"];
+            /**
+             * Kinds
+             * @description The kinds impacted by the warning
+             */
+            kinds?: components["schemas"]["SchemaWarningKind"][];
+            /**
+             * Message
+             * @description The message that describes the warning
+             */
+            message: string;
+        };
+        /** SchemaWarningKind */
+        SchemaWarningKind: {
+            /**
+             * Kind
+             * @description The kind impacted by the warning
+             */
+            kind: string;
+            /**
+             * Field
+             * @description The attribute or relationship impacted by the warning
+             */
+            field?: string | null;
+        };
+        /**
+         * SchemaWarningType
+         * @enum {string}
+         */
+        SchemaWarningType: "deprecation";
         /** SchemasLoadAPI */
         SchemasLoadAPI: {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
+        };
+        /** TextAttributeParameters */
+        TextAttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Regex
+             * @description Regular expression that attribute value must match if defined
+             */
+            regex?: string | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed.
+             */
+            min_length?: number | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed.
+             */
+            max_length?: number | null;
         };
         /** UploadContentPayload */
         UploadContentPayload: {
@@ -2147,7 +2379,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": null;
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2229,7 +2461,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": null;
+                    "application/json": unknown;
                 };
             };
         };
@@ -3003,6 +3235,40 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_graphql_schema_schema_graphql_get: {
+        parameters: {
+            query?: {
+                /** @description Whether to sort the schema alphabetically. */
+                sorted?: boolean;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

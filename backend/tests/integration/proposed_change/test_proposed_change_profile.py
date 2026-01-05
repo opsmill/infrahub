@@ -8,7 +8,6 @@ from infrahub.core.constants import InfrahubKind, TaskConclusion, ValidatorConcl
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.task import Task
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -51,8 +50,6 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
         jesko = await Node.init(schema=TestKind.CAR, db=db)
         await jesko.new(db=db, name="Jesko", color="Red", owner=john, manufacturer=koenigsegg, profiles=[car_profile])
         await jesko.save(db=db)
-
-        bus_simulator.service._cache = RedisCache()
 
     @pytest.fixture(scope="class")
     async def update_profile(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:

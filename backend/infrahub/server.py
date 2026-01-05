@@ -10,7 +10,6 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -23,27 +22,34 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
+from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
+from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.middleware import InfrahubCORSMiddleware
+from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_component,
+    get_database,
+    get_installation_type,
+    get_message_bus,
+    get_workflow,
+    set_component_type,
+)
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
+    _validate_feature_selection(configuration=config.SETTINGS.active_settings)
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -55,36 +61,40 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
+    component_type = ComponentType.API_SERVER
+    set_component_type(component_type=component_type)
+
     # Initialize database Driver and load local registry
-    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database = application.state.db = await get_database()
 
     build_component_registry()
 
-    workflow = config.OVERRIDE.workflow or (
-        WorkflowWorkerExecution()
-        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
-        else WorkflowLocalExecution()
-    )
-    component_type = ComponentType.API_SERVER
-    message_bus = config.OVERRIDE.message_bus or await InfrahubMessageBus.new_from_driver(
-        component_type=component_type, driver=config.SETTINGS.broker.driver
-    )
-
-    cache = config.OVERRIDE.cache or (await InfrahubCache.new_from_driver(driver=config.SETTINGS.cache.driver))
+    workflow = get_workflow()
+    message_bus = await get_message_bus()
+    cache = await get_cache()
+    component = await get_component()
     service = await InfrahubServices.new(
         cache=cache,
         database=database,
         message_bus=message_bus,
         workflow=workflow,
+        component=component,
         component_type=component_type,
     )
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
-        await initialization(db=db, add_database_indexes=True)
+        is_initial_setup = await initialization(db=db, add_database_indexes=True)
+
+    async with database.start_session() as dbs:
+        await validate_graph_version(db=dbs)
+
+    # Initialize the workflow after the registry has been setup
+    await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
+
     if enable_scheduler:
         await service.scheduler.start_schedule()
 
@@ -181,7 +191,17 @@ app.add_middleware(
     skip_paths=["/health"],
 )
 app.add_middleware(InfrahubCORSMiddleware)
-app.add_middleware(GZipMiddleware, minimum_size=100_000)
+app.add_middleware(
+    ConditionalGZipMiddleware,
+    minimum_size=100_000,
+    compresslevel=1,
+    include_paths=(
+        "/assets",
+        "/favicons",
+        "/docs",
+        "/api/schema",
+    ),
+)
 
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
@@ -212,3 +232,12 @@ async def documentation() -> RedirectResponse:
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
     return templates.TemplateResponse("index.html", {"request": req})
+
+
+def _validate_feature_selection(configuration: config.Settings) -> None:
+    if configuration.enterprise_features and not configuration.dev.allow_enterprise_configuration:
+        installation_type = get_installation_type()
+        if installation_type == INSTALLATION_TYPE:
+            raise ValidationError(
+                f"Enterprise features [{','.join(configuration.enterprise_features)}] are not supported when running Infrahub 'community'."
+            )

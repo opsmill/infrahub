@@ -6,7 +6,7 @@ from infrahub_sdk.protocols import CoreValidator
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
-from infrahub.services import InfrahubServices
+from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.validators.events import send_failed_validator, send_passed_validator
 
 
@@ -14,7 +14,7 @@ async def run_checks_and_update_validator(
     checks: list[Coroutine[Any, None, ValidatorConclusion]],
     validator: CoreValidator,
     context: InfrahubContext,
-    service: InfrahubServices,
+    event_service: InfrahubEventService,
     proposed_change_id: str,
 ) -> None:
     """
@@ -38,7 +38,7 @@ async def run_checks_and_update_validator(
             failed_early = True
             await validator.save()
             await send_failed_validator(
-                service=service, validator=validator, proposed_change_id=proposed_change_id, context=context
+                event_service=event_service, validator=validator, proposed_change_id=proposed_change_id, context=context
             )
             # Continue to iterate to wait for the end of all checks
 
@@ -52,9 +52,9 @@ async def run_checks_and_update_validator(
     if not failed_early:
         if validator.conclusion.value == ValidatorConclusion.SUCCESS.value:
             await send_passed_validator(
-                service=service, validator=validator, proposed_change_id=proposed_change_id, context=context
+                event_service=event_service, validator=validator, proposed_change_id=proposed_change_id, context=context
             )
         else:
             await send_failed_validator(
-                service=service, validator=validator, proposed_change_id=proposed_change_id, context=context
+                event_service=event_service, validator=validator, proposed_change_id=proposed_change_id, context=context
             )

@@ -14,11 +14,11 @@ At a high level, the process consists of three key steps:
 
 To illustrate this process, we will use a common use case: Creating ports for a device.
 
-For more details, refer to the [Object Template Topic](../topics/object-template).
+For more details, refer to the [Object Template Topic](../topics/object-template.mdx).
 
 ## Enable template support within the schema
 
-If you are already familiar with [Schema Development](../guides/create-schema) in Infrahub, enabling template generation is straightforward.
+If you are already familiar with [Schema Development](../guides/create-schema.mdx) in Infrahub, enabling template generation is straightforward.
 
 At the node level, the `generate_template` property allows users to enable template generation for a given node and its associated components.
 
@@ -33,8 +33,7 @@ nodes:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     uniqueness_constraints:
@@ -64,8 +63,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -87,8 +85,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -114,7 +111,7 @@ nodes:
 
 ```
 
-You can now **load this schema into your Infrahub instance**. For more details, refer to the [Import Schema Guide](../guides/import-schema).
+You can now **load this schema into your Infrahub instance**. For more details, refer to the [Import Schema Guide](../guides/import-schema.mdx).
 
 ## Populate the template with data
 
@@ -311,3 +308,24 @@ Heading back to the main menu we will create a device object.
 When viewing your newly created device object, navigate to the Interfaces tab to see a **list of interfaces pre-populated based on the template you defined**. Keep in mind that **any modifications made to the template will not retroactively apply to objects that have already been created from it**.
 
 :::
+
+## Using profiles with templates
+
+When both `generate_template` and `generate_profile` are configured on a schema node, you can assign profiles to templates to enable bulk configuration updates. Objects created from templates automatically inherit the profiles assigned to those templates, allowing you to update values in bulk by modifying the profile.
+
+:::info Profile and template integration
+
+When a profile is assigned to a template:
+
+- Objects created from the template automatically inherit the template's profiles
+- Template values (when explicitly configured) take precedence over profile values
+- Profiles provide values for attributes not explicitly set on the template
+- Multiple profiles can be assigned to a template with proper priority handling
+- This enables consistent configuration management across templated objects
+
+:::
+
+For more information about profiles and templates, see:
+
+- [Creating and assigning profiles](../guides/profiles.mdx) - Guide for working with profiles
+- [Understanding profiles in Infrahub](../topics/profiles.mdx) - Deep dive into profile concepts

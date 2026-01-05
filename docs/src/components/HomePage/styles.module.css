@@ -1,0 +1,75 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0;
+  flex-grow: 1;
+  max-height: 540px;
+}
+
+.infrahubVideo {
+  align-self: start;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 4rem 2rem;
+    flex-grow: 0;
+  }
+
+  .infrahubVideo {
+    display: none;
+  }
+}
+
+.cardTitle {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.heroCard {
+  transition: box-shadow 0.2s ease-in-out;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  flex-grow: 1;
+}
+
+html[data-theme='dark'] .heroCard {
+  color: #f5f4f4;
+}
+
+html[data-theme='dark'] .heroCard img {
+  background: #f5f4f4;
+  border-radius: 100%;
+  padding: 1px;
+  margin: 2px;
+  background-size: contain;
+}
+
+.heroCard:hover {
+  box-shadow: 1px 0px 16px 0px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.heroButton {
+  border-radius: 9999px;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.containerFlexWrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 1rem;
+}
+
+.flex {
+  display: flex;
+}

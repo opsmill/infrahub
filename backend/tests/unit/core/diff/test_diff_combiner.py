@@ -34,7 +34,7 @@ from .factories import (
 
 
 class TestDiffCombiner:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.diff_from_1 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 11))
         self.diff_to_1 = Timestamp(Instant.from_utc(2024, 3, 5, 9, 11, 13))
         self.diff_from_2 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 14))
@@ -73,7 +73,7 @@ class TestDiffCombiner:
         self.combiner = DiffCombiner()
 
     @pytest.fixture
-    def with_schema_manager(self, car_person_schema_unregistered):
+    def with_schema_manager(self, car_person_schema_unregistered) -> None:
         for node_schema in car_person_schema_unregistered.nodes:
             if node_schema.kind == "TestCar":
                 car_schema = node_schema
@@ -114,10 +114,10 @@ class TestDiffCombiner:
             (DiffAction.UNCHANGED, DiffAction.UNCHANGED),
         ],
     )
-    async def test_add_and_remove_node_cancel_one_another(self, action_1, action_2):
+    async def test_add_and_remove_node_cancel_one_another(self, action_1, action_2) -> None:
         diff_node_1 = EnrichedNodeFactory.build(action=action_1, attributes=set(), relationships=set())
         diff_node_2 = EnrichedNodeFactory.build(
-            uuid=diff_node_1.uuid, kind=diff_node_1.kind, action=action_2, attributes=set(), relationships=set()
+            identifier=diff_node_1.identifier, action=action_2, attributes=set(), relationships=set()
         )
         self.diff_root_1.nodes = {diff_node_1}
         self.diff_root_2.nodes = {diff_node_2}
@@ -140,7 +140,7 @@ class TestDiffCombiner:
             (DiffAction.UNCHANGED, DiffAction.UPDATED, DiffAction.UPDATED),
         ],
     )
-    async def test_node_action_addition(self, action_1, action_2, expected_action):
+    async def test_node_action_addition(self, action_1, action_2, expected_action) -> None:
         node_1_conflict = EnrichedConflictFactory.build()
         node_2_conflict = replace(node_1_conflict, selected_branch=ConflictSelection.DIFF_BRANCH)
         diff_node_1_attr = EnrichedAttributeFactory.build(action=DiffAction.ADDED)
@@ -148,8 +148,7 @@ class TestDiffCombiner:
             action=action_1, attributes={diff_node_1_attr}, relationships=set(), conflict=node_1_conflict
         )
         diff_node_2 = EnrichedNodeFactory.build(
-            uuid=diff_node_1.uuid,
-            kind=diff_node_1.kind,
+            identifier=diff_node_1.identifier,
             action=action_2,
             attributes=set(),
             relationships=set(),
@@ -168,6 +167,7 @@ class TestDiffCombiner:
                 identifier=diff_node_2.identifier,
                 label=diff_node_2.label,
                 changed_at=diff_node_2.changed_at,
+                is_node_kind_migration=diff_node_1.is_node_kind_migration | diff_node_2.is_node_kind_migration,
                 action=expected_action,
                 path_identifier=diff_node_2.path_identifier,
                 attributes={diff_node_1_attr},
@@ -177,7 +177,7 @@ class TestDiffCombiner:
         }
         assert combined == self.expected_combined
 
-    async def test_stale_parent_node_removed(self):
+    async def test_stale_parent_node_removed(self) -> None:
         parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.UNCHANGED, attributes=set(), relationships=set())
         element_1 = EnrichedRelationshipElementFactory.build(action=DiffAction.UPDATED)
         relationship_1 = EnrichedRelationshipGroupFactory.build(
@@ -202,8 +202,7 @@ class TestDiffCombiner:
             changed_at=Timestamp(),
         )
         child_node_2 = EnrichedNodeFactory.build(
-            uuid=child_node_1.uuid,
-            kind=child_node_1.kind,
+            identifier=child_node_1.identifier,
             action=DiffAction.UPDATED,
             relationships={relationship_2},
             changed_at=Timestamp(),
@@ -219,6 +218,7 @@ class TestDiffCombiner:
         expected_child_node = replace(
             child_node_2,
             action=DiffAction.ADDED,
+            is_node_kind_migration=child_node_1.is_node_kind_migration | child_node_2.is_node_kind_migration,
             relationships={expected_rel},
             attributes={attr_1} | child_node_2.attributes,
             conflict=None,
@@ -226,7 +226,7 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_parent_node, expected_child_node}
         assert combined == self.expected_combined
 
-    async def test_attributes_combined(self):
+    async def test_attributes_combined(self) -> None:
         added_attr_name = "width"
         added_attr_owner_property_1 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_OWNER,
@@ -256,8 +256,7 @@ class TestDiffCombiner:
             action=DiffAction.ADDED, attributes={added_attribute_1, attr_earlier_only}, relationships=set()
         )
         later_node_1 = EnrichedNodeFactory.build(
-            uuid=earlier_node_1.uuid,
-            kind=earlier_node_1.kind,
+            identifier=earlier_node_1.identifier,
             action=DiffAction.UPDATED,
             attributes={added_attribute_2, attr_later_only},
             relationships=set(),
@@ -288,8 +287,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED, attributes={updated_attribute_1}, relationships=set()
         )
         later_node_2 = EnrichedNodeFactory.build(
-            uuid=earlier_node_2.uuid,
-            kind=earlier_node_2.kind,
+            identifier=earlier_node_2.identifier,
             action=DiffAction.UPDATED,
             attributes={updated_attribute_2},
             relationships=set(),
@@ -337,6 +335,7 @@ class TestDiffCombiner:
             EnrichedDiffNode(
                 identifier=later_node_1.identifier,
                 label=later_node_1.label,
+                is_node_kind_migration=earlier_node_1.is_node_kind_migration | later_node_1.is_node_kind_migration,
                 changed_at=later_node_1.changed_at,
                 action=DiffAction.ADDED,
                 path_identifier=later_node_1.path_identifier,
@@ -345,6 +344,7 @@ class TestDiffCombiner:
             EnrichedDiffNode(
                 identifier=later_node_2.identifier,
                 label=later_node_2.label,
+                is_node_kind_migration=earlier_node_2.is_node_kind_migration | later_node_2.is_node_kind_migration,
                 changed_at=later_node_2.changed_at,
                 action=DiffAction.UPDATED,
                 path_identifier=later_node_2.path_identifier,
@@ -359,7 +359,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_relationship_one_combined(self, with_schema_manager):
+    async def test_relationship_one_combined(self, with_schema_manager) -> None:
         relationship_name = "owner"
         old_peer_id = str(uuid4())
         intermediate_peer_id = str(uuid4())
@@ -394,7 +394,7 @@ class TestDiffCombiner:
         later_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=new_peer_id,
-            changed_at=early_element.changed_at.add_delta(minutes=1),
+            changed_at=early_element.changed_at.add(minutes=1),
             properties={later_only_property, later_peer_property},
             conflict=EnrichedConflictFactory.build(),
         )
@@ -417,8 +417,7 @@ class TestDiffCombiner:
             kind="TestCar", action=DiffAction.UPDATED, relationships={early_relationship}
         )
         later_node = EnrichedNodeFactory.build(
-            uuid=early_node.uuid,
-            kind="TestCar",
+            identifier=early_node.identifier,
             action=DiffAction.UPDATED,
             relationships={later_relationship},
             changed_at=Timestamp(),
@@ -459,6 +458,7 @@ class TestDiffCombiner:
         expected_node = EnrichedDiffNode(
             identifier=later_node.identifier,
             label=later_node.label,
+            is_node_kind_migration=early_node.is_node_kind_migration | later_node.is_node_kind_migration,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=later_node.path_identifier,
@@ -473,7 +473,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_relationship_many_combined(self, with_schema_manager):
+    async def test_relationship_many_combined(self, with_schema_manager) -> None:
         rel_prop_types = [DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED]
         relationship_name = "cars"
         removed_element_peer_id = str(uuid4())
@@ -572,8 +572,7 @@ class TestDiffCombiner:
             kind="TestPerson", action=DiffAction.UPDATED, relationships={relationship_group_1}
         )
         node_2 = EnrichedNodeFactory.build(
-            uuid=node_1.uuid,
-            kind=node_1.kind,
+            identifier=node_1.identifier,
             action=DiffAction.UPDATED,
             relationships={relationship_group_2},
             changed_at=Timestamp(),
@@ -627,6 +626,7 @@ class TestDiffCombiner:
         expected_node = EnrichedDiffNode(
             identifier=node_2.identifier,
             label=node_2.label,
+            is_node_kind_migration=node_1.is_node_kind_migration | node_2.is_node_kind_migration,
             changed_at=node_2.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=node_2.path_identifier,
@@ -641,7 +641,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_relationship_with_only_nodes(self, with_schema_manager):
+    async def test_relationship_with_only_nodes(self, with_schema_manager) -> None:
         relationship_name = "owner"
         early_parent_node = EnrichedNodeFactory.build(
             action=DiffAction.UNCHANGED, relationships=set(), attributes=set()
@@ -669,8 +669,7 @@ class TestDiffCombiner:
             kind="TestCar", action=DiffAction.UPDATED, relationships={early_relationship}
         )
         later_node = EnrichedNodeFactory.build(
-            uuid=early_node.uuid,
-            kind="TestCar",
+            identifier=early_node.identifier,
             action=DiffAction.UPDATED,
             relationships={later_relationship},
             changed_at=Timestamp(),
@@ -692,6 +691,7 @@ class TestDiffCombiner:
         expected_node = EnrichedDiffNode(
             identifier=later_node.identifier,
             label=later_node.label,
+            is_node_kind_migration=early_node.is_node_kind_migration | later_node.is_node_kind_migration,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=later_node.path_identifier,
@@ -706,12 +706,14 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_early_conflict_removed(self):
+    async def test_early_conflict_removed(self) -> None:
         node_uuid = str(uuid4())
         early_conflict = EnrichedConflictFactory.build()
         later_conflict = None
         early_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=early_conflict)
-        later_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=later_conflict)
+        later_node = EnrichedNodeFactory.build(
+            identifier=early_node.identifier, action=DiffAction.UPDATED, conflict=later_conflict
+        )
         self.diff_root_1.nodes = {early_node}
         self.diff_root_2.nodes = {later_node}
 
@@ -721,12 +723,14 @@ class TestDiffCombiner:
         assert combined_node.uuid == node_uuid
         assert combined_node.conflict is None
 
-    async def test_later_conflict_added(self):
+    async def test_later_conflict_added(self) -> None:
         node_uuid = str(uuid4())
         early_conflict = None
         later_conflict = EnrichedConflictFactory.build()
         early_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=early_conflict)
-        later_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=later_conflict)
+        later_node = EnrichedNodeFactory.build(
+            identifier=early_node.identifier, action=DiffAction.UPDATED, conflict=later_conflict
+        )
         self.diff_root_1.nodes = {early_node}
         self.diff_root_2.nodes = {later_node}
 
@@ -774,7 +778,7 @@ class TestDiffCombiner:
             ),
         ],
     )
-    async def test_conflict_value_and_selection_update(self, early_values, later_values, selections):
+    async def test_conflict_value_and_selection_update(self, early_values, later_values, selections) -> None:
         node_uuid = str(uuid4())
         early_conflict_uuid = str(uuid4())
         early_base_value, early_diff_value = early_values
@@ -793,7 +797,9 @@ class TestDiffCombiner:
             selected_branch=later_selection,
         )
         early_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=early_conflict)
-        later_node = EnrichedNodeFactory.build(uuid=node_uuid, action=DiffAction.UPDATED, conflict=later_conflict)
+        later_node = EnrichedNodeFactory.build(
+            identifier=early_node.identifier, action=DiffAction.UPDATED, conflict=later_conflict
+        )
         self.diff_root_1.nodes = {early_node}
         self.diff_root_2.nodes = {later_node}
 
@@ -805,7 +811,7 @@ class TestDiffCombiner:
             later_conflict, uuid=early_conflict_uuid, selected_branch=expected_selection
         )
 
-    async def test_unchanged_parents_correctly_updated(self):
+    async def test_unchanged_parents_correctly_updated(self) -> None:
         child_node_uuid = str(uuid4())
         relationship_name = "related-things"
         parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.UNCHANGED, attributes=set(), relationships=set())
@@ -835,8 +841,7 @@ class TestDiffCombiner:
             attributes={EnrichedAttributeFactory.build(action=DiffAction.UPDATED)},
         )
         child_node_2 = EnrichedNodeFactory.build(
-            uuid=child_node_uuid,
-            kind="ThisKind",
+            identifier=child_node_1.identifier,
             action=DiffAction.UPDATED,
             relationships={parent_rel_2},
             changed_at=Timestamp(),
@@ -861,6 +866,7 @@ class TestDiffCombiner:
         expected_child_node = EnrichedDiffNode(
             identifier=child_node_2.identifier,
             label=child_node_2.label,
+            is_node_kind_migration=child_node_1.is_node_kind_migration | child_node_2.is_node_kind_migration,
             changed_at=child_node_2.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=child_node_2.path_identifier,
@@ -872,7 +878,7 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_parent_node, expected_child_node}
         assert combined == self.expected_combined
 
-    async def test_updated_parents_correctly_updated(self):
+    async def test_updated_parents_correctly_updated(self) -> None:
         child_node_uuid = str(uuid4())
         relationship_name = "related-things"
         parent_node_1 = EnrichedNodeFactory.build(
@@ -910,7 +916,10 @@ class TestDiffCombiner:
             uuid=child_node_uuid, action=DiffAction.UPDATED, relationships={child_rel_1}
         )
         child_node_2 = EnrichedNodeFactory.build(
-            uuid=child_node_uuid, action=DiffAction.UPDATED, relationships={child_rel_2}, changed_at=Timestamp()
+            identifier=child_node_1.identifier,
+            action=DiffAction.UPDATED,
+            relationships={child_rel_2},
+            changed_at=Timestamp(),
         )
         self.diff_root_1.nodes = {parent_node_1, child_node_1}
         self.diff_root_2.nodes = {parent_node_2, child_node_2}
@@ -933,6 +942,7 @@ class TestDiffCombiner:
         expected_child_node = EnrichedDiffNode(
             identifier=child_node_2.identifier,
             label=child_node_2.label,
+            is_node_kind_migration=child_node_1.is_node_kind_migration | child_node_2.is_node_kind_migration,
             changed_at=child_node_2.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=child_node_2.path_identifier,
@@ -944,7 +954,7 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_parent_1, expected_parent_2, expected_child_node}
         assert combined == self.expected_combined
 
-    async def test_resetting_attr_makes_it_unchanged(self):
+    async def test_resetting_attr_makes_it_unchanged(self) -> None:
         updated_attr_name = "length"
         previous_value = str(uuid4())
         new_value = str(uuid4())
@@ -981,15 +991,17 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED, attributes={updated_attribute_1}, relationships=set()
         )
         later_node_2 = EnrichedNodeFactory.build(
-            uuid=earlier_node_2.uuid,
-            kind=earlier_node_2.kind,
+            identifier=earlier_node_2.identifier,
             action=DiffAction.UPDATED,
             attributes={updated_attribute_2},
             relationships=set(),
             changed_at=Timestamp(),
         )
         expected_combined_node = replace(
-            later_node_2, action=DiffAction.UNCHANGED, attributes={expected_combined_attribute}
+            later_node_2,
+            action=DiffAction.UNCHANGED,
+            is_node_kind_migration=earlier_node_2.is_node_kind_migration | later_node_2.is_node_kind_migration,
+            attributes={expected_combined_attribute},
         )
 
         self.diff_root_1.nodes = {earlier_node_2}
@@ -1003,7 +1015,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_resetting_relationship_one_makes_it_unchanged(self, with_schema_manager):
+    async def test_resetting_relationship_one_makes_it_unchanged(self, with_schema_manager) -> None:
         relationship_name = "owner"
         old_peer_id = str(uuid4())
         intermediate_peer_id = str(uuid4())
@@ -1033,7 +1045,7 @@ class TestDiffCombiner:
         later_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=old_peer_id,
-            changed_at=early_element.changed_at.add_delta(minutes=1),
+            changed_at=early_element.changed_at.add(minutes=1),
             properties={later_only_property, later_peer_property},
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(
@@ -1055,8 +1067,7 @@ class TestDiffCombiner:
             kind="TestCar", action=DiffAction.UPDATED, relationships={early_relationship}
         )
         later_node = EnrichedNodeFactory.build(
-            uuid=early_node.uuid,
-            kind="TestCar",
+            identifier=early_node.identifier,
             action=DiffAction.UPDATED,
             relationships={later_relationship},
             changed_at=Timestamp(),
@@ -1092,6 +1103,7 @@ class TestDiffCombiner:
         expected_node = EnrichedDiffNode(
             identifier=later_node.identifier,
             label=later_node.label,
+            is_node_kind_migration=early_node.is_node_kind_migration | later_node.is_node_kind_migration,
             changed_at=later_node.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=later_node.path_identifier,
@@ -1106,7 +1118,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_resetting_relationship_many_makes_it_unchanged(self, with_schema_manager):
+    async def test_resetting_relationship_many_makes_it_unchanged(self, with_schema_manager) -> None:
         rel_prop_types = [DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED]
         relationship_name = "cars"
         peer_id_1 = str(uuid4())
@@ -1177,8 +1189,7 @@ class TestDiffCombiner:
             kind="TestPerson", action=DiffAction.UPDATED, relationships={relationship_group_1}
         )
         node_2 = EnrichedNodeFactory.build(
-            uuid=node_1.uuid,
-            kind=node_1.kind,
+            identifier=node_1.identifier,
             action=DiffAction.UPDATED,
             relationships={relationship_group_2},
             attributes={EnrichedAttributeFactory.build(action=DiffAction.UPDATED)},
@@ -1195,6 +1206,7 @@ class TestDiffCombiner:
         expected_node = EnrichedDiffNode(
             identifier=node_2.identifier,
             label=node_2.label,
+            is_node_kind_migration=node_1.is_node_kind_migration | node_2.is_node_kind_migration,
             changed_at=node_2.changed_at,
             action=DiffAction.UPDATED,
             path_identifier=node_2.path_identifier,

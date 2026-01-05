@@ -1,0 +1,30 @@
+---
+title: Release 1.4.6
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.4.6</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>September 10th, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.4.6](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.4.6)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- Make related nodes clickable in task views ([#6420](https://github.com/opsmill/infrahub/issues/6420))
+- Add an option to match trigger actions on any attribute value
+
+### Fixed
+
+- Fix bug in IP reconciliation that could cause prefixes or addresses updated on a branch to have incorrect parents or children. ([#6934](https://github.com/opsmill/infrahub/issues/6934))
+- Fixed the accepted types for the query payload in the `execute_query` POST endpoint. ([#7119](https://github.com/opsmill/infrahub/issues/7119))
+- Fixed issue where the artifact diff view would randomly add space characters to the diff content and highlight it as a diff. ([#6974](https://github.com/opsmill/infrahub/issues/6974))

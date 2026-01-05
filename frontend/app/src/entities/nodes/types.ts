@@ -1,4 +1,4 @@
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 
 // https://docs.infrahub.app/reference/schema/relationship/#kind
 export type RelationshipKind = components["schemas"]["RelationshipKind"];
@@ -28,3 +28,13 @@ export type NodeRelationship = NodeRelationshipOne | NodeRelationshipMany;
 export type NodeObject = NodeCore & {
   [key: string]: NodeAttribute | NodeRelationship;
 };
+
+export interface NodeCoreWithChildrenCount extends NodeCore {
+  children: {
+    count: number;
+  };
+}
+
+export interface NodeCoreWithParent extends NodeCore {
+  parent: NodeRelationshipOne;
+}

@@ -1,5 +1,6 @@
+import type { SelectProps } from "react-aria-components";
+
 import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
-import { SelectProps } from "react-aria-components";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -34,7 +35,7 @@ export interface FilterConditionSelectProps extends SelectProps {
 export function FilterConditionSelect({ filterType, ...props }: FilterConditionSelectProps) {
   return (
     <Select
-      defaultSelectedKey="is any of"
+      defaultValue="is any of"
       placeholder="Filter by"
       aria-label="select a condition"
       isRequired

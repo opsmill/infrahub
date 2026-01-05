@@ -1,8 +1,10 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { GetSchemaHashParams, getSchemaHash } from "@/entities/schema/domain/get-schema-hash";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai/index";
+
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { type GetSchemaHashParams, getSchemaHash } from "@/entities/schema/domain/get-schema-hash";
 
 export function getSchemaHashQueryOptions({ branchName, atDate }: GetSchemaHashParams) {
   return queryOptions({

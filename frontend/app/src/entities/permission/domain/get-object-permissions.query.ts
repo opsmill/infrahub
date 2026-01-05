@@ -1,10 +1,12 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+
+import type { ContextParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectPermissions } from "@/entities/permission/domain/get-object-permissions";
-import { ContextParams } from "@/shared/api/types";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export type GetObjectPermissionsParams = ContextParams & {
   kind: string;

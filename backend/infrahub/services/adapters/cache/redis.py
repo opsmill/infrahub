@@ -54,3 +54,6 @@ class RedisCache(InfrahubCache):
     @classmethod
     async def new(cls) -> RedisCache:
         return cls()
+
+    async def close_connection(self) -> None:
+        await self.connection.aclose()

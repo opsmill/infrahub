@@ -6,20 +6,21 @@ from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
 async def test_query(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -46,7 +47,7 @@ async def test_query(
 
 async def test_query_NULL_allowed(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
     color_attr.optional = True
@@ -65,7 +66,7 @@ async def test_query_NULL_allowed(
 
     car_schema = registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
-    color_attr.regex = r"^#[a-z0-9]+$"
+    color_attr.parameters.regex = r"^#[a-z0-9]+$"
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color")
 
@@ -92,7 +93,7 @@ async def test_query_NULL_allowed(
 
 async def test_query_update_on_branch(
     db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     person_john_main.name.value = "little john"
     await person_john_main.save(db=db)
 
@@ -106,7 +107,7 @@ async def test_query_update_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -124,7 +125,7 @@ async def test_query_update_on_branch(
 
 async def test_query_node_deleted_on_branch(
     db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     person_john_main.name.value = "little john"
     await person_john_main.save(db=db)
 
@@ -137,7 +138,7 @@ async def test_query_node_deleted_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -155,19 +156,19 @@ async def test_query_node_deleted_on_branch(
 
 async def test_validator(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
     person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
+    name_attr.parameters.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
-        constraint_name="attribute.regex.update",
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         schema_branch=SchemaBranch(cache={}),

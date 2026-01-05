@@ -1,17 +1,18 @@
-import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import {
   Button as AriaButton,
-  ButtonProps as AriaButtonProps,
+  type ButtonProps as AriaButtonProps,
   Group as AriaGroup,
-  GroupProps as AriaGroupProps,
+  type GroupProps as AriaGroupProps,
   Input as AriaInput,
-  InputProps as AriaInputProps,
+  type InputProps as AriaInputProps,
   SearchField as AriaSearchField,
-  SearchFieldProps as AriaSearchFieldProps,
+  type SearchFieldProps as AriaSearchFieldProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 
 export function SearchField({ className, ...props }: AriaSearchFieldProps) {
   return (
@@ -27,7 +28,7 @@ export function SearchFieldInput({ className, ...props }: AriaInputProps) {
     <AriaInput
       className={composeRenderProps(className, (className) =>
         classNames(
-          "border-none outline-hidden min-w-0 flex-1 px-2 py-1.5 placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
+          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
           className
         )
       )}
@@ -43,7 +44,7 @@ export function SearchFieldGroup({ className, ...props }: AriaGroupProps) {
         classNames(
           inputStyle,
           focusWithinStyle,
-          "overflow-hidden min-h-0 h-10",
+          "h-10 min-h-0 overflow-hidden",
           "data-disabled:opacity-50",
           className
         )
@@ -78,7 +79,7 @@ export interface SearchInputProps extends AriaSearchFieldProps {
 
 export function SearchInput({ className, placeholder, onPressReset, ...props }: SearchInputProps) {
   return (
-    <SearchField {...props} aria-label="Search">
+    <SearchField aria-label="Search" {...props}>
       <SearchFieldGroup className={className}>
         <Icon icon="mdi:magnify" className="text-lg" />
         <SearchFieldInput placeholder={placeholder} />

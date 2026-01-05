@@ -1,5 +1,6 @@
+import type { InputHTMLAttributes } from "react";
+
 import { classNames } from "@/shared/utils/common";
-import { InputHTMLAttributes } from "react";
 
 interface SpinnerProps extends InputHTMLAttributes<HTMLDivElement> {}
 export const Spinner = ({ ...props }: SpinnerProps) => {
@@ -7,7 +8,7 @@ export const Spinner = ({ ...props }: SpinnerProps) => {
     <div role="status" {...props}>
       <svg
         aria-hidden="true"
-        className={classNames("w-4 h-4 text-gray-200 animate-spin fill-custom-blue-600")}
+        className={classNames("h-4 w-4 animate-spin fill-custom-blue-600 text-gray-200")}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

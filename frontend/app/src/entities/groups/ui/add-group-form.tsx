@@ -1,15 +1,17 @@
-import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
-import { NodeSchema } from "@/entities/schema/types";
+import { toast } from "react-toastify";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import DynamicForm, { DynamicFormProps } from "@/shared/components/form/dynamic-form";
-import {
+import DynamicForm, { type DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import type {
   FormRelationshipValue,
   RelationshipManyValueFromUser,
 } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
-import { toast } from "react-toastify";
+
+import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
+import type { NodeSchema } from "@/entities/schema/types";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;

@@ -2,17 +2,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from cachetools import TTLCache
+from cachetools.keys import hashkey
+from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
+from prefect import task
+from prefect.cache_policies import NONE
 from pydantic import Field
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
+    from infrahub_sdk.client import InfrahubClient
 
 log = get_logger()
 
@@ -25,10 +31,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     """
 
     @classmethod
-    async def new(
-        cls, service: InfrahubServices, update_commit_value: bool = True, **kwargs: Any
-    ) -> InfrahubRepository:
-        self = cls(service=service, **kwargs)
+    async def new(cls, update_commit_value: bool = True, **kwargs: Any) -> InfrahubRepository:
+        self = cls(**kwargs)
         await self.create_locally(
             infrahub_branch_name=self.infrahub_branch_name, update_commit_value=update_commit_value
         )
@@ -167,7 +171,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
         try:
-            repo.git.merge(commit)
+            if config.SETTINGS.git.use_explicit_merge_commit:
+                repo.git.merge(commit, "--no-ff", m="Merged by Infrahub")
+            else:
+                repo.git.merge(commit)
         except GitCommandError as exc:
             repo.git.merge("--abort")
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
@@ -209,11 +216,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     ref: str | None = Field(None, description="Ref to track on the external repository")
 
     @classmethod
-    async def new(cls, service: InfrahubServices, **kwargs: Any) -> InfrahubReadOnlyRepository:
+    async def new(cls, **kwargs: Any) -> InfrahubReadOnlyRepository:
         if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
             raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
 
-        self = cls(service=service, **kwargs)
+        self = cls(**kwargs)
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
         log.info("Created new repository locally.", repository=self.name)
         return self
@@ -248,33 +255,32 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
 
 
+@cached(
+    TTLCache(maxsize=100, ttl=30),
+    key=lambda *_, **kwargs: hashkey(
+        kwargs.get("repository_id"), kwargs.get("name"), kwargs.get("repository_kind"), kwargs.get("commit")
+    ),
+)
+async def _get_initialized_repo(
+    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
+) -> InfrahubReadOnlyRepository | InfrahubRepository:
+    if repository_kind == InfrahubKind.REPOSITORY:
+        return await InfrahubRepository.init(id=repository_id, name=name, commit=commit, client=client)
+
+    if repository_kind == InfrahubKind.READONLYREPOSITORY:
+        return await InfrahubReadOnlyRepository.init(id=repository_id, name=name, commit=commit, client=client)
+
+    raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
+
+
+@task(
+    name="Fetch repository commit",
+    description="Retrieve a git repository at a given commit, if it does not already exist locally",
+    cache_policy=NONE,
+)
 async def get_initialized_repo(
-    repository_id: str, name: str, service: InfrahubServices, repository_kind: str, commit: str | None = None
+    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
-    if repository_kind == InfrahubKind.REPOSITORY:
-        return await InfrahubRepository.init(
-            id=repository_id, name=name, commit=commit, client=service._client, service=service
-        )
-
-    if repository_kind == InfrahubKind.READONLYREPOSITORY:
-        return await InfrahubReadOnlyRepository.init(
-            id=repository_id, name=name, commit=commit, client=service._client, service=service
-        )
-
-    raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
-
-
-async def initialize_repo(
-    location: str, repository_id: str, name: str, service: InfrahubServices, repository_kind: str
-) -> InfrahubReadOnlyRepository | InfrahubRepository:
-    if repository_kind == InfrahubKind.REPOSITORY:
-        return await InfrahubRepository.new(
-            location=location, id=repository_id, name=name, client=service._client, service=service
-        )
-
-    if repository_kind == InfrahubKind.READONLYREPOSITORY:
-        return await InfrahubReadOnlyRepository.new(
-            location=location, id=repository_id, name=name, client=service._client, service=service
-        )
-
-    raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
+    return await _get_initialized_repo(
+        client=client, repository_id=repository_id, name=name, repository_kind=repository_kind, commit=commit
+    )

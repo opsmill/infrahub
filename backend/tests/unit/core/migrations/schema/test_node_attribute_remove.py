@@ -14,7 +14,9 @@ from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -47,7 +49,7 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
 
 async def test_query_default_branch_generic_with_override(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics_unregistered: dict[str, Any]
-):
+) -> None:
     for node_schema_dict in car_person_schema_generics_unregistered["nodes"]:
         if node_schema_dict["name"] == "ElectricCar":
             node_schema_dict["attributes"].append(
@@ -98,7 +100,7 @@ async def test_query_default_branch_generic_with_override(
     assert await count_relationships(db=db) == count_rels + 4
 
 
-async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")

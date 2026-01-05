@@ -1,9 +1,15 @@
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import type React from "react";
+import { useState } from "react";
+import type { TagProps } from "react-aria-components";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
-import { Icon } from "@iconify-icon/react";
-import React, { useState } from "react";
-import { TagProps } from "react-aria-components";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeCore } from "@/entities/nodes/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
 import { FilterTag } from "./global-filter-tag";
 import { GlobalKindFilterForm } from "./global-kind-filter-form";
 
@@ -25,8 +31,8 @@ export function GlobalKindFilter({ label, name, fieldSchema, ...props }: FilterT
 
   const getFilterDisplayValue = () => {
     return currentFilter?.value
-      .map((value) => {
-        return value.display_label;
+      .map((value: NodeCore) => {
+        return getNodeLabel(value);
       })
       .join(", ");
   };
@@ -34,40 +40,40 @@ export function GlobalKindFilter({ label, name, fieldSchema, ...props }: FilterT
   return (
     <FilterTag currentFilter={currentFilter} label={label} {...props}>
       <Popover open={showFilters} onOpenChange={setShowFilters}>
-        <PopoverTrigger className="flex items-center h-6 pl-1">
+        <PopoverTrigger className="flex h-6 items-center pl-1">
           <span>{label}</span>
 
-          <div className="w-px bg-gray-300 self-stretch ml-1" />
+          <div className="ml-1 w-px self-stretch bg-gray-300" />
 
           {(currentFilter?.value === undefined || currentFilter?.value === null) && (
             <Icon
               icon="mdi:plus-circle-outline"
-              className="text-base text-gray-400 group-hover:text-custom-blue-700 transition-all mx-1"
+              className="mx-1 text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
             />
           )}
 
           {currentFilter?.value !== undefined && currentFilter?.value !== null && (
             <div
-              className="flex items-center gap-1 h-6 rounded-r-full px-1 hover:bg-gray-300 transition-all"
+              className="flex h-6 items-center gap-1 rounded-r-full px-1 transition-all hover:bg-gray-300"
               onClick={(event) => {
                 event.stopPropagation();
                 handleRemoveFilter(name);
               }}
             >
-              <div className="text-custom-blue-700 font-medium inline-flex items-center">
+              <div className="inline-flex items-center font-medium text-custom-blue-700">
                 {getFilterDisplayValue()}
               </div>
 
               <Icon
                 icon="mdi:close-circle-outline"
-                className="text-base text-gray-400 group-hover:text-custom-blue-700 transition-all"
+                className="text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
               />
             </div>
           )}
         </PopoverTrigger>
 
         <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-[1.8rem] bg-white border border-gray-200 px-2 py-1 rounded-t-md border-b-0 -left-px">
+          <div className="-top-[1.8rem] -left-px absolute rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1">
             Filter by
             <span className="ml-1 font-semibold">{label}</span>
           </div>

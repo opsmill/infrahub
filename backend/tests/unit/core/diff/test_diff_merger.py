@@ -310,7 +310,13 @@ class TestMergeDiff:
 
     def _get_empty_node_diff(self, node: Node, action: DiffAction) -> EnrichedDiffNode:
         return EnrichedNodeFactory.build(
-            uuid=node.get_id(), action=action, kind=node.get_kind(), label="", attributes=set(), relationships=set()
+            uuid=node.get_id(),
+            is_node_kind_migration=False,
+            action=action,
+            kind=node.get_kind(),
+            label="",
+            attributes=set(),
+            relationships=set(),
         )
 
     @pytest.mark.parametrize("check_idempotent", [False, True])
@@ -326,7 +332,7 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
         added_person_node_diff: EnrichedDiffNode,
         check_idempotent: bool,
-    ):
+    ) -> None:
         empty_diff_root.nodes = {added_person_node_diff}
         mock_diff_repository.get_roots_metadata.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
@@ -378,7 +384,7 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
         deleted_person_node_diff: EnrichedDiffNode,
         check_idempotent: bool,
-    ):
+    ) -> None:
         person_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
         await person_branch.delete(db=db)
         empty_diff_root.nodes = {deleted_person_node_diff}
@@ -424,7 +430,7 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
         conflict_selection: ConflictSelection,
         expect_deleted: bool,
-    ):
+    ) -> None:
         person_node_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
         await person_node_branch.delete(db=db)
         deleted_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.REMOVED)
@@ -625,7 +631,7 @@ class TestMergeDiff:
         updated_person_node_diff: EnrichedDiffNode,
         updated_car_diff: EnrichedDiffNode,
         check_idempotent: bool,
-    ):
+    ) -> None:
         car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_node_main.id)
         await car_main.owner.update(
             db=db,
@@ -635,7 +641,7 @@ class TestMergeDiff:
                 "_relation__source": person_node_main2.id,
             },
         )
-        await car_main.owner.save(db=db)
+        await car_main.save(db=db)
 
         source_branch = await create_branch(db=db, branch_name="source")
 

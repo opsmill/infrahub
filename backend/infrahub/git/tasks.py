@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -14,18 +16,24 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    ValidatorConclusion,
+)
+from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
 from infrahub.message_bus import Meta, messages
-from infrahub.services import InfrahubServices
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import get_client, get_database, get_event_service, get_message_bus, get_workflow
 
-from ..core.manager import NodeManager
 from ..core.timestamp import Timestamp
 from ..core.validators.checks_runner import run_checks_and_update_validator
-from ..log import get_log_data
+from ..log import get_log_data, get_logger
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import (
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
@@ -52,13 +60,14 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
 @flow(
     name="git-repository-add-read-write",
     flow_run_name="Adding repository {model.repository_name} in branch {model.infrahub_branch_name}",
 )
-async def add_git_repository(model: GitRepositoryAdd, service: InfrahubServices) -> None:
+async def add_git_repository(model: GitRepositoryAdd) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
@@ -66,11 +75,10 @@ async def add_git_repository(model: GitRepositoryAdd, service: InfrahubServices)
             id=model.repository_id,
             name=model.repository_name,
             location=model.location,
-            client=service.client,
+            client=get_client(),
             infrahub_branch_name=model.infrahub_branch_name,
             internal_status=model.internal_status,
             default_branch_name=model.default_branch_name,
-            service=service,
         )
         await repo.import_objects_from_files(  # type: ignore[call-overload]
             infrahub_branch_name=model.infrahub_branch_name, git_branch_name=model.default_branch_name
@@ -88,14 +96,15 @@ async def add_git_repository(model: GitRepositoryAdd, service: InfrahubServices)
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
             )
-            await service.message_bus.send(message=notification)
+            message_bus = await get_message_bus()
+            await message_bus.send(message=notification)
 
 
 @flow(
     name="git-repository-add-read-only",
     flow_run_name="Adding read only repository {model.repository_name} in branch {model.infrahub_branch_name}",
 )
-async def add_git_repository_read_only(model: GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
+async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
@@ -103,10 +112,9 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly, service:
             id=model.repository_id,
             name=model.repository_name,
             location=model.location,
-            client=service.client,
+            client=get_client(),
             ref=model.ref,
             infrahub_branch_name=model.infrahub_branch_name,
-            service=service,
         )
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)  # type: ignore[call-overload]
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
@@ -122,39 +130,82 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly, service:
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
             )
-            await service.message_bus.send(message=notification)
+            message_bus = await get_message_bus()
+            await message_bus.send(message=notification)
 
 
 @flow(name="git-repositories-create-branch", flow_run_name="Create branch '{branch}' in Git Repositories")
-async def create_branch(branch: str, branch_id: str, service: InfrahubServices) -> None:
+async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
     await add_tags(branches=[branch])
-    repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
-    batch = await service.client.create_batch()
+
+    client = get_client()
+
+    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    batch = await client.create_batch()
     for repository in repositories:
         batch.add(
             task=git_branch_create,
-            client=service.client.client,
+            client=client,
             branch=branch,
             branch_id=branch_id,
             repository_name=repository.name.value,
             repository_id=repository.id,
             repository_location=repository.location.value,
-            service=service,
+            message_bus=await get_message_bus(),
         )
 
     async for _, _ in batch.execute():
         pass
 
 
-@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
-async def sync_remote_repositories(service: InfrahubServices) -> None:
-    log = get_run_logger()
+@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+async def sync_git_repo_with_origin_and_tag_on_failure(
+    client: InfrahubClient,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
+    internal_status: str,
+    default_branch_name: str,
+    operational_status: str,
+    staging_branch: str | None = None,
+    infrahub_branch: str | None = None,
+) -> None:
+    repo = await InfrahubRepository.init(
+        id=repository_id,
+        name=repository_name,
+        location=repository_location,
+        client=client,
+        internal_status=internal_status,
+        default_branch_name=default_branch_name,
+    )
 
-    branches = await service.client.branch.all()
-    repositories = await service.client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
+    try:
+        await repo.sync(staging_branch=staging_branch)
+    except RepositoryError:
+        if operational_status == RepositoryOperationalStatus.ONLINE.value:
+            params: dict[str, Any] = {
+                "branches": [infrahub_branch] if infrahub_branch else [],
+                "nodes": [str(repository_id)],
+            }
+            await add_tags(**params)
+        raise
+
+
+@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
+async def sync_remote_repositories() -> None:
+    log = get_run_logger()
+    db = await get_database()
+
+    client = get_client()
+
+    branches = await client.branch.all()
+    async with db.start_session() as dbs:
+        repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
+        repository: CoreRepository = repository_data.repository
+
         active_internal_status = RepositoryInternalStatus.ACTIVE.value
         default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
         staging_branch = None
@@ -168,28 +219,26 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(
-                    service=service,
-                    id=repository_data.repository.id,
-                    name=repository_data.repository.name.value,
-                    location=repository_data.repository.location.value,
-                    client=service.client,
+                    id=repository.id,
+                    name=repository.name.value,
+                    location=repository.location.value,
+                    client=client,
                     internal_status=active_internal_status,
-                    default_branch_name=repository_data.repository.default_branch.value,
+                    default_branch_name=repository.default_branch.value,
                 )
             except RepositoryError as exc:
-                service.log.error(str(exc))
+                get_logger().error(str(exc))
                 init_failed = True
 
             if init_failed:
                 try:
                     repo = await InfrahubRepository.new(
-                        service=service,
-                        id=repository_data.repository.id,
-                        name=repository_data.repository.name.value,
-                        location=repository_data.repository.location.value,
-                        client=service.client,
+                        id=repository.id,
+                        name=repository.name.value,
+                        location=repository.location.value,
+                        client=client,
                         internal_status=active_internal_status,
-                        default_branch_name=repository_data.repository.default_branch.value,
+                        default_branch_name=repository.default_branch.value,
                     )
                     await repo.import_objects_from_files(  # type: ignore[call-overload]
                         git_branch_name=registry.default_branch, infrahub_branch_name=infrahub_branch
@@ -199,18 +248,29 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                     continue
 
             try:
-                await repo.sync(staging_branch=staging_branch)
+                await sync_git_repo_with_origin_and_tag_on_failure(
+                    client=client,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    repository_location=repository.location.value,
+                    internal_status=active_internal_status,
+                    default_branch_name=repository.default_branch.value,
+                    operational_status=repository.operational_status.value,
+                    staging_branch=staging_branch,
+                    infrahub_branch=infrahub_branch,
+                )
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                    location=repository_data.repository.location.value,
-                    repository_id=repository_data.repository.id,
-                    repository_name=repository_data.repository.name.value,
-                    repository_kind=repository_data.repository.get_kind(),
+                    location=repository.location.value,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    repository_kind=repository.get_kind(),
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branches[infrahub_branch].id,
                 )
-                await service.message_bus.send(message=message)
+                message_bus = await get_message_bus()
+                await message_bus.send(message=message)
             except RepositoryError as exc:
                 log.info(exc.message)
 
@@ -227,11 +287,11 @@ async def git_branch_create(
     repository_id: str,
     repository_name: str,
     repository_location: str,
-    service: InfrahubServices,
+    message_bus: InfrahubMessageBus,
 ) -> None:
     log = get_run_logger()
     repo = await InfrahubRepository.init(
-        id=repository_id, name=repository_name, location=repository_location, client=client, service=service
+        id=repository_id, name=repository_name, location=repository_location, client=client
     )
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
@@ -247,15 +307,15 @@ async def git_branch_create(
             infrahub_branch_name=branch,
             infrahub_branch_id=branch_id,
         )
-        await service.message_bus.send(message=message)
+        await message_bus.send(message=message)
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
-async def generate_artifact_definition(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def generate_artifact_definition(branch: str, context: InfrahubContext) -> None:
     await add_branch_tag(branch_name=branch)
 
-    artifact_definitions = await service.client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
+    artifact_definitions = await get_client().all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
 
     for artifact_definition in artifact_definitions:
         model = RequestArtifactDefinitionGenerate(
@@ -263,24 +323,24 @@ async def generate_artifact_definition(branch: str, context: InfrahubContext, se
             artifact_definition_id=artifact_definition.id,
             artifact_definition_name=artifact_definition.name.value,
         )
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
         )
 
 
 @flow(name="artifact-generate", flow_run_name="Generate artifact {model.artifact_name}")
-async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubServices) -> None:
+async def generate_artifact(model: RequestArtifactGenerate) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     log = get_run_logger()
     repo = await get_initialized_repo(
+        client=get_client(),
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
 
-    artifact, artifact_created = await define_artifact(model=model, service=service)
+    artifact, artifact_created = await define_artifact(model=model)
 
     try:
         result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
@@ -299,25 +359,29 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
     flow_run_name="Trigger Generation of Artifacts for {model.artifact_definition_name}",
 )
 async def generate_request_artifact_definition(
-    model: RequestArtifactDefinitionGenerate, context: InfrahubContext, service: InfrahubServices
+    model: RequestArtifactDefinitionGenerate, context: InfrahubContext
 ) -> None:
     await add_tags(branches=[model.branch])
 
-    artifact_definition = await service.client.get(
-        kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
-    )
+    client = get_client()
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
-    current_members = [member.id for member in group.members.peers]
-
-    existing_artifacts = await service.client.filters(
+    # Needs to be fetched before fetching group members otherwise `object` relationship would override
+    # existing node in client store without the `name` attribute due to #521
+    existing_artifacts = await client.filters(
         kind=CoreArtifact,
         definition__ids=[model.artifact_definition_id],
         include=["object"],
         branch=model.branch,
     )
+
+    artifact_definition = await client.get(
+        kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
+    )
+
+    group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
+
+    current_members = [member.id for member in group.members.peers]
+
     artifacts_by_member = {}
     for artifact in existing_artifacts:
         if artifact.object.id in current_members:
@@ -332,9 +396,9 @@ async def generate_request_artifact_definition(
     await transform.query.fetch()
     query = transform.query.peer
     repository = transformation_repository.peer
-    branch = await service.client.branch.get(branch_name=model.branch)
+    branch = await client.branch.get(branch_name=model.branch)
     if branch.sync_with_git:
-        repository = await service.client.get(
+        repository = await client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=model.branch, fragment=True
         )
     transform_location = ""
@@ -346,6 +410,7 @@ async def generate_request_artifact_definition(
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
 
+    batch = await client.create_batch()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
@@ -356,6 +421,7 @@ async def generate_request_artifact_definition(
             artifact_name=artifact_definition.artifact_name.value,
             artifact_id=artifact_id,
             artifact_definition=model.artifact_definition_id,
+            artifact_definition_name=model.artifact_definition_name,
             commit=repository.commit.value,
             content_type=artifact_definition.content_type.value,
             transform_type=str(transform.typename),
@@ -365,7 +431,8 @@ async def generate_request_artifact_definition(
             repository_kind=repository.get_kind(),
             branch_name=model.branch,
             query=query.name.value,
-            variables=member.extract(params=artifact_definition.parameters.value),
+            query_id=query.id,
+            variables=await member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
             target_kind=member.get_kind(),
@@ -374,13 +441,19 @@ async def generate_request_artifact_definition(
             context=context,
         )
 
-        await service.workflow.submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request_artifact_generate_model}
+        batch.add(
+            task=get_workflow().submit_workflow,
+            workflow=REQUEST_ARTIFACT_GENERATE,
+            context=context,
+            parameters={"model": request_artifact_generate_model},
         )
+
+    async for _, _ in batch.execute():
+        pass
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
-async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServices) -> None:
+async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
     log = get_run_logger()
 
@@ -394,10 +467,9 @@ async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServ
                 id=model.repository_id,
                 name=model.repository_name,
                 location=model.location,
-                client=service.client,
+                client=get_client(),
                 ref=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
-                service=service,
             )
         except RepositoryError:
             init_failed = True
@@ -407,10 +479,9 @@ async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServ
                 id=model.repository_id,
                 name=model.repository_name,
                 location=model.location,
-                client=service.client,
+                client=get_client(),
                 ref=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
-                service=service,
             )
 
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
@@ -426,29 +497,33 @@ async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServ
             infrahub_branch_name=model.infrahub_branch_name,
             infrahub_branch_id=model.infrahub_branch_id,
         )
-        await service.message_bus.send(message=message)
+        message_bus = await get_message_bus()
+        await message_bus.send(message=message)
 
 
 @flow(
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
-async def merge_git_repository(model: GitRepositoryMerge, service: InfrahubServices) -> None:
+async def merge_git_repository(model: GitRepositoryMerge) -> None:
+    log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
+    client = get_client()
+
     repo = await InfrahubRepository.init(
-        id=model.repository_id,
-        name=model.repository_name,
-        client=service.client,
-        default_branch_name=model.default_branch,
-        service=service,
+        id=model.repository_id, name=model.repository_name, client=client, default_branch_name=model.default_branch
     )
 
-    if model.internal_status == RepositoryInternalStatus.STAGING.value:
-        repo_source = await service.client.get(
+    if (
+        model.internal_status == RepositoryInternalStatus.STAGING.value
+        and model.repository_kind == InfrahubKind.REPOSITORY
+    ):
+        log.info(f"Merging {model.repository_kind}")
+        repo_source = await client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch
         )
-        repo_main = await service.client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id)
+        repo_main = await client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id)
         repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
         repo_main.sync_status.value = repo_source.sync_status.value
 
@@ -456,6 +531,28 @@ async def merge_git_repository(model: GitRepositoryMerge, service: InfrahubServi
         repo_main.commit.value = commit
 
         await repo_main.save()
+        log.info(f"Finished merging {model.repository_kind}")
+
+    elif model.repository_kind == InfrahubKind.READONLYREPOSITORY:
+        repo_source = await client.get(
+            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.source_branch
+        )
+        repo_destination = await client.get(
+            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.destination_branch
+        )
+
+        if (
+            repo_destination.ref.value != repo_source.ref.value
+            or repo_destination.commit.value != repo_source.commit.value
+        ):
+            log.info(f"Merging {model.repository_kind}")
+
+            repo_destination.ref.value = repo_source.ref.value
+            repo_destination.commit.value = repo_source.commit.value
+            await repo_destination.save()
+
+            log.info(f"Finished merging {model.repository_kind}")
+
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
@@ -470,16 +567,20 @@ async def merge_git_repository(model: GitRepositoryMerge, service: InfrahubServi
                     infrahub_branch_name=model.destination_branch,
                     infrahub_branch_id=model.destination_branch_id,
                 )
-                await service.message_bus.send(message=message)
+                message_bus = await get_message_bus()
+                await message_bus.send(message=message)
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")
-async def import_objects_from_git_repository(model: GitRepositoryImportObjects, service: InfrahubServices) -> None:
+async def import_objects_from_git_repository(model: GitRepositoryImportObjects) -> None:
     await add_branch_tag(model.infrahub_branch_name)
+
+    client = get_client()
+
     repo = await get_initialized_repo(
+        client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
@@ -491,13 +592,11 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects, 
     flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",
     persist_result=True,
 )
-async def git_repository_diff_names_only(
-    model: GitDiffNamesOnly, service: InfrahubServices
-) -> GitDiffNamesOnlyResponse:
+async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffNamesOnlyResponse:
     repo = await get_initialized_repo(
+        client=get_client(),
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
     )
     files_changed: list[str] = []
@@ -520,16 +619,14 @@ async def git_repository_diff_names_only(
     name="git-repository-user-checks-definition-trigger",
     flow_run_name="Trigger user defined checks for repository {model.repository_name}",
 )
-async def trigger_repository_user_checks_definitions(
-    model: UserCheckDefinitionData, context: InfrahubContext, service: InfrahubServices
-) -> None:
+async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionData, context: InfrahubContext) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
-    log = get_run_logger()
 
-    definition = await service.client.get(
-        kind=CoreCheckDefinition, id=model.check_definition_id, branch=model.branch_name
-    )
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    log = get_run_logger()
+    client = get_client()
+
+    definition = await client.get(kind=CoreCheckDefinition, id=model.check_definition_id, branch=model.branch_name)
+    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
     validator_execution_id = str(UUIDT())
     check_execution_ids: list[str] = []
     await proposed_change.validations.fetch()
@@ -544,10 +641,10 @@ async def trigger_repository_user_checks_definitions(
             and existing_validator.check_definition.id == model.check_definition_id
         ):
             previous_validator = existing_validator
-            service.log.info("Found the same validator", validator=previous_validator)
+            get_logger().info("Found the same validator", validator=previous_validator)
 
     validator = await start_validator(
-        service=service,
+        client=client,
         validator=previous_validator,
         validator_type=CoreUserValidator,
         proposed_change=model.proposed_change,
@@ -561,9 +658,7 @@ async def trigger_repository_user_checks_definitions(
 
     if definition.targets.id:
         # Check against a group of targets
-        await definition.targets.fetch()
-        group = definition.targets.peer
-        await group.members.fetch()
+        group = await fetch_check_definition_targets(client=client, branch=model.branch_name, definition=definition)
         check_models = []
         for relationship in group.members.peers:
             member = relationship.peer
@@ -583,7 +678,7 @@ async def trigger_repository_user_checks_definitions(
                 branch_name=model.branch_name,
                 check_definition_id=model.check_definition_id,
                 proposed_change=model.proposed_change,
-                variables=member.extract(params=definition.parameters.value),
+                variables=await member.extract(params=definition.parameters.value),
                 branch_diff=model.branch_diff,
                 timeout=definition.timeout.value,
             )
@@ -613,18 +708,20 @@ async def trigger_repository_user_checks_definitions(
     checks_in_execution = ",".join(check_execution_ids)
     log.info(f"Checks in execution {checks_in_execution}")
 
+    workflow = get_workflow()
     checks_coroutines = [
-        service.workflow.execute_workflow(
+        workflow.execute_workflow(
             workflow=GIT_REPOSITORY_USER_CHECK_RUN, parameters={"model": model}, expected_return=ValidatorConclusion
         )
         for model in check_models
     ]
 
+    event_service = await get_event_service()
     await run_checks_and_update_validator(
+        event_service=event_service,
         checks=checks_coroutines,
         validator=validator,
         context=context,
-        service=service,
         proposed_change_id=model.proposed_change,
     )
 
@@ -633,19 +730,19 @@ async def trigger_repository_user_checks_definitions(
     name="git-repository-trigger-user-checks",
     flow_run_name="Evaluating user-defined checks on repository {model.repository_name}",
 )
-async def trigger_user_checks(
-    model: TriggerRepositoryUserChecks, service: InfrahubServices, context: InfrahubContext
-) -> None:
+async def trigger_user_checks(model: TriggerRepositoryUserChecks, context: InfrahubContext) -> None:
     """Request to start validation checks on a specific repository for User-defined checks."""
-
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
-    log = get_run_logger()
 
-    repository = await service.client.get(
+    log = get_run_logger()
+    client = get_client()
+
+    repository = await client.get(
         kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch, fragment=True
     )
     await repository.checks.fetch()
 
+    workflow = get_workflow()
     for relationship in repository.checks.peers:
         log.info("Adding check for user defined check")
         check_definition = relationship.peer
@@ -660,7 +757,7 @@ async def trigger_user_checks(
             proposed_change=model.proposed_change,
             branch_diff=model.branch_diff,
         )
-        await service.workflow.submit_workflow(
+        await workflow.submit_workflow(
             workflow=GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
             context=context,
             parameters={"model": user_check_definition_model},
@@ -671,17 +768,15 @@ async def trigger_user_checks(
     name="git-repository-trigger-internal-checks",
     flow_run_name="Running repository checks for repository {model.repository}",
 )
-async def trigger_internal_checks(
-    model: TriggerRepositoryInternalChecks, service: InfrahubServices, context: InfrahubContext
-) -> None:
+async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, context: InfrahubContext) -> None:
     """Request to start validation checks on a specific repository."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
-    log = get_run_logger()
 
-    repository = await service.client.get(
-        kind=InfrahubKind.GENERICREPOSITORY, id=model.repository, branch=model.source_branch
-    )
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    log = get_run_logger()
+    client = get_client()
+
+    repository = await client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository, branch=model.source_branch)
+    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
     validator_execution_id = str(UUIDT())
     check_execution_ids: list[str] = []
@@ -696,18 +791,16 @@ async def trigger_internal_checks(
         if (
             existing_validator.typename == InfrahubKind.REPOSITORYVALIDATOR
             and existing_validator.repository.id == model.repository
+            and existing_validator.label.value == validator_name
         ):
             previous_validator = existing_validator
 
     validator = await start_validator(
-        service=service,
+        client=client,
         validator=previous_validator,
         validator_type=CoreRepositoryValidator,
         proposed_change=model.proposed_change,
-        data={
-            "label": validator_name,
-            "repository": model.repository,
-        },
+        data={"label": validator_name, "repository": model.repository},
         context=context,
     )
 
@@ -727,17 +820,19 @@ async def trigger_internal_checks(
         source_branch=model.source_branch,
         target_branch=model.target_branch,
     )
-    check_coroutine = service.workflow.execute_workflow(
+
+    check_coroutine = get_workflow().execute_workflow(
         workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
         parameters={"model": check_merge_conflict_model},
         expected_return=ValidatorConclusion,
     )
 
+    event_service = await get_event_service()
     await run_checks_and_update_validator(
+        event_service=event_service,
         checks=[check_coroutine],
         validator=validator,
         context=context,
-        service=service,
         proposed_change_id=model.proposed_change,
     )
 
@@ -746,17 +841,22 @@ async def trigger_internal_checks(
     name="git-repository-check-merge-conflict",
     flow_run_name="Check for merge conflicts between {model.source_branch} and {model.target_branch}",
 )
-async def run_check_merge_conflicts(
-    model: CheckRepositoryMergeConflicts, service: InfrahubServices
-) -> ValidatorConclusion:
+async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> ValidatorConclusion:
     """Runs a check to see if there are merge conflicts between two branches."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
+    client = get_client()
+
     success_condition = "-"
-    validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=model.validator_id)
+    validator = await client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=model.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=model.repository_id, name=model.repository_name, service=service)
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=InfrahubKind.REPOSITORY,
+    )
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=model.source_branch, dest_branch=model.target_branch)
 
@@ -779,7 +879,7 @@ async def run_check_merge_conflicts(
                 await existing_checks[conflict_key].save()
                 existing_checks.pop(conflict_key)
             else:
-                check = await service.client.create(
+                check = await client.create(
                     kind=InfrahubKind.FILECHECK,
                     data={
                         "name": conflict,
@@ -802,7 +902,7 @@ async def run_check_merge_conflicts(
 
     else:
         validator_conclusion = ValidatorConclusion.SUCCESS
-        check = await service.client.create(
+        check = await client.create(
             kind=InfrahubKind.FILECHECK,
             data={
                 "name": "Merge Conflict Check",
@@ -816,22 +916,29 @@ async def run_check_merge_conflicts(
         )
         await check.save()
 
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session() as db:
         await NodeManager.delete(db=db, nodes=list(existing_checks.values()))
 
     return validator_conclusion
 
 
 @flow(name="git-repository-run-user-check", flow_run_name="Execute user defined Check '{model.name}'")
-async def run_user_check(model: UserCheckData, service: InfrahubServices) -> ValidatorConclusion:
+async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
-    log = get_run_logger()
 
-    validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=model.validator_id)
+    log = get_run_logger()
+    client = get_client()
+
+    validator = await client.get(kind=InfrahubKind.USERVALIDATOR, id=model.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(
-        id=model.repository_id, name=model.repository_name, commit=model.commit, service=service
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        commit=model.commit,
     )
     conclusion = ValidatorConclusion.FAILURE
     severity = "critical"
@@ -840,7 +947,7 @@ async def run_user_check(model: UserCheckData, service: InfrahubServices) -> Val
             branch_name=model.branch_name,
             location=model.file_path,
             class_name=model.class_name,
-            client=service.client,
+            client=client,
             commit=model.commit,
             params=model.variables,
         )  # type: ignore[misc]
@@ -875,7 +982,7 @@ async def run_user_check(model: UserCheckData, service: InfrahubServices) -> Val
         check.severity.value = severity
         await check.save()
     else:
-        check = await service.client.create(
+        check = await client.create(
             kind=InfrahubKind.STANDARDCHECK,
             data={
                 "name": model.name,

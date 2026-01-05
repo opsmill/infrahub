@@ -3,16 +3,20 @@ from graphql import DocumentNode, GraphQLSchema
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer, MutateAction
+from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.schema.color import COLOR
+from tests.helpers.schema.tshirt import TSHIRT
 
 
 async def test_analyzer_init_with_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str, bad_query_01: str
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
     )
@@ -29,9 +33,10 @@ async def test_is_valid_simple_schema(
     query_04: str,
     query_introspection: str,
     car_person_schema_generics,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
     )
@@ -73,9 +78,10 @@ async def test_is_valid_core_schema(
     default_branch: Branch,
     query_05: str,
     register_core_models_schema,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_05, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
@@ -92,9 +98,10 @@ async def test_get_models_in_use(
     query_02: str,
     query_03: str,
     car_person_schema_generics,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
     )
@@ -140,10 +147,12 @@ async def test_get_models_in_use(
     )
     assert await gqa.get_models_in_use(types=gql_params.context.types) == {
         InfrahubKind.GENERATORGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
         InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.REPOSITORYGROUP,
         "TestCar",
         "TestElectricCar",
         "TestGazCar",
@@ -151,9 +160,11 @@ async def test_get_models_in_use(
     }
     assert gqa.query_report.impacted_models == [
         InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GENERATORGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
+        InfrahubKind.REPOSITORYGROUP,
         InfrahubKind.STANDARDGROUP,
         "TestCar",
         "TestElectricCar",
@@ -172,9 +183,10 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
 
 
-async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics):
+async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     mutation_query_no_return_data = """
     mutation {
@@ -202,12 +214,25 @@ async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_pe
     assert len(gqa.query_report.requested_read.keys()) == 1
     assert gqa.query_report.requested_read["TestElectricCar"].attributes == set()
     assert gqa.query_report.requested_read["TestElectricCar"].relationships == set()
+    assert len(gqa.query_report.queries) == 1
+    assert len(gqa.query_report.queries[0].arguments) == 1
+    assert gqa.query_report.queries[0].arguments[0] == GraphQLArgument(
+        name="data",
+        value={
+            "name": {"value": "Accord"},
+            "nbr_seats": {"value": 5},
+            "is_electric": {"value": True},
+            "owner": {"id": "John"},
+        },
+        kind="object_value",
+    )
+    assert gqa.query_report.queries[0].arguments[0].fields == ["is_electric", "name", "nbr_seats", "owner"]
 
     mutation_query_with_return_data = """
-    mutation {
+    mutation CarCreator($car_name: String!) {
         TestElectricCarCreate(
             data: {
-                name: { value: "Accord" }
+                name: { value: $car_name }
                 nbr_seats: { value: 5 }
                 is_electric: { value: true }
                 owner: { id: "John" }
@@ -250,6 +275,24 @@ async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_pe
     assert len(gqa.query_report.kind_action_map.keys()) == 2
     assert gqa.query_report.kind_action_map["TestElectricCar"] == {MutateAction.CREATE}
     assert gqa.query_report.kind_action_map["TestPerson"] == {MutateAction.UPDATE}
+    assert gqa.query_report.variables == [
+        GraphQLVariable(
+            name="car_name", type="String", required=True, is_list=False, inner_required=False, default=None
+        )
+    ]
+    assert len(gqa.query_report.queries) == 1
+    assert len(gqa.query_report.queries[0].arguments) == 1
+    assert gqa.query_report.queries[0].arguments[0] == GraphQLArgument(
+        name="data",
+        value={
+            "name": {"value": "$car_name"},
+            "nbr_seats": {"value": 5},
+            "is_electric": {"value": True},
+            "owner": {"id": "John"},
+        },
+        kind="object_value",
+    )
+    assert gqa.query_report.queries[0].arguments[0].fields == ["is_electric", "name", "nbr_seats", "owner"]
 
     mutation_query_with_simple_return_data = """
     mutation {
@@ -358,3 +401,333 @@ async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_pe
     assert gqa.query_report.requested_read["TestElectricCar"].relationships == set()
     assert gqa.query_report.requested_read["TestPerson"].attributes == {"name", "height"}
     assert gqa.query_report.requested_read["TestPerson"].relationships == set()
+
+
+async def test_query_report_single_target(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    schema_root = SchemaRoot(nodes=[COLOR, TSHIRT])
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    query_name_variable_required = """
+    query TshirtQuery($name: String!) {
+        TestingTShirt(name__value: $name) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_name_variable_optional = """
+    query TshirtQuery($name: String) {
+        TestingTShirt(name__value: $name) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_name_hardcoded = """
+    query TshirtQuery {
+        TestingTShirt(name__value: "explorer") {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_names_hardcoded = """
+    query TshirtQuery {
+        TestingTShirt(name__values: ["explorer"]) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_name_variable_required_extra_nodes = """
+    query TshirtQuery($name: String!) {
+        TestingTShirt(name__value: $name) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        TestingColor {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_name_variable_required_extra_nodes_required_filter = """
+    query TshirtQuery($name: String!) {
+        TestingTShirt(name__value: $name) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        TestingColor(name__value: "orange") {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_required_id = """
+    query TshirtQuery($id: ID!) {
+        TestingTShirt(ids: [$id]) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_required_ids = """
+    query TshirtQuery($ids: [ID!]) {
+        TestingTShirt(ids: $ids) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_optional_id = """
+    query TshirtQuery($id: ID) {
+        TestingTShirt(ids: [$id]) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    query_optional_ids = """
+    query TshirtQuery($ids: [ID!]) {
+        TestingTShirt(ids: $ids) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    color {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    gqa_required_name_variable = InfrahubGraphQLQueryAnalyzer(
+        query=query_name_variable_required,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+    gqa_optional_name_variable = InfrahubGraphQLQueryAnalyzer(
+        query=query_name_variable_optional,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_required_name_hardcoded = InfrahubGraphQLQueryAnalyzer(
+        query=query_name_hardcoded,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_names_hardcoded = InfrahubGraphQLQueryAnalyzer(
+        query=query_names_hardcoded,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_required_name_variable_extra_query = InfrahubGraphQLQueryAnalyzer(
+        query=query_name_variable_required_extra_nodes,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+    gqa_required_name_variable_extra_query_required = InfrahubGraphQLQueryAnalyzer(
+        query=query_name_variable_required_extra_nodes_required_filter,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_required_id = InfrahubGraphQLQueryAnalyzer(
+        query=query_required_id,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_required_ids = InfrahubGraphQLQueryAnalyzer(
+        query=query_required_ids,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_optional_id = InfrahubGraphQLQueryAnalyzer(
+        query=query_optional_id,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    gqa_optional_ids = InfrahubGraphQLQueryAnalyzer(
+        query=query_optional_ids,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    # A required variable matching a uniqueness constraint should indicate a single result query
+    assert gqa_required_name_variable.query_report.only_has_unique_targets is True
+    # If the variable is optional it's not a single result query
+    assert gqa_optional_name_variable.query_report.only_has_unique_targets is False
+    # A hardcoded name matching the uniqueness constraint would match a single result query
+    assert gqa_required_name_hardcoded.query_report.only_has_unique_targets is True
+    # While name_value is a uniqueness constraint when querying with "names_values" it will not be a single result query
+    assert gqa_names_hardcoded.query_report.only_has_unique_targets is False
+    # Adding a new model indicates that there this will not be a single result query
+    assert gqa_required_name_variable_extra_query.query_report.only_has_unique_targets is False
+    # Adding a uniqueness constraint to the second query let's us use it as a single result query again
+    assert gqa_required_name_variable_extra_query_required.query_report.only_has_unique_targets is True
+    # Querying by ID is always a single result query if the ID is required
+    assert gqa_required_id.query_report.only_has_unique_targets is True
+    # Querying by ID is not a single result query if the ID is required but defined as an array
+    assert gqa_required_ids.query_report.only_has_unique_targets is False
+    # Querying by ID is not always a single result query if the ID is optional
+    assert gqa_optional_id.query_report.only_has_unique_targets is False
+    # Querying by ID is not always a single result query if the ID is an optional array
+    assert gqa_optional_ids.query_report.only_has_unique_targets is False

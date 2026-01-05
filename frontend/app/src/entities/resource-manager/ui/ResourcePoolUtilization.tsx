@@ -1,5 +1,5 @@
 import MultipleProgressBar, {
-  MultipleProgressBarProps,
+  type MultipleProgressBarProps,
 } from "@/shared/components/stats/multiple-progress-bar";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
@@ -19,7 +19,7 @@ const ResourcePoolUtilization = ({
   ...props
 }: ResourcePoolUtilizationProps) => {
   return (
-    <div className="w-full flex gap-1 items-center">
+    <div className="flex w-full items-center gap-1">
       <MultipleProgressBar
         className={classNames("h-3", className)}
         elements={[
@@ -55,7 +55,7 @@ const ResourcePoolUtilization = ({
         }
         enabled
       >
-        <span className="text-custom-blue-700 font-medium w-8 text-right">
+        <span className="w-8 text-right font-medium text-custom-blue-700">
           {roundNumber(utilizationOverall, 0)}%
         </span>
       </Tooltip>
@@ -74,7 +74,7 @@ const ResourceUtilizationTooltipContent = ({
 }: ResourceUtilizationTooltipContentProps) => {
   return (
     <div>
-      <p className="text-xs text-center">{roundNumber(value)}%</p>
+      <p className="text-center text-xs">{roundNumber(value)}%</p>
       <p className="text-xxs">{description}</p>
     </div>
   );

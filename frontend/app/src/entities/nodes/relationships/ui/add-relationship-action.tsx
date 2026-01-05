@@ -1,13 +1,15 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import type React from "react";
+import { useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm from "@/shared/components/form/object-form";
-import React, { useState } from "react";
+import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
+
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface AddRelationshipActionProps {
   peer: string;
-  onSuccess?: (newObject: Node) => void;
+  onSuccess?: ObjectFormProps["onSuccess"];
 }
 
 export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
@@ -22,10 +24,10 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
   return (
     <div className="p-2 pt-0">
       <Button
-        className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+        className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
         onClick={() => setOpen(!open)}
       >
-        + Add new {schema.label}
+        + Add new <span className="ml-1 truncate">{schema.label}</span>
       </Button>
 
       <SlideOver
@@ -43,16 +45,10 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
       >
         <ObjectForm
           kind={peer}
-          onSuccess={({ object }) => {
+          onSuccess={async (newNode) => {
             setOpen(false);
             if (!onSuccess) return;
-
-            const newNode: Node = {
-              id: object.id,
-              display_label: object.display_label,
-              __typename: peer,
-            };
-            onSuccess(newNode);
+            await onSuccess(newNode);
           }}
           onCancel={() => setOpen(false)}
           data-testid="new-object-form"

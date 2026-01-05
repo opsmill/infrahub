@@ -1,89 +1,87 @@
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
-interface PcCloseButtonProps extends ButtonProps {
-  proposedChangeId: string;
-  state: "closed" | "open" | "merged";
-}
+import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
-export const PcCloseButton = ({
-  proposedChangeId,
-  state,
-  disabled,
-  ...props
-}: PcCloseButtonProps) => {
-  const [isLoadingClose, setIsLoadingClose] = useState(false);
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
+import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
-  const handleClose = async () => {
-    setIsLoadingClose(true);
+import type { ProposedChangeActionButtonProps } from "./types";
 
-    const newState = state === "closed" ? "open" : "closed";
+export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
+  const { close } = usePcActionsContext();
 
-    const data = {
-      state: {
-        value: newState,
-      },
-    };
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-    try {
-      const mutationString = updateObjectWithId({
-        kind: PROPOSED_CHANGES_OBJECT,
-        data: stringifyWithoutQuotes({
-          id: proposedChangeId,
-          ...data,
-        }),
+  const { mutate, isPending } = useUpdateObjectMutation({
+    onSuccess: async () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: { branch: branch?.name, date },
-      });
-
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
+    },
+    onError: () => {
       toast(
         <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`Proposed change ${state === "closed" ? "opened" : "closed"}`}
+          type={ALERT_TYPES.ERROR}
+          message={"An error occurred while closing the propsoed change"}
         />
       );
+    },
+  });
 
-      await graphqlClient.reFetchObservableQueries();
-      setIsLoadingClose(false);
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
 
-      return;
-    } catch (e) {
-      console.error("Something went wrong while updating the object:", e);
-
-      setIsLoadingClose(false);
-
-      return;
-    }
+    mutate({
+      data: {
+        id: proposedChangesDetails.id,
+        state: {
+          value: CLOSE_STATE,
+        },
+      },
+      objectKind: PROPOSED_CHANGES_OBJECT,
+    });
   };
 
+  const tooltipContent = close.unavailability_reason;
+  const tooltipEnabled = !close.available;
+
   return (
-    <Button
-      variant="danger"
-      onClick={handleClose}
-      isLoading={isLoadingClose}
-      disabled={disabled || state === "merged"}
-      {...props}
-    >
-      {state === "closed" ? "Re-open" : "Close"}
-    </Button>
+    <>
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+        <Button
+          className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
+          onClick={handleAction}
+          variant={"danger"}
+          isLoading={isPending}
+          disabled={tooltipEnabled || isPending}
+        >
+          Close
+        </Button>
+      </Tooltip>
+
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"danger"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

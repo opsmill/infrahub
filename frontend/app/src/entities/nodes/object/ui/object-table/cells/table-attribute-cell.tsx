@@ -1,13 +1,14 @@
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { warnUnexpectedType } from "@/shared/utils/common";
+
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
-import { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
-import { DateDisplay } from "@/shared/components/display/date-display";
-import { warnUnexpectedType } from "@/shared/utils/common";
+import type { AttributeKind, AttributeSchema } from "@/entities/schema/types";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
@@ -16,7 +17,11 @@ export interface TableAttributeCellProps {
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
   const attributeKind = attributeSchema.kind as AttributeKind;
-  if (!attributeData || (!attributeData.value && attributeData.value !== 0)) return "-";
+  if (
+    !attributeData ||
+    (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false)
+  )
+    return "-";
 
   switch (attributeKind) {
     case ATTRIBUTE_KIND.DROPDOWN: {

@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
 from graphql.type.definition import GraphQLNonNull
-from infrahub_sdk.utils import deep_merge_dict, extract_fields
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType
@@ -10,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.field_extractor import extract_graphql_fields
 
 from ..loaders.node import GetManyParams, NodeDataLoader
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -42,7 +42,7 @@ class SingleRelationshipResolver:
         graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         node_fields = fields.get("node", {})
         property_fields = fields.get("properties", {})
         for key, value in property_fields.items():
@@ -107,9 +107,9 @@ class SingleRelationshipResolver:
         filters = {
             f"{field_name}__{key}": value
             for key, value in kwargs.items()
-            if "__" in key and value or key in ["id", "ids"]
+            if ("__" in key and value) or key in ["id", "ids"]
         }
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
                 ids=[parent_id],
@@ -141,17 +141,8 @@ class SingleRelationshipResolver:
         except (KeyError, IndexError):
             return None
 
-        if node_fields and "display_label" in node_fields:
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=rel_schema.peer)
-            if display_label_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
-
         if node_fields and "hfid" in node_fields:
-            peer_schema = db.schema.get(name=rel_schema.peer, branch=branch, duplicate=False)
-            hfid_fields = peer_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=hfid_fields)
+            node_fields["human_friendly_id"] = None
 
         query_params = GetManyParams(
             fields=node_fields,
@@ -171,5 +162,5 @@ class SingleRelationshipResolver:
         node = await loader.load(key=peer_id)
         if not node:
             return None
-        async with db.start_session() as dbs:
+        async with db.start_session(read_only=True) as dbs:
             return await node.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)

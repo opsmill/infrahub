@@ -51,3 +51,7 @@ class InfrahubCache(ABC):
     @classmethod
     async def new(cls) -> InfrahubCache:
         raise NotImplementedError()
+
+    @abstractmethod
+    async def close_connection(self) -> None:
+        raise NotImplementedError()

@@ -1,5 +1,6 @@
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -11,11 +12,13 @@ from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import TICKET
+from tests.helpers.schema import COLOR, TICKET, TSHIRT
 from tests.node_creation import create_and_save
 
 
-async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+async def test_upsert_existing_simple_object_by_id(
+    db: InfrahubDatabase, person_john_main: Node, branch: Branch
+) -> None:
     query = (
         """
     mutation {
@@ -26,7 +29,8 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -46,7 +50,7 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
 
 async def test_upsert_existing_simple_object_by_default_filter(
     db: InfrahubDatabase, person_schema_default_filter, default_branch
-):
+) -> None:
     registry.schema.register_schema(schema=person_schema_default_filter)
 
     person = await Node.init(db=db, schema="TestPersonDF")
@@ -67,7 +71,8 @@ async def test_upsert_existing_simple_object_by_default_filter(
     }
     """
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -105,8 +110,9 @@ async def test_upsert_event_on_no_change(
     """
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+        db=db, branch=branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -130,12 +136,13 @@ async def test_upsert_event_on_no_change(
     assert len(memory_event.events) == 1
     event = memory_event.events[0]
     assert isinstance(event, NodeMutatedEvent)
-    assert sorted(event.changelog.attributes.keys()) == ["height", "name"]
+    assert sorted(event.changelog.attributes.keys()) == ["display_label", "height", "human_friendly_id", "name"]
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+        db=db, branch=branch, service=service, account_session=session_first_account
     )
     result_second_time = await graphql(
         schema=gql_params.schema,
@@ -153,7 +160,7 @@ async def test_upsert_event_on_no_change(
     assert len(memory_event.events) == 0
 
 
-async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main, branch: Branch):
+async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main, branch: Branch) -> None:
     query = """
     mutation {
         TestPersonUpsert(data: {name: { value: "%s"}, height: {value: %s}}) {
@@ -165,7 +172,8 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
     }
     """ % ("Ellen Ripley", 179)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -186,7 +194,7 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
 
 async def test_id_for_other_schema_raises_error(
     db: InfrahubDatabase, person_john_main, car_accord_main, branch: Branch
-):
+) -> None:
     query = (
         """
     mutation {
@@ -197,7 +205,8 @@ async def test_id_for_other_schema_raises_error(
     """
         % car_accord_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -213,7 +222,7 @@ async def test_id_for_other_schema_raises_error(
 
 async def test_update_by_id_to_nonunique_value_raises_error(
     db: InfrahubDatabase, person_john_main, person_jim_main, branch: Branch
-):
+) -> None:
     query = (
         """
     mutation {
@@ -224,7 +233,8 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -238,7 +248,9 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     assert any(expected_error in error.message for error in result.errors)
 
 
-async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch):
+async def test_non_unique_value_raises_error(
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
+) -> None:
     _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
 
     # Make sure correct raised error is raised while violating uniqueness constraint of a non hfid-related attribute.
@@ -250,7 +262,8 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema
     }
     """
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -258,13 +271,14 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema
         root_value=None,
         variable_values={},
     )
+    assert result.errors
     assert len(result.errors) == 1
     assert "Violates uniqueness constraint 'bag'" in result.errors[0].message
 
 
 async def test_upsert_existing_with_enough_information_for_hfid(
     db: InfrahubDatabase, person_schema_unique_attr_non_hfid, default_branch: Branch
-):
+) -> None:
     car_name = "Ferramboghinierati"
     car_color_1 = "blue"
     car_color_2 = "red"
@@ -301,7 +315,8 @@ async def test_upsert_existing_with_enough_information_for_hfid(
         }
     }
     """ % {"id1": thing1.id}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -334,7 +349,8 @@ async def test_upsert_existing_with_enough_information_for_hfid(
         }
     }
     """ % {"id1": thing1.id, "id2": thing2.id}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -348,7 +364,8 @@ async def test_upsert_existing_with_enough_information_for_hfid(
     # delete the TestThing.car relationship and try again
     await thing2.car.update(db=db, data=[None])
     await thing2.save(db=db)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -357,6 +374,7 @@ async def test_upsert_existing_with_enough_information_for_hfid(
         variable_values={"car_name": car_name, "owner_id": fred.id, "color": car_color_2},
     )
     assert not result.errors
+    assert result.data
     assert result.data["TestCarUpsert"]["object"]["id"] == car.id
     assert result.data["TestCarUpsert"]["object"]["color"]["value"] == car_color_2
     assert result.data["TestCarUpsert"]["object"]["owner"]["node"]["id"] == fred.id
@@ -375,7 +393,7 @@ async def test_upsert_existing_with_enough_information_for_hfid(
 
 async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
     db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
-):
+) -> None:
     _ = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
 
     query = """
@@ -385,8 +403,8 @@ async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
         }
     }
     """
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -397,7 +415,7 @@ async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
     assert result.errors is None
 
 
-async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -431,7 +449,8 @@ async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_p
     """
         % person1.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -445,7 +464,7 @@ async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_p
     assert result.data["TestDogUpsert"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
 
-async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -486,7 +505,8 @@ async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person
         % person1.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -543,7 +563,8 @@ async def test_with_constructed_hfid(db: InfrahubDatabase, default_branch, anima
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     # Create initial node
     initial_weight = 14
@@ -621,7 +642,8 @@ async def test_with_constructed_hfid_with_numbers(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     update_result = await graphql(
         schema=gql_params.schema,
@@ -638,3 +660,119 @@ async def test_with_constructed_hfid_with_numbers(
         "description": {"value": "Here is the update"},
         "id": first_ticket.id,
     }
+
+
+async def test_upsert_node_on_branch_with_hfid_on_default(
+    db: InfrahubDatabase, default_branch, car_person_schema
+) -> None:
+    # create a node on the default branch after the branch is created
+    branch = await create_branch(branch_name="test-branch", db=db)
+    person = await create_and_save(db=db, branch=default_branch, schema="TestPerson", name="John", height=182)
+
+    # try to upsert a node on the branch with a matching hfid
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: { value: "John"}, height: {value: 183}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert (
+        f"Node {person.id} / TestPerson uses this human-friendly ID, but does not exist on this branch"
+        in result.errors[0].message
+    )
+    assert f"Please rebase this branch to access {person.id} / TestPerson" in result.errors[0].message
+
+
+async def test_upsert_with_required_relationship_from_template(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that we can use a template to populate required relationships in upsert mutations.
+
+    Steps:
+      - Create a color node and a Tshirt template node.
+      - Try to upsert a Tshirt without specifying color or template (should fail).
+      - Upsert a Tshirt specifying the template (should succeed and apply the color from the template).
+    """
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[TSHIRT, COLOR]), branch=default_branch.name)
+
+    # Create a color node
+    color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+    await color_node.new(db=db, name="Red", description="Bright Red Color")
+    await color_node.save(db=db)
+
+    # Create a Tshirt template node with the color relationship set
+    template_node = await Node.init(db=db, schema="TemplateTestingTShirt", branch=default_branch)
+    await template_node.new(db=db, template_name="Basic Red Tshirt", color=color_node)
+    await template_node.save(db=db)
+
+    # Try to upsert a TShirt without specifying color or template (should fail)
+    query_missing_required = """
+    mutation {
+        TestingTShirtUpsert(data: {name: {value: "My Shirt"} }) {
+            ok
+            object {
+                id
+                name { value }
+                color { node { id name { value } } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result_missing = await graphql(
+        schema=gql_params.schema,
+        source=query_missing_required,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result_missing.errors
+    assert "color is mandatory for TestingTShirt at color" in str(result_missing.errors)
+
+    # Upsert a Tshirt specifying the template (should succeed and apply the color from the template)
+    query_with_template = """
+    mutation UpsertTShirt($template_id: String!) {
+        TestingTShirtUpsert(data: {
+            name: {value: "My Tshirt"},
+            object_template: {id: $template_id}
+        }) {
+            ok
+            object {
+                id
+                name { value }
+                color { node { id name { value } } }
+            }
+        }
+    }
+    """
+
+    result_with_template = await graphql(
+        schema=gql_params.schema,
+        source=query_with_template,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"template_id": template_node.id},
+    )
+    assert result_with_template.errors is None
+    assert result_with_template.data
+    assert result_with_template.data["TestingTShirtUpsert"]["ok"] is True
+    tshirt_obj = result_with_template.data["TestingTShirtUpsert"]["object"]
+    assert tshirt_obj["name"]["value"] == "My Tshirt"
+    assert tshirt_obj["color"]["node"]["id"] == color_node.id
+    assert tshirt_obj["color"]["node"]["name"]["value"] == "Red"

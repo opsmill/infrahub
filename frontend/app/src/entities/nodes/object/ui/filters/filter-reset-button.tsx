@@ -1,8 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+import { Button } from "react-aria-components";
+
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Button } from "react-aria-components";
 
 export const FilterResetButton = () => {
   const [, setFilters] = useFilters();
@@ -15,7 +16,7 @@ export const FilterResetButton = () => {
     <Button
       className={classNames(
         focusVisibleStyle,
-        "text-neutral-800 whitespace-nowrap rounded-full inline-flex items-center px-2 py-0.5 text-sm border border-transparent",
+        "inline-flex items-center whitespace-nowrap rounded-full border border-transparent px-2 py-0.5 text-neutral-800 text-sm",
         "data-hovered:bg-gray-100"
       )}
       onPress={handleResetFilters}

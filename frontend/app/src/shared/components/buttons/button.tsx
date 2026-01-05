@@ -1,6 +1,7 @@
+import { type ButtonHTMLAttributes, forwardRef } from "react";
+
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
-import { ButtonHTMLAttributes, forwardRef } from "react";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   type?: "button" | "reset" | "submit";
@@ -97,7 +98,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       event.stopPropagation();
     }
 
-    onClick && onClick(event);
+    onClick?.(event);
   };
 
   return (

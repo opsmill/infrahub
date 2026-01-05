@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccountGroup
 from infrahub.database import InfrahubDatabase
-from infrahub.permissions import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.account import GlobalPermission, ObjectPermission
@@ -20,8 +18,6 @@ async def define_permissions(
     object_permissions: list[ObjectPermission] | None = None,
     global_permissions: list[GlobalPermission] | None = None,
 ) -> None:
-    registry.permission_backends = [LocalPermissionBackend()]
-
     object_permissions = object_permissions or []
     global_permissions = global_permissions or []
     permissions = []

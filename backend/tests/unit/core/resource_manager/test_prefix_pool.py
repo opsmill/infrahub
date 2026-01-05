@@ -16,7 +16,7 @@ async def test_get_next(
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
@@ -43,13 +43,51 @@ async def test_get_next(
     assert next_prefix.id == next_prefix2.id
 
 
+async def test_get_next_weighted(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_prefix_v4,
+) -> None:
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+    net141 = ip_dataset_prefix_v4["net141"]
+
+    net140.allocation_weight.value = 100
+    await net140.save(db=db)
+    net141.allocation_weight.value = 200
+    await net141.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
+    await pool.save(db=db)
+
+    assert pool
+
+    next_subnet = await pool.get_next(db=db, prefixlen=17)
+    assert str(next_subnet) == "10.11.0.0/17"
+
+    next_prefix = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert next_prefix
+
+    next_prefix2 = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert next_prefix.id == next_prefix2.id
+
+
 async def test_get_one(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
@@ -95,7 +133,7 @@ async def test_get_all_resources(
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]

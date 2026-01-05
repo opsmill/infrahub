@@ -1,69 +1,62 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { resolveConflict } from "@/entities/diff/api/resolveConflict";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { toast } from "react-toastify";
+
+import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { toast } from "react-toastify";
 
-export const Conflict = ({ conflict }: any) => {
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
-  const [isLoading, setIsLoading] = useState(false);
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
+import { useResolveConflictMutation } from "@/entities/diff/domain/resolve-conflict.mutation";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+
+interface ConflictData {
+  id: string;
+  selectedBranch?: ConflictSelection;
+}
+
+export const Conflict = ({ id, selectedBranch }: ConflictData) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const { mutate, isPending } = useResolveConflictMutation();
 
   const { isAuthenticated } = useAuth();
 
-  const handleAccept = async (conflictValue: string) => {
-    try {
-      setIsLoading(true);
+  const handleAccept = (conflictValue: ConflictSelection) => {
+    const newValue = conflictValue === selectedBranch ? null : conflictValue;
 
-      const newValue = conflictValue === conflict.selected_branch ? null : conflictValue;
+    mutate(
+      {
+        id,
+        selection: newValue,
+      },
+      {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
+          await graphqlClient.refetchQueries({
+            include: ["TASK_DETAILS_CHECK"],
+          });
 
-      const mutation = gql`
-        ${resolveConflict}
-      `;
+          const message = newValue
+            ? "Conflict marked as resolved"
+            : "Conflict marked as not resolved";
 
-      await graphqlClient.mutate({
-        mutation,
-        variables: {
-          id: conflict.uuid,
-          selection: newValue,
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
         },
-        context: {
-          branch: currentBranch?.name,
-          date,
+        onError: ({ message }) => {
+          toast(<Alert type={ALERT_TYPES.ERROR} message={message} />);
         },
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ["diff-tree"] });
-      await graphqlClient.refetchQueries({
-        include: ["TASK_DETAILS_CHECK"],
-      });
-
-      const message = newValue ? "Conflict marked as resolved" : "Conflict marked as not resolved";
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
-
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error while updateing the conflict: ", error);
-      setIsLoading(false);
-    }
+      }
+    );
   };
 
   return (
     <div className="flex items-center justify-end gap-2 p-2">
-      {isLoading && <Spinner />}
+      {isPending && <Spinner />}
 
       <span className="text-xs">Choose the branch to resolve the conflict:</span>
 
@@ -71,19 +64,17 @@ export const Conflict = ({ conflict }: any) => {
         <div className="flex items-center gap-2">
           <Checkbox
             id={"base"}
-            disabled={isLoading || !isAuthenticated}
-            checked={conflict.selected_branch === "BASE_BRANCH"}
+            disabled={isPending || !isAuthenticated}
+            checked={selectedBranch === "BASE_BRANCH"}
             onChange={() => handleAccept("BASE_BRANCH")}
           />
           <label
             htmlFor={"base"}
-            className={
-              conflict.selected_branch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"
-            }
+            className={selectedBranch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"}
           >
             <Badge variant="green">
               <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.destination_branch?.value}
+              {proposedChangesDetails.destination_branch?.value ?? "Base Branch"}
             </Badge>
           </label>
         </div>
@@ -91,19 +82,17 @@ export const Conflict = ({ conflict }: any) => {
         <div className="flex items-center gap-2">
           <Checkbox
             id={"diff"}
-            disabled={isLoading || !isAuthenticated}
-            checked={conflict.selected_branch === "DIFF_BRANCH"}
+            disabled={isPending || !isAuthenticated}
+            checked={selectedBranch === "DIFF_BRANCH"}
             onChange={() => handleAccept("DIFF_BRANCH")}
           />
           <label
             htmlFor={"diff"}
-            className={
-              conflict.selected_branch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"
-            }
+            className={selectedBranch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"}
           >
             <Badge variant="blue">
               <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.source_branch?.value}
+              {proposedChangesDetails.source_branch?.value ?? "Diff Branch"}
             </Badge>
           </label>
         </div>

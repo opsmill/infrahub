@@ -32,7 +32,7 @@ def generate_automation(
     )
 
 
-async def test_load_from_prefect():
+async def test_load_from_prefect() -> None:
     automations: list[Automation] = [
         generate_automation(
             name=PROCESS_AUTOMATION_NAME.format(

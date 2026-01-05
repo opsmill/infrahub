@@ -1,22 +1,26 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { NodeSchema } from "@/entities/schema/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import {
-  getRootSchemaOfHierarchicalSchema,
-  isHierarchicalSchema,
-} from "@/entities/schema/utils/is-hierarchical-schema";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+import type React from "react";
+import { useState } from "react";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
 import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
-import React, { useState } from "react";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { NodeSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import {
+  getRootSchemaOfHierarchicalSchema,
+  isHierarchicalSchema,
+} from "@/entities/schema/utils/is-hierarchical-schema";
 
 export interface RelationshipHierarchicalComboboxListProps {
   peer: string;
@@ -103,8 +107,8 @@ const HierarchicalExplorer = ({
 
     return (
       <>
-        <Badge className="ml-2 mt-1 self-start cursor-pointer" onClick={handleRemoveNode}>
-          {selectNode.display_label} &times;
+        <Badge className="mt-1 ml-2 cursor-pointer self-start" onClick={handleRemoveNode}>
+          {getNodeLabel(selectNode)} &times;
         </Badge>
 
         <HierarchicalExplorer
@@ -149,7 +153,7 @@ const HierarchicalExplorer = ({
 
       <CommandList>
         {isPending ? (
-          <Spinner className="flex justify-center m-2" />
+          <Spinner className="m-2 flex justify-center" />
         ) : (
           <>
             <ComboboxEmpty>No results found</ComboboxEmpty>
@@ -166,7 +170,7 @@ const HierarchicalExplorer = ({
                     selectedValue={value?.id}
                     onSelect={() => handleSelect(node)}
                   >
-                    <span className="truncate">{node.display_label}</span>
+                    <span className="truncate">{getNodeLabel(node)}</span>
                     <span className="ml-auto text-gray-500 text-xs">{schema?.label}</span>
                   </ComboboxItem>
                 );

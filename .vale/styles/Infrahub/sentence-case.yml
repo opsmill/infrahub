@@ -11,6 +11,8 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
+  - AI
+  - Allocate VLAN ID
   - Alpha
   - Ansible
   - API
@@ -20,14 +22,19 @@ exceptions:
   - BGP
   - CA certificates
   - CI
+  - CI/CD
   - Codespaces
   - Computed Attribute
   - Computed Attributes
   - CoreArtifactTarget
-  - CoreRepository
   - CoreGroup
+  - CSS-like cascading
+  - CoreRepository
+  - Create an application in Entra ID
+  - Determine your redirect URI
   - Docker Compose
   - E2E
+  - Emma
   - Generics
   - Git
   - GitHub
@@ -36,37 +43,60 @@ exceptions:
   - GitPod
   - GraphQL
   - GraphQLQuery
-  - include_in_menu & menu_placement
+  - HAProxy
   - Helm
   - High Availability
   - Human Friendly Identifier
+  - IDE
+  - include_in_menu & menu_placement
   - Infrahub
   - Infrahub Enterprise
   - infrahubctl
-  - IPHost
   - IP
-  - IPAM
-  - IPNetwork
   - IP Fabric
+  - IPAM
+  - IPHost
+  - IPNetwork
   - JavaScript
   - JetStream
   - Jinja
   - Jinja2
   - JWT
+  - Kubernetes
+  - LibreNMS
   - Namespace
   - NATS
+  - Nautobot
+  - Neo4j
+  - NGINX
+  - Netbox
+  - NetBox
+  - Netpicker
+  - NetPicker
   - Node
+  - NumberPool
+  - OAuth 2.0
+  - OAuth 2.0 configuration example
+  - OAuth 2.0 parameters
+  - OAuth 2.0 vs OpenID Connect
   - OAuth2
+  - Observium
   - OIDC
   - Open ID Connect
+  - OpenID Connect
+  - OpenID Connect (OIDC)
   - OpsMill
+  - Peering Manager
   - Pydantic
   - Python
   - RabbitMQ
+  - Redirect URI formats
   - REST
   - RFile
+  - Schema
   - SDK
   - Single sign-on
+  - Slurp'it
   - SSO
   - Terraform
   - TLS
@@ -78,3 +108,20 @@ exceptions:
   - VS Code
   - VS Code extensions
   - WebUI
+  - Slurp'it
+  - IDE
+  - AI
+  - OpenID Connect
+  - OAuth 2.0
+  - OAuth 2.0 vs OpenID Connect
+  - OpenID Connect (OIDC)
+  - Emma
+  - Helm
+  - Kubernetes
+  - Allocate VLAN ID
+  - Determine your redirect URI
+  - Create an application in Entra ID
+  - Configure Infrahub
+  - OAuth 2.0 parameters
+  - Redirect URI formats
+  - OAuth 2.0 configuration example

@@ -4,7 +4,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import (
+    create_branch,
     get_default_ipnamespace,
 )
 from infrahub.core.ipam.reconciler import IpamReconciler
@@ -14,13 +16,24 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 
 
+async def test_missing_value_raises_error(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node
+) -> None:
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    with pytest.raises(NodeNotFoundError) as exc_info:
+        await reconciler.reconcile(ip_value=ipaddress.ip_network("10.10.0.0/24"), namespace=default_ipnamespace)
+
+    assert exc_info.value.node_type == InfrahubKind.IPPREFIX
+    assert exc_info.value.identifier == "10.10.0.0/24"
+
+
 async def test_first_prefix(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema,
     register_ipam_schema,
     default_ipnamespace: Node,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     net161 = await Node.init(db=db, schema=prefix_schema)
     await net161.new(db=db, prefix="2001:db8::/48", ip_namespace=default_ipnamespace)
@@ -35,7 +48,7 @@ async def test_first_prefix(
     assert all_prefixes[0].is_top_level.value is True
 
 
-async def test_invalid_ip_node_raises_error(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_invalid_ip_node_raises_error(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
 
     reconciler = IpamReconciler(db=db, branch=default_branch)
@@ -43,7 +56,7 @@ async def test_invalid_ip_node_raises_error(db: InfrahubDatabase, default_branch
         await reconciler.reconcile(ip_value=ipaddress.ip_interface("192.168.1.1"), namespace=default_ipnamespace)
 
 
-async def test_ipprefix_reconciler_no_change(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconciler_no_change(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     prefix_140 = ip_dataset_01["net140"]
@@ -64,7 +77,9 @@ async def test_ipprefix_reconciler_no_change(db: InfrahubDatabase, default_branc
     assert prefix_146_children_rels[0].peer_id == updated_prefix_140.id
 
 
-async def test_ipprefix_reconciler_new_prefix_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconciler_new_prefix_update(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
@@ -114,7 +129,9 @@ async def test_ipprefix_reconciler_new_prefix_update(db: InfrahubDatabase, defau
         assert child_parent_rels[0].peer_id == updated_prefix.id
 
 
-async def test_ipprefix_reconciler_new_address_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconciler_new_address_update(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
@@ -139,7 +156,7 @@ async def test_ipprefix_reconciler_new_address_update(db: InfrahubDatabase, defa
     assert ip_address_rels[0].peer_id == new_address.id
 
 
-async def test_ip_prefix_reconciler_delete_prefix(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ip_prefix_reconciler_delete_prefix(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     namespace = ip_dataset_01["ns1"]
@@ -177,7 +194,7 @@ async def test_ip_prefix_reconciler_delete_prefix(db: InfrahubDatabase, default_
         assert child_parent_rels[0].peer_id == updated_parent.id
 
 
-async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     namespace = ip_dataset_01["ns1"]
@@ -200,7 +217,9 @@ async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default
     assert len(updated_address_child_rels) == 0
 
 
-async def test_ipprefix_reconciler_prefix_value_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconciler_prefix_value_update(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     namespace = ip_dataset_01["ns1"]
@@ -248,3 +267,170 @@ async def test_ipprefix_reconciler_prefix_value_update(db: InfrahubDatabase, def
         child_parent_rels = await child.ip_prefix.get_relationships(db=db)
         assert len(child_parent_rels) == 1
         assert child_parent_rels[0].peer_id == updated_prefix.id
+
+
+async def test_ipprefix_reconciler_increment_prefix_length_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_143 = ip_dataset_01["net143"]
+
+    branch = await create_branch(db=db, branch_name="branch-prefix-update")
+    net_143_branch = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    # update from 10.10.1.0/27 to 10.10.1.0/28
+    net_143_branch.prefix.value = "10.10.1.0/28"
+    await net_143_branch.save(db=db)
+
+    ip_network = ipaddress.ip_network(net_143_branch.prefix.value)
+    reconciler = IpamReconciler(db=db, branch=branch)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check prefix is updated
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    assert updated_prefix.prefix.value == "10.10.1.0/28"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 0
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 1
+    assert updated_address_rels[0].peer_id == ip_dataset_01["address11"].id
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 1
+    assert updated_parent_rel[0].peer_id == ip_dataset_01["net142"].id
+
+
+async def test_ipprefix_reconciler_decrement_prefix_length_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_142 = ip_dataset_01["net142"]
+    net_143 = ip_dataset_01["net143"]
+
+    branch = await create_branch(db=db, branch_name="branch-prefix-update")
+    # update from 10.10.1.0/27 to 10.10.0.0/23
+    net_143_branch = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    net_143_branch.prefix.value = "10.10.0.0/23"
+    await net_143_branch.save(db=db)
+    # update from 10.10.1.0/24 to 10.10.1.0/26
+    net_142_branch = await NodeManager.get_one(db=db, branch=branch, id=net_142.id)
+    net_142_branch.prefix.value = "10.10.1.0/26"
+    await net_142_branch.save(db=db)
+    # so net142 should not be a parent of net143 on this branch
+
+    ip_network = ipaddress.ip_network(net_142_branch.prefix.value)
+    reconciler = IpamReconciler(db=db, branch=branch)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check prefix is updated
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_142.id)
+    assert updated_prefix.prefix.value == "10.10.1.0/26"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 0
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 1
+    assert updated_address_rels[0].peer_id == ip_dataset_01["address11"].id
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 1
+    assert updated_parent_rel[0].peer_id == net_143_branch.id
+
+
+async def test_namespace_change_on_branch(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    namespace_2 = ip_dataset_01["ns2"]
+    net_140 = ip_dataset_01["net140"]
+    net_142 = ip_dataset_01["net142"]
+    net_143 = ip_dataset_01["net143"]
+
+    branch = await create_branch(db=db, branch_name="branch-prefix-update")
+    # update namespaces for parent and child on branch
+    net_140_branch = await NodeManager.get_one(db=db, branch=branch, id=net_140.id)
+    await net_140_branch.ip_namespace.update(db=db, data=namespace_2)
+    await net_140_branch.save(db=db)
+    net_143_branch = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    await net_143_branch.ip_namespace.update(db=db, data=namespace_2)
+    await net_143_branch.save(db=db)
+
+    ip_network = ipaddress.ip_network(net_142.prefix.value)
+    reconciler = IpamReconciler(db=db, branch=branch)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check prefix is updated
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_142.id)
+    assert updated_prefix.prefix.value == "10.10.1.0/24"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 0
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 1
+    assert updated_address_rels[0].peer_id == ip_dataset_01["address11"].id
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 1
+    assert updated_parent_rel[0].peer_id == ip_dataset_01["net146"].id
+
+
+async def test_ipprefix_swap_values_on_branch(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_140 = ip_dataset_01["net140"]
+    net_143 = ip_dataset_01["net143"]
+
+    branch = await create_branch(db=db, branch_name="branch-prefix-update")
+    # update from 10.10.0.0/16 to 8.8.0.0/16 and delete parent and children relationships
+    net_140_branch = await NodeManager.get_one(db=db, branch=branch, id=net_140.id)
+    net_140_branch.prefix.value = "8.8.0.0/16"
+    await net_140_branch.parent.update(db=db, data=[None])
+    await net_140_branch.children.update(db=db, data=[None])
+    await net_140_branch.save(db=db)
+    # update from 10.10.1.0/27 to 10.10.0.0/16
+    net_143_branch = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    net_143_branch.prefix.value = "10.10.0.0/16"
+    await net_143_branch.save(db=db)
+
+    reconciler = IpamReconciler(db=db, branch=branch)
+
+    ip_network = ipaddress.ip_network(net_143_branch.prefix.value)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check new 10.10.0.0/16 prefix is updated
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_143.id)
+    assert updated_prefix.prefix.value == "10.10.0.0/16"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 3
+    child_peer_ids = {rel.peer_id for rel in updated_prefix_child_rels}
+    assert child_peer_ids == {ip_dataset_01["net142"].id, ip_dataset_01["net144"].id, ip_dataset_01["net145"].id}
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 1
+    assert updated_address_rels[0].peer_id == ip_dataset_01["address10"].id
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 1
+    assert updated_parent_rel[0].peer_id == ip_dataset_01["net146"].id
+
+    # check new 8.8.0.0/16 is unchanged
+    updated_prefix = await NodeManager.get_one(db=db, branch=branch, id=net_140.id)
+    assert updated_prefix.prefix.value == "8.8.0.0/16"
+    # check children are correct
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 0
+    # check addresses are correct
+    updated_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_rels) == 0
+    # check parent is correct
+    updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_parent_rel) == 0

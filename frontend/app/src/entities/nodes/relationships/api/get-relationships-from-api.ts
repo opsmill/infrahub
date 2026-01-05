@@ -1,10 +1,12 @@
+import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import type { ContextParams } from "@/shared/api/types";
+
 import {
-  GenerateRelationshipListQueryParams,
+  type GenerateRelationshipListQueryParams,
   generateRelationshipListQuery,
 } from "@/entities/nodes/api/generateRelationshipListQuery";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 export type getRelationshipsFromApiParams = ContextParams &
   Omit<GenerateRelationshipListQueryParams, "parent">;

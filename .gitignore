@@ -12,6 +12,7 @@ development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
+.venv/*
 .ruff_cache
 **/.ruff_cache
 **/.idea/**
@@ -27,13 +28,14 @@ support_logs_*
 docs/build
 
 storage/*
+sandbox/*
 .coverage.*
 python_sdk/dist/*
 .benchmarks/*
 
 # Test reports
 **/*.csv
-!backend/tests/unit/patch/**/*.csv
+!backend/tests/unit/**/data_export/*.csv
 
 # Generated files
 generated/
@@ -44,3 +46,5 @@ helm/Chart.lock
 
 python_testcontainers/dist/*
 python_testcontainers/infrahub_testcontainers.egg-info/*
+
+schema/node_modules/*

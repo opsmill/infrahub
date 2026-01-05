@@ -5,24 +5,32 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config, lock
-from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.constants import (
+    DiffAction,
+    HashableModelState,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.schema.location import CONTINENT, LOCATION
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
@@ -62,23 +70,48 @@ mutation($branch: String!) {
 
 class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
-    def configure_settings(self):
+    def configure_settings(self) -> None:
         config.SETTINGS.broker.enable = True
         config.SETTINGS.cache.enable = False
 
     @pytest.fixture(scope="class", autouse=True)
-    def initialize_lock(self):
+    def initialize_lock(self) -> None:
         lock.initialize_lock(local_only=True)
+
+    @pytest.fixture(scope="class")
+    def main_schema_root(self) -> SchemaRoot:
+        main_schema_root = CAR_SCHEMA.model_copy()
+        # add a Node and relationship to delete later
+        main_schema_root.generics.append(LOCATION)
+        continent_schema = CONTINENT.model_copy()
+        continent_schema.children = None
+        continent_schema.parent = None
+        main_schema_root.nodes.append(continent_schema)
+        manufacturer_schema = main_schema_root.get(TestKind.MANUFACTURER)
+        manufacturer_schema.relationships.append(
+            RelationshipSchema(
+                name="continents",
+                kind=RelationshipKind.GENERIC,
+                peer=TestKind.CONTINENT,
+                cardinality=RelationshipCardinality.MANY,
+                identifier="continent__manufacturer",
+            )
+        )
+        return main_schema_root
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
         default_branch,
+        main_schema_root: SchemaRoot,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> dict[str, Node]:
-        await load_schema(db, schema=CAR_SCHEMA, update_db=True)
+        await load_schema(db, schema=main_schema_root, update_db=True)
+        antarctica = await Node.init(schema=TestKind.CONTINENT, db=db)
+        await antarctica.new(db=db, name="Antarctica", shortname="ANT")
+        await antarctica.save(db=db)
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
@@ -92,7 +125,7 @@ class TestDiffRebase(TestInfrahubApp):
         await koenigsegg.new(db=db, name="Koenigsegg", customers=[john])
         await koenigsegg.save(db=db)
         omnicorp = await Node.init(schema=TestKind.MANUFACTURER, db=db)
-        await omnicorp.new(db=db, name="Omnicorp", customers=[murphy])
+        await omnicorp.new(db=db, name="Omnicorp", customers=[murphy], continents=[antarctica])
         await omnicorp.save(db=db)
         cyberdyne = await Node.init(schema=TestKind.MANUFACTURER, db=db)
         await cyberdyne.new(db=db, name="Cyberdyne")
@@ -132,9 +165,8 @@ class TestDiffRebase(TestInfrahubApp):
         )
         await ed_209.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
-
         return {
+            "antarctica": antarctica,
             "john": john,
             "kara": kara,
             "murphy": murphy,
@@ -156,6 +188,10 @@ class TestDiffRebase(TestInfrahubApp):
         return await create_branch(branch_name="branch_2", db=db)
 
     @pytest.fixture(scope="class")
+    async def branch_3(self, db: InfrahubDatabase) -> Branch:
+        return await create_branch(branch_name="branch_3", db=db)
+
+    @pytest.fixture(scope="class")
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
@@ -163,7 +199,7 @@ class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def add_branch_1_changes(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_1: Branch
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_1 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_1)
         kara_branch_1.description.value = "branch-1-description"
@@ -180,7 +216,7 @@ class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def add_branch_2_changes(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_2: Branch
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_2 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_2)
         kara_branch_2.description.value = "branch-2-description"
@@ -194,6 +230,32 @@ class TestDiffRebase(TestInfrahubApp):
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_2.name})
         assert result["DiffUpdate"]["ok"]
 
+    @pytest.fixture(scope="class")
+    async def add_branch_3_changes(
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_3: Branch
+    ) -> None:
+        antarctica_id = initial_dataset["antarctica"].id
+        antarctica_branch_1 = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
+        await antarctica_branch_1.delete(db=db)
+
+        # delete a node schema with a relationship
+        branch_3_schema = await registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
+
+        continent_schema = branch_3_schema.get(name=TestKind.CONTINENT, duplicate=True)
+        continent_schema.state = HashableModelState.ABSENT
+        manufacturer_schema = branch_3_schema.get(name=TestKind.MANUFACTURER, duplicate=True)
+        manufactuer_continent_rel = manufacturer_schema.get_relationship("continents")
+        manufactuer_continent_rel.state = HashableModelState.ABSENT
+        schemas_to_load = {"version": "1.0", "nodes": [continent_schema.model_dump(), manufacturer_schema.model_dump()]}
+        response = await client.schema.load(schemas=[schemas_to_load], branch=branch_3.name, wait_until_converged=True)
+        assert not response.errors
+        assert response.schema_updated
+
+        retrieved_branch_3_schema = await registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
+        assert not retrieved_branch_3_schema.has(name=TestKind.CONTINENT)
+        manufacturer_schema = retrieved_branch_3_schema.get(name=TestKind.MANUFACTURER)
+        assert "continents" not in manufacturer_schema.relationship_names
+
     async def test_no_conflicts_before_merge(
         self,
         db: InfrahubDatabase,
@@ -203,7 +265,7 @@ class TestDiffRebase(TestInfrahubApp):
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
@@ -298,7 +360,7 @@ class TestDiffRebase(TestInfrahubApp):
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
@@ -392,7 +454,7 @@ class TestDiffRebase(TestInfrahubApp):
         db: InfrahubDatabase,
         branch_2: Branch,
         initial_dataset,
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         cyberdyne_id = initial_dataset["cyberdyne"].id
@@ -412,7 +474,7 @@ class TestDiffRebase(TestInfrahubApp):
         initial_dataset,
         branch_2: Branch,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
         cyberdyne_id = initial_dataset["cyberdyne"].id
@@ -481,3 +543,49 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.previous_value == (check_value if expected_action is DiffAction.REMOVED else None)
                 assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
                 assert prop_diff.conflict is None
+
+    async def test_merge_and_rebase(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset,
+        client: InfrahubClient,
+        branch_3: Branch,
+        add_branch_3_changes,
+    ) -> None:
+        antarctica_id = initial_dataset["antarctica"].id
+
+        # add a node on main
+        main_jeb = await Node.init(db=db, branch=default_branch, schema=TestKind.PERSON)
+        await main_jeb.new(db=db, name="Jeb", height=160)
+        await main_jeb.save(db=db)
+
+        # check schema is correct on branch_3
+        branch_3_schema = await registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
+        assert not branch_3_schema.has(name=TestKind.CONTINENT)
+        manufacturer_schema = branch_3_schema.get(name=TestKind.MANUFACTURER)
+        assert "continents" not in manufacturer_schema.relationship_names
+
+        # merge branch_3
+        result = await client.execute_graphql(query=BRANCH_MERGE, variables={"branch": branch_3.name})
+        assert result["BranchMerge"]["ok"]
+
+        # check schema is correct on default_branch
+        main_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+        assert not main_schema.has(name=TestKind.CONTINENT)
+        manufacturer_schema = main_schema.get(name=TestKind.MANUFACTURER)
+        assert "continents" not in manufacturer_schema.relationship_names
+        no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=default_branch)
+        assert no_antartica is None
+
+        # rebase branch_3
+        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_3.name})
+        assert result["BranchRebase"]["ok"]
+
+        # check branch_3 is updated
+        branch_3 = await Branch.get_by_name(db=db, name=branch_3.name)
+        no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
+        assert no_antartica is None
+        branch_3_jeb = await NodeManager.get_one(db=db, id=main_jeb.id, branch=branch_3)
+        assert branch_3_jeb.name.value == "Jeb"
+        assert branch_3_jeb.height.value == 160

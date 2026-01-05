@@ -1,11 +1,13 @@
+import { Icon } from "@iconify-icon/react";
+import { isValidElement, type ReactNode } from "react";
+import { Link } from "react-router";
+
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
-import { Permission } from "@/entities/permission/types";
-import { ReactNode, isValidElement } from "react";
+import type { Permission } from "@/entities/permission/types";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,14 +45,14 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
     <>
       <table
         className={classNames(
-          "table-auto border-spacing-0 w-full border border-gray-300 rounded-md",
+          "w-full table-auto border-spacing-0 rounded-md border border-gray-300",
           className
         )}
       >
-        <thead className="bg-gray-50 text-left border-b border-gray-300 rounded-md">
+        <thead className="rounded-md border-gray-300 border-b bg-gray-50 text-left">
           <tr>
             {columns.map((column) => (
-              <th key={column.name} scope="col" className="p-2 text-xs font-semibold text-gray-900">
+              <th key={column.name} scope="col" className="p-2 font-semibold text-gray-900 text-xs">
                 {column.label}
               </th>
             ))}
@@ -63,8 +65,8 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
             <tr
               key={index}
               className={classNames(
-                "border-b border-gray-200 h-[36px]",
-                row.link ? "hover:bg-gray-50 cursor-pointer" : ""
+                "h-[36px] border-gray-200 border-b",
+                row.link ? "cursor-pointer hover:bg-gray-50" : ""
               )}
               data-cy="object-table-row"
             >
@@ -73,7 +75,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                   <td key={index} className="p-0">
                     {row.link && (
                       <Link
-                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
+                        className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs"
                         to={row.link}
                       >
                         {renderRowValue(row.values[column.name])}
@@ -81,7 +83,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                     )}
 
                     {!row.link && (
-                      <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
+                      <div className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs">
                         {renderRowValue(row.values[column.name])}
                       </div>
                     )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactPlayer from 'react-player/youtube';
+import ReactPlayer from 'react-player';
 
 export default function VideoPlayer({ url }) {
   return (
@@ -13,7 +13,7 @@ export default function VideoPlayer({ url }) {
     }}>
       <div style={{ position: 'relative', paddingTop: '56.25%' }}>
         <ReactPlayer
-          url={url}
+          src={url}
           style={{ position: 'absolute', top: 0, left: 0 }}
           width="100%"
           height="100%"

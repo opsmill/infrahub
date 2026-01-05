@@ -21,7 +21,6 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
 from infrahub.proposed_change.constants import ProposedChangeState
-from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -95,7 +94,6 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         await jesko.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
         repo_path, repo_name = car_dealership_copy
         FileRepo(name=repo_name, local_repo_base_path=repo_path, sources_directory=git_repos_source_dir_module_scope)
         client_repository = await client.create(
@@ -201,13 +199,20 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_default_filter(db=db, id="John", kind=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
-        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined, union-attr]
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
         proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")
+        # The state=open part here is to validate that the state check during creation of a
+        # proposed change still works if the default "open" state is manually specified
         proposed_change_create = await client.create(
             kind=CoreProposedChange,
-            data={"source_branch": happy_data_branch, "destination_branch": "main", "name": "happy-test"},
+            data={
+                "source_branch": happy_data_branch,
+                "destination_branch": "main",
+                "name": "happy-test",
+                "state": "open",
+            },
         )
         await proposed_change_create.save(
             request_context=RequestContext(account=ContextAccount(id=proposed_change_user.id))
@@ -282,11 +287,11 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             secondary_events = await client.execute_graphql(
                 query=QUERY_EVENT, variables={"parent__ids": merge_event_id}
             )
-            if secondary_events["InfrahubEvent"]["count"] >= 2:
+            if secondary_events["InfrahubEvent"]["count"] >= 3:
                 break
             await asyncio.sleep(1)
 
-        assert secondary_events["InfrahubEvent"]["count"] >= 2
+        assert secondary_events["InfrahubEvent"]["count"] >= 3
 
         johns_events = [
             event
@@ -337,8 +342,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             query=QUERY_EVENT,
             variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.passed"]},
         )
-        assert validator_started_events["InfrahubEvent"]["count"] == 10
-        assert validator_passed_events["InfrahubEvent"]["count"] == 10
+        assert validator_started_events["InfrahubEvent"]["count"] == 11
+        assert validator_passed_events["InfrahubEvent"]["count"] == 11
         started_validators = [
             event["node"]["primary_node"]["kind"] for event in validator_started_events["InfrahubEvent"]["edges"]
         ]

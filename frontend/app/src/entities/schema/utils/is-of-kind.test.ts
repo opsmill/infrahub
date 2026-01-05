@@ -1,5 +1,7 @@
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { describe, expect, it } from "vitest";
+
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+
 import { generateNodeSchema } from "../../../../tests/fake/schema";
 
 describe("isOfKind", () => {

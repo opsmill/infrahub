@@ -9,13 +9,13 @@ from .factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, En
 from .get_one_node import get_one_diff_node
 
 
-async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main):
+async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     diff_node = EnrichedNodeFactory.build(
         identifier=NodeIdentifier(
             uuid=car_yaris_main.get_id(),
             kind=car_yaris_main.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "TestCar")),
+            db_id=car_yaris_main.db_id,
         ),
         relationships=set(),
     )
@@ -40,14 +40,14 @@ async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, perso
     assert len(jane_node.relationships) == 0
 
 
-async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main):
+async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     diff_rel = EnrichedRelationshipGroupFactory.build(name="owner", action=DiffAction.UPDATED, nodes=set())
     diff_node = EnrichedNodeFactory.build(
         identifier=NodeIdentifier(
             uuid=car_yaris_main.get_id(),
             kind=car_yaris_main.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "TestCar")),
+            db_id=car_yaris_main.db_id,
         ),
         relationships={diff_rel},
     )
@@ -72,7 +72,7 @@ async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_j
     assert len(jane_node.relationships) == 0
 
 
-async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical_location_schema):
+async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical_location_schema) -> None:
     branch = await create_branch(db=db, branch_name="branch")
 
     # we need hierarchies where the
@@ -99,7 +99,7 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
         identifier=NodeIdentifier(
             uuid=rack_c.get_id(),
             kind=rack_c.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "LocationGeneric", "LocationRack")),
+            db_id=rack_c.db_id,
         ),
         relationships=set(),
     )
@@ -107,7 +107,7 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
         identifier=NodeIdentifier(
             uuid=rack_x.get_id(),
             kind=rack_x.get_kind(),
-            labels=frozenset(("Node", "CoreNode", "LocationGeneric", "LocationRack")),
+            db_id=rack_x.db_id,
         ),
         relationships=set(),
     )

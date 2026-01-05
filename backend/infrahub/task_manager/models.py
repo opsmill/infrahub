@@ -14,10 +14,12 @@ from prefect.events.filters import (
     EventRelatedFilter,
     EventResourceFilter,
 )
+from prefect.events.filters import EventOrder as PrefectEventOrder
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
 from infrahub.core.timestamp import Timestamp
+from infrahub.events.constants import EventSortOrder
 
 from .constants import LOG_LEVEL_MAPPING
 
@@ -72,7 +74,7 @@ class FlowLogs(BaseModel):
                 "node": {
                     "message": log.message,
                     "severity": LOG_LEVEL_MAPPING.get(log.level, "error"),
-                    "timestamp": log.timestamp.to_iso8601_string(),
+                    "timestamp": log.timestamp.isoformat(),
                 }
             }
             for log in self.logs[flow_id]
@@ -84,11 +86,15 @@ class FlowProgress(BaseModel):
 
 
 class InfrahubEventFilter(EventFilter):
-    matching_related: list[EventRelatedFilter] = Field(default_factory=list)
+    def add_related_filter(self, related: EventRelatedFilter) -> None:
+        if not isinstance(self.related, list):
+            self.related = []
+
+        self.related.append(related)
 
     def add_account_filter(self, account__ids: list[str] | None) -> None:
         if account__ids:
-            self.matching_related.append(
+            self.add_related_filter(
                 EventRelatedFilter(
                     labels=ResourceSpecification(
                         {"prefect.resource.role": "infrahub.account", "infrahub.resource.id": account__ids}
@@ -98,7 +104,7 @@ class InfrahubEventFilter(EventFilter):
 
     def add_branch_filter(self, branches: list[str] | None = None) -> None:
         if branches:
-            self.matching_related.append(
+            self.add_related_filter(
                 EventRelatedFilter(
                     labels=ResourceSpecification(
                         {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": branches}
@@ -116,7 +122,7 @@ class InfrahubEventFilter(EventFilter):
 
         if event_filter:
             event_filter["prefect.resource.role"] = "infrahub.event"
-            self.matching_related.append(EventRelatedFilter(labels=ResourceSpecification(event_filter)))
+            self.add_related_filter(EventRelatedFilter(labels=ResourceSpecification(event_filter)))
 
     def add_event_id_filter(self, ids: list[str] | None = None) -> None:
         if ids:
@@ -132,6 +138,13 @@ class InfrahubEventFilter(EventFilter):
             branches: list[str] = branch_merged.get("branches") or []
             if "infrahub.branch.created" not in event_type:
                 event_type.append("infrahub.branch.merged")
+            if branches:
+                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
+        if branch_migrated := event_type_filter.get("branch_migrated"):
+            branches = branch_migrated.get("branches") or []
+            if "infrahub.branch.created" not in event_type:
+                event_type.append("infrahub.branch.migrated")
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
 
@@ -151,7 +164,7 @@ class InfrahubEventFilter(EventFilter):
 
     def add_parent_filter(self, parent__ids: list[str] | None) -> None:
         if parent__ids:
-            self.matching_related.append(
+            self.add_related_filter(
                 EventRelatedFilter(
                     labels=ResourceSpecification(
                         {"prefect.resource.role": "infrahub.child_event", "infrahub.event_parent.id": parent__ids}
@@ -161,7 +174,7 @@ class InfrahubEventFilter(EventFilter):
 
     def add_related_node_filter(self, related_node__ids: list[str] | None) -> None:
         if related_node__ids:
-            self.matching_related.append(
+            self.add_related_filter(
                 EventRelatedFilter(
                     labels=ResourceSpecification(
                         {"prefect.resource.role": "infrahub.related.node", "prefect.resource.id": related_node__ids}
@@ -172,6 +185,7 @@ class InfrahubEventFilter(EventFilter):
     @classmethod
     def from_filters(
         cls,
+        order: EventSortOrder,
         ids: list[str] | None = None,
         account__ids: list[str] | None = None,
         related_node__ids: list[str] | None = None,
@@ -196,6 +210,12 @@ class InfrahubEventFilter(EventFilter):
             filters = cls(occurred=EventOccurredFilter(**occurred_filter))
         else:
             filters = cls()
+
+        match order:
+            case EventSortOrder.ASC:
+                filters.order = PrefectEventOrder.ASC
+            case EventSortOrder.DESC:
+                filters.order = PrefectEventOrder.DESC
 
         filters.add_event_filter(level=level, has_children=has_children)
         filters.add_event_id_filter(ids=ids)

@@ -18,6 +18,7 @@ from infrahub.config import (  # noqa: TC001
 )
 from infrahub.core import registry
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.workers.dependencies import get_installation_type
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -31,6 +32,8 @@ class ConfigAPI(BaseModel):
     analytics: AnalyticsSettings
     experimental_features: ExperimentalFeaturesSettings
     sso: config.SSOInfo
+    installation_type: str
+    policy: config.PolicySettings
 
 
 class InfoAPI(BaseModel):
@@ -46,6 +49,8 @@ async def get_config() -> ConfigAPI:
         analytics=config.SETTINGS.analytics,
         experimental_features=config.SETTINGS.experimental_features,
         sso=config.SETTINGS.security.public_sso_config,
+        installation_type=get_installation_type(),
+        policy=config.SETTINGS.policy,
     )
 
 
@@ -156,6 +161,8 @@ class SearchResultAPI(BaseModel):
 async def search_docs(
     query: str, limit: int | None = None, _: AccountSession = Depends(get_current_user)
 ) -> list[SearchResultAPI]:
+    if not query:
+        return []
     smart_query = smart_queries(query)
     search_results = search_docs_loader.heading_index.search(smart_query)
     heading_results = [

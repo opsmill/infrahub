@@ -1,8 +1,9 @@
+import { describe, expect, it } from "vitest";
+
 import {
-  IsFieldDisabledParams,
+  type IsFieldDisabledParams,
   isFieldDisabled,
 } from "@/shared/components/form/utils/isFieldDisabled";
-import { describe, expect, it } from "vitest";
 
 describe("isFieldDisabled", () => {
   it("returns true when field is read only", () => {

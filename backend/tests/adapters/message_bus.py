@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, TypeVar
+from typing import TypeVar
 
 import ujson
 from infrahub_sdk.uuidt import UUIDT
@@ -12,9 +12,6 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 ResponseClass = TypeVar("ResponseClass")
-
-if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
 
 
 class BusRecorder(InfrahubMessageBus):
@@ -49,8 +46,6 @@ class BusSimulator(InfrahubMessageBus):
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
 
-        self.service: InfrahubServices
-
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
@@ -58,7 +53,7 @@ class BusSimulator(InfrahubMessageBus):
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
         self.messages_per_routing_key[routing_key].append(message)
-        await execute_message(routing_key=routing_key, message_body=message.body, service=self.service, skip_flow=True)
+        await execute_message(routing_key=routing_key, message_body=message.body, message_bus=self, skip_flow=True)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         correlation_id = message.meta.correlation_id or "default"

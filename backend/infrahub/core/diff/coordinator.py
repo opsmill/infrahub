@@ -4,11 +4,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
 from uuid import uuid4
 
-from infrahub import lock
+from prefect import flow
+
+from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
+from ..query.diff import get_num_changes_in_time_range_by_branch
 from .model.field_specifiers_map import NodeFieldSpecifierMap
 from .model.path import (
     BranchTrackingId,
@@ -22,14 +25,15 @@ from .model.path import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.database import InfrahubDatabase
 
     from .calculator import DiffCalculator
     from .combiner import DiffCombiner
     from .conflict_transferer import DiffConflictTransferer
     from .conflicts_enricher import ConflictsEnricher
     from .data_check_synchronizer import DiffDataCheckSynchronizer
+    from .diff_locker import DiffLocker
     from .enricher.aggregated import AggregatedDiffEnricher
     from .enricher.labels import DiffLabelsEnricher
     from .repository.repository import DiffRepository
@@ -57,10 +61,9 @@ class EnrichedDiffRequest:
 
 
 class DiffCoordinator:
-    lock_namespace = "diff-update"
-
     def __init__(
         self,
+        db: InfrahubDatabase,
         diff_repo: DiffRepository,
         diff_calculator: DiffCalculator,
         diff_enricher: AggregatedDiffEnricher,
@@ -69,7 +72,9 @@ class DiffCoordinator:
         labels_enricher: DiffLabelsEnricher,
         data_check_synchronizer: DiffDataCheckSynchronizer,
         conflict_transferer: DiffConflictTransferer,
+        diff_locker: DiffLocker,
     ) -> None:
+        self.db = db
         self.diff_repo = diff_repo
         self.diff_calculator = diff_calculator
         self.diff_enricher = diff_enricher
@@ -78,7 +83,7 @@ class DiffCoordinator:
         self.labels_enricher = labels_enricher
         self.data_check_synchronizer = data_check_synchronizer
         self.conflict_transferer = conflict_transferer
-        self.lock_registry = lock.registry
+        self.diff_locker = diff_locker
 
     async def run_update(
         self,
@@ -111,37 +116,35 @@ class DiffCoordinator:
             name=name,
         )
 
-    def _get_lock_name(self, base_branch_name: str, diff_branch_name: str, is_incremental: bool) -> str:
-        lock_name = f"{base_branch_name}__{diff_branch_name}"
-        if is_incremental:
-            lock_name += "__incremental"
-        return lock_name
-
     async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRootMetadata:
+        tracking_id = BranchTrackingId(name=diff_branch.name)
         log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
-        incremental_lock_name = self._get_lock_name(
-            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=True
-        )
-        existing_incremental_lock = self.lock_registry.get_existing(
-            name=incremental_lock_name, namespace=self.lock_namespace
+        existing_incremental_lock = self.diff_locker.get_existing_lock(
+            target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
             log.info(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
-            async with self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace):
+            async with self.diff_locker.acquire_lock(
+                target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
+            ):
                 log.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
-                return await self.diff_repo.get_one(
-                    tracking_id=BranchTrackingId(name=diff_branch.name), diff_branch_name=diff_branch.name
-                )
-        general_lock_name = self._get_lock_name(
-            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
-        )
+                return await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
         from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
-        tracking_id = BranchTrackingId(name=diff_branch.name)
         async with (
-            self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace),
-            self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace),
+            self.diff_locker.acquire_lock(
+                target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
+            ),
+            self.diff_locker.acquire_lock(
+                target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
+            ),
         ):
+            refreshed_branch = await Branch.get_by_name(db=self.db, name=diff_branch.name)
+            if refreshed_branch.get_branched_from() != diff_branch.get_branched_from():
+                log.info(
+                    f"Branch {diff_branch.name} was merged or rebased while waiting for lock, returning latest diff"
+                )
+                return await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
             log.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
                 base_branch=base_branch,
@@ -167,10 +170,9 @@ class DiffCoordinator:
         name: str,
     ) -> EnrichedDiffRootMetadata:
         tracking_id = NameTrackingId(name=name)
-        general_lock_name = self._get_lock_name(
-            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
-        )
-        async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
+        async with self.diff_locker.acquire_lock(
+            target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
+        ):
             log.info(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
                 base_branch=base_branch,
@@ -194,10 +196,9 @@ class DiffCoordinator:
         diff_branch: Branch,
         diff_id: str,
     ) -> EnrichedDiffRoot:
-        general_lock_name = self._get_lock_name(
-            base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
-        )
-        async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
+        async with self.diff_locker.acquire_lock(
+            target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
+        ):
             log.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
             current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
             current_base_diff = await self.diff_repo.get_one(
@@ -301,6 +302,11 @@ class DiffCoordinator:
         force_branch_refresh: Literal[False] = ...,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]: ...
 
+    @flow(  # type: ignore[misc]
+        name="update-diff",
+        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+        validate_parameters=False,
+    )
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -414,10 +420,11 @@ class DiffCoordinator:
                 log.info(
                     f"Checking number of changes on branches for {diff_request!r}, from_time={current_time}, to_time={end_time}"
                 )
-                num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
+                num_changes_by_branch = await get_num_changes_in_time_range_by_branch(
                     branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
                     from_time=current_time,
                     to_time=end_time,
+                    db=self.db,
                 )
                 log.info(f"Number of changes: {num_changes_by_branch}")
                 might_have_changes_in_time_range = any(num_changes_by_branch.values())

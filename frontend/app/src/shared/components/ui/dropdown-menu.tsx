@@ -1,3 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
+
 import {
   Accordion,
   AccordionContent,
@@ -5,9 +9,6 @@ import {
   AccordionTrigger,
 } from "@/shared/components/ui/accordion";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react";
 
 export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => (
   <DropdownMenuPrimitive.Root modal={false} {...props} />
@@ -25,9 +26,9 @@ export const DropdownMenuContent = forwardRef<
         sideOffset={4}
         ref={ref}
         className={classNames(
-          "p-2 bg-white rounded-xl shadow-lg min-w-32 overflow-hidden space-y-1 z-50",
-          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          "z-50 min-w-32 space-y-1 overflow-hidden rounded-xl bg-white p-2 shadow-lg",
+          "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
+          "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           className
         )}
@@ -75,7 +76,7 @@ export const DropdownMenuSubTrigger = forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      "flex gap-1.5 cursor-default select-none items-center rounded-lg p-2 text-sm outline-hidden focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "flex cursor-default select-none items-center gap-1.5 rounded-lg p-2 text-sm outline-hidden focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
       className
     )}
     {...props}
@@ -92,9 +93,9 @@ export const DropdownMenuSubContent = forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={classNames(
-      "p-2 bg-white rounded-xl shadow-lg min-w-32 overflow-hidden space-y-1",
-      "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-      "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+      "min-w-32 space-y-1 overflow-hidden rounded-xl bg-white p-2 shadow-lg",
+      "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
+      "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
       "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
     )}

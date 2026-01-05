@@ -1,8 +1,11 @@
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
+
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
 import { RelationshipActionsCell } from "@/entities/nodes/relationships/ui/relationship-table/relationship-actions-cell";
-import { NodeObject } from "@/entities/nodes/types";
-import { Permission } from "@/entities/permission/types";
-import { ColumnDef } from "@tanstack/react-table";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { Permission } from "@/entities/permission/types";
+
+const columnHelper = createColumnHelper<NodeObject>();
 
 export type GetRelationshipActionsColumnParams = {
   parentId: string;
@@ -19,7 +22,7 @@ export function getRelationshipActionsColumn({
   permission,
   relationshipsCount,
 }: GetRelationshipActionsColumnParams): ColumnDef<NodeObject> {
-  return {
+  return columnHelper.display({
     id: "actions",
     header: () => <ActionsHeaderCell />,
     cell: ({ row }) => {
@@ -29,12 +32,12 @@ export function getRelationshipActionsColumn({
           parentId={parentId}
           parentKind={parentKind}
           relationshipName={relationshipName}
-          relationshipKind={row.original.__typename as string}
-          relationshipLabel={row.getValue("id") as string}
-          relationshipId={row.original.id as string}
+          relationshipKind={row.original.__typename}
+          relationshipLabel={row.getValue("id")}
+          relationshipId={row.original.id}
           relationshipsCount={relationshipsCount}
         />
       );
     },
-  };
+  });
 }

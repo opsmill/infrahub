@@ -30,8 +30,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         // Query all Active Nodes of type
         // and store their UUID in uuids_active_node
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1
@@ -44,8 +43,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         // identifier all nodes with at least one active member for this relationship
         // and store their UUID in uuids_with_rel
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n, uuids_active_node
+        CALL (n, uuids_active_node) {
             MATCH path = (n)-[r:IS_RELATED]-(:Relationship { name: $relationship_id })
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1

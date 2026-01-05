@@ -76,31 +76,33 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_profile.save(db=db)
         return ship_profile
 
-    async def test_empty_profiles_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node):
+    async def test_empty_profiles_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node) -> None:
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
-        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
-    async def test_profile_for_schema_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node):
+    async def test_profile_for_schema_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node) -> None:
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
         await ship_one.profiles.add(db=db, data=ship_profile)
         await ship_one.profiles.resolve(db=db)
 
-        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
-    async def test_generic_profile_allowed(self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node):
+    async def test_generic_profile_allowed(
+        self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node
+    ) -> None:
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
         await ship_one.profiles.add(db=db, data=space_object_profile)
         await ship_one.profiles.resolve(db=db)
 
-        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+        await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
-    async def test_wrong_profile_not_allowed(self, db: InfrahubDatabase, ship_one: Node):
+    async def test_wrong_profile_not_allowed(self, db: InfrahubDatabase, ship_one: Node) -> None:
         wrong_profile = await Node.init(db=db, schema="ProfileTestOtherGeneric")
         await wrong_profile.new(db=db, profile_name="something", profile_priority=400, smell="not good")
         await wrong_profile.save(db=db)
@@ -111,14 +113,14 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.resolve(db=db)
 
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
         assert "is of kind ProfileTestOtherGeneric" in exc.value.message
         assert "only ['ProfileTestGenericSpaceObject', 'ProfileTestShip'] are allowed" in exc.value.message
 
     async def test_generic_profile_not_allowed_when_generic_generate_profile_is_false(
         self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node
-    ):
+    ) -> None:
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
         generic_schema = registry.schema.get(name="TestGenericSpaceObject", duplicate=False)
         generic_schema.generate_profile = False
@@ -128,14 +130,14 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.resolve(db=db)
 
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
         assert "is of kind ProfileTestGenericSpaceObject" in exc.value.message
         assert "only ['ProfileTestShip'] are allowed" in exc.value.message
 
     async def test_profile_not_allowed_when_generate_profile_is_false(
         self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node
-    ):
+    ) -> None:
         ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
         ship_schema.generate_profile = False
 
@@ -144,4 +146,4 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await ship_one.profiles.resolve(db=db)
 
         with pytest.raises(ValidationError, match="TestShip does not allow profiles"):
-            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema)
+            await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)

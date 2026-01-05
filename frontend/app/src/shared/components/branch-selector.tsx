@@ -1,16 +1,10 @@
-import { QSP } from "@/config/qsp";
-import { branchesState } from "@/entities/branches/stores";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
-import { Branch } from "@/shared/api/graphql/generated/graphql";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Icon } from "@iconify-icon/react";
+import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
@@ -21,7 +15,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/shared/components/ui/command";
-import { useCommandState } from "cmdk";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { QSP } from "@/shared/config/qsp";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+import { branchesState } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
+
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";
 
@@ -50,15 +52,15 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-[205px] border-neutral-200 rounded-lg p-0 shadow-none"
+          className="h-8 w-[205px] rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
         >
-          <div className="inline-flex items-center gap-1.5 px-3 grow border-r border-gray-200 h-full truncate">
+          <div className="inline-flex h-full grow items-center gap-1.5 truncate border-gray-200 border-r px-3">
             <Icon icon="mdi:source-branch" />
             <span className="truncate">{currentBranch.name}</span>
           </div>
 
-          <Icon icon="mdi:chevron-down" className="text-2xl px-3" />
+          <Icon icon="mdi:chevron-down" className="px-3 text-2xl" />
         </Button>
       </PopoverTrigger>
 
@@ -90,10 +92,10 @@ function BranchSelect({
 }) {
   const branches = useAtomValue(branchesState);
   const { setCurrentBranch } = useCurrentBranch();
-  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
 
   const handleBranchChange = (branch: Branch) => {
-    setBranchInQueryString(branch.is_default ? undefined : branch.name);
+    setBranchInQueryString(branch.is_default ? null : branch.name);
     setCurrentBranch(branch);
     setPopoverOpen(false);
   };
@@ -106,10 +108,10 @@ function BranchSelect({
           maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
         }}
       >
-        <div className="flex gap-2 mb-2">
+        <div className="mb-2 flex gap-2">
           <CommandInput
             autoFocus
-            className="bg-neutral-100 text-neutral-800 rounded-lg border-none h-8 grow"
+            className="h-8 grow rounded-lg border-none bg-neutral-100 text-neutral-800"
             placeholder="Search"
             data-testid="branch-search-input"
           />
@@ -131,12 +133,12 @@ function BranchSelect({
           ))}
         </CommandList>
       </Command>
-      <div className="p-2 pb-0 border-t border-neutral-200 -mx-2 mt-2">
+      <div className="-mx-2 mt-2 border-neutral-200 border-t p-2 pb-0">
         <LinkButton
           to={constructPath("/branches")}
           variant="ghost"
           size="sm"
-          className="w-full text-xs justify-start"
+          className="w-full justify-start text-xs"
           onClick={() => setPopoverOpen(false)}
         >
           View all branches
@@ -156,17 +158,17 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
       onSelect={onChange}
       value={branch.name}
     >
-      <div className="truncate flex items-center w-full">
+      <div className="flex w-full items-center truncate">
         <span className="truncate">{branch.name}</span>
 
         <div className="ml-auto inline-flex items-center gap-1">
           {branch.is_default && (
-            <span className="rounded-sm border border-gray-200 text-gray-400 px-1.5 text-xs">
+            <span className="rounded-sm border border-gray-200 px-1.5 text-gray-400 text-xs">
               default
             </span>
           )}
           {branch.sync_with_git && (
-            <Icon icon="mdi:source-branch-sync" className="text-sm text-gray-400" />
+            <Icon icon="mdi:source-branch-sync" className="text-gray-400 text-sm" />
           )}
         </div>
       </div>
@@ -221,7 +223,7 @@ const BranchNotFound = ({ onSelect }: { onSelect: (branchName: string) => void }
       forceMount
       value="create"
       onSelect={() => onSelect(search)}
-      className="text-neutral-600 truncate gap-1"
+      className="gap-1 truncate text-neutral-600"
     >
       Create branch <span className="font-semibold text-neutral-800">{search}</span>
     </CommandItem>

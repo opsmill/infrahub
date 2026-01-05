@@ -1,4 +1,3 @@
-import json
 from typing import Any, Iterable
 
 from infrahub.core.query import Query, QueryType
@@ -31,8 +30,7 @@ class EnrichedDiffRootsUpsertQuery(Query):
         query = """
 UNWIND $diff_root_list AS diff_root_map
 WITH diff_root_map
-CALL {
-    WITH diff_root_map
+CALL (diff_root_map) {
     MERGE (diff_root:DiffRoot {uuid: diff_root_map.uuid})
     SET diff_root.base_branch = diff_root_map.base_branch
     SET diff_root.diff_branch = diff_root_map.diff_branch
@@ -44,8 +42,7 @@ CALL {
 WITH DISTINCT diff_root AS diff_root
 WITH collect(diff_root) AS diff_roots
 WHERE SIZE(diff_roots) = 2
-CALL {
-    WITH diff_roots
+CALL (diff_roots) {
     WITH diff_roots[0] AS base_diff_node, diff_roots[1] AS branch_diff_node
     MERGE (base_diff_node)-[:DIFF_HAS_PARTNER]-(branch_diff_node)
     SET (base_diff_node).partner_uuid = (branch_diff_node).uuid
@@ -81,24 +78,26 @@ class EnrichedNodeBatchCreateQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = self._build_node_batch_params()
+
         query = """
 UNWIND $node_details_list AS node_details
 WITH
     node_details.root_uuid AS root_uuid,
     node_details.node_map AS node_map,
-    toString(node_details.node_map.node_properties.uuid) AS node_uuid
+    toString(node_details.node_map.node_properties.uuid) AS node_uuid,
+    node_details.node_map.node_properties.db_id AS node_db_id
 MERGE (diff_root:DiffRoot {uuid: root_uuid})
-MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid})
+MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
 WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
 SET
     diff_node.kind = node_map.node_properties.kind,
     diff_node.label = node_map.node_properties.label,
-    diff_node.db_labels = node_map.node_properties.db_labels,
     diff_node.changed_at = node_map.node_properties.changed_at,
     diff_node.action = node_map.node_properties.action,
+    diff_node.is_node_kind_migration = node_map.node_properties.is_node_kind_migration,
     diff_node.path_identifier = node_map.node_properties.path_identifier
 WITH root_uuid, node_map, diff_node, has_node_conflict
-CALL {
+CALL (diff_node) {
     // -------------------------
     // delete parent-child relationships for included nodes, they will be added in EnrichedNodesLinkQuery
     // -------------------------
@@ -107,94 +106,104 @@ CALL {
     DELETE parent_rel
 }
 OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_node_conflict:DiffConflict)
-CALL {
+CALL (diff_node, current_node_conflict, has_node_conflict) {
     // -------------------------
     // create a node-level conflict, if necessary
     // -------------------------
     WITH diff_node, current_node_conflict, has_node_conflict
-    WITH diff_node, current_node_conflict, has_node_conflict
     WHERE current_node_conflict IS NULL AND has_node_conflict = TRUE
     CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(:DiffConflict)
 }
-CALL {
+CALL (current_node_conflict, has_node_conflict) {
     // -------------------------
     // delete a node-level conflict, if necessary
     // -------------------------
-    WITH current_node_conflict, has_node_conflict
     WITH current_node_conflict, has_node_conflict
     WHERE current_node_conflict IS NOT NULL AND has_node_conflict = FALSE
     DETACH DELETE current_node_conflict
 }
 WITH root_uuid, node_map, diff_node, has_node_conflict, node_map.conflict_params AS node_conflict_params
-CALL {
+CALL (diff_node, has_node_conflict, node_conflict_params) {
     // -------------------------
     // set the properties of the node-level conflict, if necessary
     // -------------------------
-    WITH diff_node, has_node_conflict, node_conflict_params
     WITH diff_node, has_node_conflict, node_conflict_params
     WHERE has_node_conflict = TRUE
     OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
     SET node_conflict = node_conflict_params
 }
-CALL {
-    // -------------------------
-    // remove stale attributes for this node
-    // -------------------------
-    WITH diff_node, node_map
-    CALL {
-        WITH diff_node, node_map
-        WITH diff_node, %(attr_name_list_comp)s AS attr_names
-        OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(attr_to_delete:DiffAttribute)
-        WHERE NOT (attr_to_delete.name IN attr_names)
-        OPTIONAL MATCH (attr_to_delete)-[*..6]->(next_to_delete)
-        DETACH DELETE next_to_delete
-        DETACH DELETE attr_to_delete
-    }
-    // -------------------------
-    // add attributes for this node
-    // -------------------------
+// -------------------------
+// resetting the UNWIND and starting over here reduces memory usage
+// -------------------------
+WITH root_uuid LIMIT 1
+UNWIND $node_details_list AS node_details
+WITH
+    node_details.root_uuid AS root_uuid,
+    node_details.node_map AS node_map,
+    toString(node_details.node_map.node_properties.uuid) AS node_uuid,
+    node_details.node_map.node_properties.db_id AS node_db_id
+MATCH (:DiffRoot {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+WITH diff_node, node_map, %(attr_name_list_comp)s AS attr_names
+OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(attr_to_delete:DiffAttribute)
+WHERE NOT (attr_to_delete.name IN attr_names)
+OPTIONAL MATCH (attr_to_delete)-[*..6]->(next_to_delete)
+DETACH DELETE next_to_delete
+DETACH DELETE attr_to_delete
+// -------------------------
+// add attributes for this node
+// -------------------------
+WITH DISTINCT diff_node, node_map
+CALL (diff_node, node_map) {
     UNWIND node_map.attributes AS node_attribute
     MERGE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute {name: node_attribute.node_properties.name})
     SET diff_attribute = node_attribute.node_properties
     // -------------------------
-    // add properties for this attribute
-    // -------------------------
-    WITH diff_attribute, node_attribute
-    // -------------------------
     // remove stale properties for this attribute
     // -------------------------
-    CALL {
-        WITH diff_attribute, node_attribute
-        WITH diff_attribute, %(attr_props_list_comp)s AS prop_types
-        OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(prop_to_delete:DiffProperty)
-        WHERE NOT (prop_to_delete.property_type IN prop_types)
-        OPTIONAL MATCH (prop_to_delete)-[*..4]->(next_to_delete)
-        DETACH DELETE next_to_delete
-        DETACH DELETE prop_to_delete
-    }
+    WITH diff_attribute, node_attribute, %(attr_props_list_comp)s AS prop_types
+    OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(prop_to_delete:DiffProperty)
+    WHERE NOT (prop_to_delete.property_type IN prop_types)
+    OPTIONAL MATCH (prop_to_delete)-[*..4]->(next_to_delete)
+    DETACH DELETE next_to_delete
+    DETACH DELETE prop_to_delete
+    // -------------------------
+    // set attribute property values
+    // -------------------------
+    WITH DISTINCT diff_attribute, node_attribute
     UNWIND node_attribute.properties AS attr_property
     MERGE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty {property_type: attr_property.node_properties.property_type})
     SET diff_attr_prop = attr_property.node_properties
-    // -------------------------
-    // add/remove conflict for this property
-    // -------------------------
     WITH diff_attr_prop, attr_property
     OPTIONAL MATCH (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(current_attr_prop_conflict:DiffConflict)
     WITH diff_attr_prop, attr_property, current_attr_prop_conflict, (attr_property.conflict_params IS NOT NULL) AS has_prop_conflict
-    FOREACH (i in CASE WHEN has_prop_conflict = FALSE THEN [1] ELSE [] END |
+    CALL (has_prop_conflict, current_attr_prop_conflict) {
+        WITH has_prop_conflict, current_attr_prop_conflict
+        WHERE has_prop_conflict = FALSE AND current_attr_prop_conflict IS NOT NULL
         DETACH DELETE current_attr_prop_conflict
-    )
-    FOREACH (i in CASE WHEN has_prop_conflict = TRUE THEN [1] ELSE [] END |
+    }
+    CALL (has_prop_conflict, diff_attr_prop, attr_property) {
+        WITH has_prop_conflict
+        WHERE has_prop_conflict = TRUE
         MERGE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attr_prop_conflict:DiffConflict)
         SET diff_attr_prop_conflict = attr_property.conflict_params
-    )
+    }
 }
+// -------------------------
+// resetting the UNWIND and starting over here reduces memory usage
+// -------------------------
+WITH 1 AS resetting LIMIT 1
+UNWIND $node_details_list AS node_details
+WITH
+    node_details.root_uuid AS root_uuid,
+    node_details.node_map AS node_map,
+    toString(node_details.node_map.node_properties.uuid) AS node_uuid,
+    node_details.node_map.node_properties.db_id AS node_db_id
+MATCH (:DiffRoot {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
 // -------------------------
 // remove stale relationships for this node
 // -------------------------
-CALL {
-    WITH diff_node, node_map
-    WITH diff_node, %(rel_name_list_comp)s AS rel_names
+CALL (diff_node, node_map) {
+    WITH %(rel_name_list_comp)s AS rel_names
     OPTIONAL MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(rel_to_delete:DiffRelationship)
     WHERE NOT (rel_to_delete.name IN rel_names)
     OPTIONAL MATCH (rel_to_delete)-[*..8]->(next_to_delete)
@@ -212,9 +221,8 @@ SET diff_relationship = node_relationship.node_properties
 // remove stale elements for this relationship group
 // -------------------------
 WITH diff_relationship, node_relationship
-CALL {
-    WITH diff_relationship, node_relationship
-    WITH diff_relationship, %(rel_peers_list_comp)s AS rel_peers
+CALL (diff_relationship, node_relationship) {
+    WITH %(rel_peers_list_comp)s AS rel_peers
     OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(element_to_delete:DiffRelationshipElement)
     WHERE NOT (element_to_delete.peer_id IN rel_peers)
     OPTIONAL MATCH (element_to_delete)-[*..6]->(next_to_delete)
@@ -236,20 +244,23 @@ WITH diff_relationship_element, node_single_relationship
 OPTIONAL MATCH (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(current_element_conflict:DiffConflict)
 WITH diff_relationship_element, node_single_relationship, current_element_conflict,
     (node_single_relationship.conflict_params IS NOT NULL) AS has_element_conflict
-FOREACH (i in CASE WHEN has_element_conflict = FALSE THEN [1] ELSE [] END |
+CALL (has_element_conflict, current_element_conflict) {
+    WITH has_element_conflict
+    WHERE has_element_conflict = FALSE
     DETACH DELETE current_element_conflict
-)
-FOREACH (i in CASE WHEN has_element_conflict = TRUE THEN [1] ELSE [] END |
+}
+CALL (has_element_conflict, diff_relationship_element, node_single_relationship) {
+    WITH has_element_conflict
+    WHERE has_element_conflict = TRUE
     MERGE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(element_conflict:DiffConflict)
     SET element_conflict = node_single_relationship.conflict_params
-)
+}
 // -------------------------
 // remove stale properties for this relationship element
 // -------------------------
 WITH diff_relationship_element, node_single_relationship
-CALL {
-    WITH diff_relationship_element, node_single_relationship
-    WITH diff_relationship_element, %(element_props_list_comp)s AS element_props
+CALL (diff_relationship_element, node_single_relationship) {
+    WITH %(element_props_list_comp)s AS element_props
     OPTIONAL MATCH (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(property_to_delete:DiffProperty)
     WHERE NOT (property_to_delete.property_type IN element_props)
     OPTIONAL MATCH (property_to_delete)-[*..4]->(next_to_delete)
@@ -271,13 +282,18 @@ WITH diff_relationship_property, node_relationship_property
 OPTIONAL MATCH (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_relationship_property_conflict:DiffConflict)
 WITH diff_relationship_property, node_relationship_property, diff_relationship_property_conflict,
     (node_relationship_property.conflict_params IS NOT NULL) AS has_property_conflict
-FOREACH (i in CASE WHEN has_property_conflict = FALSE THEN [1] ELSE [] END |
+
+CALL (has_property_conflict, diff_relationship_property_conflict) {
+    WITH has_property_conflict
+    WHERE has_property_conflict = FALSE
     DETACH DELETE diff_relationship_property_conflict
-)
-FOREACH (i in CASE WHEN has_property_conflict = TRUE THEN [1] ELSE [] END |
+}
+CALL (has_property_conflict, diff_relationship_property, node_relationship_property) {
+    WITH has_property_conflict
+    WHERE has_property_conflict = TRUE
     MERGE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(property_conflict:DiffConflict)
     SET property_conflict = node_relationship_property.conflict_params
-)
+}
         """ % {
             "attr_name_list_comp": db.render_list_comprehension(
                 items="node_map.attributes", item_name="node_properties.name"
@@ -403,7 +419,8 @@ FOREACH (i in CASE WHEN has_property_conflict = TRUE THEN [1] ELSE [] END |
             "node_properties": {
                 "uuid": enriched_node.uuid,
                 "kind": enriched_node.kind,
-                "db_labels": json.dumps(list(enriched_node.identifier.labels)),
+                "db_id": enriched_node.identifier.db_id,
+                "is_node_kind_migration": enriched_node.is_node_kind_migration,
                 "label": enriched_node.label,
                 "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
                 "action": enriched_node.action.value,
@@ -450,10 +467,9 @@ WITH keys($parent_node_map) AS child_node_uuids
 MATCH (diff_root:DiffRoot {uuid: $root_uuid})
 MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode)
 WHERE child_node.uuid IN child_node_uuids
-CALL {
-    WITH diff_root, child_node
-    WITH diff_root, child_node, $parent_node_map[child_node.uuid] AS sub_map
-    WITH diff_root, child_node, sub_map, keys(sub_map) AS relationship_names
+CALL (diff_root, child_node) {
+    WITH $parent_node_map[child_node.uuid] AS sub_map
+    WITH sub_map, keys(sub_map) AS relationship_names
     MATCH (child_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship)
     WHERE diff_rel_group.name IN relationship_names
     WITH diff_root, diff_rel_group, toString(sub_map[diff_rel_group.name]) AS parent_uuid

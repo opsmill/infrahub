@@ -1,9 +1,10 @@
+import { Colorful, type ColorResult, type HsvaColor } from "@uiw/react-color/src/index";
+import { forwardRef, useState } from "react";
+
 import { Input } from "@/shared/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, getTextColor } from "@/shared/utils/common";
-import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
-import { forwardRef, useState } from "react";
 
 export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
   const { id, disabled, value, onChange, className } = props;
@@ -31,7 +32,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
   return (
     <div
       className={classNames(
-        "flex items-center gap-2 relative",
+        "relative flex items-center gap-2",
         disabled && "pointer-events-none opacity-50"
       )}
     >
@@ -49,7 +50,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
         <PopoverTrigger
           className={classNames(
             focusVisibleStyle,
-            "size-5 bg-linear-to-br from-custom-white via-custom-blue-50 to-custom-gray rounded-full shrink-0"
+            "size-5 shrink-0 rounded-full bg-linear-to-br from-custom-white via-custom-blue-50 to-custom-gray"
           )}
         />
 

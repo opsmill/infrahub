@@ -1,7 +1,8 @@
+import { type ReactElement, useState } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { debounce } from "@/shared/utils/common";
-import { ReactElement, useState } from "react";
 
 type Item = string | Record<string, string>;
 
@@ -41,7 +42,7 @@ export function InlineDisplay({ items, render, maxDisplay = 3 }: InlineDisplayPr
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex gap-2 items-center relative">
+      <div className="relative flex items-center gap-2">
         {trimedItems.map((item) => handleRender(item, render))}
       </div>
 

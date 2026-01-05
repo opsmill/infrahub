@@ -7,6 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.length import AttributeLengthChecker, AttributeLengthUpdateValidatorQuery
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
@@ -14,11 +15,11 @@ from infrahub.database import InfrahubDatabase
 @pytest.mark.parametrize("min_length,max_length", [(None, None), (None, 30), (1, None), (2, 10), (4, 4)])
 async def test_query_length_success(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, min_length, max_length
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.min_length = min_length
-    name_attr.max_length = max_length
+    name_attr.parameters.min_length = min_length
+    name_attr.parameters.max_length = max_length
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -36,11 +37,11 @@ async def test_query_length_success(
 
 async def test_query_length_too_short(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, person_albert_main
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.min_length = 5
-    name_attr.max_length = None
+    name_attr.parameters.min_length = 5
+    name_attr.parameters.max_length = None
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -78,11 +79,11 @@ async def test_query_length_too_short(
 
 async def test_query_length_too_long(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, person_albert_main
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.min_length = 2
-    name_attr.max_length = 5
+    name_attr.parameters.min_length = 2
+    name_attr.parameters.max_length = 5
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -110,7 +111,7 @@ async def test_query_length_too_long(
 
 async def test_query_update_on_branch(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, person_john_main, person_jane_main, person_albert_main
-):
+) -> None:
     person_john_main.name.value = "Jawnsy"
     await person_john_main.save(db=db)
 
@@ -121,8 +122,8 @@ async def test_query_update_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.min_length = 2
-    name_attr.max_length = 5
+    name_attr.parameters.min_length = 2
+    name_attr.parameters.max_length = 5
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -150,7 +151,7 @@ async def test_query_update_on_branch(
 
 async def test_query_delete_on_branch(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, person_john_main, person_jane_main, person_albert_main
-):
+) -> None:
     person_john_main.name.value = "Jawnsy-John-Johnny"
     await person_john_main.save(db=db)
 
@@ -160,8 +161,8 @@ async def test_query_delete_on_branch(
 
     person_schema = registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.min_length = 2
-    name_attr.max_length = 5
+    name_attr.parameters.min_length = 2
+    name_attr.parameters.max_length = 5
 
     node_schema = person_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -189,17 +190,17 @@ async def test_query_delete_on_branch(
 
 async def test_validator(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, person_john_main, person_albert_main
-):
+) -> None:
     await branch.rebase(db=db)
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     name_attr = person_schema.get_attribute(name="name")
-    name_attr.min_length = 3
-    name_attr.max_length = 5
+    name_attr.parameters.min_length = 3
+    name_attr.parameters.max_length = 5
     registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,
-        constraint_name="attribute.min_length.update",
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value,
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         schema_branch=SchemaBranch(cache={}),

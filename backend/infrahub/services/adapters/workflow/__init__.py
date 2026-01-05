@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
+
 Return = TypeVar("Return")
 Params = ParamSpec("Params")
 

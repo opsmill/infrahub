@@ -28,6 +28,9 @@ from typing_extensions import Self
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+)
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
@@ -39,7 +42,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 validated_database = {}
@@ -91,6 +94,15 @@ class DatabaseSchemaManager:
 
         raise ValueError("The selected node is not of type NodeSchema")
 
+    def get_generic_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> GenericSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if schema.is_generic_schema:
+            return schema
+
+        raise ValueError("The selected node is not of type GenericSchema")
+
     def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
@@ -116,9 +128,14 @@ class DatabaseSchemaManager:
         return self.get_full(branch=branch, duplicate=duplicate)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
-        if name not in self._db._schemas:
-            return registry.schema.get_schema_branch(name=name)
-        return self._db._schemas[name]
+        """Return a schema branch object based on its name.
+
+        If the branch is the global one, the default branch will be returned.
+        """
+        branch_name = registry.default_branch if name == GLOBAL_BRANCH_NAME else name
+        if branch_name not in self._db._schemas:
+            return registry.schema.get_schema_branch(name=branch_name)
+        return self._db._schemas[branch_name]
 
 
 class InfrahubDatabase:
@@ -155,19 +172,6 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
-
-    def __del__(self) -> None:
-        if not self._session or not self._is_session_local or self._session.closed():
-            return
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-        if loop and loop.is_running():
-            loop.create_task(self._session.close())
-        else:
-            asyncio.run(self._session.close())
 
     @property
     def is_session(self) -> bool:
@@ -284,9 +288,10 @@ class InfrahubDatabase:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            return await self._session.close()
+            await self._session.close()
+            return
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             if exc_type is not None:
@@ -330,7 +335,7 @@ class InfrahubDatabase:
         CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
 
         if config.SETTINGS.database.max_concurrent_queries:
-            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:  # noqa: ASYNC110
+            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:
                 await asyncio.sleep(config.SETTINGS.database.max_concurrent_queries_delay)
                 connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
 
@@ -351,7 +356,7 @@ class InfrahubDatabase:
                     type
                     and type == QueryType.READ
                     and runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]
-                    and not (self.is_transaction and runtime in [Neo4jRuntime.PARALLEL])
+                    and not (self.is_transaction and runtime == Neo4jRuntime.PARALLEL)
                 ):
                     query = f"CYPHER runtime = {runtime.value}\n" + query
                 else:
@@ -476,8 +481,6 @@ async def validate_database(
 
 
 async def get_db(retry: int = 0) -> AsyncDriver:
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
-
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
@@ -485,11 +488,13 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
     driver = AsyncGraphDatabase.driver(
-        URI,
+        config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
-        notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
+        notifications_disabled_categories=[
+            NotificationDisabledCategory.UNRECOGNIZED,
+        ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
 

@@ -2,6 +2,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
@@ -30,10 +31,11 @@ async def _get_branch_merger(
         diff_repository=diff_repository,
         source_branch=source_branch,
         destination_branch=destination_branch,
+        diff_locker=DiffLocker(),
     )
 
 
-async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema):
+async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     at = Timestamp()
     component_registry = get_component_registry()
@@ -77,7 +79,9 @@ async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02
     await diff_merger.merge_graph(at=at)
 
 
-async def test_merge_graph_delete(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema):
+async def test_merge_graph_delete(
+    db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema
+) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch1)
@@ -92,14 +96,15 @@ async def test_merge_graph_delete(db: InfrahubDatabase, default_branch, base_dat
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch1)
     await diff_merger.merge_graph(at=Timestamp())
 
-    # Query all cars in MAIN, AFTER the merge
+    # Query all persons in MAIN, AFTER the merge
     persons = sorted(await NodeManager.query(schema="TestPerson", db=db), key=lambda p: p.id)
     assert len(persons) == 2
+    assert {p.id for p in persons} == {"p1", "p2"}
 
 
 async def test_merge_relationship_many(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
-):
+) -> None:
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
     await blue.save(db=db)
@@ -136,6 +141,60 @@ async def test_merge_relationship_many(
     assert len(await org1_main.tags.get(db=db)) == 3
 
 
+async def test_merge_relationship_one(
+    db: InfrahubDatabase,
+    person_tag_schema: None,
+    default_branch: Branch,
+    tag_blue_main: Node,
+    tag_red_main: Node,
+    tag_black_main: Node,
+    person_jack_main: Node,
+) -> None:
+    await person_jack_main.primary_tag.update(db=db, data=[tag_blue_main])
+    await person_jack_main.save(db=db)
+
+    branch1 = await create_branch(db=db, branch_name="branch1")
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch1)
+
+    person_jack_branch = await NodeManager.get_one(id=person_jack_main.id, branch=branch1, db=db)
+    await person_jack_branch.primary_tag.update(db=db, data=[tag_red_main])
+    await person_jack_branch.save(db=db)
+
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch1)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch1)
+    await diff_merger.merge_graph(at=Timestamp())
+
+    # check person on main
+    fresh_jack_on_main = await NodeManager.get_one(db=db, id=person_jack_main.id)
+    tag_rels = await fresh_jack_on_main.primary_tag.get_relationships(db=db)
+    assert len(tag_rels) == 1
+    assert tag_rels[0].peer_id == tag_red_main.id
+
+    # update person on main
+    await fresh_jack_on_main.primary_tag.update(db=db, data=[tag_black_main])
+    await fresh_jack_on_main.save(db=db)
+    refreshed_jack_on_main = await NodeManager.get_one(db=db, id=person_jack_main.id)
+    tag_rels = await refreshed_jack_on_main.primary_tag.get_relationships(db=db)
+    assert len(tag_rels) == 1
+    assert tag_rels[0].peer_id == tag_black_main.id
+
+    # check person on branch
+    fresh_jack_on_branch = await NodeManager.get_one(db=db, branch=branch1, id=person_jack_main.id)
+    tag_rels = await fresh_jack_on_branch.primary_tag.get_relationships(db=db)
+    assert len(tag_rels) == 1
+    assert tag_rels[0].peer_id == tag_red_main.id
+
+    # update person on branch
+    await fresh_jack_on_branch.primary_tag.update(db=db, data=[tag_black_main])
+    await fresh_jack_on_branch.save(db=db)
+    refreshed_jack_on_branch = await NodeManager.get_one(db=db, branch=branch1, id=person_jack_main.id)
+
+    tag_rels = await refreshed_jack_on_branch.primary_tag.get_relationships(db=db)
+    assert len(tag_rels) == 1
+    assert tag_rels[0].peer_id == tag_black_main.id
+
+
 async def test_merge_update_schema(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -143,7 +202,7 @@ async def test_merge_update_schema(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.update_schema_branch(
         db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True

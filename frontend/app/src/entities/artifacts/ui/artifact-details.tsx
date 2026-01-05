@@ -1,15 +1,19 @@
-import { CONFIG } from "@/config/config";
-import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
-import { NodeEvents } from "@/entities/events/ui/node-details-events";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
-import { ModelSchema } from "@/entities/schema/types";
+import type { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
+import { Separator } from "@/shared/components/aria/separator";
+import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
-import { Divider } from "@/shared/components/ui/divider";
+import { CONFIG } from "@/shared/config/config";
+
+import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
+import { NodeEvents } from "@/entities/events/ui/node-details-events";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { ModelSchema } from "@/entities/schema/types";
+
 import ArtifactHeader from "./artifact-header";
 
 export interface ArtifactsDetailsProps {
@@ -19,53 +23,53 @@ export interface ArtifactsDetailsProps {
 
 export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetailsProps) {
   const artifactKind = artifactSchema.kind as string;
-  const { loading, error, data } = useObjectDetails(artifactSchema, artifactId);
+  const { isPending, error, data } = useGetObject({
+    objectSchema: artifactSchema,
+    objectId: artifactId,
+  });
 
-  if (loading) {
+  if (isPending) {
     return <LoadingIndicator className="h-full" />;
   }
 
   if (error) {
-    return <ErrorScreen message={`Something went wrong when fetching artifact ${artifactId}`} />;
+    return <ErrorScreen message={error.message} />;
   }
 
-  const objectDetailsData = data?.[artifactKind]?.edges?.[0]?.node;
-  if (!objectDetailsData) {
-    return <NoDataFound message={`No artifact found with id ${artifactId}`} />;
-  }
+  const objectDetailsData = data as unknown as CoreArtifact;
 
   const fileUrl: string = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
   const contentType = objectDetailsData.content_type?.value;
 
   return (
-    <div className="flex flex-wrap grow lg:flex-nowrap w-full gap-0.5 overflow-auto">
-      <Content.Card className="flex flex-col grow">
-        <div className="p-4 pb-2">
+    <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
+      <Content.Card className="flex grow flex-col">
+        <Col className="gap-3 p-4 pb-2">
           <ArtifactHeader
-            name={objectDetailsData?.display_label}
+            name={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
             status={objectDetailsData?.status?.value}
             id={artifactId}
             hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
             checksum={objectDetailsData?.checksum?.value}
             storageId={objectDetailsData?.storage_id?.value}
-            definitionId={objectDetailsData?.definition?.node?.id}
+            artifactDefinitionId={objectDetailsData?.definition?.node?.id}
           />
 
-          <Divider />
+          <Separator />
 
-          <div className="flex gap-4">
+          <Row className="gap-4">
             <NodeDescription node={objectDetailsData.definition?.node} className="p-2" />
-            <div className="self-stretch w-px bg-gray-300" />
+            <Separator orientation="vertical" />
             <NodeDescription node={objectDetailsData.object?.node} className="p-2" />
-          </div>
-        </div>
+          </Row>
+        </Col>
 
-        <div className="flex p-1 grow overflow-hidden">
+        <div className="flex grow overflow-hidden p-1">
           <ArtifactFile artifactId={artifactId} url={fileUrl} contentType={contentType} />
         </div>
       </Content.Card>
       <Card className="min-w-[350px] p-0">
-        <div className="font-semibold p-2 border-b  border-gray-200">Activities</div>
+        <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
         <NodeEvents objectId={artifactId} objectKind={artifactKind} />
       </Card>
     </div>

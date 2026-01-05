@@ -15,7 +15,7 @@ class TestLoadConcurrentPrefixes(TestIpam):
         client,
         default_ipnamespace,
         register_ipam_schema,
-    ):
+    ) -> None:
         prefixes_batch = await client.create_batch()
         network_8 = ipaddress.IPv4Network("10.0.0.0/8")
         networks_16 = list(network_8.subnets(new_prefix=16))
@@ -37,7 +37,7 @@ class TestLoadConcurrentPrefixes(TestIpam):
 
     async def test_too_many_relationships(
         self, db: InfrahubDatabase, default_branch, client, default_ipnamespace, prefix_with_rel_in_hfid_schema
-    ):
+    ) -> None:
         await load_schema(db=db, schema=prefix_with_rel_in_hfid_schema)
 
         prefixes = [IPv4Network("10.0.0.0/8"), IPv4Network("10.0.0.0/16"), IPv4Network("10.1.0.0/16")]

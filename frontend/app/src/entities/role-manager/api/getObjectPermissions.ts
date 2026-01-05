@@ -1,13 +1,23 @@
 import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = gql`
-  query GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS($search: String) {
-    CoreObjectPermission(any__value: $search, partial_match: true) {
+  query GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS(
+    $search: String
+    $offset: Int
+    $limit: Int
+  ) {
+    CoreObjectPermission(
+      any__value: $search
+      partial_match: true
+      offset: $offset
+      limit: $limit
+    ) {
       count
       edges {
         node {
           id
           display_label
+          hfid
           name {
             value
           }

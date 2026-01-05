@@ -1,6 +1,11 @@
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
+
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
+
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { Badge } from "../../ui/badge";
 import {
   Combobox,
@@ -10,12 +15,19 @@ import {
   ComboboxTrigger,
 } from "../../ui/combobox";
 import { FormField, FormInput, FormMessage } from "../../ui/form";
-import { DEFAULT_FORM_FIELD_VALUE } from "../constants";
-import { FormAttributeValue, FormFieldProps } from "../type";
+import type { FormAttributeValue, FormFieldProps } from "../type";
 import { updateFormFieldValue } from "../utils/updateFormFieldValue";
-import { LabelFormField } from "./common";
+import { LabelFormField, ResetAction } from "./common";
 
-export function NodeKindField({ label, description, rules, ...props }: FormFieldProps) {
+export function NodeKindField({
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  attribute,
+  label,
+  description,
+  rules,
+  ...props
+}: FormFieldProps) {
   const nodes = useAtomValue(nodeSchemasAtom);
 
   return (
@@ -37,7 +49,7 @@ export function NodeKindField({ label, description, rules, ...props }: FormField
               <FormInput>
                 <ComboboxTrigger>
                   {currentNode && (
-                    <div className="w-full flex justify-between">
+                    <div className="flex w-full justify-between">
                       {currentNode?.label} <Badge>{currentNode?.namespace}</Badge>
                     </div>
                   )}
@@ -55,14 +67,12 @@ export function NodeKindField({ label, description, rules, ...props }: FormField
                         keywords={[node.label as string]}
                         onSelect={() => {
                           const newValue = node.kind === currentValue ? null : node.kind;
-                          field.onChange(
-                            updateFormFieldValue(newValue ?? null, DEFAULT_FORM_FIELD_VALUE)
-                          );
+                          field.onChange(updateFormFieldValue(newValue ?? null, defaultValue));
 
                           setOpen(false);
                         }}
                       >
-                        <div className="w-full flex justify-between">
+                        <div className="flex w-full justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
                       </ComboboxItem>
@@ -71,6 +81,10 @@ export function NodeKindField({ label, description, rules, ...props }: FormField
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

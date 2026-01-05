@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="module", autouse=True)
-def load_component_dependency_registry():
+def load_component_dependency_registry() -> None:
     build_component_registry()
 
 
@@ -44,6 +44,8 @@ class PermissionsHelper:
     def default_branch(self) -> Branch:
         if self._default_branch:
             return self._default_branch
+
+        raise NotImplementedError()
 
 
 @pytest.fixture(scope="module")

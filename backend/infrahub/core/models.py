@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 from typing import TYPE_CHECKING, Any
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 GENERIC_ATTRIBUTES_TO_IGNORE = ["namespace", "name", "branch"]
+PROPERTY_NAMES_TO_IGNORE = ["regex", "min_length", "max_length"]
 
 
 class NodeKind(BaseModel):
@@ -71,6 +73,15 @@ class SchemaBranchHash(BaseModel):
     main: str
     nodes: dict[str, str] = Field(default_factory=dict)
     generics: dict[str, str] = Field(default_factory=dict)
+
+    @property
+    def is_valid(self) -> bool:
+        """
+        TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics.
+        """
+        if len(self.nodes) < 2 and len(self.generics) < 2:
+            return False
+        return True
 
     def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
@@ -252,11 +263,37 @@ class SchemaUpdateValidationResult(BaseModel):
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
-            for prop_name in sub_field_diff.changed:
+            for prop_name, prop_diff in sub_field_diff.changed.items():
+                if prop_name in PROPERTY_NAMES_TO_IGNORE:
+                    continue
+
                 field_info = field.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
-                schema_path = SchemaPath(  # type: ignore[call-arg]
+                if isinstance(prop_diff, HashableModelDiff):
+                    for param_field_name in prop_diff.changed:
+                        # override field_update if this field has its own json_schema_extra.update
+                        try:
+                            prop_field = getattr(field, prop_name)
+                            param_field_info = prop_field.model_fields[param_field_name]
+                            param_field_update = str(param_field_info.json_schema_extra.get("update"))
+                        except (AttributeError, KeyError):
+                            param_field_update = None
+
+                        schema_path = SchemaPath(
+                            schema_kind=schema.kind,
+                            path_type=path_type,
+                            field_name=field_name,
+                            property_name=f"{prop_name}.{param_field_name}",
+                        )
+
+                        self._process_field(
+                            schema_path=schema_path,
+                            field_update=param_field_update or field_update,
+                        )
+                    continue
+
+                schema_path = SchemaPath(
                     schema_kind=schema.kind,
                     path_type=path_type,
                     field_name=field_name,
@@ -323,7 +360,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def validate_migrations(self, migration_map: dict[str, Any]) -> None:
         for migration in self.migrations:
-            if migration_map.get(migration.migration_name, None) is None:
+            if migration_map.get(migration.migration_name) is None:
                 self.errors.append(
                     SchemaUpdateValidationError(
                         path=migration.path,
@@ -334,7 +371,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def validate_constraints(self, validator_map: dict[str, Any]) -> None:
         for constraint in self.constraints:
-            if validator_map.get(constraint.constraint_name, None) is None:
+            if validator_map.get(constraint.constraint_name) is None:
                 self.errors.append(
                     SchemaUpdateValidationError(
                         path=constraint.path,
@@ -368,8 +405,8 @@ class HashableModelDiff(BaseModel):
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str | None = None
-    state: HashableModelState = HashableModelState.PRESENT
+    id: str | None = Field(default=None)
+    state: HashableModelState = Field(default=HashableModelState.PRESENT)
 
     _exclude_from_hash: list[str] = []
     _sort_by: list[str] = []
@@ -542,7 +579,9 @@ class HashableModel(BaseModel):
 
         for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
+                with contextlib.suppress(ValueError):
+                    # handles the case where self and other are different types and other has fields that self does not
+                    setattr(self, field_name, getattr(other, field_name))
                 continue
 
             attr_other = getattr(other, field_name)

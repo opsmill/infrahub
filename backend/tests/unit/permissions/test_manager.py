@@ -8,7 +8,7 @@ from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionA
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.permissions import AssignedPermissions, LocalPermissionBackend, PermissionBackend, PermissionManager
+from infrahub.permissions import AssignedPermissions, PermissionBackend, PermissionManager
 from infrahub.permissions.constants import PermissionDecisionFlag
 
 
@@ -33,10 +33,12 @@ class DummyBackendDeny(PermissionBackend):
 
 
 async def test_load_permissions(
-    db: InfrahubDatabase, default_branch: Branch, session_admin: AccountSession, session_first_account: AccountSession
-):
-    registry.permission_backends = [LocalPermissionBackend()]
-
+    db: InfrahubDatabase,
+    default_permission_backend: None,
+    default_branch: Branch,
+    session_admin: AccountSession,
+    session_first_account: AccountSession,
+) -> None:
     permission_manager = PermissionManager(account_session=session_admin)
     await permission_manager.load_permissions(db=db, branch=default_branch)
 
@@ -62,7 +64,7 @@ async def test_load_permissions(
 
 async def test_load_permissions_multiple_backends(
     db: InfrahubDatabase, default_branch: Branch, session_first_account: AccountSession
-):
+) -> None:
     registry.permission_backends = [DummyBackendAllow(), DummyBackendDeny()]
 
     permission_manager = PermissionManager(account_session=session_first_account)
@@ -78,13 +80,12 @@ async def test_load_permissions_multiple_backends(
 async def test_has_permission_global(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     register_core_models_schema: None,
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
-    registry.permission_backends = [LocalPermissionBackend()]
-
+) -> None:
     allow_default_branch_edition = GlobalPermission(
         action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
@@ -145,13 +146,12 @@ async def test_has_permission_global(
 async def test_has_permission_object(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     register_core_models_schema: None,
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
-    registry.permission_backends = [LocalPermissionBackend()]
-
+) -> None:
     role1_permissions = []
     for p in [
         ObjectPermission(
@@ -230,13 +230,12 @@ async def test_has_permission_object(
 async def test_has_permissions_object(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     register_core_models_schema: None,
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
-    registry.permission_backends = [LocalPermissionBackend()]
-
+) -> None:
     role1_permissions = []
     for p in [
         ObjectPermission(
@@ -335,13 +334,12 @@ async def test_has_permissions_object(
 async def test_report_permission_object(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_permission_backend: None,
     register_core_models_schema: None,
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
-    registry.permission_backends = [LocalPermissionBackend()]
-
+) -> None:
     role1_permissions = []
     for p in [
         ObjectPermission(

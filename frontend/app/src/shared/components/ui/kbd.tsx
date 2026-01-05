@@ -1,5 +1,6 @@
+import { forwardRef, type HTMLAttributes, useMemo } from "react";
+
 import { classNames } from "@/shared/utils/common";
-import { HTMLAttributes, forwardRef, useMemo } from "react";
 
 export type KbdKey =
   | "command"
@@ -59,7 +60,7 @@ const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
     <kbd
       ref={ref}
       className={classNames(
-        "text-gray-600 bg-gray-100 font-sans py-0.5 px-1.5 rounded-sm text-xs",
+        "rounded-sm bg-gray-100 px-1.5 py-0.5 font-sans text-gray-600 text-xs",
         className
       )}
     >

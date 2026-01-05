@@ -1,12 +1,13 @@
-import { PoolValue } from "@/shared/components/form/pool-selector";
-import {
+import { isDeepEqual } from "remeda";
+
+import type { PoolValue } from "@/shared/components/form/pool-selector";
+import type {
   AttributeValueFromPool,
   FormAttributeValue,
   FormFieldValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
-import { isDeepEqual } from "remeda";
 
 export const updateFormFieldValue = (
   newValue: Exclude<FormFieldValue, AttributeValueFromPool | RelationshipValueFromPool>["value"],

@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.12-bookworm
 
 RUN apt-get remove -yq docker.io docker-doc docker-compose podman-docker containerd runc 2>&1 || true
 
@@ -34,9 +34,10 @@ COPY . .
 
 USER vscode
 
-RUN pip install toml invoke
+RUN pip install invoke
 
-RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - \
+ARG UV_VER=0.9.9
+RUN curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - \
     && echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> $HOME/.bashrc
 
 RUN bash -c "$(curl -sL https://get.containerlab.dev)"

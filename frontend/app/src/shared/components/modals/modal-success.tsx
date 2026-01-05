@@ -1,15 +1,17 @@
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import React, { Fragment, ReactNode, useRef } from "react";
+import type React from "react";
+import { Fragment, type ReactNode, useRef } from "react";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
 
 interface iProps {
   open: boolean;
   isLoading?: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   title: string;
-  description: string | React.ReactNode;
-  onConfirm: Function;
+  description?: string | React.ReactNode;
+  onConfirm: () => void;
   children: ReactNode;
   icon?: string;
 }
@@ -42,7 +44,7 @@ export default function ModalSuccess({
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-full justify-center text-center items-center p-0">
+          <div className="flex min-h-full items-center justify-center p-0 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -52,33 +54,33 @@ export default function ModalSuccess({
               leaveFrom="opacity-100 translate-y-0 scale-100"
               leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all my-8 w-full max-w-lg">
-                <div className="bg-white px-4 pt-5 p-6 pb-4">
+              <Dialog.Panel className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all">
+                <div className="bg-white p-6 px-4 pt-5 pb-4">
                   <div className="">
-                    <div className="ml-4 mt-0 text-left">
+                    <div className="mt-0 ml-4 text-left">
                       <Dialog.Title
                         as="h3"
-                        className="flex items-center font-semibold leading-6 text-gray-900"
+                        className="flex items-center font-semibold text-gray-900 leading-6"
                       >
-                        <div className="bg-custom-blue-1 rounded-full w-8 h-8 flex items-center justify-center mr-2">
+                        <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-custom-blue-1">
                           <Icon icon={icon} className="text-custom-blue-700" aria-hidden="true" />
                         </div>
                         {title}
                       </Dialog.Title>
                       <div className="mt-2">
-                        <p className="text-sm text-gray-500">{description}</p>
+                        <p className="text-gray-500 text-sm">{description}</p>
                         {children}
                       </div>
                     </div>
                   </div>
                 </div>
                 <div
-                  className="bg-gray-50 px-4 py-3 flex flex-row-reverse"
+                  className="flex flex-row-reverse bg-gray-50 px-4 py-3"
                   data-cy="modal-confirm-buttons"
                 >
                   <Button
                     onClick={onConfirm}
-                    buttonType={BUTTON_TYPES.VALIDATE}
+                    variant="active"
                     className="ml-2"
                     isLoading={isLoading}
                   >

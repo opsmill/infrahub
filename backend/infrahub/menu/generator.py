@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
 
@@ -132,5 +133,12 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
         )
         default_menu.children[str(menu_item.identifier)] = menu_item
         items_to_add[item_name] = True
+
+    builtin_ipaddress = registry.schema.get_generic_schema(name=InfrahubKind.IPADDRESS, branch=branch, duplicate=False)
+    builtin_ipprefix = registry.schema.get_generic_schema(name=InfrahubKind.IPPREFIX, branch=branch, duplicate=False)
+    ipam_missing = len(builtin_ipaddress.used_by + builtin_ipprefix.used_by) == 0
+
+    if ipam_missing:
+        structure.data.pop("BuiltinIPAM")
 
     return structure

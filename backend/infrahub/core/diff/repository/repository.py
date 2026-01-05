@@ -10,7 +10,6 @@ from infrahub.core.diff.query.summary_counts_enricher import (
     DiffFieldsSummaryCountsEnricherQuery,
     DiffNodesSummaryCountsEnricherQuery,
 )
-from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
@@ -377,6 +376,10 @@ class DiffRepository:
         await query.execute(db=self.db)
         return query.get_summary()
 
+    async def delete_all_diff_roots(self) -> None:
+        query = await EnrichedDiffDeleteQuery.init(db=self.db)
+        await query.execute(db=self.db)
+
     async def delete_diff_roots(self, diff_root_uuids: list[str]) -> None:
         query = await EnrichedDiffDeleteQuery.init(db=self.db, enriched_diff_root_uuids=diff_root_uuids)
         await query.execute(db=self.db)
@@ -508,13 +511,6 @@ class DiffRepository:
     async def mark_tracking_ids_merged(self, tracking_ids: list[TrackingId]) -> None:
         query = await EnrichedDiffMergedTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
         await query.execute(db=self.db)
-
-    async def get_num_changes_in_time_range_by_branch(
-        self, branch_names: list[str], from_time: Timestamp, to_time: Timestamp
-    ) -> dict[str, int]:
-        query = await DiffCountChanges.init(db=self.db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
-        await query.execute(db=self.db)
-        return query.get_num_changes_by_branch()
 
     async def get_node_field_specifiers(self, diff_id: str) -> NodeFieldSpecifierMap:
         limit = config.SETTINGS.database.query_size_limit

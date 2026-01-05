@@ -8,14 +8,19 @@ generics:
     default_filter: name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
         label: Name
         optional: false
         order_weight: 1
+      - name: service_identifier
+        kind: NumberPool
+        read_only: true
+        parameters:
+          start_range: 100
+          end_range: 10000
 nodes:
   - name: BackBoneService
     namespace: Infra

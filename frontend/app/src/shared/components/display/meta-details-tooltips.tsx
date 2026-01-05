@@ -1,13 +1,16 @@
-import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
-import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@iconify-icon/react";
+import type React from "react";
+
+import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
@@ -30,14 +33,14 @@ export default function MetaDetailsTooltip({
     {
       name: "Source",
       value: source ? (
-        <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
+        <Link to={getObjectDetailsUrl(source.__typename, source.id)}>
           {isFromProfile ? (
             <Badge variant="green" className="font-normal hover:underline">
               <Icon icon="mdi:shape-plus-outline" className="mr-1" />
-              {source.display_label}
+              {getNodeLabel(source)}
             </Badge>
           ) : (
-            source.display_label
+            getNodeLabel(source)
           )}
         </Link>
       ) : (
@@ -55,9 +58,7 @@ export default function MetaDetailsTooltip({
     {
       name: "Owner",
       value: owner ? (
-        <Link to={constructPath(`/objects/${owner.__typename}/${owner.id}`)}>
-          {owner.display_label}
-        </Link>
+        <Link to={getObjectDetailsUrl(owner.__typename, owner.id)}>{getNodeLabel(owner)}</Link>
       ) : (
         "-"
       ),

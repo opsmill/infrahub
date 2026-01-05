@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import InfrahubKind
+
 from .generated.genericnode_schema import GeneratedGenericSchema
 
 if TYPE_CHECKING:
@@ -28,6 +30,14 @@ class GenericSchema(GeneratedGenericSchema):
     def is_template_schema(self) -> bool:
         return False
 
+    @property
+    def is_ip_prefix(self) -> bool:
+        return self.kind == InfrahubKind.IPPREFIX
+
+    @property
+    def is_ip_address(self) -> bool:
+        return self.kind == InfrahubKind.IPADDRESS
+
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:  # noqa: ARG002
         if self.hierarchical:
             return self
@@ -41,4 +51,4 @@ class GenericSchema(GeneratedGenericSchema):
     def _get_field_names_for_diff(self) -> list[str]:
         """Exclude used_by from the diff for generic nodes"""
         fields = super()._get_field_names_for_diff()
-        return [field for field in fields if field not in ["used_by"]]
+        return [field for field in fields if field != "used_by"]

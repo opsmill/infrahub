@@ -8,7 +8,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 
 class TestTransforms(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, client):
+    async def base_dataset(self, db: InfrahubDatabase, client) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
@@ -81,18 +80,14 @@ class TestTransforms(TestInfrahubApp):
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id,
-            name=git_repo_car_dealership.name,
-            location=git_repo_car_dealership.path,
-            client=client,
-            service=await InfrahubServices.new(database=db),
+            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
         )
 
         return repo
 
     async def test_transform_jinja(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
-    ):
+    ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
@@ -111,7 +106,7 @@ class TestTransforms(TestInfrahubApp):
 
     async def test_transform_python(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
-    ):
+    ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
@@ -131,7 +126,7 @@ class TestTransforms(TestInfrahubApp):
 
     async def test_convert_query_response_transform_python(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
-    ):
+    ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 

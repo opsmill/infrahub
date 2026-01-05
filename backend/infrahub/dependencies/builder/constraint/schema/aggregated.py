@@ -14,6 +14,7 @@ from .node_attribute import SchemaNodeAttributeAddConstraintDependency
 from .node_relationship import SchemaNodeRelationshipAddConstraintDependency
 from .relationship_count import SchemaRelationshipCountConstraintDependency
 from .relationship_optional import SchemaRelationshipOptionalConstraintDependency
+from .relationship_peer import SchemaRelationshipPeerParentConstraintDependency
 from .uniqueness import SchemaUniquenessConstraintDependency
 
 
@@ -36,6 +37,7 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
                 SchemaAttributeKindConstraintDependency.build(context=context),
                 SchemaNodeAttributeAddConstraintDependency.build(context=context),
                 SchemaNodeRelationshipAddConstraintDependency.build(context=context),
+                SchemaRelationshipPeerParentConstraintDependency.build(context=context),
             ],
             db=context.db,
             branch=context.branch,

@@ -1,7 +1,7 @@
-import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -12,15 +12,20 @@ import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
-import { Table, tRowValue } from "@/shared/components/table/table";
+import { Table, type tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { GLOBAL_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+import usePagination from "@/shared/hooks/usePagination";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 import { globalDecisionOptions } from "../constants";
 
@@ -29,6 +34,8 @@ function GlobalPermissions() {
   const { schema } = useSchema(GLOBAL_PERMISSION_OBJECT);
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
+
   const {
     loading,
     networkStatus,
@@ -37,7 +44,7 @@ function GlobalPermissions() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
@@ -78,7 +85,8 @@ function GlobalPermissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: { value: edge?.node?.display_label },
+          display_label: edge?.node?.display_label,
+          hfid: edge?.node?.hfid,
           action: { value: edge?.node?.action?.value },
           decision: {
             display: globalDecisionOptions.find(
@@ -89,13 +97,18 @@ function GlobalPermissions() {
           roles: {
             display: (
               <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+                items={edge?.node?.roles?.edges?.map((edge) =>
+                  edge?.node ? getNodeLabel(edge.node) : ""
+                )}
                 render={(item) => <Badge>{item}</Badge>}
               />
             ),
             value: { edges: edge?.node?.roles?.edges },
           },
-          identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
           __typename: edge.node.__typename,
         },
       };
@@ -113,7 +126,7 @@ function GlobalPermissions() {
       return <UnauthorizedScreen message={message} />;
     }
 
-    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+    return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
   if (networkStatus === NetworkStatus.loading) {
@@ -132,7 +145,7 @@ function GlobalPermissions() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}
@@ -179,8 +192,8 @@ function GlobalPermissions() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.identifier?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -196,6 +209,7 @@ function GlobalPermissions() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}

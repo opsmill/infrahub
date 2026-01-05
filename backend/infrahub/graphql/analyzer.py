@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
@@ -13,11 +13,27 @@ from graphql import (
     FragmentSpreadNode,
     GraphQLSchema,
     InlineFragmentNode,
+    ListTypeNode,
     NamedTypeNode,
     NonNullTypeNode,
     OperationDefinitionNode,
     OperationType,
     SelectionSetNode,
+    TypeNode,
+)
+from graphql.language.ast import (
+    BooleanValueNode,
+    ConstListValueNode,
+    ConstObjectValueNode,
+    EnumValueNode,
+    FloatValueNode,
+    IntValueNode,
+    ListValueNode,
+    NullValueNode,
+    ObjectValueNode,
+    StringValueNode,
+    ValueNode,
+    VariableNode,
 )
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
@@ -33,13 +49,13 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
-class MutateAction(str, Enum):
+class MutateAction(StrEnum):
     CREATE = "create"
     DELETE = "delete"
     UPDATE = "update"
 
 
-class ContextType(str, Enum):
+class ContextType(StrEnum):
     EDGE = "edge"
     NODE = "node"
     DIRECT = "direct"
@@ -64,7 +80,7 @@ class ContextType(str, Enum):
                 return cls.NODE
 
 
-class GraphQLOperation(str, Enum):
+class GraphQLOperation(StrEnum):
     QUERY = "query"
     MUTATION = "mutation"
     SUBSCRIPTION = "subscription"
@@ -91,8 +107,23 @@ class GraphQLSelectionSet:
 @dataclass
 class GraphQLArgument:
     name: str
-    value: str
+    value: Any
     kind: str
+
+    @property
+    def is_variable(self) -> bool:
+        return self.kind == "variable"
+
+    @property
+    def as_variable_name(self) -> str:
+        """Return the name without a $ prefix"""
+        return str(self.value).removeprefix("$")
+
+    @property
+    def fields(self) -> list[str]:
+        if self.kind != "object_value" or not isinstance(self.value, dict):
+            return []
+        return sorted(self.value.keys())
 
 
 @dataclass
@@ -106,6 +137,9 @@ class GraphQLVariable:
     name: str
     type: str
     required: bool
+    is_list: bool = False
+    inner_required: bool = False
+    default: Any | None = None
 
 
 @dataclass
@@ -267,6 +301,35 @@ class GraphQLQueryReport:
         return fields
 
     @cached_property
+    def variables(self) -> list[GraphQLVariable]:
+        """Return input variables defined on the query document
+
+        All subqueries will use the same document level queries,
+        so only the first entry is required
+        """
+        if self.queries:
+            return self.queries[0].variables
+        return []
+
+    def required_argument(self, argument: GraphQLArgument) -> bool:
+        if argument.name == "ids" and argument.kind == "list_value":
+            for variable in self.variables:
+                if f"['${variable.name}']" == argument.as_variable_name and variable.required:
+                    return True
+
+            return False
+
+        if not argument.is_variable:
+            # If the argument isn't a variable it would have been
+            # statically defined in the input and as such required
+            return True
+        for variable in self.variables:
+            if variable.name == argument.as_variable_name and variable.required:
+                return True
+
+        return False
+
+    @cached_property
     def top_level_kinds(self) -> list[str]:
         return [query.infrahub_model.kind for query in self.queries if query.infrahub_model]
 
@@ -297,6 +360,24 @@ class GraphQLQueryReport:
                 node_actions.add(MutateAction.UPDATE)
 
         return access
+
+    @property
+    def only_has_unique_targets(self) -> bool:
+        """Indicate if the query document is defined so that it will return a single root level object"""
+        for query in self.queries:
+            targets_single_query = False
+            if query.infrahub_model and query.infrahub_model.uniqueness_constraints:
+                for argument in query.arguments:
+                    if [[argument.name]] == query.infrahub_model.uniqueness_constraints:
+                        if self.required_argument(argument=argument):
+                            targets_single_query = True
+                    elif argument.name == "ids" and self.required_argument(argument=argument):
+                        targets_single_query = True
+
+            if not targets_single_query:
+                return False
+
+        return True
 
 
 class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
@@ -567,7 +648,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self, node: InlineFragmentNode, query_node: GraphQLQueryNode
     ) -> GraphQLQueryNode:
         context_type = query_node.context_type
-        infrahub_model = self.schema_branch.get(name=node.type_condition.name.value)
+        infrahub_model = self.schema_branch.get(name=node.type_condition.name.value, duplicate=False)
         context_type = ContextType.DIRECT
         current_node = GraphQLQueryNode(
             parent=query_node,
@@ -603,31 +684,80 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
             ],
         )
 
-    @staticmethod
-    def _get_variables(operation: OperationDefinitionNode) -> list[GraphQLVariable]:
-        variables = []
-        for variable in operation.variable_definitions:
-            if isinstance(variable.type, NamedTypeNode):
-                variables.append(
-                    GraphQLVariable(name=variable.variable.name.value, type=variable.type.name.value, required=False)
+    def _get_variables(self, operation: OperationDefinitionNode) -> list[GraphQLVariable]:
+        variables: list[GraphQLVariable] = []
+
+        for variable in operation.variable_definitions or []:
+            type_node: TypeNode = variable.type
+            required = False
+            is_list = False
+            inner_required = False
+
+            if isinstance(type_node, NonNullTypeNode):
+                required = True
+                type_node = type_node.type
+
+            if isinstance(type_node, ListTypeNode):
+                is_list = True
+                inner_type = type_node.type
+
+                if isinstance(inner_type, NonNullTypeNode):
+                    inner_required = True
+                    inner_type = inner_type.type
+
+                if isinstance(inner_type, NamedTypeNode):
+                    type_name = inner_type.name.value
+                else:
+                    raise TypeError(f"Unsupported inner type node: {inner_type}")
+            elif isinstance(type_node, NamedTypeNode):
+                type_name = type_node.name.value
+            else:
+                raise TypeError(f"Unsupported type node: {type_node}")
+
+            variables.append(
+                GraphQLVariable(
+                    name=variable.variable.name.value,
+                    type=type_name,
+                    required=required,
+                    is_list=is_list,
+                    inner_required=inner_required,
+                    default=self._parse_value(variable.default_value) if variable.default_value else None,
                 )
-            elif isinstance(variable.type, NonNullTypeNode):
-                if isinstance(variable.type.type, NamedTypeNode):
-                    variables.append(
-                        GraphQLVariable(
-                            name=variable.variable.name.value, type=variable.type.type.name.value, required=True
-                        )
-                    )
+            )
 
         return variables
 
-    @staticmethod
-    def _parse_arguments(field_node: FieldNode) -> list[GraphQLArgument]:
+    def _parse_arguments(self, field_node: FieldNode) -> list[GraphQLArgument]:
         return [
             GraphQLArgument(
                 name=argument.name.value,
-                value=getattr(argument.value, "value", ""),
+                value=self._parse_value(argument.value),
                 kind=argument.value.kind,
             )
             for argument in field_node.arguments
         ]
+
+    def _parse_value(self, node: ValueNode) -> Any:
+        match node:
+            case VariableNode():
+                value: Any = f"${node.name.value}"
+            case IntValueNode():
+                value = int(node.value)
+            case FloatValueNode():
+                value = float(node.value)
+            case StringValueNode():
+                value = node.value
+            case BooleanValueNode():
+                value = node.value
+            case NullValueNode():
+                value = None
+            case EnumValueNode():
+                value = node.value
+            case ListValueNode() | ConstListValueNode():
+                value = [self._parse_value(item) for item in node.values]
+            case ObjectValueNode() | ConstObjectValueNode():
+                value = {field.name.value: self._parse_value(field.value) for field in node.fields}
+            case _:
+                raise TypeError(f"Unsupported value node: {node}")
+
+        return value

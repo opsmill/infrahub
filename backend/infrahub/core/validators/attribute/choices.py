@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
@@ -10,6 +10,7 @@ from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.generic_schema import GenericSchema
     from infrahub.database import InfrahubDatabase
 
     from ..model import SchemaConstraintValidatorRequest
@@ -17,6 +18,14 @@ if TYPE_CHECKING:
 
 class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_choices_validator"
+
+    def __init__(
+        self,
+        excluded_kinds: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.excluded_kinds: list[str] = excluded_kinds or []
+        super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         if self.attribute_schema.choices is None:
@@ -28,11 +37,12 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["attr_name"] = self.attribute_schema.name
         self.params["allowed_values"] = [choice.name for choice in self.attribute_schema.choices]
         self.params["null_value"] = NULL_VALUE
+        self.params["excluded_kinds"] = self.excluded_kinds
 
         query = """
-        MATCH p = (n:%(node_kind)s)
-        CALL {
-            WITH n
+        MATCH (n:%(node_kind)s)
+        WHERE size($excluded_kinds) = 0 OR NOT n.kind IN $excluded_kinds
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)
@@ -42,7 +52,6 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
             LIMIT 1
         }
-        WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
@@ -94,10 +103,24 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
         if attribute_schema.choices is None:
             return grouped_data_paths_list
 
+        # skip inheriting schemas that override the attribute being checked
+        excluded_kinds: list[str] = []
+        if request.node_schema.is_generic_schema:
+            request.node_schema = cast("GenericSchema", request.node_schema)
+            for inheriting_kind in request.node_schema.used_by:
+                inheriting_schema = request.schema_branch.get_node(name=inheriting_kind, duplicate=False)
+                inheriting_schema_attribute = inheriting_schema.get_attribute(name=request.schema_path.field_name)
+                if not inheriting_schema_attribute.inherited:
+                    excluded_kinds.append(inheriting_kind)
+
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                excluded_kinds=excluded_kinds,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

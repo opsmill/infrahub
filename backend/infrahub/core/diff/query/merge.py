@@ -20,6 +20,7 @@ class DiffMergeQuery(Query):
         node_diff_dicts: dict[str, Any],
         at: Timestamp,
         target_branch: Branch,
+        migrated_kinds_id_map: dict[str, str],
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -27,6 +28,7 @@ class DiffMergeQuery(Query):
         self.at = at
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
+        self.migrated_kinds_id_map = migrated_kinds_id_map
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
@@ -35,37 +37,52 @@ class DiffMergeQuery(Query):
             "branch_level": self.target_branch.hierarchy_level,
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
+            "migrated_kinds_id_map": self.migrated_kinds_id_map,
+            "migrated_kinds_uuids": list(self.migrated_kinds_id_map.keys()),
         }
         # ruff: noqa: E501
         query = """
 UNWIND $node_diff_dicts AS node_diff_map
-CALL {
-    WITH node_diff_map
-    MATCH (n:Node {uuid: node_diff_map.uuid})
+WITH node_diff_map, node_diff_map.uuid IN $migrated_kinds_uuids AS is_node_kind_migration
+WITH node_diff_map, is_node_kind_migration, CASE
+    WHEN $migrated_kinds_uuids IS NULL THEN NULL
+    WHEN is_node_kind_migration THEN $migrated_kinds_id_map[node_diff_map.uuid]
+    ELSE NULL
+END AS node_db_id
+
+// ------------------------------
+// find the correct Node if the Node had its kind/inheritance migrated
+// and there are multiple Nodes with the same UUID
+// ------------------------------
+CALL (node_diff_map, node_db_id) {
+    MATCH (n:Node {uuid: node_diff_map.uuid})-[n_is_part_of:IS_PART_OF]->(:Root)
+    WHERE node_db_id IS NULL OR %(id_func)s(n) = node_db_id
+    AND n_is_part_of.branch IN [$source_branch, $target_branch]
     RETURN n
+    ORDER BY n_is_part_of.branch_level DESC, n_is_part_of.from DESC, n_is_part_of.status ASC
+    LIMIT 1
 }
-WITH n, node_diff_map
-CALL {
-    WITH n, node_diff_map
-    WITH n, node_diff_map, CASE
+WITH n, node_diff_map, is_node_kind_migration
+CALL (n, node_diff_map, is_node_kind_migration) {
+    WITH CASE
         WHEN node_diff_map.action = "ADDED" THEN "active"
         WHEN node_diff_map.action = "REMOVED" THEN "deleted"
         ELSE NULL
     END AS node_rel_status
-    CALL {
+    CALL (n, node_diff_map, is_node_kind_migration, node_rel_status) {
         // ------------------------------
         // only make IS_PART_OF updates if node is ADDED or REMOVED
         // ------------------------------
-        WITH n, node_diff_map, node_rel_status
-        WITH n, node_diff_map, node_rel_status
+        WITH node_rel_status
         WHERE node_rel_status IS NOT NULL
+        // nodes with a migrated kind are handled in DiffMergeMigratedKindsQuery
+        AND is_node_kind_migration = FALSE
         MATCH (root:Root)
         // ------------------------------
         // set IS_PART_OF.to, optionally, target branch
         // ------------------------------
         WITH root, n, node_rel_status
-        CALL {
-            WITH root, n, node_rel_status
+        CALL (root, n, node_rel_status) {
             OPTIONAL MATCH (root)<-[target_r_root:IS_PART_OF {branch: $target_branch, status: "active"}]-(n)
             WHERE node_rel_status = "deleted"
             AND target_r_root.from <= $at AND target_r_root.to IS NULL
@@ -75,13 +92,12 @@ CALL {
         // create new IS_PART_OF relationship on target_branch
         // ------------------------------
         WITH root, n, node_rel_status
-        CALL {
-            WITH root, n, node_rel_status
+        CALL (root, n, node_rel_status) {
             OPTIONAL MATCH (root)<-[r_root:IS_PART_OF {branch: $target_branch}]-(n)
             WHERE r_root.status = node_rel_status
             AND r_root.from <= $at
             AND (r_root.to >= $at OR r_root.to IS NULL)
-            WITH root, r_root, n, node_rel_status
+            WITH r_root
             WHERE r_root IS NULL
             CREATE (root)
                 <-[:IS_PART_OF { branch: $target_branch, branch_level: $branch_level, from: $at, status: node_rel_status }]
@@ -90,12 +106,10 @@ CALL {
         // ------------------------------
         // shortcut to delete all attributes and relationships for this node if the node is deleted
         // ------------------------------
-        CALL {
-            WITH n, node_rel_status
+        CALL (n, node_rel_status) {
             WITH n, node_rel_status
             WHERE node_rel_status = "deleted"
-            CALL {
-                WITH n
+            CALL (n) {
                 OPTIONAL MATCH (n)-[rel1:IS_RELATED]-(:Relationship)-[rel2]-(p)
                 WHERE (p.uuid IS NULL OR n.uuid <> p.uuid)
                 AND rel1.branch = $target_branch
@@ -104,7 +118,6 @@ CALL {
                 AND rel2.status = "active"
                 RETURN rel1, rel2
                 UNION
-                WITH n
                 OPTIONAL MATCH (n)-[rel1:HAS_ATTRIBUTE]->(:Attribute)-[rel2]->()
                 WHERE type(rel2) <> "HAS_ATTRIBUTE"
                 AND rel1.branch = $target_branch
@@ -113,7 +126,7 @@ CALL {
                 AND rel2.status = "active"
                 RETURN rel1, rel2
             }
-            WITH n, rel1, rel2
+            WITH rel1, rel2
             WHERE rel1.to IS NULL
             AND rel2.to IS NULL
             AND rel1.from <= $at
@@ -124,10 +137,8 @@ CALL {
             // and delete HAS_OWNER and HAS_SOURCE edges to this node if the node is deleted
             // ------------------------------
             WITH n
-            CALL {
-                WITH n
-                CALL {
-                    WITH n
+            CALL (n) {
+                CALL (n) {
                     MATCH (n)<-[rel:HAS_OWNER]-()
                     WHERE rel.branch = $target_branch
                     AND rel.status = "active"
@@ -147,9 +158,8 @@ CALL {
         }
     }
     WITH n, node_diff_map
-    CALL {
-        WITH n, node_diff_map
-        WITH n, CASE
+    CALL (n, node_diff_map) {
+        WITH CASE
             WHEN node_diff_map.attributes IS NULL OR node_diff_map.attributes = [] THEN [NULL]
             ELSE node_diff_map.attributes
         END AS attribute_maps
@@ -157,15 +167,13 @@ CALL {
         // ------------------------------
         // handle updates for attributes under this node
         // ------------------------------
-        CALL {
-            WITH n, attribute_diff_map
-            WITH n, attribute_diff_map.name AS attr_name, CASE
+        CALL (n, attribute_diff_map) {
+            WITH attribute_diff_map.name AS attr_name, CASE
                 WHEN attribute_diff_map.action = "ADDED" THEN "active"
                 WHEN attribute_diff_map.action = "REMOVED" THEN "deleted"
                 ELSE NULL
             END AS attr_rel_status
-            CALL {
-                WITH n, attr_name
+            CALL (n, attr_name) {
                 OPTIONAL MATCH (n)-[has_attr:HAS_ATTRIBUTE]->(a:Attribute {name: attr_name})
                 WHERE has_attr.branch IN [$source_branch, $target_branch]
                 RETURN a
@@ -176,8 +184,7 @@ CALL {
             // ------------------------------
             // set HAS_ATTRIBUTE.to on target branch if necessary
             // ------------------------------
-            CALL {
-                WITH n, attr_rel_status, a
+            CALL (n, attr_rel_status, a) {
                 OPTIONAL MATCH (n)
                     -[target_r_attr:HAS_ATTRIBUTE {branch: $target_branch, status: "active"}]
                     ->(a)
@@ -189,15 +196,14 @@ CALL {
             // ------------------------------
             // conditionally create new HAS_ATTRIBUTE relationship on target_branch, if necessary
             // ------------------------------
-            CALL {
-                WITH n, attr_rel_status, a
+            CALL (n, attr_rel_status, a) {
                 WITH n, attr_rel_status, a
                 WHERE a IS NOT NULL
                 OPTIONAL MATCH (n)-[r_attr:HAS_ATTRIBUTE {branch: $target_branch}]->(a)
                 WHERE r_attr.status = attr_rel_status
                 AND r_attr.from <= $at
                 AND (r_attr.to >= $at OR r_attr.to IS NULL)
-                WITH n, r_attr, attr_rel_status, a
+                WITH r_attr
                 WHERE r_attr IS NULL
                 CREATE (n)-[:HAS_ATTRIBUTE { branch: $target_branch, branch_level: $branch_level, from: $at, status: attr_rel_status }]->(a)
             }
@@ -206,34 +212,51 @@ CALL {
         RETURN 1 AS done
     }
     WITH n, node_diff_map
-    CALL {
-        WITH n,node_diff_map
+    CALL (n, node_diff_map) {
         UNWIND node_diff_map.relationships AS relationship_diff_map
         // ------------------------------
         // handle updates for relationships under this node
         // ------------------------------
-        CALL {
-            WITH n, relationship_diff_map
-            WITH n, relationship_diff_map.peer_id AS rel_peer_id, relationship_diff_map.name AS rel_name, CASE
-                WHEN relationship_diff_map.action = "ADDED" THEN "active"
-                WHEN relationship_diff_map.action = "REMOVED" THEN "deleted"
-                ELSE NULL
-            END AS related_rel_status
+        CALL (n, relationship_diff_map) {
+            WITH
+                relationship_diff_map.peer_id AS rel_peer_id, relationship_diff_map.name AS rel_name,
+                CASE
+                    WHEN relationship_diff_map.action = "ADDED" THEN "active"
+                    WHEN relationship_diff_map.action = "REMOVED" THEN "deleted"
+                    ELSE NULL
+                END AS related_rel_status,
+                CASE
+                    WHEN $migrated_kinds_uuids IS NULL THEN NULL
+                    WHEN relationship_diff_map.peer_id IN $migrated_kinds_uuids THEN $migrated_kinds_id_map[relationship_diff_map.peer_id]
+                    ELSE NULL
+                END AS rel_peer_db_id
+            // ------------------------------
+            // find the correct relationship peer if the peer had its kind/inheritance migrated
+            // and there are multiple Nodes with the same UUID
+            // ------------------------------
+            CALL (rel_peer_id, rel_peer_db_id) {
+                MATCH (rel_peer:Node {uuid: rel_peer_id})-[target_is_part_of:IS_PART_OF]->(:Root)
+                WHERE (rel_peer_db_id IS NULL OR %(id_func)s(rel_peer) = rel_peer_db_id)
+                AND target_is_part_of.branch IN [$source_branch, $target_branch]
+                RETURN rel_peer
+                ORDER BY target_is_part_of.branch_level DESC, target_is_part_of.from DESC, target_is_part_of.status ASC
+                LIMIT 1
+            }
+            WITH rel_name, related_rel_status, rel_peer
             // ------------------------------
             // determine the directions of each IS_RELATED
             // ------------------------------
-            CALL {
-                WITH n, rel_name, rel_peer_id, related_rel_status
+            CALL (n, rel_name, rel_peer, related_rel_status) {
                 MATCH (n)
                     -[source_r_rel_1:IS_RELATED]
                     -(r:Relationship {name: rel_name})
                     -[source_r_rel_2:IS_RELATED]
-                    -(:Node {uuid: rel_peer_id})
+                    -(rel_peer)
                 WHERE source_r_rel_1.branch IN [$source_branch, $target_branch]
                 AND source_r_rel_2.branch IN [$source_branch, $target_branch]
                 AND source_r_rel_1.from <= $at AND source_r_rel_1.to IS NULL
                 AND source_r_rel_2.from <= $at AND source_r_rel_2.to IS NULL
-                WITH n, rel_name, rel_peer_id, related_rel_status, r, source_r_rel_1, source_r_rel_2
+                WITH r, source_r_rel_1, source_r_rel_2
                 ORDER BY source_r_rel_1.branch_level DESC, source_r_rel_2.branch_level DESC, source_r_rel_1.from DESC, source_r_rel_2.from DESC
                 LIMIT 1
                 RETURN r, CASE
@@ -247,80 +270,73 @@ CALL {
                 source_r_rel_1.hierarchy AS r1_hierarchy,
                 source_r_rel_2.hierarchy AS r2_hierarchy
             }
-            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, related_rel_status
-            CALL {
-                WITH n, rel_name, rel_peer_id, related_rel_status
+            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer, related_rel_status
+            CALL (n, rel_name, rel_peer, related_rel_status) {
                 OPTIONAL MATCH (n)
                     -[target_r_rel_1:IS_RELATED {branch: $target_branch, status: "active"}]
                     -(:Relationship {name: rel_name})
                     -[target_r_rel_2:IS_RELATED {branch: $target_branch, status: "active"}]
-                    -(:Node {uuid: rel_peer_id})
+                    -(rel_peer)
                 WHERE related_rel_status = "deleted"
                 AND target_r_rel_1.from <= $at AND target_r_rel_1.to IS NULL
                 AND target_r_rel_2.from <= $at AND target_r_rel_2.to IS NULL
                 SET target_r_rel_1.to = $at
                 SET target_r_rel_2.to = $at
             }
-            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, related_rel_status
+            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer, related_rel_status
             // ------------------------------
             // conditionally create new IS_RELATED relationships on target_branch, if necessary
             // ------------------------------
-            CALL {
-                WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, related_rel_status
-                MATCH (p:Node {uuid: rel_peer_id})
+            CALL (n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer, related_rel_status) {
                 OPTIONAL MATCH (n)
                     -[r_rel_1:IS_RELATED {branch: $target_branch, status: related_rel_status}]
                     -(:Relationship {name: rel_name})
                     -[r_rel_2:IS_RELATED {branch: $target_branch, status: related_rel_status}]
-                    -(p)
+                    -(rel_peer)
                 WHERE r_rel_1.from <= $at
                 AND (r_rel_1.to >= $at OR r_rel_1.to IS NULL)
                 AND r_rel_2.from <= $at
                 AND (r_rel_2.to >= $at OR r_rel_2.to IS NULL)
-                WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, p, related_rel_status, r_rel_1, r_rel_2
+                WITH rel_peer, r_rel_1, r_rel_2
                 WHERE r_rel_1 IS NULL
                 AND r_rel_2 IS NULL
                 // ------------------------------
                 // create IS_RELATED relationships with directions maintained from source
                 // ------------------------------
-                CALL {
-                    WITH n, r, r1_dir, r1_hierarchy, related_rel_status
+                CALL (n, r, r1_dir, r1_hierarchy, related_rel_status) {
                     WITH n, r, r1_dir, r1_hierarchy, related_rel_status
                     WHERE r1_dir = "r"
                     CREATE (n)
                         -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r1_hierarchy}]
                         ->(r)
                 }
-                CALL {
-                    WITH n, r, r1_dir, r1_hierarchy, related_rel_status
+                CALL (n, r, r1_dir, r1_hierarchy, related_rel_status) {
                     WITH n, r, r1_dir, r1_hierarchy, related_rel_status
                     WHERE r1_dir = "l"
                     CREATE (n)
                         <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r1_hierarchy}]
                         -(r)
                 }
-                CALL {
-                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
-                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
+                CALL (r, rel_peer, r2_dir, r2_hierarchy, related_rel_status) {
+                    WITH r, rel_peer, r2_dir, r2_hierarchy, related_rel_status
                     WHERE r2_dir = "r"
                     CREATE (r)
                         -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy}]
-                        ->(p)
+                        ->(rel_peer)
                 }
-                CALL {
-                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
-                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
+                CALL (r, rel_peer, r2_dir, r2_hierarchy, related_rel_status) {
+                    WITH r, rel_peer, r2_dir, r2_hierarchy, related_rel_status
                     WHERE r2_dir = "l"
                     CREATE (r)
                         <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy}]
-                        -(p)
+                        -(rel_peer)
                 }
             }
         }
     }
 }
 RETURN 1 AS done
-        """
+        """ % {"id_func": db.get_id_function_name()}
         self.add_to_query(query=query)
 
 
@@ -334,6 +350,7 @@ class DiffMergePropertiesQuery(Query):
         property_diff_dicts: dict[str, Any],
         at: Timestamp,
         target_branch: Branch,
+        migrated_kinds_id_map: dict[str, str],
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -341,6 +358,7 @@ class DiffMergePropertiesQuery(Query):
         self.at = at
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
+        self.migrated_kinds_id_map = migrated_kinds_id_map
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
@@ -349,59 +367,70 @@ class DiffMergePropertiesQuery(Query):
             "branch_level": self.target_branch.hierarchy_level,
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
+            "migrated_kinds_id_map": self.migrated_kinds_id_map,
+            "migrated_kinds_uuids": list(self.migrated_kinds_id_map.keys()),
         }
         query = """
 UNWIND $property_diff_dicts AS attr_rel_prop_diff
-CALL {
+WITH attr_rel_prop_diff, CASE
+    WHEN $migrated_kinds_uuids IS NULL THEN NULL
+    WHEN attr_rel_prop_diff.node_uuid IN $migrated_kinds_uuids THEN $migrated_kinds_id_map[attr_rel_prop_diff.node_uuid]
+    ELSE NULL
+END AS node_db_id,
+CASE
+    WHEN $migrated_kinds_uuids IS NULL THEN NULL
+    WHEN attr_rel_prop_diff.peer_uuid IN $migrated_kinds_uuids THEN $migrated_kinds_id_map[attr_rel_prop_diff.peer_uuid]
+    ELSE NULL
+END AS peer_db_id
+CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
     // ------------------------------
     // find the Attribute node
     // ------------------------------
-    WITH attr_rel_prop_diff
-    CALL {
-        WITH attr_rel_prop_diff
+    CALL (attr_rel_prop_diff, node_db_id) {
         OPTIONAL MATCH (n:Node {uuid: attr_rel_prop_diff.node_uuid})
             -[has_attr:HAS_ATTRIBUTE]
             ->(attr:Attribute {name: attr_rel_prop_diff.attribute_name})
         WHERE attr_rel_prop_diff.attribute_name IS NOT NULL
+        AND (node_db_id IS NULL OR %(id_func)s(n) = node_db_id)
         AND has_attr.branch IN [$source_branch, $target_branch]
         RETURN attr
         ORDER BY has_attr.from DESC
         LIMIT 1
     }
-    CALL {
-        WITH attr_rel_prop_diff
+    CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
         OPTIONAL MATCH (n:Node {uuid: attr_rel_prop_diff.node_uuid})
             -[r1:IS_RELATED]
             -(rel:Relationship {name: attr_rel_prop_diff.relationship_id})
             -[r2:IS_RELATED]
-            -(:Node {uuid: attr_rel_prop_diff.peer_uuid})
+            -(rel_peer:Node {uuid: attr_rel_prop_diff.peer_uuid})
         WHERE attr_rel_prop_diff.relationship_id IS NOT NULL
+        AND (node_db_id IS NULL OR %(id_func)s(n) = node_db_id)
+        AND (peer_db_id IS NULL OR %(id_func)s(rel_peer) = peer_db_id)
         AND r1.branch IN [$source_branch, $target_branch]
         AND r2.branch IN [$source_branch, $target_branch]
         RETURN rel
         ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
         LIMIT 1
     }
-    WITH attr_rel_prop_diff, COALESCE(attr, rel) AS attr_rel
+    WITH attr_rel_prop_diff, COALESCE(attr, rel) AS attr_rel, peer_db_id
+    WHERE attr_rel IS NOT NULL
     UNWIND attr_rel_prop_diff.properties AS property_diff
     // ------------------------------
     // handle updates for properties under this attribute/relationship
     // ------------------------------
-    CALL {
-        WITH attr_rel, property_diff
+    CALL (attr_rel, property_diff, peer_db_id) {
         // ------------------------------
         // identify the correct property node to link
         // ------------------------------
-        CALL {
-            WITH attr_rel, property_diff
+        CALL (attr_rel, property_diff, peer_db_id) {
             OPTIONAL MATCH (peer:Node {uuid: property_diff.value})
             WHERE property_diff.property_type IN ["HAS_SOURCE", "HAS_OWNER"]
+            AND (peer_db_id IS NULL OR %(id_func)s(peer) = peer_db_id)
             // ------------------------------
             // the serialized diff might not include the values for IS_VISIBLE and IS_PROTECTED in
             // some cases, so we need to figure them out here
             // ------------------------------
-            CALL {
-                WITH attr_rel, property_diff
+            CALL (attr_rel, property_diff) {
                 OPTIONAL MATCH (attr_rel)-[r_vis_pro]->(bool:Boolean)
                 WHERE property_diff.property_type IN ["IS_VISIBLE", "IS_PROTECTED"]
                 AND r_vis_pro.branch IN [$source_branch, $target_branch]
@@ -411,12 +440,11 @@ CALL {
                 ORDER BY r_vis_pro.from DESC
                 LIMIT 1
             }
-            CALL {
+            CALL (attr_rel, property_diff) {
                 // ------------------------------
                 // get the latest linked AttributeValue on the source b/c there could be multiple
                 // with different is_default values
                 // ------------------------------
-                WITH attr_rel, property_diff
                 OPTIONAL MATCH (attr_rel)-[r_attr_val:HAS_VALUE]->(av:AttributeValue)
                 WHERE property_diff.property_type = "HAS_VALUE"
                 AND (
@@ -430,7 +458,7 @@ CALL {
             }
             RETURN COALESCE (peer, bool, av) AS prop_node
         }
-        WITH attr_rel, property_diff.property_type AS prop_type, prop_node, CASE
+        WITH attr_rel,property_diff.property_type AS prop_type, prop_node, CASE
             WHEN property_diff.action = "ADDED" THEN "active"
             WHEN property_diff.action = "REMOVED" THEN "deleted"
             ELSE NULL
@@ -438,8 +466,7 @@ CALL {
         // ------------------------------
         // set property edge.to, optionally, on target branch
         // ------------------------------
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type
+        CALL (attr_rel, prop_rel_status, prop_type) {
             OPTIONAL MATCH (attr_rel)
                 -[target_r_prop {branch: $target_branch}]
                 ->()
@@ -450,8 +477,7 @@ CALL {
         // ------------------------------
         // check for existing edge on target_branch
         // ------------------------------
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
+        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             OPTIONAL MATCH (attr_rel)-[r_prop {branch: $target_branch}]->(prop_node)
             WHERE type(r_prop) = prop_type
             AND r_prop.status = prop_rel_status
@@ -459,46 +485,219 @@ CALL {
             AND (r_prop.to > $at OR r_prop.to IS NULL)
             RETURN r_prop
         }
-        WITH attr_rel, prop_rel_status, prop_type, prop_node, r_prop
+        WITH attr_rel,prop_rel_status, prop_type, prop_node, r_prop
         WHERE r_prop IS NULL
         // ------------------------------
         // create new edge to prop_node on target_branch, if necessary
         // one subquery per possible edge type b/c edge type cannot be a variable
         // ------------------------------
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
+        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_VALUE"
             CREATE (attr_rel)-[:HAS_VALUE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
+        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_SOURCE"
             CREATE (attr_rel)-[:HAS_SOURCE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
+        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_OWNER"
             CREATE (attr_rel)-[:HAS_OWNER { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
+        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "IS_VISIBLE"
             CREATE (attr_rel)-[:IS_VISIBLE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
-        CALL {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
+        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "IS_PROTECTED"
             CREATE (attr_rel)-[:IS_PROTECTED { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
     }
 }
-        """
+        """ % {"id_func": db.get_id_function_name()}
         self.add_to_query(query=query)
+
+
+class DiffMergeMigratedKindsQuery(Query):
+    name = "diff_merge_migrated_kinds"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(
+        self,
+        migrated_uuids: list[str],
+        at: Timestamp,
+        target_branch: Branch,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.migrated_uuids = migrated_uuids
+        self.at = at
+        self.target_branch = target_branch
+        self.source_branch_name = self.branch.name
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "migrated_uuids": self.migrated_uuids,
+            "at": self.at.to_string(),
+            "branch_level": self.target_branch.hierarchy_level,
+            "target_branch": self.target_branch.name,
+            "source_branch": self.source_branch_name,
+        }
+        query = """
+MATCH (n:Node)
+WHERE n.uuid IN $migrated_uuids
+CALL (n) {
+    // --------------
+    // for each migrated node (created or deleted), find its latest edges on the source branch,
+    // check if they exist on the target, create them if not
+    // --------------
+    MATCH (n)-[]-(peer)
+    WITH DISTINCT n, peer
+    CALL (n, peer) {
+        // --------------
+        // get the latest outbound edge for each type between n and peer
+        // --------------
+        MATCH (n)-[e {branch: $source_branch}]->(peer)
+        WHERE e.from <= $at AND e.to IS NULL
+        WITH e, type(e) AS edge_type
+        ORDER BY edge_type, e.from DESC
+        WITH edge_type, head(collect(e)) AS latest_source_edge
+        RETURN edge_type, latest_source_edge
+    }
+    CALL (n, peer, edge_type) {
+        // --------------
+        // for each n, peer, edge_type, get the latest edge on target
+        // --------------
+        OPTIONAL MATCH (n)-[e {branch: $target_branch}]->(peer)
+        WHERE type(e) = edge_type AND e.from <= $at
+        RETURN e AS latest_target_edge
+        ORDER BY e.from DESC
+        LIMIT 1
+    }
+    // --------------
+    // ignore edges of this type that already have the correct status on the target branch
+    // --------------
+    WITH n, peer, edge_type, latest_source_edge, latest_target_edge
+    WHERE (latest_target_edge IS NULL AND latest_source_edge.status = "active")
+    OR latest_source_edge.status <> latest_target_edge.status
+    CALL (latest_source_edge, latest_target_edge) {
+        // --------------
+        // set the to time on active target branch edges that we are setting to deleted
+        // --------------
+        WITH latest_target_edge WHERE latest_target_edge IS NOT NULL
+        AND latest_source_edge.status = "deleted"
+        AND latest_target_edge.status = "active"
+        AND latest_target_edge.to IS NULL
+        SET latest_target_edge.to = $at
+    }
+    // --------------
+    // create the outbound edges on the target branch, one subquery per possible type
+    // --------------
+    CALL (n, latest_source_edge, peer, edge_type) {
+        WITH edge_type WHERE edge_type = "IS_PART_OF"
+        CREATE (n)-[new_edge:IS_PART_OF]->(peer)
+        SET new_edge = properties(latest_source_edge)
+        SET new_edge.from = $at
+        SET new_edge.branch_level = $branch_level
+        SET new_edge.branch = $target_branch
+    }
+    CALL (n, latest_source_edge, peer, edge_type) {
+        WITH edge_type
+        WHERE edge_type = "IS_RELATED"
+        CREATE (n)-[new_edge:IS_RELATED]->(peer)
+        SET new_edge = properties(latest_source_edge)
+        SET new_edge.from = $at
+        SET new_edge.branch_level = $branch_level
+        SET new_edge.branch = $target_branch
+    }
+    CALL (n, latest_source_edge, peer, edge_type) {
+        WITH edge_type
+        WHERE edge_type = "HAS_ATTRIBUTE"
+        CREATE (n)-[new_edge:HAS_ATTRIBUTE]->(peer)
+        SET new_edge = properties(latest_source_edge)
+        SET new_edge.from = $at
+        SET new_edge.branch_level = $branch_level
+        SET new_edge.branch = $target_branch
+    }
+    // --------------
+    // do all of this again for inbound edges
+    // --------------
+    WITH DISTINCT n, peer
+    CALL (n, peer) {
+        // --------------
+        // get the latest inbound edge for each type between n and peer
+        // --------------
+        MATCH (n)<-[e {branch: $source_branch}]-(peer)
+        WHERE e.from <= $at AND e.to IS NULL
+        WITH e, type(e) AS edge_type
+        ORDER BY edge_type, e.from DESC
+        WITH edge_type, head(collect(e)) AS latest_source_edge
+        RETURN edge_type, latest_source_edge
+    }
+    CALL (n, peer, edge_type) {
+        // --------------
+        // for each n, peer, edge_type, get the latest edge on target
+        // --------------
+        OPTIONAL MATCH (n)<-[e {branch: $target_branch}]-(peer)
+        WHERE type(e) = edge_type AND e.from <= $at
+        RETURN e AS latest_target_edge
+        ORDER BY e.from DESC
+        LIMIT 1
+    }
+    // --------------
+    // ignore edges of this type that already have the correct status on the target branch
+    // --------------
+    WITH n, peer, edge_type, latest_source_edge, latest_target_edge
+    WHERE latest_target_edge IS NULL OR latest_source_edge.status <> latest_target_edge.status
+    CALL (latest_source_edge, latest_target_edge) {
+        // --------------
+        // set the to time on active target branch edges that we are setting to deleted
+        // --------------
+        WITH latest_target_edge
+        WHERE latest_target_edge IS NOT NULL
+        AND latest_source_edge.status = "deleted"
+        AND latest_target_edge.status = "active"
+        AND latest_target_edge.to IS NULL
+        SET latest_target_edge.to = $at
+    }
+    // --------------
+    // create the outbound edges on the target branch, one subquery per possible type
+    // --------------
+    CALL (n, latest_source_edge, peer, edge_type) {
+        WITH edge_type
+        WHERE edge_type = "IS_RELATED"
+        CREATE (n)<-[new_edge:IS_RELATED]-(peer)
+        SET new_edge = properties(latest_source_edge)
+        SET new_edge.from = $at
+        SET new_edge.branch_level = $branch_level
+        SET new_edge.branch = $target_branch
+    }
+    CALL (n, latest_source_edge, peer, edge_type) {
+        WITH edge_type
+        WHERE edge_type = "HAS_OWNER"
+        CREATE (n)<-[new_edge:HAS_OWNER]-(peer)
+        SET new_edge = properties(latest_source_edge)
+        SET new_edge.from = $at
+        SET new_edge.branch_level = $branch_level
+        SET new_edge.branch = $target_branch
+    }
+    CALL (n, latest_source_edge, peer, edge_type) {
+        WITH edge_type
+        WHERE edge_type = "HAS_SOURCE"
+        CREATE (n)<-[new_edge:HAS_SOURCE]-(peer)
+        SET new_edge = properties(latest_source_edge)
+        SET new_edge.from = $at
+        SET new_edge.branch_level = $branch_level
+        SET new_edge.branch = $target_branch
+    }
+}
+        """
+        self.add_to_query(query)
 
 
 class DiffMergeRollbackQuery(Query):
@@ -527,14 +726,14 @@ class DiffMergeRollbackQuery(Query):
         // ---------------------------
         // reset to times on target branch
         // ---------------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH ()-[r_to {to: $at, branch: $target_branch}]-()
             SET r_to.to = NULL
         }
         // ---------------------------
         // reset from times on target branch
         // ---------------------------
-        CALL {
+        CALL () {
             OPTIONAL MATCH ()-[r_from {from: $at, branch: $target_branch}]-()
             DELETE r_from
         }

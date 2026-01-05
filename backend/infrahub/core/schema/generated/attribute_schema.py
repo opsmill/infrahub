@@ -8,6 +8,12 @@ from pydantic import Field
 
 from infrahub.core.constants import AllowOverrideType, BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
+from infrahub.core.schema.attribute_parameters import (
+    AttributeParameters,
+    NumberAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.computed_attribute import ComputedAttribute  # noqa: TC001
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TC001
 
@@ -25,7 +31,7 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "migration_required"},
     )
     kind: str = Field(
-        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "validate_constraint"}
+        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "migration_required"}
     )
     enum: list | None = Field(
         default=None,
@@ -44,17 +50,17 @@ class GeneratedAttributeSchema(HashableModel):
     )
     regex: str | None = Field(
         default=None,
-        description="Regex uses to limit the characters allowed in for the attributes.",
+        description="Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)",
         json_schema_extra={"update": "validate_constraint"},
     )
     max_length: int | None = Field(
         default=None,
-        description="Set a maximum number of characters allowed for a given attribute.",
+        description="Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)",
         json_schema_extra={"update": "validate_constraint"},
     )
     min_length: int | None = Field(
         default=None,
-        description="Set a minimum number of characters allowed for a given attribute.",
+        description="Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)",
         json_schema_extra={"update": "validate_constraint"},
     )
     label: str | None = Field(
@@ -72,7 +78,7 @@ class GeneratedAttributeSchema(HashableModel):
     read_only: bool = Field(
         default=False,
         description="Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
-        json_schema_extra={"update": "allowed"},
+        json_schema_extra={"update": "migration_required"},
     )
     unique: bool = Field(
         default=False,
@@ -82,7 +88,7 @@ class GeneratedAttributeSchema(HashableModel):
     optional: bool = Field(
         default=False,
         description="Indicate if this attribute is mandatory or optional.",
-        json_schema_extra={"update": "validate_constraint"},
+        json_schema_extra={"update": "migration_required"},
     )
     branch: BranchSupportType | None = Field(
         default=None,
@@ -111,6 +117,13 @@ class GeneratedAttributeSchema(HashableModel):
         default=AllowOverrideType.ANY,
         description="Type of allowed override for the attribute.",
         json_schema_extra={"update": "allowed"},
+    )
+    parameters: AttributeParameters | TextAttributeParameters | NumberAttributeParameters | NumberPoolParameters = (
+        Field(
+            default_factory=AttributeParameters,
+            description="Extra parameters specific to this kind of attribute",
+            json_schema_extra={"update": "validate_constraint"},
+        )
     )
     deprecation: str | None = Field(
         default=None,

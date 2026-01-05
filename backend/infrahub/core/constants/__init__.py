@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import enum
+from enum import Flag, auto
 
 from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
@@ -37,6 +37,7 @@ RESERVED_ATTR_REL_NAMES = [
     "rels",
     "save",
     "hfid",
+    "process_pools",
 ]
 
 RESERVED_ATTR_GEN_NAMES = ["type"]
@@ -50,6 +51,7 @@ class EventType(InfrahubStringEnum):
     BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
     BRANCH_DELETED = f"{EVENT_NAMESPACE}.branch.deleted"
     BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
+    BRANCH_MIGRATED = f"{EVENT_NAMESPACE}.branch.migrated"
     BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
 
     SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.updated"
@@ -61,6 +63,16 @@ class EventType(InfrahubStringEnum):
     GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
     GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
 
+    PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
+    PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
+    PROPOSED_CHANGE_APPROVED = f"{EVENT_NAMESPACE}.proposed_change.approved"
+    PROPOSED_CHANGE_REJECTED = f"{EVENT_NAMESPACE}.proposed_change.rejected"
+    PROPOSED_CHANGE_APPROVAL_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
+    PROPOSED_CHANGE_APPROVALS_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.approvals_revoked"
+    PROPOSED_CHANGE_REJECTION_REVOKED = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
+    PROPOSED_CHANGE_THREAD_CREATED = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
+    PROPOSED_CHANGE_THREAD_UPDATED = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
+
     REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
 
     ARTIFACT_CREATED = f"{EVENT_NAMESPACE}.artifact.created"
@@ -71,7 +83,7 @@ class EventType(InfrahubStringEnum):
     VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
 
 
-class PermissionLevel(enum.Flag):
+class PermissionLevel(Flag):
     READ = 1
     WRITE = 2
     ADMIN = 3
@@ -83,11 +95,13 @@ class GlobalPermissions(InfrahubStringEnum):
     SUPER_ADMIN = "super_admin"
     MERGE_BRANCH = "merge_branch"
     MERGE_PROPOSED_CHANGE = "merge_proposed_change"
+    REVIEW_PROPOSED_CHANGE = "review_proposed_change"
     MANAGE_SCHEMA = "manage_schema"
     MANAGE_ACCOUNTS = "manage_accounts"
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
     OVERRIDE_CONTEXT = "override_context"
+    UPDATE_OBJECT_HFID_DISPLAY_LABEL = "update_object_hfid_display_label"
 
 
 class PermissionAction(InfrahubStringEnum):
@@ -110,6 +124,11 @@ class AccountType(InfrahubStringEnum):
     SCRIPT = "Script"
     BOT = "Bot"
     Git = "Git"
+
+
+class NumberPoolType(InfrahubStringEnum):
+    USER = "User"
+    SCHEMA = "Schema"
 
 
 class AccountStatus(InfrahubStringEnum):
@@ -144,6 +163,11 @@ class BranchConflictKeep(InfrahubStringEnum):
 class AllowOverrideType(InfrahubStringEnum):
     NONE = "none"
     ANY = "any"
+
+
+class RepositoryObjects(InfrahubStringEnum):
+    OBJECT = "object"
+    MENU = "menu"
 
 
 class ContentType(InfrahubStringEnum):
@@ -325,10 +349,14 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
-class AttributeDBNodeType(InfrahubStringEnum):
-    DEFAULT = "default"
-    IPHOST = "iphost"
-    IPNETWORK = "ipnetwork"
+class AttributeDBNodeType(Flag):
+    DEFAULT = auto()
+    INDEX_ONLY = auto()
+    IPHOST_ONLY = auto()
+    IPNETWORK_ONLY = auto()
+    INDEXED = DEFAULT | INDEX_ONLY
+    IPHOST = DEFAULT | INDEX_ONLY | IPHOST_ONLY
+    IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
 RESTRICTED_NAMESPACES: list[str] = [
@@ -362,3 +390,5 @@ DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
 OBJECT_TEMPLATE_NAME_ATTR = "template_name"
+PROFILE_NODE_RELATIONSHIP_IDENTIFIER = "node__profile"
+PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER = "template__profile"

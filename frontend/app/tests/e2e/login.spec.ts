@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 const disableSSO = async (page: Page) => {
@@ -111,7 +112,7 @@ test.describe("/login", () => {
       });
 
       test("should redirect to the initial page after login", async ({ page }) => {
-        const date = encodeURIComponent(new Date().toISOString());
+        const date = new Date().toISOString();
         const initialPage = `/objects/BuiltinTag?at=${date}&branch=atl1-delete-upstream`;
         await page.goto(initialPage);
 
@@ -143,7 +144,7 @@ test.describe("/login", () => {
     test("redirect to homepage if user is already logged in", async ({ page }) => {
       await page.goto("/login");
 
-      await expect(page.getByText("Welcome to Infrahub!")).toBeVisible();
+      await expect(page.getByText("Open Proposed changes", { exact: true })).toBeVisible();
     });
 
     test("should refresh access token and retry failed request", async ({ page }) => {

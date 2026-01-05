@@ -1,5 +1,6 @@
 ---
 default: true
+MD001: false # heading levels increment - disabled for release notes structure
 MD013: false # disables max line-length
 MD014: false # dollar signs used before commands
 MD024: false # disables 'no duplicate headings', which we use in tabs for instructions
@@ -11,3 +12,6 @@ MD034: false # no-bare-urls
 MD041: false # allow 1st line to not be a top-level heading (required for Towncrier)
 MD045: false # no alt text around images
 MD047: false # single trailing newline
+MD059:       # Link descriptions that are provibited
+  prohibited_texts: []
+MD060: false # table column style alignment (new in v0.39.0)

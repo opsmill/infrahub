@@ -32,6 +32,7 @@ query(
     $event_type: [String!]
     $since: DateTime
     $primary_node__ids: [String!]
+    $order: EventSortOrder
 ) {
   InfrahubEvent(
     branches: $branch,
@@ -44,6 +45,7 @@ query(
     primary_node__ids: $primary_node__ids
     event_type: $event_type
     since: $since
+    order: $order
   ) {
     count
     edges {
@@ -411,7 +413,8 @@ async def prefect_client(prefect_test_fixture):
 
 
 async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> ExecutionResult:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     return await graphql(
         schema=gql_params.schema,
         source=query,
@@ -427,7 +430,7 @@ async def test_event_query_prefect(
     register_core_models_schema: None,
     events_data,
     event_ids_inscope,
-):
+) -> None:
     result = await run_query(
         db=db,
         branch=default_branch,
@@ -439,6 +442,15 @@ async def test_event_query_prefect(
 
     clean_result = filter_outofscope_events(result.data, event_ids_inscope)
     assert clean_result["InfrahubEvent"]["count"] == 10
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"order": "ASC"},
+    )
+    assert result.errors is None
+    assert result.data
 
     result_branch1 = await run_query(
         db=db,
@@ -485,6 +497,8 @@ async def test_event_query_prefect(
     ][0]
 
     assert created["node"]["attributes"] == [
+        {"action": "ADDED", "kind": "List", "name": "human_friendly_id", "value": "['red']", "value_previous": None},
+        {"action": "ADDED", "kind": "Text", "name": "display_label", "value": "red", "value_previous": None},
         {"action": "ADDED", "kind": "Text", "name": "name", "value": "red", "value_previous": None},
         {"action": "ADDED", "kind": "Text", "name": "description", "value": "The red tag", "value_previous": None},
     ]

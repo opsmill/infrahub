@@ -22,8 +22,6 @@ if TYPE_CHECKING:
     from neo4j.graph import Relationship as Neo4jRelationship
     from whenever import TimeDelta
 
-    from infrahub.graphql.initialization import GraphqlContext
-
 
 @dataclass
 class TimeRange:
@@ -87,13 +85,13 @@ class NodeIdentifier:
 
     uuid: str
     kind: str
-    labels: frozenset[str]
+    db_id: str
 
     def __hash__(self) -> int:
-        return hash(f"{self.uuid}:{self.kind}:{hash(self.labels)}")
+        return hash(f"{self.uuid}:{self.kind}:{self.db_id}")
 
     def __str__(self) -> str:
-        return f"{self.kind} '{self.uuid}' ({','.join(self.labels)})"
+        return f"{self.kind} '{self.uuid}' ({self.db_id})"
 
 
 @dataclass
@@ -315,18 +313,13 @@ class EnrichedDiffRelationship(BaseSummary):
 
 
 @dataclass
-class ParentNodeInfo:
-    node: EnrichedDiffNode
-    relationship_name: str = "undefined"
-
-
-@dataclass
 class EnrichedDiffNode(BaseSummary):
     identifier: NodeIdentifier
     label: str
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     conflict: EnrichedDiffConflict | None = field(default=None)
     attributes: set[EnrichedDiffAttribute] = field(default_factory=set)
     relationships: set[EnrichedDiffRelationship] = field(default_factory=set)
@@ -341,6 +334,10 @@ class EnrichedDiffNode(BaseSummary):
     @property
     def kind(self) -> str:
         return self.identifier.kind
+
+    @property
+    def is_schema_node(self) -> bool:
+        return self.identifier.kind.startswith("Schema")
 
     @property
     def num_properties(self) -> int:
@@ -362,37 +359,6 @@ class EnrichedDiffNode(BaseSummary):
         for rel in self.relationships:
             rel.clear_conflicts()
         self.conflict = None
-
-    def get_parent_info(self, graphql_context: GraphqlContext | None = None) -> ParentNodeInfo | None:
-        for r in self.relationships:
-            for n in r.nodes:
-                relationship_name: str = "undefined"
-
-                if not graphql_context:
-                    return ParentNodeInfo(node=n, relationship_name=relationship_name)
-
-                node_schema = graphql_context.db.schema.get(name=self.kind)
-                rel_schema = node_schema.get_relationship(name=r.name)
-
-                parent_schema = graphql_context.db.schema.get(name=n.kind)
-                rels_parent = parent_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
-
-                if rels_parent and len(rels_parent) == 1:
-                    relationship_name = rels_parent[0].name
-                elif rels_parent and len(rels_parent) > 1:
-                    for rel_parent in rels_parent:
-                        if (
-                            rel_schema.direction == RelationshipDirection.INBOUND
-                            and rel_parent.direction == RelationshipDirection.OUTBOUND
-                        ) or (
-                            rel_schema.direction == RelationshipDirection.OUTBOUND
-                            and rel_parent.direction == RelationshipDirection.INBOUND
-                        ):
-                            relationship_name = rel_parent.name
-                            break
-
-                return ParentNodeInfo(node=n, relationship_name=relationship_name)
-        return None
 
     def get_all_child_nodes(self) -> set[EnrichedDiffNode]:
         all_children = set()
@@ -428,6 +394,7 @@ class EnrichedDiffNode(BaseSummary):
             label="",
             changed_at=calculated_node.changed_at,
             action=calculated_node.action,
+            is_node_kind_migration=calculated_node.is_node_kind_migration,
             attributes={
                 EnrichedDiffAttribute.from_calculated_attribute(calculated_attribute=attr)
                 for attr in calculated_node.attributes
@@ -686,6 +653,7 @@ class DiffNode:
     identifier: NodeIdentifier
     changed_at: Timestamp
     action: DiffAction
+    is_node_kind_migration: bool = field(default=False)
     attributes: list[DiffAttribute] = field(default_factory=list)
     relationships: list[DiffRelationship] = field(default_factory=list)
 

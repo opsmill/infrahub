@@ -29,7 +29,7 @@ async def resolver_graphql_query(
     graphql_context: GraphqlContext = info.context
     at = Timestamp()
 
-    async with graphql_context.db.start_session() as db:
+    async with graphql_context.db.start_session(read_only=True) as db:
         # Find the GraphQLQuery and the GraphQL Schema
         graphql_query = await NodeManager.get_one_by_default_filter(
             db=db, id=name, kind=CoreGraphQLQuery, branch=graphql_context.branch, at=at
@@ -38,7 +38,7 @@ async def resolver_graphql_query(
             raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
 
     while True:
-        async with graphql_context.db.start_session() as db:
+        async with graphql_context.db.start_session(read_only=True) as db:
             result = await graphql(
                 schema=graphql_schema,
                 source=graphql_query.query.value,

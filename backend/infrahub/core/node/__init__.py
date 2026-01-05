@@ -7,6 +7,7 @@ from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
@@ -16,32 +17,43 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
+    NumberPoolType,
     RelationshipCardinality,
     RelationshipKind,
 )
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    NodeSchema,
+    NonGenericSchemaTypes,
+    ProfileSchema,
+    RelationshipSchema,
+    TemplateSchema,
+)
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
 from ...log import get_logger
+from ..attribute import BaseAttribute
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
+from .node_property_attribute import DisplayLabel, HumanFriendlyIdentifier
 
 if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
-    from ..attribute import BaseAttribute
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
@@ -59,15 +71,43 @@ log = get_logger()
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
-    def __init_subclass_with_meta__(cls, _meta=None, default_filter=None, **options) -> None:
+    def __init_subclass_with_meta__(
+        cls, _meta: BaseNodeOptions | None = None, default_filter: None = None, **options: dict[str, Any]
+    ) -> None:
         if not _meta:
             _meta = BaseNodeOptions(cls)
 
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> NodeSchema | ProfileSchema | TemplateSchema:
+    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
+        self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
+        self._branch: Branch = branch
+        self._at: Timestamp = at
+        self._existing: bool = False
+
+        self._updated_at: Timestamp | None = None
+        self.id: str = None
+        self.db_id: str = None
+
+        self._source: Node | None = None
+        self._owner: Node | None = None
+        self._is_protected: bool = None
+        self._computed_jinja2_attributes: list[str] = []
+
+        self._display_label: DisplayLabel | None = None
+        self._human_friendly_id: HumanFriendlyIdentifier | None = None
+
+        # Lists of attributes and relationships names
+        self._attributes: list[str] = []
+        self._relationships: list[str] = []
+        self._node_changelog: NodeChangelog | None = None
+
+    def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
+
+    def get_branch(self) -> Branch:
+        return self._branch
 
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
@@ -83,16 +123,41 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_updated_at(self) -> Timestamp | None:
         return self._updated_at
 
+    def get_attribute(self, name: str) -> BaseAttribute:
+        attribute = getattr(self, name)
+        if not isinstance(attribute, BaseAttribute):
+            raise ValueError(f"{name} is not an attribute of {self.get_kind()}")
+        return attribute
+
+    def get_relationship(self, name: str) -> RelationshipManager:
+        relationship = getattr(self, name)
+        if not isinstance(relationship, RelationshipManager):
+            raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
+        return relationship
+
+    def uses_profiles(self) -> bool:
+        for attr_name in self.get_schema().attribute_names:
+            try:
+                node_attr = self.get_attribute(attr_name)
+            except ValueError:
+                continue
+            if node_attr and node_attr.is_from_profile:
+                return True
+        return False
+
     async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> list[str] | None:
         """Return the Human friendly id of the node."""
         if not self._schema.human_friendly_id:
             return None
 
-        hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+        hfid_values: list[str] | None = None
+        if self._human_friendly_id:
+            hfid_values = self._human_friendly_id.get_value(node=self, at=self._at)
+        if not hfid_values:
+            hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+
         hfid = [value for value in hfid_values if value is not None]
-        if include_kind:
-            return [self.get_kind()] + hfid
-        return hfid
+        return [self.get_kind()] + hfid if include_kind else hfid
 
     async def get_hfid_as_string(self, db: InfrahubDatabase, include_kind: bool = False) -> str | None:
         """Return the Human friendly id of the node in string format separated with a dunder (__) ."""
@@ -100,6 +165,34 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not hfid:
             return None
         return "__".join(hfid)
+
+    def has_human_friendly_id(self) -> bool:
+        return self._human_friendly_id is not None
+
+    async def add_human_friendly_id(self, db: InfrahubDatabase) -> None:
+        if self._human_friendly_id:
+            return
+
+        self._human_friendly_id = HumanFriendlyIdentifier(
+            node_schema=self._schema, template=self._schema.human_friendly_id
+        )
+        await self._human_friendly_id.compute(db=db, node=self)
+
+    async def get_display_label(self, db: InfrahubDatabase) -> str:
+        if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
+            return value
+
+        return await self.render_display_label(db=db)
+
+    def has_display_label(self) -> bool:
+        return self._display_label is not None
+
+    async def add_display_label(self, db: InfrahubDatabase) -> None:
+        if self._display_label:
+            return
+
+        self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+        await self._display_label.compute(db=db, node=self)
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
         schema_path = self._schema.parse_schema_path(
@@ -159,30 +252,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return self._branch
 
     def __repr__(self) -> str:
-        if not self._existing:
-            return f"{self.get_kind()}(ID: {str(self.id)})[NEW]"
-
-        return f"{self.get_kind()}(ID: {str(self.id)})"
-
-    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
-        self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
-        self._branch: Branch = branch
-        self._at: Timestamp = at
-        self._existing: bool = False
-
-        self._updated_at: Timestamp | None = None
-        self.id: str = None
-        self.db_id: str = None
-
-        self._source: Node | None = None
-        self._owner: Node | None = None
-        self._is_protected: bool = None
-        self._computed_jinja2_attributes: list[str] = []
-
-        # Lists of attributes and relationships names
-        self._attributes: list[str] = []
-        self._relationships: list[str] = []
-        self._node_changelog: NodeChangelog | None = None
+        v = f"{self.get_kind()}(ID: {str(self.id)})"
+        return v if self._existing else f"{v}[NEW]"
 
     @property
     def node_changelog(self) -> NodeChangelog:
@@ -240,14 +311,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def handle_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
+    async def handle_pool(
+        self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list, allocate_resources: bool = True
+    ) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
         """
 
-        if not attribute.from_pool:
+        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+            attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
+            attribute.is_default = False
+
+        if not attribute.from_pool or not allocate_resources:
             return
 
         try:
@@ -255,19 +332,27 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
         except NodeNotFoundError:
-            errors.append(
-                ValidationError(
-                    {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+            if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+                number_pool = await self.fetch_or_create_number_pool(
+                    db=db, schema_node=self._schema, schema_attribute=attribute.schema, branch=self._branch
                 )
-            )
-            return
+
+            else:
+                errors.append(
+                    ValidationError(
+                        {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+                    )
+                )
+                return
 
         if (
             number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
             and number_pool.node_attribute.value == attribute.name
         ):
             try:
-                next_free = await number_pool.get_resource(db=db, branch=self._branch, node=self)
+                next_free = await number_pool.get_resource(
+                    db=db, branch=self._branch, node=self, attribute=attribute.schema
+                )
             except PoolExhaustedError:
                 errors.append(
                     ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})
@@ -284,6 +369,68 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     }
                 )
             )
+
+    @staticmethod
+    async def fetch_or_create_number_pool(
+        db: InfrahubDatabase,
+        schema_node: NodeSchema | GenericSchema,
+        schema_attribute: AttributeSchema,
+        branch: Branch | None = None,
+    ) -> CoreNumberPool:
+        """Fetch or create a number pool based on the schema attribute parameters.
+
+        Warning, ideally this method should be outside of the Node class, but it is itself using the Node class to create the pool node.
+        """
+
+        if (
+            schema_attribute.kind != "NumberPool"
+            or not schema_attribute.parameters
+            or not isinstance(schema_attribute.parameters, NumberPoolParameters)
+        ):
+            raise ValueError("Attribute is not of type NumberPool")
+
+        number_pool_from_db: CoreNumberPool | None = None
+        number_pool_parameters: NumberPoolParameters = schema_attribute.parameters
+
+        lock_definition = NumberPoolLockDefinition(pool_id=str(number_pool_parameters.number_pool_id))
+        async with lock.registry.get(
+            name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
+        ):
+            try:
+                number_pool_from_db = await registry.manager.get_one_by_id_or_default_filter(
+                    db=db, id=str(number_pool_parameters.number_pool_id), kind=CoreNumberPool
+                )
+                return number_pool_from_db  # type: ignore[return-value]
+
+            except NodeNotFoundError:
+                schema = db.schema.get_node_schema(name="CoreNumberPool", duplicate=False)
+
+                pool_node = schema_node.kind
+                if schema_attribute.inherited:
+                    for generic_name in schema_node.inherit_from:
+                        generic_node = db.schema.get_generic_schema(name=generic_name, duplicate=False)
+                        if schema_attribute.name in generic_node.attribute_names:
+                            pool_node = generic_node.kind
+                            break
+
+                number_pool = await Node.init(db=db, schema=schema, branch=branch)
+                await number_pool.new(
+                    db=db,
+                    id=number_pool_parameters.number_pool_id,
+                    name=f"{pool_node}.{schema_attribute.name} [{number_pool_parameters.number_pool_id}]",
+                    node=pool_node,
+                    node_attribute=schema_attribute.name,
+                    start_range=number_pool_parameters.start_range,
+                    end_range=number_pool_parameters.end_range,
+                    pool_type=NumberPoolType.SCHEMA.value,
+                )
+                await number_pool.save(db=db)
+
+                # Do a lookup of the number pool to get the correct mapped type from the registry
+                # without this we don't get access to the .get_resource() method.
+                return await registry.manager.get_one_by_id_or_default_filter(
+                    db=db, id=number_pool.id, kind=CoreNumberPool
+                )
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
@@ -317,13 +464,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for attribute_name in template._attributes:
             if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
-            fields[attribute_name] = {"value": getattr(template, attribute_name).value, "source": template.id}
+            attr = getattr(template, attribute_name)
+            attr_value = attr.value
+            if attr_value is not None:
+                # Preserve is_from_profile flag when copying from template
+                field_data = {"value": attr_value, "source": attr.source_id or template.id}
+                if attr.is_from_profile:
+                    field_data["is_from_profile"] = True
+                fields[attribute_name] = field_data
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)
             if (
                 relationship_name in list(fields)
-                or relationship_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship_schema.kind
+                not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]
                 or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
             ):
                 continue
@@ -335,7 +490,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
+    async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
         errors = []
 
         if "_source" in fields.keys():
@@ -369,6 +524,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                             self._computed_jinja2_attributes.append(mandatory_attr)
                             continue
 
+                        if mandatory_attribute.kind == "NumberPool":
+                            continue
+
                     errors.append(
                         ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"})
                     )
@@ -385,6 +543,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
+        errors.extend(await self._process_fields_relationships(fields=fields, db=db))
+        errors.extend(await self._process_fields_attributes(fields=fields, db=db, process_pools=process_pools))
+
+        if errors:
+            raise ValidationError(errors)
+
+        # Check if any post processor have been defined
+        # A processor can be used for example to assigne a default value
+        for name in self._attributes + self._relationships:
+            if hasattr(self, f"process_{name}"):
+                await getattr(self, f"process_{name}")(db=db)
+
+    async def _process_fields_relationships(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
+        errors: list[ValidationError] = []
+
         for rel_schema in self._schema.relationships:
             self._relationships.append(rel_schema.name)
 
@@ -400,11 +573,18 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     self,
                     rel_schema.name,
                     await generator_method(
-                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
+                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name)
                     ),
                 )
             except ValidationError as exc:
                 errors.append(exc)
+
+        return errors
+
+    async def _process_fields_attributes(
+        self, fields: dict, db: InfrahubDatabase, process_pools: bool
+    ) -> list[ValidationError]:
+        errors: list[ValidationError] = []
 
         for attr_schema in self._schema.attributes:
             self._attributes.append(attr_schema.name)
@@ -423,25 +603,19 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     self,
                     attr_schema.name,
                     await generator_method(
-                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name, None)
+                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name)
                     ),
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.handle_pool(db=db, attribute=attribute, errors=errors)
+                    await self.handle_pool(db=db, attribute=attribute, errors=errors, allocate_resources=process_pools)
 
-                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
+                    if process_pools or attribute.from_pool is None:
+                        attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
                 errors.append(exc)
 
-        if errors:
-            raise ValidationError(errors)
-
-        # Check if any post processor have been defined
-        # A processor can be used for example to assigne a default value
-        for name in self._attributes + self._relationships:
-            if hasattr(self, f"process_{name}"):
-                await getattr(self, f"process_{name}")(db=db)
+        return errors
 
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = db.schema.get_schema_branch(self._branch.name)
@@ -474,17 +648,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     relationship_attribute: RelationshipManager = getattr(
                         self, attribute_path.active_relationship_schema.name
                     )
-                    peer = await relationship_attribute.get_peer(db=db, raise_on_error=True)
+                    if peer := await relationship_attribute.get_peer(db=db, raise_on_error=False):
+                        related_node = await registry.manager.get_one_by_id_or_default_filter(
+                            db=db,
+                            id=peer.id,
+                            kind=attribute_path.active_relationship_schema.peer,
+                            branch=self._branch.name,
+                        )
 
-                    related_node = await registry.manager.get_one_by_id_or_default_filter(
-                        db=db, id=peer.id, kind=attribute_path.active_relationship_schema.peer, branch=self._branch.name
-                    )
-
-                    attribute: BaseAttribute = getattr(
-                        getattr(related_node, attribute_path.active_attribute_schema.name),
-                        attribute_path.active_attribute_property_name,
-                    )
-                    variables[variable] = attribute
+                        attribute: BaseAttribute = getattr(
+                            getattr(related_node, attribute_path.active_attribute_schema.name),
+                            attribute_path.active_attribute_property_name,
+                        )
+                        variables[variable] = attribute
+                    else:
+                        variables[variable] = None
 
                 elif attribute_path.is_type_attribute:
                     attribute = getattr(
@@ -561,7 +739,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
                 self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self:
+    async def new(self, db: InfrahubDatabase, id: str | None = None, process_pools: bool = True, **kwargs: Any) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
         if id:
@@ -571,15 +749,40 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         self.id = id or str(UUIDT())
 
-        await self._process_fields(db=db, fields=kwargs)
+        await self._process_fields(db=db, fields=kwargs, process_pools=process_pools)
         await self._process_macros(db=db)
 
         return self
 
     async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+        extra_filters: dict[str, set[str]] = {}
+
+        if not self._existing:
+            # If we are creating a new node, we need to resolve extra filters from HFID and Display Labels,
+            # if we don't do this the fields might be blank
+            schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
+            try:
+                hfid_identifier = schema_branch.hfids.get_node_definition(kind=self._schema.kind)
+                for rel_name, attrs in hfid_identifier.relationship_fields.items():
+                    extra_filters.setdefault(rel_name, set()).update(attrs)
+            except KeyError:
+                # No HFID defined for this kind
+                ...
+            try:
+                display_label_identifier = schema_branch.display_labels.get_template_node(kind=self._schema.kind)
+                for rel_name, attrs in display_label_identifier.relationship_fields.items():
+                    extra_filters.setdefault(rel_name, set()).update(attrs)
+            except KeyError:
+                # No Display Label defined for this kind
+                ...
+
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
-            await relm.resolve(db=db)
+            query_filter = []
+            if name in extra_filters:
+                query_filter.extend(list(extra_filters[name]))
+
+            await relm.resolve(db=db, fields=query_filter)
 
     async def load(
         self,
@@ -599,11 +802,25 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
             self._updated_at = Timestamp(updated_at)
 
+        if not self._schema.is_schema_node:
+            if hfid := kwargs.pop("human_friendly_id", None):
+                self._human_friendly_id = HumanFriendlyIdentifier(
+                    node_schema=self._schema, template=self._schema.human_friendly_id, value=hfid
+                )
+            if display_label := kwargs.pop("display_label", None):
+                self._display_label = DisplayLabel(
+                    node_schema=self._schema, template=self._schema.display_label, value=display_label
+                )
+
         await self._process_fields(db=db, fields=kwargs)
         return self
 
     async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
+
+        if not self._schema.is_schema_node:
+            await self.add_human_friendly_id(db=db)
+            await self.add_display_label(db=db)
 
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
         await query.execute(db=db)
@@ -615,6 +832,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         new_ids = query.get_ids()
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+
+        if self._human_friendly_id:
+            node_changelog.create_attribute(
+                attribute=self._human_friendly_id.get_node_attribute(node=self, at=create_at)
+            )
+        if self._display_label:
+            node_changelog.create_attribute(attribute=self._display_label.get_node_attribute(node=self, at=create_at))
 
         # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
@@ -628,12 +852,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             relm: RelationshipManager = getattr(self, name)
             for rel in relm._relationships:
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
-
                 rel.id, rel.db_id = new_ids[identifier]
-
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.render_display_label(db=db)
+        node_changelog.display_label = await self.get_display_label(db=db)
         return node_changelog
 
     async def _update(
@@ -669,19 +891,41 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
 
-        node_changelog.display_label = await self.render_display_label(db=db)
+        # Update the HFID if one of its variables is being updated
+        if self._human_friendly_id and (
+            (fields and "human_friendly_id" in fields) or self._human_friendly_id.needs_update(fields=fields)
+        ):
+            await self._human_friendly_id.compute(db=db, node=self)
+            updated_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=update_at).save(
+                at=update_at, db=db
+            )
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
+
+        # Update the display label if one of its variables is being updated
+        if self._display_label and (
+            (fields and "display_label" in fields) or self._display_label.needs_update(fields=fields)
+        ):
+            await self._display_label.compute(db=db, node=self)
+            self._display_label.get_node_attribute(node=self, at=update_at).get_create_data(node_schema=self._schema)
+            updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
+                at=update_at, db=db
+            )
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
+
+        node_changelog.display_label = await self.get_display_label(db=db)
         return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
         """Create or Update the Node in the database."""
-
         save_at = Timestamp(at)
 
         if self._existing:
             self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
-            return self
+        else:
+            self._node_changelog = await self._create(at=save_at, db=db)
 
-        self._node_changelog = await self._create(at=save_at, db=db)
         return self
 
     async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
@@ -690,13 +934,24 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.render_display_label(db=db)
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            deleted_attribute = await attr.delete(at=delete_at, db=db)
-            if deleted_attribute:
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+                node_changelog.add_attribute(attribute=deleted_attribute)
+
+        if self._human_friendly_id:
+            if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
+                at=delete_at, db=db
+            ):
+                node_changelog.add_attribute(attribute=deleted_attribute)
+
+        if self._display_label:
+            if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
+                at=delete_at, db=db
+            ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         branch = self.get_branch_based_on_support_type()
@@ -727,6 +982,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
+
         self._node_changelog = node_changelog
 
     async def to_graphql(
@@ -763,7 +1019,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                response[field_name] = await self.render_display_label(db=db)
+                response[field_name] = await self.get_display_label(db=db)
                 continue
 
             if field_name == "hfid":
@@ -823,7 +1079,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return response
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""
 
         changed = False
@@ -831,11 +1087,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(data=value, db=db)
+                changed |= await attribute.from_graphql(data=value, db=db, process_pools=process_pools)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
-                changed |= await rel.update(db=db, data=value)
+                changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
 
@@ -866,15 +1122,33 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return repr(self)
         return display_label.strip()
 
+    async def set_human_friendly_id(self, value: list[str] | None) -> None:
+        """Set the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""
+        if self._human_friendly_id is None:
+            return
+
+        self._human_friendly_id.set_value(value=value, manually_assigned=True)
+
+    async def set_display_label(self, value: str | None) -> None:
+        """Set the display label of this node if one is set. `save()` must be called to commit the change in the database."""
+        if self._display_label is None:
+            return
+
+        self._display_label.set_value(value=value, manually_assigned=True)
+
     def _get_parent_relationship_name(self) -> str | None:
         """Return the name of the parent relationship is one is present"""
         for relationship in self._schema.relationships:
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
 
-    async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
-        object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return await object_template.get_peer(db=db) if object_template is not None else None
+        return None
+
+    async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
+        object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
+        return (
+            await object_template.get_peer(db=db, peer_type=CoreObjectTemplate) if object_template is not None else None
+        )
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None
@@ -888,3 +1162,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             for relationship in self.get_schema().relationships
             if relationship.name not in exclude and relationship.kind == kind
         ]
+
+    def validate_relationships(self) -> None:
+        for name in self._relationships:
+            relm: RelationshipManager = getattr(self, name)
+            relm.validate()
+
+    async def get_parent_relationship_peer(self, db: InfrahubDatabase, name: str) -> Node | None:
+        """When a node has a parent relationship of a given name, this method returns the peer of that relationship."""
+        relationship = self.get_schema().get_relationship(name=name)
+        if relationship.kind != RelationshipKind.PARENT:
+            raise ValueError(f"Relationship '{name}' is not of kind 'parent'")
+
+        relm: RelationshipManager = getattr(self, name)
+        return await relm.get_peer(db=db)

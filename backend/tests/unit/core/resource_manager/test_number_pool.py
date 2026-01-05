@@ -1,8 +1,10 @@
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
+from infrahub.core.schema.attribute_schema import AttributeSchema, NumberAttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
@@ -11,11 +13,13 @@ from infrahub.graphql.queries.resource_manager import resolve_number_pool_utiliz
 from tests.helpers.schema import TICKET, load_schema
 
 
-async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_allocate_from_number_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
 
@@ -37,8 +41,11 @@ async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: B
     await recreated_ticket2.save(db=db)
     assert recreated_ticket2.ticket_id.value == 2
 
+    # Validate methods at the pool level
+    assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
 
-async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+
+async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
     """
     Allocates:
     - 1 ticket in first number pool
@@ -49,7 +56,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
 
@@ -57,7 +64,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
     await ticket1_np1.new(db=db, title="ticket1_np1", ticket_id={"from_pool": {"id": np1.id}})
     await ticket1_np1.save(db=db)
 
-    np2 = await Node.init(db=db, schema="CoreNumberPool")
+    np2 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np2.new(db=db, name="pool2", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np2.save(db=db)
 
@@ -116,7 +123,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
 
 async def test_allocate_from_number_pool_for_generic(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-):
+) -> None:
     ticket = GenericSchema(
         name="Ticket",
         namespace="Testing",
@@ -147,7 +154,7 @@ async def test_allocate_from_number_pool_for_generic(
     await load_schema(db=db, schema=SchemaRoot(generics=[ticket], nodes=[speeding_ticket, parking_ticket]))
     await initialize_registry(db=db)
 
-    np1 = await Node.init(db=db, schema="CoreNumberPool")
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node=ticket.kind, node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
 
@@ -171,3 +178,73 @@ async def test_allocate_from_number_pool_for_generic(
 
     utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
     assert utilization["edges"][0]["node"]["utilization"] == 20.0
+
+
+async def test_allocate_from_number_pool_with_excluded_values(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
+    speeding_ticket = NodeSchema(
+        name="SpeedingTicket",
+        namespace="Testing",
+        include_in_menu=True,
+        label="Speeding Ticket",
+        human_friendly_id=["title__value", "ticket_id__value"],
+        attributes=[
+            AttributeSchema(name="title", kind="Text", optional=False),
+            AttributeSchema(name="description", kind="TextArea", optional=True),
+            NumberAttributeSchema(
+                name="ticket_id",
+                kind="Number",
+                optional=True,
+                unique=True,
+                parameters=NumberAttributeParameters(min_value=10, max_value=30, excluded_values="12,14-16"),
+            ),
+        ],
+    )
+
+    await load_schema(db=db, schema=SchemaRoot(nodes=[speeding_ticket]))
+    await initialize_registry(db=db)
+
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await np1.new(
+        db=db, name="pool1", node=speeding_ticket.kind, node_attribute="ticket_id", start_range=10, end_range=30
+    )
+    await np1.save(db=db)
+
+    # Validate that get_next_many return the correct values
+    next_many = await np1.get_next_many(
+        db=db, branch=default_branch, quantity=5, attribute=speeding_ticket.get_attribute("ticket_id")
+    )
+    assert next_many == [10, 11, 13, 17, 18]
+
+    tickets = []
+    for _ in range(5):
+        ticket = await Node.init(db=db, schema=speeding_ticket.kind)
+        await ticket.new(db=db, title="ticket", ticket_id={"from_pool": {"id": np1.id}})
+        await ticket.save(db=db)
+        tickets.append(ticket)
+
+    assert tickets[0].ticket_id.value == 10
+    assert tickets[1].ticket_id.value == 11
+    assert tickets[2].ticket_id.value == 13
+    assert tickets[3].ticket_id.value == 17
+    assert tickets[4].ticket_id.value == 18
+
+    # If a resource is deleted the allocated number should be returned to the pool
+    await tickets[0].delete(db=db)
+    await tickets[1].delete(db=db)
+    await tickets[2].delete(db=db)
+    await tickets[3].delete(db=db)
+    await tickets[4].delete(db=db)
+
+    ticket = await Node.init(db=db, schema=speeding_ticket.kind)
+    await ticket.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
+    await ticket.save(db=db)
+    assert ticket.ticket_id.value == 10
+
+    utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+
+    nb_values_used_in_pool = 1
+    nb_excluded_values = 4
+    total_pool_length = np1.end_range.value - np1.start_range.value + 1 - nb_excluded_values
+    assert utilization["edges"][0]["node"]["utilization"] == nb_values_used_in_pool / total_pool_length * 100

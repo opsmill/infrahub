@@ -1,6 +1,8 @@
-import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
 import { NetworkStatus } from "@apollo/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
+
 import { isTaskRunningOnBranch } from "./is-task-running-on-branch";
 
 vi.mock("@/entities/tasks/api/get-branch-task-status-from-api");

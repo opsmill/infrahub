@@ -7,7 +7,7 @@ async def test_migration_017(
     db: InfrahubDatabase,
     default_branch,
     register_internal_models_schema,
-):
+) -> None:
     """
     Test migration correctly adds CoreProfile schema node.
     """

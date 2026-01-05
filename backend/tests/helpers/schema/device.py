@@ -119,6 +119,24 @@ VIRTUAL_INTERFACE = NodeSchema(
     label="Virtual Interface",
 )
 
+LAG_INTERFACE = NodeSchema(
+    name="LinkAggegrationInterface",
+    namespace="Testing",
+    inherit_from=[TestKind.INTERFACE],
+    include_in_menu=True,
+    label="LAG Interface",
+    relationships=[
+        RelationshipSchema(
+            name="members",
+            kind=RelationshipKind.COMPONENT,
+            optional=True,
+            peer=TestKind.PHYSICAL_INTERFACE,
+            cardinality=RelationshipCardinality.MANY,
+            common_parent="device",
+        )
+    ],
+)
+
 SFP = NodeSchema(
     name="Sfp",
     namespace="Testing",

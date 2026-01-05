@@ -5,19 +5,24 @@ from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 
 
-async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node, branch: Branch) -> None:
     query = (
         """
     mutation {
@@ -34,7 +39,8 @@ async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -44,6 +50,7 @@ async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
@@ -51,7 +58,9 @@ async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node
     assert obj1.height.value == 180
 
 
-async def test_update_simple_object_with_ok_return(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+async def test_update_simple_object_with_ok_return(
+    db: InfrahubDatabase, person_john_main: Node, branch: Branch
+) -> None:
     query = (
         """
     mutation {
@@ -62,7 +71,8 @@ async def test_update_simple_object_with_ok_return(db: InfrahubDatabase, person_
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -72,6 +82,7 @@ async def test_update_simple_object_with_ok_return(db: InfrahubDatabase, person_
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
@@ -91,8 +102,8 @@ async def test_update_simple_object_with_enum(
     graphql_enums_on,
     enum_value,
     response_value,
-):
-    GraphQLSchemaManager.clear_cache()
+) -> None:
+    graphql_registry.clear_cache()
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
     query = """
     mutation {
@@ -109,7 +120,8 @@ async def test_update_simple_object_with_enum(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -117,6 +129,7 @@ async def test_update_simple_object_with_enum(
         root_value=None,
         variable_values={},
     )
+    assert result.data
     car_id = result.data["TestCarCreate"]["object"]["id"]
 
     query = """
@@ -135,7 +148,8 @@ async def test_update_simple_object_with_enum(
         }
     }
     """ % {"car_id": car_id, "enum_value": enum_value}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -145,6 +159,7 @@ async def test_update_simple_object_with_enum(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] == response_value
 
@@ -152,7 +167,9 @@ async def test_update_simple_object_with_enum(
     assert updated_car.transmission.value.value == "flintstone-feet"
 
 
-async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch):
+async def test_update_check_unique(
+    db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch
+) -> None:
     query = (
         """
     mutation {
@@ -169,7 +186,8 @@ async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node,
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -183,7 +201,7 @@ async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node,
     assert "Violates uniqueness constraint" in result.errors[0].message
 
 
-async def test_update_object_with_flag_property(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+async def test_update_object_with_flag_property(db: InfrahubDatabase, person_john_main: Node, branch: Branch) -> None:
     query = (
         """
     mutation {
@@ -203,7 +221,8 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -213,6 +232,7 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
@@ -227,7 +247,7 @@ async def test_update_all_attributes(
     all_attribute_types_schema,
     enable_broker_config: None,
     session_first_account: AccountSession,
-):
+) -> None:
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(
         db=db,
@@ -266,8 +286,9 @@ async def test_update_all_attributes(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -322,7 +343,7 @@ async def test_update_object_with_node_property(
     first_account: Node,
     second_account: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         TestPersonUpdate(data: {id: "%s", name: { source: "%s" }, height: { source: "%s" } }) {
@@ -337,7 +358,8 @@ async def test_update_object_with_node_property(
         second_account.id,
         second_account.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -347,6 +369,7 @@ async def test_update_object_with_node_property(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
 
     obj1 = await NodeManager.get_one(db=db, id=person_john_with_source_main.id, include_source=True, branch=branch)
@@ -354,7 +377,9 @@ async def test_update_object_with_node_property(
     assert obj1.height.source_id == second_account.id
 
 
-async def test_update_invalid_object(db: InfrahubDatabase, default_branch: Branch, car_person_schema, branch: Branch):
+async def test_update_invalid_object(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, branch: Branch
+) -> None:
     query = """
     mutation {
         TestPersonUpdate(data: {id: "XXXXXX", name: { value: "Jim"}}) {
@@ -368,7 +393,8 @@ async def test_update_invalid_object(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -377,11 +403,12 @@ async def test_update_invalid_object(db: InfrahubDatabase, default_branch: Branc
         variable_values={},
     )
 
+    assert result.errors
     assert len(result.errors) == 1
     assert "Unable to find the node XXXXXX / TestPerson in the database." in result.errors[0].message
 
 
-async def test_update_invalid_input(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+async def test_update_invalid_input(db: InfrahubDatabase, person_john_main: Node, branch: Branch) -> None:
     query = (
         """
     mutation {
@@ -398,7 +425,8 @@ async def test_update_invalid_input(db: InfrahubDatabase, person_john_main: Node
     """
         % person_john_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -407,6 +435,7 @@ async def test_update_invalid_input(db: InfrahubDatabase, person_john_main: Node
         variable_values={},
     )
 
+    assert result.errors
     assert len(result.errors) == 1
     assert "String cannot represent a non string value" in result.errors[0].message
 
@@ -419,7 +448,7 @@ async def test_update_single_relationship(
     branch: Branch,
     enable_broker_config: None,
     session_first_account: AccountSession,
-):
+) -> None:
     query = """
     mutation {
         TestCarUpdate(data: {id: "%s", owner: { id: "%s" }}) {
@@ -442,8 +471,9 @@ async def test_update_single_relationship(
     )
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+        db=db, branch=branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -488,7 +518,7 @@ async def test_update_single_relationship(
 
 async def test_update_default_value(
     db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, car_accord_main: Node, branch: Branch
-):
+) -> None:
     assert car_accord_main.color.is_default is True
 
     query = """
@@ -505,7 +535,8 @@ async def test_update_default_value(
         }
     }
     """ % (car_accord_main.id)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -515,6 +546,7 @@ async def test_update_default_value(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["color"]["is_default"] is False
 
@@ -538,7 +570,8 @@ async def test_update_default_value(
     }
     """ % (car_accord_main.id)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -548,6 +581,7 @@ async def test_update_default_value(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["color"]["is_default"] is False
 
@@ -575,7 +609,8 @@ async def test_update_default_value(
     }
     """ % (car_accord_main.id)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -585,6 +620,7 @@ async def test_update_default_value(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["color"]["is_default"] is True
     assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] is None
@@ -600,7 +636,7 @@ async def test_update_default_value(
 
 async def test_update_new_single_relationship_flag_property(
     db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, car_accord_main: Node, branch: Branch
-):
+) -> None:
     query = """
     mutation {
         TestCarUpdate(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
@@ -621,7 +657,8 @@ async def test_update_new_single_relationship_flag_property(
         car_accord_main.id,
         person_jim_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -631,6 +668,7 @@ async def test_update_new_single_relationship_flag_property(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
@@ -643,7 +681,7 @@ async def test_update_new_single_relationship_flag_property(
 
 async def test_update_delete_optional_relationship_cardinality_one(
     db: InfrahubDatabase, person_jim_main: Node, car_accord_main: Node, branch: Branch
-):
+) -> None:
     query = """
     mutation {
         TestCarUpdate(data: {id: "%s", owner: { id: "%s" }}) {
@@ -664,7 +702,8 @@ async def test_update_delete_optional_relationship_cardinality_one(
         car_accord_main.id,
         person_jim_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -674,6 +713,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
@@ -700,7 +740,8 @@ async def test_update_delete_optional_relationship_cardinality_one(
         }
     }
     """ % (car_accord_main.id,)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -710,6 +751,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"] is None
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
@@ -719,7 +761,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
 
 async def test_update_existing_single_relationship_flag_property(
     db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, car_accord_main: Node, branch: Branch
-):
+) -> None:
     query = """
     mutation {
         TestCarUpdate(data: {id: "%s", owner: { id: "%s", _relation__is_protected: true }}) {
@@ -740,7 +782,8 @@ async def test_update_existing_single_relationship_flag_property(
         car_accord_main.id,
         person_john_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -750,6 +793,7 @@ async def test_update_existing_single_relationship_flag_property(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
@@ -784,7 +828,7 @@ async def test_update_existing_single_relationship_node_property(
     first_account: Node,
     second_account: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         TestCarUpdate(data: {id: "%s", owner: { id: "%s", _relation__source: "%s" }}) {
@@ -806,7 +850,8 @@ async def test_update_existing_single_relationship_node_property(
         person_john_main.id,
         second_account.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -816,6 +861,7 @@ async def test_update_existing_single_relationship_node_property(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
@@ -835,7 +881,7 @@ async def test_update_relationship_many(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" } ] }) {
@@ -858,7 +904,8 @@ async def test_update_relationship_many(
         person_jack_main.id,
         tag_blue_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -868,6 +915,7 @@ async def test_update_relationship_many(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
 
@@ -898,7 +946,8 @@ async def test_update_relationship_many(
         tag_red_main.id,
         tag_black_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -908,6 +957,7 @@ async def test_update_relationship_many(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
@@ -940,7 +990,8 @@ async def test_update_relationship_many(
         tag_blue_main.id,
         tag_black_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -950,6 +1001,7 @@ async def test_update_relationship_many(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
@@ -966,7 +1018,7 @@ async def test_update_relationship_many2(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" } ] }) {
@@ -989,7 +1041,8 @@ async def test_update_relationship_many2(
         person_jack_main.id,
         tag_blue_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -999,6 +1052,7 @@ async def test_update_relationship_many2(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
 
@@ -1029,7 +1083,8 @@ async def test_update_relationship_many2(
         tag_red_main.id,
         tag_black_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1039,6 +1094,7 @@ async def test_update_relationship_many2(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
@@ -1056,7 +1112,7 @@ async def test_update_relationship_previously_deleted(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         TestPersonUpdate(data: {id: "%s", tags: [ { id: "%s" } ] }) {
@@ -1075,7 +1131,8 @@ async def test_update_relationship_previously_deleted(
         person_jack_main.id,
         tag_blue_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1085,6 +1142,7 @@ async def test_update_relationship_previously_deleted(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 1
 
@@ -1111,7 +1169,8 @@ async def test_update_relationship_previously_deleted(
         tag_red_main.id,
         tag_black_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1121,6 +1180,7 @@ async def test_update_relationship_previously_deleted(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 2
 
@@ -1148,7 +1208,8 @@ async def test_update_relationship_previously_deleted(
         tag_blue_main.id,
         tag_black_main.id,
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1158,6 +1219,7 @@ async def test_update_relationship_previously_deleted(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
     assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 2
 
@@ -1166,7 +1228,200 @@ async def test_update_relationship_previously_deleted(
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
 
 
-async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_update_for_node_with_migrated_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_internal_models_schema,
+    car_person_schema: Node,
+    person_alfred_main: Node,
+) -> None:
+    schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    branch = await create_branch(db=db, branch_name="migrated-branch")
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    person_schema = schema.get(name="TestPerson")
+    person_schema.name = "GreatPerson"
+    new_person_kind = "TestGreatPerson"
+    assert person_schema.kind == new_person_kind
+    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+    core_node_schema = schema.get_generic(name="CoreNode")
+    core_node_schema.used_by.append(new_person_kind)
+    schema.set(name="CoreNode", schema=core_node_schema)
+    await registry.schema.load_schema_to_db(db=db, schema=schema, branch=branch)
+
+    # create group on main
+    main_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await main_group.new(
+        db=db,
+        name="main-group",
+    )
+    await main_group.save(db=db)
+    # create group on branch
+    branch_group = await Node.init(db=db, branch=branch, schema=InfrahubKind.STANDARDGROUP)
+    await branch_group.new(
+        db=db,
+        name="branch-group",
+    )
+    await branch_group.save(db=db)
+
+    # add person to group on main
+    update_group_query = """
+    mutation ($group_id: String!, $members: [RelatedNodeInput]) {
+        CoreStandardGroupUpdate(data: {
+            id: $group_id,
+            members: $members,
+        }) {
+            ok
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=update_group_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"group_id": main_group.id, "members": [{"id": person_alfred_main.id}]},
+    )
+    assert not result.errors
+
+    # add person to group on branch
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=update_group_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"group_id": branch_group.id, "members": [{"id": person_alfred_main.id}]},
+    )
+    assert not result.errors
+
+    # check relationship count on main
+    group_members_query = """
+    query getRelationshipCount_CoreStandardGroup_members ($ids: [ID!]!) {
+        CoreStandardGroup(
+            ids: $ids
+        ) {
+            edges {
+                node {
+                    members {
+                        count
+                    }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=group_members_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"ids": [main_group.id]},
+    )
+    assert not result.errors
+    assert result.data
+    assert result.data["CoreStandardGroup"]["edges"][0]["node"]["members"]["count"] == 1
+
+    # check relationship count on branch
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=group_members_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"ids": [branch_group.id]},
+    )
+    assert not result.errors
+    assert result.data
+    assert result.data["CoreStandardGroup"]["edges"][0]["node"]["members"]["count"] == 1
+
+    # check person-side relationship on main
+    person_main = await NodeManager.get_one(db=db, id=person_alfred_main.id, branch=default_branch)
+    groups = await person_main.member_of_groups.get(db=db)
+    assert len(groups) == 1
+    assert groups[0].peer_id == main_group.id
+    main_person_schema = registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False)
+    members_rel_schema = main_person_schema.get_relationship("member_of_groups")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[person_alfred_main.id],
+        source_kind="TestPerson",
+        schema=members_rel_schema,
+        filters={},
+        branch=default_branch,
+    )
+    assert peer_count == 1
+
+    # check group-side relationship on main
+    group_main = await NodeManager.get_one(db=db, id=main_group.id, branch=default_branch)
+    members = await group_main.members.get(db=db)
+    assert len(members) == 1
+    assert members[0].peer_id == person_alfred_main.id
+    main_group_schema = registry.schema.get(name="CoreStandardGroup", branch=default_branch, duplicate=False)
+    members_rel_schema = main_group_schema.get_relationship("members")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[main_group.id],
+        source_kind="CoreStandardGroup",
+        schema=members_rel_schema,
+        filters={},
+        branch=default_branch,
+    )
+    assert peer_count == 1
+
+    # check person-side relationship on branch
+    alfred_branch = await NodeManager.get_one(db=db, id=person_alfred_main.id, branch=branch)
+    groups = await alfred_branch.member_of_groups.get(db=db)
+    assert len(groups) == 1
+    assert groups[0].peer_id == branch_group.id
+    branch_person_schema = registry.schema.get(name="TestGreatPerson", branch=branch, duplicate=False)
+    members_rel_schema = branch_person_schema.get_relationship("member_of_groups")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[person_alfred_main.id],
+        source_kind="TestGreatPerson",
+        schema=members_rel_schema,
+        filters={},
+        branch=branch,
+    )
+    assert peer_count == 1
+
+    # check group-side relationship on branch
+    group_branch = await NodeManager.get_one(db=db, id=branch_group.id, branch=branch)
+    members = await group_branch.members.get(db=db)
+    assert len(members) == 1
+    assert members[0].peer_id == person_alfred_main.id
+    branch_group_schema = registry.schema.get(name="CoreStandardGroup", branch=branch, duplicate=False)
+    members_rel_schema = branch_group_schema.get_relationship("members")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[branch_group.id],
+        source_kind="CoreStandardGroup",
+        schema=members_rel_schema,
+        filters={},
+        branch=branch,
+    )
+    assert peer_count == 1
+
+
+async def test_update_with_uniqueness_constraint_violation(
+    db: InfrahubDatabase, default_branch, car_person_schema
+) -> None:
     car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
     car_schema.uniqueness_constraints = [["owner", "color__value"]]
 
@@ -1197,7 +1452,8 @@ async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase,
         % c2.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1205,11 +1461,12 @@ async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase,
         root_value=None,
         variable_values={},
     )
+    assert result.errors
     assert len(result.errors) == 1
     assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message
 
 
-async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1237,7 +1494,8 @@ async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_sch
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1246,11 +1504,12 @@ async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_sch
         variable_values={},
     )
     assert result.errors is None
+    assert result.data
     assert result.data["TestDogUpdate"]["ok"] is True
     assert result.data["TestDogUpdate"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
 
-async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1280,7 +1539,8 @@ async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branc
         }
     }
     """ % {"person_id": person1.id, "animal_id": person2.id}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1329,7 +1589,9 @@ async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branc
     assert owner.peer_id == person1.id
 
 
-async def test_removing_mandatory_relationship_not_allowed(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_removing_mandatory_relationship_not_allowed(
+    db: InfrahubDatabase, default_branch, animal_person_schema
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1352,7 +1614,8 @@ async def test_removing_mandatory_relationship_not_allowed(db: InfrahubDatabase,
         }
     }
     """ % {"animal_id": dog1.id}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1364,10 +1627,36 @@ async def test_removing_mandatory_relationship_not_allowed(db: InfrahubDatabase,
     assert len(result.errors) == 1
     assert result.errors[0].message == "Too few relationships, min 1 at owner"
 
+    query = """
+    query {
+        TestDog(ids: ["%(animal_id)s"]) {
+            edges {
+                node {
+                    owner {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }""" % {"animal_id": dog1.id}
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.data["TestDog"]["edges"][0]["node"]["owner"]["node"] is not None
+    retrieved_owner_id = result.data["TestDog"]["edges"][0]["node"]["owner"]["node"]["id"]
+    assert retrieved_owner_id == person1.id
+
 
 async def test_updating_relationship_when_peer_side_is_required(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1398,7 +1687,8 @@ async def test_updating_relationship_when_peer_side_is_required(
         }
     }
     """ % {"person_id": person1.id, "animal1_id": dog1.id, "animal2_id": dog2.id}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1413,7 +1703,7 @@ async def test_updating_relationship_when_peer_side_is_required(
 
 async def test_updating_relationship_when_peer_side_is_optional(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1444,7 +1734,8 @@ async def test_updating_relationship_when_peer_side_is_optional(
         }
     }
     """ % {"person_id": person1.id, "animal1_id": dog1.id, "animal2_id": dog2.id}
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1453,6 +1744,7 @@ async def test_updating_relationship_when_peer_side_is_optional(
         variable_values={},
     )
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["ok"]
 
     updated_nodes = await NodeManager.get_many(db=db, ids=[person1.id, person2.id, dog1.id, dog2.id])

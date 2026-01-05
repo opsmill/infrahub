@@ -5,10 +5,10 @@ import { EditorState } from "@codemirror/state";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import {
   EditorView,
-  ViewUpdate,
   keymap,
   lineNumbers,
   placeholder as placeholderView,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { graphql } from "cm6-graphql";
 import { basicLight } from "cm6-theme-basic-light";
@@ -76,7 +76,7 @@ export function useCodeMirror(
     if (value === currentValue) return;
 
     view.dispatch({
-      changes: { from: 0, to: currentValue.length, insert: newValue || "" },
+      changes: { from: 0, to: currentValue.length, insert: newValue },
     });
   }, [value, view]);
 

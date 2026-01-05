@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 from prefect.client.schemas.objects import StateType
 
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.task import PrefectTask
 from infrahub.workflows.constants import WorkflowTag
@@ -32,6 +32,8 @@ class Tasks(ObjectType):
         workflow: list[str] | None = None,
         related_node__ids: list | None = None,
         q: str | None = None,
+        log_limit: int | None = None,
+        log_offset: int | None = None,
     ) -> dict[str, Any]:
         related_nodes = related_node__ids or []
         ids = ids or []
@@ -45,6 +47,8 @@ class Tasks(ObjectType):
             statuses=state,
             workflows=workflow,
             related_nodes=related_nodes,
+            log_limit=log_limit,
+            log_offset=log_offset,
         )
 
     @staticmethod
@@ -71,9 +75,11 @@ class Tasks(ObjectType):
         branch: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
+        log_limit: int | None = None,
+        log_offset: int | None = None,
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
-        fields = await extract_fields_first_node(info)
+        fields = extract_graphql_fields(info=info)
 
         prefect_tasks = await PrefectTask.query(
             db=graphql_context.db,
@@ -87,6 +93,8 @@ class Tasks(ObjectType):
             related_nodes=related_nodes,
             limit=limit,
             offset=offset,
+            log_limit=log_limit,
+            log_offset=log_offset,
         )
         prefect_count = prefect_tasks.get("count", None)
         return {
@@ -105,6 +113,8 @@ Task = Field(
     workflow=List(String),
     ids=List(String),
     q=String(required=False),
+    log_limit=Int(required=False),
+    log_offset=Int(required=False),
     resolver=Tasks.resolve,
     required=True,
 )

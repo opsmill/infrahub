@@ -1,23 +1,17 @@
-import { NUMBER_POOL_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import {
-  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-  NUMBER_POOL_NODE_FIELD,
-} from "@/entities/resource-manager/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, NodeSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { type FieldValues, useForm, useFormContext } from "react-hook-form";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import NumberField from "@/shared/components/form/fields/number.field";
-import { NodeFormProps } from "@/shared/components/form/node-form";
-import { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
+import type { ObjectFormProps } from "@/shared/components/form/object-form";
+import type { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
@@ -32,36 +26,40 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
+import { NUMBER_POOL_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { FieldValues, useForm, useFormContext } from "react-hook-form";
-import { toast } from "react-toastify";
 
-interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
-  currentObject?: Record<string, AttributeType | RelationshipType>;
-  onCancel?: () => void;
-  onUpdateComplete?: () => void;
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import {
+  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
+  NUMBER_POOL_NODE_FIELD,
+} from "@/entities/resource-manager/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+
+interface NumberPoolFormProps {
+  currentObject?: ObjectFormProps["currentObject"];
+  onCancel?: ObjectFormProps["onCancel"];
+  onSuccess?: ObjectFormProps["onSuccess"];
 }
 
-export const NumberPoolForm = ({
-  currentObject,
-  onSuccess,
-  onCancel,
-  onUpdateComplete,
-}: NumberPoolFormProps) => {
+export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoolFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const createObject = useCreateObjectMutation();
 
   const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject),
-    description: getCurrentFieldValue("description", currentObject),
-    node: getCurrentFieldValue("node", currentObject),
-    node_attribute: getCurrentFieldValue("node_attribute", currentObject),
-    start_range: getCurrentFieldValue("start_range", currentObject),
-    end_range: getCurrentFieldValue("end_range", currentObject),
+    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    description: getCurrentFieldValue("description", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    node: getCurrentFieldValue("node", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    node_attribute:
+      getCurrentFieldValue("node_attribute", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    start_range: getCurrentFieldValue("start_range", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
+    end_range: getCurrentFieldValue("end_range", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
   };
 
   const form = useForm<FieldValues>({
@@ -69,53 +67,62 @@ export const NumberPoolForm = ({
   });
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+    const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
 
-      if (!Object.keys(newObject).length) {
-        return;
+    if (!Object.keys(newObject).length) {
+      return;
+    }
+
+    if (currentObject) {
+      try {
+        const result = await graphqlClient.mutate({
+          mutation: gql(
+            updateObjectWithId({
+              kind: NUMBER_POOL_OBJECT,
+              data: stringifyWithoutQuotes({
+                id: currentObject.id,
+                ...newObject,
+              }),
+            })
+          ),
+          context: {
+            branch: branch?.name,
+            date,
+          },
+        });
+
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool updated" />, {
+          toastId: "alert-success-number-pool-update",
+        });
+
+        if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Update`]);
+      } catch (error: unknown) {
+        console.error("An error occurred while creating the object: ", error);
       }
-
-      const mutationString = currentObject
-        ? updateObjectWithId({
-            kind: NUMBER_POOL_OBJECT,
-            data: stringifyWithoutQuotes({
-              id: currentObject.id,
-              ...newObject,
-            }),
-          })
-        : createObject({
-            kind: NUMBER_POOL_OBJECT,
-            data: stringifyWithoutQuotes({
-              ...newObject,
-            }),
-          });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+    } else {
+      await createObject.mutateAsync(
+        {
+          objectKind: NUMBER_POOL_OBJECT,
+          data: newObject,
         },
-      });
+        {
+          onSuccess: async (newNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool created" />, {
+              toastId: "alert-success-number-pool-create",
+            });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Number pool created"} />, {
-        toastId: "alert-success-number-pool-created",
-      });
-
-      if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Create`]);
-      if (onUpdateComplete) await onUpdateComplete();
-    } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+            if (onSuccess) await onSuccess(newNode);
+          },
+          onError: async (error: unknown) => {
+            console.error("An error occurred while creating the object: ", error);
+          },
+        }
+      );
     }
   }
 
   return (
-    <div className={"bg-white flex flex-col flex-1 overflow-auto p-4"}>
+    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
@@ -156,7 +163,7 @@ const NodeAttributesSelects = () => {
   const selectedNodeField: FormAttributeValue = form.watch(NUMBER_POOL_NODE_FIELD);
   const selectedNode = options.find((node) => node.kind === selectedNodeField?.value);
 
-  const nodesWithNumberAttributes: Array<NodeSchema> = options.filter((node) =>
+  const nodesWithNumberAttributes: Array<ModelSchema> = options.filter((node) =>
     node.attributes?.some(
       (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
     )
@@ -166,10 +173,11 @@ const NodeAttributesSelects = () => {
     selectedNode?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
 
   useEffect(() => {
-    if (numberAttributeOptions.length === 1) {
+    const firstAttribute = numberAttributeOptions[0];
+    if (firstAttribute) {
       form.setValue(
         NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-        updateFormFieldValue(numberAttributeOptions[0].name, DEFAULT_FORM_FIELD_VALUE)
+        updateFormFieldValue(firstAttribute.name, DEFAULT_FORM_FIELD_VALUE)
       );
     } else {
       form.resetField(NUMBER_POOL_NODE_ATTRIBUTE_FIELD);
@@ -197,7 +205,7 @@ const NodeAttributesSelects = () => {
                 <FormInput>
                   <ComboboxTrigger>
                     {selectedNode && (
-                      <div className="w-full flex justify-between">
+                      <div className="flex w-full justify-between">
                         {selectedNode.label} <Badge>{selectedNode.namespace}</Badge>
                       </div>
                     )}
@@ -221,7 +229,7 @@ const NodeAttributesSelects = () => {
                           setOpen(false);
                         }}
                       >
-                        <div className="w-full flex justify-between">
+                        <div className="flex w-full justify-between">
                           {node.label} <Badge>{node.namespace}</Badge>
                         </div>
                       </ComboboxItem>
@@ -268,7 +276,7 @@ const NodeAttributesSelects = () => {
                     {numberAttributeOptions.map((attribute) => (
                       <ComboboxItem
                         key={attribute.id}
-                        selectedValue={selectedAttribute?.value}
+                        selectedValue={selectedAttribute?.value?.toString()}
                         value={attribute.name}
                         keywords={[attribute.label as string]}
                         onSelect={() => {

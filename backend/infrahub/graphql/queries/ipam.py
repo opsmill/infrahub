@@ -8,6 +8,7 @@ from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import BuiltinIPPrefix
 from infrahub.core.query.ipam import get_ip_addresses, get_subnets
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.address import get_available
@@ -31,7 +32,9 @@ class IPAddressGetNextAvailable(ObjectType):
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(id=prefix_id, db=graphql_context.db, branch=graphql_context.branch)
+        prefix = await NodeManager.get_one(
+            id=prefix_id, kind=BuiltinIPPrefix, db=graphql_context.db, branch=graphql_context.branch
+        )
 
         if not prefix:
             raise NodeNotFoundError(
@@ -74,21 +77,23 @@ class IPPrefixGetNextAvailable(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         prefix_id: str,
-        prefix_length: int,
+        prefix_length: int | None = None,
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(id=prefix_id, db=graphql_context.db, branch=graphql_context.branch)
+        prefix = await NodeManager.get_one(
+            id=prefix_id, db=graphql_context.db, branch=graphql_context.branch, kind=BuiltinIPPrefix
+        )
 
         if not prefix:
             raise NodeNotFoundError(
                 branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
             )
 
-        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
+        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)
         subnets = await get_subnets(
             db=graphql_context.db,
-            ip_prefix=ipaddress.ip_network(prefix.prefix.value),  # type: ignore[attr-defined]
+            ip_prefix=ipaddress.ip_network(prefix.prefix.value),
             namespace=namespace,
             branch=graphql_context.branch,
         )
@@ -118,4 +123,26 @@ InfrahubIPPrefixGetNextAvailable = Field(
     prefix_length=Int(required=False),
     resolver=IPPrefixGetNextAvailable.resolve,
     required=True,
+)
+
+# The following two query fields must be removed once we are sure that people are not using the old queries anymore. Those fields only exist to
+# expose a deprecation message.
+
+DeprecatedIPAddressGetNextAvailable = Field(
+    IPAddressGetNextAvailable,
+    prefix_id=String(required=True),
+    prefix_length=Int(required=False),
+    resolver=IPAddressGetNextAvailable.resolve,
+    required=True,
+    deprecation_reason="This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.",
+)
+
+
+DeprecatedIPPrefixGetNextAvailable = Field(
+    IPPrefixGetNextAvailable,
+    prefix_id=String(required=True),
+    prefix_length=Int(required=False),
+    resolver=IPPrefixGetNextAvailable.resolve,
+    required=True,
+    deprecation_reason="This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.",
 )

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Argument, Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
+from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
+from infrahub.events.constants import EventSortOrder
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
@@ -14,6 +15,8 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from graphql import GraphQLResolveInfo
+
+InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 
 
 class Events(ObjectType):
@@ -24,6 +27,7 @@ class Events(ObjectType):
     async def resolve(
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
+        order: EventSortOrder,
         limit: int = 10,
         has_children: bool | None = None,
         level: int | None = None,
@@ -57,6 +61,7 @@ class Events(ObjectType):
             since=since,
             until=until,
             level=level,
+            order=order,
         )
 
         return await Events.query(
@@ -74,7 +79,7 @@ class Events(ObjectType):
         limit: int,
         offset: int | None = None,
     ) -> dict[str, Any]:
-        fields = await extract_fields_first_node(info)
+        fields = extract_graphql_fields(info)
 
         prefect_tasks = await PrefectEvent.query(
             fields=fields,
@@ -110,6 +115,11 @@ Event = Field(
     branches=List(NonNull(String), required=False, description="Filter the query to specific branches"),
     account__ids=List(NonNull(String), required=False, description="Filter the query to specific accounts"),
     ids=List(NonNull(String)),
+    order=InfrahubEventSortOrder(
+        required=False,
+        default_value=EventSortOrder.DESC,
+        description="Sort order of the events, defaults to descending order",
+    ),
     resolver=Events.resolve,
     required=True,
 )

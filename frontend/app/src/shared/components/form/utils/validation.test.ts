@@ -1,205 +1,102 @@
-import { FormRelationshipValue } from "@/shared/components/form/type";
 import { describe, expect, it } from "vitest";
-import { generateRelationshipNode } from "../../../../../tests/fake/node";
-import { isMaxCount, isMinCount } from "./validation";
 
-describe("isMinCount", () => {
-  it("should return true when minCount is 0", () => {
-    // GIVEN
-    const minCount = 0;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [],
-    };
-    const validator = isMinCount(minCount);
+import { isMinLength, isRequired } from "./validation";
 
-    // WHEN
-    const result = validator(fieldValue);
+describe("validation", () => {
+  describe("isRequired", () => {
+    it("should return 'Required' when value is null", () => {
+      // GIVEN
+      const field = { value: null };
 
-    // THEN
-    expect(result).toBe(true);
+      // WHEN
+      const result = isRequired(field);
+
+      // THEN
+      expect(result).toBe("Required");
+    });
+
+    it("should return 'Required' when value is empty string", () => {
+      // GIVEN
+      const field = { value: "" };
+
+      // WHEN
+      const result = isRequired(field);
+
+      // THEN
+      expect(result).toBe("Required");
+    });
+
+    it("should return true when value is provided", () => {
+      // GIVEN
+      const field = { value: "test" };
+
+      // WHEN
+      const result = isRequired(field);
+
+      // THEN
+      expect(result).toBe(true);
+    });
   });
 
-  it("should return true when array length meets minimum count", () => {
-    // GIVEN
-    const minCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [generateRelationshipNode(), generateRelationshipNode()],
-    };
-    const validator = isMinCount(minCount);
+  describe("isMinLength", () => {
+    it("should return 'Required' when value is falsy", () => {
+      // GIVEN
+      const validator = isMinLength(3);
+      const field = { value: null };
 
-    // WHEN
-    const result = validator(fieldValue);
+      // WHEN
+      const result = validator(field);
 
-    // THEN
-    expect(result).toBe(true);
-  });
+      // THEN
+      expect(result).toBe("Required");
+    });
 
-  it("should return error message when array length is below minimum count", () => {
-    // GIVEN
-    const minCount = 3;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [],
-    };
-    const validator = isMinCount(minCount);
+    it("should return true when value is not a string", () => {
+      // GIVEN
+      const validator = isMinLength(3);
+      const field = { value: 123 };
 
-    // WHEN
-    const result = validator(fieldValue);
+      // WHEN
+      const result = validator(field);
 
-    // THEN
-    expect(result).toBe(`Minimum ${minCount} required`);
-  });
+      // THEN
+      expect(result).toBe(true);
+    });
 
-  it("should return true when value is not an array", () => {
-    // GIVEN
-    const minCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: generateRelationshipNode(),
-    };
-    const validator = isMinCount(minCount);
+    it("should return error message when string length is less than minimum", () => {
+      // GIVEN
+      const validator = isMinLength(3);
+      const field = { value: "ab" };
 
-    // WHEN
-    const result = validator(fieldValue);
+      // WHEN
+      const result = validator(field);
 
-    // THEN
-    expect(result).toBe(true);
-  });
+      // THEN
+      expect(result).toBe("Value must be at least 3 characters long");
+    });
 
-  it("should return true when value is null and minCount is 0", () => {
-    // GIVEN
-    const minCount = 0;
-    const fieldValue: FormRelationshipValue = {
-      source: null,
-      value: null,
-    };
-    const validator = isMinCount(minCount);
+    it("should return true when string length equals minimum", () => {
+      // GIVEN
+      const validator = isMinLength(3);
+      const field = { value: "abc" };
 
-    // WHEN
-    const result = validator(fieldValue);
+      // WHEN
+      const result = validator(field);
 
-    // THEN
-    expect(result).toBe(true);
-  });
+      // THEN
+      expect(result).toBe(true);
+    });
 
-  it("should return error message when value is null and minCount is greater than 0", () => {
-    // GIVEN
-    const minCount = 1;
-    const fieldValue: FormRelationshipValue = {
-      source: null,
-      value: null,
-    };
-    const validator = isMinCount(minCount);
+    it("should return true when string length is greater than minimum", () => {
+      // GIVEN
+      const validator = isMinLength(3);
+      const field = { value: "abcd" };
 
-    // WHEN
-    const result = validator(fieldValue);
+      // WHEN
+      const result = validator(field);
 
-    // THEN
-    expect(result).toBe(`Minimum ${minCount} required`);
-  });
-});
-
-describe("isMaxCount", () => {
-  it("should return true when value is null", () => {
-    // GIVEN
-    const maxCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: null,
-      value: null,
-    };
-    const validator = isMaxCount(maxCount);
-
-    // WHEN
-    const result = validator(fieldValue);
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  it("should return true when value is not an array", () => {
-    // GIVEN
-    const maxCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: generateRelationshipNode(),
-    };
-    const validator = isMaxCount(maxCount);
-
-    // WHEN
-    const result = validator(fieldValue);
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  it("should return true when array length is less than maxCount", () => {
-    // GIVEN
-    const maxCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [generateRelationshipNode()],
-    };
-    const validator = isMaxCount(maxCount);
-
-    // WHEN
-    const result = validator(fieldValue);
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  it("should return true when array length equals maxCount", () => {
-    // GIVEN
-    const maxCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [generateRelationshipNode(), generateRelationshipNode()],
-    };
-    const validator = isMaxCount(maxCount);
-
-    // WHEN
-    const result = validator(fieldValue);
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  it("should return error message when array length exceeds maxCount", () => {
-    // GIVEN
-    const maxCount = 2;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [generateRelationshipNode(), generateRelationshipNode(), generateRelationshipNode()],
-    };
-    const validator = isMaxCount(maxCount);
-
-    // WHEN
-    const result = validator(fieldValue);
-
-    // THEN
-    expect(result).toBe(`Maximum ${maxCount} allowed`);
-  });
-
-  it("should return true when maxCount is 0 (infinity)", () => {
-    // GIVEN
-    const maxCount = 0;
-    const fieldValue: FormRelationshipValue = {
-      source: { type: "user" },
-      value: [
-        generateRelationshipNode(),
-        generateRelationshipNode(),
-        generateRelationshipNode(),
-        generateRelationshipNode(),
-      ],
-    };
-    const validator = isMaxCount(maxCount);
-
-    // WHEN
-    const result = validator(fieldValue);
-
-    // THEN
-    expect(result).toBe(true);
+      // THEN
+      expect(result).toBe(true);
+    });
   });
 });

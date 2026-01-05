@@ -1,15 +1,18 @@
+import { Icon } from "@iconify-icon/react";
+
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
+
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import {
+import type {
   NodeCore,
   NodeRelationship,
   NodeRelationshipMany,
   NodeRelationshipOne,
 } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export interface TableRelationshipCellProps {
   relationshipSchema: RelationshipSchema;
@@ -47,9 +50,9 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
       variant="outline"
       size="sm"
       to={getObjectDetailsUrl(node.__typename, node.id)}
-      className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
+      className="truncate rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
     >
-      <Icon icon={schema.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
+      <Icon icon={getSchemaIcon(schema)} className="mr-1 text-custom-blue-800" />
       {getNodeLabel(node)}
     </LinkButton>
   );

@@ -1,14 +1,21 @@
-import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+import {
+  PROPOSED_CHANGES_EDITABLE_STATE,
+  PROPOSED_CHANGES_OBJECT,
+} from "@/shared/config/constants";
+
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { getPermission } from "../../permission/utils";
 
@@ -46,10 +53,12 @@ export const ProposedChangeEditTrigger = ({
         title={
           <div className="space-y-2">
             <div className="flex justify-between overflow-hidden">
-              <div className="grow text-sm flex items-center gap-2 whitespace-nowrap truncate">
+              <div className="flex grow items-center gap-2 truncate whitespace-nowrap text-sm">
                 <span>Proposed changes</span>
                 <Icon icon="mdi:chevron-right" />
-                <span className="truncate">{proposedChangesDetails?.display_label}</span>
+                <span className="truncate">
+                  {proposedChangesDetails ? getNodeLabel(proposedChangesDetails) : ""}
+                </span>
               </div>
 
               <ObjectHelpButton
@@ -60,7 +69,7 @@ export const ProposedChangeEditTrigger = ({
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold">Edit Proposed change</h3>
+              <h3 className="font-semibold text-lg">Edit Proposed change</h3>
             </div>
           </div>
         }

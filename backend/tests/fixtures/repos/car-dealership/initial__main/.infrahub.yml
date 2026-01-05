@@ -88,6 +88,23 @@ generator_definitions:
     convert_query_response: true
     parameters:
       name: "name__value"
+  - name: cartags_upper
+    file_path: "generators/cartags_upper.py"
+    targets: people
+    query: cartags
+    execute_in_proposed_change: false
+    execute_after_merge: false
+    parameters:
+      name: "name__value"
+  - name: cartags_title
+    file_path: "generators/cartags_title.py"
+    targets: people
+    query: cartags
+    execute_in_proposed_change: true
+    execute_after_merge: false
+    parameters:
+      name: "name__value"
+
 
 queries:
   - name: car_overview
@@ -98,3 +115,11 @@ queries:
     file_path: "generators/cartags.gql"
   - name: person_with_cars
     file_path: "templates/person_with_cars.gql"
+
+objects:
+  - "objects/persons.yml"
+  - "objects/manufacturers.yml"
+
+menus:
+  - "menus/person_base.yml"
+  - "menus/manufacturer_base.yml"

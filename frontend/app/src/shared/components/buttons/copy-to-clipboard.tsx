@@ -1,7 +1,9 @@
+import { Icon } from "@iconify-icon/react";
+
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Button, ButtonProps } from "./button-primitive";
+
+import { Button, type ButtonProps } from "./button-primitive";
 
 interface CopyToClipboardProps extends ButtonProps {
   text: string;

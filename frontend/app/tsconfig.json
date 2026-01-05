@@ -1,37 +1,45 @@
 {
   "compilerOptions": {
+    /* Basic Options */
+    "allowJs": true,
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "target": "es2022",
+    "skipLibCheck": true,
+
+    /* Module Resolution */
+    "baseUrl": ".",
+    "module": "preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./src/*"]
     },
-    "target": "ESNext",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "types": ["vite/client", "vitest/globals", "@vitest/browser/providers/playwright", "cypress"],
-    "allowJs": false,
-    "skipLibCheck": true,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "module": "ESNext",
-    "moduleResolution": "node",
     "resolveJsonModule": true,
+
+    /* Emit */
+    "erasableSyntaxOnly": true,
     "isolatedModules": true,
     "noEmit": true,
+    "verbatimModuleSyntax": true,
+
+    /* JSX */
     "jsx": "react-jsx",
-    // Sentry options
-    "sourceMap": true,
-    "inlineSources": true,
-    // Set `sourceRoot` to  `/` to strip the build path prefix from
-    // generated source code references. This allows Sentry to match source files
-    // relative to your source root folder.
-    "sourceRoot": "/"
+
+    /* Type Checking */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    /* Type Definitions */
+    "types": ["node", "vite/client"]
   },
   "include": [
     "src",
     "tests/mocks",
-    "src/__tests__",
     "tests/unit/components",
     "tests/unit/utils",
     "tests/unit/data",

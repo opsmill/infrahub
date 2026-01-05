@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, cast
 
 from infrahub.exceptions import ResourceNotFoundError
 from infrahub.message_bus.types import KVTTL
+from infrahub.workers.dependencies import get_cache
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -54,7 +55,8 @@ async def set_diff_summary_cache(pipeline_id: UUID, diff_summary: list[NodeDiff]
     )
 
 
-async def get_diff_summary_cache(pipeline_id: UUID, cache: InfrahubCache) -> list[NodeDiff]:
+async def get_diff_summary_cache(pipeline_id: UUID) -> list[NodeDiff]:
+    cache = await get_cache()
     summary_payload = await cache.get(
         key=f"proposed_change:pipeline:pipeline_id:{pipeline_id}:diff_summary",
     )
@@ -62,4 +64,4 @@ async def get_diff_summary_cache(pipeline_id: UUID, cache: InfrahubCache) -> lis
     if not summary_payload:
         raise ResourceNotFoundError(message=f"Diff summary for pipeline {pipeline_id} was not found in the cache")
 
-    return cast(list["NodeDiff"], json.loads(summary_payload))
+    return cast("list[NodeDiff]", json.loads(summary_payload))

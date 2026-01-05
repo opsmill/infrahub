@@ -1,0 +1,29 @@
+---
+title: Release 1.4.7
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.4.7</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>September 16th, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.4.7](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.4.7)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- Added optional configuration to fetch and map groups when using Google as an identity provider for OAuth/OIDC.
+- Added the name of the artifact definition to the payload of artifact webhook events.
+
+### Fixed
+
+- Allow RequestGraphQLQueryGroupUpdate parameters to accept any type of value, not just strings. ([#7208](https://github.com/opsmill/infrahub/issues/7208))
+- The available IPs filter in IPAM list views now stays applied when switching kind.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Never
 from unittest.mock import patch
 
 import pytest
@@ -10,7 +10,6 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -35,9 +34,13 @@ mutation($branch: String!) {
 class BrokenBranchMerger:
     def __init__(self, *args, **kwargs) -> None:
         self.real_merger = BranchMerger(*args, **kwargs)
+        self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
     async def merge(self, at=None) -> None:
         await self.real_merger.merge(at=at)
+
+    async def merge_graph(self, at) -> Never:
+        await self.real_merger.diff_merger.merge_graph(at=at)
         raise ValueError("This is broken on purpose")
 
     async def rollback(self) -> None:
@@ -54,8 +57,6 @@ class TestBranchMergeRollback(TestInfrahubApp):
         prefect_test_fixture: None,
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
-
-        bus_simulator.service._cache = RedisCache()
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")

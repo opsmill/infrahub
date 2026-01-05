@@ -1,15 +1,14 @@
-import { QSP } from "@/config/qsp";
-import { BRANCH_CREATE } from "@/entities/branches/api/createBranch";
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
-import { Branch } from "@/shared/api/graphql/generated/graphql";
-import { useMutation } from "@/shared/api/graphql/useQuery";
-import { queryClient } from "@/shared/api/rest/client";
+import { useQueryState } from "nuqs";
+
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "@/shared/config/qsp";
+
+import { useCreateBranchMutation } from "@/entities/branches/domain/create-branch.mutation";
 
 type BranchFormData = {
   name: string;
@@ -24,32 +23,25 @@ type BranchCreateFormProps = {
 };
 
 const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCreateFormProps) => {
-  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const [createBranch] = useMutation(BRANCH_CREATE);
+  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
+  const { mutateAsync: createBranch } = useCreateBranchMutation();
 
   const handleSubmit = async (branchFormData: BranchFormData) => {
-    try {
-      const { data } = await createBranch({
-        variables: branchFormData,
-      });
-
-      const branchCreated: Branch | null = data?.BranchCreate?.object;
-      if (!branchCreated) return;
-
-      const { queryKey } = getBranchesQueryOptions();
-      queryClient.setQueryData(queryKey, (oldBranches) => [...(oldBranches ?? []), branchCreated]);
-      await queryClient.invalidateQueries({ queryKey });
-      setBranchInQueryString(branchCreated.is_default ? undefined : branchCreated.name);
-
-      if (onSuccess) onSuccess(branchCreated);
-    } catch (error) {
-      console.error("Error while creating the branch: ", error);
-    }
+    await createBranch(branchFormData, {
+      onSuccess: async (branchCreated) => {
+        if (!branchCreated) return;
+        setBranchInQueryString(branchCreated.is_default ? null : branchCreated.name);
+        if (onSuccess) onSuccess(branchCreated);
+      },
+      onError: (error) => {
+        console.error("Error while creating the branch: ", error);
+      },
+    });
   };
 
   return (
     <Form
-      className="p-2 space-y-4"
+      className="space-y-4 p-2"
       onSubmit={async (data) => {
         const branchData: BranchFormData = {
           name: data.name.value as string,

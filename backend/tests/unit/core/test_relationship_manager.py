@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core import registry
@@ -9,7 +11,7 @@ from infrahub.core.utils import get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 
 
-async def test_one_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_one_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: Node, branch: Branch) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -26,7 +28,7 @@ async def test_one_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: 
 
 async def test_one_init_no_input_existing_rel(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -42,7 +44,7 @@ async def test_one_init_no_input_existing_rel(
     assert peer.id == tag_blue_main.id
 
 
-async def test_many_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_many_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: Node, branch: Branch) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -57,7 +59,9 @@ async def test_many_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main:
     assert not len(await relm.get(db=db))
 
 
-async def test_many_init_no_input_existing_rel(db: InfrahubDatabase, person_jack_tags_main: Node, branch: Branch):
+async def test_many_init_no_input_existing_rel(
+    db: InfrahubDatabase, person_jack_tags_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -68,7 +72,9 @@ async def test_many_init_no_input_existing_rel(db: InfrahubDatabase, person_jack
     assert len(await relm.get(db=db)) == 2
 
 
-async def test_one_init_input_obj(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
+async def test_one_init_input_obj(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -85,7 +91,9 @@ async def test_one_init_input_obj(db: InfrahubDatabase, tag_blue_main: Node, per
     assert peer.id == tag_blue_main.id
 
 
-async def test_one_save_input_obj(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
+async def test_one_save_input_obj(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -115,7 +123,7 @@ async def test_one_save_input_obj(db: InfrahubDatabase, tag_blue_main: Node, per
 
 async def test_one_udpate(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
@@ -145,7 +153,7 @@ async def test_one_udpate(
 
 async def test_many_init_input_obj(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -163,7 +171,7 @@ async def test_many_init_input_obj(
 
 async def test_many_save_input_obj(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -201,7 +209,7 @@ async def test_many_save_input_obj(
 
 async def test_many_update(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -250,7 +258,7 @@ async def test_many_update(
 
 async def test_many_add(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -296,7 +304,7 @@ async def test_many_add(
     assert len(paths) == 2
 
 
-async def test_get_parent(db: InfrahubDatabase, car_accord_main: Node, person_john_main: Node, branch: Branch):
+async def test_get_parent(db: InfrahubDatabase, car_accord_main: Node, person_john_main: Node, branch: Branch) -> None:
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship("owner")
 
@@ -305,3 +313,79 @@ async def test_get_parent(db: InfrahubDatabase, car_accord_main: Node, person_jo
     assert parent
     assert parent.get_peer_id() == person_john_main.id
     assert parent.get_peer_kind() == person_john_main.get_kind()
+
+
+@dataclass
+class RelationshipManagerOptionalAndCountTestCaseData:
+    name: str
+    optional: bool
+    schema_min_count: int
+    schema_max_count: int
+    expected_min_count: int
+    expected_max_count: int
+
+
+RELATIONSHIP_MANAGER_OPTIONAL_AND_COUNT_CONSTRAINTS_TEST_CASES = [
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="not-optional-with-min-count-only",
+        optional=False,
+        schema_min_count=2,
+        schema_max_count=0,
+        expected_min_count=2,
+        expected_max_count=0,
+    ),
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="optional-with-min-count-only",
+        optional=True,
+        schema_min_count=2,
+        schema_max_count=0,
+        expected_min_count=0,
+        expected_max_count=0,
+    ),
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="not-optional-with-min-and-max-count",
+        optional=False,
+        schema_min_count=2,
+        schema_max_count=5,
+        expected_min_count=2,
+        expected_max_count=5,
+    ),
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="optional-with-min-and-max-count",
+        optional=True,
+        schema_min_count=2,
+        schema_max_count=5,
+        expected_min_count=0,
+        expected_max_count=5,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in RELATIONSHIP_MANAGER_OPTIONAL_AND_COUNT_CONSTRAINTS_TEST_CASES],
+)
+async def test_can_create_relationship_manager_with_optional_and_count_constraints(
+    db: InfrahubDatabase,
+    tag_blue_main: Node,
+    person_jack_primary_tag_main: Node,
+    branch: Branch,
+    test_case: RelationshipManagerOptionalAndCountTestCaseData,
+) -> None:
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("primary_tag")
+    rel_schema.optional = test_case.optional
+    rel_schema.min_count = test_case.schema_min_count
+    rel_schema.max_count = test_case.schema_max_count
+
+    relm = await RelationshipManager.init(
+        db=db,
+        schema=rel_schema,
+        branch=branch,
+        at=Timestamp(),
+        node=person_jack_primary_tag_main,
+    )
+    await relm.save(db=db)
+
+    assert relm._relationships.min_count == test_case.expected_min_count
+    assert relm._relationships.max_count == test_case.expected_max_count

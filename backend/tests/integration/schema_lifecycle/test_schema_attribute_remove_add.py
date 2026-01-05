@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
@@ -54,6 +55,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, firstname="John", lastname="Doe", height=175, description="The famous Joe Doe")
         await john.save(db=db)
+
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, firstname="Deleted", lastname="Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
 
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
@@ -119,13 +125,13 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
             ],
         }
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 1
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step02])
         assert success
         assert response == {
@@ -146,9 +152,18 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
 
-    async def test_step02_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
+    async def test_step02_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step02])
         assert not response.errors
 
@@ -163,7 +178,9 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
         assert not hasattr(john, "height")
 
-    async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
+    async def test_step03_check(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step03])
         assert response == {
             "diff": {
@@ -179,10 +196,19 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 
-    async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
+    async def test_step03_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step03])
         assert not response.errors
 
@@ -207,3 +233,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert len(persons2) == 1
         john2 = persons2[0]
         assert john2.height.value == 200
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

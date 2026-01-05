@@ -1,6 +1,7 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 type GenerateObjectRelationshipsQueryParams = {
   parentKind: string;

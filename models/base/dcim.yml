@@ -8,8 +8,7 @@ generics:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     uniqueness_constraints:
@@ -176,8 +175,8 @@ nodes:
       - "CoreArtifactTarget"
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
+    generate_template: true
     attributes:
       - name: name
         kind: Text
@@ -258,6 +257,12 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+      - name: bgp_sessions
+        peer: InfraBGPSession
+        identifier: device__bgp_session
+        optional: true
+        cardinality: many
+        kind: Component
       - name: asn
         peer: InfraAutonomousSystem
         optional: true
@@ -289,8 +294,7 @@ nodes:
     description: "Network Layer 3 Interface"
     label: "Interface L3"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -320,13 +324,13 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        common_parent: device
   - name: LagInterfaceL3
     namespace: Infra
     description: "Network Layer 3 Lag Interface"
     label: "Lag Interface L3"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -340,6 +344,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Generic
+        common_parent: device
       - name: ip_addresses
         peer: IpamIPAddress
         optional: true
@@ -350,8 +355,7 @@ nodes:
     description: "Network Layer 2 Interface"
     label: "Interface L2"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -380,6 +384,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+        common_parent: device
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -400,8 +405,7 @@ nodes:
     label: "Lag Interface L2"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -420,6 +424,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Generic
+        common_parent: device
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -443,8 +448,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -479,8 +483,7 @@ nodes:
     human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value
-    display_labels:
-      - circuit_id__value
+    display_label: "{{ circuit_id__value }}"
     attributes:
       - name: circuit_id
         kind: Text
@@ -584,13 +587,13 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+  # --------------------  MLAG  --------------------
   - name: MlagDomain
     namespace: Infra
     description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
     label: "MLAG Domain"
     include_in_menu: true
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         label: Name
@@ -608,7 +611,7 @@ nodes:
         cardinality: many
         peer: InfraDevice
         kind: Attribute
-        optional: false
+        optional: true
       - name: peer_interfaces
         cardinality: many
         peer: InfraLagInterfaceL2
@@ -620,8 +623,7 @@ nodes:
     label: "MLAG Interface L2"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - mlag_id__value
+    display_label: "{{ mlag_id__value }}"
     inherit_from:
       - InfraMlagInterface
     relationships:
@@ -638,8 +640,7 @@ nodes:
     label: "MLAG Interface L3"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - mlag_id__value
+    display_label: "{{ mlag_id__value }}"
     inherit_from:
       - InfraMlagInterface
     relationships:
@@ -650,7 +651,7 @@ nodes:
         optional: false
         cardinality: many
         identifier: mlag_member_lag_interface
-
+  # --------------------  Patch Panel  --------------------
   - name: PatchPanel
     label: Patch Panel
     description: A Patch Panel used for managing network cable connections in a data center or telecom setup.
@@ -661,8 +662,7 @@ nodes:
       - name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -698,8 +698,7 @@ nodes:
     human_friendly_id:
       - patch_panel__name__value
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     uniqueness_constraints:

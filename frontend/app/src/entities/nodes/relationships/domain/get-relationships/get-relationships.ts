@@ -1,8 +1,8 @@
 import {
   getRelationshipsFromApi,
-  getRelationshipsFromApiParams,
+  type getRelationshipsFromApiParams,
 } from "@/entities/nodes/relationships/api/get-relationships-from-api";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -12,7 +12,7 @@ export const RELATIONSHIPS_PER_PAGE = 20;
 
 export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
-export type GetRelationships = (params: GetRelationshipsParams) => Promise<Array<RelationshipNode>>;
+export type GetRelationships = (params: GetRelationshipsParams) => Promise<Array<NodeCore>>;
 
 export const getRelationships: GetRelationships = async ({
   branchName,
@@ -35,9 +35,5 @@ export const getRelationships: GetRelationships = async ({
 
   const relationshipsData = data[peer];
 
-  return relationshipsData.edges.map(({ node }: { node: any }) => ({
-    id: node.id,
-    display_label: node.display_label,
-    __typename: node.__typename,
-  }));
+  return relationshipsData.edges.map(({ node }: { node: NodeCore }) => node);
 };

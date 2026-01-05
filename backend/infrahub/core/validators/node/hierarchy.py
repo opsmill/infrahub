@@ -59,8 +59,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         # ruff: noqa: E501
         query = """
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
             RETURN path as full_path, n as active_node
@@ -70,8 +69,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         WITH full_path, active_node
         WITH full_path, active_node
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH path = (active_node)%(to_children)s-[hrel1:IS_RELATED]-%(to_parent)s(:Relationship {name: "parent__child"})%(to_children)s-[hrel2:IS_RELATED]-%(to_parent)s(peer:Node)
             WHERE all(
                 r in relationships(path)
@@ -91,8 +89,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             collect([branch_level_sum, from_times, active_relationship_count, hierarchy_path, deepest_branch_name]) as enriched_paths,
             start_node,
             peer_node
-        CALL {
-            WITH enriched_paths, peer_node
+        CALL (enriched_paths, peer_node) {
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[3] as current_path, path_to_check[4] as branch_name, peer_node as current_peer
             ORDER BY

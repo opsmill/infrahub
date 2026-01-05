@@ -1,8 +1,11 @@
-import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
-import { FormFieldValue } from "@/shared/components/form/type";
+import { useState } from "react";
+
+import type { FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
-import { useState } from "react";
+
+import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
+
 import { FilterKindSelect } from "./filter-kind-select";
 
 export type GlobalKindFilterFormProps = {
@@ -40,7 +43,7 @@ export function GlobalKindFilterForm({ name, onSuccess }: GlobalKindFilterFormPr
 
       {kind && (
         <Form
-          className="space-y-0 flex items-center gap-2"
+          className="flex items-center gap-2 space-y-0"
           onSubmit={(formData) => {
             handleSubmit(formData);
           }}

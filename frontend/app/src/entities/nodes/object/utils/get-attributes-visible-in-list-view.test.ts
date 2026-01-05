@@ -1,5 +1,7 @@
-import { AttributeSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
+
+import type { AttributeSchema } from "@/entities/schema/types";
+
 import { generateAttributeSchema } from "../../../../../tests/fake/schema";
 import { getAttributesVisibleInListView } from "./get-attributes-visible-in-list-view";
 

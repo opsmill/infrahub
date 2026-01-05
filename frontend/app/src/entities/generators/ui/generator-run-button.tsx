@@ -1,11 +1,13 @@
-import { QSP } from "@/config/qsp";
-import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PlayIcon } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
+
+import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;
@@ -37,7 +39,7 @@ export function GeneratorRunButton({
                 <>
                   Generator started successfully.
                   <br />
-                  <Link to={url} className="underline flex items-center gap-1">
+                  <Link to={url} className="flex items-center gap-1 underline">
                     View task details
                   </Link>
                 </>
@@ -57,7 +59,7 @@ export function GeneratorRunButton({
       onClick={handleRunGenerator}
       {...props}
     >
-      {!isPending && <PlayIcon className="size-4 mr-2" />}
+      {!isPending && <PlayIcon className="mr-2 size-4" />}
       {children ?? "Run"}
     </Button>
   );

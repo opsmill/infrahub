@@ -6,12 +6,14 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import TICKET, load_schema
+from tests.helpers.schema import SNOW_TICKET_SCHEMA, TICKET, load_schema
 
 
 @pytest.fixture
@@ -44,7 +46,9 @@ async def prefix_pool_01(
     return ip_dataset_prefix_v4
 
 
-async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, default_branch: Branch, prefix_pool_01):
+async def test_create_object_and_assign_prefix_from_pool(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01
+) -> None:
     pool = prefix_pool_01["pool"]
 
     query = (
@@ -82,7 +86,8 @@ async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -105,7 +110,9 @@ async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     }
 
 
-async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, default_branch: Branch, prefix_pool_01):
+async def test_update_object_and_assign_prefix_from_pool(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01
+) -> None:
     pool = prefix_pool_01["pool"]
     net142 = prefix_pool_01["net142"]
 
@@ -147,7 +154,8 @@ async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     }
     """ % (obj.id, pool.id)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -177,7 +185,7 @@ async def test_create_object_and_assign_address_from_pool(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -228,7 +236,8 @@ async def test_create_object_and_assign_address_from_pool(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -258,7 +267,7 @@ async def test_prefix_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -278,7 +287,7 @@ async def test_prefix_pool_get_resource(
     query = (
         """
     mutation {
-        IPPrefixPoolGetResource(data: {
+        InfrahubIPPrefixPoolGetResource(data: {
             id: "%s"
         }) {
             ok
@@ -292,7 +301,8 @@ async def test_prefix_pool_get_resource(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -303,8 +313,8 @@ async def test_prefix_pool_get_resource(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
         "display_label": "10.10.0.0/24",
         "kind": "IpamIPPrefix",
     }
@@ -317,7 +327,7 @@ async def test_prefix_pool_get_resource_with_identifier(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -339,7 +349,7 @@ async def test_prefix_pool_get_resource_with_identifier(
     query = (
         """
     mutation {
-        IPPrefixPoolGetResource(data: {
+        InfrahubIPPrefixPoolGetResource(data: {
             id: "%s"
             identifier: "myidentifier"
         }) {
@@ -356,7 +366,8 @@ async def test_prefix_pool_get_resource_with_identifier(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -367,8 +378,8 @@ async def test_prefix_pool_get_resource_with_identifier(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
         "id": resource.id,
         "display_label": "10.10.0.0/24",
         "kind": "IpamIPPrefix",
@@ -383,7 +394,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -403,7 +414,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     query = (
         """
     mutation {
-        IPPrefixPoolGetResource(data: {
+        InfrahubIPPrefixPoolGetResource(data: {
             id: "%s"
             prefix_length: 31
         }) {
@@ -418,7 +429,8 @@ async def test_prefix_pool_get_resource_with_prefix_length(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -429,8 +441,11 @@ async def test_prefix_pool_get_resource_with_prefix_length(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {"display_label": "10.10.0.0/31", "kind": "IpamIPPrefix"}
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
+        "display_label": "10.10.0.0/31",
+        "kind": "IpamIPPrefix",
+    }
 
 
 async def test_address_pool_get_resource(
@@ -440,7 +455,7 @@ async def test_address_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -459,7 +474,7 @@ async def test_address_pool_get_resource(
     query = (
         """
     mutation {
-        IPAddressPoolGetResource(data: {
+        InfrahubIPAddressPoolGetResource(data: {
             id: "%s"
         }) {
             ok
@@ -473,7 +488,8 @@ async def test_address_pool_get_resource(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -484,8 +500,11 @@ async def test_address_pool_get_resource(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressPoolGetResource"]["ok"]
-    assert result.data["IPAddressPoolGetResource"]["node"] == {"display_label": "10.10.3.2/27", "kind": "IpamIPAddress"}
+    assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
+        "display_label": "10.10.3.2/27",
+        "kind": "IpamIPAddress",
+    }
 
 
 async def test_address_pool_get_resource_with_identifier(
@@ -495,7 +514,7 @@ async def test_address_pool_get_resource_with_identifier(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -516,7 +535,7 @@ async def test_address_pool_get_resource_with_identifier(
     query = (
         """
     mutation {
-        IPAddressPoolGetResource(data: {
+        InfrahubIPAddressPoolGetResource(data: {
             id: "%s"
             identifier: "myidentifier"
         }) {
@@ -533,7 +552,8 @@ async def test_address_pool_get_resource_with_identifier(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -544,8 +564,8 @@ async def test_address_pool_get_resource_with_identifier(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressPoolGetResource"]["ok"]
-    assert result.data["IPAddressPoolGetResource"]["node"] == {
+    assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
         "id": resource.id,
         "display_label": "10.10.3.2/27",
         "kind": "IpamIPAddress",
@@ -560,7 +580,7 @@ async def test_address_pool_get_resource_with_prefix_length(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -579,7 +599,7 @@ async def test_address_pool_get_resource_with_prefix_length(
     query = (
         """
     mutation {
-        IPAddressPoolGetResource(data: {
+        InfrahubIPAddressPoolGetResource(data: {
             id: "%s"
             prefix_length: 32
         }) {
@@ -594,7 +614,8 @@ async def test_address_pool_get_resource_with_prefix_length(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -605,8 +626,11 @@ async def test_address_pool_get_resource_with_prefix_length(
 
     assert not result.errors
     assert result.data
-    assert result.data["IPAddressPoolGetResource"]["ok"]
-    assert result.data["IPAddressPoolGetResource"]["node"] == {"display_label": "10.10.3.2/32", "kind": "IpamIPAddress"}
+    assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
+    assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
+        "display_label": "10.10.3.2/32",
+        "kind": "IpamIPAddress",
+    }
 
 
 CREATE_NUMBER_POOL = """
@@ -662,11 +686,40 @@ mutation UpdateNumberPool(
 """
 
 
+DELETE_NUMBER_POOL = """
+mutation DeleteNumberPool(
+    $id: String!,
+  ) {
+  CoreNumberPoolDelete(
+    data: {
+      id: $id,
+    }
+  ) {
+    ok
+  }
+}
+"""
+
+
+QUERY_NUMBER_POOL = """
+query NumberPool(
+    $id: ID!,
+  ) {
+  CoreNumberPool(
+    ids: [$id]
+  ) {
+    count
+  }
+}
+"""
+
+
 async def test_test_number_pool_creation_errors(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-):
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     no_model = await graphql(
         schema=gql_params.schema,
@@ -748,9 +801,12 @@ async def test_test_number_pool_creation_errors(
     assert "start_range can't be larger than end_range" in str(invalid_range.errors[0])
 
 
-async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_test_number_pool_update(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     create_ok = await graphql(
         schema=gql_params.schema,
@@ -812,3 +868,200 @@ async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Bra
     assert "start_range can't be larger than end_range" in str(update_invalid_range.errors[0])
     assert update_ok.data
     assert not update_ok.errors
+
+    # Validate that we can delete a number pool that isn't tied to an attribute of kind NumberPool
+    delete_ok = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": pool_id,
+        },
+    )
+    assert not delete_ok.errors
+    assert delete_ok.data
+    assert delete_ok.data["CoreNumberPoolDelete"]["ok"]
+
+    query_after_delete = await graphql(
+        schema=gql_params.schema,
+        source=QUERY_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": pool_id,
+        },
+    )
+    assert not query_after_delete.errors
+    assert query_after_delete.data
+    assert query_after_delete.data["CoreNumberPool"]["count"] == 0
+
+
+async def test_delete_number_pool_in_use_by_numberpool_attribute(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
+    number_pool_attribute = node_schema.get_attribute(name="number")
+    assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    query_before_creation = await graphql(
+        schema=gql_params.schema,
+        source=QUERY_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": number_pool_attribute.parameters.number_pool_id,
+        },
+    )
+
+    assert not query_before_creation.errors
+    assert query_before_creation.data
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
+
+    create_snow_incident_mutation = """
+    mutation CreateSnowIncident(
+        $title: String!,
+    ) {
+    SnowIncidentCreate(
+        data: {
+        title: {value: $title},
+        }
+    ) {
+        object {
+            title {
+                value
+            }
+            number {
+                value
+                source {
+                    id
+                }
+            }
+            identifier {
+                value
+            }
+        }
+      }
+    }
+    """
+
+    create_snow_incident = await graphql(
+        schema=gql_params.schema,
+        source=create_snow_incident_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "title": "Printer is saying PC load Letter",
+        },
+    )
+
+    assert not create_snow_incident.errors
+    assert create_snow_incident.data
+    assert (
+        create_snow_incident.data["SnowIncidentCreate"]["object"]["title"]["value"]
+        == "Printer is saying PC load Letter"
+    )
+    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["value"] == 1
+    assert (
+        create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["source"]["id"]
+        == number_pool_attribute.parameters.number_pool_id
+    )
+    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["identifier"]["value"] == "INC1"
+
+    delete_fail = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": number_pool_attribute.parameters.number_pool_id,
+        },
+    )
+
+    assert delete_fail.errors
+    assert "Unable to delete number pool SnowTask.number is in use (branches: main)" in str(delete_fail.errors)
+
+
+async def test_update_schema_number_pool_range(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
+    number_pool_attribute = node_schema.get_attribute(name="number")
+    assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    query_before_creation = await graphql(
+        schema=gql_params.schema,
+        source=QUERY_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": number_pool_attribute.parameters.number_pool_id,
+        },
+    )
+
+    assert not query_before_creation.errors
+    assert query_before_creation.data
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
+
+    create_snow_incident_mutation = """
+    mutation CreateSnowIncident(
+        $title: String!,
+    ) {
+    SnowIncidentCreate(
+        data: {
+        title: {value: $title},
+        }
+    ) {
+        object {
+            title {
+                value
+            }
+            number {
+                value
+                source {
+                    id
+                }
+            }
+            identifier {
+                value
+            }
+        }
+      }
+    }
+    """
+
+    create_snow_incident = await graphql(
+        schema=gql_params.schema,
+        source=create_snow_incident_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "title": "Printer is saying PC load Letter",
+        },
+    )
+    assert not create_snow_incident.errors
+    assert create_snow_incident.data
+
+    update_forbidden = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": number_pool_attribute.parameters.number_pool_id,
+            "start_range": 1,
+            "end_range": 10,
+        },
+    )
+
+    assert update_forbidden.errors
+    assert (
+        "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+        in str(update_forbidden.errors)
+    )

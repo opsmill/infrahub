@@ -1,7 +1,11 @@
-import uuid
+import asyncio
+import hashlib
+import json
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from prefect import State
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.filters import (
     ArtifactFilter,
@@ -12,6 +16,7 @@ from prefect.client.schemas.filters import (
     FlowRunFilter,
     FlowRunFilterId,
     FlowRunFilterName,
+    FlowRunFilterStartTime,
     FlowRunFilterState,
     FlowRunFilterStateType,
     FlowRunFilterTags,
@@ -23,11 +28,14 @@ from prefect.client.schemas.sorting import (
     FlowRunSort,
 )
 
+from infrahub import config
 from infrahub.core.constants import TaskConclusion
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
+from infrahub.message_bus.types import KVTTL
 from infrahub.utils import get_nested_dict
+from infrahub.workers.dependencies import get_cache
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 
 from .constants import CONCLUSION_STATE_MAPPING
@@ -35,8 +43,17 @@ from .models import FlowLogs, FlowProgress, RelatedNodesInfo
 
 log = get_logger()
 
+NB_LOGS_LIMIT = 10_000
+PREFECT_MAX_LOGS_PER_CALL = 200
+
 
 class PrefectTask:
+    @staticmethod
+    def _build_flow_run_count_cache_key(body: dict[str, Any]) -> str:
+        serialized = json.dumps(body, sort_keys=True, separators=(",", ":"))
+        hashed = hashlib.sha256(serialized.encode()).hexdigest()
+        return f"task_manager:flow_run_count:{hashed}"
+
     @classmethod
     async def count_flow_runs(
         cls,
@@ -52,10 +69,24 @@ class PrefectTask:
             "flows": flow_filter.model_dump(mode="json") if flow_filter else None,
             "flow_runs": (flow_run_filter.model_dump(mode="json", exclude_unset=True) if flow_run_filter else None),
         }
+        cache_key = cls._build_flow_run_count_cache_key(body)
+
+        cache = await get_cache()
+        cached_value_raw = await cache.get(key=cache_key)
+        if cached_value_raw is not None:
+            try:
+                return int(cached_value_raw)
+            except (TypeError, ValueError):
+                await cache.delete(key=cache_key)
 
         response = await client._client.post("/flow_runs/count", json=body)
         response.raise_for_status()
-        return response.json()
+        count_value = int(response.json())
+
+        if count_value >= config.SETTINGS.workflow.flow_run_count_cache_threshold:
+            await cache.set(key=cache_key, value=str(count_value), expires=KVTTL.ONE_MINUTE)
+
+        return count_value
 
     @classmethod
     async def _get_related_nodes(cls, db: InfrahubDatabase, flows: list[FlowRun]) -> RelatedNodesInfo:
@@ -83,11 +114,44 @@ class PrefectTask:
         return related_nodes
 
     @classmethod
-    async def _get_logs(cls, client: PrefectClient, flow_ids: list[UUID]) -> FlowLogs:
+    async def _get_logs(
+        cls, client: PrefectClient, flow_ids: list[UUID], log_limit: int | None, log_offset: int | None
+    ) -> FlowLogs:
+        """
+        Return the logs for a flow run, based on log_limit and log_offset.
+        At most, NB_LOGS_LIMIT logs will be returned per flow.
+        """
+
         logs_flow = FlowLogs()
-        all_logs = await client.read_logs(log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)))
+
+        log_limit = log_limit if log_limit is not None else NB_LOGS_LIMIT
+        log_offset = log_offset or 0
+        current_offset = log_offset
+
+        if log_limit > NB_LOGS_LIMIT:
+            raise ValueError(f"log_limit cannot be greater than {NB_LOGS_LIMIT}")
+
+        all_logs = []
+
+        # Fetch the logs in batches of PREFECT_MAX_LOGS_PER_CALL, as prefect does not allow to fetch more logs at once.
+        remaining = min(log_limit, NB_LOGS_LIMIT)
+        while remaining > 0:
+            batch_limit = min(PREFECT_MAX_LOGS_PER_CALL, remaining)
+            logs_batch = await client.read_logs(
+                log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)),
+                offset=current_offset,
+                limit=batch_limit,
+            )
+            all_logs.extend(logs_batch)
+            nb_fetched = len(logs_batch)
+            if nb_fetched < batch_limit:
+                break  # No more logs to fetch
+
+            current_offset += nb_fetched
+            remaining -= nb_fetched
+
         for flow_log in all_logs:
-            if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
+            if flow_log.flow_run_id and flow_log.message != "Finished in state Completed()":
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
 
         return logs_flow
@@ -164,7 +228,7 @@ class PrefectTask:
             tags=FlowRunFilterTags(all_=filter_tags),
         )
         if ids:
-            flow_run_filter.id = FlowRunFilterId(any_=[uuid.UUID(id) for id in ids])
+            flow_run_filter.id = FlowRunFilterId(any_=[UUID(id) for id in ids])
 
         if statuses:
             flow_run_filter.state = FlowRunFilterState(type=FlowRunFilterStateType(any_=statuses))
@@ -188,6 +252,8 @@ class PrefectTask:
         branch: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
+        log_limit: int | None = None,
+        log_offset: int | None = None,
     ) -> dict[str, Any]:
         nodes: list[dict] = []
         count = None
@@ -219,7 +285,9 @@ class PrefectTask:
                     sort=FlowRunSort.START_TIME_DESC,
                 )
                 if log_fields:
-                    logs_flow = await cls._get_logs(client=client, flow_ids=[flow.id for flow in flows])
+                    logs_flow = await cls._get_logs(
+                        client=client, flow_ids=[flow.id for flow in flows], log_limit=log_limit, log_offset=log_offset
+                    )
 
                 if "progress" in node_fields:
                     progress_flow = await cls._get_progress(client=client, flow_ids=[flow.id for flow in flows])
@@ -257,17 +325,86 @@ class PrefectTask:
                                 "parameters": flow.parameters,
                                 "branch": await cls._extract_branch_name(flow=flow),
                                 "tags": flow.tags,
-                                "workflow": workflow_names.get(flow.flow_id, None),
+                                "workflow": workflow_names.get(flow.flow_id),
                                 "related_node": related_node.id if related_node else None,
                                 "related_node_kind": related_node.kind if related_node else None,
                                 "related_nodes": related_nodes_info.get_related_nodes_as_dict(flow_id=flow.id),
-                                "created_at": flow.created.to_iso8601_string(),  # type: ignore
-                                "updated_at": flow.updated.to_iso8601_string(),  # type: ignore
-                                "start_time": flow.start_time.to_iso8601_string() if flow.start_time else None,
+                                "created_at": flow.created.isoformat() if flow.created else None,
+                                "updated_at": flow.updated.isoformat() if flow.updated else None,
+                                "start_time": flow.start_time.isoformat() if flow.start_time else None,
                                 "id": flow.id,
-                                "logs": {"edges": logs},
+                                "logs": {"edges": logs, "count": len(logs)},
                             }
                         }
                     )
 
         return {"count": count or 0, "edges": nodes}
+
+    @classmethod
+    async def delete_flow_runs(
+        cls,
+        states: list[StateType] = [StateType.COMPLETED, StateType.FAILED, StateType.CANCELLED],  # noqa: B006
+        delete: bool = True,
+        days_to_keep: int = 2,
+        batch_size: int = 100,
+    ) -> None:
+        """Delete flow runs in the specified states and older than specified days."""
+
+        logger = get_logger()
+
+        async with get_client(sync_client=False) as client:
+            cutoff = datetime.now(UTC) - timedelta(days=days_to_keep)
+
+            flow_run_filter = FlowRunFilter(
+                start_time=FlowRunFilterStartTime(before_=cutoff),  # type: ignore[arg-type]
+                state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
+            )
+
+            # Get flow runs to delete
+            flow_runs = await client.read_flow_runs(flow_run_filter=flow_run_filter, limit=batch_size)
+
+            deleted_total = 0
+
+            while True:
+                batch_deleted = 0
+                failed_deletes = []
+
+                # Delete each flow run through the API
+                for flow_run in flow_runs:
+                    try:
+                        if delete:
+                            await client.delete_flow_run(flow_run_id=flow_run.id)
+                        else:
+                            await client.set_flow_run_state(
+                                flow_run_id=flow_run.id,
+                                state=State(type=StateType.CRASHED),
+                                force=True,
+                            )
+                        deleted_total += 1
+                        batch_deleted += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to delete flow run {flow_run.id}: {e}")
+                        failed_deletes.append(flow_run.id)
+
+                    # Rate limiting
+                    if batch_deleted % 10 == 0:
+                        await asyncio.sleep(0.5)
+
+                logger.info(f"Delete {batch_deleted}/{len(flow_runs)} flow runs (total: {deleted_total})")
+
+                # Get next batch
+                previous_flow_run_ids = [fr.id for fr in flow_runs]
+                flow_runs = await client.read_flow_runs(flow_run_filter=flow_run_filter, limit=batch_size)
+
+                if not flow_runs:
+                    logger.info("No more flow runs to delete")
+                    break
+
+                if previous_flow_run_ids == [fr.id for fr in flow_runs]:
+                    logger.info("Found same flow runs to delete, aborting")
+                    break
+
+                # Delay between batches to avoid overwhelming the API
+                await asyncio.sleep(1.0)
+
+            logger.info(f"Retention complete. Total deleted tasks: {deleted_total}")

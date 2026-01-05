@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
@@ -23,12 +24,11 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["attr_value_regex"] = self.attribute_schema.regex
+        self.params["attr_value_regex"] = self.attribute_schema.get_regex()
         self.params["null_value"] = NULL_VALUE
         query = """
         MATCH p = (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)
@@ -38,7 +38,6 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
             LIMIT 1
         }
-        WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value <> $null_value
@@ -79,14 +78,14 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         return "attribute.regex.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name == self.name
+        return request.constraint_name in (self.name, ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value)
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
         if not request.schema_path.field_name:
             raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
-        if not attribute_schema.regex:
+        if not attribute_schema.get_regex():
             return grouped_data_paths_list
 
         for query_class in self.query_classes:

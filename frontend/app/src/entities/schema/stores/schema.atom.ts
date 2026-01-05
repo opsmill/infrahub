@@ -1,11 +1,12 @@
-import {
+import { atom } from "jotai";
+
+import type {
   GenericSchema,
   Namespace,
   NodeSchema,
   ProfileSchema,
   TemplateSchema,
 } from "@/entities/schema/types";
-import { atom } from "jotai";
 
 export const nodeSchemasAtom = atom<NodeSchema[]>([]);
 export const genericSchemasAtom = atom<GenericSchema[]>([]);

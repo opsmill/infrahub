@@ -1,6 +1,7 @@
-import { ArtifactStatus } from "@/entities/artifacts/types";
+import type { ArtifactStatus } from "@/entities/artifacts/types";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
+
 import { ArtifactGenerateButton } from "./artifact-generate-button";
 
 type ArtifactHeaderProps = {
@@ -10,7 +11,7 @@ type ArtifactHeaderProps = {
   hfid?: string;
   checksum?: string;
   storageId?: string;
-  definitionId: string;
+  artifactDefinitionId: string;
 };
 
 const ArtifactHeader = ({
@@ -20,7 +21,7 @@ const ArtifactHeader = ({
   hfid,
   checksum,
   storageId,
-  definitionId,
+  artifactDefinitionId,
 }: ArtifactHeaderProps) => {
   return (
     <div className="flex items-center gap-2">
@@ -28,9 +29,13 @@ const ArtifactHeader = ({
 
       <ArtifactStatusBadge status={status} />
 
-      <div className="flex items-center gap-1 ml-auto">
-        {definitionId && (
-          <ArtifactGenerateButton label="Re-generate" artifactId={id} definitionId={definitionId} />
+      <div className="ml-auto flex items-center gap-1">
+        {artifactDefinitionId && (
+          <ArtifactGenerateButton
+            label="Re-generate"
+            artifactId={id}
+            artifactDefinitionId={artifactDefinitionId}
+          />
         )}
 
         <ArtifactDetailsMenu id={id} hfid={hfid} checksum={checksum} storageId={storageId} />

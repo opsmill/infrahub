@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { HTMLAttributes, forwardRef, useState } from "react";
+import { forwardRef, type HTMLAttributes, useState } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 const MAX_TEXT_LENGTH = 200;
 
@@ -52,7 +53,7 @@ const ButtonStyled = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButtonElem
   ({ className, ...props }, ref) => (
     <button
       ref={ref}
-      className={classNames("text-custom-blue-700 font-semibold", className)}
+      className={classNames("font-semibold text-custom-blue-700", className)}
       {...props}
     />
   )

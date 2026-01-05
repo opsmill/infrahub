@@ -23,6 +23,14 @@ class GraphRelationship(BaseModel):
     direction: GraphRelDirection
 
 
+class GraphVertex(BaseModel):
+    default_label: str = "NULL"
+
+    @classmethod
+    def get_default_label(cls) -> str:
+        return cls.model_fields["default_label"].default
+
+
 # -----------------------------------------------------
 # Node
 # -----------------------------------------------------
@@ -61,7 +69,7 @@ class GraphNodeRelationships(BaseModel):
     )
 
 
-class GraphNodeNode(BaseModel):
+class GraphNodeNode(GraphVertex):
     default_label: str = "Node"  # Most node also have CoreNode
     properties: GraphNodeProperties
     relationships: GraphNodeRelationships
@@ -95,7 +103,7 @@ class GraphRelationshipRelationships(BaseModel):
     )
 
 
-class GraphRelationshipNode(BaseModel):
+class GraphRelationshipNode(GraphVertex):
     default_label: str = "Relationship"
     properties: GraphRelationshipProperties
     relationships: GraphRelationshipRelationships
@@ -133,7 +141,7 @@ class GraphAttributeRelationships(BaseModel):
     )
 
 
-class GraphAttributeNode(BaseModel):
+class GraphAttributeNode(GraphVertex):
     default_label: str = "Attribute"
     properties: GraphAttributeProperties
     relationships: GraphAttributeRelationships
@@ -168,19 +176,25 @@ class GraphAttributeValueRelationships(BaseModel):
     )
 
 
-class GraphAttributeValueNode(BaseModel):
+class GraphAttributeValueNode(GraphVertex):
     default_label: str = "AttributeValue"
     properties: GraphAttributeValueProperties
     relationships: GraphAttributeValueRelationships
 
 
-class GraphAttributeIPNetworkNode(BaseModel):
+class GraphAttributeValueIndexedNode(GraphVertex):
+    default_label: str = "AttributeValueIndexed"
+    properties: GraphAttributeValueProperties
+    relationships: GraphAttributeValueRelationships
+
+
+class GraphAttributeIPNetworkNode(GraphVertex):
     default_label: str = "AttributeIPNetwork"
     properties: GraphAttributeIPNetworkProperties
     relationships: GraphAttributeValueRelationships
 
 
-class GraphAttributeIPHostNode(BaseModel):
+class GraphAttributeIPHostNode(GraphVertex):
     default_label: str = "AttributeIPHost"
     properties: GraphAttributeIPHostProperties
     relationships: GraphAttributeValueRelationships
@@ -202,7 +216,7 @@ class GraphBooleanRelationships(BaseModel):
     )
 
 
-class GraphBooleanNode(BaseModel):
+class GraphBooleanNode(GraphVertex):
     default_label: str = "Boolean"
     properties: GraphBooleanProperties
     relationships: GraphBooleanRelationships
@@ -229,25 +243,32 @@ class GraphRelationshipDefault(BaseModel):
     hierarchy: Optional[str] = Field(None, description="Name of the hierarchy this relationship is part of")
 
 
-GRAPH_SCHEMA: dict[str, dict[str, Any]] = {
-    "nodes": {
-        "Node": GraphNodeNode,
-        "Relationship": GraphRelationshipNode,
-        "Attribute": GraphAttributeNode,
-        "AttributeValue": GraphAttributeValueNode,
-        "AttributeIPNetwork": GraphAttributeIPNetworkNode,
-        "AttributeIPHost": GraphAttributeIPHostNode,
-        "Boolean": GraphBooleanNode,
-    },
-    "relationships": {
-        # Ignoring IS_PART_OF for now, because there is a bit of cleanup required
-        # "IS_PART_OF": GraphRelationshipIsPartOf,
-        "HAS_VALUE": GraphRelationshipDefault,
-        "HAS_ATTRIBUTE": GraphRelationshipDefault,
-        "IS_RELATED": GraphRelationshipDefault,
-        "HAS_SOURCE": GraphRelationshipDefault,
-        "HAS_OWNER": GraphRelationshipDefault,
-        "IS_VISIBLE": GraphRelationshipDefault,
-        "IS_PROTECTED": GraphRelationshipDefault,
-    },
-}
+def get_graph_schema() -> dict[str, dict[str, Any]]:
+    """Generate the graph schema dictionary containing nodes and relationships."""
+    graph_node_list: list[type[GraphVertex]] = [
+        GraphNodeNode,
+        GraphRelationshipNode,
+        GraphAttributeNode,
+        GraphAttributeValueNode,
+        GraphAttributeValueIndexedNode,
+        GraphAttributeIPNetworkNode,
+        GraphAttributeIPHostNode,
+        GraphBooleanNode,
+    ]
+    return {
+        "nodes": {graph_node.get_default_label(): graph_node for graph_node in graph_node_list},
+        "relationships": {
+            # Ignoring IS_PART_OF for now, because there is a bit of cleanup required
+            # "IS_PART_OF": GraphRelationshipIsPartOf,
+            "HAS_VALUE": GraphRelationshipDefault,
+            "HAS_ATTRIBUTE": GraphRelationshipDefault,
+            "IS_RELATED": GraphRelationshipDefault,
+            "HAS_SOURCE": GraphRelationshipDefault,
+            "HAS_OWNER": GraphRelationshipDefault,
+            "IS_VISIBLE": GraphRelationshipDefault,
+            "IS_PROTECTED": GraphRelationshipDefault,
+        },
+    }
+
+
+GRAPH_SCHEMA: dict[str, dict[str, Any]] = get_graph_schema()

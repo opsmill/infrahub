@@ -1,14 +1,16 @@
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 import { parseJwt } from "@/shared/utils/common";
-import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
+
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 export default function TabProfile() {
   const nodes = useAtomValue(genericSchemasAtom);
@@ -32,7 +34,7 @@ export default function TabProfile() {
 
   if (!objectDetailsData) {
     return (
-      <div className="flex column justify-center">
+      <div className="column flex justify-center">
         <NoDataFound message="No user found for that id." />
       </div>
     );

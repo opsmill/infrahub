@@ -2,12 +2,12 @@ import {
   attributesKindForDetailsViewExclude,
   relationshipsForDetailsView,
   relationshipsForListView,
-} from "@/config/constants";
-import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import { AttributeKind, ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+} from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
-import * as R from "ramda";
+
+import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
+import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 type tgetObjectAttributes = {
   schema: ModelSchema | undefined;
@@ -95,9 +95,9 @@ export const getSchemaObjectColumns = ({
   }
 
   const attributes = getObjectAttributes({ schema, forListView, forQuery });
-  const relationships = getObjectRelationships({ schema: schema, forListView });
+  const relationships = getObjectRelationships({ schema, forListView });
 
-  const columns = sortByOrderWeight(R.concat(attributes, relationships));
+  const columns = sortByOrderWeight([...attributes, ...relationships]);
 
   if (limit) {
     return columns.slice(0, limit);
@@ -111,11 +111,4 @@ export const getSchemaObjectColumns = ({
   // columns.length > 0 needed because of relationship-details-paginated.tsx
   // Relationship needs refactoring to handle this better
   return isGenericSchema(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
-};
-
-export const getObjectTabs = (tabs: any[], data: any) => {
-  return tabs.map((tab: any) => ({
-    ...tab,
-    count: data[tab.name]?.count,
-  }));
 };

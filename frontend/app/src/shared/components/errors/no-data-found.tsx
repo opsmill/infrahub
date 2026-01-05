@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 type tNoData = {
   message?: ReactNode;
@@ -12,11 +12,10 @@ export default function NoDataFound(props: tNoData) {
   const { message, icon } = props;
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center p-8 text-center gap-2">
-      <div className="bg-white rounded-full flex items-center justify-center p-2 text-custom-blue-green">
-        {icon || <Icon icon={"mdi:file-question-outline"} className="" />}
-      </div>
-      <div>{message ?? DEFAULT_MESSAGE}</div>
+    <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+      {icon ?? <Icon icon="mdi:table-off" className="mb-2 text-3xl" />}
+      <div className="font-medium text-lg">No data</div>
+      <div className="text-sm">{message ?? DEFAULT_MESSAGE}</div>
     </div>
   );
 }

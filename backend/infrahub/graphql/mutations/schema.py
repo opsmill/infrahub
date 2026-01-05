@@ -6,7 +6,7 @@ from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.constants import RESTRICTED_NAMESPACES
+from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
@@ -16,6 +16,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data, get_logger
+from infrahub.permissions import define_global_permission_from_branch
 from infrahub.worker import WORKER_IDENTITY
 
 from ..types import DropdownFields
@@ -30,6 +31,14 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 log = get_logger()
+
+
+def _validate_schema_permission(graphql_context: GraphqlContext) -> None:
+    graphql_context.active_permissions.raise_for_permission(
+        permission=define_global_permission_from_branch(
+            permission=GlobalPermissions.MANAGE_SCHEMA, branch_name=graphql_context.branch.name
+        )
+    )
 
 
 class SchemaEnumInput(InputObjectType):
@@ -69,9 +78,10 @@ class SchemaDropdownAdd(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
+        _validate_schema_permission(graphql_context=graphql_context)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
@@ -94,7 +104,7 @@ class SchemaDropdownAdd(Mutation):
             context=graphql_context.get_context(),
         )
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -130,7 +140,8 @@ class SchemaDropdownRemove(Mutation):
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        _validate_schema_permission(graphql_context=graphql_context)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
@@ -185,7 +196,8 @@ class SchemaEnumAdd(Mutation):
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        _validate_schema_permission(graphql_context=graphql_context)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
@@ -230,7 +242,8 @@ class SchemaEnumRemove(Mutation):
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        _validate_schema_permission(graphql_context=graphql_context)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)

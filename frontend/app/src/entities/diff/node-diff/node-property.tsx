@@ -1,10 +1,13 @@
-import { DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
-import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/node-diff/utils";
-import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
-import { Badge } from "@/shared/components/ui/badge";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
+
+import { Badge } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
+
+import type { DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
+import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/node-diff/utils";
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
+
 import { DiffThread } from "./thread";
 
 type DiffNodePropertyProps = {
@@ -62,8 +65,8 @@ export const DiffNodeProperty = ({ status, property, className }: DiffNodeProper
       iconClassName="left-4"
       hasConflicts={!!property.conflict}
       title={
-        <div className={classNames("flex items-center justify-between pl-4 pr-2", className)}>
-          <div className="flex items-center py-3 gap-2">
+        <div className={classNames("flex items-center justify-between pr-2 pl-4", className)}>
+          <div className="flex items-center gap-2 py-3">
             {formatPropertyName(property.property_type)}
             {property.conflict && <BadgeConflict>Conflict</BadgeConflict>}
           </div>

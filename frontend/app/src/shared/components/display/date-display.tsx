@@ -1,20 +1,27 @@
+import { differenceInDays, format, formatDistanceToNow } from "date-fns";
+
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { isInPreviousYear } from "@/shared/utils/date";
-import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 type DateDisplayProps = {
-  date?: number | string | Date;
+  date?: number | string | Date | null;
   hideDefault?: boolean;
   className?: string;
+  containerClassName?: string;
+  dateFormat?: string;
 };
 
-export const getDateDisplay = (date?: number | string | Date) =>
+export const getDateDisplay = (date?: number | string | Date | null) =>
   format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
 
-export const DateDisplay = (props: DateDisplayProps) => {
-  const { date, hideDefault, className } = props;
-
+export const DateDisplay = ({
+  date,
+  hideDefault,
+  className,
+  containerClassName,
+  dateFormat,
+}: DateDisplayProps) => {
   if (!date && hideDefault) {
     return null;
   }
@@ -23,22 +30,24 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   const distanceFromNow = differenceInDays(new Date(), dateData);
 
-  if (distanceFromNow > 7) {
-    const dateFormat = isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM";
+  if (distanceFromNow > 7 || dateFormat) {
+    const newDateFormat = dateFormat ?? (isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM");
 
     return (
-      <span className="flex items-center flex-wrap">
+      <span className={classNames("flex flex-wrap items-center", containerClassName)}>
         <Tooltip enabled content={getDateDisplay(dateData)}>
-          <span className="text-xs font-normal">{format(dateData, dateFormat)}</span>
+          <span className={classNames("font-normal text-xs", className)}>
+            {format(dateData, newDateFormat)}
+          </span>
         </Tooltip>
       </span>
     );
   }
 
   return (
-    <span className={classNames("flex items-center flex-wrap", className)}>
+    <span className={classNames("flex flex-wrap items-center", containerClassName)}>
       <Tooltip enabled content={getDateDisplay(date)}>
-        <span className="text-xs font-normal">
+        <span className={classNames("font-normal text-xs", className)}>
           {formatDistanceToNow(dateData, { addSuffix: true })}
         </span>
       </Tooltip>

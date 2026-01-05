@@ -5,13 +5,21 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config, lock
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
+from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.merger.serializer import DiffMergeSerializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
+from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.definitions.core.repository import core_read_only_repository, core_repository
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
 
@@ -36,6 +44,26 @@ class TestDiffCoordinatorLocks:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
+    @pytest.fixture
+    async def dummy_repository_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+        dummy_repository = NodeSchema(
+            name=core_repository.name,
+            namespace=core_repository.namespace,
+        )
+        schema = SchemaRoot(nodes=[dummy_repository])
+        registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        default_branch.update_schema_hash()
+        await default_branch.save(db=db)
+
+        dummy_repository = NodeSchema(
+            name=core_read_only_repository.name,
+            namespace=core_read_only_repository.namespace,
+        )
+        schema = SchemaRoot(nodes=[dummy_repository])
+        registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        default_branch.update_schema_hash()
+        await default_branch.save(db=db)
+
     async def get_diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         component_registry = get_component_registry()
@@ -48,7 +76,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_incremental_diff_locks_do_not_queue_up(
         self, db: InfrahubDatabase, default_branch: Branch, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -64,7 +92,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_arbitrary_diff_locks_queue_up(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -101,7 +129,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_arbitrary_diff_blocks_incremental_diff(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -132,7 +160,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_incremental_diff_blocks_arbitrary_diff(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -160,3 +188,81 @@ class TestDiffCoordinatorLocks:
         assert full_branch_diff.nodes == full_arbitrary_diff.nodes
         # arbitrary diff is calculated separately from the branch-tracking diff
         assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
+
+    async def test_diff_update_blocks_merge(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        branch_with_data: Branch,
+        dummy_repository_schema: None,
+    ) -> None:
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+        branch_merger = BranchMerger(
+            db=db,
+            diff_coordinator=diff_coordinator,
+            diff_merger=DiffMerger(
+                db=db,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository,
+                serializer=DiffMergeSerializer(db=db, max_batch_size=50),
+            ),
+            diff_repository=diff_repository,
+            source_branch=diff_branch,
+            diff_locker=DiffLocker(),
+        )
+
+        results = await asyncio.gather(
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            branch_merger.merge(),
+        )
+        assert len(results) == 2
+        assert results[0].to_time == results[1].to_time
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
+        assert results[0].tracking_id == results[1].tracking_id
+
+    async def test_merge_blocks_diff_update(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        branch_with_data: Branch,
+        dummy_repository_schema: None,
+    ) -> None:
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+
+        # need a separate database connection or the driver raises an error
+        # which is fine, b/c this is closer to the real issue
+        db2 = InfrahubDatabase(driver=await get_db(retry=5))
+        component_registry = get_component_registry()
+        diff_repository_2 = await component_registry.get_component(DiffRepository, db=db2, branch=default_branch)
+        diff_coordinator_2 = await self.get_diff_coordinator(db=db2, diff_branch=diff_branch)
+
+        branch_merger = BranchMerger(
+            db=db2,
+            diff_coordinator=diff_coordinator_2,
+            diff_merger=DiffMerger(
+                db=db,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository_2,
+                serializer=DiffMergeSerializer(db=db2, max_batch_size=50),
+            ),
+            diff_repository=diff_repository_2,
+            source_branch=diff_branch,
+            diff_locker=DiffLocker(),
+        )
+
+        results = await asyncio.gather(
+            branch_merger.merge(),
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+        )
+        assert len(results) == 2
+        assert results[0].to_time == results[1].to_time
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
+        assert results[0].tracking_id == results[1].tracking_id

@@ -1,4 +1,6 @@
 import uuid
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -48,12 +50,14 @@ class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
         DETACH DELETE n
         """
 
-        params: dict = {"kinds": kinds}
+        params: dict[str, Any] = {"kinds": kinds}
 
         await db.execute_query(query=query, params=params, name="delete_nodes")
 
     @pytest.fixture
-    async def load_schema(self, client, branch, car_person_schema_unique_owner):
+    async def load_schema(
+        self, client: InfrahubClient, branch: Branch, car_person_schema_unique_owner: dict[str, Any]
+    ) -> None:
         res = await client.schema.load([car_person_schema_unique_owner], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
@@ -63,12 +67,12 @@ class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
         self,
         client: InfrahubClient,
         db: InfrahubDatabase,
-        load_schema,
+        load_schema: None,
         branch: Branch,
         allow_upsert: bool,
         batch_size: int,
-        aio_benchmark,
-        exec_async,
+        aio_benchmark: Callable[..., Any],
+        exec_async: Callable[..., Any],
     ) -> None:
         batch = exec_async(
             self.create_car_batch,
@@ -85,6 +89,6 @@ class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
         )
 
 
-async def execute_batch(infrahub_batch):
+async def execute_batch(infrahub_batch: InfrahubBatch) -> None:
     async for _, _ in infrahub_batch.execute():
         pass

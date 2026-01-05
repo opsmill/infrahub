@@ -33,8 +33,7 @@ WHERE num_duplicate_edges > 1
 // -------------------
 WITH DISTINCT a, branch, branch_level, status, from, to, attr_val, attr_default
 WITH attr_val, attr_default, collect([a, branch, branch_level, status, from, to]) AS details_list
-CALL {
-    WITH attr_val, attr_default
+CALL (attr_val, attr_default) {
     MATCH (av:AttributeValue {value: attr_val, is_default: attr_default})
     RETURN av AS the_one_av
     ORDER by %(id_func)s(av) ASC
@@ -53,11 +52,10 @@ WITH a, branch, status, from, to, attr_val, attr_default, %(id_func)s(fresh_e) A
 // -------------------
 // get the identical edges for a given set of Attribute node, edge properties, AttributeValue.value
 // -------------------
-CALL {
+CALL (a, branch, status, from, to, attr_val, attr_default, e_id_to_keep) {
     // -------------------
     // delete the duplicate edges a given set of Attribute node, edge properties, AttributeValue.value
     // -------------------
-    WITH a, branch, status, from, to, attr_val, attr_default, e_id_to_keep
     MATCH (a)-[e:HAS_VALUE]->(av:AttributeValue {value: attr_val, is_default: attr_default})
     WHERE %(id_func)s(e) <> e_id_to_keep
     AND e.branch = branch AND e.status = status AND e.from = from
@@ -99,8 +97,7 @@ WITH DISTINCT a, branch, branch_level, status, from, to, b
 CREATE (a)-[fresh_e:%(edge_type)s {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
 SET fresh_e.to = to
 WITH a, branch, status, from, to, b, %(id_func)s(fresh_e) AS e_id_to_keep
-CALL {
-    WITH a, branch, status, from, to, b, e_id_to_keep
+CALL (a, branch, status, from, to, b, e_id_to_keep) {
     MATCH (a)-[e:%(edge_type)s]->(b)
     WHERE %(id_func)s(e) <> e_id_to_keep
     AND e.branch = branch AND e.status = status AND e.from = from

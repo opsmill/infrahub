@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import RelationshipNode
 
 if TYPE_CHECKING:
@@ -29,12 +29,12 @@ class Relationships(ObjectType):
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
 
-        fields = await extract_fields_first_node(info)
+        fields = extract_graphql_fields(info)
         excluded_namespaces = excluded_namespaces or []
 
         response: dict[str, Any] = {"edges": [], "count": None}
 
-        async with graphql_context.db.start_session() as db:
+        async with graphql_context.db.start_session(read_only=True) as db:
             query = await RelationshipGetByIdentifierQuery.init(
                 db=db,
                 branch=graphql_context.branch,

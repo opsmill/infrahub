@@ -1,5 +1,7 @@
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { describe, expect, it } from "vitest";
+
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+
 import { generateGenericSchema, generateNodeSchema } from "../../../../tests/fake/schema";
 
 describe("isGenericSchema", () => {

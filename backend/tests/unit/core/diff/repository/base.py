@@ -32,7 +32,7 @@ class DiffRepositoryTestBase:
         await initialize_registry(db=db, initialize=True)
 
     @pytest.fixture
-    async def reset_database(self, db: InfrahubDatabase, default_branch):
+    async def reset_database(self, db: InfrahubDatabase, default_branch) -> None:
         await delete_all_nodes(db=db)
 
     def build_diff_node(self, num_sub_fields=2, no_recurse=False) -> EnrichedDiffNode:
@@ -81,8 +81,7 @@ class DiffRepositoryTestBase:
             this_node = nodes_to_check.pop(0)
             all_nodes.add(this_node)
             for rel in this_node.relationships:
-                for parent_node in rel.nodes:
-                    nodes_to_check.append(parent_node)
+                nodes_to_check.extend(rel.nodes)
         return all_nodes
 
     async def _save_single_diff(

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
@@ -108,9 +109,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should verify the available profiles in the object form", async ({ page }) => {
     await page.goto(`/objects/InfraInterface?branch=${BRANCH_NAME}`);
-    await expect(
-      page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true })
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ethernet1", exact: true }).first()).toBeVisible();
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Select an object type").click();
     await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();

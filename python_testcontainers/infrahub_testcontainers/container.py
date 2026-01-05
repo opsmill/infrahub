@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 import time
@@ -28,11 +30,10 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
-    "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-community",
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:3.13.7-management",
-    "CACHE_DOCKER_IMAGE": "redis:7.2.4",
+    "CACHE_DOCKER_IMAGE": "redis:7.2.11",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
-    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
+    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
     "INFRAHUB_TESTING_PRODUCTION": "false",
     "INFRAHUB_TESTING_DB_ADDRESS": "database",
@@ -60,6 +61,8 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "true",
     "INFRAHUB_TESTING_DOCKER_PULL": "true",
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
+    "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
+    "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
 }
 
 
@@ -67,9 +70,15 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
 class InfrahubDockerCompose(DockerCompose):
     project_name: str | None = None
     env_vars: dict[str, str] = field(default_factory=dict)
+    deployment_type: str | None = None
 
     @classmethod
-    def init(cls, directory: Path | None = None, version: str | None = None) -> Self:
+    def init(
+        cls,
+        directory: Path | None = None,
+        version: str | None = None,
+        deployment_type: str | None = None,
+    ) -> Self:
         if not directory:
             directory = Path.cwd()
 
@@ -80,7 +89,11 @@ class InfrahubDockerCompose(DockerCompose):
         if version == "local" and infrahub_image_version:
             version = infrahub_image_version
 
-        compose = cls(project_name=cls.generate_project_name(), context=directory)
+        compose = cls(
+            project_name=cls.generate_project_name(),
+            context=directory,
+            deployment_type=deployment_type,
+        )
         compose.create_docker_file(directory=directory)
         compose.create_env_file(directory=directory, version=version)
 
@@ -112,7 +125,10 @@ class InfrahubDockerCompose(DockerCompose):
 
     def create_docker_file(self, directory: Path) -> Path:
         current_directory = Path(__file__).resolve().parent
-        compose_file = current_directory / "docker-compose.test.yml"
+        compose_file_name = (
+            "docker-compose-cluster.test.yml" if self.deployment_type == "cluster" else "docker-compose.test.yml"
+        )
+        compose_file = current_directory / compose_file_name
 
         test_compose_file = directory / "docker-compose.yml"
         test_compose_file.write_bytes(compose_file.read_bytes())
@@ -133,10 +149,27 @@ class InfrahubDockerCompose(DockerCompose):
             PROJECT_ENV_VARIABLES.update(
                 {
                     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub-enterprise",
-                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
+                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.03.0-enterprise",
+                }
+            )
+        if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):
+            PROJECT_ENV_VARIABLES.update(
+                {
+                    "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "1",
+                    "PREFECT_MESSAGING_BROKER": "prefect_redis.messaging",
+                    "PREFECT_MESSAGING_CACHE": "prefect_redis.messaging",
+                    "PREFECT_SERVER_EVENTS_CAUSAL_ORDERING": "prefect_redis.ordering",
+                    "PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE": "prefect_redis.lease_storage",
+                    "PREFECT__SERVER_WEBSERVER_ONLY": "true",
+                    "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
+                    "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
+                    "PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED": "false",
+                    "PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED": "false",
+                    "PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED": "false",
+                    "PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED": "false",
                 }
             )
 
@@ -161,7 +194,7 @@ class InfrahubDockerCompose(DockerCompose):
             cmd.extend(self.services)
         self._run_command(cmd=cmd)
 
-    def start_container(self, service_name: str) -> None:
+    def start_container(self, service_name: str | list[str]) -> None:
         """
         Starts a specific service of the docker compose environment.
 
@@ -171,7 +204,11 @@ class InfrahubDockerCompose(DockerCompose):
 
         # pull means running a separate command before starting
         if self.pull:
-            pull_cmd = [*base_cmd, "pull", service_name]
+            pull_cmd = [*base_cmd, "pull"]
+            if isinstance(service_name, list):
+                pull_cmd.extend(service_name)
+            else:
+                pull_cmd.append(service_name)
             self._run_command(cmd=pull_cmd)
 
         up_cmd = [*base_cmd, "up"]
@@ -186,7 +223,10 @@ class InfrahubDockerCompose(DockerCompose):
             # we run in detached mode instead of blocking
             up_cmd.append("--detach")
 
-        up_cmd.append(service_name)
+        if isinstance(service_name, list):
+            up_cmd.extend(service_name)
+        else:
+            up_cmd.append(service_name)
         self._run_command(cmd=up_cmd)
 
     # TODO would be good to the support for project_name upstream
@@ -208,7 +248,12 @@ class InfrahubDockerCompose(DockerCompose):
             for service_name, service_data in INFRAHUB_SERVICES.items()
         }
 
-    def database_create_backup(self, backup_name: str = "neo4j_database.backup", dest_dir: Path | None = None) -> None:
+    def database_create_backup(
+        self,
+        backup_name: str = "neo4j_database.backup",
+        dest_dir: Path | None = None,
+        compress: bool = False,
+    ) -> None:
         assert self.use_neo4j_enterprise
 
         self.exec_in_container(
@@ -216,7 +261,7 @@ class InfrahubDockerCompose(DockerCompose):
                 "neo4j-admin",
                 "database",
                 "backup",
-                "--compress=false",
+                f"--compress={'true' if compress else 'false'}",
                 "--to-path",
                 str(self.internal_backup_dir),
             ],
@@ -234,7 +279,7 @@ class InfrahubDockerCompose(DockerCompose):
                 dest_dir / backup_name,
             )
 
-    def database_restore_backup(self, backup_file: Path) -> None:
+    def database_restore_backup(self, backup_file: Path) -> None:  # noqa: PLR0915
         assert self.use_neo4j_enterprise
 
         shutil.copy(
@@ -243,52 +288,42 @@ class InfrahubDockerCompose(DockerCompose):
         )
         service_name = "database"
 
-        # Ensure the database container is running otherwise start it
-        try:
-            self.get_container(service_name=service_name)
-        except ContainerIsNotRunning:
-            self.start_container(service_name=service_name)
+        if self.deployment_type != "cluster":  # noqa: PLR1702
+            try:
+                self.get_container(service_name=service_name)
+            except ContainerIsNotRunning:
+                self.start_container(service_name=service_name)
 
-        self.exec_in_container(
-            command=["cypher-shell", "-u", "neo4j", "-p", "admin", "STOP DATABASE neo4j;"],
-            service_name=service_name,
-        )
+            self.exec_in_container(
+                command=[
+                    "cypher-shell",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "STOP DATABASE neo4j;",
+                ],
+                service_name=service_name,
+            )
 
-        self.exec_in_container(
-            command=[
-                "neo4j-admin",
-                "database",
-                "restore",
-                "--overwrite-destination",
-                "--from-path",
-                str(self.internal_backup_dir / backup_file.name),
-            ],
-            service_name=service_name,
-        )
+            self.exec_in_container(
+                command=[
+                    "neo4j-admin",
+                    "database",
+                    "restore",
+                    "--overwrite-destination",
+                    "--from-path",
+                    str(self.internal_backup_dir / backup_file.name),
+                ],
+                service_name=service_name,
+            )
 
-        self.exec_in_container(
-            command=["chown", "-R", "neo4j:neo4j", "/data"],
-            service_name=service_name,
-        )
+            self.exec_in_container(
+                command=["chown", "-R", "neo4j:neo4j", "/data"],
+                service_name=service_name,
+            )
 
-        (restore_output, _, _) = self.exec_in_container(
-            command=[
-                "cypher-shell",
-                "--format",
-                "plain",
-                "-d",
-                "system",
-                "-u",
-                "neo4j",
-                "-p",
-                "admin",
-                "START DATABASE neo4j;",
-            ],
-            service_name=service_name,
-        )
-
-        for _ in range(3):
-            (stdout, _, _) = self.exec_in_container(
+            (restore_output, _, _) = self.exec_in_container(
                 command=[
                     "cypher-shell",
                     "--format",
@@ -299,26 +334,320 @@ class InfrahubDockerCompose(DockerCompose):
                     "neo4j",
                     "-p",
                     "admin",
-                    "SHOW DATABASES WHERE name = 'neo4j' AND currentStatus = 'online';",
+                    "START DATABASE neo4j;",
                 ],
                 service_name=service_name,
             )
-            if stdout:
-                break
-            time.sleep(5)
+
+            for _ in range(3):
+                (stdout, _, _) = self.exec_in_container(
+                    command=[
+                        "cypher-shell",
+                        "--format",
+                        "plain",
+                        "-d",
+                        "system",
+                        "-u",
+                        "neo4j",
+                        "-p",
+                        "admin",
+                        "SHOW DATABASES WHERE name = 'neo4j' AND currentStatus = 'online';",
+                    ],
+                    service_name=service_name,
+                )
+                if stdout:
+                    break
+                time.sleep(5)
+            else:
+                (debug_logs, _, _) = self.exec_in_container(
+                    command=["cat", "logs/debug.log"],
+                    service_name=service_name,
+                )
+                raise Exception(f"Failed to restore database:\n{restore_output}\nDebug logs:\n{debug_logs}")
+
+            old_services = self.services
+            self.services = ["infrahub-server", "task-worker"]
+            self.stop(down=False)
+            try:
+                self.start()
+            except Exception as exc:
+                stdout, stderr = self.get_logs()
+                raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
+            self.services = old_services
         else:
-            (debug_logs, _, _) = self.exec_in_container(
-                command=["cat", "logs/debug.log"],
+            print("Cluster mode detected")
+            try:
+                self.get_container(service_name=service_name)
+                self.get_container(service_name="database-core2")
+                self.get_container(service_name="database-core3")
+            except ContainerIsNotRunning:
+                self.start_container("database", "database-core2", "database-core3")
+
+            # Waiting for cluster to stabilize...
+            time.sleep(10)
+
+            self.exec_in_container(
+                command=[
+                    "cypher-shell",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "DROP DATABASE neo4j;",
+                ],
                 service_name=service_name,
             )
-            raise Exception(f"Failed to restore database:\n{restore_output}\nDebug logs:\n{debug_logs}")
 
-        old_services = self.services
-        self.services = ["infrahub-server", "task-worker"]
-        self.stop(down=False)
-        try:
+            self.exec_in_container(
+                command=["rm", "-rf", "/data/databases/neo4j"],
+                service_name=service_name,
+            )
+            self.exec_in_container(
+                command=["rm", "-rf", "/data/transactions/neo4j"],
+                service_name=service_name,
+            )
+
+            self.exec_in_container(
+                command=[
+                    "neo4j-admin",
+                    "database",
+                    "restore",
+                    "--from-path",
+                    str(self.internal_backup_dir / backup_file.name),
+                    "neo4j",
+                ],
+                service_name=service_name,
+            )
+
+            cmd = self.compose_command_property[:]
+            cmd += ["restart", "database"]
+            self._run_command(cmd=cmd)
+
+            main_node = service_name
+            cluster_nodes = ["database", "database-core2", "database-core3"]
+
+            for attempt in range(3):
+                try:
+                    (stdout, _, _) = self.exec_in_container(
+                        command=[
+                            "cypher-shell",
+                            "--format",
+                            "plain",
+                            "-d",
+                            "system",
+                            "-u",
+                            "neo4j",
+                            "-p",
+                            "admin",
+                            "SHOW DATABASES YIELD name, address, currentStatus WHERE name = 'system' RETURN address, currentStatus",
+                        ],
+                        service_name=main_node,
+                    )
+                except Exception:
+                    time.sleep(10)
+                    continue
+
+                raw_output = stdout
+                nodes_status = dict.fromkeys(cluster_nodes, False)
+                online_count = 0
+                total_entries = 0
+
+                try:
+                    for line_raw in stdout.splitlines():
+                        line = line_raw.strip()
+                        if not line or line.startswith("address"):
+                            continue
+
+                        total_entries += 1
+                        if "online" in line:
+                            online_count += 1
+                            for node in cluster_nodes:
+                                node_pattern = f'"{node}:'
+                                if node_pattern in line:
+                                    nodes_status[node] = True
+                                    break
+                    if all(nodes_status.values()) and online_count == len(cluster_nodes):
+                        break
+                except Exception as e:
+                    print(f"Error parsing database status on attempt {attempt + 1}: {e}")
+
+                print(f"Waiting for all nodes to be online. Current status: {nodes_status}")
+                time.sleep(5)
+            else:
+                debug_logs = {}
+                for node in cluster_nodes:
+                    try:
+                        (logs, _, _) = self.exec_in_container(
+                            command=["cat", "logs/debug.log"],
+                            service_name=node,
+                        )
+                        debug_logs[node] = logs
+                    except Exception as e:
+                        debug_logs[node] = f"Could not retrieve logs: {str(e)}"
+
+                debug_info = f"Raw output from SHOW DATABASES command:\n{raw_output}\n\n"
+                debug_info += f"Final node status: {nodes_status}\n\n"
+
+                status_str = ", ".join(
+                    [f"{node}: {'online' if status else 'offline'}" for node, status in nodes_status.items()]
+                )
+                logs_str = debug_info + "\n\n".join(
+                    [f"--- {node} logs ---\n{logs}" for node, logs in debug_logs.items()]
+                )
+
+                raise Exception(
+                    f"Failed to restore database cluster. Node status: {status_str}\nDebug logs:\n{logs_str}"
+                )
+
+            server_id = None
+            try:
+                stdout, _, _ = self.exec_in_container(
+                    command=[
+                        "cypher-shell",
+                        "--format",
+                        "plain",
+                        "-d",
+                        "system",
+                        "-u",
+                        "neo4j",
+                        "-p",
+                        "admin",
+                        'SHOW SERVERS YIELD name, address WHERE address = "database:7687" RETURN name;',
+                    ],
+                    service_name=service_name,
+                )
+
+                lines = stdout.splitlines()
+                for line_raw in lines:
+                    line = line_raw.strip()
+                    if not line or line == "name" or line.startswith("+"):
+                        continue
+                    server_id = line.strip('"')
+                    break
+            except Exception as e:
+                print(f"Error retrieving server ID with direct query: {e}")
+
+            if server_id:
+                self.exec_in_container(
+                    command=[
+                        "cypher-shell",
+                        "-d",
+                        "system",
+                        "-u",
+                        "neo4j",
+                        "-p",
+                        "admin",
+                        f"CREATE DATABASE neo4j TOPOLOGY 3 PRIMARIES OPTIONS {{ existingData: 'use', existingDataSeedInstance: '{server_id}' }};",
+                    ],
+                    service_name=service_name,
+                )
             self.start()
-        except Exception as exc:
-            stdout, stderr = self.get_logs()
-            raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
-        self.services = old_services
+            print("Database restored successfully")
+
+    def task_manager_create_backup(self, backup_name: str = "prefect.dump", dest_dir: Path | None = None) -> Path:
+        """Create a backup of the task manager PostgreSQL database using ``pg_dump``.
+
+        Args:
+            backup_name: Name of the archive file to create. Defaults to ``prefect.dump``.
+            dest_dir: Optional host directory where the backup should be copied after it is
+                produced. When omitted, the backup remains in ``external_backup_dir``.
+
+        Returns:
+            Path to the backup archive on the host filesystem.
+
+        Raises:
+            FileNotFoundError: If the pg_dump command completes but no archive is produced.
+        """
+
+        service_name = "task-manager-db"
+
+        try:
+            self.get_container(service_name=service_name)
+        except ContainerIsNotRunning:
+            self.start_container(service_name=service_name)
+
+        self.external_backup_dir.mkdir(parents=True, exist_ok=True)
+
+        internal_backup_path = self.internal_backup_dir / backup_name
+        dump_command = [
+            "pg_dump",
+            "--format=custom",
+            "--blobs",
+            "--no-owner",
+            "--no-privileges",
+            "--dbname=postgresql://postgres:postgres@localhost:5432/prefect",
+            f"--file={internal_backup_path}",
+        ]
+        self.exec_in_container(command=dump_command, service_name=service_name)
+
+        source_path = self.external_backup_dir / backup_name
+        if not source_path.exists():
+            raise FileNotFoundError(f"Backup file {source_path} was not created")
+
+        final_path = source_path
+        if dest_dir:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            if dest_dir.resolve() != self.external_backup_dir.resolve():
+                final_path = dest_dir / backup_name
+                shutil.copy(source_path, final_path)
+
+        return final_path
+
+    def task_manager_restore_backup(self, backup_file: Path) -> None:
+        """Restore the task manager PostgreSQL database from a ``pg_restore`` archive.
+
+        Args:
+            backup_file: Path to the backup archive on the host filesystem.
+
+        Raises:
+            FileNotFoundError: If the provided backup archive does not exist.
+        """
+
+        if not backup_file.exists():
+            raise FileNotFoundError(f"Backup file {backup_file} does not exist")
+
+        service_name = "task-manager-db"
+
+        try:
+            self.get_container(service_name=service_name)
+        except ContainerIsNotRunning:
+            self.start_container(service_name=service_name)
+
+        self.external_backup_dir.mkdir(parents=True, exist_ok=True)
+        target_path = self.external_backup_dir / backup_file.name
+        shutil.copy(backup_file, target_path)
+
+        admin_dsn = "postgresql://postgres:postgres@localhost:5432/postgres"
+        prefect_dsn = "postgresql://postgres:postgres@localhost:5432/prefect"
+        internal_backup_path = self.internal_backup_dir / backup_file.name
+
+        terminate_sessions_command = [
+            "psql",
+            f"--dbname={admin_dsn}",
+            "--command",
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'prefect';",
+        ]
+        drop_database_command = [
+            "psql",
+            f"--dbname={admin_dsn}",
+            "--command",
+            "DROP DATABASE IF EXISTS prefect WITH (FORCE);",
+        ]
+        create_database_command = [
+            "psql",
+            f"--dbname={admin_dsn}",
+            "--command",
+            "CREATE DATABASE prefect OWNER postgres;",
+        ]
+        restore_command = [
+            "pg_restore",
+            "--no-owner",
+            "--role=postgres",
+            f"--dbname={prefect_dsn}",
+            str(internal_backup_path),
+        ]
+
+        self.exec_in_container(command=terminate_sessions_command, service_name=service_name)
+        self.exec_in_container(command=drop_database_command, service_name=service_name)
+        self.exec_in_container(command=create_database_command, service_name=service_name)
+        self.exec_in_container(command=restore_command, service_name=service_name)

@@ -1,8 +1,9 @@
-import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
-import { Permission } from "@/entities/permission/types";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
+import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
+import type { Permission } from "@/entities/permission/types";
 
 export interface RequireObjectPermissionsProps {
   objectKind: string;

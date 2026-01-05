@@ -49,7 +49,7 @@ export const C_JSON2_OUTPUT = `[
 export const C_JSON3 = {
   employee: {
     name: "sonoo",
-    salary: 56000,
+    salary: 56_000,
     married: true,
   },
 };

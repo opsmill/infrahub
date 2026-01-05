@@ -3,15 +3,17 @@ import importlib
 import logging
 import os
 import sys
+import tempfile
 import time
 from contextlib import ExitStack
-from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
 import ujson
+from fast_depends import Provider
+from fast_depends import dependency_provider as provider
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
@@ -20,6 +22,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub.config import load_and_exit
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
@@ -41,9 +44,11 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
+from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
@@ -65,12 +70,16 @@ from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_p
 ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
+pytest.register_assert_rewrite("tests.db_snapshot")
 
-def pytest_addoption(parser):
+graphql_registry.clear_cache()
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
     if not markexpr:
@@ -92,7 +101,7 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker():
+def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
@@ -105,9 +114,14 @@ def event_loop():
     loop.close()
 
 
+@pytest.fixture
+def dependency_provider() -> Provider:
+    return provider
+
+
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module
+    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module: None
 ) -> AsyncGenerator[InfrahubDatabase, None]:
     if INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.database.address = "localhost"
@@ -145,7 +159,9 @@ async def do_reset_registry(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+async def default_branch(
+    reset_registry: None, local_storage_dir: Path, empty_database: None, db: InfrahubDatabase
+) -> Branch:
     return await do_default_branch(db=db)
 
 
@@ -157,12 +173,36 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
 
 
 @pytest.fixture
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
+def query_limit_of_one() -> Generator[None, None, None]:
+    original_query_size_limit = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 1
+    yield
+    config.SETTINGS.database.query_size_limit = original_query_size_limit
+
+
+@pytest.fixture
+def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
+    original_neo4j_runtime = db.default_neo4j_runtime
+    db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
+    yield
+    db.default_neo4j_runtime = original_neo4j_runtime
+
+
+@pytest.fixture
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
         return ip_namespace
     return None
+
+
+@pytest.fixture
+def default_permission_backend() -> Generator[None, Any, Any]:
+    previous_backends = registry.permission_backends
+    registry.permission_backends = [LocalPermissionBackend()]
+    yield
+    registry.permission_backends = previous_backends
 
 
 @pytest.fixture
@@ -193,7 +233,9 @@ async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
 
 
 @pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+async def register_core_models_schema(
+    default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> SchemaBranch:
     return await do_register_core_models_schema(branch=default_branch)
 
 
@@ -205,7 +247,7 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -219,7 +261,7 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[
 
 
 @pytest.fixture(scope="session")
-def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.broker.driver != config.BrokerDriver.RabbitMQ:
         return None
 
@@ -241,7 +283,9 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
 
 
 @pytest.fixture(scope="module")
-def rabbitmq(rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+def rabbitmq(
+    rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module: None
+) -> dict[int, int] | None:
     if (
         rabbitmq_container
         and INFRAHUB_USE_TEST_CONTAINERS
@@ -257,11 +301,11 @@ def rabbitmq(rabbitmq_container: dict[int, int] | None, reload_settings_before_e
 
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
-def redis_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.4").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:7.2.11").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
@@ -271,7 +315,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
 
 @pytest.fixture(scope="module")
-def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
     if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
@@ -283,7 +327,7 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     return None
 
 
-def wait_for_memgraph_ready(host, port, timeout=15):
+def wait_for_memgraph_ready(host: str, port: int, timeout: int = 15) -> bool:
     # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
     URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
 
@@ -301,7 +345,7 @@ def wait_for_memgraph_ready(host, port, timeout=15):
 
 
 @pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
@@ -327,7 +371,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> di
 
 
 @pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def nats_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
@@ -341,7 +385,7 @@ def nats_container(request: pytest.FixtureRequest, load_settings_before_session)
 
 
 @pytest.fixture(scope="module")
-def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
     if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = nats_container[PORT_NATS]
@@ -356,12 +400,14 @@ def nats(nats_container: dict[int, int] | None, reload_settings_before_each_modu
 
 
 @pytest.fixture(scope="session")
-def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def prefect_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     return start_prefect_server_container(request)
 
 
 @pytest.fixture(scope="module")
-def prefect(prefect_container: dict[int, int] | None, reload_settings_before_each_module) -> Generator[str, None, None]:
+def prefect(
+    prefect_container: dict[int, int] | None, reload_settings_before_each_module: None
+) -> Generator[str, None, None]:
     if prefect_container:
         server_port = prefect_container[PORT_PREFECT]
         server_api_url = f"http://localhost:{server_port}/api"
@@ -380,12 +426,12 @@ def prefect(prefect_container: dict[int, int] | None, reload_settings_before_eac
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_settings_before_session():
+def load_settings_before_session() -> None:
     load_and_exit()
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(tmpdir_factory):
+def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
 
@@ -394,7 +440,7 @@ def reload_settings_before_each_module(tmpdir_factory):
     config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
 
     storage_dir = tmpdir_factory.mktemp("storage")
-    config.SETTINGS.storage.local.path_ = storage_dir
+    config.SETTINGS.storage.local.path_ = Path(storage_dir)
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
@@ -407,7 +453,7 @@ def reload_settings_before_each_module(tmpdir_factory):
 
 
 @pytest.fixture
-def enable_broker_config():
+def enable_broker_config() -> Generator[None, None, None]:
     # This is required for situations where we need the broker to be enabled.
     # We should really remove this setting as it doesn't make any sense to have
     # outside of the test environment
@@ -439,7 +485,7 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
 
 
 @pytest.fixture
-async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -476,7 +522,9 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
 
 
 @pytest.fixture
-async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def car_person_schema_unregistered(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> SchemaRoot:
     schema: dict[str, Any] = {
         "nodes": [
             {
@@ -546,7 +594,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture
-async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> SchemaRoot:
     """
     Person schema with no unicity constraint set except default filter.
     """
@@ -572,7 +620,7 @@ async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, 
 
 @pytest.fixture
 async def car_person_schema(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
@@ -629,13 +677,13 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
 
 @pytest.fixture
 async def car_person_schema_branch_local(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_branch_local_root, branch=default_branch.name)
 
 
 @pytest.fixture
-async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -725,17 +773,8 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
 
 
 @pytest.fixture
-async def animal_person_schema_person_no_default_filter(
-    db: InfrahubDatabase, default_branch, node_group_schema, data_schema, animal_person_schema_unregistered
-) -> SchemaBranch:
-    schema_dict = deepcopy(animal_person_schema_unregistered)
-    del schema_dict["nodes"][2]["default_filter"]
-    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
-
-
-@pytest.fixture
 async def person_schema_unique_attr_non_hfid_unregistered(
-    db: InfrahubDatabase, node_group_schema, data_schema
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
 ) -> SchemaRoot:
     schema: dict[str, Any] = {
         "nodes": [
@@ -795,7 +834,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
 
 @pytest.fixture
 async def person_schema_unique_attr_non_hfid(
-    db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered
+    db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(
         schema=person_schema_unique_attr_non_hfid_unregistered, branch=default_branch.name
@@ -804,14 +843,16 @@ async def person_schema_unique_attr_non_hfid(
 
 @pytest.fixture
 async def animal_person_schema(
-    db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered: dict
 ) -> SchemaBranch:
     schema_root = SchemaRoot(**animal_person_schema_unregistered)
     return registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
 
 
 @pytest.fixture
-async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def dependent_generics_unregistered(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> SchemaRoot:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -906,13 +947,13 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
 
 @pytest.fixture
 async def dependent_generics_schema(
-    db: InfrahubDatabase, default_branch: Branch, dependent_generics_unregistered
+    db: InfrahubDatabase, default_branch: Branch, dependent_generics_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=dependent_generics_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
-async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -961,7 +1002,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 
 
 @pytest.fixture
-async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
@@ -1022,7 +1063,7 @@ class BusRPCMock(InfrahubMessageBus):
     ) -> None:
         self.messages.append(message)
 
-    def add_mock_reply(self, response: InfrahubResponse):
+    def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
@@ -1168,7 +1209,7 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
         "nodes": [
@@ -1215,8 +1256,423 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture(params=["main", "branch2"])
-async def branch(request, db: InfrahubDatabase, default_branch: Branch):
+async def branch(request: pytest.FixtureRequest, db: InfrahubDatabase, default_branch: Branch) -> Branch:
     if request.param == "main":
         return default_branch
 
     return await create_branch(branch_name=str(request.param), db=db)
+
+
+@pytest.fixture
+async def schemas_conversion(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testconv",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "favorite_color", "kind": "Text", "optional": True, "default_value": "blue"},
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_car",
+                        "peer": "TestconvCar",
+                        "cardinality": "one",
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "fastest_cars",
+                        "peer": "TestconvCar",
+                        "cardinality": "many",
+                        "identifier": "person__fastest_cars",
+                    },
+                    {
+                        "name": "bags",
+                        "peer": "TestconvBag",
+                        "cardinality": "many",
+                        "identifier": "person__bag",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testconv",
+                "inherit_from": ["TestconvPersonGeneric"],
+                "relationships": [],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testconv",
+                "inherit_from": ["TestconvPersonGeneric"],
+                "attributes": [
+                    {"name": "age", "kind": "Number"},
+                    {"name": "citizenship", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "worst_car",
+                        "peer": "TestconvCar",
+                        "cardinality": "one",
+                        "identifier": "person__worst_car",
+                    },
+                    {
+                        "name": "slowest_cars",
+                        "peer": "TestconvCar",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "person__slowest_cars",
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testconv",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestconvPersonGeneric",
+                        "cardinality": "one",
+                        "identifier": "person__fastest_cars",
+                        "optional": True,
+                    },
+                ],
+            },
+            {
+                "name": "Bag",
+                "namespace": "Testconv",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestconvPersonGeneric",
+                        "cardinality": "one",
+                        "identifier": "person__bag",
+                        "optional": False,
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testmo",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "my_car",
+                        "peer": "TestmoCar",
+                        "cardinality": "one",
+                        "identifier": "person__mandatory_owner",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testmo",
+                "inherit_from": ["TestmoPersonGeneric"],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testmo",
+                "inherit_from": ["TestmoPersonGeneric"],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testmo",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "mandatory_owner",
+                        "peer": "TestmoPersonGeneric",
+                        "cardinality": "one",
+                        "optional": False,
+                        "identifier": "person__mandatory_owner",
+                    }
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testbs",
+                "human_friendly_id": ["name_agnostic__value"],
+                "attributes": [
+                    {
+                        "name": "name_agnostic",
+                        "kind": "Text",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testbs",
+                "inherit_from": ["TestbsPersonGeneric"],
+                "attributes": [
+                    {
+                        "name": "age_1_agnostic",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                    {
+                        "name": "height_1_aware",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testbs",
+                "inherit_from": ["TestbsPersonGeneric"],
+                "attributes": [
+                    {"name": "age_2_aware", "kind": "Number", "unique": True, "branch": BranchSupportType.AWARE.value},
+                    {
+                        "name": "height_2_agnostic",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testbs",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_agnostic_node_with_aware_attributes(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testaa",
+                "human_friendly_id": ["name_agnostic__value"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "attributes": [
+                    {
+                        "name": "name_agnostic",
+                        "kind": "Text",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                    {
+                        "name": "age_aware",
+                        "kind": "Number",
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_car",
+                        "peer": "TestaaCar",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "other_cars",
+                        "peer": "TestaaCar",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "person__other_cars",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testaa",
+                "inherit_from": ["TestaaPersonGeneric"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testaa",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "inherit_from": ["TestaaPersonGeneric"],
+                "attributes": [
+                    {
+                        "name": "height_aware",
+                        "kind": "Number",
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testaa",
+                "human_friendly_id": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_person",
+                        "peer": "TestaaPersonGeneric",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "owner",
+                        "peer": "TestaaPersonGeneric",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__other_cars",
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_unidirectional_relationships(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testud",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {
+                        "name": "name",
+                        "kind": "Text",
+                        "unique": True,
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testud",
+                "inherit_from": ["TestudPersonGeneric"],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testud",
+                "inherit_from": ["TestudPersonGeneric"],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testud",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "unidirectional_owner",
+                        "peer": "TestudPersonGeneric",
+                        "cardinality": "one",
+                        "optional": False,
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture(scope="class")
+def git_global_config_env_setting() -> Generator[Any, None, None]:
+    previous_git_config_global = os.getenv("GIT_CONFIG_GLOBAL")
+    previous_git_global_config_file = config.SETTINGS.git.global_config_file
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+        tmp_git_config = tmpfile.name
+
+    os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
+    assert os.getenv("GIT_CONFIG_GLOBAL") is not None
+    assert os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
+    config.SETTINGS.git.global_config_file = tmp_git_config
+
+    yield tmp_git_config
+
+    if previous_git_config_global:
+        os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
+        assert os.getenv("GIT_CONFIG_GLOBAL")
+        assert os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
+    else:
+        os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        assert os.getenv("GIT_CONFIG_GLOBAL") is None
+
+    config.SETTINGS.git.global_config_file = previous_git_global_config_file
+    Path(tmp_git_config).unlink()
+
+
+@pytest.fixture
+def git_user_config() -> Generator[None, None, None]:
+    initial_user_name = config.SETTINGS.git.user_name
+    initial_user_email = config.SETTINGS.git.user_email
+    config.SETTINGS.git.user_email = "test@email.com"
+    config.SETTINGS.git.user_name = "Test User"
+    yield
+    config.SETTINGS.git.user_email = initial_user_email
+    config.SETTINGS.git.user_name = initial_user_name

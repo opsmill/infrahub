@@ -1,8 +1,7 @@
-import { ACCOUNT_PERMISSION_OBJECT } from "@/config/constants";
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import { NodeCore } from "@/entities/nodes/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { Icon } from "@iconify-icon/react";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React, { forwardRef } from "react";
+
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
@@ -16,10 +15,13 @@ import {
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
+import { ACCOUNT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { classNames, debounce } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { forwardRef } from "react";
+
+import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import type { NodeCore } from "@/entities/nodes/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type PermissionNode = NodeCore & { identifier: { value: string } };
 
@@ -49,15 +51,15 @@ export function PermissionCombobox({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
             "cursor-pointer",
             className
           )}
         >
-          <div className="grow flex flex-wrap gap-2">
+          <div className="flex grow flex-wrap gap-2">
             {value?.map((node) => (
               <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
-                {node.identifier.value}
+                {node.identifier?.value}
 
                 <Button
                   size="icon"
@@ -66,7 +68,7 @@ export function PermissionCombobox({
                     e.stopPropagation();
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                  className="h-4 w-4 text-gray-500 hover:text-gray-800"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >
@@ -78,7 +80,7 @@ export function PermissionCombobox({
 
           <button
             type="button"
-            className="text-gray-600 outline-hidden w-3.5 h-3.5"
+            className="h-3.5 w-3.5 text-gray-600 outline-hidden"
             onClick={() => setOpen(!open)}
             {...props}
           >
@@ -120,7 +122,7 @@ export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipCom
         shouldFilter={false}
       >
         {isPending ? (
-          <Spinner className="flex justify-center m-2" />
+          <Spinner className="m-2 flex justify-center" />
         ) : (
           <>
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>

@@ -8,6 +8,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.schema import load_schema
 from tests.integration.schema_lifecycle.shared import TestSchemaLifecycleBase
 
@@ -51,6 +52,11 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
         await second_device.new(db=db, name="Test Device 02", role="Provider Edge")
         await second_device.save(db=db)
 
+        deleted_device = await Node.init(schema=DEVICE_KIND, db=db)
+        await deleted_device.new(db=db, name="Test Device Deleted", role="Provider Edge")
+        await deleted_device.save(db=db)
+        await deleted_device.delete(db=db)
+
         objs = {"first_device": first_device.id, "second_device": second_device.id}
 
         return objs
@@ -82,3 +88,7 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
     async def test_step04_get_devices_via_graphql(self, client: InfrahubClient) -> None:
         devices = await client.all(kind=DEVICE_KIND)
         assert len(devices) == 2
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

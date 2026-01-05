@@ -2,22 +2,21 @@ import pytest
 
 from infrahub.core.migrations.graph.m003_relationship_parent_optional import Migration003, Migration003Query01
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
-async def migration_003_data(db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db):
-    #     # load the internal schema from
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = SchemaBranch(cache={}, name="default_branch")
-    schema_branch.load_schema(schema=schema)
-    schema_branch.process()
-
-    node_schema = schema_branch.get(name="SchemaNode")
-    rel_schema = schema_branch.get(name="SchemaRelationship")
+async def migration_003_data(
+    db: InfrahubDatabase,
+    reset_registry,
+    default_branch,
+    delete_all_nodes_in_db,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    node_schema = register_core_models_schema.get(name="SchemaNode")
+    rel_schema = register_core_models_schema.get(name="SchemaRelationship")
 
     node1 = await Node.init(db=db, schema=node_schema)
     await node1.new(db=db, name="Node", namespace="Test")
@@ -34,7 +33,7 @@ async def migration_003_data(db: InfrahubDatabase, reset_registry, default_branc
 
 async def test_migration_003_query1(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
     query = await Migration003Query01.init(db=db)
     await query.execute(db=db)
@@ -50,7 +49,7 @@ async def test_migration_003_query1(
 
 async def test_migration_003(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
     migration = Migration003()

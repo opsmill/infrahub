@@ -1,11 +1,10 @@
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { branchesState } from "@/entities/branches/stores";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -16,33 +15,33 @@ import { Card } from "@/shared/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
+  ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import {
-  Form,
-  FormField,
-  FormInput,
-  FormLabel,
-  FormMessage,
-  FormSubmit,
-} from "@/shared/components/ui/form";
+import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useNavigate } from "react-router";
-import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
+
+import { branchesState } from "@/entities/branches/stores";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+import { DRAFT_STATE, OPEN_STATE } from "../constants";
+import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
-  const { user } = useAuth();
-  const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
+  const [sourceBranch] = useQueryState(QSP.SOURCE_BRANCH);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const navigate = useNavigate();
+  const [state, setState] = useState(OPEN_STATE);
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
@@ -60,10 +59,8 @@ export const ProposedChangeCreateForm = () => {
             destination_branch,
             name,
             description,
+            isDraft: state === DRAFT_STATE,
             reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
-            created_by: {
-              id: user?.id,
-            },
           },
         });
 
@@ -75,7 +72,7 @@ export const ProposedChangeCreateForm = () => {
         navigate(url);
       }}
     >
-      <Card className="flex flex-wrap md:flex-nowrap items-start gap-4 justify-center w-full shadow-xs border-gray-300">
+      <Card className="flex w-full flex-wrap items-start justify-center gap-4 border-gray-300 shadow-xs md:flex-nowrap">
         <FormField
           name="source_branch"
           defaultValue={sourceBranch}
@@ -92,7 +89,7 @@ export const ProposedChangeCreateForm = () => {
             const fieldData: string | null = field.value;
 
             return (
-              <div className="w-full relative mb-2 flex flex-col">
+              <div className="relative mb-2 flex w-full flex-col">
                 <FormLabel>Source Branch *</FormLabel>
                 <Combobox>
                   <FormInput>
@@ -101,6 +98,8 @@ export const ProposedChangeCreateForm = () => {
 
                   <ComboboxContent>
                     <ComboboxList>
+                      <ComboboxEmpty>No branch found</ComboboxEmpty>
+
                       {branchesToSelectOptions(sourceBranches).map(({ name }) => (
                         <ComboboxItem
                           key={name}
@@ -122,7 +121,7 @@ export const ProposedChangeCreateForm = () => {
 
         <Icon
           icon="mdi:arrow-bottom"
-          className="text-xl md:mt-8 shrink-0 md:-rotate-90 text-gray-500"
+          className="md:-rotate-90 shrink-0 text-gray-500 text-xl md:mt-8"
         />
 
         <FormField
@@ -130,7 +129,7 @@ export const ProposedChangeCreateForm = () => {
           defaultValue={defaultBranch?.name}
           rules={{ required: "Required" }}
           render={({ field }) => (
-            <div className="w-full relative mb-2 flex flex-col">
+            <div className="relative mb-2 flex w-full flex-col">
               <FormLabel>Destination Branch *</FormLabel>
               <Combobox>
                 <FormInput>
@@ -190,16 +189,16 @@ export const ProposedChangeCreateForm = () => {
         )}
       />
 
-      <div className="text-right">
-        <LinkButton variant="outline" to={constructPath("/proposed-changes")} className="mr-2">
+      <div className="flex w-full items-center justify-end gap-2">
+        <LinkButton variant="outline" to={constructPath("/proposed-changes")}>
           Cancel
         </LinkButton>
 
-        <FormSubmit>Create proposed change</FormSubmit>
+        <PcStateButton state={state} setState={setState} />
       </div>
 
       {error && (
-        <div className="bg-red-100 p-4 text-red-800 rounded-md text-sm">{error.message}</div>
+        <div className="rounded-md bg-red-100 p-4 text-red-800 text-sm">{error.message}</div>
       )}
     </Form>
   );

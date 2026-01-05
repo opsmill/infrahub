@@ -1,9 +1,6 @@
-import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/config/constants";
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { PermissionData } from "@/entities/permission/types";
-import { getPermission } from "@/entities/permission/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { gql } from "@apollo/client";
+import { useId, useState } from "react";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
@@ -16,8 +13,13 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
-import { gql } from "@apollo/client";
-import { useId, useState } from "react";
+import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
+
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import type { PermissionData } from "@/entities/permission/types";
+import { getPermission } from "@/entities/permission/utils";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type GenericSelectorProps = {
   currentKind: string;
@@ -73,7 +75,7 @@ export const GenericSelector = ({
     .filter((item) => !!item);
 
   return (
-    <div className="p-4 bg-gray-200">
+    <div className="bg-gray-200 p-4">
       <Label htmlFor={id}>Select an object type</Label>
       <Combobox open={open} onOpenChange={setOpen}>
         <ComboboxTrigger id={id}>
@@ -113,7 +115,7 @@ export const GenericSelector = ({
 
 const SchemaItem = ({ label, badge }: { label: string; badge: string }) => {
   return (
-    <div className="flex justify-between w-full">
+    <div className="flex w-full justify-between">
       <span>{label}</span> <Badge>{badge}</Badge>
     </div>
   );

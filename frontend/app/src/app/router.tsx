@@ -1,32 +1,23 @@
-import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { RequireAuth } from "@/entities/authentication/ui/useAuth";
-import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
-import { constructPathForIpam } from "@/entities/ipam/common/utils";
-import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
-import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
-import queryString from "query-string";
-import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
-import { QueryParamProvider } from "use-query-params";
+
+import { ReactAriaRouterProvider } from "@/app/providers/react-aria-router-provider";
+
+import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
+
+import { RequireAuth } from "@/entities/authentication/ui/require-auth";
+import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
+import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
 export const router = createBrowserRouter([
   {
     path: "",
     errorElement: <ErrorBoundaryRouter />,
     element: (
-      <QueryParamProvider
-        adapter={ReactRouter7Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}
-      >
+      <ReactAriaRouterProvider>
         <ToastContainer
-          hideProgressBar={true}
+          hideProgressBar
           transition={Slide}
           autoClose={5000}
           closeOnClick={false}
@@ -34,7 +25,7 @@ export const router = createBrowserRouter([
           position="bottom-right"
         />
         <Outlet />
-      </QueryParamProvider>
+      </ReactAriaRouterProvider>
     ),
     children: [
       {
@@ -51,7 +42,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/",
-            lazy: () => import("@/shared/components/layout/app-layout"),
+            lazy: () => import("@/pages/app-layout"),
             children: [
               {
                 index: true,
@@ -59,15 +50,6 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/branches",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Branches",
-                      to: constructPath("/branches"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -76,28 +58,11 @@ export const router = createBrowserRouter([
                   {
                     path: "*",
                     lazy: () => import("@/pages/branches/details"),
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "branch",
-                          value: match.params["*"],
-                        };
-                      },
-                    },
                   },
                 ],
               },
               {
                 path: "/activities",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Activities",
-                      to: constructPath("/activities"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -106,77 +71,41 @@ export const router = createBrowserRouter([
                   {
                     path: ":activityId",
                     lazy: () => import("@/pages/activities/details"),
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "id",
-                          value: match.params.activityId,
-                          link: "/activities",
-                        };
-                      },
-                    },
-                  },
-                ],
-              },
-              {
-                path: `/objects/${ARTIFACT_OBJECT}/:artifactId`,
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "select",
-                      value: ARTIFACT_OBJECT,
-                      kind: "schema",
-                    };
-                  },
-                },
-                children: [
-                  {
-                    index: true,
-                    lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "select",
-                          value: match.params.artifactId,
-                          kind: ARTIFACT_OBJECT,
-                        };
-                      },
-                    },
                   },
                 ],
               },
               {
                 path: "/objects",
-                lazy: () => import("@/pages/objects/layout"),
                 children: [
                   {
-                    path: ":objectKind",
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "select",
-                          value: match.params.objectKind,
-                          kind: "schema",
-                        };
+                    path: `${ARTIFACT_OBJECT}/:artifactId`,
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
                       },
-                    },
+                    ],
+                  },
+                  {
+                    path: ":objectKind",
+                    lazy: () => import("@/pages/objects/layout"),
                     children: [
                       {
                         index: true,
                         lazy: () => import("@/pages/objects/object-items"),
                       },
                       {
-                        path: ":objectid",
-                        lazy: () => import("@/pages/objects/object-details"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.objectid,
-                              kind: match.params.objectKind,
-                            };
+                        path: ":objectId",
+                        children: [
+                          {
+                            index: true,
+                            lazy: () => import("@/pages/objects/object-details-page"),
                           },
-                        },
+                          {
+                            path: "convert",
+                            lazy: () => import("@/pages/objects/object-convert"),
+                          },
+                        ],
                       },
                     ],
                   },
@@ -185,27 +114,9 @@ export const router = createBrowserRouter([
               {
                 path: "/profile",
                 lazy: () => import("@/pages/profile"),
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Account settings",
-                      to: constructPath("/profile"),
-                    };
-                  },
-                },
               },
               {
                 path: "/proposed-changes",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Proposed changes",
-                      to: constructPath("/proposed-changes"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -214,42 +125,15 @@ export const router = createBrowserRouter([
                   {
                     path: "new",
                     lazy: () => import("@/pages/proposed-changes/new"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "new",
-                          to: constructPath("/proposed-changes/new"),
-                        };
-                      },
-                    },
                   },
                   {
                     path: ":proposedChangeId",
                     lazy: () => import("@/pages/proposed-changes/details"),
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "select",
-                          value: match.params.proposedChangeId,
-                          kind: PROPOSED_CHANGES_OBJECT,
-                        };
-                      },
-                    },
                   },
                 ],
               },
               {
                 path: "/tasks",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Tasks",
-                      to: constructPath("/tasks"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -263,15 +147,6 @@ export const router = createBrowserRouter([
               },
               {
                 path: "graphql",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "GraphQL Sandbox",
-                      to: constructPath("/graphql"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -285,15 +160,6 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/resource-manager",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Resource manager",
-                      to: constructPath("/resource-manager"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -302,28 +168,10 @@ export const router = createBrowserRouter([
                   {
                     path: ":resourcePoolId",
                     lazy: () => import("@/pages/resource-manager/resource-pool-details"),
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "select",
-                          value: match.params.resourcePoolId,
-                          kind: RESOURCE_GENERIC_KIND,
-                        };
-                      },
-                    },
                     children: [
                       {
                         path: "resources/:resourceId",
                         lazy: () => import("@/pages/resource-manager/resource-allocation-details"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.resourceId,
-                              kind: NODE_OBJECT,
-                            };
-                          },
-                        },
                       },
                     ],
                   },
@@ -332,99 +180,24 @@ export const router = createBrowserRouter([
               {
                 path: "/schema",
                 lazy: () => import("@/pages/schema"),
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Schema",
-                      to: constructPath("/schema"),
-                    };
-                  },
-                },
               },
               {
-                path: IPAM_ROUTE.INDEX,
-                lazy: () => import("@/pages/ipam/layout"),
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "IP Address Manager",
-                      to: constructPathForIpam("/ipam"),
-                    };
-                  },
-                },
+                path: "ipam",
                 children: [
                   {
-                    index: true,
-                    lazy: () => import("@/entities/ipam/ipam-router"),
-                  },
-                  {
-                    path: IPAM_ROUTE.ADDRESSES,
-                    lazy: () => import("@/entities/ipam/ipam-router"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "IP Addresses",
-                          to: constructPathForIpam("/ipam/addresses"),
-                        };
-                      },
-                    },
+                    path: "namespaces",
                     children: [
                       {
-                        path: ":ip_address",
-                        lazy: () => import("@/entities/ipam/ipam-router"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.ip_address,
-                              kind: IP_ADDRESS_GENERIC,
-                            };
-                          },
-                        },
+                        index: true,
+                        lazy: () => import("@/pages/ipam/ipam-namespace-list-page"),
                       },
-                    ],
-                  },
-                  {
-                    path: IPAM_ROUTE.PREFIXES,
-                    lazy: () => import("@/entities/ipam/ipam-router"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "IP Prefixes",
-                          to: constructPathForIpam("/ipam/prefixes"),
-                        };
-                      },
-                    },
-                    children: [
                       {
-                        path: ":prefix",
-                        lazy: () => import("@/entities/ipam/ipam-router"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.prefix,
-                              kind: IP_PREFIX_GENERIC,
-                            };
-                          },
-                        },
+                        path: ":objectKind",
+                        lazy: () => import("@/pages/objects/layout"),
                         children: [
                           {
-                            path: ":ip_address",
-                            lazy: () => import("@/entities/ipam/ipam-router"),
-                            handle: {
-                              breadcrumb: (match: UIMatch) => {
-                                return {
-                                  type: "select",
-                                  value: match.params.ip_address,
-                                  kind: IP_ADDRESS_GENERIC,
-                                };
-                              },
-                            },
+                            path: ":objectId",
+                            lazy: () => import("@/pages/objects/object-details-page"),
                           },
                         ],
                       },
@@ -433,82 +206,64 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: "ipam",
+                lazy: () => import("@/pages/ipam/ipam-layout"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-list-page"),
+                  },
+                  {
+                    path: "ip_prefixes",
+                    lazy: () => import("@/pages/ipam/ipam-ip-prefixes-list-page"),
+                  },
+                  {
+                    path: "ip_addresses",
+                    lazy: () => import("@/pages/ipam/ipam-ip-addresses-list-page"),
+                  },
+                  {
+                    path: ":objectKind/:objectId",
+                    lazy: () => import("@/pages/ipam/ipam-details-layout"),
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/ipam/ipam-details-index-page"),
+                      },
+                      {
+                        path: ":relationshipName",
+                        lazy: () => import("@/pages/ipam/ipam-details-relationship-page"),
+                      },
+                      {
+                        path: "details",
+                        lazy: () => import("@/pages/ipam/ipam-details-page"),
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
                 path: "role-management",
                 lazy: () => import("@/pages/role-management"),
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Users & Permissions",
-                      to: constructPath("/role-management"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
                     lazy: () => import("@/entities/role-manager/ui/accounts"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "Accounts",
-                          to: constructPath("/role-management/accounts"),
-                        };
-                      },
-                    },
                   },
                   {
                     path: "groups",
                     lazy: () => import("@/entities/role-manager/ui/groups"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "Groups",
-                          to: constructPath("/role-management/groups"),
-                        };
-                      },
-                    },
                   },
                   {
                     path: "roles",
                     lazy: () => import("@/entities/role-manager/ui/roles"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "Roles",
-                          to: constructPath("/role-management/roles"),
-                        };
-                      },
-                    },
                   },
                   {
                     path: "global-permissions",
                     lazy: () => import("@/entities/role-manager/ui/global-permissions"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "Global Permissions",
-                          to: constructPath("/role-management/global-permissions"),
-                        };
-                      },
-                    },
                   },
                   {
                     path: "object-permissions",
                     lazy: () => import("@/entities/role-manager/ui/object-permissions"),
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "Object Permissions",
-                          to: constructPath("/role-management/object-permissions"),
-                        };
-                      },
-                    },
                   },
                 ],
               },

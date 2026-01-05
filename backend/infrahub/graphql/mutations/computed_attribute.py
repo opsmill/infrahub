@@ -2,20 +2,28 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreTransformPython
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.node_action import NodeUpdatedEvent
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ProcessingError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workers.dependencies import get_workflow
+from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+    TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+)
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -89,7 +97,7 @@ class UpdateComputedAttribute(Mutation):
             raise NodeNotFoundError(
                 node_type="target_node",
                 identifier=str(data.id),
-                message="The indicated not does not have the specified attribute_name",
+                message="The indicated node does not have the specified attribute_name",
             )
         if attribute_field.value != str(data.value):
             attribute_field.value = str(data.value)
@@ -102,7 +110,7 @@ class UpdateComputedAttribute(Mutation):
             event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                changelog=target_node.node_changelog.model_dump(),
+                changelog=target_node.node_changelog,
                 fields=[str(data.attribute)],
                 meta=EventMeta(
                     context=graphql_context.get_context(),
@@ -116,4 +124,103 @@ class UpdateComputedAttribute(Mutation):
 
         result: dict[str, Any] = {"ok": True}
 
+        return cls(**result)
+
+
+class InfrahubComputedAttributeRecomputeInput(InputObjectType):
+    kind = String(required=True, description="Kind of the node to update")
+    attribute = String(required=True, description="Name of the computed attribute that must be recomputed")
+    node_ids = List(NonNull(String), description="ID of the nodes for which the attribute must be recomputed")
+
+
+class RecomputeComputedAttribute(Mutation):
+    class Arguments:
+        data = InfrahubComputedAttributeRecomputeInput(required=True)
+        context = ContextInput(required=False)
+
+    ok = Boolean()
+
+    @classmethod
+    @retry_db_transaction(name="update_computed_attribute")
+    async def mutate(
+        cls,
+        _: dict,
+        info: GraphQLResolveInfo,
+        data: InfrahubComputedAttributeRecomputeInput,
+        context: ContextInput | None = None,
+    ) -> RecomputeComputedAttribute:
+        graphql_context: GraphqlContext = info.context
+        node_schema = registry.schema.get_node_schema(
+            name=str(data.kind), branch=graphql_context.branch.name, duplicate=False
+        )
+
+        graphql_context.active_permissions.raise_for_permission(
+            permission=ObjectPermission(
+                namespace=node_schema.namespace,
+                name=node_schema.name,
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value
+                if graphql_context.branch.name == registry.default_branch
+                else PermissionDecision.ALLOW_OTHER.value,
+            )
+        )
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        attribute = node_schema.get_attribute(name=str(data.attribute))
+
+        if not attribute:
+            raise ProcessingError(
+                message=f"The indicated node does not have the specified attribute '{data.attribute}'"
+            )
+        if not attribute.computed_attribute:
+            raise ProcessingError(
+                message=f"The indicated node does not use a computed attribute for the specified attribute '{data.attribute}'"
+            )
+
+        recalculate_single_workflow = COMPUTED_ATTRIBUTE_PROCESS_JINJA2
+        recalculate_all_workflow = TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES
+        if attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
+            if not await NodeManager.query(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                schema=CoreTransformPython,
+                filters={"name__value": attribute.computed_attribute.transform},
+            ):
+                raise ProcessingError(
+                    message=f"The transform for the indicated node computed attribute for the specified attribute '{data.attribute}' does not exist"
+                )
+
+            recalculate_single_workflow = COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
+            recalculate_all_workflow = TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
+
+        if data.node_ids:
+            nodes = await NodeManager.get_many(
+                db=graphql_context.db, branch=graphql_context.branch, ids=list(data.node_ids)
+            )
+            for node in nodes.values():
+                await get_workflow().submit_workflow(
+                    workflow=recalculate_single_workflow,
+                    context=graphql_context.get_context(),
+                    parameters={
+                        "branch_name": graphql_context.branch.name,
+                        "computed_attribute_name": str(data.attribute),
+                        "computed_attribute_kind": node_schema.kind,
+                        "node_kind": node_schema.kind,
+                        "object_id": node.id,
+                        "context": context,
+                    },
+                )
+        else:
+            await get_workflow().submit_workflow(
+                workflow=recalculate_all_workflow,
+                context=graphql_context.get_context(),
+                parameters={
+                    "branch_name": graphql_context.branch.name,
+                    "computed_attribute_name": str(data.attribute),
+                    "computed_attribute_kind": node_schema.kind,
+                    "context": context,
+                },
+            )
+
+        result: dict[str, Any] = {"ok": True}
         return cls(**result)

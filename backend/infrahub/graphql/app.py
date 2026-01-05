@@ -23,7 +23,6 @@ from graphql import (
     ExecutionResult,
     GraphQLError,
     GraphQLFormattedError,
-    Middleware,
     OperationType,
     graphql,
     parse,
@@ -59,6 +58,7 @@ from .metrics import (
     GRAPHQL_RESPONSE_SIZE_METRICS,
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
+from .middleware import raise_on_mutation_on_branch_needing_rebase
 
 if TYPE_CHECKING:
     import graphene
@@ -88,6 +88,8 @@ GQL_STOP = "stop"
 ContextValue = Any | Callable[[HTTPConnection], Any]
 RootValue = Any
 
+subscription_tasks = set()
+
 
 class InfrahubGraphQLApp:
     def __init__(
@@ -97,7 +99,6 @@ class InfrahubGraphQLApp:
         *,
         on_get: Callable[[Request], Response | Awaitable[Response]] | None = None,
         root_value: RootValue = None,
-        middleware: Middleware | None = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         execution_context_class: type[ExecutionContext] | None = None,
     ) -> None:
@@ -105,7 +106,6 @@ class InfrahubGraphQLApp:
         self.on_get = on_get
         self.root_value = root_value
         self.error_formatter = error_formatter
-        self.middleware = middleware
         self.execution_context_class = execution_context_class
         self.logger = get_logger(name="infrahub.graphql")
         self.permission_checker = permission_checker
@@ -155,7 +155,7 @@ class InfrahubGraphQLApp:
 
             db = websocket.app.state.db
 
-            async with db.start_session() as db:
+            async with db.start_session(read_only=True) as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
                 branch = await registry.get_branch(db=db, branch=branch_name)
 
@@ -172,9 +172,9 @@ class InfrahubGraphQLApp:
 
         response = handler(request)
         if isawaitable(response):
-            return await cast(Awaitable[Response], response)
+            return await response
 
-        return cast(Response, response)
+        return response
 
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
@@ -229,6 +229,7 @@ class InfrahubGraphQLApp:
                 operation_name=operation_name,
                 branch=branch,
             )
+        impacted_models = analyzed_query.query_report.impacted_models
 
         await self._evaluate_permissions(
             db=db,
@@ -256,7 +257,7 @@ class InfrahubGraphQLApp:
                     source=query,
                     context_value=graphql_params.context,
                     root_value=self.root_value,
-                    middleware=self.middleware,
+                    middleware=[raise_on_mutation_on_branch_needing_rebase],
                     variable_values=variable_values,
                     operation_name=operation_name,
                     execution_context_class=self.execution_context_class,
@@ -280,7 +281,7 @@ class InfrahubGraphQLApp:
         GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
-        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(impacted_models))
 
         _, errors = analyzed_query.is_valid
         if errors:
@@ -349,8 +350,8 @@ class InfrahubGraphQLApp:
         websocket: WebSocket,
         subscriptions: dict[str, AsyncGenerator[Any, None]],
     ) -> None:
-        operation_id = cast(str, message.get("id"))
-        message_type = cast(str, message.get("type"))
+        operation_id = cast("str", message.get("id"))
+        message_type = cast("str", message.get("type"))
 
         if message_type == GQL_CONNECTION_INIT:
             websocket.scope["connection_params"] = message.get("payload")
@@ -444,9 +445,11 @@ class InfrahubGraphQLApp:
         if isinstance(result, ExecutionResult) and result.errors:
             return result.errors
 
-        asyncgen = cast(AsyncGenerator[Any, None], result)
+        asyncgen = cast("AsyncGenerator[Any, None]", result)
         subscriptions[operation_id] = asyncgen
-        asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
+        task = asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
+        subscription_tasks.add(task)
+        task.add_done_callback(subscription_tasks.discard)
         return []
 
     async def _observe_subscription(
@@ -476,7 +479,7 @@ async def _get_operation_from_request(request: Request) -> dict[str, Any] | list
     content_type = request.headers.get("Content-Type", "").split(";")[0]
     if content_type == "application/json":
         try:
-            return cast(dict[str, Any] | list[Any], await request.json())
+            return cast("dict[str, Any] | list[Any]", await request.json())
         except (TypeError, ValueError) as err:
             raise ValueError("Request body is not a valid JSON") from err
     elif content_type == "multipart/form-data":

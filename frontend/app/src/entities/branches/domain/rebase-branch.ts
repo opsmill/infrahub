@@ -1,6 +1,8 @@
-import { rebaseBranchFromApi } from "@/entities/branches/api/rebase-branch-from-api";
-import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { useMutation } from "@tanstack/react-query";
+
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
+
+import { rebaseBranchFromApi } from "@/entities/branches/api/rebase-branch-from-api";
 
 export type RebaseBranchParams = {
   branchName: string;

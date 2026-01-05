@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
@@ -49,7 +50,7 @@ test.describe("Account management - CRUD", () => {
       await page.getByRole("textbox", { name: "Name *" }).fill("New Group");
 
       await page.getByRole("combobox", { name: "Type" }).click();
-      await page.getByText("default").click();
+      await page.getByRole("option", { name: "default" }).click();
       await page.getByTestId("side-panel-container").getByText("Roles").click();
       await page.getByTestId("side-panel-container").getByText("Own branches read-write").click();
       await page.getByTestId("side-panel-container").getByText("Members").click();
@@ -62,7 +63,7 @@ test.describe("Account management - CRUD", () => {
     });
 
     await test.step("verify group creation", async () => {
-      await expect(page.getByRole("cell", { name: "New Group" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "New Group" }).first()).toBeVisible();
     });
   });
   // TODO: Update and Delete Tests

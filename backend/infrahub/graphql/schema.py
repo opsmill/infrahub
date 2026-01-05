@@ -15,30 +15,31 @@ from .mutations.branch import (
     BranchUpdate,
     BranchValidate,
 )
-from .mutations.computed_attribute import UpdateComputedAttribute
+from .mutations.computed_attribute import RecomputeComputedAttribute, UpdateComputedAttribute
+from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
+from .mutations.display_label import UpdateDisplayLabel
 from .mutations.generator import GeneratorDefinitionRequestRun
-from .mutations.proposed_change import ProposedChangeMerge, ProposedChangeRequestRunCheck
-from .mutations.relationship import (
-    RelationshipAdd,
-    RelationshipRemove,
+from .mutations.hfid import UpdateHFID
+from .mutations.profile import InfrahubProfilesRefresh
+from .mutations.proposed_change import (
+    ProposedChangeCheckForApprovalRevoke,
+    ProposedChangeMerge,
+    ProposedChangeRequestRunCheck,
+    ProposedChangeReview,
 )
-from .mutations.repository import (
-    ProcessRepository,
-    ValidateRepositoryConnectivity,
-)
+from .mutations.relationship import RelationshipAdd, RelationshipRemove
+from .mutations.repository import ProcessRepository, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
-from .mutations.schema import (
-    SchemaDropdownAdd,
-    SchemaDropdownRemove,
-    SchemaEnumAdd,
-    SchemaEnumRemove,
-)
+from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .queries import (
     AccountPermissions,
     AccountToken,
     BranchQueryList,
+    DeprecatedIPAddressGetNextAvailable,
+    DeprecatedIPPrefixGetNextAvailable,
+    InfrahubBranchQueryList,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -46,8 +47,10 @@ from .queries import (
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
     InfrahubStatus,
+    ProposedChangeAvailableActions,
     Relationship,
 )
+from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
 from .queries.task import Task, TaskBranchStatus
@@ -63,6 +66,7 @@ class InfrahubBaseQuery(ObjectType):
 
     Relationship = Relationship
 
+    InfrahubBranch = InfrahubBranchQueryList
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 
@@ -72,10 +76,16 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubEvent = Event
     InfrahubTaskBranchStatus = TaskBranchStatus
 
-    IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
-    IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
+    CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
+
+    IPAddressGetNextAvailable = DeprecatedIPAddressGetNextAvailable
+    IPPrefixGetNextAvailable = DeprecatedIPPrefixGetNextAvailable
+    InfrahubIPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
+    InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
+
+    FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
 
 class InfrahubBaseMutation(ObjectType):
@@ -84,10 +94,17 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
     CoreProposedChangeMerge = ProposedChangeMerge.Field()
+    CoreProposedChangeReview = ProposedChangeReview.Field()
     CoreGeneratorDefinitionRun = GeneratorDefinitionRequestRun.Field()
 
-    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
-    IPAddressPoolGetResource = IPAddressPoolGetResource.Field()
+    InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
+    InfrahubIPAddressPoolGetResource = IPAddressPoolGetResource.Field()
+    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field(
+        deprecation_reason="This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub."
+    )
+    IPAddressPoolGetResource = IPAddressPoolGetResource.Field(
+        deprecation_reason="This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub."
+    )
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()
@@ -101,6 +118,9 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
+    InfrahubUpdateDisplayLabel = UpdateDisplayLabel.Field()
+    InfrahubUpdateHFID = UpdateHFID.Field()
+    InfrahubRecomputeComputedAttribute = RecomputeComputedAttribute.Field()
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()
@@ -109,3 +129,7 @@ class InfrahubBaseMutation(ObjectType):
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
     ResolveDiffConflict = ResolveDiffConflict.Field()
+
+    ConvertObjectType = ConvertObjectType.Field()
+    CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
+    InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()

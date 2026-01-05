@@ -13,7 +13,7 @@ export function GroupMembers({ members }: GroupMembersProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center relative w-32 h-12">
+      <div className="relative flex h-12 w-32 items-center">
         {trimedMembers.map((member, index) => (
           <Tooltip enabled key={index} content={member}>
             <Avatar

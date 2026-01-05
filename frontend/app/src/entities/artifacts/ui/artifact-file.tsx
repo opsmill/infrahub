@@ -1,17 +1,21 @@
-import { ArtifactContentType } from "@/entities/artifacts/types";
-import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
-import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
+import { type HTMLAttributes, useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
+
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
+import { CsvTable } from "@/shared/components/editor/csv-table";
 import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
-import { HTMLAttributes, useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+
+import type { ArtifactContentType } from "@/entities/artifacts/types";
+import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
+import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
+import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";
 
 const CONTENT_TYPE_CONFIG: Record<
   ArtifactContentType,
@@ -27,13 +31,15 @@ const CONTENT_TYPE_CONFIG: Record<
   "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
   "image/svg+xml": { extension: "svg", language: "svg", label: "SVG" },
   "text/plain": { extension: "txt", language: "text", label: "text" },
-};
+  "application/xml": { extension: "xml", language: "xml", label: "XML" },
+  "text/csv": { extension: "csv", language: "csv", label: "CSV" },
+} as const;
 
 function FileLayout({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={classNames(
-        "bg-neutral-800 rounded-lg text-neutral-200 p-2 gap-2 flex flex-col grow overflow-auto",
+        "flex grow flex-col gap-2 overflow-auto rounded-lg bg-neutral-800 p-2 text-neutral-200",
         className
       )}
       {...props}
@@ -44,21 +50,26 @@ function FileLayout({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 export interface FileHeaderProps extends HTMLAttributes<HTMLDivElement> {
   artifactId: string;
   fileContent: string;
+  fileUrl: string;
   contentType: ArtifactContentType;
 }
 
 function FileHeader({
   artifactId,
   fileContent,
+  fileUrl,
   contentType = "text/plain",
   className,
   ...props
 }: FileHeaderProps) {
-  const config = CONTENT_TYPE_CONFIG[contentType];
+  const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
 
   return (
     <div className={classNames("flex items-center gap-1", className)} {...props}>
-      <span className="grow font-medium px-1">{config.label}</span>
+      <span className="grow px-1 font-medium">{config.label}</span>
+      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+        <ArtifactFileButton className="leading-4">Raw</ArtifactFileButton>
+      </a>
       <ArtifactFileDownload
         contentType={contentType}
         fileName={`${artifactId}.${config.extension}`}
@@ -76,7 +87,7 @@ function FileContent({
   contentType: ArtifactContentType;
   fileContent: string;
 }) {
-  const config = CONTENT_TYPE_CONFIG[contentType];
+  const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
 
   switch (contentType) {
     case "text/markdown": {
@@ -84,14 +95,21 @@ function FileContent({
     }
     case "image/svg+xml": {
       return (
-        <Svg value={fileContent} className="border shadow-sm border-neutral-700 rounded-lg grow" />
+        <Svg value={fileContent} className="grow rounded-lg border border-neutral-700 shadow-sm" />
+      );
+    }
+    case "text/csv": {
+      return (
+        <ScrollArea scrollX scrollBarClassName="bg-transparent">
+          <CsvTable content={fileContent} />
+        </ScrollArea>
       );
     }
     default: {
       return (
         <ScrollArea
           scrollX
-          className="border shadow-sm border-neutral-700 rounded-lg grow"
+          className="grow rounded-lg border border-neutral-700 shadow-sm"
           scrollBarClassName="bg-transparent"
         >
           <CodeViewer language={config.language} customStyle={{ margin: 0 }}>
@@ -143,7 +161,12 @@ export const ArtifactFile = ({ artifactId, url, contentType }: ArtifactFileProps
 
   return (
     <FileLayout>
-      <FileHeader artifactId={artifactId} fileContent={fileContent} contentType={contentType} />
+      <FileHeader
+        artifactId={artifactId}
+        fileUrl={url}
+        fileContent={fileContent}
+        contentType={contentType}
+      />
       <FileContent contentType={contentType} fileContent={fileContent} />
     </FileLayout>
   );

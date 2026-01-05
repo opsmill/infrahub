@@ -24,8 +24,7 @@ class SetMissingHierarchyQuery(Query):
         WITH r.default_branch AS default_branch
         MATCH (n:Node)-[main_e:IS_RELATED {branch: default_branch}]-(rel:Relationship)
         WHERE main_e.hierarchy IS NULL
-        CALL {
-            WITH n, main_e, rel
+        CALL (n, main_e, rel) {
             MATCH (n)-[branch_e:IS_RELATED]-(rel)
             WHERE branch_e.hierarchy IS NOT NULL
             AND branch_e.branch <> main_e.branch

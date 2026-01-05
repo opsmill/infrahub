@@ -68,6 +68,66 @@ Available 'docs' tasks:
   .validate                Validate that the generated documentation is committed to Git.
 ```
 
+## Writing documentation with AI
+
+We are increasingly using AI to assist developers in writing technical documentation. To ensure consistency, we maintain a set of instructions that guide the AI when generating documentation for Infrahub.
+
+You can find these instructions in the `.github/instructions/documentation.instructions.md` file.
+
+:::warning
+
+This process is experimental. We are evaluating available options and will refine the process as we learn more.
+
+:::
+
+### Example use cases and prompts
+
+Below are some examples of how to use AI to write documentation. These are not exhaustive, but should give you a good starting point.
+
+- **Writing new documentation**: `Write a new documentation guide about [feature]. You can find the existing topic in [topic file]. The feature works like this: [description]. Make sure to include examples for [graphql, cli, etc.].`
+- **Updating existing documentation**: `We recently changed [this feature] to include [change]. Identify the documentation that needs to be updated and update it accordingly.`
+- **Assessing documentation quality**: `Review the documentation in [folder], evaluate it against our guidelines, and draft a report prioritizing which pages need updates.`
+
+### General guidelines
+
+- Always use the `.github/instructions/documentation.instructions.md` file as your reference when writing documentation.
+- We have not yet committed to a specific LLM, so you may use the one you prefer.
+- Treat AI-generated documentation as a starting point. Always review and refine the content to ensure it meets our standards and accurately reflects the intended message.
+- Provide clear, specific prompts to the AI. The more context and detail you give, the better the output will be.
+
+### Using an IDE
+
+:::success
+
+Using an agent like GitHub Copilot, Cursor, or windsurf in your IDE improves the documentation writing experience. These tools can access files directly and provide better context.
+
+:::
+
+Example steps using GitHub Copilot in VSCode:
+
+- Open a chat with GitHub Copilot.
+- Add the `.github/instructions/documentation.instructions.md` file to the chat context.
+- Prompt the AI to perform tasks on documentation files.
+- Depending on the task, switch between `Ask`, `Edit`, and `Agent` modes.
+
+### Using a web interface
+
+If you prefer a web interface, more manual work is required.
+
+Example steps using OpenAI's ChatGPT:
+
+- Create a new project dedicated to writing documentation for Infrahub.
+- Copy the instructions from `.github/instructions/documentation.instructions.md` into the project.
+- Copy the content of reference files (`docs/docs/development/docs.mdx`, `.vale/styles/`, `.markdownlint.yaml`) into the project.
+- Prompt the AI to perform documentation tasks.
+- Copy the generated content into the appropriate `.mdx` file in the `docs/docs` folder.
+
+:::warning
+
+Update the instructions and reference files in your project whenever they change in the repository.
+
+:::
+
 ## Linting and automation
 
 Infrahub uses [Vale](https://vale.sh) to check grammar, style, and word usage. You can find Vale's configuration in `.vale.ini`, and the Infrahub styles located in `.vale/styles/Infrahub`.
@@ -177,9 +237,9 @@ Infrahub documentation is synced and ultimately published via the [`infrahub-doc
 
 Please note the following important points:
 
-- Today, spelling (the `.vale` directory) is authoritative in the `infrahub` repository, not the `infrahub-docs` repository. If you need to add a spelling exception in another repository (i.e. `infrahub-demo-dc-fabric`), you have to add the exception to the `infrahub` repository.
+- Today, spelling (the `.vale` directory) is authoritative in the `infrahub` repository, not the `infrahub-docs` repository. If you need to add a spelling exception in another repository (i.e. `infrahub-bundle-dc`), you have to add the exception to the `infrahub` repository.
 - All documentation URLs need to be relative:
-  - Do this: `[some page](../path/to/file)`
+  - Do this: `[some page](../path/to/file.mdx)`
   - Not this: `[some page](/absolute_path/to/file)`
 
 ## Organizing new pages
@@ -193,7 +253,7 @@ Here are questions to ask when deciding where to place a new document:
 - Are you providing background information, explanation, or abstract concepts? Select **Topics**.
 - Are you providing APIs, command references, or concise reference information? Select **Reference**.
 
-If you're unsure where something goes, diátaxis offers a [map](https://diataxis.fr/needs/) and [compass](https://diataxis.fr/compass/) to help.
+If you're unsure where something goes, diátaxis offers a [map](https://diataxis.fr/map/) and [compass](https://diataxis.fr/compass/) to help.
 
 When creating a new page in the documentation, in addition to creating the `.mdx` file containing the documentation itself, you must also add the page to the relevant section of the `sidebars.ts` file.
 
@@ -253,7 +313,7 @@ For a deeper dive into reference docs, refer to the [diátaxis reference page](h
 
 ## Application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](./frontend/testing-guidelines#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](./frontend/testing-guidelines.mdx#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
 
 ### Updating all screenshots manually
 
@@ -290,7 +350,7 @@ The screenshots will be saved in `docs/docs/media`. You can then use them in our
 
 #### 1. Locate on which test the screenshot should be added
 
-If the test does not exist yet, create must create it first. Refer to the [write e2e tests](./frontend/testing-guidelines#writing-e2e-tests) for more information.
+If the test does not exist yet, create must create it first. Refer to the [write e2e tests](./frontend/testing-guidelines.mdx#writing-e2e-tests) for more information.
 
 #### 2. Add the screenshot
 
@@ -327,7 +387,7 @@ We use American English for most standard text. Unique technical terms are [incl
 
 Use a trailing comma when listing multiple items. This is commonly known as the Oxford comma or serial comma.
 
-**:x: Don't do this:** There are devices, organizations and users.
+**:x: Don't do this:** There are devices, organizations, and users.
 
 **:white_check_mark: Do this:** There are devices, organizations, and users.
 
@@ -401,6 +461,14 @@ this is a shell script
 ### Marking code items
 
 Sometimes you need to mention a `function` or `ModelName`. To do so, use the inline code backticks in markdown.
+
+### Excalidraw diagrams
+
+You can attach `.excalidraw` diagrams to visually explain concepts, workflows, or processes within the documentation.
+
+:::warning
+Always save Excalidraw files with the "Embed Scene" option checked to maintain the ability to edit in VS Code.
+:::
 
 ### Use i.e. for examples
 

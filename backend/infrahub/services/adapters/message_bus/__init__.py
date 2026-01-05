@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from infrahub.config import BrokerDriver, BrokerSettings
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
     from infrahub.message_bus.types import MessageTTL
-    from infrahub.services import InfrahubServices
 
 
 class InfrahubMessageBus(ABC):
@@ -32,7 +31,6 @@ class InfrahubMessageBus(ABC):
     ]
     event_bindings: list[str] = ["refresh.registry.*"]
     broadcasted_event_bindings: list[str] = ["refresh.git.*"]
-    service: InfrahubServices
 
     async def shutdown(self) -> None:  # noqa: B027 We want a default empty behavior, so it's ok to have an empty non-abstract method.
         """Shutdown the Message bus"""

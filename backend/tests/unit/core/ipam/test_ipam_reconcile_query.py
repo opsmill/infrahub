@@ -1,17 +1,28 @@
 import ipaddress
+from uuid import uuid4
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch, get_default_ipnamespace
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 
 
-async def test_ipprefix_reconcile_query_simple(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+def randomized_branch_name(branch_name: str) -> str:
+    return f"{branch_name}_{uuid4().hex[:8]}"
+
+
+async def test_ipprefix_reconcile_query_simple(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     prefix_140 = ip_dataset_01["net140"]
@@ -38,7 +49,9 @@ async def test_ipprefix_reconcile_query_simple(db: InfrahubDatabase, default_bra
     }
 
 
-async def test_ipprefix_reconcile_query_for_new_prefix(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconcile_query_for_new_prefix(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_network("10.10.0.0/22"), namespace=ns1_id
@@ -57,7 +70,9 @@ async def test_ipprefix_reconcile_query_for_new_prefix(db: InfrahubDatabase, def
     }
 
 
-async def test_ipprefix_reconcile_query_for_new_address(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconcile_query_for_new_address(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_interface("10.10.3.0"), namespace=ns1_id
@@ -73,7 +88,7 @@ async def test_ipprefix_reconcile_query_for_new_address(db: InfrahubDatabase, de
 
 async def test_ipprefix_reconcile_query_for_new_address_with_node(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
     new_address = await Node.init(db=db, schema=address_schema)
@@ -94,7 +109,7 @@ async def test_ipprefix_reconcile_query_for_new_address_with_node(
 
 async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_parents(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_network("10.10.1.8/30"), namespace=ns1_id
@@ -110,7 +125,7 @@ async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_parents
 
 async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_children(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_network("10.8.0.0/14"), namespace=ns1_id
@@ -126,7 +141,7 @@ async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_childre
 
 async def test_ipprefix_reconcile_query_for_new_address_multiple_possible_children(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_interface("10.8.0.0"), namespace=ns1_id
@@ -142,7 +157,7 @@ async def test_ipprefix_reconcile_query_for_new_address_multiple_possible_childr
 
 async def test_ipprefix_reconcile_query_for_new_prefix_exactly_one_possible_child_address(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_network("10.10.0.0/30"), namespace=ns1_id
@@ -156,7 +171,9 @@ async def test_ipprefix_reconcile_query_for_new_prefix_exactly_one_possible_chil
     assert query.get_calculated_children_uuids() == [ip_dataset_01["address10"].id]
 
 
-async def test_ipprefix_reconcile_query_for_new_prefix_v6(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconcile_query_for_new_prefix_v6(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_network("2001:db8::/50"), namespace=ns1_id
@@ -170,7 +187,9 @@ async def test_ipprefix_reconcile_query_for_new_prefix_v6(db: InfrahubDatabase, 
     assert query.get_calculated_children_uuids() == [ip_dataset_01["net162"].id]
 
 
-async def test_ipprefix_reconcile_query_for_new_address_v6(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipprefix_reconcile_query_for_new_address_v6(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, ip_value=ipaddress.ip_interface("2001:db8::"), namespace=ns1_id
@@ -186,7 +205,7 @@ async def test_ipprefix_reconcile_query_for_new_address_v6(db: InfrahubDatabase,
 
 async def test_ipprefix_reconcile_query_get_deleted_node_by_prefix(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     net140 = ip_dataset_01["net140"]
     await net140.delete(db=db)
@@ -210,7 +229,7 @@ async def test_ipprefix_reconcile_query_get_deleted_node_by_prefix(
 
 async def test_ipprefix_reconcile_query_get_deleted_node_by_uuid(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     net140 = ip_dataset_01["net140"]
     await net140.delete(db=db)
@@ -238,8 +257,8 @@ async def test_ipprefix_reconcile_query_get_deleted_node_by_uuid(
 
 async def test_ipprefix_reconcile_query_deleted_children_ignored_on_branch(
     db: InfrahubDatabase, ip_dataset_01: dict[str, Node]
-):
-    branch = await create_branch(db=db, branch_name="branch2")
+) -> None:
+    branch = await create_branch(db=db, branch_name=randomized_branch_name("branch2"))
 
     ns1_id = ip_dataset_01["ns1"].id
     net140_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net140"].id)
@@ -273,8 +292,8 @@ async def test_ipprefix_reconcile_query_deleted_children_ignored_on_branch(
 
 async def test_ipprefix_reconcile_query_deleted_parent_ignored_on_branch(
     db: InfrahubDatabase, ip_dataset_01: dict[str, Node]
-):
-    branch = await create_branch(db=db, branch_name="branch2")
+) -> None:
+    branch = await create_branch(db=db, branch_name=randomized_branch_name("branch2"))
 
     ns1_id = ip_dataset_01["ns1"].id
     net140_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net140"].id)
@@ -303,11 +322,11 @@ async def test_ipprefix_reconcile_query_deleted_parent_ignored_on_branch(
     }
 
 
-async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
-    branch2 = await create_branch(branch_name="branch2", db=db)
+    branch2 = await create_branch(branch_name=randomized_branch_name("branch2"), db=db)
 
     ns1_id = ip_dataset_01["ns1"].id
     net140 = ip_dataset_01["net140"]
@@ -341,6 +360,16 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
         new_address_branch.id,
     }
     assert set(query.get_calculated_children_uuids()) == expected_children
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=branch2, ip_value=ipaddress.ip_interface("10.10.0.1"), namespace=ns1_id
+    )
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == new_address_branch.id
+    assert query.get_current_parent_uuid() is None
+    assert query.get_current_children_uuids() == []
+    assert query.get_calculated_parent_uuid() == new_parent_branch.id
+    assert query.get_calculated_children_uuids() == []
 
     await branch2.rebase(db=db)
 
@@ -362,6 +391,16 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
         new_address_main.id,
     }
     assert set(query.get_calculated_children_uuids()) == expected_children_after_rebase
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=branch2, ip_value=ipaddress.ip_interface("10.10.0.2"), namespace=ns1_id
+    )
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == new_address_main.id
+    assert query.get_current_parent_uuid() is None
+    assert query.get_current_children_uuids() == []
+    assert query.get_calculated_parent_uuid() == new_parent_branch.id
+    assert query.get_calculated_children_uuids() == []
 
 
 async def test_reconcile_parent_child_identification(
@@ -369,7 +408,7 @@ async def test_reconcile_parent_child_identification(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
@@ -445,7 +484,7 @@ async def test_address_cannot_be_parent(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
@@ -472,7 +511,7 @@ async def test_adjacent_parents_and_addresses(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
@@ -568,7 +607,7 @@ async def test_root_ip_prefix_exists_reconcile(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ip_namespace.new(db=db, name="ns1")
@@ -590,7 +629,7 @@ async def test_root_ip_prefix_added_reconcile(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ip_namespace.new(db=db, name="ns1")
@@ -605,3 +644,92 @@ async def test_root_ip_prefix_added_reconcile(
     await query.execute(db=db)
     assert query.get_calculated_parent_uuid() is None
     assert query.get_calculated_children_uuids() == [child_prefix_node.id]
+
+
+async def test_reconcile_query_on_migrated_kind_node(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    prefix_140 = ip_dataset_01["net140"]
+    namespace = ip_dataset_01["ns1"]
+
+    branch = await create_branch(db=db, branch_name=randomized_branch_name("migrated-branch"))
+
+    # update IpamIPPrefix schema name
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch, duplicate=True)
+    prefix_schema.name = "IPPrefixTwo"
+    assert prefix_schema.kind == "IpamIPPrefixTwo"
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch),
+        new_node_schema=prefix_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="IpamIPPrefixTwo", field_name="name"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    registry.schema.set(name="IpamIPPrefixTwo", schema=prefix_schema, branch=branch.name)
+    wrong_parent = await Node.init(db=db, schema=prefix_schema, branch=branch)
+    await wrong_parent.new(db=db, prefix="192.168.0.0/16", ip_namespace=namespace)
+    await wrong_parent.save(db=db)
+    wrong_child = await Node.init(db=db, schema=prefix_schema, branch=branch)
+    await wrong_child.new(db=db, prefix="192.168.0.0/24", ip_namespace=namespace)
+    await wrong_child.save(db=db)
+    branch_net_140 = await NodeManager.get_one(db=db, branch=branch, id=prefix_140.id)
+    await branch_net_140.parent.update(db=db, data=wrong_parent.id)
+    await branch_net_140.children.update(db=db, data=[wrong_child.id])
+    await branch_net_140.ip_addresses.update(db=db, data=[None])
+    await branch_net_140.save(db=db)
+
+    ip_network = ipaddress.ip_network(prefix_140.prefix.value)
+    query = await IPPrefixReconcileQuery.init(db=db, branch=branch, ip_value=ip_network, namespace=namespace)
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == prefix_140.id
+    # the wrong parent and wrong child confirm that we retrieved the correct Node from the database: the IpamIPPrefixTwo instance
+    assert query.get_current_parent_uuid() == wrong_parent.id
+    assert set(query.get_current_children_uuids()) == {wrong_child.id}
+    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
+    assert set(query.get_calculated_children_uuids()) == {
+        ip_dataset_01["net142"].id,
+        ip_dataset_01["net144"].id,
+        ip_dataset_01["net145"].id,
+        ip_dataset_01["address10"].id,
+    }
+
+
+async def test_reconcile_query_for_address_with_prefix_added_on_branch_and_merged(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+):
+    """
+    Test for bug that could cause an IP address to be its own parent after an update on a branch was merged
+    """
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    address_10 = ip_dataset_01["address10"]
+    namespace = ip_dataset_01["ns1"]
+
+    branch = await create_branch(db=db, branch_name=randomized_branch_name("address-parent"))
+
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch)
+    new_prefix = await Node.init(db=db, branch=branch, schema=prefix_schema)
+    await new_prefix.new(db=db, prefix="10.10.0.0/28", ip_namespace=namespace, ip_addresses=[address_10.id])
+    await new_prefix.save(db=db)
+
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await diff_merger.merge_graph(at=Timestamp())
+    # get branch to make sure branched_from is refreshed
+    branch = await Branch.get_by_name(db=db, name=branch.name)
+
+    ip_interface = ipaddress.ip_interface(address_10.address.value)
+    query = await IPPrefixReconcileQuery.init(db=db, branch=branch, ip_value=ip_interface, namespace=namespace)
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == address_10.id
+    assert query.get_current_parent_uuid() == new_prefix.id
+    assert query.get_current_children_uuids() == []
+    assert query.get_calculated_parent_uuid() == new_prefix.id
+    assert query.get_calculated_children_uuids() == []

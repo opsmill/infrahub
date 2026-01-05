@@ -37,8 +37,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
         query = """
         MATCH p = (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)
@@ -48,7 +47,6 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
             LIMIT 1
         }
-        WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
@@ -67,8 +65,12 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             if value in (None, NULL_VALUE):
                 continue
             try:
+                attr_value = result.get("attribute_value")
                 infrahub_attribute_class.validate_format(
-                    value=result.get("attribute_value"), name=self.attribute_schema.name, schema=self.attribute_schema
+                    value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
+                )
+                infrahub_attribute_class.validate_content(
+                    value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
                 )
             except ValidationError:
                 grouped_data_paths.add_data_path(

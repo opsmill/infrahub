@@ -1,17 +1,20 @@
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeObject } from "@/entities/nodes/types";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
+  type AddAttributesToRequestOptions,
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
+
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +28,8 @@ export type GetObjectsParams = ContextParams &
     filters?: Array<Filter>;
     getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
     getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
+    attributesOptions?: AddAttributesToRequestOptions;
+    relationshipsOptions?: AddAttributesToRequestOptions;
   };
 
 export type GetObjects = (args: GetObjectsParams) => Promise<Array<NodeObject>>;
@@ -38,18 +43,18 @@ export const getObjects: GetObjects = async ({
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
+  attributesOptions,
+  relationshipsOptions,
 }) => {
   const attributesVisible = getAttributesVisible(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
 
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${schemaKind}`,
-      [schemaKindToQuery]: {
+      [schemaKind]: {
         __args: {
           limit,
           offset,
@@ -60,8 +65,8 @@ export const getObjects: GetObjects = async ({
             id: true,
             display_label: true,
             hfid: true,
-            ...addAttributesToRequest(attributesVisible),
-            ...addRelationshipsToRequest(relationshipsVisible),
+            ...addAttributesToRequest(attributesVisible, attributesOptions),
+            ...addRelationshipsToRequest(relationshipsVisible, relationshipsOptions),
           },
         },
       },
@@ -77,5 +82,5 @@ export const getObjects: GetObjects = async ({
     },
   });
 
-  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
+  return data[schemaKind]?.edges?.map((edge: any) => edge.node) ?? [];
 };

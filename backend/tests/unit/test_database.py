@@ -25,7 +25,7 @@ from infrahub.database import InfrahubDatabase
 #         await validate_database(driver=db._driver, database_name=dbs_for_test[1])
 
 
-async def test_database_transaction(empty_database, db: InfrahubDatabase):
+async def test_database_transaction(empty_database, db: InfrahubDatabase) -> None:
     query1 = 'CREATE (b:Book {name: "book1"}) RETURN b'
     query2 = 'CREATE (b:Book {name: "book2"}) RETURN b'
     query3 = 'CREATE (b:Book "book1"}) RETURN b'

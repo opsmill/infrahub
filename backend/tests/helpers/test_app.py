@@ -1,20 +1,23 @@
+import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Generator
 
 import pytest
+from fast_depends import Provider
+from fast_depends import dependency_provider as provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
+from prefect.client.orchestration import PrefectClient
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_account,
+    create_default_account_groups,
     create_default_branch,
     create_global_branch,
     create_root_node,
-    create_super_administrator_role,
-    create_super_administrators_group,
     initialization,
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -22,11 +25,15 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_cache, build_client, build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.events import query_events_by_name
 
 from .test_client import InfrahubTestClient
 
@@ -57,33 +64,53 @@ class TestInfrahub:
 
 class TestInfrahubApp(TestInfrahub):
     @pytest.fixture(scope="class")
-    def api_token(self) -> str:
+    def api_admin_token(self) -> str:
         return str(UUIDT())
 
     @pytest.fixture(scope="class")
+    def api_unprivileged_token(self) -> str:
+        return str(UUIDT())
+
+    @pytest.fixture(scope="class")
+    def dependency_provider(self) -> Provider:
+        return provider
+
+    @pytest.fixture(scope="class")
     async def bus_simulator(
-        self,
-        db: InfrahubDatabase,
-    ) -> BusSimulator:
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[BusSimulator, None]:
         # Creating another service object to get service correctly initialized is a hack.
         # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
         # or ideally properly patch production code responsible for Bus instantiation instead
         bus = BusSimulator()
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
-        return bus
+        with dependency_provider.scope(build_message_bus, lambda: bus):
+            yield bus
+
+    @pytest.fixture(scope="class")
+    async def memory_cache(
+        self, db: InfrahubDatabase, dependency_provider: Provider
+    ) -> AsyncGenerator[MemoryCache, None]:
+        cache = MemoryCache()
+        config.OVERRIDE.cache = cache
+        with dependency_provider.scope(build_cache, lambda: cache):
+            yield cache
 
     @pytest.fixture(scope="class", autouse=True)
-    async def workflow_local(self, prefect: Generator[str, None, None]) -> AsyncGenerator[WorkflowLocalExecution, None]:
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager()
         config.OVERRIDE.workflow = workflow
-        yield workflow
+        with dependency_provider.scope(build_workflow, lambda: workflow):
+            yield workflow
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> AsyncGenerator[InfrahubServices, None]:
+    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
@@ -118,10 +145,15 @@ class TestInfrahubApp(TestInfrahub):
 
     @pytest.fixture(scope="class")
     async def client(
-        self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator, service: InfrahubServices
-    ) -> InfrahubClient:
+        self,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        bus_simulator: BusSimulator,
+        service: InfrahubServices,
+        dependency_provider: Provider,
+    ) -> AsyncGenerator[InfrahubClient, None]:
         config = Config(
-            api_token=api_token,
+            api_token=api_admin_token,
             requester=test_client.async_request,
             sync_requester=test_client.sync_request,
             schema_converge_timeout=5,
@@ -138,17 +170,55 @@ class TestInfrahubApp(TestInfrahub):
         )
 
         service._client = sdk_client
+        with dependency_provider.scope(build_client, lambda: sdk_client):
+            yield sdk_client
+
+    @pytest.fixture(scope="class")
+    async def unprivileged_client(
+        self,
+        test_client: InfrahubTestClient,
+        api_unprivileged_token: str,
+        bus_simulator: BusSimulator,
+        service: InfrahubServices,
+        dependency_provider: Provider,
+    ) -> InfrahubClient:
+        config = Config(
+            api_token=api_unprivileged_token,
+            requester=test_client.async_request,
+            sync_requester=test_client.sync_request,
+            schema_converge_timeout=5,
+        )
+
+        sdk_client = InfrahubClient(config=config)
         return sdk_client
 
     @pytest.fixture(scope="class")
     async def initialize_registry(
-        self, db: InfrahubDatabase, register_core_schema: SchemaBranch, bus_simulator: BusSimulator, api_token: str
+        self,
+        db: InfrahubDatabase,
+        register_core_schema: SchemaBranch,
+        bus_simulator: BusSimulator,
+        api_admin_token: str,
+        api_unprivileged_token: str,
     ) -> None:
-        admin_account = await create_account(
-            db=db, name="admin", password=config.SETTINGS.initial.admin_password, token_value=api_token
+        unprivileged_account = await create_account(
+            db=db, name="unprivileged", password="testing_unprivileged_password", token_value=api_unprivileged_token
         )
-        administrator_role = await create_super_administrator_role(db=db)
-        await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=[admin_account])
+        admin_account = await create_account(
+            db=db, name="admin", password=config.SETTINGS.initial.admin_password, token_value=api_admin_token
+        )
+
+        await create_default_account_groups(db=db, admin_accounts=[admin_account], accounts=[unprivileged_account])
 
         # This call emits a warning related to the fact database index manager has not been initialized.
+        graphql_registry.clear_cache()
         await initialization(db=db)
+
+    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
+        for _ in range(10):
+            events = await query_events_by_name(client=prefect_client, event_name=event_name)
+            if len(events) == 1:
+                return
+            await asyncio.sleep(1)
+
+        pytest.fail(f"unable to find prefect event '{event_name}'")

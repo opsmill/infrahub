@@ -29,13 +29,33 @@ from .m024_missing_hierarchy_backfill import Migration024
 from .m025_uniqueness_nulls import Migration025
 from .m026_0000_prefix_fix import Migration026
 from .m027_delete_isolated_nodes import Migration027
+from .m028_delete_diffs import Migration028
+from .m029_duplicates_cleanup import Migration029
+from .m030_illegal_edges import Migration030
+from .m031_check_number_attributes import Migration031
+from .m032_cleanup_orphaned_branch_relationships import Migration032
+from .m033_deduplicate_relationship_vertices import Migration033
+from .m034_find_orphaned_schema_fields import Migration034
+from .m035_orphan_relationships import Migration035
+from .m036_drop_attr_value_index import Migration036
+from .m037_index_attr_vals import Migration037
+from .m038_redo_0000_prefix_fix import Migration038
+from .m039_ipam_reconcile import Migration039
+from .m040_duplicated_attributes import Migration040
+from .m041_deleted_dup_edges import Migration041
+from .m042_profile_attrs_in_db import Migration042
+from .m043_create_hfid_display_label_in_db import Migration043
+from .m044_backfill_hfid_display_label_in_db import Migration044
+from .m045_backfill_hfid_display_label_in_db_profile_template import Migration045
+from .m046_fill_agnostic_hfid_display_labels import Migration046
+from .m047_backfill_or_null_display_label import Migration047
+from .m048_undelete_rel_props import Migration048
 
 if TYPE_CHECKING:
-    from infrahub.core.root import Root
+    from ..shared import MigrationTypes
 
-    from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
 
-MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration]] = [
+MIGRATIONS: list[type[MigrationTypes]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -63,17 +83,54 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration025,
     Migration026,
     Migration027,
+    Migration028,
+    Migration029,
+    Migration030,
+    Migration031,
+    Migration032,
+    Migration033,
+    Migration034,
+    Migration035,
+    Migration036,
+    Migration037,
+    Migration038,
+    Migration039,
+    Migration040,
+    Migration041,
+    Migration042,
+    Migration043,
+    Migration044,
+    Migration045,
+    Migration046,
+    Migration047,
+    Migration048,
 ]
 
 
-async def get_graph_migrations(
-    root: Root,
-) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration]:
+async def get_graph_migrations(current_graph_version: int) -> Sequence[MigrationTypes]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
-        if root.graph_version > migration.minimum_version:
+        if current_graph_version > migration.minimum_version:
             continue
         applicable_migrations.append(migration)
 
     return applicable_migrations
+
+
+def get_migration_by_number(migration_number: int | str) -> MigrationTypes:
+    # Convert to string and pad with zeros if needed
+    try:
+        num = int(migration_number)
+        migration_str = f"{num:03d}"
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Invalid migration number: {migration_number}") from exc
+
+    migration_name = f"Migration{migration_str}"
+
+    # Find the migration in the MIGRATIONS list
+    for migration_class in MIGRATIONS:
+        if migration_class.__name__ == migration_name:
+            return migration_class.init()
+
+    raise ValueError(f"Migration {migration_number} not found")

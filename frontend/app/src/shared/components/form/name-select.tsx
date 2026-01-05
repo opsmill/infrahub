@@ -1,10 +1,12 @@
-import { namespacesAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
+
+import { namespacesAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { DEFAULT_FORM_FIELD_VALUE } from "./constants";
 import DropdownField from "./fields/dropdown.field";
-import { FormAttributeValue } from "./type";
+import type { FormAttributeValue } from "./type";
 import { isRequired } from "./utils/validation";
 
 export const NameSelect = () => {
@@ -31,17 +33,9 @@ export const NameSelect = () => {
   const selectedNamespace =
     selectedNamespaceField?.value === "*"
       ? { value: "*", name: "*" }
-      : namespaces
-          .filter((namespace) => {
-            if (!selectedNameField?.value) {
-              return true;
-            }
-
-            return namespace.used_by?.includes(selectedNameField?.value);
-          })
-          .find((namespace) => {
-            return namespace.name === selectedNamespaceField?.value;
-          });
+      : namespaces.find((namespace) => {
+          return namespace.name === selectedNamespaceField?.value;
+        });
 
   const nameOptions = [
     {
@@ -70,6 +64,7 @@ export const NameSelect = () => {
 
     // Get current node from form field value
     const currentNode = nodes.find((node) => node.name === selectedNameField?.value);
+
     if (!currentNode) return;
 
     form.setValue("namespace", { value: currentNode.namespace, label: currentNode.namespace });

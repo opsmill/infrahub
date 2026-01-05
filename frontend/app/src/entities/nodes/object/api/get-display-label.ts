@@ -1,21 +1,16 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-const getNodeLabelQuery = ({
-  objectid,
-  kind,
-}: {
-  objectid?: string;
-  kind: string;
-}) => {
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import type { ContextParams } from "@/shared/api/types";
+
+const getNodeLabelQuery = ({ objectId, kind }: { objectId?: string; kind: string }) => {
   const request = {
     query: {
       __name: "GET_DISPLAY_LABEL",
       [kind]: {
         __args: {
-          ids: [objectid],
+          ids: [objectId],
         },
         edges: {
           node: {
@@ -30,16 +25,16 @@ const getNodeLabelQuery = ({
 };
 
 export function getNodeLabelFromApi({
-  objectid,
+  objectId,
   kind,
   branchName,
   atDate,
 }: {
-  objectid?: string;
+  objectId?: string;
   kind: string;
 } & ContextParams) {
   return graphqlClient.query({
-    query: gql(getNodeLabelQuery({ objectid, kind })),
+    query: gql(getNodeLabelQuery({ objectId, kind })),
     context: {
       branch: branchName,
       date: atDate,

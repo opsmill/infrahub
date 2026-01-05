@@ -2,7 +2,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_default_menu
 from infrahub.core.protocols import CoreMenuItem
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.menu.constants import FULL_DEFAULT_MENU, MenuSection
 from infrahub.menu.generator import generate_menu
@@ -39,7 +39,7 @@ async def test_generate_menu_placement(
     car_person_schema_generics: SchemaRoot,
     menu_repository: MenuRepository,
     helper,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     schema_car = schema_branch.get(name="TestCar")
@@ -66,7 +66,7 @@ async def test_generate_menu_top_level(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     helper,
-):
+) -> None:
     await create_default_menu(db=db)
 
     new_menu_items = generate_menu_fixtures(nbr_item=2)
@@ -87,7 +87,7 @@ async def test_generate_menu_default(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     helper,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_car = schema_branch.get(name="TestCar")
     schema_car.menu_placement = "DoesNotExist"
@@ -104,3 +104,35 @@ async def test_generate_menu_default(
     assert menu
     assert "TestMenu0" in menu.data.keys()
     assert "TestCar" in menu.data[FULL_DEFAULT_MENU].children.keys()
+
+
+async def test_generate_ipam_menu(
+    db: InfrahubDatabase,
+    menu_repository: MenuRepository,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    """Validate that the IPAM menu only shows up if IP nodes are defined in the schema"""
+    await create_default_menu(db=db)
+
+    new_menu_items = generate_menu_fixtures(nbr_item=2)
+    await menu_repository.create_menu(menu=new_menu_items)
+
+    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
+    initial_menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
+
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="IPAddress",
+                namespace="Test",
+                inherit_from=["BuiltinIPAddress"],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    updated_menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
+
+    assert "BuiltinIPAM" not in initial_menu.data
+    assert "BuiltinIPAM" in updated_menu.data

@@ -31,7 +31,6 @@ const config: Config = {
 
   onBrokenLinks: "throw",
   onBrokenAnchors: "throw",
-  onBrokenMarkdownLinks: "throw",
   onDuplicateRoutes: "throw",
 
   // Even if you don't use internationalization, you can use this field to set
@@ -53,6 +52,7 @@ const config: Config = {
           routeBasePath: "/",
           sidebarCollapsed: true,
           sidebarPath: "./sidebars.ts",
+          exclude: ["**/AGENTS.md", "tutorials/getting-started/**"],
         },
         blog: false,
         theme: {
@@ -70,6 +70,16 @@ const config: Config = {
         docsRouteBasePath: "/", // this needs to be the same as routeBasePath
         hashed: true,
       }
+    ],
+  ],
+  plugins: [
+    [
+      '@docusaurus/theme-mermaid',
+      {
+        mermaid: {
+          theme: { light: 'neutral', dark: 'dark' },
+        },
+      },
     ],
   ],
   themeConfig: {
@@ -113,6 +123,10 @@ const config: Config = {
 
   markdown: {
     format: "mdx",
+    mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: "throw",
+    },
     preprocessor: ({ filePath, fileContent }) => {
       console.log(`Processing ${filePath}`);
       const transformedContent = fileContent.replace(/\$\(\s*(\w+)\s*\)/g, (match, variableName) => {

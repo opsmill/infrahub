@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
 from uuid import UUID
 
@@ -71,7 +72,7 @@ class StandardNode(BaseModel):
         response: dict[str, Any] = {"id": self.uuid}
 
         for field_name in fields.keys():
-            if field_name in ["id"]:
+            if field_name == "id":
                 continue
             if field_name == "__typename":
                 response[field_name] = self.get_type()
@@ -110,7 +111,7 @@ class StandardNode(BaseModel):
         node = result.get("n")
 
         self.id = node.element_id
-        self.uuid = node["uuid"]
+        self.uuid = UUID(node["uuid"])
 
         return True
 
@@ -191,6 +192,9 @@ class StandardNode(BaseModel):
                 continue
 
             attr_value = getattr(self, attr_name)
+            if isinstance(attr_value, Enum):
+                attr_value = attr_value.value
+
             field_type = self.guess_field_type(field)
 
             if attr_value is None:
@@ -210,7 +214,12 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def get_list(
-        cls, db: InfrahubDatabase, limit: int = 1000, ids: list[str] | None = None, name: str | None = None, **kwargs
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
     ) -> list[Self]:
         query: Query = await StandardNodeGetListQuery.init(
             db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs

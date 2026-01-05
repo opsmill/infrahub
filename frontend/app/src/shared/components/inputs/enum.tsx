@@ -1,8 +1,8 @@
-import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
-import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
+import { Icon } from "@iconify-icon/react";
+import React, { forwardRef, useState } from "react";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
@@ -15,8 +15,10 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { Icon } from "@iconify-icon/react";
-import React, { forwardRef, useState } from "react";
+
+import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 
 export interface EnumDeleteButtonProps extends ButtonProps {
   fieldSchema: AttributeSchema;
@@ -48,7 +50,7 @@ export const EnumDeleteButton = React.forwardRef<HTMLButtonElement, EnumDeleteBu
           tabIndex={-1}
           variant="ghost"
           size="sm"
-          className="ml-auto text-red-800 h-6"
+          className="ml-auto h-6 text-red-800"
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteModal(true);
@@ -94,7 +96,7 @@ export const EnumAddAction: React.FC<EnumAddActionProps> = ({ schema, field, add
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
           onClick={() => setOpen(!open)}
         >
           + Add option

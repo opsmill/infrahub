@@ -1,5 +1,6 @@
-import ErrorFallback from "@/shared/components/errors/error-fallback";
 import { useRouteError } from "react-router";
+
+import ErrorFallback from "@/shared/components/errors/error-fallback";
 
 export function ErrorBoundaryRouter() {
   const error = useRouteError();

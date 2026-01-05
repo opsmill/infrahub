@@ -1,12 +1,11 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 import pytest
 import yaml
 from infrahub_sdk.uuidt import UUIDT
-from prefect.logging.loggers import disable_run_logger
 from prefect.testing.utilities import prefect_test_harness
 from pytest import TempPathFactory
 
@@ -24,12 +23,12 @@ from tests.helpers.file_repo import FileRepo
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker():
+def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator:
     """Overrides pytest default function scoped event loop"""
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
@@ -37,7 +36,7 @@ def event_loop():
     loop.close()
 
 
-async def load_infrastructure_schema(db: InfrahubDatabase):
+async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
     base_dir = get_models_dir() / "base"
 
     default_branch_name = registry.default_branch
@@ -57,15 +56,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 
 
 @pytest.fixture(scope="module")
-async def init_db_infra(db: InfrahubDatabase):
-    await delete_all_nodes(db=db)
-    await first_time_initialization(db=db)
-    await load_infrastructure_schema(db=db)
-    await initialization(db=db)
-
-
-@pytest.fixture(scope="module")
-async def init_db_base(db: InfrahubDatabase):
+async def init_db_base(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
     await first_time_initialization(db=db)
     await initialization(db=db)
@@ -112,10 +103,10 @@ def git_repos_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 
 @pytest.fixture(scope="session")
-def git_repo_infrahub_demo_edge(git_sources_dir: Path) -> FileRepo:
+def git_repo_infrahub_demo_edge_integration(git_sources_dir: Path) -> FileRepo:
     """Git Repository used as part of the  demo-edge tutorial."""
 
-    return FileRepo(name="infrahub-demo-edge", sources_directory=git_sources_dir)
+    return FileRepo(name="infrahub-demo-edge-integration", sources_directory=git_sources_dir)
 
 
 @pytest.fixture(scope="session")
@@ -126,12 +117,6 @@ def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def prefect_test_fixture():
+def prefect_test_fixture() -> Generator:
     with prefect_test_harness(server_startup_timeout=60):
-        yield
-
-
-@pytest.fixture(scope="session")
-def prefect_test(prefect_test_fixture):
-    with disable_run_logger():
         yield

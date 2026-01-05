@@ -3,7 +3,7 @@ import os
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Generator
 
@@ -120,14 +120,14 @@ class Neo4jBackupRestoreBase:
         self.keep_helper_container = keep_helper_container
         self.docker_client = docker.from_env()
         self.use_host_network = use_host_network
-        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
+        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j:2025.03.0-enterprise")
 
     def _print_message(self, message: str, force_print: bool = False, with_timestamp: bool = True) -> None:
         if self.be_quiet and not force_print:
             return
         if not with_timestamp:
             print(message)
-        right_now = datetime.now(timezone.utc).astimezone()
+        right_now = datetime.now(UTC).astimezone()
         right_now_str = right_now.strftime("%H:%M:%S")
         print(f"{right_now_str} - {message}")
 
@@ -138,7 +138,7 @@ class Neo4jBackupRestoreBase:
         end = "" if completion_message else "\n"
         to_print = start
         if with_timestamp:
-            right_now = datetime.now(timezone.utc).astimezone()
+            right_now = datetime.now(UTC).astimezone()
             right_now_str = right_now.strftime("%H:%M:%S")
             to_print = f"{right_now_str} - {start}"
         print(to_print, end=end, flush=True)
@@ -358,7 +358,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         # expects name format of <database_name>-2024-02-07T22-12-16.backup
         backup_map = {}
         for backup_path in local_backup_directory.iterdir():
-            if not backup_path.suffix == ".backup":
+            if backup_path.suffix != ".backup":
                 continue
             split_name = backup_path.name.split("-")
             database_name = "-".join(split_name[:-5])

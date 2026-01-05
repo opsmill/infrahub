@@ -1,18 +1,16 @@
 import bcrypt
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions.local_backend import LocalPermissionBackend
 from tests.helpers.graphql import graphql
 
 
-async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account):
+async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account) -> None:
     new_password = "NewP@ssw0rd"
     new_description = "what a cool description"
     query = """
@@ -23,9 +21,9 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     }
     """ % (new_password, new_description)
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=AccountSession(authenticated=True, account_id=first_account.id, auth_type=AuthType.JWT),
     )
@@ -48,9 +46,13 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
 
 
 async def test_permissions(
-    db: InfrahubDatabase, default_branch: Branch, authentication_base, session_admin, first_account
-):
-    registry.permission_backends = [LocalPermissionBackend()]
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    authentication_base,
+    session_admin,
+    first_account,
+) -> None:
     query = """
     query {
         InfrahubPermissions {
@@ -72,9 +74,8 @@ async def test_permissions(
     }
     """
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
 
     result = await graphql(
         schema=gql_params.schema, source=query, context_value=gql_params.context, root_value=None, variable_values={}
@@ -98,7 +99,6 @@ async def test_permissions(
 
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=AccountSession(authenticated=True, account_id=first_account.id, auth_type=AuthType.JWT),
     )

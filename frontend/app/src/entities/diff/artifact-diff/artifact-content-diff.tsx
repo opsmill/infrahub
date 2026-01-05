@@ -1,41 +1,40 @@
-import { CONFIG } from "@/config/config";
-import {
-  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
-  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
-import { deleteObject } from "@/entities/nodes/api/deleteObject";
-import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
+import { gql, useQuery } from "@apollo/client";
+import { PencilIcon } from "@heroicons/react/24/outline";
+import { formatISO } from "date-fns";
+import { useAtom } from "jotai";
+import { useCallback, useEffect, useState } from "react";
+import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { PencilIcon } from "@heroicons/react/24/outline";
-import { formatISO } from "date-fns";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
-import { useCallback, useEffect, useState } from "react";
-import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
+import { CONFIG } from "@/shared/config/config";
+import {
+  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
+  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "@/shared/config/constants";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+
 const fakeIndex = () => {
-  return sha(Math.random() * 100000).slice(0, 9);
+  return sha(Math.random() * 100_000).slice(0, 9);
 };
 
 const appendGitDiffHeaderIfNeeded = (diffText: string) => {
@@ -91,18 +90,28 @@ const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?:
   });
 };
 
-export const ArtifactContentDiff = (props: any) => {
-  const { itemPrevious, itemNew } = props;
+interface ArtifactContentDiffProps {
+  id: string; // required artifact node ID
+  itemPrevious?: { storage_id?: string } | null;
+  itemNew?: { storage_id?: string } | null;
+}
+
+export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
+  const { itemPrevious, itemNew, id } = props;
 
   const { proposedChangeId } = useParams();
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState("");
   const [newFile, setNewFile] = useState("");
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
+  const createObject = useCreateObjectMutation();
+  const deleteObject = useDeleteObjectMutation();
+
+  if (!id) {
+    return <ErrorScreen message="Missing artifact ID for thread context." />;
+  }
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
@@ -156,137 +165,105 @@ export const ArtifactContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    let threadId;
-
-    try {
-      if (!comment || !approverId) {
-        return;
-      }
-
-      const newDate = formatISO(new Date());
-
-      const lineNumber = displayAddComment.isNormal
-        ? displayAddComment.side === "new"
-          ? displayAddComment.newLineNumber
-          : displayAddComment.oldLineNumber
-        : displayAddComment.lineNumber;
-
-      const newThread = {
-        change: {
-          id: proposedChangeId,
-        },
-        created_at: {
-          value: newDate,
-        },
-        created_by: {
-          id: approverId,
-        },
-        resolved: {
-          value: false,
-        },
-        line_number: {
-          value: lineNumber,
-        },
-        storage_id: {
-          value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
-        },
-      };
-
-      const threadMutationString = createObject({
-        kind: PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
-        data: stringifyWithoutQuotes(newThread),
-      });
-
-      const threadMutation = gql`
-        ${threadMutationString}
-      `;
-
-      const result = await graphqlClient.mutate({
-        mutation: threadMutation,
-        context: {
-          branch: branch?.name,
-          date,
-        },
-      });
-
-      threadId = result?.data[`${PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT}Create`]?.object?.id;
-
-      const newComment = {
-        text: {
-          value: comment,
-        },
-        created_by: {
-          id: approverId,
-        },
-        created_at: {
-          value: newDate,
-        },
-        thread: {
-          id: threadId,
-        },
-      };
-
-      const commentMutationString = createObject({
-        kind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-        data: stringifyWithoutQuotes(newComment),
-      });
-
-      const commentMutation = gql`
-        ${commentMutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation: commentMutation,
-        context: {
-          branch: branch?.name,
-          date,
-        },
-      });
-
-      if (refetch) {
-        refetch();
-      }
-
-      setIsLoading(false);
-
-      setDisplayAddComment({});
-    } catch (error: any) {
-      if (threadId) {
-        const mutationString = deleteObject({
-          name: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-          data: stringifyWithoutQuotes({
-            id: threadId,
-          }),
-        });
-
-        const mutation = gql`
-          ${mutationString}
-        `;
-
-        await graphqlClient.mutate({
-          mutation,
-          context: { branch: branch?.name, date },
-        });
-        return;
-      }
-
-      console.error("An error occurred while creating the comment: ", error);
-
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while creating the comment"}
-          details={error.message}
-        />
-      );
-
-      setIsLoading(false);
-    }
-  };
-
   const handleCloseComment = () => {
     setDisplayAddComment({});
+  };
+
+  const handleSubmitComment = async ({ comment }: { comment: string }) => {
+    if (!comment || !approverId || !id) {
+      return;
+    }
+
+    const newDate = formatISO(new Date());
+
+    const lineNumber = displayAddComment.isNormal
+      ? displayAddComment.side === "new"
+        ? displayAddComment.newLineNumber
+        : displayAddComment.oldLineNumber
+      : displayAddComment.lineNumber;
+
+    const newThread = {
+      change: {
+        id: proposedChangeId,
+      },
+      created_at: {
+        value: newDate,
+      },
+      created_by: {
+        id: approverId,
+      },
+      resolved: {
+        value: false,
+      },
+      line_number: {
+        value: lineNumber,
+      },
+      storage_id: {
+        value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
+      },
+      artifact_id: {
+        value: id,
+      },
+    };
+
+    await createObject.mutateAsync(
+      {
+        objectKind: PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
+        data: newThread,
+      },
+      {
+        onSuccess: async (newThread) => {
+          const threadId = newThread.id;
+
+          const newComment = {
+            text: {
+              value: comment,
+            },
+            created_by: {
+              id: approverId,
+            },
+            created_at: {
+              value: newDate,
+            },
+            thread: {
+              id: threadId,
+            },
+          };
+
+          await createObject.mutateAsync(
+            {
+              objectKind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+              data: newComment,
+            },
+            {
+              onSuccess: async () => {
+                if (refetch) refetch();
+                setIsLoading(false);
+                handleCloseComment();
+              },
+              onError: async (error) => {
+                await deleteObject.mutateAsync({
+                  objectKind: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+                  objectId: threadId,
+                });
+
+                console.error("An error occurred while creating the comment:", error);
+
+                toast(
+                  <Alert
+                    type={ALERT_TYPES.ERROR}
+                    message={"An error occurred while creating the comment"}
+                    details={error.message}
+                  />
+                );
+
+                setIsLoading(false);
+              },
+            }
+          );
+        },
+      }
+    );
   };
 
   const getWidgets = (hunks: any) => {
@@ -323,7 +300,7 @@ export const ArtifactContentDiff = (props: any) => {
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="bg-white p-4 border border-custom-blue-500 rounded-md m-2">
+          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-white p-4">
             {comment.message}
           </div>
         )),
@@ -356,10 +333,10 @@ export const ArtifactContentDiff = (props: any) => {
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+            className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 transform"
             onClick={handleClick}
           >
-            <PencilIcon className="w-3 h-3" />
+            <PencilIcon className="h-3 w-3" />
           </Button>
         )}
       </>

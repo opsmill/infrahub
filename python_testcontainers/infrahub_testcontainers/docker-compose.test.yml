@@ -20,7 +20,7 @@ services:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
   cache:
-    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.11}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
@@ -50,7 +50,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT:-0.0}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT:-0}
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.03.0-community}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/admin
@@ -59,6 +59,7 @@ services:
       NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
       NEO4J_server_memory_heap_initial__size: ${INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE}
       NEO4J_server_memory_heap_max__size: ${INFRAHUB_TESTING_DB_HEAP_MAX_SIZE}
+      NEO4J_server_memory_pagecache_size: ${INFRAHUB_TESTING_DB_PAGECACHE_SIZE}
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
@@ -71,19 +72,42 @@ services:
       start_period: 3s
     ports:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
+      - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
 
   task-manager:
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
-    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
+    command: "${PREFECT_SERVER_COMMAND:-gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()'}"
     depends_on:
       task-manager-db:
+        condition: service_healthy
+      cache:
         condition: service_healthy
     environment:
       PREFECT_UI_ENABLED: "${INFRAHUB_TESTING_PREFECT_UI_ENABLED}" # enabling UI requires permissions, run container as root to enable UI
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}"
+      PREFECT_REDIS_MESSAGING_DB: "1"
+      PREFECT_REDIS_MESSAGING_CONSUMER_MIN_IDLE_TIME: "30"
+      PREFECT_REDIS_MESSAGING_PUBLISHER_BATCH_SIZE: "1"
+
+      PREFECT_MESSAGING_BROKER:
+      PREFECT_MESSAGING_CACHE:
+      PREFECT_SERVER_EVENTS_CAUSAL_ORDERING:
+      PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE:
+      PREFECT__SERVER_WEBSERVER_ONLY:
+      PREFECT_API_DATABASE_MIGRATE_ON_START:
+      PREFECT_API_BLOCKS_REGISTER_ON_START:
+      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED:
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED:
+      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED:
+      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED:
+
+      WEB_CONCURRENCY: ${INFRAHUB_TESTING_TASKMGR_API_WORKERS:-1}
     healthcheck:
-      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
@@ -91,14 +115,51 @@ services:
     ports:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
 
+  task-manager-background-svc:
+    deploy:
+      mode: replicated
+      replicas: ${INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS:-0}
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: prefect server services start
+    restart: unless-stopped
+    depends_on:
+      task-manager:
+        condition: service_healthy
+      task-manager-db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    environment:
+      PREFECT_UI_ENABLED: "${INFRAHUB_TESTING_PREFECT_UI_ENABLED}" # This might be required because triggers actions service depends on an in-memory API server
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+
+      PREFECT_API_DATABASE_MIGRATE_ON_START: "false"
+      PREFECT_API_BLOCKS_REGISTER_ON_START: "false"
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_SERVER_EVENTS_CAUSAL_ORDERING: prefect_redis.ordering
+      PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE: prefect_redis.lease_storage
+      PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}"
+      PREFECT_REDIS_MESSAGING_DB: "1"
+      PREFECT_REDIS_MESSAGING_CONSUMER_MIN_IDLE_TIME: "30"
+      PREFECT_REDIS_MESSAGING_PUBLISHER_BATCH_SIZE: "1"
+
+      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "true"
+
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    command: postgres -c 'max_connections=${INFRAHUB_TESTING_TASK_MANAGER_DB_MAX_CONNECTIONS:-100}'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=prefect
     volumes:
       - workflow_db:/var/lib/postgresql/data
+      - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
@@ -170,6 +231,7 @@ services:
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS:-database}
       INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
       INFRAHUB_TIMEOUT: ${INFRAHUB_TESTING_TIMEOUT}
+      INFRAHUB_PAGINATION_SIZE: ${INFRAHUB_TESTING_PAGINATION_SIZE:-50}
       PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
       INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
       # Tracing

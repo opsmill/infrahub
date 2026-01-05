@@ -1,17 +1,19 @@
-import { LabelFormField } from "@/shared/components/form/fields/common";
-import { DynamicEnumFieldProps, FormAttributeValue } from "@/shared/components/form/type";
-import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
+import type { DynamicEnumFieldProps, FormAttributeValue } from "@/shared/components/form/type";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Enum, EnumProps } from "@/shared/components/inputs/enum";
+import { Enum, type EnumProps } from "@/shared/components/inputs/enum";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
-    Omit<EnumProps, "defaultValue" | "value" | "name" | "items"> {}
+    Omit<EnumProps, "defaultValue" | "value" | "name" | "items" | "onChange"> {}
 
 const EnumField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  isBulkUpdate,
+  attribute,
   description,
   label,
   name,
@@ -19,7 +21,7 @@ const EnumField = ({
   unique,
   items,
   schema,
-  field: attributeSchema,
+  shouldUnregister,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -28,6 +30,7 @@ const EnumField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
@@ -46,7 +49,7 @@ const EnumField = ({
                 {...field}
                 {...props}
                 items={items as Array<string | number>}
-                fieldSchema={attributeSchema}
+                fieldSchema={attribute}
                 schema={schema}
                 value={fieldData?.value as string | number | null}
                 onChange={(newValue) => {
@@ -54,6 +57,10 @@ const EnumField = ({
                 }}
               />
             </FormInput>
+
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

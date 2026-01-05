@@ -14,6 +14,11 @@ services:
       - ./promtail/config.yml:/etc/promtail/config.yml
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/lib/docker/containers:/var/lib/docker/containers
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     depends_on:
       - loki
 
@@ -34,7 +39,7 @@ services:
 
   init:
     profiles: [trace]
-    image: grafana/tempo:latest
+    image: busybox:latest
     user: root
     entrypoint:
       - "chown"
@@ -64,6 +69,7 @@ services:
     image: prefecthq/prometheus-prefect-exporter:latest
     environment:
       PREFECT_API_URL: http://task-manager:4200/api
+      LOG_LEVEL: WARNING
     ports:
       - "4201:8000"
     depends_on:
@@ -84,12 +90,22 @@ services:
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=1d'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=4d'
+      - '--storage.tsdb.retention.size=20GB'
+      - '--storage.tsdb.wal-compression'
+      - '--storage.tsdb.min-block-duration=1h'
+      - '--storage.tsdb.max-block-duration=2h'
       - '--web.enable-lifecycle'
       - '--web.enable-remote-write-receiver'
+      - '--log.level=warn'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
     ports:
       - "9090:9090"
 
@@ -105,6 +121,11 @@ services:
       - '--path.rootfs=/rootfs'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     ports:
       - "9100:9100"
 
@@ -119,6 +140,11 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     ports:
       - "8080:8080"
 
@@ -127,10 +153,20 @@ services:
     image: grafana/grafana:11.4.0
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+      - grafana_logs:/var/log/grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_LOG_LEVEL=warn
+      - GF_LOG_MODE=console,file
+      - GF_LOG_DIR=/var/log/grafana
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
     ports:
       - "3500:3000"
     depends_on:
@@ -139,6 +175,7 @@ services:
 
 volumes:
   grafana_data:
+  grafana_logs:
   prometheus_data:
   loki_data:
   tempo_data:

@@ -1,17 +1,15 @@
-import { Button } from "@/shared/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, ReactNode, useRef } from "react";
+import type React from "react";
+import { Fragment, type ReactNode, useRef } from "react";
+
+import { Button } from "@/shared/components/buttons/button";
 
 export function ModalTitle({ children }: { children: ReactNode }) {
   return (
-    <Dialog.Title as="h3" className="flex items-center font-semibold leading-6 text-gray-900">
+    <Dialog.Title as="h3" className="flex items-center font-semibold text-gray-900 leading-6">
       {children}
     </Dialog.Title>
   );
-}
-
-export function ModalDescription({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-gray-500">{children}</p>;
 }
 
 interface iProps {
@@ -40,7 +38,7 @@ export default function Modal({ open, setOpen, children, closeLabel }: iProps) {
         </Transition.Child>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-full justify-center text-center items-center p-0">
+          <div className="flex min-h-full items-center justify-center p-0 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -51,13 +49,13 @@ export default function Modal({ open, setOpen, children, closeLabel }: iProps) {
               leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
             >
               <Dialog.Panel
-                className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all my-8 w-full max-w-lg"
+                className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all"
                 data-cy="modal-delete"
                 data-testid="modal-delete"
               >
-                <div className="bg-white px-4 pt-5 p-6 pb-4">{children}</div>
+                <div className="bg-white p-6 px-4 pt-5 pb-4">{children}</div>
 
-                <div className="bg-gray-50 px-4 py-3 flex flex-row-reverse">
+                <div className="flex flex-row-reverse bg-gray-50 px-4 py-3">
                   <Button onClick={() => setOpen(false)} ref={closeButtonRef}>
                     {closeLabel ?? "Close"}
                   </Button>

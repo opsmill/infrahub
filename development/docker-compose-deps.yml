@@ -16,7 +16,7 @@ services:
       start_period: 3s
   cache:
     profiles: [demo, dev]
-    image: "${CACHE_DOCKER_IMAGE:-redis:7.2.4}"
+    image: "${CACHE_DOCKER_IMAGE:-redis:7.2.11}"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 5s
@@ -30,7 +30,7 @@ services:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
     healthcheck:
-      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20

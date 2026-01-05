@@ -7,7 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
+from infrahub.core.constants import NULL_VALUE, BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -17,7 +17,6 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -30,6 +29,7 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 BRANCH_NAME = "branch1"
+DELETED_BRANCH_NAME = "deleted_branch"
 PROPOSED_CHANGE_NAME = "branch1-pc"
 DIFF_UPDATE_QUERY = """
 mutation DiffUpdate($branch_name: String!, $wait_for_completion: Boolean = true) {
@@ -169,8 +169,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         await ed_209.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
-
         return {
             "john": john,
             "kara": kara,
@@ -198,6 +196,27 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
 
+    @pytest.fixture(scope="class")
+    async def deleted_branch(self, db: InfrahubDatabase) -> Branch:
+        return await create_branch(db=db, branch_name=DELETED_BRANCH_NAME)
+
+    @pytest.fixture(scope="class")
+    async def diff_on_deleted_branch(
+        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, deleted_branch: Branch
+    ) -> EnrichedDiffRoot:
+        kara = await NodeManager.get_one(db=db, branch=deleted_branch, id=initial_dataset["kara"].id)
+        kara.description.value = "I think she's an angel now"
+        await kara.save(db=db)
+
+        result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": DELETED_BRANCH_NAME})
+        assert result["DiffUpdate"]["ok"]
+
+        diff = await self.get_branch_diff(db=db, branch=deleted_branch)
+        assert len(diff.nodes) == 1
+
+        await deleted_branch.delete(db=db)
+        return diff
+
     @staticmethod
     async def get_branch_diff(db: InfrahubDatabase, branch: Branch) -> EnrichedDiffRoot:
         # Validate if the diff has been updated properly
@@ -205,8 +224,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
 
         return await diff_repo.get_one(
-            tracking_id=BranchTrackingId(name=BRANCH_NAME),
-            diff_branch_name=BRANCH_NAME,
+            tracking_id=BranchTrackingId(name=branch.name),
+            diff_branch_name=branch.name,
         )
 
     async def _get_proposed_change_and_data_validator(self, db) -> tuple[Node, Node]:
@@ -225,7 +244,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         return (pc, data_validator)
 
     async def test_diff_first_update(
-        self, db: InfrahubDatabase, initial_dataset, create_diff, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset, create_diff, diff_on_deleted_branch, client: InfrahubClient
     ) -> None:
         """Validate if the diff is properly created the first time"""
 
@@ -265,13 +284,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.render_display_label(db=db)
+        omnicorp_label = await omnicorp_node.get_display_label(db=db)
         john_id = initial_dataset["john"].get_id()
         john_node = await NodeManager.get_one(db=db, id=john_id)
-        john_label = await john_node.render_display_label(db=db)
+        john_label = await john_node.get_display_label(db=db)
         ed_209_id = initial_dataset["ed_209"].get_id()
         ed_209_branch = await NodeManager.get_one(db=db, branch=branch1, id=ed_209_id)
-        ed_209_label = await ed_209_branch.render_display_label(db=db)
+        ed_209_label = await ed_209_branch.get_display_label(db=db)
         await ed_209_branch.delete(db=db)
 
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME})
@@ -288,7 +307,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert ed_209_node.action is DiffAction.REMOVED
         assert ed_209_node.label == ed_209_label
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "color", "description"}
+        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label", "human_friendly_id"}
         for attr_node in attributes_by_name.values():
             assert attr_node.action is DiffAction.REMOVED
             assert attr_node.contains_conflict is False
@@ -300,7 +319,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             }
             for prop_diff in properties_by_type.values():
                 assert prop_diff.action is DiffAction.REMOVED
-                assert prop_diff.new_value is None
+                assert prop_diff.new_value in [None, NULL_VALUE]
         relationships_by_name = {r.name: r for r in ed_209_node.relationships}
         assert set(relationships_by_name.keys()) == {"manufacturer", "owner"}
         manufacturer_rel = relationships_by_name["manufacturer"]
@@ -454,10 +473,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         jesko_id = initial_dataset["jesko"].get_id()
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
         cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
-        cyberdyne_label = await cyberdyne_node.render_display_label(db=db)
+        cyberdyne_label = await cyberdyne_node.get_display_label(db=db)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.render_display_label(db=db)
+        omnicorp_label = await omnicorp_node.get_display_label(db=db)
         jesko_main = await NodeManager.get_one(db=db, branch=default_branch, id=jesko_id)
         await jesko_main.manufacturer.update(db=db, data={"id": cyberdyne_id})
         await jesko_main.save(db=db)
@@ -516,20 +535,20 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         t_800_id = initial_dataset["t_800"].get_id()
         john_id = initial_dataset["john"].get_id()
         john_node = await NodeManager.get_one(db=db, id=john_id)
-        john_label = await john_node.render_display_label(db=db)
+        john_label = await john_node.get_display_label(db=db)
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
         cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
-        cyberdyne_label = await cyberdyne_node.render_display_label(db=db)
+        cyberdyne_label = await cyberdyne_node.get_display_label(db=db)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.render_display_label(db=db)
+        omnicorp_label = await omnicorp_node.get_display_label(db=db)
         t_800_main = await NodeManager.get_one(db=db, branch=default_branch, id=t_800_id)
         await t_800_main.owner.update(db=db, data={"id": john_id, "_relation__owner": cyberdyne_id})
         await t_800_main.save(db=db)
         t_800_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=t_800_id)
         await t_800_branch.owner.update(db=db, data={"id": john_id, "_relation__owner": omnicorp_id})
         await t_800_branch.save(db=db)
-        t_800_label = await t_800_main.render_display_label(db=db)
+        t_800_label = await t_800_main.get_display_label(db=db)
         changes_done_time = Timestamp()
 
         result = await client.execute_graphql(
@@ -1150,7 +1169,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(core_data_checks) == len(data_checks_by_conflict_id)
 
     async def test_merge_proposed_change(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch,
+        diff_on_deleted_branch: EnrichedDiffRoot,
+        deleted_branch: Branch,
+        client: InfrahubClient,
     ) -> None:
         pc, _ = await self._get_proposed_change_and_data_validator(db=db)
         result = await client.execute_graphql(
@@ -1227,3 +1252,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         murphy_customer_rel = omnicorp_customers_rels_by_peer_id[murphy_id]
         owner_of_property = await murphy_customer_rel.get_owner(db=db)
         assert owner_of_property.get_id() == cardinality_many_property_conflict.expected_value
+
+        # validate diff not updated for deleted branch
+        fresh_deleted_branch_diff = await self.get_branch_diff(db=db, branch=deleted_branch)
+        assert fresh_deleted_branch_diff.to_time == diff_on_deleted_branch.to_time

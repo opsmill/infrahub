@@ -1,13 +1,10 @@
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { Link } from "react-router";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { TableCell } from "@/shared/components/table/table-cell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
-import { Link } from "react-router";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
+import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { Permission } from "@/entities/permission/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
   permission: Permission;
@@ -38,12 +40,13 @@ export function ObjectActionsCell({
   const isEditAllowed = permission.update.isAllowed;
   const isDeleteAllowed = permission.delete.isAllowed;
 
-  if (!schema) return <ErrorScreen message={`Schema not found for ${objectKind}`} />;
+  if (!schema) {
+    return <StickyRightCell isMuted />;
+  }
 
   return (
     <>
-      <TableCell className="sticky right-0 border-l size-10 items-center justify-center bg-white -ml-px">
-        <div className="absolute -left-4 top-0 bottom-0 w-4 bg-linear-to-r from-transparent to-gray-300/30 pointer-events-none" />
+      <StickyRightCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -89,7 +92,7 @@ export function ObjectActionsCell({
             </Tooltip>
           </DropdownMenuContent>
         </DropdownMenu>
-      </TableCell>
+      </StickyRightCell>
 
       {showEditForm && (
         <SlideOver
@@ -106,11 +109,10 @@ export function ObjectActionsCell({
           <ObjectItemEditComponent
             closeDrawer={() => setShowEditForm(false)}
             onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({
-                predicate: (query) => query.queryKey.includes("objects"),
-              });
+              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+              setShowEditForm(false);
             }}
-            objectid={objectId}
+            objectId={objectId}
             objectname={objectKind}
           />
         </SlideOver>

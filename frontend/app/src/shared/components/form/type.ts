@@ -1,14 +1,17 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import {
+import type { ComponentProps } from "react";
+
+import type { DropdownOption } from "@/shared/components/inputs/dropdown";
+import type { SelectOption } from "@/shared/components/inputs/select-old";
+import type { FormField } from "@/shared/components/ui/form";
+
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/types";
-import { DropdownOption } from "@/shared/components/inputs/dropdown";
-import { SelectOption } from "@/shared/components/inputs/select-old";
-import { FormField } from "@/shared/components/ui/form";
-import { ComponentProps } from "react";
 
 type SourceType = "schema" | "user";
 
@@ -120,6 +123,7 @@ export type FormRelationshipValue =
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
 export type FormFieldProps = {
+  attribute: AttributeSchema;
   defaultValue?: FormAttributeValue;
   description?: string;
   disabled?: boolean;
@@ -129,6 +133,13 @@ export type FormFieldProps = {
   unique?: boolean;
   rules?: ComponentProps<typeof FormField>["rules"];
   onChange?: (value: FormFieldValue) => void;
+  // Indicates the form is used for bulk updates, enabling explicit null-setting UI
+  isBulkUpdate?: boolean;
+  pool?: {
+    kind: string;
+    defaultAllocatedObjectKind: string;
+  };
+  shouldUnregister?: boolean;
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {
@@ -137,20 +148,18 @@ export type DynamicInputFieldProps = FormFieldProps & {
 
 export type DynamicNumberFieldProps = FormFieldProps & {
   type: "Number";
-  pools?: Array<NumberPoolData>;
+  pools?: Array<NumberPool>;
 };
 
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<DropdownOption>;
-  field?: AttributeSchema;
   schema?: ModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
   items: Array<unknown>;
-  field?: AttributeSchema;
   schema?: ModelSchema;
 };
 
@@ -171,16 +180,19 @@ export type DynamicAttributeFieldProps =
   | DynamicSelectFieldProps
   | DynamicKindFieldProps;
 
-export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
-  type: "relationship";
+export type RelationshipFieldType = "relationship" | "relationship-add" | "relationship-remove";
+
+export interface DynamicRelationshipFieldProps
+  extends Omit<FormFieldProps, "defaultValue" | "attribute"> {
+  type: RelationshipFieldType;
   defaultValue?: FormRelationshipValue;
+  relationship: RelationshipSchema;
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  relationship: RelationshipSchema;
   schema: ModelSchema;
   peerField?: string;
-};
+}
 
 export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;
 
@@ -191,13 +203,3 @@ export const isFormFieldValueFromPool = (
 export const isFormFieldValueFromTemplate = (
   fieldData: FormFieldValue
 ): fieldData is AttributeValueFromTemplate => fieldData.source?.type === "template";
-
-export type NumberPoolData = {
-  id: string;
-  label: string;
-  kind: string;
-  nodeAttribute: {
-    id: string;
-    name: string;
-  };
-};

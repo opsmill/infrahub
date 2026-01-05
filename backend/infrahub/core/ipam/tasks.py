@@ -5,7 +5,7 @@ from prefect import flow
 
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.services import InfrahubServices
+from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
 
 from .model import IpamNodeDetails
@@ -20,8 +20,9 @@ if TYPE_CHECKING:
     description="Ensure the IPAM Tree is up to date",
     persist_result=False,
 )
-async def ipam_reconciliation(branch: str, ipam_node_details: list[IpamNodeDetails], service: InfrahubServices) -> None:
-    async with service.database.start_session() as db:
+async def ipam_reconciliation(branch: str, ipam_node_details: list[IpamNodeDetails]) -> None:
+    database = await get_database()
+    async with database.start_session() as db:
         branch_obj = await registry.get_branch(db=db, branch=branch)
 
         await add_branch_tag(branch_name=branch_obj.name)

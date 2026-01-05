@@ -24,6 +24,7 @@ from infrahub.graphql.metrics import (
     GRAPHQL_RESPONSE_SIZE_METRICS,
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
+from infrahub.graphql.middleware import raise_on_mutation_on_branch_needing_rebase
 from infrahub.graphql.utils import extract_data
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
@@ -40,7 +41,7 @@ router = APIRouter(prefix="/query")
 
 
 class QueryPayload(BaseModel):
-    variables: dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, Any] = Field(default_factory=dict)
 
 
 async def execute_query(
@@ -48,7 +49,7 @@ async def execute_query(
     request: Request,
     branch_params: BranchParams,
     query_id: str,
-    params: dict[str, str],
+    params: dict[str, Any],
     update_group: bool,
     subscribers: list[str],
     permission_checker: GraphQLQueryPermissionChecker,
@@ -98,6 +99,7 @@ async def execute_query(
             context_value=gql_params.context,
             root_value=None,
             variable_values=params,
+            middleware=[raise_on_mutation_on_branch_needing_rebase],
         )
 
     data = extract_data(query_name=gql_query.name.value, result=result)

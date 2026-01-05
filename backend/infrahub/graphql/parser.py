@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from graphql.language import (
     DirectiveNode,
     FieldNode,
+    FragmentSpreadNode,
     InlineFragmentNode,
     ListValueNode,
     NameNode,
@@ -15,7 +16,9 @@ from graphql.language import (
 from infrahub_sdk.utils import deep_merge_dict
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import NodeSchema
+    from graphql import GraphQLResolveInfo
+
+    from infrahub.core.schema import GenericSchema, NodeSchema
 
 
 @dataclass
@@ -26,14 +29,14 @@ class FieldEnricher:
     fields: dict = field(default_factory=dict)
 
 
-async def extract_selection(field_node: FieldNode, schema: NodeSchema) -> dict:
-    graphql_extractor = GraphQLExtractor(field_node=field_node, schema=schema)
+async def extract_selection(info: GraphQLResolveInfo, schema: NodeSchema | GenericSchema) -> dict:
+    graphql_extractor = GraphQLExtractor(info=info, schema=schema)
     return await graphql_extractor.get_fields()
 
 
 class GraphQLExtractor:
-    def __init__(self, field_node: FieldNode, schema: NodeSchema) -> None:
-        self.field_node = field_node
+    def __init__(self, info: GraphQLResolveInfo, schema: NodeSchema | GenericSchema) -> None:
+        self.info = info
         self.schema = schema
         self.typename_paths: dict[str, list[FieldEnricher]] = {}
         self.node_path: dict[str, list[FieldEnricher]] = {}
@@ -43,7 +46,7 @@ class GraphQLExtractor:
             self.node_path[path] = []
 
     async def get_fields(self) -> dict:
-        return await self.extract_fields(selection_set=self.field_node.selection_set) or {}
+        return await self.extract_fields(selection_set=self.info.field_nodes[0].selection_set) or {}
 
     def _process_expand_directive(self, path: str, directive: DirectiveNode) -> None:
         excluded_fields = []
@@ -203,6 +206,12 @@ class GraphQLExtractor:
                             )
                         elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
                             fields[sub_node.name.value].update(value)  # type: ignore[union-attr]
+
+            elif isinstance(node, FragmentSpreadNode):
+                if node.name.value in self.info.fragments:
+                    fragment_fields = await self.extract_fields(self.info.fragments[node.name.value].selection_set)
+                    if fragment_fields:
+                        fields.update(fragment_fields)
 
         return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
 

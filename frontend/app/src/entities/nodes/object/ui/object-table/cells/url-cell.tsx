@@ -1,5 +1,6 @@
-import { TextAttribute } from "@/shared/api/graphql/generated/graphql";
 import { Icon } from "@iconify-icon/react";
+
+import type { TextAttribute } from "@/shared/api/graphql/generated/graphql";
 
 export function UrlCell({ url }: { url: TextAttribute }) {
   if (!url.value) return "-";
@@ -9,7 +10,7 @@ export function UrlCell({ url }: { url: TextAttribute }) {
       href={url.value}
       target="_blank"
       rel="noreferrer"
-      className="cursor-pointer text-blue-600 py-1 px-2 rounded-full inline-flex items-center hover:underline"
+      className="inline-flex cursor-pointer items-center rounded-full px-2 py-1 text-blue-600 hover:underline"
     >
       <span className="truncate">{url.value}</span>
       <Icon icon="mdi:open-in-new" className="ml-0.5" />

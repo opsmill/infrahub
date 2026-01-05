@@ -1,9 +1,9 @@
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { queryClient } from "@/shared/api/rest/client";
+import { toast } from "react-toastify";
+
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { toast } from "react-toastify";
+
+import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 
 export interface DissociateRelationshipModalProps {
   objectId: string;
@@ -33,17 +33,13 @@ export function DissociateRelationshipsModal({
       },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey.includes("objects"),
-          });
-          graphqlClient.reFetchObservableQueries();
-          setOpen(false);
           toast(
             <Alert
               type={ALERT_TYPES.SUCCESS}
               message={`Association with ${relationshipLabel} removed`}
             />
           );
+          setOpen(false);
         },
       }
     );

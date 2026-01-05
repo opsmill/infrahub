@@ -23,7 +23,7 @@ class RelationshipProfilesKindConstraint(RelationshipManagerConstraintInterface)
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name if branch else registry.default_branch)
 
-    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
         if relm.name != "profiles" or not isinstance(node_schema, NodeSchema):
             return
 

@@ -1,7 +1,9 @@
-import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
+import { Icon } from "@iconify-icon/react";
+
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
+
+import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 
 export interface DiffComputingProps {
   sourceBranch: string;
@@ -10,10 +12,10 @@ export interface DiffComputingProps {
 
 export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputingProps) {
   return (
-    <div className="flex flex-col items-center mt-10 gap-5">
+    <div className="mt-10 flex flex-col items-center gap-5">
       <LoadingIndicator message="" />
 
-      <h1 className="font-semibold inline-flex gap-1.5">
+      <h1 className="inline-flex gap-1.5 font-semibold">
         We are computing the diff between
         <Badge variant="blue">
           <Icon icon="mdi:layers-triple" className="mr-1" />

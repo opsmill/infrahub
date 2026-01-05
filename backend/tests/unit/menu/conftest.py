@@ -54,7 +54,7 @@ async def menu_fixture_01_data() -> list[MenuItemDefinition]:
                     name="IPPrefix",
                     label="IP Prefixes",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/prefixes",
+                    path="/ipam",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=1000,
@@ -64,7 +64,7 @@ async def menu_fixture_01_data() -> list[MenuItemDefinition]:
                     name="IPAddress",
                     label="IP Addresses",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/addresses?ipam-tab=ip-details",
+                    path="/ipam/ip_addresses",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=2000,
@@ -121,7 +121,7 @@ async def menu_repository(db: InfrahubDatabase) -> MenuRepository:
 @pytest.fixture
 async def menu_fixture_01(
     menu_repository: MenuRepository, default_branch: Branch, menu_fixture_01_data: list[MenuItemDefinition]
-):
+) -> None:
     await menu_repository.create_menu(menu=menu_fixture_01_data)
 
 
@@ -162,7 +162,7 @@ async def menu_fixture_02_data() -> list[MenuItemDefinition]:
                     name="IPPrefix",
                     label="IP Prefixes",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/prefixes",
+                    path="/ipam",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=1000,
@@ -172,7 +172,7 @@ async def menu_fixture_02_data() -> list[MenuItemDefinition]:
                     name="IPAddress",
                     label="IP Addresses",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/addresses?ipam-tab=ip-details",
+                    path="/ipam/ip_addresses",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=2000,
@@ -181,6 +181,7 @@ async def menu_fixture_02_data() -> list[MenuItemDefinition]:
                     namespace="Builtin",
                     name="Namespaces",
                     label="Namespaces",
+                    path="/ipam/namespaces",
                     kind=InfrahubKind.IPNAMESPACE,
                     protected=True,
                     section=MenuSection.INTERNAL,
@@ -518,7 +519,7 @@ async def menu_fixture_11_data() -> list[MenuItemDefinition]:
                     name="IPPrefix",
                     label="IP Prefixes",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/prefixes",
+                    path="/ipam",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=1000,
@@ -528,7 +529,7 @@ async def menu_fixture_11_data() -> list[MenuItemDefinition]:
                     name="IPAddress",
                     label="IP Addresses",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/addresses?ipam-tab=ip-details",
+                    path="/ipam/ip_addresses",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=2000,
@@ -537,6 +538,7 @@ async def menu_fixture_11_data() -> list[MenuItemDefinition]:
                     namespace="Builtin",
                     name="Namespaces",
                     label="Namespaces",
+                    path="/ipam/namespaces",
                     kind=InfrahubKind.IPNAMESPACE,
                     protected=True,
                     section=MenuSection.INTERNAL,
@@ -584,7 +586,7 @@ async def menu_fixture_12_data() -> list[MenuItemDefinition]:
                     name="IPPrefix",
                     label="IP Prefixes",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/prefixes",
+                    path="/ipam",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=1000,
@@ -594,7 +596,7 @@ async def menu_fixture_12_data() -> list[MenuItemDefinition]:
                     name="IPAddress",
                     label="IP Addresses",
                     kind=InfrahubKind.IPPREFIX,
-                    path="/ipam/addresses",
+                    path="/ipam/ip_addresses",
                     protected=True,
                     section=MenuSection.INTERNAL,
                     order_weight=2000,

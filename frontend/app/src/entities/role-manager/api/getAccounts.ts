@@ -1,12 +1,23 @@
 import { gql } from "@apollo/client";
 
 export const GET_ROLE_MANAGEMENT_ACCOUNTS = gql`
-  query GET_ROLE_MANAGEMENT_ACCOUNTS($search: String) {
-    CoreGenericAccount(any__value: $search, partial_match: true)  {
+  query GET_ROLE_MANAGEMENT_ACCOUNTS(
+    $search: String
+    $offset: Int
+    $limit: Int
+  ) {
+    CoreGenericAccount(
+      any__value: $search
+      partial_match: true
+      offset: $offset
+      limit: $limit
+    )  {
       count
       edges {
         node {
           id
+          display_label
+          hfid
           name {
             value
           }

@@ -18,7 +18,7 @@ async def test_schema_read_endpoint_default_branch(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     with client:
         response = client.get(
             "/api/schema",
@@ -51,7 +51,7 @@ async def test_schema_read_endpoint_branch1(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     await create_branch(branch_name="branch1", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
@@ -75,7 +75,7 @@ async def test_schema_read_endpoint_branch1(
 
 async def test_schema_read_endpoint_wrong_branch(
     db: InfrahubDatabase, client: TestClient, client_headers, default_branch: Branch, car_person_data_generic
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -94,7 +94,7 @@ async def test_schema_summary_default_branch(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     with client:
         response = client.get(
             "/api/schema/summary",
@@ -118,7 +118,7 @@ async def test_schema_kind_default_branch(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     with client:
         response = client.get(
             f"/api/schema/{InfrahubKind.TAG}",
@@ -142,7 +142,7 @@ async def test_json_schema_kind_default_branch(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     with client:
         response = client.get(
             f"/api/schema/json_schema/{InfrahubKind.IPPREFIX}",
@@ -170,7 +170,7 @@ async def test_schema_kind_not_valid(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     with client:
         response = client.get(
             "/api/schema/NotPresent",
@@ -190,7 +190,7 @@ async def test_schema_load_permission_failure(
     workflow_local,
     authentication_base,
     helper,
-):
+) -> None:
     token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
     await token.new(db=db, token="unprivileged", account=first_account)
     await token.save(db=db)
@@ -220,7 +220,7 @@ async def test_schema_load_restricted_namespace(
     workflow_local,
     authentication_base,
     helper,
-):
+) -> None:
     with client:
         response = client.post(
             "/api/schema/load",
@@ -241,7 +241,7 @@ async def test_schema_load_endpoint_not_valid_simple_02(
     workflow_local,
     authentication_base,
     helper,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
@@ -262,7 +262,7 @@ async def test_schema_load_endpoint_not_valid_simple_03(
     workflow_local,
     authentication_base,
     helper,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
@@ -283,7 +283,7 @@ async def test_schema_load_endpoint_not_valid_simple_04(
     workflow_local,
     authentication_base,
     helper,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
@@ -304,7 +304,7 @@ async def test_schema_load_endpoint_not_valid_simple_05(
     workflow_local,
     authentication_base,
     helper,
-):
+) -> None:
     with client:
         response = client.post(
             "/api/schema/load",
@@ -326,7 +326,7 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
     default_branch: Branch,
     authentication_base,
     helper,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
@@ -336,6 +336,29 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
         )
 
     assert response.status_code == 422
+
+
+async def test_schema_load_endpoint_python_keyword_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    helper,
+) -> None:
+    """Test that loading a schema with Python keyword as attribute name fails with proper error."""
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("python_keyword_from.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        "Python keyword 'from' cannot be used as an attribute name on 'InfraRoutingPolicy'"
+        in response.json()["errors"][0]["message"]
+    )
 
 
 async def test_schema_load_endpoint_constraints_not_valid(
@@ -352,7 +375,7 @@ async def test_schema_load_endpoint_constraints_not_valid(
     car_volt_main,
     person_john_main,
     helper,
-):
+) -> None:
     # Load the schema in the database
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
@@ -398,7 +421,7 @@ async def test_schema_read_endpoints_anonymous_account(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     allow_anonymous_access: bool,
-):
+) -> None:
     config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 
     with client:

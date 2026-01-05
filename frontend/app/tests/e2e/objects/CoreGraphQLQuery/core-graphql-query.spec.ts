@@ -1,17 +1,10 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 
 test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
 
   test("should create a new graphql successfully", async ({ page }) => {
     await test.step("Navigate to CoreGraphQLQuery page", async () => {

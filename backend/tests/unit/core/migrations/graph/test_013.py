@@ -11,8 +11,7 @@ from infrahub.core.migrations.graph.m013_convert_git_password_credential import 
     Migration013DeleteUsernamePasswordGenericSchema,
 )
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot, internal_schema
-from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
@@ -141,13 +140,9 @@ ATTRIBUTE_SCHEMA = NodeSchema(
 
 
 @pytest.fixture
-async def migration_013_data(db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db):
-    # load the internal schema from
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = SchemaBranch(cache={}, name="default_branch")
-    schema_branch.load_schema(schema=schema)
-    schema_branch.process()
-
+async def migration_013_data(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
+) -> None:
     repo1 = await Node.init(db=db, schema=GIT_SCHEMA)
     await repo1.new(db=db, name="repo1 initial", username="user1 initial", password="pwd1 initial")
     await repo1.save(db=db)
@@ -168,12 +163,9 @@ async def migration_013_data(db: InfrahubDatabase, reset_registry, default_branc
 
 
 @pytest.fixture
-async def migration_013_schema(db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db):
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = SchemaBranch(cache={}, name="default_branch")
-    schema_branch.load_schema(schema=schema)
-    schema_branch.process()
-
+async def migration_013_schema(
+    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
+) -> None:
     node1 = await Node.init(db=db, schema=NODE_SCHEMA)
     await node1.new(db=db, name="GenericRepository", namespace="Core")
     await node1.save(db=db)
@@ -197,7 +189,7 @@ async def migration_013_schema(db: InfrahubDatabase, reset_registry, default_bra
 
 async def test_migration_013_query_01(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
-):
+) -> None:
     registry.branch[default_branch.name] = default_branch
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
@@ -233,7 +225,7 @@ async def test_migration_013_query_01(
 
 async def test_migration_013_query_02(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
-):
+) -> None:
     registry.branch[default_branch.name] = default_branch
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
@@ -261,7 +253,7 @@ async def test_migration_013_query_02(
 
 async def test_migration_013_delete_username_password_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_schema
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
     query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db)
@@ -277,7 +269,7 @@ async def test_migration_013_delete_username_password_schema(
 
 async def test_migration_013_add_internal_status_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
     query = await Migration013AddInternalStatusData.init(db=db)
@@ -300,7 +292,7 @@ async def test_migration_013(
     delete_all_nodes_in_db,
     migration_013_data,
     migration_013_schema,
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
     nbr_nodes_before = await count_nodes(db=db)
 

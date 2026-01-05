@@ -1,16 +1,21 @@
 import { JsonEditor } from "@/shared/components/editor/json/json-editor";
-import { LabelFormField } from "@/shared/components/form/fields/common";
-import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
+import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 const JsonField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  attribute,
+  isBulkUpdate,
   description,
   label,
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: FormFieldProps) => {
   return (
@@ -19,6 +24,7 @@ const JsonField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
@@ -38,7 +44,7 @@ const JsonField = ({
                 value={fieldData?.value as string | undefined}
                 onChange={(value) => {
                   if (!value || value === "") {
-                    field.onChange({ source: null, value: null });
+                    field.onChange(updateFormFieldValue(null, defaultValue));
                   }
 
                   try {
@@ -57,6 +63,10 @@ const JsonField = ({
                 }}
               />
             </FormInput>
+
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

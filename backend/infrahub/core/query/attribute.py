@@ -5,9 +5,16 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
+from infrahub.core.graph.schema import (
+    GraphAttributeIPHostNode,
+    GraphAttributeIPNetworkNode,
+    GraphAttributeValueIndexedNode,
+    GraphAttributeValueNode,
+)
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs
+from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -31,7 +38,7 @@ class AttributeQuery(Query):
         if at:
             self.at = Timestamp(at)
         else:
-            self.at = self.attr.at
+            self.at = Timestamp()
 
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
@@ -56,12 +63,14 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
         prop_list = [f"{key}: ${key}" for key in content.keys()]
 
-        labels = ["AttributeValue"]
+        labels = [GraphAttributeValueNode.get_default_label()]
         node_type = self.attr.get_db_node_type()
-        if node_type == AttributeDBNodeType.IPHOST:
-            labels.append("AttributeIPHost")
-        elif node_type == AttributeDBNodeType.IPNETWORK:
-            labels.append("AttributeIPNetwork")
+        if AttributeDBNodeType.INDEXED in node_type:
+            labels.append(GraphAttributeValueIndexedNode.get_default_label())
+        if AttributeDBNodeType.IPHOST in node_type:
+            labels.append(GraphAttributeIPHostNode.get_default_label())
+        if AttributeDBNodeType.IPNETWORK in node_type:
+            labels.append(GraphAttributeIPNetworkNode.get_default_label())
 
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
@@ -124,7 +133,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
     def __init__(
         self,
         prop_name: str,
-        prop_id: str,
+        prop_id: str | None = None,
         **kwargs: Any,
     ):
         self.prop_name = prop_name
@@ -135,6 +144,8 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
+        self.params.update(branch_params)
         self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -142,19 +153,90 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self.params["prop_name"] = self.prop_name
         self.params["prop_id"] = self.prop_id
 
-        rel_name = f"HAS_{self.prop_name.upper()}"
+        rel_label = f"HAS_{self.prop_name.upper()}"
 
-        query = (
+        if self.branch.is_default or self.branch.is_global:
+            node_query = """
+        MATCH (np:Node { uuid: $prop_id })-[r:IS_PART_OF]->(:Root)
+        WHERE r.branch IN $branch0
+        AND r.status = "active"
+        AND r.from <= $at AND (r.to IS NULL OR r.to > $at)
+        WITH np
+        LIMIT 1
             """
-        MATCH (a:Attribute { uuid: $attr_uuid })
-        MATCH (np:Node { uuid: $prop_id })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(np)
-        """
-            % rel_name
-        )
+        else:
+            node_query = """
+        MATCH (np:Node { uuid: $prop_id })-[r:IS_PART_OF]->(:Root)
+        WHERE %(branch_filter)s
+        ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+        LIMIT 1
+        WITH np
+        WHERE r.status = "active"
+            """ % {"branch_filter": branch_filter}
+        self.add_to_query(node_query)
 
-        self.add_to_query(query)
+        attr_query = """
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(np)
+        """ % {"rel_label": rel_label}
+        self.add_to_query(attr_query)
+
         self.return_labels = ["a", "np", "r"]
+
+
+class AttributeClearNodePropertyQuery(AttributeQuery):
+    name = "attribute_clear_node_property"
+    type: QueryType = QueryType.WRITE
+    insert_return: bool = False
+
+    def __init__(
+        self,
+        prop_name: str,
+        prop_id: str | None = None,
+        **kwargs: Any,
+    ):
+        self.prop_name = prop_name
+        self.prop_id = prop_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        at = self.at or self.attr.at
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
+        self.params.update(branch_params)
+        self.params["attr_uuid"] = self.attr.id
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = at.to_string()
+        self.params["prop_name"] = self.prop_name
+        self.params["prop_id"] = self.prop_id
+
+        rel_label = f"HAS_{self.prop_name.upper()}"
+        query = """
+MATCH (a:Attribute { uuid: $attr_uuid })-[r:%(rel_label)s]->(np:Node { uuid: $prop_id })
+WITH DISTINCT a, np
+CALL (a, np) {
+    MATCH (a)-[r:%(rel_label)s]->(np)
+    WHERE %(branch_filter)s
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN r AS property_edge
+}
+WITH a, np, property_edge
+WHERE property_edge.status = "active"
+CALL (property_edge) {
+    WITH property_edge
+    WHERE property_edge.branch = $branch
+    SET property_edge.to = $at
+}
+CALL (a, np, property_edge) {
+    WITH property_edge
+    WHERE property_edge.branch_level < $branch_level
+    CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(np)
+}
+        """ % {"branch_filter": branch_filter, "rel_label": rel_label}
+        self.add_to_query(query)
 
 
 class AttributeGetQuery(AttributeQuery):
@@ -165,10 +247,9 @@ class AttributeGetQuery(AttributeQuery):
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 
-        at = self.at or self.attr.at
-        self.params["at"] = at.to_string()
+        self.params["at"] = self.at.to_string()
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string())
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(rels_params)
 
         query = (
@@ -195,9 +276,11 @@ async def default_attribute_query_filter(
     param_prefix: str | None = None,
     db: InfrahubDatabase | None = None,  # noqa: ARG001
     partial_match: bool = False,
-    support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
     """Generate Query String Snippet to filter the right node."""
+    attribute_value_label = GraphAttributeValueNode.get_default_label()
+    if attribute_kind and not is_large_attribute_type(attribute_kind):
+        attribute_value_label = GraphAttributeValueIndexedNode.get_default_label()
 
     query_filter: list[QueryElement] = []
     query_params: dict[str, Any] = {}
@@ -226,39 +309,36 @@ async def default_attribute_query_filter(
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
-            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+            query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
         else:
             if partial_match:
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
                 query_where.append(
                     f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
                 )
             elif attribute_kind and attribute_kind == "List" and not isinstance(filter_value, list):
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
                 filter_value = build_regex_attrs(values=[filter_value])
                 query_where.append(f"toString(av.{filter_name}) =~ ${param_prefix}_{filter_name}")
             elif filter_name == "isnull":
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-            elif support_profiles:
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-                query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")
+                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
             else:
                 query_filter.append(
                     QueryNode(
-                        name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"}
+                        name="av",
+                        labels=[attribute_value_label],
+                        params={filter_name: f"${param_prefix}_{filter_name}"},
                     )
                 )
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name == "values" and isinstance(filter_value, list):
         query_filter.extend(
-            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
+            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=[attribute_value_label]))
         )
         if attribute_kind and attribute_kind == "List":
             query_params[f"{param_prefix}_{filter_name}"] = build_regex_attrs(values=filter_value)
             query_where.append(f"toString(av.value) =~ ${param_prefix}_{filter_name}")
-        elif support_profiles:
-            query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
         else:
             query_where.append(f"av.value IN ${param_prefix}_value")
         query_params[f"{param_prefix}_value"] = filter_value
@@ -267,10 +347,14 @@ async def default_attribute_query_filter(
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
-            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+            query_filter.append(QueryNode(name="av", labels=[GraphAttributeValueNode.get_default_label()]))
         else:
             query_filter.append(
-                QueryNode(name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"})
+                QueryNode(
+                    name="av",
+                    labels=[GraphAttributeValueNode.get_default_label()],
+                    params={filter_name: f"${param_prefix}_{filter_name}"},
+                )
             )
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
@@ -289,7 +373,7 @@ async def default_attribute_query_filter(
         if property_name not in [v.value for v in NodeProperty]:
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
 
-        if property_attr not in ["id"]:
+        if property_attr != "id":
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
 
         clean_filter_name = f"{property_name}_{property_attr}"

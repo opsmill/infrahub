@@ -1,21 +1,24 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { createObject } from "@/entities/nodes/api/createObject";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { gql } from "@apollo/client";
+import { useMemo } from "react";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
-import { NodeFormProps } from "@/shared/components/form/node-form";
-import { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import type { NodeFormProps } from "@/shared/components/form/node-form";
+import type { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useMemo } from "react";
-import { toast } from "react-toastify";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface IpPrefixPoolFormProps extends NodeFormProps {}
 
@@ -28,12 +31,16 @@ export function IpPrefixPoolForm({
 }: IpPrefixPoolFormProps) {
   const { schema: genericPrefixSchema, isGeneric } = useSchema(IP_PREFIX_GENERIC);
   const { currentBranch } = useCurrentBranch();
+  const { parentSchema, parentData } = useCurrentFormContext();
+  const createObject = useCreateObjectMutation();
 
   const fields = useMemo(() => {
     const schemaFields = getFormFieldsFromSchema({
       ...props,
       initialObject: currentObject,
       isUpdate,
+      parentSchema,
+      parentData,
     });
 
     if (!genericPrefixSchema || !isGeneric) return schemaFields;
@@ -55,9 +62,9 @@ export function IpPrefixPoolForm({
             return {
               key: kind,
               label: (
-                <div className="flex items-center justify-between w-full">
+                <div className="flex w-full items-center justify-between">
                   <span>{schema.label}</span>
-                  <span className="text-xs text-gray-500">{schema.namespace}</span>
+                  <span className="text-gray-500 text-xs">{schema.namespace}</span>
                 </div>
               ),
             };
@@ -82,52 +89,62 @@ export function IpPrefixPoolForm({
   }, [props, genericPrefixSchema, isGeneric, currentObject, isUpdate]);
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
-    try {
-      const newObject = getCreateMutationFromFormData(fields, data);
+    const newObject = getCreateMutationFromFormData(fields, data, props.objectTemplate?.id);
 
-      if (!Object.keys(newObject).length) {
-        return;
-      }
+    if (!Object.keys(newObject).length) {
+      return;
+    }
 
-      const mutationString =
-        isUpdate && currentObject
-          ? updateObjectWithId({
+    if (isUpdate && currentObject) {
+      try {
+        const result = await graphqlClient.mutate({
+          mutation: gql(
+            updateObjectWithId({
               kind: IP_PREFIX_POOL,
               data: stringifyWithoutQuotes({
                 id: currentObject.id,
                 ...newObject,
               }),
             })
-          : createObject({
-              kind: IP_PREFIX_POOL,
-              data: stringifyWithoutQuotes(newObject),
-            });
+          ),
+          context: {
+            branch: currentBranch.name,
+          },
+        });
 
-      const mutation = gql`
-        ${mutationString}
-      `;
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message="IP prefix pool updated" />, {
+          toastId: "alert-success-ip-prefix-pool-update",
+        });
 
-      const result = await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: currentBranch.name,
-        },
-      });
-
-      const operationType = isUpdate ? "Update" : "Create";
-      const successMessage = isUpdate ? "IP prefix pool updated" : "IP prefix pool created";
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
-        toastId: `alert-success-ip-prefix-pool-${operationType}`,
-      });
-
-      if (onSuccess) {
-        const resultData = result?.data?.[`${IP_PREFIX_POOL}${operationType}`];
-        await onSuccess(resultData);
+        if (onSuccess) {
+          const resultData = result?.data?.[`${IP_PREFIX_POOL}$Update`];
+          await onSuccess(resultData);
+        }
+      } catch (error: unknown) {
+        console.error(
+          `An error occurred while ${isUpdate ? "updating" : "creating"} the IP prefix pool:`,
+          error
+        );
       }
-    } catch (error: unknown) {
-      console.error(
-        `An error occurred while ${isUpdate ? "updating" : "creating"} the IP prefix pool:`,
-        error
+    } else {
+      await createObject.mutateAsync(
+        {
+          objectKind: IP_PREFIX_POOL,
+          data: newObject,
+        },
+        {
+          onSuccess: async (newNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="IP prefix pool created" />, {
+              toastId: "alert-success-ip-prefix-pool-create",
+            });
+            if (onSuccess) {
+              await onSuccess(newNode);
+            }
+          },
+          onError: (error) => {
+            console.error("An error occurred while creating the IP prefix pool:", error);
+          },
+        }
       );
     }
   }
@@ -138,7 +155,7 @@ export function IpPrefixPoolForm({
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields }) : handleSubmit(formData)
       }
-      className="p-4 overflow-auto"
+      className="overflow-auto p-4"
     />
   );
 }

@@ -1,14 +1,16 @@
-import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
-import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
-import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
+import { useState } from "react";
+
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import { useState } from "react";
+
+import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
+import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
+import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
   schema: ModelSchema;
@@ -29,18 +31,18 @@ export function TableColumnHeader({ schema, columnSchema, ...props }: TableColum
       <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)} {...props}>
         <TableColumnHeaderIcon fieldSchema={columnSchema} />
 
-        <span className="truncate mr-2">{columnSchema.label ?? columnSchema.name}</span>
+        <span className="mr-2 truncate">{columnSchema.label ?? columnSchema.name}</span>
         <Icon
           icon="mdi:filter-variant"
           className={classNames(
-            "text-lg ml-auto",
+            "ml-auto text-lg",
             currentColumnFilters ? "text-indigo-700" : "invisible"
           )}
         />
       </PopoverTrigger>
 
-      <PopoverContent className="p-0 relative rounded-tl-none" align="start">
-        <div className="absolute font-semibold -top-[1.8rem] bg-white border border-gray-200 px-2 py-1 rounded-t-md border-b-0 -left-px">
+      <PopoverContent className="relative rounded-tl-none p-0" align="start">
+        <div className="-top-[1.8rem] -left-px absolute rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
         {"peer" in columnSchema ? (

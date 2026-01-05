@@ -1,32 +1,31 @@
-import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
-import { PcCloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
-import { PcMergeButton } from "@/entities/proposed-changes/ui/action-button/pc-merge-button";
-import { Conversations } from "@/entities/proposed-changes/ui/conversations";
-import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/proposed-changes";
-import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import type { HTMLAttributes } from "react";
+import { useNavigate, useParams } from "react-router";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { HTMLAttributes } from "react";
-import { useNavigate, useParams } from "react-router";
-import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
-import { getPermission } from "../../permission/utils";
-import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
-import { TaskDisplay } from "../../tasks/ui/task-display";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
+import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
+import { Overview } from "@/entities/proposed-changes/ui/overview";
+import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
+import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -34,26 +33,22 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const navigate = useNavigate();
 
-  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)), {
-    pollInterval: 2000,
-  });
-
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
       workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
       state: TASK_ONGOING_STATES,
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
-    pollInterval: 2000,
+    pollInterval: 10_000,
   });
 
-  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
-
+  const rejectedBy = proposedChangesDetails?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
+  const approvedBy = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
-  const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
+  const isDraft = proposedChangesDetails?.is_draft?.value;
 
   const proposedChangeProperties: Property[] = [
     {
@@ -62,7 +57,17 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     },
     {
       name: "State",
-      value: <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>,
+      value: (
+        <>
+          <Badge variant={getProposedChangesStateBadgeType(state)}>{state}</Badge>
+
+          {isDraft && (
+            <Badge variant={"gray"} className="ml-2">
+              draft
+            </Badge>
+          )}
+        </>
+      ),
     },
     {
       name: "Source branch",
@@ -85,63 +90,70 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Created by",
       value: (
-        <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
+        <Tooltip
+          content={
+            proposedChangesDetails?.created_by?.node
+              ? getNodeLabel(proposedChangesDetails.created_by.node)
+              : ""
+          }
+          enabled
+        >
           <Avatar
             size={"sm"}
-            name={proposedChangesDetails?.created_by?.node?.display_label}
-            className="mr-2 bg-custom-blue-green"
+            name={
+              proposedChangesDetails?.created_by?.node
+                ? getNodeLabel(proposedChangesDetails.created_by.node)
+                : ""
+            }
+            className="bg-custom-blue-green"
           />
         </Tooltip>
       ),
     },
     {
-      name: "Approvers",
-      value: approvers.map((approver: any, index: number) => (
-        <Tooltip key={index} content={approver.display_label}>
-          <Avatar size={"sm"} name={approver.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      name: "Approved by",
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {approvedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={getNodeLabel(user)} enabled>
+              <Avatar size={"sm"} name={getNodeLabel(user)} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
+    },
+    {
+      name: "Rejected by",
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {rejectedBy.map((user: any, index: number) => (
+            <Tooltip key={index} content={getNodeLabel(user)} enabled>
+              <Avatar size={"sm"} name={getNodeLabel(user)} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Reviewers",
-      value: reviewers.map((reviewer: any, index: number) => (
-        <Tooltip key={index} content={reviewer.display_label}>
-          <Avatar size={"sm"} name={reviewer.display_label} className="mr-2" />
-        </Tooltip>
-      )),
+      value: (
+        <div className="flex flex-wrap gap-2">
+          {reviewers.map((reviewer: any, index: number) => (
+            <Tooltip key={index} content={getNodeLabel(reviewer)} enabled>
+              <Avatar size={"sm"} name={getNodeLabel(reviewer)} />
+            </Tooltip>
+          ))}
+        </div>
+      ),
     },
     {
       name: "Updated",
       value: <DateDisplay date={proposedChangesDetails?._updated_at} />,
     },
-    {
-      name: "Actions",
-      value: (
-        <div className="flex flex-wrap gap-2">
-          <PcApproveButton
-            approvers={approvers}
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
-          <PcMergeButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed || (checkData && checkData[TASK_OBJECT].count)}
-          />
-          <PcCloseButton
-            proposedChangeId={proposedChangeId!}
-            state={state}
-            disabled={!permission.update.isAllowed}
-          />
-        </div>
-      ),
-    },
   ];
 
   return (
-    <div className="bg-stone-50 p-2.5 flex flex-col grow gap-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
       {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
@@ -155,33 +167,45 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         </Card>
       )}
 
-      <div className={classNames("grid grid-cols-3 gap-2", className)} {...props}>
-        <div className="col-start-1 col-end-3 space-y-4">
+      <div className={classNames("grid grid-cols-3 items-start gap-2", className)} {...props}>
+        <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
-            <CardWithBorder contentClassName="p-4" data-testid="pc-description">
-              <div className="flex items-center gap-2 mb-2">
-                <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
+            <CardWithBorder contentClassName="" data-testid="pc-description">
+              <CardWithBorder.Title className="flex items-center gap-2">
+                <Avatar
+                  name={
+                    proposedChangesDetails?.created_by?.node
+                      ? getNodeLabel(proposedChangesDetails.created_by.node)
+                      : ""
+                  }
+                  size="sm"
+                />
 
-                {proposedChangesDetails?.created_by?.node?.display_label}
+                {proposedChangesDetails?.created_by?.node
+                  ? getNodeLabel(proposedChangesDetails.created_by.node)
+                  : ""}
 
                 <DateDisplay
                   date={proposedChangesDetails.description.updated_at}
-                  className="ml-auto text-xs font-normal text-gray-600"
+                  className="ml-auto font-normal text-gray-600 text-xs"
                 />
-              </div>
+              </CardWithBorder.Title>
 
-              <MarkdownRender markdownText={proposedChangesDetails.description.value} />
+              <MarkdownRender
+                markdownText={proposedChangesDetails.description.value}
+                className="m-2"
+              />
             </CardWithBorder>
           )}
 
-          <Conversations />
+          <Overview />
         </div>
 
         <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
-          <CardWithBorder.Title className="flex justify-between items-center">
+          <CardWithBorder.Title className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
             >
               Proposed change
             </div>
@@ -190,6 +214,11 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           </CardWithBorder.Title>
 
           <PropertyList properties={proposedChangeProperties} />
+
+          <div className="flex flex-grow gap-2 p-2">
+            <PcReviewButton />
+            <PcActionButton />
+          </div>
         </CardWithBorder>
       </div>
     </div>

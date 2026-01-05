@@ -40,23 +40,20 @@ class ArtifactDiffQuery(Query):
 // -----------------------
 MATCH (source_artifact:%(artifact_kind)s)-[r:IS_PART_OF]->(:Root)
 WHERE r.branch IN [$source_branch_name, $target_branch_name]
-CALL {
-    WITH source_artifact
+CALL (source_artifact) {
     MATCH (source_artifact)-[r:IS_PART_OF]->(:Root)
     WHERE %(source_branch_filter)s
     RETURN r AS root_rel
-    ORDER BY r.branch_level DESC, r.from DESC
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
 WITH source_artifact, root_rel
 WHERE root_rel.status = "active"
-CALL {
-    WITH source_artifact
+CALL (source_artifact) {
     // -----------------------
     // get the artifact's target node
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[rrel1:IS_RELATED]-(rel_node:Relationship)-[rrel2:IS_RELATED]-(target_node:Node)
         WHERE rel_node.name = $target_rel_identifier
         AND all(r IN [rrel1, rrel2] WHERE ( %(source_branch_filter)s ))
@@ -64,14 +61,13 @@ CALL {
             target_node,
             (rrel1.status = "active" AND rrel2.status = "active") AS target_is_active,
             $source_branch_name IN [rrel1.branch, rrel2.branch] AS target_on_source_branch
-        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC
+        ORDER BY rrel1.branch_level DESC, rrel2.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
         LIMIT 1
     }
     // -----------------------
     // get the artifact's definition node
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[rrel1:IS_RELATED]-(rel_node:Relationship)-[rrel2:IS_RELATED]-(definition_node:Node)
         WHERE rel_node.name = $definition_rel_identifier
         AND all(r IN [rrel1, rrel2] WHERE ( %(source_branch_filter)s ))
@@ -79,14 +75,13 @@ CALL {
             definition_node,
             (rrel1.status = "active" AND rrel2.status = "active") AS definition_is_active,
             $source_branch_name IN [rrel1.branch, rrel2.branch] AS definition_on_source_branch
-        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC
+        ORDER BY rrel1.branch_level DESC, rrel2.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
         LIMIT 1
     }
     // -----------------------
     // get the artifact's checksum
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "checksum"
         AND all(r IN [attr_rel, value_rel] WHERE ( %(source_branch_filter)s ))
@@ -94,14 +89,14 @@ CALL {
             attr_val.value AS checksum,
             (attr_rel.status = "active" AND value_rel.status = "active") AS checksum_is_active,
             $source_branch_name IN [attr_rel.branch, value_rel.branch] AS checksum_on_source_branch
-        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC,
+            value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     // -----------------------
     // get the artifact's storage_id
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "storage_id"
         AND all(r IN [attr_rel, value_rel] WHERE ( %(source_branch_filter)s ))
@@ -109,7 +104,8 @@ CALL {
             attr_val.value AS storage_id,
             (attr_rel.status = "active" AND value_rel.status = "active") AS storage_id_is_active,
             $source_branch_name IN [attr_rel.branch, value_rel.branch] AS storage_id_on_source_branch
-        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC,
+            value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     WITH target_node, target_is_active, target_on_source_branch,
@@ -137,13 +133,11 @@ CALL {
         ELSE NULL
     END AS source_storage_id
 }
-CALL {
+CALL (target_node, definition_node){
     // -----------------------
     // get the corresponding artifact on the target branch, if it exists
     // -----------------------
-    WITH target_node, definition_node
-    CALL {
-        WITH target_node, definition_node
+    CALL (target_node, definition_node) {
         OPTIONAL MATCH path = (target_node)-[trel1:IS_RELATED]-(trel_node:Relationship)-[trel2:IS_RELATED]-
         (target_artifact:%(artifact_kind)s)-[drel1:IS_RELATED]-(drel_node:Relationship)-[drel2:IS_RELATED]-(definition_node)
         WHERE trel_node.name = $target_rel_identifier
@@ -154,8 +148,9 @@ CALL {
         )
         RETURN
             target_artifact,
-            (trel1.status = "active" AND trel2.status = "active" AND drel1.status = "active" AND drel1.status = "active") AS artifact_is_active
-        ORDER BY trel1.from DESC, trel2.from DESC, drel1.from DESC, drel2.from DESC
+            (trel1.status = "active" AND trel2.status = "active" AND drel1.status = "active" AND drel2.status = "active") AS artifact_is_active
+        ORDER BY trel1.from DESC, trel2.from DESC, drel1.from DESC, drel2.from DESC,
+            trel1.status ASC, trel2.status ASC, drel1.status ASC, drel2.status ASC
         LIMIT 1
     }
     WITH CASE
@@ -165,27 +160,25 @@ CALL {
     // -----------------------
     // get the artifact's checksum on target branch
     // -----------------------
-    CALL {
-        WITH target_artifact
+    CALL (target_artifact) {
         OPTIONAL MATCH (target_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "checksum"
         AND attr_rel.branch = $target_branch_name
         AND value_rel.branch = $target_branch_name
         RETURN attr_val.value AS checksum, (attr_rel.status = "active" AND value_rel.status = "active") AS checksum_is_active
-        ORDER BY value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.from DESC, attr_rel.from DESC, value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     // -----------------------
     // get the artifact's storage_id on target branch
     // -----------------------
-    CALL {
-        WITH target_artifact
+    CALL (target_artifact) {
         OPTIONAL MATCH (target_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "storage_id"
         AND attr_rel.branch = $target_branch_name
         AND value_rel.branch = $target_branch_name
         RETURN attr_val.value AS storage_id, (attr_rel.status = "active" AND value_rel.status = "active") AS storage_id_is_active
-        ORDER BY value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.from DESC, attr_rel.from DESC, value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     RETURN target_artifact,
@@ -208,4 +201,5 @@ CALL {
             "target_checksum",
             "target_storage_id",
         ]
+        self.order_by = ["source_artifact.uuid", "target_node.uuid", "definition_node.uuid"]
         self.add_to_query(query=query)

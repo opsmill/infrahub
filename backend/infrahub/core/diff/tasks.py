@@ -8,8 +8,9 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.models import RequestDiffUpdate  # noqa: TC001  needed for prefect flow
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
+from infrahub.workers.dependencies import get_database, get_workflow
 from infrahub.workflows.catalogue import DIFF_REFRESH
 from infrahub.workflows.utils import add_tags
 
@@ -17,13 +18,18 @@ log = get_logger()
 
 
 @flow(name="diff-update", flow_run_name="Update diff for branch {model.branch_name}")
-async def update_diff(model: RequestDiffUpdate, service: InfrahubServices) -> None:
+async def update_diff(model: RequestDiffUpdate) -> None:
     await add_tags(branches=[model.branch_name])
 
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
         base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=db, branch=model.branch_name)
+        try:
+            diff_branch = await registry.get_branch(db=db, branch=model.branch_name)
+        except BranchNotFoundError:
+            log.warn(f"Branch {model.branch_name} not found, skipping diff update")
+            return
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 
@@ -37,10 +43,11 @@ async def update_diff(model: RequestDiffUpdate, service: InfrahubServices) -> No
 
 
 @flow(name="diff-refresh", flow_run_name="Recreate diff for branch {branch_name}")
-async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices) -> None:
+async def refresh_diff(branch_name: str, diff_id: str) -> None:
     await add_tags(branches=[branch_name])
 
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
         base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=db, branch=branch_name)
@@ -50,10 +57,11 @@ async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices
 
 
 @flow(name="diff-refresh-all", flow_run_name="Recreate all diffs for branch {branch_name}")
-async def refresh_diff_all(branch_name: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
     await add_tags(branches=[branch_name])
 
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
@@ -61,7 +69,7 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext, service: 
 
         for diff_root in diff_roots_to_refresh:
             if diff_root.base_branch_name != diff_root.diff_branch_name:
-                await service.workflow.submit_workflow(
+                await get_workflow().submit_workflow(
                     workflow=DIFF_REFRESH,
                     context=context,
                     parameters={"branch_name": diff_root.diff_branch_name, "diff_id": diff_root.uuid},

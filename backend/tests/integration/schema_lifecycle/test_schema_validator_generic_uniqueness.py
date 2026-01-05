@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -107,6 +108,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         president = await Node.init(schema=PERSON_KIND, db=db)
         await president.new(db=db, name="Laura", height=175, description="President", homeworld="Caprica")
         await president.save(db=db)
+
+        deleted_person = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_person.new(db=db, name="Deleted", height=175, homeworld="Caprica")
+        await deleted_person.save(db=db)
+        await deleted_person.delete(db=db)
 
         gaius = await Node.init(schema=PERSON_KIND, db=db)
         await gaius.new(
@@ -255,7 +261,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "nodes": [schema_car_base, schema_04_person_constraint_failure, schema_04_cylon_constraint_failure],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
@@ -265,7 +271,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_01_check_generic_uniqueness_constraint_failure(
         self, client: InfrahubClient, initial_dataset, schema_01_generic_uniqueness_failure
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_01_generic_uniqueness_failure])
 
         assert success is False
@@ -283,7 +289,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         initial_dataset,
         schema_02_generic_uniqueness_failure,
         branch_2,
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_02_generic_uniqueness_failure], branch=branch_2.name)
         assert not response.errors
 
@@ -311,7 +317,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         client: InfrahubClient,
         initial_dataset,
         schema_03_generic_and_node_uniqueness_failure,
-    ):
+    ) -> None:
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
@@ -336,7 +342,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert initial_dataset["gaius"] not in err_msg
         assert "Node-level 'uniqueness_constraints'" in err_msg
 
-    async def test_step_03_reset(self, db: InfrahubDatabase, initial_dataset):
+    async def test_step_03_reset(self, db: InfrahubDatabase, initial_dataset) -> None:
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
@@ -355,7 +361,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         initial_dataset,
         schema_04_generic_and_node_uniqueness_failure,
         branch_2,
-    ):
+    ) -> None:
         response = await client.schema.load(
             schemas=[schema_04_generic_and_node_uniqueness_failure], branch=branch_2.name
         )
@@ -392,7 +398,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             # athena_branch,
             # starbuck_main,
             # president_branch,
-            display_label = await node.render_display_label(db=db)
+            display_label = await node.get_display_label(db=db)
             kind = "TestingHumanoid"
             for field in ("name", "favorite_color"):
                 value = getattr(node, field).value
@@ -404,7 +410,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                 assert expected_error_msg in exc.value.errors[0]["message"]
 
         for node in [boomer_main, athena_branch]:
-            display_label = await node.render_display_label(db=db)
+            display_label = await node.get_display_label(db=db)
             kind = "TestingCylon"
             for field in ("model_number", "favorite_color"):
                 value = getattr(node, field).value
@@ -416,7 +422,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                 assert expected_error_msg in exc.value.errors[0]["message"]
 
         for node in [starbuck_main, president_branch]:
-            display_label = await node.render_display_label(db=db)
+            display_label = await node.get_display_label(db=db)
             kind = "TestingPerson"
             for field in ("homeworld", "favorite_color"):
                 value = getattr(node, field).value
@@ -426,3 +432,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                     f" The error relates to field {field}.value='{value}'"
                 )
                 assert expected_error_msg in exc.value.errors[0]["message"]
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

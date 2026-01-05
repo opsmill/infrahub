@@ -1,14 +1,6 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("when searching an object", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should open search anywhere modal", async ({ page }) => {
     await page.goto("/");
 
@@ -96,7 +88,7 @@ test.describe("when searching an object", () => {
   test("display result when searching by uuid", async ({ page }) => {
     await page.goto("/objects/InfraAutonomousSystem");
 
-    await page.getByRole("link", { name: "AS174, 174" }).click();
+    await page.getByRole("link", { name: "AS174 174" }).click();
     const uuid = (await page.locator("dd").first().textContent()) as string;
 
     await test.step("open search anywhere modal", async () => {

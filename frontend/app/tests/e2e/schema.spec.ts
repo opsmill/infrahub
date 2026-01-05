@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+import { saveScreenshotForDocs } from "../utils";
+
 test.describe("/schema - Schema visualizer", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+  test("redirect to schema page using object help menu", async ({ page }) => {
+    await page.goto("/objects/InfraInterface");
+    await page.getByRole("button", { name: "?" }).click();
+    await page.getByRole("menuitem", { name: "Schema" }).click();
+    await expect(page.getByTestId("schema-viewer")).toBeVisible();
+    await expect(page.getByText("KindInfraInterface")).toBeVisible();
+    await expect(page).toHaveURL(/\/schema\?kind=InfraInterface/);
   });
 
   test("display help menu correctly", async ({ page }) => {
@@ -27,7 +30,7 @@ test.describe("/schema - Schema visualizer", () => {
       await expect(page.getByRole("menuitem", { name: "Open list view" })).toBeEnabled();
     });
 
-    await test.step("close menu when presss Esc", async () => {
+    await test.step("close menu when pressing Esc", async () => {
       await page.locator("body").press("Escape");
       await expect(page.getByTestId("schema-help-menu-content")).not.toBeVisible();
     });
@@ -37,6 +40,7 @@ test.describe("/schema - Schema visualizer", () => {
       await page.getByTestId("schema-help-menu-trigger").click();
       await expect(page.getByRole("menuitem", { name: "Documentation" })).toBeDisabled();
       await expect(page.getByRole("menuitem", { name: "Open list view" })).toBeDisabled();
+      await page.locator("body").press("Escape");
     });
 
     await test.step("help menu for a schema without documentation, but with list view link", async () => {
@@ -54,5 +58,15 @@ test.describe("/schema - Schema visualizer", () => {
     await page.getByPlaceholder("Search schema").fill("tag");
     await expect(page.getByRole("heading", { name: "Builtin Tag Node" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Core Account Node" })).not.toBeVisible();
+  });
+
+  test("view schema attribute kind numberpool", async ({ page }) => {
+    await page.goto("/schema");
+    await page.getByPlaceholder("Search schema").fill("InfraBackBoneService");
+    await page.getByText("InfraBackbone Service").click();
+    await page.getByRole("tab", { name: "Attributes" }).click();
+    await page.getByText("Service Identifier NumberPool").click();
+    await page.getByText("Parameters").click();
+    await saveScreenshotForDocs(page, "schema_numberpool");
   });
 });

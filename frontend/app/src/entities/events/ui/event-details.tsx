@@ -1,12 +1,14 @@
-import { ACCOUNT_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
-import { EventType } from "../types";
+import { ACCOUNT_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { PropertyRow } from "@/entities/schema/ui/styled";
+
+import type { EventType } from "../types";
 import { EventAttributes } from "./node-events/event-attributes";
 import { EventRelationships } from "./node-events/event-relationships";
 

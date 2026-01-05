@@ -80,7 +80,7 @@ def build_changelog(context: Context) -> None:
     # Ensure local environment is up to date
     print(" - [release] Update local environment")
     with context.cd(ESCAPED_REPO_PATH):
-        context.run("poetry install --sync")
+        context.run("uv sync --all-groups")
 
     print(" - [release] Build changelog")
     exec_cmd = "towncrier build --draft 2> /dev/null"
@@ -100,8 +100,11 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
+    # Import here to not require installing packaging when running invoke without installing dependencies.
+    from packaging.version import Version
+
     # Get the app version directly from pyproject.toml
-    app_version = get_version_from_pyproject()  # Returns a string like '1.1.0a1'
+    app_version = Version(get_version_from_pyproject())  # Returns a string like '1.1.0a1'
 
     for chart in ["infrahub", "infrahub-enterprise"]:
         # Initialize YAML and load the Chart.yaml file
@@ -112,7 +115,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         if "appVersion" not in chart_yaml:
             raise ValueError(f"appVersion not found in {str(chart_path)}; no updates made.")
 
-        old_app_version = chart_yaml.get("appVersion", "")
+        old_app_version = Version(chart_yaml.get("appVersion", ""))
         if old_app_version == app_version:
             print(
                 f"{str(chart_path)} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
@@ -120,35 +123,37 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
             return
 
         # Handle Helm chart version increment
-        old_helm_version = chart_yaml.get("version", "")
+        old_helm_version = Version(chart_yaml.get("version", ""))
         if not old_helm_version:
             raise ValueError(f"Helm chart `version` not found in {str(chart_path)}; no updates made.")
 
-        # Split the Helm chart version into components for increment logic
-        major, minor, patch = map(int, old_helm_version.split("."))
-        new_helm_version = f"{major}.{minor}.{patch}"
+        new_helm_version = old_helm_version
 
         # Determine the appropriate increment
         try:
-            if app_version > old_app_version:
-                if int(app_version.split(".")[0]) > int(old_app_version.split(".")[0]):
-                    new_helm_version = f"{major + 1}.0.0"
-                elif int(app_version.split(".")[1]) > int(old_app_version.split(".")[1]):
-                    new_helm_version = f"{major}.{minor + 1}.0"
-                elif int(app_version.split(".")[2].split("a")[0]) > int(
-                    old_app_version.split(".")[2].split("a")[0]
-                ):  # For alpha, beta handling
-                    new_helm_version = f"{major}.{minor}.{patch + 1}"
+            if not app_version.is_prerelease and app_version > old_app_version:
+                if app_version.major > old_app_version.major:
+                    new_helm_version = Version(f"{new_helm_version.major + 1}.0.0")
+                elif app_version.minor > old_app_version.minor:
+                    new_helm_version = Version(f"{new_helm_version.major}.{new_helm_version.minor + 1}.0")
+                elif app_version.micro > old_app_version.micro:
+                    new_helm_version = Version(
+                        f"{new_helm_version.major}.{new_helm_version.minor}.{new_helm_version.micro + 1}"
+                    )
         except Exception:
             # Fallback in case app_version has non-standard format for Helm comparison
             print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
+
+        # Convert Version to str before passing to yaml
+        app_version = str(app_version)
+        new_helm_version = str(new_helm_version)
 
         # Update the YAML
         chart_yaml["appVersion"] = app_version
         chart_yaml["version"] = new_helm_version
 
         if chart == "infrahub":
-            dependency_version = new_helm_version
+            dependency_version = str(new_helm_version)
 
             yaml_values: YAML = init_yaml_obj()
             values_path = Path(chart_repo) / "charts" / Path(chart) / "values.yaml"
@@ -297,26 +302,34 @@ def update_docker_compose_env_vars(
     docker_path = Path(docker_file)
     docker_compose = docker_path.read_text(encoding="utf-8").splitlines()
 
-    in_infrahub_config_section = False
-    infrahub_config_start = None
-    infrahub_config_end = None
+    def get_env_vars_in_anchor(anchor_name: str, docker_compose: list[str]) -> tuple[dict, int | None, int | None]:
+        in_config_section = False
+        infrahub_config_start = None
+        infrahub_config_end = None
 
-    existing_vars = {}
+        existing_vars = {}
 
-    for i, line in enumerate(docker_compose):
-        if line.strip().startswith("x-infrahub-config: &infrahub_config"):
-            in_infrahub_config_section = True
-            infrahub_config_start = i + 1
-            continue
-        if in_infrahub_config_section and (not line.strip() or line.strip().startswith("services:")):
-            in_infrahub_config_section = False
-            infrahub_config_end = i
-            break
-        if in_infrahub_config_section:
-            var_name = line.split(":", 1)[0].strip()
-            existing_vars[var_name] = i
+        for i, line in enumerate(docker_compose):
+            if line.strip().startswith(anchor_name):
+                in_config_section = True
+                infrahub_config_start = i + 1
+                continue
+            if in_config_section and (not line.strip() or line.strip().startswith("services:")):
+                in_config_section = False
+                infrahub_config_end = i
+                break
+            # Skip YAML alias in the config section
+            if in_config_section and not line.strip().startswith("<<") and not line.strip().startswith("#"):
+                var_name = line.split(":", 1)[0].strip()
+                existing_vars[var_name] = i
 
-    all_vars = sorted(existing_vars.keys() | set(env_vars))
+        return existing_vars, infrahub_config_start, infrahub_config_end
+
+    infrahub_base_config, infrahub_config_start, infrahub_config_end = get_env_vars_in_anchor(
+        "x-infrahub-config: &infrahub_config", docker_compose
+    )
+    infrahub_sso_config, *_ = get_env_vars_in_anchor("x-infrahub-sso: &infrahub_sso", docker_compose)
+    all_vars = sorted(infrahub_base_config.keys() | set(env_vars) - infrahub_sso_config.keys())
     pattern = re.compile(r"\$\{(.+):-([^}]+)\}")
 
     new_config_lines = []
@@ -333,8 +346,8 @@ def update_docker_compose_env_vars(
         else:
             default_value_str = str(default_value) if default_value is not None else ""
 
-        if var in existing_vars:
-            line_idx = existing_vars[var]
+        if var in infrahub_base_config:
+            line_idx = infrahub_base_config[var]
             existing_value = docker_compose[line_idx].split(":", 1)[1].strip().strip('"')
 
             match = pattern.match(existing_value)

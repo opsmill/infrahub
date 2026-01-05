@@ -1,7 +1,9 @@
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
+
+import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
 
 type tSidePanelTitle = {
   title: string;
@@ -16,8 +18,8 @@ export const SidePanelTitle = (props: tSidePanelTitle) => {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center w-full">
-        <span className="text-lg font-semibold mr-3">{title}</span>
+      <div className="flex w-full items-center">
+        <span className="mr-3 font-semibold text-lg">{title}</span>
         <div className="flex-1"></div>
         {!hideBranch && (
           <div className="flex items-center">

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 global_branch = Branch(
     name=GLOBAL_BRANCH_NAME,
-    status="OPEN",
+    status=BranchStatus.OPEN,
     description="Global Branch",
     hierarchy_level=1,
     is_global=True,
@@ -29,7 +30,7 @@ global_branch = Branch(
 
 default_branch = Branch(
     name="main",
-    status="OPEN",
+    status=BranchStatus.OPEN,
     description="Default Branch",
     hierarchy_level=1,
     is_global=False,
@@ -61,7 +62,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
     def render_match(self) -> str:
         query = """
         // Find all the active nodes
-        CALL {
+        CALL () {
             MATCH (node:%(node_kind)s)
             WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
                 AND NOT exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $new_attr.name }))
@@ -105,7 +106,7 @@ class Migration012AddLabelData(NodeDuplicateQuery):
 
         branch = Branch(
             name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
+            status=BranchStatus.OPEN,
             description="Global Branch",
             hierarchy_level=1,
             is_global=True,

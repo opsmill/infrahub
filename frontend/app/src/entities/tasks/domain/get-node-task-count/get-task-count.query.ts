@@ -1,14 +1,17 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
-  GetTaskCountParams,
+  type GetTaskCountParams,
   getTaskCount,
 } from "@/entities/tasks/domain/get-node-task-count/get-task-count";
-import { ContextParams, QueryConfig } from "@/shared/api/types";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export function getTaskCountQueryOptions(params: GetTaskCountParams) {
   return queryOptions({
-    queryKey: [params.branchName, "objects", params.nodeId, "tasks", "count"],
+    queryKey: [...objectQueryKeys.all, params.branchName, params.nodeId, "tasks", "count"],
     queryFn: () => getTaskCount(params),
   });
 }

@@ -18,6 +18,7 @@ from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
+    AttributeClearNodePropertyQuery,
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -29,13 +30,14 @@ from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, upda
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
-from ..types import ATTRIBUTE_TYPES, LARGE_ATTRIBUTE_TYPES
+from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
+from .schema.attribute_parameters import NumberAttributeParameters
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import AttributeSchema
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
 
@@ -71,7 +73,6 @@ class AttributeCreateData(BaseModel):
     is_visible: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
-    node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -93,8 +94,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         updated_at: Timestamp | str | None = None,
         is_default: bool = False,
         is_from_profile: bool = False,
-        **kwargs,
-    ):
+        **kwargs: dict[str, Any],
+    ) -> None:
         self.id = id
         self.db_id = db_id
 
@@ -169,7 +170,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return self.branch
 
     @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.attribute[cls.__name__] = cls
 
@@ -232,7 +233,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Content of the attribute value is not valid
         """
-        if schema.regex:
+        if regex := schema.get_regex():
             if schema.kind == "List":
                 validation_values = [str(entry) for entry in value]
             else:
@@ -240,22 +241,24 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             for validation_value in validation_values:
                 try:
-                    is_valid = re.match(pattern=schema.regex, string=str(validation_value))
+                    is_valid = re.match(pattern=regex, string=str(validation_value))
                 except re.error as exc:
-                    raise ValidationError(
-                        {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
-                    ) from exc
+                    raise ValidationError({name: f"The regex defined in the schema is not valid ({regex!r})"}) from exc
 
                 if not is_valid:
-                    raise ValidationError({name: f"{validation_value} must conform with the regex: {schema.regex!r}"})
+                    raise ValidationError({name: f"{validation_value} must conform with the regex: {regex!r}"})
 
-        if schema.min_length:
-            if len(value) < schema.min_length:
-                raise ValidationError({name: f"{value} must have a minimum length of {schema.min_length!r}"})
+        if min_length := schema.get_min_length():
+            if len(value) < min_length:
+                raise ValidationError({name: f"{value} must have a minimum length of {min_length!r}"})
 
-        if schema.max_length:
-            if len(value) > schema.max_length:
-                raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
+        if max_length := schema.get_max_length():
+            if len(value) > max_length:
+                raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
+
+        # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
+        if config.SETTINGS.main.schema_strict_mode and isinstance(schema.parameters, NumberAttributeParameters):
+            schema.parameters.check_valid_value(value=value, name=name)
 
         if schema.enum:
             try:
@@ -275,7 +278,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             data["value"] = NULL_VALUE
         else:
             serialized_value = self.serialize_value()
-            if isinstance(serialized_value, str) and ATTRIBUTE_TYPES[self.schema.kind] not in LARGE_ATTRIBUTE_TYPES:
+            if isinstance(serialized_value, str) and not is_large_attribute_type(self.schema.kind):
                 # Perform validation here to avoid an extra serialization during validation step.
                 # Standard non-str attributes (integer, boolean) do not exceed limit size related to neo4j indexing.
                 validate_string_length(serialized_value)
@@ -322,7 +325,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         save_at = Timestamp(at)
 
-        if not self.id or self.is_from_profile:
+        if not self.id:
             return None
 
         return await self._update(at=save_at, db=db)
@@ -333,7 +336,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         delete_at = Timestamp(at)
 
-        query = await AttributeGetQuery.init(db=db, attr=self)
+        query = await AttributeGetQuery.init(db=db, attr=self, at=delete_at)
         await query.execute(db=db)
         results = query.get_results()
 
@@ -393,7 +396,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         Get the current value
          - If the value is the same, do nothing
-         - If the value is inherited and is different, raise error (for now just ignore)
          - If the value is different, create new node and update relationship
 
         """
@@ -468,31 +470,43 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         # ---------- Update the Node Properties ----------
         for prop_name in self._node_properties:
-            if getattr(self, f"{prop_name}_id") and not (
-                prop_name in current_attr_data.node_properties
-                and current_attr_data.node_properties[prop_name].uuid == getattr(self, f"{prop_name}_id")
-            ):
-                previous_attribute_node_property = current_attr_data.node_properties.get(prop_name)
-                previous_value = None
-                if previous_attribute_node_property:
-                    previous_value = previous_attribute_node_property.uuid
+            current_prop_id = getattr(self, f"{prop_name}_id")
+            database_prop_id: str | None = None
+            if prop_name in current_attr_data.node_properties:
+                database_prop_id = current_attr_data.node_properties[prop_name].uuid
+            needs_update = current_prop_id is not None and current_prop_id != database_prop_id
+            needs_clear = self.is_clear(prop_name) and database_prop_id
 
-                changelog.add_property(
-                    name=prop_name,
-                    value_current=getattr(self, f"{prop_name}_id"),
-                    value_previous=previous_value,
-                )
+            if not needs_update and not needs_clear:
+                continue
+
+            changelog.add_property(
+                name=prop_name,
+                value_current=current_prop_id,
+                value_previous=database_prop_id,
+            )
+
+            if needs_update:
                 query = await AttributeUpdateNodePropertyQuery.init(
-                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=getattr(self, f"{prop_name}_id")
+                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=current_prop_id
                 )
                 await query.execute(db=db)
 
-                rel = current_attr_result.get(f"rel_{prop_name}")
-                if rel and rel.get("branch") == branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, db=db)
+            if needs_clear:
+                query = await AttributeClearNodePropertyQuery.init(
+                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=database_prop_id
+                )
+                await query.execute(db=db)
+
+            # set the to time on the previously active edge
+            rel = current_attr_result.get(f"rel_{prop_name}")
+            if rel and rel.get("branch") == branch.name:
+                await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         if changelog.has_updates:
             return changelog
+
+        return None
 
     async def to_graphql(
         self,
@@ -574,7 +588,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return value
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update attr from GraphQL payload"""
 
         changed = False
@@ -588,7 +602,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 changed = True
         elif "from_pool" in data:
             self.from_pool = data["from_pool"]
-            await self.node.handle_pool(db=db, attribute=self, errors=[])
+            if process_pools:
+                await self.node.handle_pool(db=db, attribute=self, errors=[])
             changed = True
 
         if changed and self.is_from_profile:
@@ -619,9 +634,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return changed
 
     def get_db_node_type(self) -> AttributeDBNodeType:
-        return AttributeDBNodeType.DEFAULT
+        if is_large_attribute_type(self.get_kind()):
+            return AttributeDBNodeType.DEFAULT
+        return AttributeDBNodeType.INDEXED
 
-    def get_create_data(self) -> AttributeCreateData:
+    def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
@@ -630,14 +647,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch = registry.get_global_branch()
             hierarchy_level = 0
         data = AttributeCreateData(
-            node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
             name=self.name,
             type=self.get_kind(),
             branch=branch.name,
             status="active",
             branch_level=hierarchy_level,
-            branch_support=self.schema.branch.value,
+            branch_support=self.schema.branch.value if self.schema.branch is not None else node_schema.branch,
             content=self.to_db(),
             is_default=self.is_default,
             is_protected=self.is_protected,
@@ -674,6 +690,12 @@ class AnyAttributeOptional(AnyAttribute):
 class String(BaseAttribute):
     type = str
     value: str
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        if value is not None and not is_large_attribute_type(schema.kind):
+            validate_string_length(value=str(value))
+        super().validate_content(value=value, name=name, schema=schema)
 
 
 class StringOptional(String):
@@ -782,6 +804,10 @@ class Dropdown(BaseAttribute):
 
         return ""
 
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["color", "description", "label", "value"]
+
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the dropdown."""
@@ -817,7 +843,18 @@ class IPNetwork(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address", "prefixlen"]
+        return [
+            "binary_address",
+            "broadcast_address",
+            "hostmask",
+            "netmask",
+            "num_addresses",
+            "prefixlen",
+            "value",
+            "version",
+            "with_hostmask",
+            "with_netmask",
+        ]
 
     @property
     def obj(self) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -926,7 +963,7 @@ class IPNetwork(BaseAttribute):
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPNETWORK
-        return AttributeDBNodeType.DEFAULT
+        return super().get_db_node_type()
 
     def to_db(self) -> dict[str, Any]:
         data = super().to_db()
@@ -950,7 +987,17 @@ class IPHost(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address"]
+        return [
+            "binary_address",
+            "hostmask",
+            "ip",
+            "netmask",
+            "prefixlen",
+            "value",
+            "version",
+            "with_hostmask",
+            "with_netmask",
+        ]
 
     @property
     def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
@@ -1052,7 +1099,7 @@ class IPHost(BaseAttribute):
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPHOST
-        return AttributeDBNodeType.DEFAULT
+        return super().get_db_node_type()
 
     def to_db(self) -> dict[str, Any]:
         data = super().to_db()
@@ -1169,6 +1216,22 @@ class MacAddress(BaseAttribute):
     def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
         return str(netaddr.EUI(addr=self.value))
+
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return [
+            "bare",
+            "binary",
+            "dot_notation",
+            "ei",
+            "eui48",
+            "eui64",
+            "oui",
+            "semicolon_notation",
+            "split_notation",
+            "value",
+            "version",
+        ]
 
 
 class MacAddressOptional(MacAddress):

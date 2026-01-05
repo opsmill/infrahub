@@ -1,8 +1,9 @@
+import type { Filter } from "@/shared/hooks/useFilters";
+
 import {
   FILTER_CONDITION,
-  FilterCondition,
+  type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { Filter } from "@/shared/hooks/useFilters";
 
 /**
  * Determines the current filter condition based on the filter name and value.
@@ -11,7 +12,7 @@ import { Filter } from "@/shared/hooks/useFilters";
  * @returns The corresponding filter condition or undefined if no filter is provided
  */
 export function getCurrentFilterCondition(filter?: Filter): FilterCondition | undefined {
-  if (!filter) return undefined;
+  if (!filter) return;
 
   const parts = filter.name.split("__");
   const condition = parts.length > 1 ? parts[1] : "";
@@ -25,6 +26,6 @@ export function getCurrentFilterCondition(filter?: Filter): FilterCondition | un
     case "isnull":
       return filter.value ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.IS_NOT_EMPTY;
     default:
-      return undefined;
+      return;
   }
 }

@@ -1,14 +1,17 @@
 import asyncio
+from collections.abc import Callable
+from typing import Any
 
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 
 
 @pytest.fixture
-async def exec_async(event_loop):
-    def _wrapper(func, *args, **kwargs):
+async def exec_async(event_loop: asyncio.AbstractEventLoop) -> Callable[..., Any]:
+    def _wrapper(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         if asyncio.iscoroutinefunction(func):
 
-            def _():
+            def _() -> Any:
                 return event_loop.run_until_complete(func(*args, **kwargs))
 
             return _()
@@ -19,14 +22,16 @@ async def exec_async(event_loop):
 
 
 @pytest.fixture
-async def aio_benchmark(benchmark, event_loop):
-    def _wrapper(func, *args, **kwargs):
+async def aio_benchmark(benchmark: BenchmarkFixture, event_loop: asyncio.AbstractEventLoop) -> Callable[..., Any]:
+    def _wrapper(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         if asyncio.iscoroutinefunction(func):
 
             @benchmark
-            def _():
+            def _() -> Any:
                 return event_loop.run_until_complete(func(*args, **kwargs))
         else:
             return benchmark(func, *args, **kwargs)
+
+        return None
 
     return _wrapper

@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+import Handlebars from "@/shared/libs/handlebars";
 
 export const getProfileDetails = Handlebars.compile(`
 query GET_PROFILE_DETAILS {

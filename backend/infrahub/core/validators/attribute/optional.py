@@ -27,8 +27,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
         query = """
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
                 r in relationships(path)
@@ -38,7 +37,6 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
             LIMIT 1
         }
-        WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND (attribute_value IS NULL OR attribute_value = $null_value)
@@ -86,7 +84,6 @@ class AttributeOptionalChecker(ConstraintCheckerInterface):
             return grouped_data_paths_list
 
         for query_class in self.query_classes:
-            # TODO add exception handling
             query = await query_class.init(
                 db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
             )

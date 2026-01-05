@@ -1,6 +1,9 @@
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { store } from "@/shared/stores";
 import { describe, expect, it } from "vitest";
+
+import { store } from "@/shared/stores";
+
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import { canDissociateRelationship } from "./can-dissociate-relationship";
 

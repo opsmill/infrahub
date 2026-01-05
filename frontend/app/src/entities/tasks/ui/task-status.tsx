@@ -1,14 +1,17 @@
+import { Icon } from "@iconify-icon/react";
+import { useQuery } from "@tanstack/react-query";
+
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
-import { QSP } from "@/config/qsp";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/domain/is-task-running-on-branch/is-task-running-on-branch.query";
+
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton, LinkButtonProps } from "@/shared/components/buttons/button-primitive";
+import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useQuery } from "@tanstack/react-query";
+import { QSP } from "@/shared/config/qsp";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/domain/is-task-running-on-branch/is-task-running-on-branch.query";
 
 export function TaskStatus() {
   const { currentBranch } = useCurrentBranch();

@@ -12,3 +12,4 @@ class DatabaseEdgeType(Enum):
     IS_PROTECTED = "IS_PROTECTED"
     HAS_OWNER = "HAS_OWNER"
     HAS_SOURCE = "HAS_SOURCE"
+    IS_RESERVED = "IS_RESERVED"

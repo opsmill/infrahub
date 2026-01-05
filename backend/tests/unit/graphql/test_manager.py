@@ -1,43 +1,48 @@
 import inspect
-from copy import deepcopy
 
 import graphene
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
 
 
-async def test_input_type_registration():
+async def test_input_type_registration() -> None:
     assert registry.input_type is not {}  # noqa
 
 
-async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
+async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     result = gqlm.generate_interface_object(schema=generic_vehicule_schema)
-    assert inspect.isclass(result)
-    assert issubclass(result, graphene.Interface)
-    assert result._meta.name == "TestVehicule"
-    assert sorted(result._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
+    assert inspect.isclass(result.reference)
+    assert issubclass(result.reference, graphene.Interface)
+    assert result.reference._meta.name == "TestVehicule"
+    assert sorted(result.reference._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
-async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    reset_graphql_schema_between_tests: None,
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
     gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     result = gqlm.generate_graphql_object(schema=criticality_schema)
-    assert inspect.isclass(result)
-    assert issubclass(result, InfrahubObject)
-    assert result._meta.name == "TestCriticality"
-    assert sorted(result._meta.fields.keys()) == [
+    assert inspect.isclass(result.reference)
+    assert issubclass(result.reference, InfrahubObject)
+    assert result.reference._meta.name == "TestCriticality"
+    assert sorted(result.reference._meta.fields.keys()) == [
         "_updated_at",
         "color",
         "description",
@@ -59,16 +64,16 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
 
 async def test_generate_graphql_object_with_interface(
     db: InfrahubDatabase, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
     gqlm.generate_interface_object(schema=generic_vehicule_schema, populate_cache=True)
 
     result = gqlm.generate_graphql_object(schema=car_schema)
-    assert inspect.isclass(result)
-    assert issubclass(result, InfrahubObject)
-    assert result._meta.name == "TestCar"
-    assert sorted(result._meta.fields.keys()) == [
+    assert inspect.isclass(result.reference)
+    assert issubclass(result.reference, InfrahubObject)
+    assert result.reference._meta.name == "TestCar"
+    assert sorted(result.reference._meta.fields.keys()) == [
         "_updated_at",
         "description",
         "display_label",
@@ -79,7 +84,9 @@ async def test_generate_graphql_object_with_interface(
     ]
 
 
-async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_mutation_create(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -91,7 +98,9 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
-async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_mutation_update(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -103,7 +112,9 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
     assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
-async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
+async def test_generate_object_types(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -175,7 +186,9 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
     ]
 
 
-async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics):
+async def test_generate_filters(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -276,7 +289,7 @@ async def test_branch_caching_hit(
     car_person_schema_generics,
     schema_changed_at_null: bool,
     schema_hash_null: bool,
-):
+) -> None:
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     if schema_changed_at_null:
@@ -285,32 +298,27 @@ async def test_branch_caching_hit(
         same_branch.schema_hash = None
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
 
-    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
+    manager1 = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = graphql_registry.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is manager2
 
 
-@pytest.mark.parametrize("schema_changed_at_new,schema_hash_updated", [(True, False), (False, True), (True, True)])
 async def test_branch_caching_miss(
     db: InfrahubDatabase,
     default_branch: Branch,
     data_schema,
     car_person_schema_generics,
-    schema_changed_at_new: bool,
-    schema_hash_updated: bool,
-):
+) -> None:
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
-    if schema_changed_at_new:
-        same_branch.schema_changed_at = Timestamp().to_string()
-    if schema_hash_updated:
-        default_branch.schema_hash.main = "abc"
-        same_branch.update_schema_hash()
 
-    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
+    default_branch.active_schema_hash.main = "abc"
+    same_branch.update_schema_hash()
+
+    manager1 = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = graphql_registry.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is not manager2
 
@@ -326,20 +334,18 @@ async def test_branch_purge(
     active_branch = "i-will-not-be-purged"
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
 
-    GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    GraphQLSchemaManager.purge_inactive(active_branches=[default_branch.name])
-    GraphQLSchemaManager._branch_details_by_name[active_branch] = deepcopy(
-        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
-    )
-    GraphQLSchemaManager._branch_details_by_name[purged_branch] = deepcopy(
-        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
-    )
+    graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    graphql_registry.purge_inactive(active_branches=[default_branch.name])
+    graphql_registry._add_branch_hash(branch_name=active_branch, schema_hash=default_branch.active_schema_hash.main)
+    graphql_registry._add_branch_hash(branch_name=purged_branch, schema_hash=default_branch.active_schema_hash.main)
 
-    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert purged_branch in GraphQLSchemaManager._branch_details_by_name.keys()
-    purged_branches = GraphQLSchemaManager.purge_inactive(active_branches=[active_branch, default_branch.name])
-    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert purged_branch not in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry._branch_details_by_hash.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry._branch_name_by_hash.keys()
+
+    assert active_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
+    purged_branches = graphql_registry.purge_inactive(active_branches=[active_branch, default_branch.name])
+    assert active_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch not in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
+
     assert purged_branches == {purged_branch}

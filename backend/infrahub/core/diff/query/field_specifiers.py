@@ -15,7 +15,7 @@ class EnrichedDiffFieldSpecifiersQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["diff_id"] = self.diff_id
         query = """
-CALL {
+CALL () {
     MATCH (root:DiffRoot {uuid: $diff_id})-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_ATTRIBUTE]->(attr:DiffAttribute)
     WHERE (root.is_merged IS NULL OR root.is_merged <> TRUE)
     RETURN node.uuid AS node_uuid, node.kind AS node_kind, attr.name AS field_name

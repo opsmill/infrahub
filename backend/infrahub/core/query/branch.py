@@ -3,41 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.standard_node import StandardNodeGetListQuery
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-
-
-class AddNodeToBranch(Query):
-    name: str = "node_add_to_branch"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, node_id: int, **kwargs: Any):
-        self.node_id = node_id
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = """
-        MATCH (root:Root)
-        MATCH (d) WHERE %(id_func)s(d) = $node_id
-        WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, status: $status }]->(root)
-        RETURN %(id_func)s(r)
-        """ % {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.params["node_id"] = db.to_database_id(self.node_id)
-        self.params["now"] = self.at.to_string()
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["status"] = RelationshipStatus.ACTIVE.value
-
-        self.add_to_query(query)
 
 
 class DeleteBranchRelationshipsQuery(Query):
@@ -52,33 +24,49 @@ class DeleteBranchRelationshipsQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
-        MATCH (s)-[r1]-(d)
-        WHERE r1.branch = $branch_name
-        DELETE r1
+// --------------
+// for every Node created on this branch (it's about to be deleted), find any agnostic relationships
+// connected to the Node and delete them
+// --------------
+OPTIONAL MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
+WHERE e.branch = $branch_name
+CALL (n) {
+    OPTIONAL MATCH (n)-[:IS_RELATED {branch: $global_branch_name}]-(rel:Relationship)
+    DETACH DELETE rel
+} IN TRANSACTIONS OF 500 ROWS
 
-        WITH collect(DISTINCT s) + collect(DISTINCT d) AS nodes
+// reduce the results to a single row
+WITH 1 AS one
+LIMIT 1
 
-        // Collect node IDs for filtering
-        WITH nodes, [n in nodes | n.uuid] as nodes_uuids
+// --------------
+// for every edge on this branch, delete it
+// --------------
+MATCH (s)-[r]->(d)
+WHERE r.branch = $branch_name
+CALL (r) {
+    DELETE r
+} IN TRANSACTIONS OF 500 ROWS
 
-        // Also delete agnostic relationships that would not have been deleted above
-        MATCH (s2: Node)-[r2]-(d2)
-        WHERE NOT exists((s2)-[:IS_PART_OF]-(:Root))
-        AND s2.uuid IN nodes_uuids
-        DELETE r2
+// --------------
+// get the database IDs of every vertex linked to a deleted edge
+// --------------
+WITH DISTINCT elementId(s) AS s_id, elementId(d) AS d_id
+WITH collect(s_id) + collect(d_id) AS vertex_ids
+UNWIND vertex_ids AS vertex_id
 
-        WITH nodes, collect(DISTINCT s2) + collect(DISTINCT d2) as additional_nodes
-
-        WITH nodes + additional_nodes as nodes
-
-        // Delete nodes that are no longer connected to any other nodes
-        UNWIND nodes AS n
-        WITH DISTINCT n
-        MATCH (n)
-        WHERE NOT exists((n)--())
-        DELETE n
+// --------------
+// delete any vertices that are now orphaned
+// --------------
+CALL (vertex_id) {
+    MATCH (n)
+    WHERE elementId(n) = vertex_id
+    AND NOT exists((n)--())
+    DELETE n
+} IN TRANSACTIONS OF 500 ROWS
         """
         self.params["branch_name"] = self.branch_name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.add_to_query(query)
 
 
@@ -160,3 +148,12 @@ class RebaseBranchDeleteRelationshipQuery(Query):
         self.add_to_query(query=query)
 
         self.params["ids"] = [db.to_database_id(id) for id in self.ids]
+
+
+class BranchNodeGetListQuery(StandardNodeGetListQuery):
+    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
+        self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
+        if exclude_global:
+            self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
+
+        super().__init__(**kwargs)

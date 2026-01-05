@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable
 
@@ -17,14 +18,15 @@ from infrahub.core.schema import (
     RelationshipSchema,
     TemplateSchema,
 )
-from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
+from infrahub.graphql.mutations.profile import InfrahubProfileMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
+from .mutations.action import InfrahubTriggerRuleMatchMutation, InfrahubTriggerRuleMutation
 from .mutations.artifact_definition import InfrahubArtifactDefinitionMutation
 from .mutations.ipam import (
     InfrahubIPAddressMutation,
@@ -39,6 +41,8 @@ from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
 from .mutations.webhook import InfrahubWebhookMutation
+from .registry import registry
+from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -56,8 +60,8 @@ from .types import (
     InfrahubObject,
     PaginatedObjectPermission,
     RelatedIPAddressNodeInput,
+    RelatedIPPrefixNodeInput,
     RelatedNodeInput,
-    RelatedPrefixNodeInput,
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
@@ -67,7 +71,6 @@ from .types.event import EVENT_TYPES
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
-    from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -91,81 +94,34 @@ class GraphqlMutations:
     delete: type[InfrahubMutation]
 
 
+@dataclass
+class InterfaceReference:
+    reference: type[graphene.Interface]
+    reference_hash: str
+
+
+@dataclass
+class InfrahubObjectReference:
+    reference: type[InfrahubObject]
+    reference_hash: str
+
+
+@dataclass
+class InfrahubEdgedReference:
+    reference: type[InfrahubObject]
+    reference_hash: str
+
+
 def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) -> str:
     if not config.SETTINGS.experimental_features.graphql_enums or not attr_schema.enum:
         return attr_schema.kind
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
 
 
-@dataclass
-class BranchDetails:
-    branch_name: str
-    schema_changed_at: Timestamp
-    schema_hash: str
-    gql_manager: GraphQLSchemaManager
-
-
 class GraphQLSchemaManager:
-    _extra_types: dict[str, GraphQLTypes] = {}
-    _branch_details_by_name: dict[str, BranchDetails] = {}
-
-    @classmethod
-    def clear_cache(cls) -> None:
-        cls._branch_details_by_name = {}
-
-    @classmethod
-    def purge_inactive(cls, active_branches: list[str]) -> set[str]:
-        """Return inactive branches that were purged"""
-        inactive_branches: set[str] = set()
-        for branch_name in list(cls._branch_details_by_name):
-            if branch_name not in active_branches:
-                inactive_branches.add(branch_name)
-                del cls._branch_details_by_name[branch_name]
-        return inactive_branches
-
-    @classmethod
-    def _cache_branch(
-        cls, branch: Branch, schema_branch: SchemaBranch, schema_hash: str | None = None
-    ) -> BranchDetails:
-        if not schema_hash:
-            if branch.schema_hash:
-                schema_hash = branch.schema_hash.main
-            else:
-                schema_hash = schema_branch.get_hash()
-        branch_details = BranchDetails(
-            branch_name=branch.name,
-            schema_changed_at=Timestamp(branch.schema_changed_at) if branch.schema_changed_at else Timestamp(),
-            schema_hash=schema_hash,
-            gql_manager=cls(schema=schema_branch),
-        )
-        cls._branch_details_by_name[branch.name] = branch_details
-        return branch_details
-
-    @classmethod
-    def get_manager_for_branch(cls, branch: Branch, schema_branch: SchemaBranch) -> GraphQLSchemaManager:
-        if branch.name not in cls._branch_details_by_name:
-            branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
-            return branch_details.gql_manager
-        cached_branch_details = cls._branch_details_by_name[branch.name]
-        # try to use the schema_changed_at time b/c it is faster than checking the hash
-        if branch.schema_changed_at:
-            changed_at_time = Timestamp(branch.schema_changed_at)
-            if changed_at_time > cached_branch_details.schema_changed_at:
-                cached_branch_details = cls._cache_branch(branch=branch, schema_branch=schema_branch)
-            return cached_branch_details.gql_manager
-        if branch.schema_hash:
-            current_hash = branch.active_schema_hash.main
-        else:
-            current_hash = schema_branch.get_hash()
-        if cached_branch_details.schema_hash != current_hash:
-            cached_branch_details = cls._cache_branch(
-                branch=branch, schema_branch=schema_branch, schema_hash=current_hash
-            )
-
-        return cached_branch_details.gql_manager
-
     def __init__(self, schema: SchemaBranch) -> None:
         self.schema = schema
+        self.schema_hash = schema.get_hash()
 
         self._full_graphql_schema: GraphQLSchema | None = None
         self._graphql_types: dict[str, GraphQLTypes] = {}
@@ -273,9 +229,7 @@ class GraphQLSchemaManager:
         raise ValueError(f"Unable to find {name!r}")
 
     def get_all(self) -> dict[str, GraphQLTypes]:
-        infrahub_types = self._graphql_types
-        infrahub_types.update(self._extra_types)
-        return infrahub_types
+        return self._graphql_types
 
     def set_type(self, name: str, graphql_type: GraphQLTypes) -> None:
         self._graphql_types[name] = graphql_type
@@ -340,16 +294,14 @@ class GraphQLSchemaManager:
             )
             ATTRIBUTE_TYPES[base_enum_name] = data_type_class
 
-    def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
+    def _get_related_input_type(
+        self, relationship: RelationshipSchema
+    ) -> type[RelatedNodeInput | RelatedIPPrefixNodeInput | RelatedIPAddressNodeInput]:
         peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPPREFIX
-        ):
-            return RelatedPrefixNodeInput
+        if peer_schema.is_ip_prefix:
+            return RelatedIPPrefixNodeInput
 
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPADDRESS
-        ):
+        if peer_schema.is_ip_address:
             return RelatedIPAddressNodeInput
 
         return RelatedNodeInput
@@ -402,12 +354,15 @@ class GraphQLSchemaManager:
         # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
         for node_schema in full_schema.values():
             if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
-                node_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
+                node_object_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
-                    schema=node_schema, node=node_type, populate_cache=True
+                    schema=node_schema, node=node_object_type, populate_cache=True
                 )
                 nested_node_type_edged = self.generate_graphql_edged_object(
-                    schema=node_schema, node=node_type, relation_property=relationship_property, populate_cache=True
+                    schema=node_schema,
+                    node=node_object_type,
+                    relation_property=relationship_property,
+                    populate_cache=True,
                 )
 
                 self.generate_graphql_paginated_object(schema=node_schema, edge=node_type_edged, populate_cache=True)
@@ -494,7 +449,9 @@ class GraphQLSchemaManager:
 
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
-                resolver=default_paginated_list_resolver,
+                resolver=default_paginated_list_resolver
+                if node_name not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]
+                else ipam_paginated_list_resolver,
                 required=True,
                 **node_filters,
             )
@@ -524,12 +481,17 @@ class GraphQLSchemaManager:
                 InfrahubKind.MENUITEM: InfrahubCoreMenuMutation,
                 InfrahubKind.STANDARDWEBHOOK: InfrahubWebhookMutation,
                 InfrahubKind.CUSTOMWEBHOOK: InfrahubWebhookMutation,
+                InfrahubKind.NODETRIGGERRULE: InfrahubTriggerRuleMutation,
+                InfrahubKind.NODETRIGGERATTRIBUTEMATCH: InfrahubTriggerRuleMatchMutation,
+                InfrahubKind.NODETRIGGERRELATIONSHIPMATCH: InfrahubTriggerRuleMatchMutation,
             }
 
-            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
+            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix:
                 base_class = InfrahubIPPrefixMutation
-            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address():
+            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address:
                 base_class = InfrahubIPAddressMutation
+            elif isinstance(node_schema, ProfileSchema):
+                base_class = InfrahubProfileMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
@@ -554,13 +516,15 @@ class GraphQLSchemaManager:
 
         return type("MutationMixin", (object,), class_attrs)
 
-    def generate_graphql_object(self, schema: MainSchemaTypes, populate_cache: bool = False) -> type[InfrahubObject]:
+    def generate_graphql_object(self, schema: MainSchemaTypes, populate_cache: bool = False) -> InfrahubObjectReference:
         """Generate a GraphQL object Type from a Infrahub NodeSchema."""
 
         interfaces: set[type[InfrahubObject]] = set()
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{schema.kind}{schema.get_hash()}".encode())
 
         if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema) and schema.inherit_from:
-            for generic_name in schema.inherit_from:
+            for generic_name in sorted(schema.inherit_from):
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
 
@@ -594,20 +558,25 @@ class GraphQLSchemaManager:
             req = "" if attr.optional else " (required)"
             main_attrs[attr.name] = graphene.Field(attr_type, description=f"{attr.description}{req}")
 
+        object_hash = md5hash.hexdigest()
+
         graphql_object = type(schema.kind, (InfrahubObject,), main_attrs)
+        registry.set_object_type(reference=graphql_object, reference_hash=object_hash, schema_hash=self.schema_hash)
 
         if populate_cache:
             self.set_type(name=schema.kind, graphql_type=graphql_object)
 
-        return graphql_object
+        return InfrahubObjectReference(reference=graphql_object, reference_hash=object_hash)
 
-    def generate_interface_object(
-        self, schema: GenericSchema, populate_cache: bool = False
-    ) -> type[graphene.Interface]:
+    def generate_interface_object(self, schema: GenericSchema, populate_cache: bool = False) -> InterfaceReference:
         meta_attrs = {
             "name": schema.kind,
             "description": schema.description,
         }
+
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"interface-{schema.kind}{schema.get_hash()}".encode())
+        interface_hash = md5hash.hexdigest()
 
         main_attrs = {
             "id": graphene.Field(graphene.String, required=False, description="Unique identifier"),
@@ -617,7 +586,6 @@ class GraphQLSchemaManager:
                 description="Human friendly identifier",
             ),
             "display_label": graphene.String(required=False),
-            "Meta": type("Meta", (object,), meta_attrs),
         }
 
         for attr in schema.attributes:
@@ -625,12 +593,18 @@ class GraphQLSchemaManager:
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
             main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
 
-        interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
+        interface_object = registry.get_interface_type(reference_hash=interface_hash, schema_hash=self.schema_hash)
+        if not interface_object:
+            main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
+            interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
+
+        interface_reference = InterfaceReference(reference=interface_object, reference_hash=interface_hash)
+        registry.set_interface_type(reference=interface_reference, schema_hash=self.schema_hash)
 
         if populate_cache:
             self.set_type(name=schema.kind, graphql_type=interface_object)
 
-        return interface_object
+        return interface_reference
 
     def define_relationship_property(self, data_source: type[InfrahubObject], data_owner: type[InfrahubObject]) -> None:
         type_name = "RelationshipProperty"
@@ -718,7 +692,18 @@ class GraphQLSchemaManager:
             elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
 
-        return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
+        input_name = f"{schema.kind}CreateInput"
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{input_name}{schema.get_hash()}".encode())
+        input_hash = md5hash.hexdigest()
+        mutation_input_type = registry.get_input_type(reference_hash=input_hash, schema_hash=self.schema_hash)
+        if not mutation_input_type:
+            mutation_input_type = type(input_name, (graphene.InputObjectType,), attrs)
+            registry.set_input_type(
+                reference=mutation_input_type, reference_hash=input_hash, schema_hash=self.schema_hash
+            )
+
+        return mutation_input_type
 
     def generate_graphql_mutation_update_input(self, schema: MainSchemaTypes) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
@@ -731,7 +716,7 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeUpdate, required=False)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: dict[str, graphene.String | graphene.InputField] = {
+        attrs: dict[str, graphene.String | graphene.InputField | graphene.List] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
         }
@@ -757,7 +742,18 @@ class GraphQLSchemaManager:
                     graphene.List(input_type), required=False, description=rel.description
                 )
 
-        return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
+        input_name = f"{schema.kind}UpdateInput"
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{input_name}{schema.get_hash()}".encode())
+        input_hash = md5hash.hexdigest()
+        mutation_input_type = registry.get_input_type(reference_hash=input_hash, schema_hash=self.schema_hash)
+        if not mutation_input_type:
+            mutation_input_type = type(input_name, (graphene.InputObjectType,), attrs)
+            registry.set_input_type(
+                reference=mutation_input_type, reference_hash=input_hash, schema_hash=self.schema_hash
+            )
+
+        return mutation_input_type
 
     def generate_graphql_mutation_upsert_input(
         self, schema: NodeSchema | ProfileSchema | TemplateSchema
@@ -772,7 +768,7 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeUpdate, required=True)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: dict[str, graphene.String | graphene.InputField] = {
+        attrs: dict[str, graphene.String | graphene.InputField | graphene.List] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
         }
@@ -784,10 +780,7 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_update()
 
-            # A Field is not required if explicitly indicated or if a default value has been provided
-            required = not attr.optional if not attr.default_value else False
-
-            attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
+            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -795,16 +788,24 @@ class GraphQLSchemaManager:
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            required = not rel.optional
             if rel.cardinality == RelationshipCardinality.ONE:
-                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
 
             elif rel.cardinality == RelationshipCardinality.MANY:
-                attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), required=required, description=rel.description
-                )
+                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
 
-        return type(f"{schema.kind}UpsertInput", (graphene.InputObjectType,), attrs)
+        input_name = f"{schema.kind}UpsertInput"
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{input_name}{schema.get_hash()}".encode())
+        input_hash = md5hash.hexdigest()
+        mutation_input_type = registry.get_input_type(reference_hash=input_hash, schema_hash=self.schema_hash)
+        if not mutation_input_type:
+            mutation_input_type = type(input_name, (graphene.InputObjectType,), attrs)
+            registry.set_input_type(
+                reference=mutation_input_type, reference_hash=input_hash, schema_hash=self.schema_hash
+            )
+
+        return mutation_input_type
 
     def generate_graphql_mutation_create(
         self,
@@ -816,17 +817,27 @@ class GraphQLSchemaManager:
         """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
         name = f"{schema.kind}{mutation_type}"
 
-        object_type = self.generate_graphql_object(schema=schema)
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{name}{schema.get_hash()}".encode())
+        mutation_hash = md5hash.hexdigest()
 
-        main_attrs: dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
+        mutation_object = registry.get_mutation_type(reference_hash=mutation_hash, schema_hash=self.schema_hash)
+        if not mutation_object:
+            object_type = self.generate_graphql_object(schema=schema)
 
-        meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
-        main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
+            main_attrs: dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type.reference)}
 
-        args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
-        main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
+            meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
+            main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        return type(name, (base_class,), main_attrs)
+            args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
+            main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
+            mutation_object = type(name, (base_class,), main_attrs)
+            registry.set_mutation_type(
+                reference=mutation_object, reference_hash=mutation_hash, schema_hash=self.schema_hash
+            )
+
+        return mutation_object
 
     def generate_graphql_mutation_update(
         self,
@@ -837,34 +848,50 @@ class GraphQLSchemaManager:
         """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Update"
 
-        object_type = self.generate_graphql_object(schema=schema)
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{name}{schema.get_hash()}".encode())
+        mutation_hash = md5hash.hexdigest()
 
-        main_attrs: dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
+        mutation_object = registry.get_mutation_type(reference_hash=mutation_hash, schema_hash=self.schema_hash)
+        if not mutation_object:
+            object_type = self.generate_graphql_object(schema=schema)
 
-        meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
-        main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
+            main_attrs: dict[str, Any] = {"ok": graphene.Boolean(), "object": graphene.Field(object_type.reference)}
 
-        args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
-        main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
+            meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
+            main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        return type(name, (base_class,), main_attrs)
+            args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
+            main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
-    @staticmethod
+            mutation_object = type(name, (base_class,), main_attrs)
+            registry.set_mutation_type(
+                reference=mutation_object, reference_hash=mutation_hash, schema_hash=self.schema_hash
+            )
+
+        return mutation_object
+
     def generate_graphql_mutation_delete(
-        schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation] = InfrahubMutation
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation] = InfrahubMutation
     ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Delete"
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{name}{schema.get_hash()}".encode())
+        mutation_hash = md5hash.hexdigest()
+        mutation_object = registry.get_mutation_type(reference_hash=mutation_hash, schema_hash=self.schema_hash)
+        if not mutation_object:
+            main_attrs: dict[str, Any] = {"ok": graphene.Boolean()}
+            meta_attrs = {"schema": schema, "name": name, "description": schema.description}
+            main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
+            args_attrs: dict[str, Any] = {"data": DeleteInput(required=True), "context": ContextInput(required=False)}
+            main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
+            mutation_object = type(name, (base_class,), main_attrs)
+            registry.set_mutation_type(
+                reference=mutation_object, reference_hash=mutation_hash, schema_hash=self.schema_hash
+            )
 
-        main_attrs: dict[str, Any] = {"ok": graphene.Boolean()}
-
-        meta_attrs = {"schema": schema, "name": name, "description": schema.description}
-        main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
-
-        args_attrs: dict[str, Any] = {"data": DeleteInput(required=True), "context": ContextInput(required=False)}
-        main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
-
-        return type(name, (base_class,), main_attrs)
+        return mutation_object
 
     def generate_filters(
         self, schema: MainSchemaTypes, top_level: bool = False, include_properties: bool = True
@@ -908,6 +935,11 @@ class GraphQLSchemaManager:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
             filters["partial_match"] = graphene.Boolean()
 
+            if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+                # This is only available for IPAM generics
+                filters["include_available"] = graphene.Boolean()
+                filters["kinds"] = graphene.List(graphene.NonNull(graphene.String))
+
         if not top_level:
             return filters
 
@@ -932,15 +964,19 @@ class GraphQLSchemaManager:
     def generate_graphql_edged_object(
         self,
         schema: MainSchemaTypes,
-        node: type[InfrahubObject],
+        node: InterfaceReference | InfrahubObjectReference,
         relation_property: type[InfrahubObject] | None = None,
         populate_cache: bool = False,
-    ) -> type[InfrahubObject]:
+    ) -> InfrahubEdgedReference:
         """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
 
         object_name = f"Edged{schema.kind}"
         if relation_property:
             object_name = f"NestedEdged{schema.kind}"
+
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{object_name}{schema.get_hash()}{node.reference_hash}".encode())
+        edge_hash = md5hash.hexdigest()
 
         meta_attrs: dict[str, Any] = {
             "schema": schema,
@@ -950,28 +986,37 @@ class GraphQLSchemaManager:
         }
 
         main_attrs: dict[str, Any] = {
-            "node": graphene.Field(node, required=False),
+            "node": graphene.Field(node.reference, required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
 
-        graphql_edged_object = type(object_name, (InfrahubObject,), main_attrs)
+        graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
+        if not graphql_edged_object:
+            graphql_edged_object = type(object_name, (InfrahubObject,), main_attrs)
+            registry.set_edge_type(
+                reference=graphql_edged_object, reference_hash=edge_hash, schema_hash=self.schema_hash
+            )
 
         if populate_cache:
             self.set_type(name=object_name, graphql_type=graphql_edged_object)
 
-        return graphql_edged_object
+        return InfrahubEdgedReference(reference=graphql_edged_object, reference_hash=edge_hash)
 
     def generate_graphql_paginated_object(
-        self, schema: MainSchemaTypes, edge: type[InfrahubObject], nested: bool = False, populate_cache: bool = False
+        self, schema: MainSchemaTypes, edge: InfrahubEdgedReference, nested: bool = False, populate_cache: bool = False
     ) -> type[InfrahubObject]:
         """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
 
         object_name = f"Paginated{schema.kind}"
         if nested:
             object_name = f"NestedPaginated{schema.kind}"
+
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{object_name}{schema.get_hash()}{edge.reference_hash}".encode())
+        paginated_hash = md5hash.hexdigest()
 
         meta_attrs: dict[str, Any] = {
             "schema": schema,
@@ -983,14 +1028,21 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "count": graphene.Int(required=True),
-            "edges": graphene.List(of_type=graphene.NonNull(edge), required=True),
+            "edges": graphene.List(of_type=graphene.NonNull(edge.reference), required=True),
             "permissions": graphene.Field(
                 PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
             ),
-            "Meta": type("Meta", (object,), meta_attrs),
         }
 
-        graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
+        graphql_paginated_object = registry.get_paginated_type(
+            reference_hash=paginated_hash, schema_hash=self.schema_hash
+        )
+        if not graphql_paginated_object:
+            main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
+            graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
+            registry.set_paginated_type(
+                reference=graphql_paginated_object, reference_hash=paginated_hash, schema_hash=self.schema_hash
+            )
 
         if populate_cache:
             self.set_type(name=object_name, graphql_type=graphql_paginated_object)
@@ -1020,27 +1072,53 @@ class GraphQLSchemaManager:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
 
         object_name = f"NestedEdged{schema.kind}"
-        nested_interface_object = type(object_name, (InfrahubObject,), main_attrs)
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{object_name}{schema.get_hash()}".encode())
+        paginated_hash = md5hash.hexdigest()
+        nested_interface_object = registry.get_paginated_type(
+            reference_hash=paginated_hash, schema_hash=self.schema_hash
+        )
+        if not nested_interface_object:
+            nested_interface_object = type(object_name, (InfrahubObject,), main_attrs)
+            registry.set_paginated_type(
+                reference=nested_interface_object, reference_hash=paginated_hash, schema_hash=self.schema_hash
+            )
 
         if populate_cache:
             self.set_type(name=object_name, graphql_type=nested_interface_object)
 
         return nested_interface_object
 
-    @staticmethod
     def generate_paginated_interface_object(
-        schema: GenericSchema, base_interface: type[graphene.ObjectType]
+        self, schema: GenericSchema, base_interface: type[graphene.ObjectType]
     ) -> type[InfrahubObject]:
-        meta_attrs: dict[str, Any] = {
-            "name": f"NestedPaginated{schema.kind}",
-            "schema": schema,
-            "description": schema.description,
-        }
+        object_name = f"NestedPaginated{schema.kind}"
+        md5hash = hashlib.md5(usedforsecurity=False)
+        md5hash.update(f"{object_name}{schema.get_hash()}".encode())
+        paginated_hash = md5hash.hexdigest()
 
-        main_attrs: dict[str, Any] = {
-            "count": graphene.Int(required=True),
-            "edges": graphene.List(of_type=graphene.NonNull(base_interface)),
-            "Meta": type("Meta", (object,), meta_attrs),
-        }
+        nested_interface_object = registry.get_paginated_type(
+            reference_hash=paginated_hash, schema_hash=self.schema_hash
+        )
+        if not nested_interface_object:
+            meta_attrs: dict[str, Any] = {
+                "name": object_name,
+                "schema": schema,
+                "description": schema.description,
+            }
 
-        return type(f"NestedPaginated{schema.kind}", (InfrahubObject,), main_attrs)
+            main_attrs: dict[str, Any] = {
+                "count": graphene.Int(required=True),
+                "edges": graphene.List(of_type=graphene.NonNull(base_interface)),
+                "Meta": type("Meta", (object,), meta_attrs),
+            }
+
+            nested_interface_object = type(object_name, (InfrahubObject,), main_attrs)
+            registry.set_paginated_type(
+                reference=nested_interface_object, reference_hash=paginated_hash, schema_hash=self.schema_hash
+            )
+
+        return nested_interface_object
+
+
+registry._register_manager(manager=GraphQLSchemaManager)

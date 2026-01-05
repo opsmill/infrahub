@@ -3,7 +3,11 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest
+from infrahub.core.validators.uniqueness.model import (
+    NodeUniquenessQueryRequest,
+    QueryAttributePath,
+    QueryRelationshipAttributePath,
+)
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import InfrahubDatabase
 
@@ -16,12 +20,15 @@ async def test_query_uniqueness_no_violations(
     car_yaris_main,
     car_prius_main,
     branch: Branch,
-):
+) -> None:
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar", unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}]
+            kind="TestCar",
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value")
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -31,16 +38,16 @@ async def test_query_uniqueness_no_violations(
 
 async def test_query_uniqueness_one_violation(
     db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
-):
+) -> None:
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -59,7 +66,7 @@ async def test_query_uniqueness_deleted_node_ignored(
     car_accord_main,
     car_prius_main,
     branch: Branch,
-):
+) -> None:
     node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await node_to_delete.delete(db=db)
 
@@ -68,10 +75,10 @@ async def test_query_uniqueness_deleted_node_ignored(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -84,7 +91,7 @@ async def test_query_uniqueness_get_latest_update(
     car_accord_main,
     car_prius_main,
     branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     car_to_update.nbr_seats.value = 3
     await car_to_update.save(db=db)
@@ -94,10 +101,10 @@ async def test_query_uniqueness_get_latest_update(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -111,7 +118,7 @@ async def test_query_uniqueness_cross_branch_conflict(
     car_prius_main,
     person_john_main,
     default_branch: Branch,
-):
+) -> None:
     branch_2 = await create_branch(branch_name="branch2", db=db)
     new_car_main = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await new_car_main.new(db=db, name="Thunderbolt", nbr_seats=2, is_electric=True, owner=person_john_main)
@@ -124,7 +131,10 @@ async def test_query_uniqueness_cross_branch_conflict(
         db=db,
         branch=branch_2,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar", unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}]
+            kind="TestCar",
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value")
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -161,7 +171,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
     car_camry_main,
     branch: Branch,
     default_branch: Branch,
-):
+) -> None:
     for car_id in (car_volt_main.id, car_camry_main.id):
         car_to_update = await NodeManager.get_one(id=car_id, db=db, branch=branch)
         car_to_update.color.value = "#ffffff"
@@ -206,11 +216,11 @@ async def test_query_uniqueness_multiple_attribute_violations(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value"},
-                {"attribute_name": "color", "property_name": "value"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="color", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -228,7 +238,7 @@ async def test_query_relationship_uniqueness_no_violations(
     person_jane_main,
     person_john_main,
     branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await car_to_update.owner.update(data=person_jane_main, db=db)
     await car_to_update.save(db=db)
@@ -242,8 +252,12 @@ async def test_query_relationship_uniqueness_no_violations(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}],
-            relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": "height"}],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value")
+            },
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height")
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -259,7 +273,7 @@ async def test_query_relationship_uniqueness_one_violation(
     person_john_main,
     branch: Branch,
     default_branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await car_to_update.owner.update(data=person_jane_main, db=db)
     await car_to_update.save(db=db)
@@ -272,8 +286,12 @@ async def test_query_relationship_uniqueness_one_violation(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}],
-            relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": "height"}],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value")
+            },
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height")
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -310,7 +328,7 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
     person_john_main,
     branch: Branch,
     default_branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await car_to_update.owner.update(data=person_jane_main, db=db)
     await car_to_update.save(db=db)
@@ -357,11 +375,13 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
-            relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": "height"}],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height")
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -380,7 +400,7 @@ async def test_query_relationship_violation_no_attribute(
     person_john_main,
     branch: Branch,
     default_branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
     await car_to_update.owner.update(data=person_john_main, db=db)
     await car_to_update.save(db=db)
@@ -415,7 +435,10 @@ async def test_query_relationship_violation_no_attribute(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar", relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": None}]
+            kind="TestCar",
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name=None)
+            },
         ),
     )
     query_result = await query.execute(db=db)
@@ -428,7 +451,7 @@ async def test_query_relationship_violation_no_attribute(
 
 async def test_query_relationship_no_violation_same_peer_different_rels(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
-):
+) -> None:
     john = await Node.init(schema="TestPerson", db=db)
     await john.new(db=db, name="John", height=175)
     await john.save(db=db)
@@ -481,7 +504,8 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestDog", relationship_attribute_paths=[{"identifier": "person__animal", "value": jane.id}]
+            kind="TestDog",
+            relationship_attribute_paths={QueryRelationshipAttributePath(identifier="person__animal", value=jane.id)},
         ),
     )
     owner_query_result = await owner_query.execute(db=db)
@@ -491,7 +515,10 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestDog", relationship_attribute_paths=[{"identifier": "person__animal_friend", "value": jane.id}]
+            kind="TestDog",
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="person__animal_friend", value=jane.id)
+            },
         ),
     )
     best_friend_query_result = await best_friend_query.execute(db=db)
@@ -503,7 +530,7 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
 
 async def test_query_response_min_count_0_attribute_paths(
     db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
-):
+) -> None:
     expected_result_dicts = [
         {
             "attr_name": "nbr_seats",
@@ -544,10 +571,10 @@ async def test_query_response_min_count_0_attribute_paths(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
         ),
         min_count_required=0,
     )
@@ -561,7 +588,7 @@ async def test_query_response_min_count_0_attribute_paths(
 
 async def test_query_response_min_count_0_relationship_paths(
     db: InfrahubDatabase, car_camry_main, car_prius_main, branch: Branch, default_branch: Branch
-):
+) -> None:
     expected_result_dicts = [
         {
             "attr_name": "name",
@@ -602,10 +629,10 @@ async def test_query_response_min_count_0_relationship_paths(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            relationship_attribute_paths=[
-                {"identifier": "testcar__testperson", "attribute_name": "height"},
-                {"identifier": "testcar__testperson", "attribute_name": "name"},
-            ],
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height"),
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name"),
+            },
         ),
         min_count_required=0,
     )
@@ -619,7 +646,7 @@ async def test_query_response_min_count_0_relationship_paths(
 
 async def test_query_response_min_count_0_attribute_paths_with_value(
     db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
-):
+) -> None:
     expected_result_dicts = [
         {
             "attr_name": "nbr_seats",
@@ -652,10 +679,10 @@ async def test_query_response_min_count_0_attribute_paths_with_value(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            unique_attribute_paths=[
-                {"attribute_name": "name", "property_name": "value", "value": "accord"},
-                {"attribute_name": "nbr_seats", "property_name": "value"},
-            ],
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value", value="accord"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
         ),
         min_count_required=0,
     )
@@ -669,7 +696,7 @@ async def test_query_response_min_count_0_attribute_paths_with_value(
 
 async def test_query_response_min_count_0_relationship_paths_with_value(
     db: InfrahubDatabase, car_camry_main, car_prius_main, branch: Branch, default_branch: Branch
-):
+) -> None:
     expected_result_dicts = [
         {
             "attr_name": "name",
@@ -702,10 +729,10 @@ async def test_query_response_min_count_0_relationship_paths_with_value(
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
             kind="TestCar",
-            relationship_attribute_paths=[
-                {"identifier": "testcar__testperson", "attribute_name": "height"},
-                {"identifier": "testcar__testperson", "attribute_name": "name", "value": "Jane"},
-            ],
+            relationship_attribute_paths={
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height"),
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name", value="Jane"),
+            },
         ),
         min_count_required=0,
     )

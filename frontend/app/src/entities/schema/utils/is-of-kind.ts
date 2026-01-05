@@ -1,5 +1,4 @@
-import { ModelSchema } from "@/entities/schema/types";
-
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export const isOfKind = (kind: string, schema: ModelSchema) => {

@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from enum import Enum
+from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
 from typing import cast
 
@@ -444,7 +444,7 @@ PLATFORMS = (
 )
 
 
-class DevicePatternName(str, Enum):
+class DevicePatternName(StrEnum):
     LEAF = "LEAF"
     CORE = "CORE"
     EDGE = "EDGE"
@@ -1200,6 +1200,16 @@ async def create_backbone_connectivity(
             f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
         )
         await intf_site2_obj.save()
+        bb_service = await client.create(
+            kind="InfraBackBoneService",
+            name=f"BKB: {backbone_link.site1} <-> {backbone_link.site2}",
+            circuit_id=backbone_link.circuit,
+            internal_circuit_id=vendor_id.upper(),
+            provider=provider,
+            site_a=backbone_link.site1,
+            site_b=backbone_link.site2,
+        )
+        await bb_service.save(allow_upsert=True)
 
         log.debug(
             f" - Connected '{backbone_link.site1_device}::{intf_site1.name.value}' <> '{backbone_link.site2_device}::{intf_site2.name.value}'"
@@ -1273,7 +1283,7 @@ async def create_bgp_mesh(client: InfrahubClient, log: logging.Logger, branch: s
 
 async def generate_site_vlans(
     client: InfrahubClient,
-    log: logging.Logger,  # noqa: ARG001
+    log: logging.Logger,
     branch: str,
     site: Site,
     site_id: int,
@@ -1510,7 +1520,7 @@ async def generate_site(
         management_ip = await client.allocate_next_ip_address(
             resource_pool=management_pool, identifier=device_name, data={"interface": intf.id}, branch=branch
         )
-        management_ip = cast(IpamIPAddress, management_ip)
+        management_ip = cast("IpamIPAddress", management_ip)
 
         # set the IP address of the device to the management interface IP address
         obj.primary_address = management_ip  # type: ignore[assignment]
@@ -1893,7 +1903,7 @@ async def branch_scenario_add_upstream(
     subnet = await client.allocate_next_ip_prefix(
         resource_pool=external_pool, identifier=device_name, branch=new_branch_name
     )
-    subnet = cast(IpamIPPrefix, subnet)
+    subnet = cast("IpamIPPrefix", subnet)
     subnet_hosts = subnet.prefix.value.hosts()
     address = f"{str(next(subnet_hosts))}/29"
     peer_address = f"{str(next(subnet_hosts))}/29"
@@ -2245,7 +2255,7 @@ async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: 
 
 
 async def map_permissions_to_roles(
-    client: InfrahubClient,  # noqa: ARG001
+    client: InfrahubClient,
     log: logging.Logger,  # noqa: ARG001
     branch: str,  # noqa: ARG001
     batch: InfrahubBatch,
@@ -2306,7 +2316,7 @@ async def map_permissions_to_roles(
 
 
 async def map_user_and_roles_to_groups(
-    client: InfrahubClient,  # noqa: ARG001
+    client: InfrahubClient,
     log: logging.Logger,  # noqa: ARG001
     branch: str,  # noqa: ARG001
     batch: InfrahubBatch,
@@ -2358,7 +2368,7 @@ async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str,
     )
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
     for asn in ASNS:
-        organization_type = organizations_dict.get(asn.organization, None)
+        organization_type = organizations_dict.get(asn.organization)
         asn_name = f"AS{asn.asn}"
         data_asn = {
             "name": {"value": asn.name, "source": account_crm.id, "owner": account_chloe.id},
@@ -2545,7 +2555,7 @@ async def run(
         config.load_config(profile, num_sites, num_device_per_site, bool_has_bgp_mesh, bool_has_branch)
     except ConfigError as ex:
         log.fatal(ex)
-        return False  # FIXME: What should I return here for the script to fail properly
+        return
 
     log.info(f"Loading data with {config}")
 

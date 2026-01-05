@@ -1,10 +1,42 @@
 import random
 
+from fast_depends import Depends, inject
+from prefect.client.schemas.objects import ConcurrencyLimitStrategy
+
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
+
+ACTION_ADD_NODE_TO_GROUP = WorkflowDefinition(
+    name="action-add-node-to-group",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="add_node_to_group",
+)
+
+ACTION_RUN_GENERATOR = WorkflowDefinition(
+    name="action-run-generator",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.actions.tasks",
+    function="run_generator",
+)
+
+ACTION_RUN_GENERATOR_GROUP_EVENT = WorkflowDefinition(
+    name="action-run-generator-group-event",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.actions.tasks",
+    function="run_generator_group_event",
+)
+
+
+CONFIGURE_ACTION_RULES = WorkflowDefinition(
+    name="configure-action-rules",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="configure_action_rules",
+)
 
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
@@ -52,7 +84,7 @@ TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
 
 TRIGGER_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="generator-definition-run",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.generators.tasks",
     function="run_generator_definition",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -66,6 +98,13 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+REMOVE_ADD_NODE_FROM_GROUP = WorkflowDefinition(
+    name="action-remove-node-from-group",
+    type=WorkflowType.CORE,
+    module="infrahub.actions.tasks",
+    function="remove_node_from_group",
+)
+
 REQUEST_GENERATOR_RUN = WorkflowDefinition(
     name="generator-run",
     type=WorkflowType.USER,
@@ -74,11 +113,27 @@ REQUEST_GENERATOR_RUN = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+RUN_GENERATOR_AS_CHECK = WorkflowDefinition(
+    name="run-generator-as-check",
+    type=WorkflowType.USER,
+    module="infrahub.proposed_change.tasks",
+    function="run_generator_as_check",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="request-generator-definition-run",
     type=WorkflowType.CORE,
     module="infrahub.generators.tasks",
     function="request_generator_definition_run",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_GENERATOR_DEFINITION_CHECK = WorkflowDefinition(
+    name="request-generator-definition-check",
+    type=WorkflowType.CORE,
+    module="infrahub.proposed_change.tasks",
+    function="request_generator_definition_check",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -125,6 +180,8 @@ GIT_REPOSITORIES_SYNC = WorkflowDefinition(
     cron="* * * * *",
     module="infrahub.git.tasks",
     function="sync_remote_repositories",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
 )
 
 GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
@@ -173,6 +230,13 @@ BRANCH_REBASE = WorkflowDefinition(
     function="rebase_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+BRANCH_MIGRATE = WorkflowDefinition(
+    name="branch-migrate",
+    type=WorkflowType.CORE,
+    module="infrahub.core.branch.tasks",
+    function="migrate_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
 
 BRANCH_CREATE = WorkflowDefinition(
     name="create-branch",
@@ -190,6 +254,14 @@ BRANCH_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_MERGED = WorkflowDefinition(
+    name="branch-merged",
+    type=WorkflowType.CORE,
+    module="infrahub.branch.tasks",
+    function="branch_merged",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     name="branch-merge-post-process",
     type=WorkflowType.CORE,
@@ -197,7 +269,6 @@ BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     function="post_process_branch_merge",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
-
 
 BRANCH_MERGE_MUTATION = WorkflowDefinition(
     name="merge-branch-mutation",
@@ -238,7 +309,7 @@ PROPOSED_CHANGE_MERGE = WorkflowDefinition(
 
 GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
     name="graphql-query-group-update",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
 )
@@ -248,6 +319,70 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="process_jinja2",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
+    name="computed-attribute-jinja2-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_jinja2_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
+    name="display-label-process-jinja2",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="process_display_label",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
+    name="display-label-jinja2-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="display_label_jinja2_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+HFID_PROCESS = WorkflowDefinition(
+    name="hfid-process",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="process_hfid",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+HFID_SETUP = WorkflowDefinition(
+    name="hfid-setup",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="hfid_setup",
+)
+
+
+HFID_UPDATE_VALUE = WorkflowDefinition(
+    name="hfid-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="hfid_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
+    name="trigger-update-display-labels",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="trigger_update_display_labels",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+TRIGGER_UPDATE_HFID = WorkflowDefinition(
+    name="trigger-update-hfid",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="trigger_update_hfid",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -286,6 +421,14 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     function="process_transform",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+
+DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
+    name="display-labels-setup-jinja2",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="display_labels_setup_jinja2",
+)
+
 
 QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS = WorkflowDefinition(
     name="query-computed-attribute-transform-targets",
@@ -328,6 +471,21 @@ GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     module="infrahub.git.tasks",
     function="import_objects_from_git_repository",
     tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_PIPELINE = WorkflowDefinition(
+    name="proposed-changed-pipeline",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_pipeline",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS = WorkflowDefinition(
+    name="proposed-changed-refresh-artifacts",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="refresh_artifacts",
 )
 
 REQUEST_PROPOSED_CHANGE_RUN_GENERATORS = WorkflowDefinition(
@@ -423,6 +581,14 @@ GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
     function="run_check_merge_conflicts",
 )
 
+SCHEMA_UPDATED = WorkflowDefinition(
+    name="schema-updated",
+    type=WorkflowType.CORE,
+    module="infrahub.schema.tasks",
+    function="schema_updated",
+)
+
+
 TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
     name="trigger-configure-all",
     type=WorkflowType.CORE,
@@ -431,25 +597,73 @@ TRIGGER_CONFIGURE_ALL = WorkflowDefinition(
 )
 
 
-worker_pools = [INFRAHUB_WORKER_POOL]
+VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
+    name="validate-schema-number-pools",
+    type=WorkflowType.CORE,
+    module="infrahub.pools.tasks",
+    function="validate_schema_number_pools",
+)
 
-workflows = [
+
+PROFILE_REFRESH_MULTIPLE = WorkflowDefinition(
+    name="objects-profiles-refresh-multiple",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="objects_profiles_refresh_multiple",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
+PROFILE_REFRESH = WorkflowDefinition(
+    name="object-profiles-refresh",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="object_profiles_refresh",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
+CLEAN_UP_DEADLOCKS = WorkflowDefinition(
+    name="clean-up-deadlocks",
+    type=WorkflowType.INTERNAL,
+    cron="* * * * *",
+    module="infrahub.locks.tasks",
+    function="clean_up_deadlocks",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+)
+
+
+WORKER_POOLS = [INFRAHUB_WORKER_POOL]
+
+WORKFLOWS = [
+    ACTION_ADD_NODE_TO_GROUP,
+    ACTION_RUN_GENERATOR,
+    ACTION_RUN_GENERATOR_GROUP_EVENT,
     ANONYMOUS_TELEMETRY_SEND,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
     BRANCH_MERGE,
+    BRANCH_MERGED,
     BRANCH_MERGE_MUTATION,
     BRANCH_MERGE_POST_PROCESS,
+    BRANCH_MIGRATE,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
+    CLEAN_UP_DEADLOCKS,
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
+    CONFIGURE_ACTION_RULES,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    DISPLAY_LABELS_PROCESS_JINJA2,
+    DISPLAY_LABELS_SETUP_JINJA2,
+    DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
@@ -465,30 +679,56 @@ workflows = [
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
+    HFID_PROCESS,
+    HFID_SETUP,
+    HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
+    PROFILE_REFRESH,
+    PROFILE_REFRESH_MULTIPLE,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    REMOVE_ADD_NODE_FROM_GROUP,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
+    REQUEST_GENERATOR_DEFINITION_CHECK,
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_PIPELINE,
+    REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
+    RUN_GENERATOR_AS_CHECK,
     SCHEMA_APPLY_MIGRATION,
+    SCHEMA_UPDATED,
     SCHEMA_VALIDATE_MIGRATION,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_CONFIGURE_ALL,
     TRIGGER_GENERATOR_DEFINITION_RUN,
+    TRIGGER_UPDATE_DISPLAY_LABELS,
+    TRIGGER_UPDATE_HFID,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+    VALIDATE_SCHEMA_NUMBER_POOLS,
     WEBHOOK_CONFIGURE_ALL,
     WEBHOOK_CONFIGURE_ONE,
     WEBHOOK_DELETE_AUTOMATION,
     WEBHOOK_PROCESS,
 ]
+
+
+# Use this dependency injection mechanism to easily add new workflows within infrahub-enterprise
+def build_workflows_definitions() -> list[WorkflowDefinition]:
+    return WORKFLOWS
+
+
+@inject
+def get_workflows(
+    workflows: list[WorkflowDefinition] = Depends(build_workflows_definitions),  # noqa: B008
+) -> list[WorkflowDefinition]:
+    return workflows

@@ -1,0 +1,97 @@
+---
+schemas:
+  - schemas/demo_edge_fabric.yml
+
+jinja2_transforms:
+  - name: "device_startup"
+    description: "Template to generate startup configuration for network devices"
+    query: "device_startup_info"
+    template_path: "templates/device_startup_config.tpl.j2"
+
+  - name: "clab_topology"
+    query: "topology_info"
+    template_path: "topology/topology.tpl.j2"
+
+artifact_definitions:
+  - name: "Openconfig Interface for Arista devices"
+    artifact_name: "openconfig-interfaces"
+    parameters:
+      device: "name__value"
+    content_type: "application/json"
+    targets: "arista_devices"
+    transformation: "OCInterfaces"
+
+  - name: "Startup Config for Edge devices"
+    artifact_name: "startup-config"
+    parameters:
+      device: "name__value"
+    content_type: "text/plain"
+    targets: "edge_router"
+    transformation: "device_startup"
+
+check_definitions:
+  - name: backbone_link_redundancy
+    class_name: InfrahubCheckBackboneLinkRedundancy
+    file_path: "checks/check_backbone_link_redundancy.py"
+
+python_transforms:
+  - name: OCInterfaces
+    class_name: OCInterfaces
+    file_path: "transforms/openconfig.py"
+  - name: oc_bgp_neighbors
+    class_name: OCBGPNeighbors
+    file_path: "transforms/openconfig.py"
+  - name: computed_circuit_description
+    class_name: ComputedCircuitDescription
+    file_path: "transforms/computed_circuit_description.py"
+
+generator_definitions:
+  - name: update_upstream_interfaces_description
+    file_path: "generators/upstream_interfaces.py"
+    targets: upstream_interfaces
+    query: upstream_interfaces
+    parameters:
+      id: "id"
+
+  - name: create_circuit_endpoints
+    file_path: "generators/circuit_endpoints.py"
+    targets: provisioning_circuits
+    query: circuit_endpoints
+    parameters:
+      circuit_id: "circuit_id__value"
+
+  - name: drained_circuit_bgp_sessions
+    file_path: "generators/drained_circuit_bgp_sessions.py"
+    targets: maintenance_circuits
+    query: drained_circuit_bgp_sessions
+    parameters:
+      circuit_id: "circuit_id__value"
+
+  - name: backbone_service
+    file_path: "generators/backbone_service.py"
+    targets: backbone_services
+    query: backbone_service
+    parameters:
+      name: "name__value"
+
+queries:
+  - name: topology_info
+    file_path: "topology/topology_info.gql"
+  - name: check_backbone_link_redundancy
+    file_path: "checks/check_backbone_link_redundancy.gql"
+  - name: oc_bgp_neighbors
+    file_path: "transforms/oc_bgp_neighbors.gql"
+  - name: oc_interfaces
+    file_path: "transforms/oc_interfaces.gql"
+  - name: device_startup_info
+    file_path: "templates/device_startup_info.gql"
+  - name: upstream_interfaces
+    file_path: "generators/upstream_interfaces.gql"
+  - name: drained_circuit_bgp_sessions
+    file_path: "generators/drained_circuit_bgp_sessions.gql"
+  - name: circuit_endpoints
+    file_path: "generators/circuit_endpoints.gql"
+  - name: backbone_service
+    file_path: "generators/backbone_service.gql"
+  - name: computed_circuit_description
+    file_path: "transforms/computed_circuit_description.gql"

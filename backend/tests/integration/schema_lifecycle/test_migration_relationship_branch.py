@@ -10,6 +10,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
@@ -48,6 +49,11 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
 
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
+
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
             db=db, name="renault", description="Groupe Renault is a French multinational automobile manufacturer"
@@ -78,6 +84,11 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
+
+        deleted_chuck = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
+        await deleted_chuck.new(db=db, name="Deleted Chuck", height=175, description="He's not here")
+        await deleted_chuck.save(db=db)
+        await deleted_chuck.delete(db=db)
 
         mercedes = await Node.init(schema=MANUFACTURER_KIND_01, db=db, branch=branch1)
         await mercedes.new(
@@ -180,11 +191,13 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
             "nodes": [schema_person_tag, schema_car_main_driver, schema_manufacturer_base, schema_tag_no_persons],
         }
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
         assert len(persons) == 2
 
-    async def test_step02_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
+    async def test_step02_check(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+    ) -> None:
         car_schema = registry.schema.get_node_schema(name=CAR_KIND)
         rel = car_schema.get_relationship(name="owner")
 
@@ -230,10 +243,19 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 
-    async def test_step02_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
+    async def test_step02_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+    ) -> None:
         car_schema = registry.schema.get_node_schema(name=CAR_KIND)
         rel = car_schema.get_relationship(name="owner")
 
@@ -266,7 +288,9 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         )
         assert len(john_cars_main) == 2
 
-    async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
+    async def test_step03_check(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step03], branch=self.branch1.name)
         assert response == {
             "diff": {
@@ -286,10 +310,19 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 
-    async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
+    async def test_step03_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
         assert not response.errors
 
@@ -306,7 +339,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         persons = await red_main.persons.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(persons) == 1
 
-    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
+    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset) -> None:
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
 
@@ -320,7 +353,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         tags = await jane.tags.get_peers(db=db)
         assert len(tags) == 1
 
-    async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
+    async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset) -> None:
         branch = await client.branch.merge(branch_name=self.branch1.name)
         assert branch
 
@@ -339,3 +372,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert john.id == initial_dataset["john"]
         tags = await john.tags.get_peers(db=db)
         assert len(tags) == 2
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

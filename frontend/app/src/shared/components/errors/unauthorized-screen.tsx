@@ -1,7 +1,8 @@
+import { Icon } from "@iconify-icon/react";
+import type { ReactElement } from "react";
+
 import Accordion from "@/shared/components/display/accordion";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { ReactElement } from "react";
 
 type tUnauthorized = {
   className?: string;
@@ -13,17 +14,17 @@ const DEFAULT_MESSAGE = "Sorry, you are not authorized to access this view.";
 
 export default function UnauthorizedScreen({ className, message, icon }: tUnauthorized) {
   return (
-    <div className={classNames("flex flex-col flex-1 items-center justify-center p-8", className)}>
+    <div className={classNames("flex flex-1 flex-col items-center justify-center p-8", className)}>
       {icon || (
         <Icon
           icon={"mdi:warning-circle-outline"}
-          className="bg-white rounded-full text-red-300 text-3xl"
+          className="rounded-full bg-white text-3xl text-red-300"
         />
       )}
 
       <Accordion
         title={"You can't access this view"}
-        className="flex flex-col items-center w-full text-center"
+        className="flex w-full flex-col items-center text-center"
       >
         <div>{message ?? DEFAULT_MESSAGE}</div>
       </Accordion>

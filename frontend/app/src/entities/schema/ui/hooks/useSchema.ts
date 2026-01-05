@@ -1,11 +1,12 @@
+import { useAtomValue } from "jotai/index";
+
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { SchemaResult, resolveSchema } from "@/entities/schema/utils/resolve-schema";
-import { useAtomValue } from "jotai/index";
+import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolve-schema";
 
 export const useSchema = (kind: string | null | undefined): SchemaResult => {
   const nodeSchemas = useAtomValue(nodeSchemasAtom);

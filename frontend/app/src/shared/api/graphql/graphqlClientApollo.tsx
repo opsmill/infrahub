@@ -1,18 +1,21 @@
-import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { getNewToken } from "@/entities/authentication/ui/useAuth";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
   ApolloClient,
-  DefaultOptions,
+  type DefaultOptions,
+  from,
   HttpLink,
   InMemoryCache,
   Observable,
-  from,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { toast } from "react-toastify";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { CONFIG } from "@/shared/config/config";
+
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {
@@ -97,7 +100,8 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
             // Modify the operation context with a new token
             const oldHeaders = operation.getContext().headers;
 
-            getNewToken()
+            queryClient
+              .fetchQuery(refreshAccessTokenQueryOptions())
               .then((newToken) => {
                 if (newToken?.access_token) {
                   operation.setContext({
@@ -129,15 +133,13 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
         default: {
           const { processErrorMessage } = operation.getContext();
 
-          if (!graphQLError.message) return;
-
-          if (processErrorMessage) {
-            return processErrorMessage(graphQLError.message);
+          if (graphQLError.message && processErrorMessage) {
+            processErrorMessage(graphQLError.message);
+          } else if (graphQLError.message) {
+            toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
+              toastId: "alert-error",
+            });
           }
-
-          toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
-            toastId: "alert-error",
-          });
         }
       }
     }

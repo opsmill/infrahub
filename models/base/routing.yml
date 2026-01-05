@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 nodes:
   # --------------------  BGP (ASN, BGP Groups, BGP Sessions)  --------------------
   - name: AutonomousSystem
@@ -11,9 +11,7 @@ nodes:
     default_filter: name__value
     human_friendly_id: ["name__value", "asn__value"]
     order_by: ["asn__value"]
-    display_labels:
-      - name__value
-      - asn__value
+    display_label: "{{ name__value }} {{ asn__value }}"
     attributes:
       - name: name
         kind: Text
@@ -42,8 +40,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -82,7 +79,10 @@ nodes:
     icon: "mdi:router"
     inherit_from:
       - "CoreArtifactTarget"
-    human_friendly_id: ["remote_as__asn__value", "remote_ip__address__value", "device__name__value"]
+    human_friendly_id:
+      - remote_as__asn__value
+      - remote_ip__address__value
+      - device__name__value
     order_by:
       - device__name__value
       - remote_as__asn__value
@@ -170,6 +170,8 @@ nodes:
       - name: device
         peer: InfraDevice
         optional: false
+        identifier: device__bgp_session
+        kind: Parent
         cardinality: one
       - name: peer_group
         peer: InfraBGPPeerGroup

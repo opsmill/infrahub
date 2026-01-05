@@ -1,8 +1,12 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { queryClient } from "@/shared/api/rest/client";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useMutation } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+
 import { deleteObject } from "./delete-object";
 
 export interface DeleteObjectParams {
@@ -10,7 +14,7 @@ export interface DeleteObjectParams {
   objectId: string;
 }
 
-export function useDeleteObject() {
+export function useDeleteObjectMutation() {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
@@ -26,9 +30,7 @@ export function useDeleteObject() {
       return { objectKind, objectId };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
   });
 }

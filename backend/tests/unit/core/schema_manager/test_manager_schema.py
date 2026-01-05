@@ -2,6 +2,8 @@ import copy
 import json
 import re
 import uuid
+from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from infrahub_sdk.utils import compare_lists
@@ -29,6 +31,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
@@ -38,11 +41,12 @@ from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
 from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema.device import LAG_INTERFACE
 
 from .conftest import _get_schema_by_kind
 
 
-async def test_schema_branch_set():
+async def test_schema_branch_set() -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -64,7 +68,7 @@ async def test_schema_branch_set():
     assert len(schema_branch._cache) == 1
 
 
-async def test_schema_branch_get(default_branch: Branch):
+async def test_schema_branch_get(default_branch: Branch) -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -85,7 +89,7 @@ async def test_schema_branch_get(default_branch: Branch):
     assert schema11 == schema
 
 
-async def test_schema_branch_load_schema_initial(schema_all_in_one):
+async def test_schema_branch_load_schema_initial(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -93,7 +97,7 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one):
     assert isinstance(schema.get(name="InfraGenericInterface"), GenericSchema)
 
 
-async def test_schema_branch_process_inheritance(schema_all_in_one):
+async def test_schema_branch_process_inheritance(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -125,7 +129,7 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     }
 
 
-async def test_schema_process_inheritance_different_generic_attribute_types(schema_diff_attr_inheritance_types):
+async def test_schema_process_inheritance_different_generic_attribute_types(schema_diff_attr_inheritance_types) -> None:
     """Test that we raise an exception if a node is inheriting from two generics with different attribute types for a specific attribute."""
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_diff_attr_inheritance_types))
@@ -136,7 +140,9 @@ async def test_schema_process_inheritance_different_generic_attribute_types(sche
     assert exc.value.args[0] == 'TestWidget.choice inherited from TestStatus must be the same kind ["Number", "Text"]'
 
 
-async def test_schema_process_inheritance_different_generic_attribute_types_on_node(schema_diff_attr_inheritance_types):
+async def test_schema_process_inheritance_different_generic_attribute_types_on_node(
+    schema_diff_attr_inheritance_types,
+) -> None:
     """Test that we raise an exception if a node is inheriting an attribute with different attribute type that already exists on node."""
     schema = SchemaBranch(cache={}, name="test")
     schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
@@ -151,27 +157,7 @@ async def test_schema_process_inheritance_different_generic_attribute_types_on_n
     assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
 
 
-async def test_schema_process_inheritance_different_generic_attribute_optional_on_node(
-    schema_diff_attr_inheritance_types,
-):
-    """Test that we raise an exception if a node is inheriting an attribute changing its optional property value."""
-    schema = SchemaBranch(cache={}, name="test")
-    schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
-    schema_new["generics"].pop()
-    schema_new["nodes"][0]["inherit_from"].pop()
-    schema_new["nodes"][0]["attributes"].append({"name": "choice", "kind": "Text", "optional": False})
-    schema.load_schema(schema=SchemaRoot(**schema_new))
-
-    with pytest.raises(ValueError) as exc:
-        schema.process_inheritance()
-
-    assert (
-        exc.value.args[0]
-        == 'TestWidget.choice inherited from TestAdapter must have the same value for property "optional" ["True", "False"]'
-    )
-
-
-async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
+async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -194,7 +180,7 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.icon == animal.icon
 
 
-async def test_schema_branch_process_inheritance_update_inherited_elements(animal_person_schema_dict):
+async def test_schema_branch_process_inheritance_update_inherited_elements(animal_person_schema_dict) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -232,15 +218,17 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
     unique_attributes: list[str],
     human_friendly_id: list[str] | None,
     animal_person_schema_dict,
-):
+) -> None:
     schema = SchemaBranch(cache={}, name="test")
     animal_schema = animal_person_schema_dict["generics"][0]
-    assert animal_schema["name"] == "Animal" and animal_schema["namespace"] == "Test"
+    assert animal_schema["name"] == "Animal"
+    assert animal_schema["namespace"] == "Test"
     animal_schema["uniqueness_constraints"] = None
     animal_schema["human_friendly_id"] = None
 
     dog_schema = animal_person_schema_dict["nodes"][0]
-    assert dog_schema["name"] == "Dog" and dog_schema["namespace"] == "Test"
+    assert dog_schema["name"] == "Dog"
+    assert dog_schema["namespace"] == "Test"
     dog_schema["uniqueness_constraints"] = uniqueness_constraints
     dog_schema["human_friendly_id"] = human_friendly_id
     expected_uniqueness_constraints = []
@@ -277,7 +265,7 @@ async def test_validate_human_friendly_id_uniqueness_success(
     unique_attributes: list[str],
     human_friendly_id: list[str] | None,
     animal_person_schema_dict,
-):
+) -> None:
     schema = SchemaBranch(cache={}, name="test")
     for node_schema in animal_person_schema_dict["generics"]:
         if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
@@ -300,8 +288,12 @@ async def test_validate_human_friendly_id_uniqueness_success(
     dog_schema = schema.get("TestDog", duplicate=False)
     assert dog_schema.human_friendly_id == human_friendly_id
 
+    dog_schema.human_friendly_id = ["name__value", "breed__value", "name__value"]
+    with pytest.raises(ValidationError, match=r"cannot use the same path more than once"):
+        schema.validate_human_friendly_id()
 
-async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict):
+
+async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -319,7 +311,7 @@ async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict
     assert dog.uniqueness_constraints == [["owner", "name__value"]]
 
 
-async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints(animal_person_schema_dict):
+async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints(animal_person_schema_dict) -> None:
     for node_schema_dict in animal_person_schema_dict["nodes"]:
         if node_schema_dict["name"] == "Dog" and node_schema_dict["namespace"] == "Test":
             node_schema_dict["uniqueness_constraints"] = [["name__value"]]
@@ -357,7 +349,7 @@ async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints
     assert person.uniqueness_constraints == [["name__value"], ["name__value", "other_name__value"]]
 
 
-async def test_schema_branch_process_branch_support(schema_all_in_one):
+async def test_schema_branch_process_branch_support(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -377,7 +369,7 @@ async def test_schema_branch_process_branch_support(schema_all_in_one):
     assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
 
-async def test_schema_branch_process_default_values(schema_all_in_one):
+async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -391,7 +383,78 @@ async def test_schema_branch_process_default_values(schema_all_in_one):
     assert criticality.get_attribute(name="color").optional is True
 
 
-async def test_schema_branch_add_groups(schema_all_in_one):
+async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
+    """Test that SchemaBranch.load_schema() syncs top-level and parameters fields for Text attributes."""
+    regex = "abc"
+    min_length = 3
+    max_length = 5
+
+    # Test reconciliation when parameters are set (new style)
+    SCHEMA_WITH_PARAMS: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "parameters": {"regex": regex, "min_length": min_length, "max_length": max_length},
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_PARAMS)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # After load_schema, both deprecated fields and parameters should be synced
+    node = schema_branch.get(name="TestDevice", duplicate=False)
+    desc_attr = node.get_attribute(name="description")
+    assert desc_attr.parameters.regex == desc_attr.regex == regex
+    assert desc_attr.parameters.min_length == desc_attr.min_length == min_length
+    assert desc_attr.parameters.max_length == desc_attr.max_length == max_length
+
+    # Test reconciliation when top-level fields are set (deprecated style)
+    SCHEMA_WITH_TOP_LEVEL: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Router",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "hostname",
+                        "kind": "Text",
+                        "regex": regex,
+                        "min_length": min_length,
+                        "max_length": max_length,
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_TOP_LEVEL)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # After load_schema, both deprecated fields and parameters should be synced
+    node = schema_branch.get(name="TestRouter", duplicate=False)
+    hostname_attr = node.get_attribute(name="hostname")
+    assert hostname_attr.parameters.regex == hostname_attr.regex == regex
+    assert hostname_attr.parameters.min_length == hostname_attr.min_length == min_length
+    assert hostname_attr.parameters.max_length == hostname_attr.max_length == max_length
+
+
+async def test_schema_branch_add_groups(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -407,7 +470,7 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
 
 
-async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
+async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -515,9 +578,53 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
             },
             "TestCriticality's relationship status inherited from InfraGenericInterface cannot be overriden",
         ),
+        (
+            {
+                "nodes": [
+                    {
+                        "name": "Criticality",
+                        "namespace": "Test",
+                        "inherit_from": ["InfraGenericInterface"],
+                        "default_filter": "name__value",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "relationships": [
+                            {"name": "status", "peer": "TestState", "optional": True, "cardinality": "one"}
+                        ],
+                    },
+                    {
+                        "name": "Status",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                    {
+                        "name": "State",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                ],
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Infra",
+                        "attributes": [{"name": "name", "kind": "Text"}],
+                        "relationships": [
+                            {
+                                "name": "status",
+                                "peer": "TestStatus",
+                                "optional": True,
+                                "cardinality": "one",
+                            }
+                        ],
+                    },
+                ],
+            },
+            "TestCriticality's relationship status inherited from InfraGenericInterface must have the same peer (TestStatus != TestState)",
+        ),
     ],
 )
-async def test_schema_protected_generics(schema_dict, expected_error):
+async def test_schema_protected_generics(schema_dict, expected_error) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_dict))
 
@@ -527,7 +634,7 @@ async def test_schema_protected_generics(schema_dict, expected_error):
     assert str(exc.value) == expected_error
 
 
-async def test_schema_branch_generate_weight(schema_all_in_one):
+async def test_schema_branch_generate_weight(schema_all_in_one) -> None:
     def extract_weights(schema: SchemaBranch):
         weights = []
         for node in schema.get_all().values():
@@ -570,10 +677,111 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     in_both, in_first, in_second = compare_lists(second_weights, third_weights)
     assert in_first == []
     assert sorted(in_both) == sorted(second_weights)
-    assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
+    assert len(in_second) == 1
+    assert in_second[0].startswith(new_attr2_partial_id)
 
 
-async def test_schema_branch_add_profile_schema(schema_all_in_one):
+def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema) -> None:
+    schema = {
+        "generics": [
+            {
+                "name": "GenericDevice",
+                "namespace": "Dcim",
+                "description": "Generic Device object.",
+                "label": "Device",
+                "icon": "mdi:server",
+                "human_friendly_id": ["name__value"],
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "generate_template": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True, "order_weight": 7000},
+                    {"name": "description", "kind": "Text", "optional": True, "order_weight": 8000},
+                    {"name": "os_version", "kind": "Text", "optional": True, "order_weight": 5200},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Attribute",
+                        "order_weight": 3000,
+                    },
+                ],
+            },
+            core_object_template,
+            core_object_component_template,
+        ],
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema))
+    schema_branch.process()
+
+    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
+    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+
+    assert template.get_attribute(name="template_name").order_weight == 1000
+    assert (
+        template.get_attribute(name="description").order_weight
+        == dcim_generic_device.get_attribute(name="description").order_weight
+        == 8000
+    )
+    assert (
+        template.get_attribute(name="os_version").order_weight
+        == dcim_generic_device.get_attribute(name="os_version").order_weight
+        == 5200
+    )
+    assert (
+        template.get_relationship(name="tags").order_weight
+        == dcim_generic_device.get_relationship(name="tags").order_weight
+        == 3000
+    )
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["generics"][0]["attributes"] = [
+        {"name": "name", "kind": "Text", "unique": False},
+        {"name": "description", "kind": "Text", "optional": True},
+        {"name": "os_version", "kind": "Text", "optional": True},
+    ]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_2))
+    schema_branch.process()
+
+    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
+    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+
+    assert (
+        template.get_attribute(name="name").order_weight == dcim_generic_device.get_attribute(name="name").order_weight
+    )
+    assert (
+        template.get_attribute(name="description").order_weight
+        == dcim_generic_device.get_attribute(name="description").order_weight
+    )
+    assert (
+        template.get_attribute(name="os_version").order_weight
+        == dcim_generic_device.get_attribute(name="os_version").order_weight
+    )
+
+
+async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -615,7 +823,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     }
 
 
-async def test_schema_branch_diff_core_profile(schema_all_in_one):
+async def test_schema_branch_diff_core_profile(schema_all_in_one) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -633,7 +841,7 @@ async def test_schema_branch_diff_core_profile(schema_all_in_one):
     assert diff.all == ["CoreProfile"]
 
 
-async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one):
+async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
     builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
@@ -659,7 +867,7 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
     }
 
 
-async def test_schema_branch_generate_identifiers(schema_all_in_one):
+async def test_schema_branch_generate_identifiers(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -669,7 +877,7 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one):
     assert generic.relationships[1].identifier == "builtinstatus__infragenericinterface"
 
 
-async def test_schema_branch_validate_names():
+async def test_schema_branch_validate_names() -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -712,7 +920,7 @@ async def test_schema_branch_validate_names():
     assert str(exc.value) == "TestCriticality: Names of attributes and relationships must be unique : ['dupname']"
 
 
-async def test_schema_branch_validate_identifiers():
+async def test_schema_branch_validate_identifiers() -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -758,7 +966,7 @@ async def test_schema_branch_validate_identifiers():
     schema.validate_identifiers()
 
 
-async def test_schema_branch_validate_identifiers_direction():
+async def test_schema_branch_validate_identifiers_direction() -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -804,7 +1012,7 @@ async def test_schema_branch_validate_identifiers_direction():
     )
 
 
-async def test_schema_branch_validate_identifiers_matching_direction():
+async def test_schema_branch_validate_identifiers_matching_direction() -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -918,7 +1126,7 @@ async def test_schema_branch_validate_identifiers_matching_direction():
     )
 
 
-async def test_schema_branch_validate_kinds_peer():
+async def test_schema_branch_validate_kinds_peer() -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -941,7 +1149,96 @@ async def test_schema_branch_validate_kinds_peer():
     assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
 
 
-async def test_schema_branch_validate_kinds_inherit():
+async def test_schema_branch_validate_kinds_common_relatives() -> None:
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = None
+    lag_interface_schema.relationships[0].common_relatives = ["doesnotexist"]
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' set 'common_relatives' with invalid relationship from "
+        "'TestingPhysicalInterface'"
+    )
+
+
+async def test_schema_branch_validate_common_parent() -> None:
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.validate_kinds()
+
+
+async def test_schema_branch_validate_common_parent_without_valid_parent() -> None:
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.get(name=TestKind.LAG_INTERFACE, duplicate=False).get_relationship("device").kind = RelationshipKind.GENERIC
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but node does not have a parent relationship"
+    )
+
+
+async def test_schema_branch_validate_common_parent_invalid_relationship_name() -> None:
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "foo"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.foo' does not exist"
+    )
+
+
+async def test_schema_branch_validate_common_parent_invalid_relationship_kind() -> None:
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False).get_relationship(
+        "device"
+    ).kind = RelationshipKind.GENERIC
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.device is not of kind 'parent'"
+    )
+
+
+async def test_schema_branch_validate_kinds_inherit() -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -994,7 +1291,7 @@ async def test_schema_branch_validate_kinds_inherit():
     )
 
 
-async def test_schema_branch_validate_kinds_core(register_core_models_schema: SchemaBranch):
+async def test_schema_branch_validate_kinds_core(register_core_models_schema: SchemaBranch) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -1020,7 +1317,7 @@ async def test_schema_branch_validate_kinds_core(register_core_models_schema: Sc
         [["my_generic_name__value", "primary_tag"]],
     ],
 )
-async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints):
+async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["uniqueness_constraints"] = uniqueness_constraints
 
@@ -1034,13 +1331,14 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     ["uniqueness_constraints", "unique_attributes", "expected_constraints", "expected_unique_attributes"],
     [
         (None, [], None, []),
-        (None, ["name"], [["name__value"]], ["name"]),
+        # name is on the generic and we don't add inherited unique attribute to the uniqueness constraints
+        (None, ["name"], None, ["name"]),
         ([["name__value"]], ["name"], [["name__value"]], ["name"]),
         ([["name__value"]], [], [["name__value"]], ["name"]),
         ([["name__value"]], ["breed"], [["name__value"], ["breed__value"]], ["name", "breed"]),
         ([["name__value", "owner"]], ["breed"], [["name__value", "owner"], ["breed__value"]], ["breed"]),
-        ([["owner"]], ["name"], [["owner"], ["name__value"]], ["name"]),
-        (None, ["name", "color"], [["color__value"], ["name__value"]], ["name", "color"]),
+        ([["owner"]], ["name"], [["owner"]], ["name"]),
+        (None, ["name", "color"], [["color__value"]], ["name", "color"]),
         ([["color__value"], ["name__value"]], [], [["color__value"], ["name__value"]], ["name", "color"]),
     ],
 )
@@ -1050,7 +1348,7 @@ async def test_synchronize_uniqueness_constraints_and_attributes(
     expected_constraints: list[list[str]] | None,
     expected_unique_attributes: list[str],
     animal_person_schema_dict,
-):
+) -> None:
     schema = SchemaBranch(cache={}, name="test")
     for node_schema in animal_person_schema_dict["generics"]:
         if node_schema["name"] == "Animal" and node_schema["namespace"] == "Test":
@@ -1074,7 +1372,7 @@ async def test_synchronize_uniqueness_constraints_and_attributes(
 
 async def test_validate_exception_ipam_ip_namespace(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-):
+) -> None:
     SCHEMA: dict = {
         "nodes": [
             {
@@ -1153,7 +1451,7 @@ async def test_validate_exception_ipam_ip_namespace(
         ),
     ],
 )
-async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error):
+async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["uniqueness_constraints"] = uniqueness_constraints
 
@@ -1164,14 +1462,8 @@ async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniquene
         schema.validate_uniqueness_constraints()
 
 
-@pytest.mark.parametrize(
-    "display_labels",
-    [
-        ["my_generic_name__value", "mybool__value"],
-        ["my_generic_name__value"],
-    ],
-)
-async def test_validate_display_labels_success(schema_all_in_one, display_labels):
+@pytest.mark.parametrize("display_labels", [["my_generic_name__value", "mybool__value"], ["my_generic_name__value"]])
+async def test_validate_display_labels_success(schema_all_in_one, display_labels) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_labels"] = display_labels
 
@@ -1179,6 +1471,19 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_label", ["{{ my_generic_name__value }} {{ mybool__value }}", "my_generic_name__value"]
+)
+async def test_validate_display_label_success(schema_all_in_one, display_label: str) -> None:
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = display_label
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_display_label()
 
 
 @pytest.mark.parametrize(
@@ -1205,7 +1510,7 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
         ),
     ],
 )
-async def test_validate_display_labels_error(schema_all_in_one, display_labels, expected_error):
+async def test_validate_display_labels_error(schema_all_in_one, display_labels, expected_error) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_labels"] = display_labels
 
@@ -1217,6 +1522,48 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
 
 
 @pytest.mark.parametrize(
+    "display_label,expected_error",
+    [
+        (
+            "{{ mybool }}",
+            re.escape(
+                "InfraGenericInterface.display_label: invalid attribute, it must end with one of the following properties: value. (`mybool`)"
+            ),
+        ),
+        (
+            "{{ mybool__value }} {{ notanattribute__value }}",
+            "InfraGenericInterface.display_label: notanattribute__value is invalid on schema InfraGenericInterface",
+        ),
+        (
+            "my_generic_name__something",
+            "InfraGenericInterface.display_label - non Jinja2: something is not a valid property of my_generic_name",
+        ),
+        (
+            "status__value",
+            "InfraGenericInterface.display_label - non Jinja2: value is not a valid attribute of BuiltinStatus",
+        ),
+        (
+            "badges__name__value",
+            "InfraGenericInterface.display_label - non Jinja2: this property only supports attributes, not relationships",
+        ),
+        (
+            "badges",
+            "InfraGenericInterface.display_label - non Jinja2: this property only supports attributes, not relationships",
+        ),
+    ],
+)
+async def test_validate_display_label_error(schema_all_in_one, display_label: str, expected_error: str) -> None:
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = display_label
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_display_label()
+
+
+@pytest.mark.parametrize(
     "order_by",
     [
         ["my_generic_name__value", "mybool__value"],
@@ -1225,7 +1572,7 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
         ["status__name__value", "mybool__value"],
     ],
 )
-async def test_validate_order_by_success(schema_all_in_one, order_by):
+async def test_validate_order_by_success(schema_all_in_one, order_by) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["order_by"] = order_by
 
@@ -1260,7 +1607,7 @@ async def test_validate_order_by_success(schema_all_in_one, order_by):
         ),
     ],
 )
-async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error):
+async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["order_by"] = order_by
 
@@ -1275,7 +1622,7 @@ async def test_validate_order_by_error(schema_all_in_one, order_by, expected_err
     "default_filter",
     ["my_generic_name__value"],
 )
-async def test_validate_default_filter_success(schema_all_in_one, default_filter):
+async def test_validate_default_filter_success(schema_all_in_one, default_filter) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["default_filter"] = default_filter
 
@@ -1312,7 +1659,7 @@ async def test_validate_default_filter_success(schema_all_in_one, default_filter
         ),
     ],
 )
-async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error):
+async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["default_filter"] = default_filter
 
@@ -1330,7 +1677,7 @@ async def test_validate_default_filter_error(schema_all_in_one, default_filter, 
         {"name": "something", "kind": "Text", "optional": True, "default_value": "abcdef"},
     ],
 )
-async def test_validate_default_value_success(schema_all_in_one, default_value_attr):
+async def test_validate_default_value_success(schema_all_in_one, default_value_attr) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
     schema_dict["attributes"].append(default_value_attr)
 
@@ -1357,7 +1704,7 @@ async def test_validate_default_value_success(schema_all_in_one, default_value_a
         ),
     ],
 )
-async def test_validate_default_value_error(schema_all_in_one, default_value_attr, expected_error):
+async def test_validate_default_value_error(schema_all_in_one, default_value_attr, expected_error) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
     schema_dict["attributes"].append(default_value_attr)
 
@@ -1370,7 +1717,7 @@ async def test_validate_default_value_error(schema_all_in_one, default_value_att
 
 async def test_schema_branch_load_schema_extension(
     db: InfrahubDatabase, default_branch, builtin_schema, helper: TestHelper
-):
+) -> None:
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
@@ -1396,7 +1743,7 @@ async def test_schema_branch_load_schema_extension(
     assert schema_branch.get(name="InfraDevice")
 
 
-async def test_schema_branch_validate_count_against_cardinality_valid(organization_schema):
+async def test_schema_branch_validate_count_against_cardinality_valid(organization_schema) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -1446,7 +1793,7 @@ async def test_schema_branch_validate_count_against_cardinality_valid(organizati
         {"name": "third", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 1},
     ),
 )
-async def test_schema_branch_validate_count_against_cardinality_invalid(relationship, organization_schema):
+async def test_schema_branch_validate_count_against_cardinality_invalid(relationship, organization_schema) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -1473,7 +1820,7 @@ async def test_schema_branch_validate_count_against_cardinality_invalid(relation
         schema_branch.validate_count_against_cardinality()
 
 
-async def test_schema_branch_from_dict_schema_object():
+async def test_schema_branch_from_dict_schema_object() -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
 
     # Load the core models and a model with a computed_attribute
@@ -1493,7 +1840,7 @@ async def test_schema_branch_from_dict_schema_object():
     )
 
 
-async def test_process_relationships_on_delete_defaults_set(schema_all_in_one):
+async def test_process_relationships_on_delete_defaults_set(schema_all_in_one) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "BuiltinCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema = SchemaBranch(cache={}, name="test")
@@ -1510,7 +1857,7 @@ async def test_process_relationships_on_delete_defaults_set(schema_all_in_one):
                 assert relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
-async def test_process_relationships_component_can_be_overridden(schema_all_in_one):
+async def test_process_relationships_component_can_be_overridden(schema_all_in_one) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "BuiltinCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema_dict["relationships"][0]["on_delete"] = "no-action"
@@ -1524,7 +1871,7 @@ async def test_process_relationships_component_can_be_overridden(schema_all_in_o
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
-async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot):
+async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=hierarchical_location_schema_simple)
     schema.process_inheritance()
@@ -1581,7 +1928,7 @@ async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot)
 
 async def test_schema_branch_copy(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -1639,7 +1986,7 @@ async def test_schema_branch_copy(
 
 async def test_schema_branch_diff_attribute(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -1718,7 +2065,7 @@ async def test_schema_branch_diff_attribute(
 
 async def test_schema_branch_diff_rename_element(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -1839,7 +2186,7 @@ async def test_schema_branch_diff_rename_element(
 
 async def test_schema_branch_diff_add_node_relationship(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     SCHEMA1 = {
         "nodes": [
             {
@@ -1928,7 +2275,7 @@ async def test_schema_branch_diff_add_node_relationship(
 
 async def test_schema_branch_validate_check_missing(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -2005,7 +2352,7 @@ async def test_schema_branch_validate_check_missing(
 
 async def test_schema_branch_validate_node_deletion(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -2061,7 +2408,7 @@ async def test_schema_branch_validate_node_deletion(
 
 async def test_schema_branch_validate_add_node_relationships(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     SCHEMA1 = {
         "nodes": [
             {
@@ -2162,7 +2509,7 @@ async def test_schema_branch_validate_add_node_relationships(
 # -----------------------------------------------------------------
 # SchemaManager
 # -----------------------------------------------------------------
-async def test_schema_manager_set():
+async def test_schema_manager_set() -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -2183,7 +2530,7 @@ async def test_schema_manager_set():
     assert len(manager._cache) == cache_size
 
 
-async def test_schema_manager_get(default_branch: Branch):
+async def test_schema_manager_get(default_branch: Branch) -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -2263,7 +2610,7 @@ async def test_schema_manager_purge(default_branch: Branch, reset_registry: None
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
+async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -2295,7 +2642,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node_from_db
 
 
-async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch):
+async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -2315,7 +2662,33 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
     assert len(results) == 1
 
 
-async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_incorrect_kinds(default_branch: Branch) -> None:
+    person_schema = NodeSchema(
+        name="Person",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    house_generic = GenericSchema(
+        name="House", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)]
+    )
+    manager = SchemaManager()
+
+    manager.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    manager.set(name="TestHouse", schema=house_generic, branch=default_branch.name)
+
+    with pytest.raises(ValueError, match="The selected node is not of type NodeSchema"):
+        manager.get_node_schema(name="TestHouse", branch=default_branch.name, duplicate=False)
+
+    with pytest.raises(ValueError, match="The selected node is not of type GenericSchema"):
+        manager.get_generic_schema(name="TestPerson", branch=default_branch.name, duplicate=False)
+
+
+async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -2350,7 +2723,7 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     assert results[new_node.attributes[0].id].unique.value is False
 
 
-async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_branch: Branch):
+async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_branch: Branch) -> None:
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
@@ -2364,7 +2737,7 @@ async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_b
 
 async def test_load_schema_to_db_core_models(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
@@ -2378,7 +2751,7 @@ async def test_load_schema_to_db_core_models(
 
 async def test_clean_diff_after_reload_from_db(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
@@ -2398,7 +2771,7 @@ async def test_load_schema_to_db_simple_01(
     register_core_models_schema: SchemaBranch,
     register_builtin_models_schema: SchemaBranch,
     helper,
-):
+) -> None:
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
@@ -2416,7 +2789,7 @@ async def test_load_schema_to_db_w_generics_01(
     register_core_models_schema: SchemaBranch,
     register_builtin_models_schema: SchemaBranch,
     helper,
-):
+) -> None:
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
@@ -2430,7 +2803,7 @@ async def test_load_schema_to_db_w_generics_01(
 
 async def test_load_schema_from_db(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -2529,7 +2902,7 @@ async def test_load_schema_from_db(
 
 async def test_load_schema(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -2606,9 +2979,69 @@ async def test_load_schema(
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
 
 
+@pytest.mark.parametrize(
+    "attr_details",
+    [
+        {
+            "parameters": {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+        },
+        {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+        {
+            "parameters": {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+            "regex": "old",
+            "min_length": 1,
+            "max_length": 2,
+        },
+    ],
+)
+async def test_load_schema_with_parameters(
+    db: InfrahubDatabase, reset_registry, register_internal_models_schema, default_branch: Branch, attr_details
+) -> None:
+    color_attr_dict = {
+        "name": "color",
+        "kind": "Text",
+        "label": "Color",
+        "default_value": "#444444",
+    }
+    color_attr_dict.update(attr_details)
+
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Criticality",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "include_in_menu": True,
+                "attributes": [
+                    color_attr_dict,
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    loaded_schema = await registry.schema.load_schema(db=db, branch=default_branch.name)
+
+    crit_schema = loaded_schema.get("TestCriticality", duplicate=False)
+    color_attr_schema = crit_schema.get_attribute("color")
+    assert isinstance(color_attr_schema.parameters, TextAttributeParameters)
+    assert color_attr_schema.parameters.regex == "^#[0-9a-f]{0,6}$"
+    assert color_attr_schema.parameters.min_length == 7
+    assert color_attr_schema.parameters.max_length == 7
+    assert color_attr_schema.regex == "^#[0-9a-f]{0,6}$"
+    assert color_attr_schema.min_length == 7
+    assert color_attr_schema.max_length == 7
+
+
 async def test_load_schemas(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
+) -> None:
     part1 = SchemaRoot(
         extensions={
             "nodes": [
@@ -2685,7 +3118,7 @@ async def test_load_schemas(
         pytest.fail(reason="Relationship 'models' must be present in 'RandomOrganization'")
 
 
-def test_schema_branch_load_schema_append_to_list(schema_all_in_one):
+def test_schema_branch_load_schema_append_to_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
@@ -2697,7 +3130,7 @@ def test_schema_branch_load_schema_append_to_list(schema_all_in_one):
     assert updated_core_group_schema.display_labels == ["label__value", "name__value"]
 
 
-def test_schema_branch_load_schema_remove_from_list(schema_all_in_one):
+def test_schema_branch_load_schema_remove_from_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
@@ -2709,7 +3142,7 @@ def test_schema_branch_load_schema_remove_from_list(schema_all_in_one):
     assert updated_core_group_schema.display_labels == ["name__value"]
 
 
-def test_schema_branch_load_schema_empty_list(schema_all_in_one):
+def test_schema_branch_load_schema_empty_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
@@ -2721,7 +3154,7 @@ def test_schema_branch_load_schema_empty_list(schema_all_in_one):
     assert updated_core_group_schema.display_labels == []
 
 
-def test_schema_branch_load_schema_set_nested_list(schema_all_in_one):
+def test_schema_branch_load_schema_set_nested_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
@@ -2736,7 +3169,7 @@ def test_schema_branch_load_schema_set_nested_list(schema_all_in_one):
     ]
 
 
-def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one):
+def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"]]
@@ -2752,7 +3185,7 @@ def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one):
     ]
 
 
-def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one):
+def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"], ["my_generic_name", "mybool"]]
@@ -2765,7 +3198,7 @@ def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one):
     assert updated_core_group_schema.uniqueness_constraints == [["primary_tag", "status"]]
 
 
-def test_schema_branch_load_schema_update_nested_list(schema_all_in_one):
+def test_schema_branch_load_schema_update_nested_list(schema_all_in_one) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     generic_interface_schema["uniqueness_constraints"] = [
@@ -2787,7 +3220,7 @@ def test_schema_branch_load_schema_update_nested_list(schema_all_in_one):
     ]
 
 
-def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
+def test_schema_branch_conflicting_required_relationships(schema_all_in_one) -> None:
     tag_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinTag")
     tag_schema["relationships"] = [
         {
@@ -2820,7 +3253,466 @@ def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
     assert "cannot both have required relationships" in exc.value.args[0]
 
 
-async def test_process_deprecations(organization_schema):
+@dataclass
+class InheritedRelationshipsTestData:
+    name: str
+    schema: dict[str, Any]
+    error_message: str
+
+
+INHERITED_RELATIONSHIPS_TEST_CASES = [
+    *[
+        InheritedRelationshipsTestData(
+            name=f"inherit-from-2-generics-{test_data['property']}-fail",
+            schema={
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Network",
+                        "description": "Generic Network Interface",
+                        "label": "Interface",
+                        "include_in_menu": False,
+                        "display_labels": ["name__value"],
+                        "order_by": ["device__name__value", "name__value"],
+                        "uniqueness_constraints": [["device", "name__value"]],
+                        "human_friendly_id": ["device__name__value", "name__value"],
+                        "attributes": [
+                            {
+                                "name": "name",
+                                "kind": "Text",
+                                "description": "Name of the interface",
+                                "order_weight": 1000,
+                            }
+                        ],
+                        "relationships": [test_data["relationships"][0]],
+                    },
+                    {
+                        "name": "IndexedInterface",
+                        "namespace": "Logical",
+                        "description": "Generic for an interface that is part of a logical device and has an index",
+                        "include_in_menu": False,
+                        "human_friendly_id": ["device__name__value", "index__value"],
+                        "uniqueness_constraints": [["device", "index__value"]],
+                        "attributes": [
+                            {
+                                "name": "index",
+                                "kind": "Number",
+                                "description": "Index of the interface in the device",
+                            }
+                        ],
+                        "relationships": [test_data["relationships"][1]],
+                    },
+                    {
+                        "name": "Device",
+                        "namespace": "Logical",
+                        "description": "Generic for a logical device that could be part of a logical network",
+                        "include_in_menu": False,
+                        "attributes": [
+                            {
+                                "name": "index",
+                                "kind": "Number",
+                                "description": "Index of the device in the network",
+                            },
+                        ],
+                    },
+                ],
+                "nodes": [
+                    {
+                        "name": "Device",
+                        "namespace": "Network",
+                        "label": "Network device",
+                        "description": "Physical network port on a device",
+                        "attributes": [
+                            {
+                                "name": "name",
+                                "kind": "Text",
+                                "description": "Name of the interface",
+                                "unique": True,
+                                "optional": False,
+                                "order_weight": 1000,
+                            }
+                        ],
+                    },
+                    {
+                        "name": "Physical",
+                        "namespace": "Interface",
+                        "label": "Physical Interface",
+                        "description": "Physical network port on a device",
+                        "inherit_from": [
+                            "NetworkGenericInterface",
+                            "LogicalIndexedInterface",
+                        ],
+                    },
+                ],
+            },
+            error_message=(
+                "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalIndexedInterface'"
+                f" with different '{test_data['property']}' on the 'device' relationship"
+            ),
+        )
+        for test_data in [
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "many",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                ],
+                "property": "cardinality",
+            },
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "NetworkGenericDevice",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Parent",
+                        "order_weight": 1025,
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                ],
+                "property": "peer",
+            },
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "on_delete": "cascade",
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "on_delete": "no-action",
+                    },
+                ],
+                "property": "on_delete",
+            },
+        ]
+    ],
+    InheritedRelationshipsTestData(
+        name="inherit-from-3-generics-peer-fail",
+        schema={
+            "generics": [
+                {
+                    "name": "GenericInterface",
+                    "namespace": "Network",
+                    "description": "Generic Network Interface",
+                    "label": "Interface",
+                    "include_in_menu": False,
+                    "display_labels": ["name__value"],
+                    "order_by": ["device__name__value", "name__value"],
+                    "uniqueness_constraints": [["device", "name__value"]],
+                    "human_friendly_id": ["device__name__value", "name__value"],
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "description": "Name of the interface",
+                            "order_weight": 1000,
+                        }
+                    ],
+                    "relationships": [
+                        {
+                            "name": "device",
+                            "peer": "NetworkDevice",
+                            "identifier": "device__interface",
+                            "optional": False,
+                            "cardinality": "one",
+                            "kind": "Parent",
+                        }
+                    ],
+                },
+                {
+                    "name": "IndexedInterface",
+                    "namespace": "Logical",
+                    "description": "Generic for an interface that is part of a logical device and has an index",
+                    "include_in_menu": False,
+                    "human_friendly_id": ["device__name__value", "index__value"],
+                    "uniqueness_constraints": [["device", "index__value"]],
+                    "attributes": [
+                        {
+                            "name": "index",
+                            "kind": "Number",
+                            "description": "Index of the interface in the device",
+                        }
+                    ],
+                    "relationships": [
+                        {
+                            "name": "device",
+                            "peer": "NetworkDevice",
+                            "cardinality": "one",
+                            "identifier": "device__interface",
+                            "optional": False,
+                            "kind": "Parent",
+                        }
+                    ],
+                },
+                {
+                    "name": "Device",
+                    "namespace": "Logical",
+                    "description": "Generic for a logical device that could be part of a logical network",
+                    "include_in_menu": False,
+                    "attributes": [
+                        {
+                            "name": "index",
+                            "kind": "Number",
+                            "description": "Index of the device in the network",
+                        },
+                    ],
+                    "relationships": [
+                        {
+                            "name": "device",
+                            "peer": "NetworkThirdDevice",
+                            "cardinality": "one",
+                            "identifier": "device__interface",
+                            "optional": False,
+                        },
+                    ],
+                },
+            ],
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Network",
+                    "label": "Network device",
+                    "description": "Physical network port on a device",
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "description": "Name of the interface",
+                            "unique": True,
+                            "optional": False,
+                            "order_weight": 1000,
+                        }
+                    ],
+                },
+                {
+                    "name": "ThirdDevice",
+                    "namespace": "Network",
+                    "label": "Network device",
+                    "description": "Physical network port on a device",
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "description": "Name of the interface",
+                            "unique": True,
+                            "optional": False,
+                            "order_weight": 1000,
+                        }
+                    ],
+                },
+                {
+                    "name": "Physical",
+                    "namespace": "Interface",
+                    "label": "Physical Interface",
+                    "description": "Physical network port on a device",
+                    "inherit_from": [
+                        "NetworkGenericInterface",
+                        "LogicalIndexedInterface",
+                        "LogicalDevice",
+                    ],
+                },
+            ],
+        },
+        error_message=(
+            "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalDevice'"
+            " with different 'peer' on the 'device' relationship"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in INHERITED_RELATIONSHIPS_TEST_CASES],
+)
+def test_schema_branch_validates_inherited_relationships_fields(test_case: InheritedRelationshipsTestData) -> None:
+    schema = SchemaBranch(cache={}, name=test_case.name)
+    schema.load_schema(schema=SchemaRoot(**test_case.schema))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_inherited_relationships_fields()
+
+    assert exc.value.args[0] == test_case.error_message
+
+
+async def test_schema_branch_processes_relationships_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+) -> None:
+    schema = {
+        "nodes": [
+            {
+                "name": "Thing",
+                "namespace": "Infra",
+                "label": "Thing",
+                "attributes": [{"name": "name", "label": "Name", "kind": "Text", "optional": False, "unique": True}],
+                "relationships": [
+                    {
+                        "name": "other_thing",
+                        "peer": "InfraOtherThing",
+                        "kind": "Attribute",
+                        "state": "absent",
+                        "cardinality": "one",
+                        "optional": True,
+                    },
+                ],
+            },
+            {
+                "name": "OtherThing",
+                "namespace": "Infra",
+                "label": "OtherThing",
+                "attributes": [
+                    {"name": "name", "label": "Name", "kind": "Text", "optional": False, "unique": True},
+                ],
+            },
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "other_thing" not in returned_schema.get(name="InfraThing").relationship_names
+
+
+async def test_schema_branch_processes_nodes_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+) -> None:
+    schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "state": "absent",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "state": "absent",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    with pytest.raises(SchemaNotFoundError) as exc:
+        returned_schema.get(name="TestWidget")
+    assert exc.value.args[0] == "Unable to find the schema 'TestWidget' in the registry"
+
+    with pytest.raises(SchemaNotFoundError) as exc:
+        returned_schema.get(name="TestGenericInterface")
+    assert exc.value.args[0] == "Unable to find the schema 'TestGenericInterface' in the registry"
+
+
+async def test_schema_branch_processes_attributes_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+) -> None:
+    schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String", "state": "absent"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "state": "absent"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "description" not in returned_schema.get(name="TestWidget").attribute_names
+    assert "my_generic_name" not in returned_schema.get(name="TestGenericInterface").attribute_names
+
+    schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "description" in returned_schema.get(name="TestWidget").attribute_names
+    assert "my_generic_name" in returned_schema.get(name="TestGenericInterface").attribute_names
+
+
+async def test_process_deprecations(organization_schema) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -2867,7 +3759,7 @@ async def test_process_deprecations(organization_schema):
 
 async def test_hierarchical_validate_parent_children(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple_unregistered: SchemaRoot
-):
+) -> None:
     site_schema = hierarchical_location_schema_simple_unregistered.get(name="LocationSite")
     site_schema.human_friendly_id = ["parent__name__value", "name__value"]
     site_schema.uniqueness_constraints = [["parent", "name__value"]]
@@ -2900,7 +3792,7 @@ async def test_hierarchical_validate_parent_children(
     await uk.save(db=db)
 
 
-async def test_schema_branch_add_object_template_schema():
+async def test_schema_branch_add_object_template_schema() -> None:
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
     device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
@@ -2916,7 +3808,7 @@ async def test_schema_branch_add_object_template_schema():
     assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
 
 
-async def test_schema_branch_remove_object_template_schema():
+async def test_schema_branch_remove_object_template_schema() -> None:
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
     device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
@@ -2945,7 +3837,7 @@ async def test_schema_branch_remove_object_template_schema():
     assert not core_template_schema.used_by
 
 
-async def test_schema_branch_diff_core_object_template():
+async def test_schema_branch_diff_core_object_template() -> None:
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
     device_schema = SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[SIMPLE_DEVICE])
@@ -2982,7 +3874,7 @@ async def test_schema_branch_diff_core_object_template():
 
 
 @pytest.mark.parametrize("relationship_kind", (RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC))
-async def test_manage_object_templates(relationship_kind: RelationshipKind):
+async def test_manage_object_templates(relationship_kind: RelationshipKind) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     THING_WITH_TEMPLATE = copy.deepcopy(THING)
     THING_WITH_TEMPLATE.generate_template = True
@@ -3015,7 +3907,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind):
     ) == sorted([r.name for r in THING_WITH_TEMPLATE.relationships])
 
 
-async def test_manage_object_templates_with_component_relationships():
+async def test_manage_object_templates_with_component_relationships() -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=DEVICE_SCHEMA))
     schema_branch.process_inheritance()
@@ -3100,7 +3992,7 @@ async def test_manage_object_templates_with_component_relationships():
     }
 
 
-async def test_identify_object_templates_with_generics():
+async def test_identify_object_templates_with_generics() -> None:
     USELESS_DEVICE_SCHEMA = copy.deepcopy(DEVICE_SCHEMA)
     USELESS_DEVICE_SCHEMA.nodes.append(
         NodeSchema(

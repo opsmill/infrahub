@@ -1,62 +1,18 @@
-import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { components } from "@/shared/api/rest/types.generated";
-import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { store } from "@/shared/stores";
 import { describe, expect, it } from "vitest";
 
-export const buildAttributeSchema = (
-  override?: Partial<components["schemas"]["AttributeSchema-Output"]>
-): components["schemas"]["AttributeSchema-Output"] => ({
-  id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-  state: "present",
-  name: "field1",
-  kind: "Text",
-  enum: null,
-  choices: null,
-  regex: null,
-  max_length: null,
-  min_length: null,
-  label: "Field 1",
-  description: null,
-  read_only: false,
-  unique: false,
-  optional: true,
-  branch: "aware",
-  order_weight: 1000,
-  default_value: null,
-  inherited: false,
-  allow_override: "any",
-  ...override,
-});
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { store } from "@/shared/stores";
 
-export const buildRelationshipSchema = (
-  override?: Partial<RelationshipSchema>
-): RelationshipSchema => ({
-  id: "17e2718c-73ed-3ffe-3402-c515757ff94f",
-  state: "present",
-  name: "tagone",
-  peer: "BuiltinTag",
-  kind: "Attribute",
-  label: "Tagone",
-  description: "relationship many input for testing and development",
-  identifier: "builtintag__testallinone",
-  cardinality: "many",
-  min_count: 0,
-  max_count: 0,
-  order_weight: 24000,
-  optional: true,
-  branch: "aware",
-  inherited: false,
-  direction: "bidirectional",
-  hierarchical: null,
-  on_delete: "no-action",
-  allow_override: "any",
-  read_only: false,
-  ...override,
-});
+import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { ModelSchema } from "@/entities/schema/types";
+
+import {
+  generateAttributeSchema,
+  generateRelationshipSchema,
+} from "../../../../../tests/fake/schema";
+import { RELATIONSHIP_BULK_ADD_PREFIX, RELATIONSHIP_BULK_REMOVE_PREFIX } from "../constants";
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
@@ -73,8 +29,8 @@ describe("getFormFieldsFromSchema", () => {
   it("returns no fields that are read only", () => {
     // GIVEN
     const schema = {
-      attributes: [buildAttributeSchema({ read_only: true })],
-      relationships: [buildRelationshipSchema({ read_only: true })],
+      attributes: [generateAttributeSchema({ read_only: true })],
+      relationships: [generateRelationshipSchema({ read_only: true })],
     } as ModelSchema;
 
     // WHEN
@@ -88,10 +44,10 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [
-        buildAttributeSchema({ name: "third", order_weight: 3 }),
-        buildAttributeSchema({ name: "first", order_weight: 1 }),
+        generateAttributeSchema({ name: "third", order_weight: 3 }),
+        generateAttributeSchema({ name: "first", order_weight: 1 }),
       ],
-      relationships: [buildRelationshipSchema({ name: "second", order_weight: 2 })],
+      relationships: [generateRelationshipSchema({ name: "second", order_weight: 2 })],
     } as ModelSchema;
 
     // WHEN
@@ -106,8 +62,10 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a text attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({ kind: "Text" });
+
     const schema = {
-      attributes: [buildAttributeSchema({ kind: "Text" })],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -117,27 +75,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should map a HashedPassword attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({
+      label: "Password",
+      name: "password",
+      kind: "HashedPassword",
+    });
+
     const schema = {
-      attributes: [
-        buildAttributeSchema({ label: "Password", name: "password", kind: "HashedPassword" }),
-      ],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -147,7 +109,9 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
       name: "password",
       label: "Password",
@@ -155,17 +119,17 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should map a URL attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({ label: "Url", name: "url", kind: "URL" });
+
     const schema = {
-      attributes: [buildAttributeSchema({ label: "Url", name: "url", kind: "URL" })],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -175,7 +139,9 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
       name: "url",
       label: "Url",
@@ -183,17 +149,21 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should map a JSON attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({
+      label: "Parameters",
+      name: "parameters",
+      kind: "JSON",
+    });
+
     const schema = {
-      attributes: [buildAttributeSchema({ label: "Parameters", name: "parameters", kind: "JSON" })],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -203,7 +173,9 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
       name: "parameters",
       label: "Parameters",
@@ -211,42 +183,40 @@ describe("getFormFieldsFromSchema", () => {
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should map a Dropdown attribute correctly", () => {
     // GIVEN
-    const schema = {
-      attributes: [
-        buildAttributeSchema({
-          default_value: "address",
-          label: "Member Type",
-          name: "member_type",
-          kind: "Dropdown",
-          choices: [
-            {
-              id: null,
-              state: "present",
-              name: "prefix",
-              description: "Prefix serves as container for other prefixes",
-              color: "#ed6a5a",
-              label: "Prefix",
-            },
-            {
-              id: null,
-              state: "present",
-              name: "address",
-              description: "Prefix serves as subnet for IP addresses",
-              color: "#f4f1bb",
-              label: "Address",
-            },
-          ],
-        }),
+    const attribute = generateAttributeSchema({
+      default_value: "address",
+      label: "Member Type",
+      name: "member_type",
+      kind: "Dropdown",
+      choices: [
+        {
+          id: null,
+          state: "present",
+          name: "prefix",
+          description: "Prefix serves as container for other prefixes",
+          color: "#ed6a5a",
+          label: "Prefix",
+        },
+        {
+          id: null,
+          state: "present",
+          name: "address",
+          description: "Prefix serves as subnet for IP addresses",
+          color: "#f4f1bb",
+          label: "Address",
+        },
       ],
+    });
+
+    const schema = {
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -256,16 +226,16 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: "address" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
       name: "member_type",
       label: "Member Type",
       type: "Dropdown",
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
       items: [
         {
@@ -281,7 +251,6 @@ describe("getFormFieldsFromSchema", () => {
           color: "#f4f1bb",
         },
       ],
-      field: schema.attributes?.[0],
       schema,
       unique: false,
     });
@@ -289,15 +258,15 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should map a enum attribute correctly", () => {
     // GIVEN
+    const attribute = generateAttributeSchema({
+      kind: "Number",
+      enum: [1, 2, 3],
+      unique: false,
+      optional: false,
+    });
+
     const schema = {
-      attributes: [
-        buildAttributeSchema({
-          kind: "Number",
-          enum: [1, 2, 3],
-          unique: false,
-          optional: false,
-        }),
-      ],
+      attributes: [attribute],
     } as ModelSchema;
 
     // WHEN
@@ -307,19 +276,18 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "schema" }, value: null },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "enum",
       rules: {
         required: true,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
       items: [1, 2, 3],
-      field: schema.attributes?.[0],
       schema,
       unique: false,
     });
@@ -327,12 +295,14 @@ describe("getFormFieldsFromSchema", () => {
 
   it("should disable a protected field if the owner is not the current user", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -350,7 +320,6 @@ describe("getFormFieldsFromSchema", () => {
     const auth: AuthContextType = {
       accessToken: "abc",
       isAuthenticated: true,
-      isLoading: false,
       data: {
         sub: "1",
       },
@@ -369,29 +338,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: true,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should enable a protected field if the owner is the current user", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: AttributeType } = {
-      field1: {
+    const initialObject: { name: AttributeType } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -409,7 +380,6 @@ describe("getFormFieldsFromSchema", () => {
     const auth: AuthContextType = {
       accessToken: "abc",
       isAuthenticated: true,
-      isLoading: false,
       data: {
         sub: "1",
       },
@@ -428,29 +398,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should disable a field if permission is DENY", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -475,29 +447,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: true,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should enable a field if permission is ALLOW_ALL", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -522,29 +496,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should enable a field if permission is ALLOW_DEFAULT and current branch is default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -582,29 +558,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should disable a field if permission is ALLOW_DEFAULT and current branch is not default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -642,29 +620,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: true,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should disable a field if permission is ALLOW_OTHER and current branch is default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -702,29 +682,31 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: true,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
   });
 
   it("should disable a field if permission is ALLOW_OTHER and current branch is not default", () => {
     // GIVEN
+    const attribute = generateAttributeSchema();
+
     const schema = {
-      attributes: [buildAttributeSchema()],
+      attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { field1: Partial<AttributeType> } = {
-      field1: {
+    const initialObject: { name: Partial<AttributeType> } = {
+      name: {
         is_from_profile: false,
         is_protected: true,
         is_visible: true,
@@ -762,18 +744,80 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).toEqual({
       defaultValue: { source: { type: "user" }, value: "test-value" },
-      description: undefined,
+      isBulkUpdate: false,
+      attribute,
+      description: "description",
       disabled: false,
-      name: "field1",
-      label: "Field 1",
+      name: "name",
+      label: "Name",
       type: "Text",
       unique: false,
       rules: {
         required: false,
-        validate: {
-          required: expect.any(Function),
-        },
+        validate: expect.any(Function),
       },
     });
+  });
+
+  it("removes unique fields when isBulkUpdate is true", () => {
+    // GIVEN
+    const uniqueAttribute = generateAttributeSchema({ name: "unique_field", unique: true });
+    const notUniqueAttribute = generateAttributeSchema({ name: "non_unique_field", unique: false });
+
+    const schema = {
+      attributes: [uniqueAttribute, notUniqueAttribute],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]?.name).to.equal("non_unique_field");
+  });
+
+  it("removes required validation when isBulkUpdate is true", () => {
+    // GIVEN
+    const attribute = generateAttributeSchema({ name: "required_field", optional: false });
+    const relationship = generateRelationshipSchema({ name: "required_rel", optional: false });
+
+    const schema = {
+      attributes: [attribute],
+      relationships: [relationship],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields[0]?.rules?.required).to.equal(false);
+    expect(fields[1]?.rules?.required).to.equal(false);
+  });
+
+  it("should display add and remvoe fields for relationship of cardinality many in bulk edit", () => {
+    const relationshipMany = generateRelationshipSchema({
+      name: "cardinality_many",
+      cardinality: "many",
+      order_weight: 1,
+    });
+    const relationshipOne = generateRelationshipSchema({
+      name: "cardinality_one",
+      cardinality: "one",
+      order_weight: 2,
+    });
+
+    const schema = {
+      relationships: [relationshipMany, relationshipOne],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    expect(fields[0]?.name).to.equal(`${RELATIONSHIP_BULK_ADD_PREFIX}cardinality_many`);
+    expect(fields[0]?.type).to.equal("relationship-add");
+    expect(fields[1]?.name).to.equal(`${RELATIONSHIP_BULK_REMOVE_PREFIX}cardinality_many`);
+    expect(fields[1]?.type).to.equal("relationship-remove");
+    expect(fields[2]?.name).to.equal("cardinality_one");
   });
 });

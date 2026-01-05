@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -161,6 +162,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await caprica.new(db=db, name="Caprica", height=185, model_number=6, description="6 (Caprica)")
         await caprica.save(db=db)
 
+        deleted_cylon = await Node.init(schema=CYLON_KIND, db=db)
+        await deleted_cylon.new(db=db, name="<REDACTED>", height=185, model_number=1)
+        await deleted_cylon.save(db=db)
+        await deleted_cylon.delete(db=db)
+
         objs = {
             "starbuck": starbuck.id,
             "president": president.id,
@@ -237,7 +243,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "nodes": [schema_person_base, schema_car_mandatory_attr_no_default, schema_cylon_base],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
@@ -247,7 +253,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_check_mandatory_attribute_failure(
         self, client: InfrahubClient, initial_dataset, schema_with_person_mandatory_attr
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_with_person_mandatory_attr])
 
         assert success is False
@@ -259,7 +265,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_check_mandatory_relationship_failure(
         self, client: InfrahubClient, initial_dataset, schema_with_person_mandatory_rel
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_with_person_mandatory_rel])
 
         assert success is False
@@ -271,7 +277,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_check_mandatory_attribute_after_deleting_nodes(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_with_person_mandatory_attr
-    ):
+    ) -> None:
         """Validate that it's possible to add a new mandatory attribute after deleting all the nodes in scope."""
         branch = await client.branch.create(branch_name="add-attr-delete-nodes")
 
@@ -288,7 +294,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_check_mandatory_rel_after_deleting_nodes(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_with_person_mandatory_rel
-    ):
+    ) -> None:
         """Validate that it's possible to add a new mandatory attribute after deleting all the nodes in scope."""
         branch = await client.branch.create(branch_name="add-rel-delete-nodes")
 
@@ -305,28 +311,32 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_check_mandatory_attribute_success_no_data(
         self, client: InfrahubClient, initial_dataset, schema_with_car_mandatory
-    ):
+    ) -> None:
         """Validate that it's possible to add a new mandatory attribute when there is no data in the database."""
         success, _ = await client.schema.check(schemas=[schema_with_car_mandatory])
         assert success is True
 
     async def test_load_mandatory_attribute_success_no_data(
         self, client: InfrahubClient, initial_dataset, schema_with_car_mandatory
-    ):
+    ) -> None:
         branch = await client.branch.create(branch_name="add-no-prior-data")
         response = await client.schema.load(schemas=[schema_with_car_mandatory], branch=branch.name)
         assert response.errors == {}
 
     async def test_check_mandatory_attribute_success_default_value(
         self, client: InfrahubClient, initial_dataset, schema_with_person_default_value
-    ):
+    ) -> None:
         """Validate that it's possible to add a new mandatory attribute with a default value."""
         success, _ = await client.schema.check(schemas=[schema_with_person_default_value])
         assert success is True
 
     async def test_load_mandatory_attribute_success_default_value(
-        self, client: InfrahubClient, initial_dataset, schema_with_person_default_value
-    ):
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_with_person_default_value
+    ) -> None:
         branch = await client.branch.create(branch_name="add-default-value")
         response = await client.schema.load(schemas=[schema_with_person_default_value], branch=branch.name)
         assert response.errors == {}
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

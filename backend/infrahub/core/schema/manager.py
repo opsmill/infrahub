@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from cachetools import LRUCache
+from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
+
 from infrahub import lock
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
@@ -40,6 +43,8 @@ class SchemaManager(NodeManager):
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
         self._branches: dict[str, SchemaBranch] = {}
+        self._branch_hash_by_name: dict[str, str] = {}
+        self._sdk_branches: LRUCache[str, SDKBranchSchema] = LRUCache(maxsize=10)
 
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
@@ -93,6 +98,15 @@ class SchemaManager(NodeManager):
 
         raise ValueError("The selected node is not of type NodeSchema")
 
+    def get_generic_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> GenericSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, GenericSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type GenericSchema")
+
     def get_profile_schema(
         self, name: str, branch: Branch | str | None = None, duplicate: bool = True
     ) -> ProfileSchema:
@@ -122,7 +136,7 @@ class SchemaManager(NodeManager):
 
         return self._branches[branch_name].get_all(duplicate=duplicate)
 
-    async def get_full_safe(self, branch: Branch | str | None = None) -> dict[str, NodeSchema | GenericSchema]:
+    async def get_full_safe(self, branch: Branch | str | None = None) -> dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
 
         return self.get_full(branch=branch)
@@ -131,12 +145,26 @@ class SchemaManager(NodeManager):
         if name in self._branches:
             return self._branches[name]
 
-        self._branches[name] = SchemaBranch(cache=self._cache, name=name)
+        self.set_schema_branch(name, schema=SchemaBranch(cache=self._cache, name=name))
         return self._branches[name]
+
+    def get_sdk_schema_branch(self, name: str) -> SDKBranchSchema:
+        schema_hash = self._branch_hash_by_name[name]
+        branch_schema = self._sdk_branches.get(schema_hash)
+        if not branch_schema:
+            self._sdk_branches[schema_hash] = SDKBranchSchema.from_api_response(
+                data=self._branches[name].to_dict_api_schema_object()
+            )
+
+        return self._sdk_branches[schema_hash]
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
         schema.name = name
         self._branches[name] = schema
+        self._branch_hash_by_name[name] = schema.get_hash()
+
+    def has_schema_branch(self, name: str) -> bool:
+        return name in self._branches
 
     def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
@@ -471,7 +499,7 @@ class SchemaManager(NodeManager):
         if diff_attributes:
             for item in node.local_attributes:
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
-                if item.name in diff_attributes.added or item.name in diff_attributes.changed and item.id is None:
+                if item.name in diff_attributes.added or (item.name in diff_attributes.changed and item.id is None):
                     created_item = await self.create_attribute_in_db(
                         schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
                     )
@@ -491,7 +519,9 @@ class SchemaManager(NodeManager):
         if diff_relationships:
             for item in node.local_relationships:
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
-                if item.name in diff_relationships.added or item.name in diff_relationships.changed and item.id is None:
+                if item.name in diff_relationships.added or (
+                    item.name in diff_relationships.changed and item.id is None
+                ):
                     created_rel = await self.create_relationship_in_db(
                         schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
                     )
@@ -533,7 +563,7 @@ class SchemaManager(NodeManager):
         """Delete the node with its attributes and relationships."""
         branch = await registry.get_branch(branch=branch, db=db)
 
-        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db, prefetch_relationships=True)
         if not obj:
             raise SchemaNotFoundError(
                 branch_name=branch.name,
@@ -542,16 +572,10 @@ class SchemaManager(NodeManager):
             )
 
         # First delete the attributes and the relationships
-        items = await self.get_many(
-            ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
-            db=db,
-            branch=branch,
-            include_owner=True,
-            include_source=True,
-        )
-
-        for item in items.values():
-            await item.delete(db=db)
+        for attr_schema_node in (await obj.attributes.get_peers(db=db)).values():
+            await attr_schema_node.delete(db=db)
+        for rel_schema_node in (await obj.relationships.get_peers(db=db)).values():
+            await rel_schema_node.delete(db=db)
 
         await obj.delete(db=db)
 
@@ -610,7 +634,9 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
-        schema_diff = current_schema.get_hash_full().compare(branch.active_schema_hash)
+        schema_diff = None
+        if branch.active_schema_hash.is_valid and current_schema.get_hash_full().is_valid:
+            schema_diff = current_schema.get_hash_full().compare(branch.active_schema_hash)
         branch_schema = await self.load_schema_from_db(
             db=db, branch=branch, schema=current_schema, schema_diff=schema_diff
         )
@@ -748,15 +774,22 @@ class SchemaManager(NodeManager):
         """Return non active branches that were purged."""
 
         hashes_to_keep: set[str] = set()
+        branch_processed: set[str] = set()
         for active_branch in active_branches:
-            if branch := self._branches.get(active_branch):
-                nodes = branch.get_all(include_internal=True, duplicate=False)
-                hashes_to_keep.update([node.get_hash() for node in nodes.values()])
+            branch_hash = self._branch_hash_by_name.get(active_branch)
+            if not branch_hash or branch_hash not in branch_processed:
+                if branch_hash:
+                    branch_processed.add(branch_hash)
+                if branch := self._branches.get(active_branch):
+                    nodes = branch.get_all(include_internal=True, duplicate=False)
+                    hashes_to_keep.update([node.get_hash() for node in nodes.values()])
 
         removed_branches: list[str] = []
         for branch_name in list(self._branches.keys()):
             if branch_name not in active_branches:
                 del self._branches[branch_name]
+                if branch_name in self._branch_hash_by_name:
+                    del self._branch_hash_by_name[branch_name]
                 removed_branches.append(branch_name)
 
         for hash_key in list(self._cache.keys()):
@@ -764,3 +797,6 @@ class SchemaManager(NodeManager):
                 del self._cache[hash_key]
 
         return removed_branches
+
+    def get_branches(self) -> list[str]:
+        return list(self._branches.keys())

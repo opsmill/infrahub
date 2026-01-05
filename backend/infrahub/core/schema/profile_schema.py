@@ -28,6 +28,14 @@ class ProfileSchema(BaseNodeSchema):
     def is_template_schema(self) -> bool:
         return False
 
+    @property
+    def is_ip_prefix(self) -> bool:
+        return False
+
+    @property
+    def is_ip_address(self) -> bool:
+        return False
+
     def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""

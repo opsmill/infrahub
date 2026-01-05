@@ -1,196 +1,60 @@
-import { DiffNode } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { TREE_ROOT_ID } from "@/entities/ipam/constants";
-import { EMPTY_TREE, addItemsToTree } from "@/entities/ipam/ipam-tree/utils";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import { Icon } from "@iconify-icon/react";
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { type TreeProps as AriaTreeProps, Collection } from "react-aria-components";
+import { useLocation } from "react-router";
 
-interface DiffTreeProps extends Omit<TreeProps, "data"> {
+import { Tree, TreeItem, TreeItemContent } from "@/shared/components/aria/tree";
+
+import type { DiffNode } from "@/entities/diff/node-diff/types";
+import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/utils/build-diff-tree-items";
+
+interface DiffTreeProps extends Omit<AriaTreeProps<DiffTreeItem>, "items" | "children"> {
   nodes: Array<DiffNode>;
 }
 
-export default function DiffTree({ nodes, loading, ...props }: DiffTreeProps) {
-  const [treeData, setTreeData] = useState<TreeProps["data"]>(EMPTY_TREE);
+export default function DiffTree({ nodes, ...props }: DiffTreeProps) {
   const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const formattedNodes = formatDiffNodesToDiffTree(nodes);
-    setTreeData(addItemsToTree(EMPTY_TREE, generateRootCategoryNodeForDiffTree(formattedNodes)));
-  }, [nodes]);
-
-  if (treeData.length <= 1) return null;
+  const diffTreeItems = buildDiffTreeItems(nodes);
+  const selectedDiffNodeId = location.hash?.slice(1) || null;
 
   return (
     <Tree
-      itemContent={DiffTreeItem}
-      propagateSelectUpwards={false}
-      defaultExpandedIds={treeData
-        .filter(({ parent }) => parent === TREE_ROOT_ID)
-        .map(({ id }) => id)}
-      loading={loading}
-      data={treeData}
-      onNodeSelect={({ element }) => {
-        navigate({
-          ...location,
-          hash: element?.metadata?.uuid as string | undefined,
-        });
-      }}
+      aria-label="diff tree"
+      items={diffTreeItems}
+      defaultExpandedKeys={diffTreeItems.map((n) => n.id)}
       {...props}
-    />
+    >
+      {function renderTreeItem(item) {
+        return (
+          <TreeItem
+            textValue={item.label}
+            {...(item.isNode
+              ? {
+                  href: { ...location, hash: `#${item.id}` },
+                  routerOptions: { replace: true },
+                  className: selectedDiffNodeId === item.id ? "bg-gray-100" : undefined,
+                }
+              : {})}
+          >
+            <TreeItemContent>
+              {item.isNode ? (
+                <DiffBadge
+                  status={item.status}
+                  hasConflicts={item.hasConflicts}
+                  size="icon"
+                  className="mr-2"
+                />
+              ) : (
+                <Icon icon={item.icon} className="mr-2" />
+              )}
+
+              <span className="truncate">{item.label}</span>
+            </TreeItemContent>
+
+            <Collection items={item.children}>{renderTreeItem}</Collection>
+          </TreeItem>
+        );
+      }}
+    </Tree>
   );
 }
-
-const DiffTreeItem = ({ element }: TreeItemProps) => {
-  const diffNode = element.metadata as DiffNode | undefined;
-  const { schema } = useSchema(diffNode?.kind);
-
-  // On diff tree, root tree item represents the model schema's name,
-  // providing a clear visual representation of the schema in the tree structure.
-  if (schema && element.parent === TREE_ROOT_ID) {
-    return (
-      <div className={"flex items-center gap-2 text-gray-800"} data-testid="hierarchical-tree-item">
-        <Icon icon={schema.icon as string} />
-        <span className="whitespace-nowrap">{schema.label}</span>
-      </div>
-    );
-  }
-
-  return (
-    <a
-      href={"#" + diffNode?.uuid}
-      tabIndex={-1}
-      className="flex items-center gap-2 text-gray-800 overflow-hidden"
-      data-testid="hierarchical-tree-item"
-    >
-      <DiffBadge
-        status={element.metadata?.status as string}
-        hasConflicts={!!element.metadata?.containsConflicts}
-        size="icon"
-        icon={schema?.icon ?? undefined}
-      />
-
-      <Tooltip enabled content={element.name}>
-        <span className="whitespace-nowrap truncate">{element.name}</span>
-      </Tooltip>
-    </a>
-  );
-};
-
-export const formatDiffNodesToDiffTree = (nodes: Array<DiffNode>) => {
-  return nodes.reduce(
-    (acc, node) => {
-      const newNode = {
-        id: node.uuid,
-        name: node.label,
-        parent: TREE_ROOT_ID as string,
-        children: acc.filter(({ parent }) => parent === node.uuid).map(({ id }) => id),
-        metadata: {
-          kind: node.kind, // for icon on tree item
-          uuid: node.uuid, // for url
-          status: node.status, // for icon color
-          containsConflicts: node.contains_conflict, // for icon conflicts
-        },
-      };
-
-      if (node.parent) {
-        const { uuid: parentUUID, relationship_name: parentRelationshipName } = node.parent;
-
-        const parentNodeId = parentUUID + parentRelationshipName;
-        const newNodeWithParent = {
-          ...newNode,
-          parent: parentNodeId,
-        };
-
-        const existingParentOfNewNode = acc.find(({ id }) => id === parentNodeId);
-        if (existingParentOfNewNode) {
-          return acc
-            .map((accNode) => {
-              if (accNode.id === parentNodeId) {
-                return {
-                  ...accNode,
-                  children: [...new Set(accNode.children.concat(newNodeWithParent.id))],
-                };
-              }
-
-              return accNode;
-            })
-            .concat(newNodeWithParent);
-        }
-
-        const newParentNode = {
-          id: parentNodeId,
-          name: parentRelationshipName ?? "",
-          parent: parentUUID,
-          children: [newNode.id],
-          metadata: {
-            kind: node.parent.kind, // for icon on tree item
-          },
-        };
-
-        return acc
-          .map((accNode) => {
-            if (accNode.id === parentUUID) {
-              return {
-                ...accNode,
-                children: [...new Set(accNode.children.concat(newParentNode.id))],
-              };
-            }
-
-            return accNode;
-          })
-          .concat(newParentNode, newNodeWithParent);
-      }
-
-      return [...acc, newNode];
-    },
-    [] as TreeProps["data"]
-  );
-};
-
-export const generateRootCategoryNodeForDiffTree = (
-  diffTreeNodes: TreeProps["data"]
-): TreeProps["data"] => {
-  return diffTreeNodes.reduce(
-    (acc, node) => {
-      const nodeKind = node.metadata?.kind as string | undefined;
-      if (node.parent !== TREE_ROOT_ID || !nodeKind) return [...acc, node];
-
-      const nodeUpdated = {
-        ...node,
-        parent: nodeKind,
-      };
-
-      const existingRootCategoryNode = acc.find(({ id }) => id === nodeKind);
-
-      if (existingRootCategoryNode) {
-        const rootCategoryNodeUpdated = {
-          ...existingRootCategoryNode,
-          children: [...existingRootCategoryNode.children, node.id],
-        };
-
-        return acc
-          .map((item) => (item.id === existingRootCategoryNode.id ? rootCategoryNodeUpdated : item))
-          .concat(nodeUpdated);
-      } else {
-        const newRootCategoryNode = {
-          id: nodeKind,
-          name: nodeKind,
-          parent: TREE_ROOT_ID,
-          children: [node.id],
-          isBranch: true,
-          metadata: {
-            kind: nodeKind,
-          },
-        };
-
-        return [...acc, newRootCategoryNode, nodeUpdated];
-      }
-    },
-    [] as TreeProps["data"]
-  );
-};

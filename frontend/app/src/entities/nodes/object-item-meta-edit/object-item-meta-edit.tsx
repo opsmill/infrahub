@@ -1,17 +1,19 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
-import { NodeSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import { toast } from "react-toastify";
+import { mapValues } from "remeda";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { toast } from "react-toastify";
-import { mapValues } from "remeda";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import type { NodeSchema } from "@/entities/schema/types";
 
 interface Props {
   row: any;
@@ -76,7 +78,7 @@ export default function ObjectItemMetaEdit(props: Props) {
   }
 
   return (
-    <div className="flex-1 bg-white flex">
+    <div className="flex flex-1 bg-white">
       <DynamicForm
         fields={[
           {

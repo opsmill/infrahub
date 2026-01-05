@@ -16,12 +16,12 @@ from .attribute import (
     MacAddressType,
     NumberAttributeType,
     RelatedIPAddressNodeInput,
+    RelatedIPPrefixNodeInput,
     RelatedNodeInput,
-    RelatedPrefixNodeInput,
     StrAttributeType,
     TextAttributeType,
 )
-from .branch import BranchType
+from .branch import BranchType, InfrahubBranch, InfrahubBranchType
 from .interface import InfrahubInterface
 from .node import InfrahubObject
 from .permission import PaginatedObjectPermission
@@ -41,6 +41,8 @@ __all__ = [
     "DropdownType",
     "IPHostType",
     "IPNetworkType",
+    "InfrahubBranch",
+    "InfrahubBranchType",
     "InfrahubInterface",
     "InfrahubObject",
     "InfrahubObjectType",
@@ -51,8 +53,8 @@ __all__ = [
     "NumberAttributeType",
     "PaginatedObjectPermission",
     "RelatedIPAddressNodeInput",
+    "RelatedIPPrefixNodeInput",
     "RelatedNodeInput",
-    "RelatedPrefixNodeInput",
     "RelationshipNode",
     "StrAttributeType",
     "TaskLog",

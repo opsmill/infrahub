@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { CSSProperties, useState } from "react";
+import { type CSSProperties, useState } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export type AccordionProps = {
   title?: any;
@@ -29,10 +30,10 @@ export default function Accordion({
 
   return (
     <div className={className} {...props}>
-      <div className="flex items-center cursor-pointer relative" onClick={() => setIsOpen(!open)}>
+      <div className="relative flex cursor-pointer items-center" onClick={() => setIsOpen(!open)}>
         <span
           className={classNames(
-            "flex items-center mx-2 relative",
+            "relative mx-2 flex items-center",
             hideChevron && "text-transparent",
             iconClassName
           )}
@@ -40,7 +41,7 @@ export default function Accordion({
           {open ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
         </span>
 
-        <span className={classNames("flex-1 font-semibold text-left justify-start")}>{title}</span>
+        <span className={classNames("flex-1 justify-start text-left font-semibold")}>{title}</span>
       </div>
 
       {open && children}

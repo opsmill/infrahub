@@ -1,8 +1,6 @@
-import { MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import {
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+
+import type {
   AnyAttribute,
   CheckboxAttribute,
   Dropdown,
@@ -23,11 +21,17 @@ import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
+import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
-  if (typeof data === "string" || typeof data === "number") {
-    return data;
+  // If data.node is a node object, use getNodeLabel
+  if (data?.node && "__typename" in data.node && "id" in data.node) {
+    return data?.label ?? getNodeLabel(data.node) ?? data?.value ?? "-";
   }
 
   return (
@@ -85,7 +89,7 @@ export const getDisplayValue = (
 
   if (row[attribute?.name]?.edges) {
     const items = row[attribute?.name]?.edges
-      .map((edge: any) => edge?.node?.display_label ?? edge?.node?.value ?? "-")
+      .map((edge: any) => (edge?.node ? getNodeLabel(edge.node) : (edge?.node?.value ?? "-")))
       .slice(0, 5);
 
     const rest = row[attribute?.name]?.edges?.slice(5)?.length;
@@ -175,7 +179,9 @@ export const ObjectAttributeValue = ({
   attributeSchema: FieldSchema;
   attributeValue: AttributeType;
 }) => {
-  if (!attributeValue.value && attributeValue.value !== 0) return "-";
+  if (!attributeValue.value && attributeValue.value !== 0 && attributeValue.value !== false) {
+    return "-";
+  }
 
   switch (attributeSchema.kind as AttributeKind) {
     case ATTRIBUTE_KIND.ID:
@@ -197,7 +203,11 @@ export const ObjectAttributeValue = ({
       );
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX:
-      return attributeValue ? <CheckIcon className="h-4 w-4" /> : <XMarkIcon className="h-4 w-4" />;
+      return attributeValue.value ? (
+        <CheckIcon className="size-4" />
+      ) : (
+        <XMarkIcon className="size-4" />
+      );
     case ATTRIBUTE_KIND.DATETIME:
       return <DateDisplay date={getTextValue(attributeValue)} />;
     case ATTRIBUTE_KIND.TEXTAREA:
@@ -232,7 +242,7 @@ export const ObjectAttributeValue = ({
       return <CodeViewer>{JSON.stringify(attributeValue.value ?? "", null, 2)}</CodeViewer>;
     default:
       return (
-        <div className="flex items-center min-w-7 min-h-7">{getTextValue(attributeValue)}</div>
+        <div className="flex min-h-7 min-w-7 items-center">{getTextValue(attributeValue)}</div>
       );
   }
 };

@@ -31,6 +31,7 @@ class KVTTL(int, Enum):
     ONE = 1
     TEN = 10
     FIFTEEN = 15
+    ONE_MINUTE = 60
     TWO_HOURS = 7200
 
     @classmethod
@@ -88,8 +89,10 @@ class ProposedChangeArtifactDefinition(BaseModel):
     definition_id: str
     definition_name: str
     artifact_name: str
-    query_name: str
+    query_name: str  # Deprecated
+    query_id: str
     query_models: list[str]
+    query_payload: str = Field(..., description="GraphQL query")
     repository_id: str
     transform_kind: str
     template_path: str = Field(default="")

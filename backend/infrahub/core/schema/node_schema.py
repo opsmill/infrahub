@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import AllowOverrideType, InfrahubKind
+from infrahub.core.constants import AllowOverrideType, InfrahubKind, RelationshipKind
 
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema
@@ -29,6 +29,16 @@ class NodeSchema(GeneratedNodeSchema):
     def is_template_schema(self) -> bool:
         return False
 
+    @property
+    def is_ip_prefix(self) -> bool:
+        """Return whether a node is a derivative of built-in IP prefixes."""
+        return InfrahubKind.IPPREFIX in self.inherit_from
+
+    @property
+    def is_ip_address(self) -> bool:
+        """Return whether a node is a derivative of built-in IP addreses."""
+        return InfrahubKind.IPADDRESS in self.inherit_from
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Perform checks specific to inheritance from Generics.
 
@@ -53,21 +63,19 @@ class NodeSchema(GeneratedNodeSchema):
                         f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must be the same kind "
                         f'["{interface_attr.kind}", "{attribute.kind}"]'
                     )
-                if attribute.optional != interface_attr.optional:
-                    raise ValueError(
-                        f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must have the same value for property "
-                        f'"optional" ["{interface_attr.optional}", "{attribute.optional}"]'
-                    )
 
         for relationship in self.relationships:
-            if (
-                relationship.name in interface.relationship_names
-                and not relationship.inherited
-                and interface.get_relationship(relationship.name).allow_override == AllowOverrideType.NONE
-            ):
-                raise ValueError(
-                    f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
-                )
+            if relationship.name in interface.relationship_names and not relationship.inherited:
+                interface_relationship = interface.get_relationship(relationship.name)
+                if interface_relationship.allow_override == AllowOverrideType.NONE:
+                    raise ValueError(
+                        f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
+                    )
+                if relationship.kind != RelationshipKind.HIERARCHY and relationship.peer != interface_relationship.peer:
+                    raise ValueError(
+                        f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} must have the same peer "
+                        f"({interface_relationship.peer} != {relationship.peer})"
+                    )
 
     def inherit_from_interface(self, interface: GenericSchema) -> None:
         existing_inherited_attributes: dict[str, int] = {
@@ -82,6 +90,7 @@ class NodeSchema(GeneratedNodeSchema):
 
         properties_to_inherit = [
             "human_friendly_id",
+            "display_label",
             "display_labels",
             "default_filter",
             "menu_placement",
@@ -121,10 +130,12 @@ class NodeSchema(GeneratedNodeSchema):
                 item_idx = existing_inherited_relationships[relationship.name]
                 self.relationships[item_idx].update_from_generic(other=new_relationship)
 
-    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:
+    def get_hierarchy_schema(
+        self, db: InfrahubDatabase, branch: Branch | str | None = None, duplicate: bool = False
+    ) -> GenericSchema:
         if not self.hierarchy:
             raise ValueError("The node is not part of a hierarchy")
-        schema = db.schema.get(name=self.hierarchy, branch=branch)
+        schema = db.schema.get(name=self.hierarchy, branch=branch, duplicate=duplicate)
         if not isinstance(schema, GenericSchema):
             raise TypeError
         return schema
@@ -137,11 +148,3 @@ class NodeSchema(GeneratedNodeSchema):
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append(InfrahubKind.NODE)
         return labels
-
-    def is_ip_prefix(self) -> bool:
-        """Return whether a node is a derivative of built-in IP prefixes."""
-        return InfrahubKind.IPPREFIX in self.inherit_from
-
-    def is_ip_address(self) -> bool:
-        """Return whether a node is a derivative of built-in IP addreses."""
-        return InfrahubKind.IPADDRESS in self.inherit_from

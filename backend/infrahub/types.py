@@ -235,6 +235,10 @@ class Number(InfrahubDataType):
     infrahub = "Integer"
 
 
+class NumberPool(Number):
+    label: str = "Number Pool"
+
+
 class Bandwidth(InfrahubDataType):
     label: str = "Bandwidth"
     graphql = graphene.Int
@@ -329,6 +333,7 @@ ATTRIBUTE_TYPES: dict[str, type[InfrahubDataType]] = {
     "MacAddress": MacAddress,
     "Color": Color,
     "Number": Number,
+    "NumberPool": NumberPool,
     "Bandwidth": Bandwidth,
     "IPHost": IPHost,
     "IPNetwork": IPNetwork,
@@ -353,6 +358,7 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "MacAddress": str,  # MAC addresses can be straightforward strings
     "Color": str,  # Colors often represented as hex strings
     "Number": float,  # Numbers can be floats for general use
+    "NumberPool": float,  # Numbers can be floats for general use
     "Bandwidth": float,  # Bandwidth in some units, represented as a float
     "IPHost": IPvAnyAddress,  # type: ignore[dict-item]
     "IPNetwork": str,
@@ -373,3 +379,7 @@ def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind
     If no kind is provided, return the default one."""
     return ATTRIBUTE_TYPES.get(kind, Default)
+
+
+def is_large_attribute_type(kind: str) -> bool:
+    return ATTRIBUTE_TYPES[kind] in LARGE_ATTRIBUTE_TYPES

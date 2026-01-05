@@ -1,9 +1,8 @@
-"use client";
-
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import * as React from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export const Accordion = AccordionPrimitive.Root;
 
@@ -24,10 +23,10 @@ export const AccordionTrigger = React.forwardRef<
     >
       {children}
 
-      <div className={classNames("flex ml-auto rounded-sm p-1", iconClassName)}>
+      <div className={classNames("ml-auto flex rounded-sm p-1", iconClassName)}>
         <Icon
           icon="mdi:chevron-right"
-          className="text-xl shrink-0 transition-transform duration-200"
+          className="shrink-0 text-xl transition-transform duration-200"
         />
       </div>
     </AccordionPrimitive.Trigger>

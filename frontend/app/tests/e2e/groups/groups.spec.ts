@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
@@ -40,16 +41,13 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
     await page.goto(`/objects/CoreGroup?branch=${BRANCH_NAME}`);
 
     await test.step("add members to Standard Group", async () => {
-      await page
-        .getByTestId("hierarchical-tree")
-        .getByRole("link", { name: "TagConfigGroup", exact: true })
-        .click();
+      await page.getByLabel("Hierarchy tree").getByText("TagConfigGroup").click();
       await page.getByText("Members0").click();
       await page.getByTestId("open-relationship-form-button").click();
-      await page.getByLabel("Kind").click();
+      await page.getByRole("combobox", { name: "Kind" }).click();
       await page.getByRole("option", { name: "Tag Builtin" }).click();
       await expect(page.getByRole("option", { name: "Tag Builtin" })).toBeHidden();
-      await page.getByLabel("Tag").click();
+      await page.getByLabel("Tag", { exact: true }).click();
       await page.getByRole("option", { name: "blue" }).click();
 
       await saveScreenshotForDocs(page, "group_tagconfig_grp_adding_members");
@@ -58,9 +56,9 @@ test.describe("/objects/CoreGroup - Generic Group Object.", () => {
       await page.getByTestId("close-alert").click();
 
       await page.getByTestId("open-relationship-form-button").click();
-      await page.getByLabel("Kind").click();
+      await page.getByRole("combobox", { name: "Kind" }).click();
       await page.getByRole("option", { name: "Tag Builtin" }).click();
-      await page.getByLabel("Tag").click();
+      await page.getByLabel("Tag", { exact: true }).click();
       await page.getByRole("option", { name: "red" }).click();
       await expect(page.getByRole("option", { name: "red" })).not.toBeVisible();
       await page.getByRole("button", { name: "Save" }).click();

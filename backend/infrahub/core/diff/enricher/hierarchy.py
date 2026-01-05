@@ -7,6 +7,7 @@ from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery, RelationshipPeerData
 from infrahub.core.schema import ProfileSchema, TemplateSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 from ..model.path import (
@@ -42,9 +43,12 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         node_hierarchy_map: dict[str, list[NodeIdentifier]] = defaultdict(list)
 
         for node in enriched_diff_root.nodes:
-            schema_node = self.db.schema.get(
-                name=node.kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
-            )
+            try:
+                schema_node = self.db.schema.get(
+                    name=node.kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
+                )
+            except SchemaNotFoundError:
+                continue
 
             if isinstance(schema_node, ProfileSchema | TemplateSchema):
                 continue
@@ -99,7 +103,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
                 current_node = node
                 for ancestor in ancestors:
-                    ancestor_identifier = NodeIdentifier(uuid=ancestor.uuid, kind=ancestor.kind, labels=ancestor.labels)
+                    ancestor_identifier = NodeIdentifier(uuid=ancestor.uuid, kind=ancestor.kind, db_id=ancestor.db_id)
                     parent_request = ParentNodeAddRequest(
                         node_identifier=current_node.identifier,
                         parent_identifier=ancestor_identifier,
@@ -146,13 +150,11 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
             for peer in query.get_peers():
                 source_identifier = NodeIdentifier(
-                    uuid=str(peer.source_id), kind=peer.source_kind, labels=peer.source_labels
+                    uuid=str(peer.source_id), kind=peer.source_kind, db_id=peer.source_db_id
                 )
                 parent_peers[source_identifier] = peer
                 if parent_schema.has_parent_relationship:
-                    peer_identifier = NodeIdentifier(
-                        uuid=str(peer.peer_id), kind=peer.peer_kind, labels=peer.peer_labels
-                    )
+                    peer_identifier = NodeIdentifier(uuid=str(peer.peer_id), kind=peer.peer_kind, db_id=peer.peer_db_id)
                     node_parent_with_parent_map[parent_schema.kind].append(peer_identifier)
 
         # Check if the parent are already present
@@ -170,7 +172,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
             parent_rel = [rel for rel in schema_node.relationships if rel.kind == RelationshipKind.PARENT][0]
 
             peer_identifier = NodeIdentifier(
-                uuid=str(peer_parent.peer_id), kind=peer_parent.peer_kind, labels=peer_parent.peer_labels
+                uuid=str(peer_parent.peer_id), kind=peer_parent.peer_kind, db_id=peer_parent.peer_db_id
             )
             parent_request = ParentNodeAddRequest(
                 node_identifier=node.identifier,

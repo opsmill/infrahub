@@ -4,9 +4,10 @@ from typing import Sequence
 
 from pydantic import Field
 
-from ..shared import MigrationQuery, SchemaMigration
+from ..query import MigrationBaseQuery  # noqa: TC001
+from ..shared import SchemaMigration
 
 
 class PlaceholderDummyMigration(SchemaMigration):
     name: str = "dummy.placeholder"
-    queries: Sequence[type[MigrationQuery]] = Field(default_factory=list)
+    queries: Sequence[type[MigrationBaseQuery]] = Field(default_factory=list)

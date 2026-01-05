@@ -1,12 +1,11 @@
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { JsonEditor } from "@/shared/components/editor/json/json-editor";
 import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
-import { Dropdown, DropdownOption } from "@/shared/components/inputs/dropdown";
+import { Dropdown, type DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Enum } from "@/shared/components/inputs/enum";
 import { List } from "@/shared/components/list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -15,7 +14,10 @@ import { Input } from "@/shared/components/ui/input";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
+
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface DynamicFilterInputProps {
   fieldSchema: AttributeSchema | RelationshipSchema;
@@ -31,11 +33,11 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
           <div
             className={classNames(
               inputStyle,
-              "has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
-              "cursor-pointer min-w-[132px] max-w-[300px]"
+              "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+              "min-w-[132px] max-w-[300px] cursor-pointer"
             )}
           >
-            <div className="grow flex flex-wrap gap-2">
+            <div className="flex grow flex-wrap gap-2">
               {value?.map(({ id, display_label }) => (
                 <Badge key={id} className="flex items-center gap-1 pr-0.5">
                   {display_label}
@@ -47,7 +49,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
                       e.stopPropagation();
                       onChange(value.filter((item) => item.id !== id));
                     }}
-                    className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                    className="h-4 w-4 text-gray-500 hover:text-gray-800"
                     aria-label="Remove"
                     data-testid="remove-option"
                   >
@@ -57,7 +59,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
               ))}
             </div>
 
-            <button type="button" className="text-gray-600 outline-hidden w-3.5 h-3.5">
+            <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />
             </button>
           </div>
@@ -148,7 +150,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
             if (newValue === "false") return onChange(false);
             return onChange(newValue);
           }}
-          className="p-2 border border-gray-300 rounded-md"
+          className="rounded-md border border-gray-300 p-2"
         >
           <Radio value="true">True</Radio>
           <Radio value="false">False</Radio>

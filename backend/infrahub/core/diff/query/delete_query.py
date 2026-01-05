@@ -9,17 +9,25 @@ class EnrichedDiffDeleteQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, enriched_diff_root_uuids: list[str], **kwargs: Any) -> None:
+    def __init__(self, enriched_diff_root_uuids: list[str] | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.enriched_diff_root_uuids = enriched_diff_root_uuids
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params = {"diff_root_uuids": self.enriched_diff_root_uuids}
+        diff_filter = ""
+        if self.enriched_diff_root_uuids:
+            self.params = {"diff_root_uuids": self.enriched_diff_root_uuids}
+            diff_filter = "WHERE d_root.uuid IN $diff_root_uuids"
+
         query = """
-        MATCH (d_root:DiffRoot)
-        WHERE d_root.uuid IN $diff_root_uuids
-        OPTIONAL MATCH (d_root)-[*]->(diff_thing)
-        DETACH DELETE diff_thing
-        DETACH DELETE d_root
-        """
+MATCH (d_root:DiffRoot)
+%(diff_filter)s
+OPTIONAL MATCH (d_root)-[*]->(diff_thing)
+WITH DISTINCT d_root, diff_thing
+ORDER BY elementId(diff_thing)
+CALL (diff_thing) {
+    DETACH DELETE diff_thing
+} IN TRANSACTIONS
+DETACH DELETE d_root
+        """ % {"diff_filter": diff_filter}
         self.add_to_query(query=query)

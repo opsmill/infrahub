@@ -1,10 +1,14 @@
-import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
-import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import { Permission } from "@/entities/permission/types";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai/index";
 import { useState } from "react";
+
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import type { Permission } from "@/entities/permission/types";
+
 import MetaDetailsTooltip from "./meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "./slide-over";
 
@@ -43,7 +47,7 @@ const PropertiesPopover = ({
         header={
           !hideHeader &&
           !attributeSchema.read_only && (
-            <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+            <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
               <div className="font-semibold">{attributeSchema.label}</div>
 
               <ButtonWithTooltip
@@ -73,7 +77,7 @@ const PropertiesPopover = ({
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={data?.display_label}
+            currentObjectLabel={data ? getNodeLabel(data) : ""}
             title={`${metaEditFieldDetails?.label} properties`}
             subtitle={`Update the properties of ${metaEditFieldDetails?.label}`}
           />

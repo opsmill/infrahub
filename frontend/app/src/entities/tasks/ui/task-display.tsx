@@ -1,13 +1,15 @@
-import { TASK_OBJECT } from "@/config/constants";
-import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
-import { getSeverityBadge, tLog } from "./logs";
+
+import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
+
+import { getSeverityBadge, type tLog } from "./logs";
 
 const background = {
   // Blue
@@ -46,7 +48,7 @@ function Task({ task }) {
     <div>
       <div
         className={classNames(
-          "flex flex-col gap-4 rounded-md p-4 m-auto",
+          "m-auto flex flex-col gap-4 rounded-md p-4",
           "bg-gray-100",
           background[task.state]
         )}
@@ -62,7 +64,7 @@ function Task({ task }) {
 
         {!!task?.logs?.edges?.length && (
           <Accordion title={<div className="font-normal text-xs">Logs</div>}>
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="mt-2 flex flex-col gap-2">
               {task?.logs?.edges?.map((edge, index) => (
                 <Log key={index} {...edge.node} />
               ))}
@@ -91,7 +93,7 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
   });
 
   if (error) {
-    return <ErrorScreen message="An error occured while retrieving the task details." />;
+    return <ErrorScreen message="An error occurred while retrieving the task details." />;
   }
 
   if (loading) {
@@ -109,13 +111,13 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
 function Log({ message, severity, timestamp }: tLog) {
   return (
-    <div className="flex flex-col bg-white rounded-md p-2 gap-2">
+    <div className="flex flex-col gap-2 rounded-md bg-white p-2">
       <div className="flex items-center justify-between">
         {getSeverityBadge[severity]}
         <DateDisplay date={timestamp} />
       </div>
 
-      <pre className="text-xs whitespace-pre-wrap">{message}</pre>
+      <pre className="whitespace-pre-wrap text-xs">{message}</pre>
     </div>
   );
 }

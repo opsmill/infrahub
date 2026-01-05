@@ -25,12 +25,8 @@ async def build_subquery_filter(
     partial_match: bool = False,
     optional_match: bool = False,
     result_prefix: str = "filter",
-    support_profiles: bool = False,
     extra_tail_properties: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
-    support_profiles = (
-        support_profiles and field and field.is_attribute and filter_name in ("value", "values", "isnull")
-    )
     params = {}
     prefix = f"{result_prefix}{subquery_idx}"
 
@@ -52,7 +48,6 @@ async def build_subquery_filter(
         param_prefix=prefix,
         db=db,
         partial_match=partial_match,
-        support_profiles=support_profiles,
     )
     params.update(field_params)
 
@@ -61,7 +56,7 @@ async def build_subquery_filter(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"{node_alias} AS {prefix}"
+    to_return = f"{prefix}"
     with_extra = ""
     final_with_extra = ""
     is_isnull = filter_name == "isnull"
@@ -82,7 +77,6 @@ async def build_subquery_filter(
         elif field is not None and field.is_attribute:
             is_active_filter = "(latest_node_details[2]).value = 'NULL'"
     query = f"""
-    WITH {node_alias}
     {match} path = {filter_str}
     WHERE {where_str}
     WITH
@@ -91,10 +85,10 @@ async def build_subquery_filter(
         {branch_level_str} AS branch_level,
         {froms_str} AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active{with_extra}
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, {node_alias}{with_extra}])) AS latest_node_details
     WHERE {is_active_filter}
-    WITH latest_node_details[1] AS {node_alias}{final_with_extra}
+    WITH latest_node_details[1] AS {prefix}{final_with_extra}
     RETURN {to_return}
     """
     return query, params, prefix
@@ -110,10 +104,8 @@ async def build_subquery_order(
     branch: Branch = None,
     subquery_idx: int = 1,
     result_prefix: str | None = None,
-    support_profiles: bool = False,
     extra_tail_properties: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
-    support_profiles = support_profiles and field and field.is_attribute and order_by in ("value", "values")
     params = {}
     prefix = result_prefix or f"order{subquery_idx}"
 
@@ -125,7 +117,6 @@ async def build_subquery_order(
         filter_value=None,
         branch=branch,
         param_prefix=prefix,
-        support_profiles=support_profiles,
     )
     params.update(field_params)
 
@@ -174,11 +165,10 @@ async def build_subquery_order(
         to_return_str_parts.append(f"CASE WHEN is_active = TRUE THEN {expression} ELSE NULL END AS {alias}")
     to_return_str = ", ".join(to_return_str_parts)
     query = f"""
-    WITH {node_alias}
     OPTIONAL MATCH path = {filter_str}
     WHERE {where_str}
     WITH {with_str_to_alias}
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, {with_str_alias}])) AS latest_node_details
     WITH {with_str_from_list}
     RETURN {to_return_str}

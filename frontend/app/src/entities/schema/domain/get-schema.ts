@@ -1,11 +1,12 @@
+import { store } from "@/shared/stores";
+
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { SchemaResult, resolveSchema } from "@/entities/schema/utils/resolve-schema";
-import { store } from "@/shared/stores";
+import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolve-schema";
 
 export const getSchema = (kind?: string | null): SchemaResult => {
   return resolveSchema(kind, {

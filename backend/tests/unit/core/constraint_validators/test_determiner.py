@@ -8,6 +8,7 @@ from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 
 @pytest.fixture
@@ -122,7 +123,7 @@ def person_cars_node_diff(
 
 
 class TestConstraintDeterminer:
-    async def test_no_node_diffs(self, car_person_schema, default_branch):
+    async def test_no_node_diffs(self, car_person_schema, default_branch) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
 
@@ -130,7 +131,9 @@ class TestConstraintDeterminer:
 
         assert constraints == []
 
-    async def test_one_attribute_update_node_diff(self, car_person_schema, default_branch, person_name_node_diff):
+    async def test_one_attribute_update_node_diff(
+        self, car_person_schema, default_branch, person_name_node_diff
+    ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
@@ -145,7 +148,7 @@ class TestConstraintDeterminer:
         assert len(relevant_constraints) == len(constraint_info_set)
         assert set(relevant_constraints) == constraint_info_set
 
-    async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff):
+    async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_cars_node_diff
@@ -155,10 +158,14 @@ class TestConstraintDeterminer:
         assert len(constraints) >= len(constraint_info_set)
         assert constraint_info_set < set(constraints)
 
-    async def test_node_property_constraints_included(self, car_person_schema, default_branch, person_name_node_diff):
+    async def test_node_property_constraints_included(
+        self, car_person_schema, default_branch, person_name_node_diff
+    ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["name", "height"]]
+        name_attr_schema = person_schema.get_attribute("name")
+        name_attr_schema.parameters.max_length = 30
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner", "color__value"]]
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
@@ -181,8 +188,18 @@ class TestConstraintDeterminer:
                 property_name="uniqueness_constraints",
             ),
         )
+        max_length_param_constraint_info = SchemaUpdateConstraintInfo(
+            constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
+            path=SchemaPath(
+                path_type=SchemaPathType.ATTRIBUTE,
+                schema_kind="TestPerson",
+                field_name="name",
+                property_name="parameters.max_length",
+            ),
+        )
         constraint_info_set.add(person_uniqueness_constraint_info)
         constraint_info_set.add(car_uniqueness_constraint_info)
+        constraint_info_set.add(max_length_param_constraint_info)
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 

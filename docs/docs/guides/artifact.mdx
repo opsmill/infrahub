@@ -1,27 +1,23 @@
 ---
-title: Creating an Artifact
+title: How to generate configuration artifacts from Jinja2 templates
 ---
 
 import VideoPlayer from '../../src/components/VideoPlayer';
 
-# Creating an artifact in Infrahub
+Generate configuration files and other artifacts by combining Infrahub data with templates. This guide shows you how to create artifacts that automatically update when your infrastructure data changes.
 
-:::note
+## Prerequisites
 
-This guide has the assumption that you followed the [Creating a Jinja Rendered File (Transform)](./jinja2-transform.mdx) or [Creating a Python transform](./python-transform.mdx) guide. This is a prerequisite.
+Before starting this guide, ensure you have:
 
-:::
+- A working Infrahub instance
+- An existing transformation (either [Jinja2](./jinja2-transform.mdx) or [Python](./python-transform.mdx))
+- Access to create and modify schemas
+- A Git repository connected to Infrahub
 
-The goal of this guide is to define an artifact for a Jinja rendered Transform or Python transform in Infrahub. We will be using the following steps.
+## Step 1: Enable artifact generation for your nodes
 
-1. Modifying the schema
-2. Creating a group and adding member nodes
-2. Creating an artifact definition
-3. Accessing the artifacts
-
-## Modifying the node schema
-
-Before we can generate an artifact for a node, we need to modify the schema. The node will need to inherit from the `CoreArtifactTarget` generic.
+To generate artifacts for specific nodes, modify your schema to inherit from `CoreArtifactTarget`.
 
 ```yaml
 ---
@@ -29,8 +25,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     inherit_from:
       - CoreArtifactTarget
     attributes:
@@ -45,34 +40,34 @@ nodes:
         optional: true
 ```
 
-We then have to load the modified schema definition into Infrahub.
+Load the modified schema into Infrahub:
 
 ```bash
 infrahubctl schema load /tmp/schema.yml
 ```
 
-## Creating a group and adding members
+## Step 2: Create a target group
 
-We need to create a group for every Artifact Definition that we will define. An artifact will be generated for every member that is part of that group.
+Create a Standard Group to define which objects will generate artifacts.
 
-Create a Standard Group with the name `DeviceGroup` and add `NetworkDevice` `switch1`, `switch2` and `switch3` as a member.
+1. Navigate to the Groups section in the web interface
+2. Create a new Standard Group named `DeviceGroup`
+3. Add your target devices (`switch1`, `switch2`, `switch3`) as members
 
-More information can be found in the [Creating a group guide](./groups.mdx).
+For detailed group creation steps, see [Creating a group](./groups.mdx).
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=ASGMKZVLCbY' light />
 </center>
 
-## Creating an artifact definition
+## Step 3: Define the artifact generation
 
-In the last step we need to define an Artifact definition, which groups together a [transformation](../topics/transformation.mdx) with a target group and forms the definition of the artifact. Artifact definitions can be created via the Web Interface, via GraphQL or via a [Git repository](../topics/repository.mdx). In this guide we will be using the Git repository.
-
-Add the following contents to the end of the `.infrahub.yml` file at the root of the `device_config_render` repository.
+Add an artifact definition to your repository's `.infrahub.yml` file:
 
 ```yaml
 artifact_definitions:
-  - name: "device_configuration"
-    artifact_name: "Device configuration file"
+  - name: "Device configuration file"
+    artifact_name: "device_configuration"
     parameters:
       name: "name__value"
     content_type: "text/plain"
@@ -80,17 +75,20 @@ artifact_definitions:
     transformation: "device_config_transform"
 ```
 
-This defines an artifact with the following properties:
+This configuration specifies:
 
-- **name**: a unique name for the artifact
-- **parameters**: the parameter to pass to the transformation GraphQL query, in this case this we will pass the name of the object (device) as the name parameter
-- **content type**: the content type for the resulting artifact
-- **targets**: the name of a group of which the members will be a target for this artifact
-- **transformation**: the Jinja2 or Python transformation that should be used
+- **name**: Machine identifier (no spaces)
+- **artifact_name**: Human-readable label
+- **parameters**: Values passed to the transformation query
+- **content_type**: MIME type of the generated artifact
+- **targets**: Group containing target objects
+- **transformation**: Name of the Jinja2 or Python transformation
 
-More details on the `.infrahub.yml` file format can be found in [.infrahub.yml topic](../topics/infrahub-yml.mdx).
+For complete `.infrahub.yml` syntax, see [.infrahub.yml reference](../topics/infrahub-yml.mdx).
 
-Commit the changes to the repository and push them to the Git server
+## Step 4: Deploy the artifact definition
+
+Commit and push your changes to activate the artifact generation:
 
 ```shell
 git add .
@@ -98,20 +96,74 @@ git commit -m "add device_configuration artifact definition"
 git push origin main
 ```
 
-The artifact definition will be created in the database, when the Task worker(s) notice the change in the Git repository. The `device_configuration` should now be visible in the Artifact Definition view in the web interface.
-![Artifact Definition](../media/guides/artifact/artifact_definition.png)
+The task workers will detect the repository change and create the artifact definition in the database.
 
-## Accessing the artifacts
+## Step 5: Verify artifact generation
 
-The artifacts are generated by the task-workers. You can find the resulting artifacts in the Artifact view under the **Object Management** menu in the web interface.
+Check that your artifacts are being generated correctly.
 
-![Artifact](../media/guides/artifact/artifact_view.png)
+### Through the web interface
 
-Open an artifact to get the result.
+1. Navigate to **Object Management** → **Artifacts**
+2. Locate your generated artifacts in the list
+
+![Artifact view](../media/guides/artifact/artifact_view.png)
+
+3. Click on an artifact to view its content
 
 ![Artifact detail](../media/guides/artifact/artifact_detail.png)
-You can download the artifact by clicking on the download button, or by using the REST API endpoint `http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/storage/object/<storage_id>`. The `Storage Id` can be copied from the menu next to the artifact name.
+
+### Through object details
+
+1. Navigate to a specific device (for example, `switch1`)
+2. Select the **Artifacts** tab
+3. View all artifacts generated for this object
+
+## Step 6: Access generated artifacts
+
+Download or retrieve your artifacts using these methods:
+
+### Web interface download
+
+Click the download button on any artifact detail page.
+
+### REST API access
+
+Download artifacts using the storage object endpoint (authentication required):
+
+```bash
+curl -H "X-INFRAHUB-KEY: <your-api-token>" \
+  http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/storage/object/<storage_identifier>
+```
+
+Copy the Artifact ID from the artifact menu:
 
 ![Artifact menu](../media/guides/artifact/artifact_menu.png)
 
-Alternatively we can access the artifact of an object, by navigating to the object detail view. Navigate to device `switch1`'s detail page, from the *Artifacts* tab you can access all the artifacts that were generated for this object.
+### Programmatic access
+
+Query artifacts through the GraphQL API for automation workflows.
+
+## Validation
+
+Confirm your artifact generation is working:
+
+- ✓ Artifact definitions appear in the web interface
+- ✓ Artifacts are generated for all group members
+- ✓ Generated content matches your template expectations
+- ✓ Artifacts update when source data changes
+
+## Troubleshooting
+
+If artifacts aren't generating:
+
+1. Check task worker logs for processing errors
+2. Verify the transformation name matches exactly
+3. Ensure group members inherit from `CoreArtifactTarget`
+4. Confirm the Git repository sync is working
+
+## Next steps
+
+- [Create complex transformations with Python](./python-transform.mdx)
+- [Use GraphQL queries in transformations](../topics/transformation.mdx)
+- [Automate artifact deployment with CI/CD](../topics/repository.mdx)

@@ -1,6 +1,7 @@
-import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
-import { classNames } from "@/shared/utils/common";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
+
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
+import { classNames } from "@/shared/utils/common";
 
 interface ProgressBarItemProps extends ProgressPrimitive.ProgressIndicatorProps {
   value: number;
@@ -18,7 +19,7 @@ const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgress
   return (
     <ProgressPrimitive.Root
       className={classNames(
-        "h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/10 flex",
+        "flex h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/10",
         className
       )}
       {...props}

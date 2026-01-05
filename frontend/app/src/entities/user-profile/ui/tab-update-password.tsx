@@ -1,11 +1,13 @@
-import { UPDATE_ACCOUNT_PASSWORD } from "@/entities/user-profile/api/updateAccountPassword";
+import { toast } from "react-toastify";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { toast } from "react-toastify";
+
+import { UPDATE_ACCOUNT_PASSWORD } from "@/entities/user-profile/api/updateAccountPassword";
 
 type UpdatePasswordFormData = {
   newPassword: string;
@@ -28,7 +30,7 @@ export default function TabUpdatePassword() {
   return (
     <main className="p-2">
       <Card className="m-auto w-full max-w-md">
-        <h3 className="leading-6 font-semibold mb-4">Update your password</h3>
+        <h3 className="mb-4 font-semibold leading-6">Update your password</h3>
 
         <Form
           onSubmit={async (formData) => {

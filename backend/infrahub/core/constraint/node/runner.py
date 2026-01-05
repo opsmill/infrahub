@@ -26,7 +26,7 @@ class NodeConstraintRunner:
     async def check(
         self, node: Node, field_filters: list[str] | None = None, skip_uniqueness_check: bool = False
     ) -> None:
-        async with self.db.start_session() as db:
+        async with self.db.start_session(read_only=False) as db:
             await node.resolve_relationships(db=db)
 
             if not skip_uniqueness_check:
@@ -38,4 +38,6 @@ class NodeConstraintRunner:
                 relationship_manager: RelationshipManager = getattr(node, relationship_name)
                 await relationship_manager.fetch_relationship_ids(db=db, force_refresh=True)
                 for relationship_constraint in self.relationship_manager_constraints:
-                    await relationship_constraint.check(relm=relationship_manager, node_schema=node.get_schema())
+                    await relationship_constraint.check(
+                        relm=relationship_manager, node_schema=node.get_schema(), node=node
+                    )

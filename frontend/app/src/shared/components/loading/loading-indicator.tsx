@@ -9,7 +9,7 @@ export interface LoadingIndicatorProps
 export function LoadingIndicator({ className, message, ...props }: LoadingIndicatorProps) {
   return (
     <div
-      className={classNames("flex gap-2 items-center justify-center text-gray-500", className)}
+      className={classNames("flex items-center justify-center gap-2 text-gray-500", className)}
       {...props}
     >
       <Spinner />

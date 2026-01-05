@@ -1,18 +1,22 @@
-import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { NodeObject } from "@/entities/nodes/types";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export type GetObjectParams = ContextParams & {
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
+import type { ContextParams } from "@/shared/api/types";
+
+import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
+import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+
+export interface GetObjectParams extends ContextParams {
   objectSchema: ModelSchema;
   objectId: string;
   getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
   getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
-};
+  relationshipFragment?: Record<string, string>;
+}
 
 export type GetObject = (params: GetObjectParams) => Promise<NodeObject>;
 
@@ -21,8 +25,9 @@ export const getObject: GetObject = async ({
   atDate,
   objectSchema,
   objectId,
-  getAttributesVisible = (attributes) => attributes, // all attributes are visible by default on detailed view
+  getAttributesVisible = getAttributesVisibleInDetailedView,
   getRelationshipsVisible = getRelationshipsVisibleInDetailedView,
+  relationshipFragment,
 }) => {
   const attributesVisible = getAttributesVisible(objectSchema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisible(objectSchema.relationships ?? []);
@@ -42,7 +47,10 @@ export const getObject: GetObject = async ({
             display_label: true,
             hfid: true,
             ...addAttributesToRequest(attributesVisible, { withMetadata: true }),
-            ...addRelationshipsToRequest(relationshipsVisible, { withMetadata: true }),
+            ...addRelationshipsToRequest(relationshipsVisible, {
+              relationshipFragment,
+              withMetadata: true,
+            }),
           },
         },
       },

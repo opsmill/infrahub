@@ -1,3 +1,14 @@
+import { useSetAtom } from "jotai";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import * as R from "remeda";
+
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { sortByName, sortByOrderWeight } from "@/shared/utils/common";
+
 import { useGetSchemaHash } from "@/entities/schema/domain/get-schema-hash.query";
 import { useLoadSchema } from "@/entities/schema/domain/load-schema.query";
 import {
@@ -9,15 +20,6 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { tokenSchema } from "@/entities/user-profile/ui/token-schema";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { sortByName, sortByOrderWeight } from "@/shared/utils/common";
-import { useSetAtom } from "jotai";
-import * as R from "ramda";
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
 
 export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: schemaHash, error: errorHash } = useGetSchemaHash();
@@ -39,7 +41,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
     if (!schemaData) return;
     try {
       const hash = schemaData.main;
-      const nodeSchemas = sortByName([...(schemaData.nodes ?? []), tokenSchema]);
+      const nodeSchemas = sortByName(schemaData.nodes ?? []);
       const genericSchemas = sortByName(schemaData.generics || []);
       const profileSchemas = sortByName(schemaData.profiles || []);
       const templateSchemas = sortByName(schemaData.templates || []);
@@ -55,7 +57,7 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
         ...genericSchemas.map((s) => s.kind),
         ...profileSchemas.map((s) => s.kind),
         ...templateSchemas.map((s) => s.kind),
-      ];
+      ] as Array<string>;
 
       const schemaNames = [
         ...nodeSchemas.map((s) => s.name),
@@ -63,12 +65,11 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
         ...profileSchemas.map((s) => s.name),
         ...templateSchemas.map((s) => s.name),
       ];
-      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = {
-        ...R.fromPairs(schemaKindNameTuples),
+        ...R.fromEntries(R.zip(schemaKinds, schemaNames)),
         SchemaAttribute: "Attribute",
         SchemaRelationship: "Relationship",
-        SchemaNode: "Node",
+        NodeKind: "Node",
       };
 
       const schemaLabels = [
@@ -76,9 +77,8 @@ export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => 
         ...genericSchemas.map((s) => s.label),
         ...profileSchemas.map((s) => s.label),
         ...templateSchemas.map((s) => s.label),
-      ];
-      const schemaKindLabelTuples = R.zip(schemaKinds, schemaLabels);
-      const schemaKindLabelMap = R.fromPairs(schemaKindLabelTuples);
+      ] as Array<string>;
+      const schemaKindLabelMap = R.fromEntries(R.zip(schemaKinds, schemaLabels));
 
       setLastLoadedSchemaHash(hash);
       setGenericSchemas(genericSchemas);

@@ -6,5 +6,5 @@ from .parent_node_adder import DiffParentNodeAdderDependency
 
 class DiffDeserializerDependency(DependencyBuilder[EnrichedDiffDeserializer]):
     @classmethod
-    def build(cls, context: DependencyBuilderContext) -> EnrichedDiffDeserializer:  # noqa: ARG003
+    def build(cls, context: DependencyBuilderContext) -> EnrichedDiffDeserializer:
         return EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdderDependency.build(context=context))

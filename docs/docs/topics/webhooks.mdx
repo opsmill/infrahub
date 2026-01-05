@@ -12,7 +12,7 @@ The **Webhook System** enables external notifications based on the [Events](./ev
 
 ## Configuring webhooks
 
-Infrahub support two different types of webhooks:
+Infrahub supports two different types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint.
 - `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
@@ -20,6 +20,10 @@ Infrahub support two different types of webhooks:
 :::note
 
 Custom webhooks might be useful in situations where the endpoint needs a specific payload to be successful. A use-case that might need this would be triggering external actions in platforms like GitHub and GitLab.
+
+The data passed into a normal Python transformation will typically be the result of the GraphQL query, but webhooks execute the transform by passing in the webhook data instead.
+
+Currently, it is **required** to define a GraphQL query to be defined on a transform regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
 
 :::
 

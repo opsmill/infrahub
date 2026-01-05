@@ -1,18 +1,24 @@
-import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
-import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
+import { Icon } from "@iconify-icon/react";
+
+import type { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+import { RELATIONSHIP_VIEW_BLACKLIST } from "@/shared/config/constants";
+
+import {
+  type AttributeType,
+  ObjectAttributeValue,
+} from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
@@ -28,7 +34,7 @@ const GraphqlQueryDetailsCard = ({
   permission,
 }: GraphqlQueryDetailsCardProps) => {
   return (
-    <Card className="p-0 overflow-x-hidden">
+    <Card className="overflow-x-hidden p-0">
       <GraphqlQueryDetailsTitle
         data={data}
         schema={schema}
@@ -58,7 +64,7 @@ const GraphqlQueryDetailsTitle = ({
         <Badge variant="blue">{schema.namespace}</Badge>
 
         <span>
-          {schema.name} - {data.display_label}
+          {schema.name} - {getNodeLabel(data)}
         </span>
 
         <ObjectEditSlideOverTrigger
@@ -138,7 +144,7 @@ const GraphqlQueryPropertyList = ({
             value: relationshipData?.map(({ node, properties }: any) => (
               <div key={node.id} className="flex items-center justify-between">
                 <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
-                  {node?.display_label}
+                  {node ? getNodeLabel(node) : ""}
                 </Link>
 
                 {properties.is_protected && <ProtectedIcon />}
@@ -167,7 +173,7 @@ const GraphqlQueryPropertyList = ({
           value: relationshipData && (
             <div className="flex items-center justify-between">
               <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
-                {relationshipData?.display_label}
+                {relationshipData ? getNodeLabel(relationshipData) : ""}
               </Link>
 
               <div className="flex items-center">

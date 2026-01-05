@@ -3,13 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
-from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
 
+from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
+from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import (
@@ -65,11 +69,20 @@ class BranchCreate(Mutation):
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
+        if data.origin_branch and data.origin_branch != registry.default_branch:
+            raise ValueError(f"origin_branch must be '{registry.default_branch}'")
+
         graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
         model = BranchCreateModel(**data)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        try:
+            await Branch.get_by_name(db=graphql_context.db, name=model.name)
+            raise ValidationError(f"The branch {model.name} already exists")
+        except BranchNotFoundError:
+            pass
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
@@ -84,7 +97,7 @@ class BranchCreate(Mutation):
 
         # Retrieve created branch
         obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
 
@@ -202,7 +215,7 @@ class BranchRebase(Mutation):
             )
             task = {"id": workflow.id}
 
-        fields = await extract_fields_first_node(info=info)
+        fields = extract_graphql_fields(info=info)
         ok = True
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
@@ -245,7 +258,7 @@ class BranchValidate(Mutation):
             )
             task = {"id": workflow.id}
 
-        fields = await extract_fields_first_node(info=info)
+        fields = extract_graphql_fields(info=info)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
 
@@ -274,6 +287,14 @@ class BranchMerge(Mutation):
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
+        await verify_branch_merge_mutation_allowed(
+            db=graphql_context.db, account_session=graphql_context.active_account_session
+        )
+
+        obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
+        if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+            raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
+
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
                 workflow=BRANCH_MERGE_MUTATION,
@@ -291,7 +312,7 @@ class BranchMerge(Mutation):
         # Pull the latest information about the branch from the database directly
         obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = extract_graphql_fields(info=info)
         ok = True
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)

@@ -1,9 +1,12 @@
-import { DiffThread } from "@/entities/diff/node-diff/thread";
-import { DiffRelationship, DiffStatus } from "@/entities/diff/node-diff/types";
-import { DiffRow } from "@/entities/diff/node-diff/utils";
-import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
+
+import { Badge } from "@/shared/components/ui/badge";
+
+import { DiffThread } from "@/entities/diff/node-diff/thread";
+import type { DiffRelationship, DiffStatus } from "@/entities/diff/node-diff/types";
+import { DiffRow } from "@/entities/diff/node-diff/utils";
+
 import { DiffNodeRelationshipElement } from "./node-relationship-element";
 
 type DiffNodeRelationshipProps = {
@@ -22,7 +25,7 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
       status={status}
       hasConflicts={relationship.contains_conflict}
       title={
-        <div className="flex justify-between items-center pr-2">
+        <div className="flex items-center justify-between pr-2">
           <div className="py-2 font-semibold">{relationship.label}</div>
 
           {!branchName && relationship.path_identifier && (
@@ -53,7 +56,7 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
         </div>
       }
     >
-      <div className="divide-y border-t border-gray-200 divide-gray-200">
+      <div className="divide-y divide-gray-200 border-gray-200 border-t">
         {relationship.elements.map((element, index: number) => (
           <DiffNodeRelationshipElement key={index} element={element} status={status} />
         ))}

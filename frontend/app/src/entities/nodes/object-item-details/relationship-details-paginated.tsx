@@ -1,13 +1,11 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
-import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
-import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { getPermission } from "@/entities/permission/utils";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { gql } from "@apollo/client";
+import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
+import { useAtom, useAtomValue } from "jotai";
+import { Fragment, useState } from "react";
+import { Link, useParams } from "react-router";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -22,13 +20,19 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link as StyledLink } from "@/shared/components/ui/link";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Icon } from "@iconify-icon/react";
-import { useAtom, useAtomValue } from "jotai";
-import { Fragment, useState } from "react";
-import { Link, useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
+import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getPermission } from "@/entities/permission/utils";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
@@ -54,7 +58,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     onDeleteRelationship,
   } = props;
 
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
 
   const schemaList = useAtomValue(nodeSchemasAtom);
   const branch = useAtomValue(currentBranchAtom);
@@ -74,7 +78,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       const relatedObject = relationship.node[column.name]?.node;
       if (!relatedObject) return true;
 
-      return relatedObject.id !== objectid;
+      return relatedObject.id !== objectId;
     });
   });
 
@@ -123,7 +127,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     const mutationString = updateObjectWithId({
       kind: parentSchema?.kind,
       data: stringifyWithoutQuotes({
-        id: objectid,
+        id: objectId,
         [relationshipSchema.name]: newList,
       }),
     });
@@ -177,7 +181,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         relationshipsData.node?.id
                       )}
                     >
-                      {relationshipsData.node?.display_label}
+                      {relationshipsData.node ? getNodeLabel(relationshipsData.node) : "-"}
                     </StyledLink>
                   ) : (
                     "-"
@@ -191,7 +195,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         owner={relationshipsData.properties.owner}
                         isProtected={relationshipsData.properties.is_protected}
                         header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+                          <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                             <div className="font-semibold">{relationshipSchema.label}</div>
 
                             <ButtonWithTooltip
@@ -219,11 +223,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   )}
 
                   {relationshipsData.properties?.is_protected && (
-                    <LockClosedIcon className="w-4 h-4" />
+                    <LockClosedIcon className="h-4 w-4" />
                   )}
 
                   {relationshipsData.properties?.is_visible === false && (
-                    <EyeSlashIcon className="w-4 h-4" />
+                    <EyeSlashIcon className="h-4 w-4" />
                   )}
                 </>
               }
@@ -231,9 +235,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           )}
 
           {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
-            <div className="flex-1 shadow-xs ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-              <table className="table-auto border-spacing-0 w-full" cellPadding="0">
-                <thead className="bg-gray-50 text-left border-b border-gray-300">
+            <div className="flex-1 overflow-x-auto shadow-xs ring-1 ring-custom-black ring-opacity-5">
+              <table className="w-full table-auto border-spacing-0" cellPadding="0">
+                <thead className="border-gray-300 border-b bg-gray-50 text-left">
                   <tr>
                     {newColumns?.map((column) => (
                       <th key={column.name} scope="col" className="h-9 font-semibold">
@@ -249,7 +253,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
-                      className="border-b border-gray-200 hover:bg-gray-50"
+                      className="border-gray-200 border-b hover:bg-gray-50"
                       data-testid="relationship-row"
                     >
                       {newColumns?.map((column) => (
@@ -266,7 +270,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             owner={properties.owner}
                             isProtected={properties.is_protected}
                             header={
-                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b border-gray-200">
+                              <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                                 <div className="font-semibold">{relationshipSchema.label}</div>
                               </div>
                             }
@@ -319,9 +323,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 <dl className="flex flex-col">
                   {relationshipsData?.length === 0 && "-"}
                   {relationshipsData?.map(({ node, properties }: any) => (
-                    <dd className="text-gray-900 underline flex items-center" key={node.id}>
+                    <dd className="flex items-center text-gray-900 underline" key={node.id}>
                       <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
-                        {node.display_label}
+                        {getNodeLabel(node)}
                       </Link>
 
                       {node && (
@@ -335,9 +339,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </div>
                       )}
 
-                      {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
+                      {properties.is_protected && <LockClosedIcon className="h-4 w-4" />}
 
-                      {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
+                      {properties.is_visible === false && <EyeSlashIcon className="h-4 w-4" />}
                     </dd>
                   ))}
                 </dl>
@@ -353,10 +357,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           description={
             <>
               Are you sure you want to remove the association between{" "}
-              <b>`{props.parentNode.display_label}`</b> and{" "}
-              <b>`{relatedRowToDelete.display_label}`</b>? The{" "}
+              <b>`{getNodeLabel(props.parentNode)}`</b> and{" "}
+              <b>`{getNodeLabel(relatedRowToDelete)}`</b>? The{" "}
               <b>`{relatedRowToDelete.__typename.replace(regex, "")}`</b>{" "}
-              <b>`{relatedRowToDelete.display_label}`</b> won&apos;t be deleted in the process.
+              <b>`{getNodeLabel(relatedRowToDelete)}`</b> won&apos;t be deleted in the process.
             </>
           }
           onCancel={() => setRelatedRowToDelete(undefined)}
@@ -378,7 +382,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               <SlideOverTitle
                 schema={parentSchema}
                 currentObjectLabel={relationshipSchema.label}
-                title={`Edit ${relatedObjectToEdit?.display_label}`}
+                title={`Edit ${relatedObjectToEdit ? getNodeLabel(relatedObjectToEdit) : ""}`}
                 subtitle="Update the details of the related object"
               />
             )
@@ -396,7 +400,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 refetch();
               }
             }}
-            objectid={relatedObjectToEdit.id}
+            objectId={relatedObjectToEdit.id}
             objectname={relatedObjectToEdit.__typename}
           />
         </SlideOver>

@@ -44,12 +44,17 @@ env:
   DOCKERFILE: "development/Dockerfile"
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   build:
+    needs: prepare-environment
+    env:
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     runs-on:
       group: huge-runners
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
           submodules: true
@@ -81,3 +86,5 @@ jobs:
           platforms: ${{ inputs.platforms }}
           tags: ${{ inputs.tags }}
           labels: ${{ inputs.labels }}
+          build-args: |
+            UV_VER=${{ env.UV_VERSION }}

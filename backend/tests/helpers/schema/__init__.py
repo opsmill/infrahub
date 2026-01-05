@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 
 from .car import CAR
 from .child import CHILD
@@ -13,12 +13,14 @@ from .device import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP
 from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
+from .snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from .thing import THING
 from .ticket import TICKET
 from .tshirt import TSHIRT
 from .widget import WIDGET
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -27,6 +29,7 @@ DEVICE_SCHEMA = SchemaRoot(
     generics=[INTERFACE, INTERFACE_HOLDER], nodes=[DEVICE, PHYSICAL_INTERFACE, VIRTUAL_INTERFACE, SFP]
 )
 LOCATION_SCHEMA = SchemaRoot(generics=[LOCATION], nodes=[CONTINENT, COUNTRY, SITE])
+SNOW_TICKET_SCHEMA = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
 
 
 async def load_schema(
@@ -41,7 +44,26 @@ async def load_schema(
     branch = registry.get_branch_from_registry(branch_name)
     branch.update_schema_hash()
     await branch.save(db=db)
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
+
+
+test_generics: list[GenericSchema] = [SNOW_TASK, INTERFACE, INTERFACE_HOLDER]
+test_nodes: list[NodeSchema] = [
+    CAR,
+    MANUFACTURER,
+    PERSON,
+    SNOW_INCIDENT,
+    SNOW_REQUEST,
+    DEVICE,
+    PHYSICAL_INTERFACE,
+    VIRTUAL_INTERFACE,
+    SFP,
+]
+
+test_models: dict[str, Any] = {
+    "generics": [item.to_dict() for item in test_generics],
+    "nodes": [item.to_dict() for item in test_nodes],
+}
 
 
 __all__ = [

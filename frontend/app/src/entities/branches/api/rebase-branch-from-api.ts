@@ -1,5 +1,6 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 export const BRANCH_REBASE = gql`
   mutation BRANCH_REBASE($name: String, $waitUntilCompletion: Boolean!) {

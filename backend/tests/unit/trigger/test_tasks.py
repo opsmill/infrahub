@@ -3,7 +3,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.trigger.models import EventTrigger, TriggerType
-from infrahub.trigger.setup import setup_triggers
+from infrahub.trigger.setup import gather_all_automations, setup_triggers
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 
 
@@ -15,7 +15,7 @@ async def prefect_client(prefect_test_fixture):
 
 @pytest.fixture
 async def cleanup_automation(prefect_client: PrefectClient) -> None:
-    automations = await prefect_client.read_automations()
+    automations = await gather_all_automations(client=prefect_client)
     for automation in automations:
         await prefect_client.delete_automation(automation.id)
 
@@ -26,7 +26,7 @@ async def init_prefect(prefect_client: PrefectClient) -> None:
     await setup_deployments(client=prefect_client)
 
 
-async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, cleanup_automation):
+async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, cleanup_automation) -> None:
     report = await setup_triggers(client=prefect_client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN)
 
     assert len(report.deleted) == 0
@@ -34,7 +34,7 @@ async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, clean
     assert len(report.unchanged) == 0
     assert len(report.created) == len(builtin_triggers)
 
-    automations = await prefect_client.read_automations()
+    automations = await gather_all_automations(client=prefect_client)
     assert len(automations) == len(builtin_triggers)
 
     # Update 1 Trigger and remove 2 to ensure that setup_triggers is working as expected
@@ -48,7 +48,7 @@ async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, clean
     assert len(report_after.unchanged) == len(builtin_triggers) - 3
     assert len(report_after.created) == 0
 
-    automations = await prefect_client.read_automations()
+    automations = await gather_all_automations(client=prefect_client)
     assert len(automations) == len(builtin_triggers[:-2])
 
     # Ensure force_update is working properly

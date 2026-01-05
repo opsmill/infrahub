@@ -22,7 +22,7 @@ async def test_query_success(
     person_john_main,
     min_count,
     max_count,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.min_count = min_count
@@ -46,7 +46,7 @@ async def test_query_failure_cardinality_one(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.max_count = 1
@@ -79,7 +79,7 @@ async def test_query_success_cardinality_one(
     default_branch: Branch,
     car_accord_main: Node,
     car_camry_main: Node,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.cardinality = RelationshipCardinality.ONE
@@ -106,7 +106,7 @@ async def test_query_success_cardinality_many(
     default_branch: Branch,
     car_accord_main: Node,
     car_camry_main: Node,
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.cardinality = RelationshipCardinality.MANY
@@ -140,7 +140,7 @@ async def test_query_failure(
     person_john_main,
     min_count,
     max_count,
-):
+) -> None:
     car_schema = registry.schema.get(name="TestPerson")
     cars_rel = car_schema.get_relationship(name="cars")
     cars_rel.min_count = min_count
@@ -178,8 +178,8 @@ async def test_query_update_on_branch_failure(
     car_camry_main: Node,
     car_yaris_main: Node,
     person_john_main,
-):
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db)
     person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=default_branch)
     car = await Node.init(db=db, schema="TestCar", branch=branch)
     await car.new(db=db, name="NewCar", nbr_seats=4, is_electric=True, owner=person_john)
@@ -233,8 +233,8 @@ async def test_query_update_on_branch_success(
     car_camry_main: Node,
     car_yaris_main: Node,
     person_john_main,
-):
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db)
     person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     await person_john.cars.update(db=db, data=[car_accord_main.id, car_volt_main.id])
     await person_john.save(db=db)
@@ -266,8 +266,8 @@ async def test_query_delete_on_branch_failure(
     car_yaris_main: Node,
     person_john_main,
     person_jane_main,
-):
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db)
     old_car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     await old_car.delete(db=db)
 
@@ -330,8 +330,8 @@ async def test_query_delete_on_branch_success(
     car_camry_main: Node,
     car_yaris_main: Node,
     person_john_main,
-):
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+) -> None:
+    branch = await create_branch(branch_name="branch2", db=db)
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     await car.delete(db=db)
 
@@ -352,7 +352,9 @@ async def test_query_delete_on_branch_success(
     assert len(all_paths) == 0
 
 
-async def test_hierarchical_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
+async def test_hierarchical_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
+) -> None:
     site_schema = registry.schema.get(name="LocationSite", duplicate=False)
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="LocationSite", field_name="parent")
@@ -367,9 +369,11 @@ async def test_hierarchical_success(db: InfrahubDatabase, default_branch: Branch
     assert len(all_paths) == 0
 
 
-async def test_hierarchical_failure(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
+async def test_hierarchical_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
+) -> None:
     paris_site = hierarchical_location_data_simple["paris"]
-    branch = await create_branch(branch_name=str("branch2"), db=db)
+    branch = await create_branch(branch_name="branch2", db=db)
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="LocationSite", field_name="children")
     site_schema = registry.schema.get(name="LocationSite", branch=branch, duplicate=False)
 
@@ -444,7 +448,7 @@ async def test_validator(
     car_accord_main,
     car_prius_main,
     car_volt_main,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     cars_attr = person_schema.get_relationship(name="cars")
     cars_attr.min_count = 1
@@ -487,7 +491,7 @@ async def test_validator_cardinality_failure(
     car_prius_main,
     car_volt_main,
     car_yaris_main,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     cars_attr = person_schema.get_relationship(name="cars")
     cars_attr.cardinality = RelationshipCardinality.ONE

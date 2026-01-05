@@ -1,8 +1,10 @@
 import "@/app/styles/markdown.css";
-import { classNames } from "@/shared/utils/common";
-import { FC } from "react";
+
+import type { FC } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import { classNames } from "@/shared/utils/common";
 
 type MarkdownRenderProps = {
   className?: string;

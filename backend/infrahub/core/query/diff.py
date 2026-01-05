@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Generator
 
 from infrahub import config
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -99,6 +100,17 @@ class DiffCountChanges(Query):
         return branch_count_map
 
 
+async def get_num_changes_in_time_range_by_branch(
+    branch_names: list[str],
+    from_time: Timestamp,
+    to_time: Timestamp,
+    db: InfrahubDatabase,
+) -> dict[str, int]:
+    query = await DiffCountChanges.init(db=db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
+    await query.execute(db=db)
+    return query.get_num_changes_by_branch()
+
+
 class DiffCalculationQuery(DiffQuery):
     type = QueryType.READ
     insert_limit = False
@@ -120,20 +132,20 @@ class DiffCalculationQuery(DiffQuery):
 
     previous_base_path_query = """
 WITH DISTINCT diff_path AS diff_path, has_more_data
-CALL {
-    WITH diff_path
-    WITH diff_path, nodes(diff_path) AS d_nodes, relationships(diff_path) AS d_rels
-    WITH diff_path, d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
+CALL (diff_path) {
+    WITH nodes(diff_path) AS d_nodes, relationships(diff_path) AS d_rels
+    WITH d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
     // -------------------------------------
     // add base branch paths before branched_from, if they exist
     // -------------------------------------
     WITH n, attr_rel, r_node, r_prop
+    // 'base_n' instead of 'n' here to get previous value for node with a migrated kind/inheritance
     OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF {branch: $base_branch_name}]
-        -(n)-[base_r_node {branch: $base_branch_name}]
+        -(base_n {uuid: n.uuid})-[base_r_node {branch: $base_branch_name}]
         -(attr_rel)-[base_r_prop {branch: $base_branch_name}]->(base_prop)
     WHERE type(base_r_node) = type(r_node)
     AND type(base_r_prop) = type(r_prop)
-    AND [%(id_func)s(n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
+    AND [%(id_func)s(base_n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
     AND all(
         r in relationships(latest_base_path)
         WHERE r.from < $branch_from_time
@@ -143,11 +155,18 @@ CALL {
     // the migration leaves two nodes with the same UUID linked to the same Relationship
     // ------------------------
     AND (
-        n.uuid IS NULL OR base_prop.uuid IS NULL OR n.uuid <> base_prop.uuid
+        base_n.uuid IS NULL OR base_prop.uuid IS NULL OR base_n.uuid <> base_prop.uuid
         OR type(base_r_node) <> "IS_RELATED" OR type(base_r_prop) <> "IS_RELATED"
     )
     WITH latest_base_path, base_r_root, base_r_node, base_r_prop
-    ORDER BY base_r_prop.from DESC, base_r_node.from DESC, base_r_root.from DESC
+    // status="active" ordering is for tie-breaking edges added and deleted at the same time, we want the active one
+    ORDER BY
+        base_r_prop.from DESC,
+        base_r_prop.status = "active" DESC,
+        base_r_node.from DESC,
+        base_r_node.status = "active" DESC,
+        base_r_root.from DESC,
+        base_r_root.status = "active" DESC
     LIMIT 1
     RETURN latest_base_path
 }
@@ -156,10 +175,9 @@ CALL {
 WITH diff_path, latest_base_path, has_more_data
 UNWIND [diff_path, latest_base_path] AS penultimate_path
 WITH DISTINCT penultimate_path, has_more_data
-CALL {
-    WITH penultimate_path
-    WITH penultimate_path, nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
-    WITH penultimate_path, d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
+CALL (penultimate_path) {
+    WITH nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
+    WITH d_rels[0] AS r_root, d_nodes[1] AS n, d_rels[1] AS r_node, d_nodes[2] AS attr_rel, d_rels[2] AS r_prop
     // -------------------------------------
     // Add peer-side of any relationships to get the peer's ID
     // -------------------------------------
@@ -172,8 +190,6 @@ CALL {
     AND %(id_func)s(peer_r_node) = %(id_func)s(r_node)
     AND [%(id_func)s(n), type(peer_r_node)] <> [%(id_func)s(peer), type(r_peer)]
     AND r_peer.from < $to_time
-    // filter out paths where an earlier from time follows a later from time
-    AND peer_r_node.from <= r_peer.from
     // filter out paths where a base branch edge follows a branch edge
     AND (peer_r_node.branch = $base_branch_name OR r_peer.branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
@@ -199,6 +215,13 @@ WITH reduce(
     diff_rel_paths = [], item IN [penultimate_path, peer_path] |
     CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
 ) AS diff_rel_paths, has_more_data
+// ------------------------
+// make sure we still include has_more_data if diff_rel_paths is empty
+// ------------------------
+WITH CASE
+    WHEN diff_rel_paths = [] THEN [NULL]
+    ELSE diff_rel_paths
+END AS diff_rel_paths, has_more_data
     """
 
     def get_previous_base_path_query(self, db: InfrahubDatabase) -> str:
@@ -277,21 +300,22 @@ WITH p, q, diff_rel, CASE
     WHEN $new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
-ORDER BY p.uuid DESC
-SKIP $offset
-LIMIT $limit
+ORDER BY %(id_func)s(p) DESC
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([p, q, diff_rel, row_from_time]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
+WITH limited_results + [[NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS p, one_result[1] AS q, one_result[2] AS diff_rel, one_result[3] AS row_from_time, has_more_data
 // -------------------------------------
 // Exclude nodes added then removed on branch within timeframe
 // -------------------------------------
-CALL {
-    WITH p, q, row_from_time
+CALL (p, q, row_from_time) {
     OPTIONAL MATCH (q)<-[is_part_of:IS_PART_OF {branch: $branch_name}]-(p)
     WHERE row_from_time <= is_part_of.from < $to_time
     WITH DISTINCT is_part_of.status AS rel_status
@@ -303,8 +327,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each node
 // -------------------------------------
-CALL {
-    WITH p, q, diff_rel, row_from_time
+CALL (p, q, diff_rel, row_from_time) {
     OPTIONAL MATCH path = (
         (q)<-[top_diff_rel:IS_PART_OF]-(p)-[r_node]-(node)-[r_prop]-(prop)
     )
@@ -314,15 +337,15 @@ CALL {
     AND node.branch_support IN [$branch_aware, $branch_agnostic]
     AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
-    AND ALL(
-        r in [r_node, r_prop]
-        WHERE r.from < $to_time AND r.branch = top_diff_rel.branch
-    )
     AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
-    AND top_diff_rel.status = r_node.status
-    AND top_diff_rel.status = r_prop.status
+    AND r_node.from < $to_time
+    AND r_node.branch = top_diff_rel.branch
+    AND r_node.status = top_diff_rel.status
+    AND r_prop.from < $to_time
+    AND r_prop.branch = top_diff_rel.branch
+    AND r_prop.status = top_diff_rel.status
     // ------------------------
     // special handling for nodes that had their kind updated,
     // the migration leaves two nodes with the same UUID linked to the same Relationship
@@ -331,12 +354,11 @@ CALL {
         p.uuid IS NULL OR prop.uuid IS NULL OR p.uuid <> prop.uuid
         OR type(r_node) <> "IS_RELATED" OR type(r_prop) <> "IS_RELATED"
     )
-    WITH path, p, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
+    WITH path, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
     // -------------------------------------
     // Exclude attributes/relationships added then removed on branch within timeframe
     // -------------------------------------
-    CALL {
-        WITH p, rel_type, node, row_from_time
+    CALL (p, rel_type, node, row_from_time) {
         OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(node)
         WHERE row_from_time <= rel_to_check.from < $to_time
         AND type(rel_to_check) = rel_type
@@ -450,14 +472,16 @@ AND (
 // Limit the number of paths
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q
-ORDER BY r_root.from, p.uuid, q.uuid, diff_rel.branch, diff_rel.from
-SKIP $offset
-LIMIT $limit
+ORDER BY r_root.from, p.uuid, q.uuid, q.name, diff_rel.branch, diff_rel.from
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([root, r_root, p, diff_rel, q]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
+WITH limited_results + [[NULL, NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS root, one_result[1] AS r_root, one_result[2] AS p, one_result[3] AS diff_rel, one_result[4] AS q, has_more_data
 // -------------------------------------
@@ -475,8 +499,7 @@ END AS row_from_time
 // Exclude attributes/relationship under nodes deleted on this branch in the timeframe
 // because those were all handled above at the node level
 // -------------------------------------
-CALL {
-    WITH root, p, row_from_time
+CALL (root, p, row_from_time) {
     OPTIONAL MATCH (root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(p)
     WHERE row_from_time <= r_root_deleted.from < $to_time
     WITH r_root_deleted
@@ -490,8 +513,7 @@ WHERE node_deleted = FALSE
 // Exclude relationships added and deleted within the timeframe
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q, has_more_data, row_from_time, type(diff_rel) AS rel_type
-CALL {
-    WITH p, rel_type, q, row_from_time
+CALL (p, rel_type, q, row_from_time) {
     OPTIONAL MATCH (p)-[rel_to_check {branch: $branch_name}]-(q)
     WHERE row_from_time <= rel_to_check.from < $to_time
     AND type(rel_to_check) = rel_type
@@ -504,8 +526,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each attribute/relationship
 // -------------------------------------
-CALL {
-    WITH root, r_root, p, diff_rel, q
+CALL (root, r_root, p, diff_rel, q) {
     OPTIONAL MATCH path = (
         (root:Root)<-[mid_r_root:IS_PART_OF]-(p)-[mid_diff_rel]-(q)-[r_prop]-(prop)
     )
@@ -540,8 +561,7 @@ CALL {
 // Exclude properties added and deleted within the timeframe
 // -------------------------------------
 WITH q, nodes(latest_prop_path)[3] AS prop, type(relationships(latest_prop_path)[2]) AS rel_type, latest_prop_path, has_more_data, row_from_time
-CALL {
-    WITH q, rel_type, prop, row_from_time
+CALL (q, rel_type, prop, row_from_time) {
     OPTIONAL MATCH (q)-[rel_to_check {branch: $branch_name}]-(prop)
     WHERE row_from_time <= rel_to_check.from < $to_time
     AND type(rel_to_check) = rel_type
@@ -625,8 +645,28 @@ AND (
         )
         // skip paths where nodes/attrs/rels are updated after $from_time, those are handled in other queries
         AND (
-            r_root.from <= $from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $from_time)
-            AND r_node.from <= $from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $from_time)
+            (
+                r_root.branch = diff_rel.branch
+                AND r_root.from <= $from_time
+                AND (r_root.to IS NULL OR r_root.to >= $to_time)
+            )
+            OR (
+                r_root.branch <> diff_rel.branch
+                AND r_root.from <= $from_time
+                AND (r_root.to IS NULL OR r_root.to >= $branch_from_time)
+            )
+        )
+        AND (
+            (
+                r_node.branch = diff_rel.branch
+                AND r_node.from <= $from_time
+                AND (r_node.to IS NULL OR r_node.to >= $to_time)
+            )
+            OR (
+                r_node.branch <> diff_rel.branch
+                AND r_node.from <= $from_time
+                AND (r_node.to IS NULL OR r_node.to >= $branch_from_time)
+            )
         )
     )
     // time-based filters for new nodes
@@ -642,8 +682,27 @@ AND (
         )
         // skip paths where nodes/attrs/rels are updated after $branch_from_time, those are handled in other queries
         AND (
-            r_root.from <= $branch_from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $branch_from_time)
-            AND r_node.from <= $branch_from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $branch_from_time)
+            (
+                r_root.branch = diff_rel.branch
+                AND (r_root.to IS NULL OR r_root.to >= $to_time)
+            )
+            OR (
+                r_root.branch <> diff_rel.branch
+                AND r_root.from <= $branch_from_time
+                AND (r_root.to IS NULL OR r_root.to >= $branch_from_time)
+            )
+        )
+        AND (
+            (
+                r_node.branch = diff_rel.branch
+                AND r_node.from <= $branch_from_time
+                AND (r_node.to IS NULL OR r_node.to >= $to_time)
+            )
+            OR (
+                r_node.branch <> diff_rel.branch
+                AND r_node.from <= $branch_from_time
+                AND (r_node.to IS NULL OR r_node.to >= $branch_from_time)
+            )
         )
     )
 )
@@ -663,6 +722,15 @@ AND ALL(
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
     // filter out paths where an earlier from time follows a later from time
     AND (r_pair[0]).from <= (r_pair[1]).from
+    // if both are deleted, then the deeper edge must have been deleted first
+    AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "active" OR (r_pair[0]).from >= (r_pair[1].from))
+    AND (
+        (r_pair[0]).status = (r_pair[1]).status
+        OR (
+            (r_pair[0]).from <= (r_pair[1]).from
+            AND ((r_pair[0]).to IS NULL OR (r_pair[0]).to >= (r_pair[1]).from)
+        )
+    )
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
     AND (
         (r_pair[0]).branch <> (r_pair[1]).branch
@@ -676,13 +744,15 @@ AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(q), type(diff_rel)]
 // -------------------------------------
 WITH diff_rel_path, r_root, n, r_node, p, diff_rel
 ORDER BY r_root.from, n.uuid, p.uuid, type(diff_rel), diff_rel.branch, diff_rel.from
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([diff_rel_path, r_root, n, r_node, p, diff_rel]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
+WITH limited_results + [[NULL, NULL, NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS diff_rel_path, one_result[1] AS r_root, one_result[2] AS n,
     one_result[3] AS r_node, one_result[4] AS p, one_result[5] AS diff_rel, has_more_data
@@ -708,24 +778,21 @@ ORDER BY
     r_node.from DESC,
     r_root.from DESC
 WITH n, p, row_from_time, diff_rel, diff_rel_path, has_more_data
-CALL {
+CALL (n, p, row_from_time){
     // -------------------------------------
     // Exclude properties under nodes and attributes/relationships deleted
     // on this branch in the timeframe because those were all handled above
     // -------------------------------------
-    WITH n, p, row_from_time
-    CALL {
-        WITH n, row_from_time
+    CALL (n, row_from_time) {
         OPTIONAL MATCH (root:Root)<-[r_root_deleted:IS_PART_OF {branch: $branch_name}]-(n)
-        WHERE row_from_time <= r_root_deleted.from < $to_time
+        WHERE r_root_deleted.from < $to_time
         WITH r_root_deleted
         ORDER BY r_root_deleted.status DESC
         LIMIT 1
         RETURN COALESCE(r_root_deleted.status = "deleted", FALSE) AS node_deleted
     }
-    WITH n, p, row_from_time, node_deleted
-    CALL {
-        WITH n, p, row_from_time
+    WITH node_deleted
+    CALL (n, p, row_from_time) {
         OPTIONAL MATCH (n)-[r_node_deleted {branch: $branch_name}]-(p)
         WHERE row_from_time <= r_node_deleted.from < $to_time
         AND type(r_node_deleted) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
@@ -745,3 +812,84 @@ WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS diff_path, has
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
         self.add_to_query("UNWIND diff_rel_paths AS diff_path")
         self.return_labels = ["DISTINCT diff_path AS diff_path", "has_more_data"]
+
+
+@dataclass
+class MigratedKindNode:
+    uuid: str
+    kind: str
+    db_id: str
+    from_time: Timestamp
+    action: DiffAction
+    has_more_data: bool
+
+
+class DiffMigratedKindNodesQuery(DiffCalculationQuery):
+    name = "diff_migrated_kind_nodes_query"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        params_dict = self.get_params()
+        self.params.update(params_dict)
+        migrated_kind_nodes_query = """
+// -------------------------------------
+// Identify nodes added/removed on branch in the time frame
+// -------------------------------------
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+AND n.branch_support = $branch_aware
+WITH DISTINCT n.uuid AS node_uuid, %(id_func)s(n) AS db_id
+WITH node_uuid, count(*) AS num_nodes_with_uuid
+WHERE num_nodes_with_uuid > 1
+// -------------------------------------
+// Limit the number of nodes
+// -------------------------------------
+WITH node_uuid
+ORDER BY node_uuid
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
+WITH collect(node_uuid) AS node_uuids
+WITH node_uuids, size(node_uuids) = $limit AS has_more_data
+MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
+WHERE n.uuid IN node_uuids
+AND (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+// -------------------------------------
+// Ignore node created and deleted on this branch
+// -------------------------------------
+CALL (n) {
+    OPTIONAL MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n)
+    WITH diff_rel
+    ORDER BY diff_rel.from ASC
+    WITH collect(diff_rel.status) AS statuses
+    RETURN statuses = ["active", "deleted"] AS intra_branch_update
+}
+WITH n.uuid AS uuid, n.kind AS kind, %(id_func)s(n) AS db_id, diff_rel.from_time AS from_time, diff_rel.status AS status, has_more_data
+WHERE intra_branch_update = FALSE
+        """ % {"id_func": db.get_id_function_name()}
+        self.add_to_query(query=migrated_kind_nodes_query)
+        self.return_labels = [
+            "uuid",
+            "kind",
+            "db_id",
+            "from_time",
+            "status",
+            "has_more_data",
+        ]
+
+    def get_migrated_kind_nodes(self) -> Generator[MigratedKindNode, None, None]:
+        for result in self.get_results():
+            yield MigratedKindNode(
+                uuid=result.get_as_type("uuid", return_type=str),
+                kind=result.get_as_type("kind", return_type=str),
+                db_id=result.get_as_type("db_id", return_type=str),
+                from_time=result.get_as_type("from_time", return_type=Timestamp),
+                action=DiffAction.REMOVED
+                if result.get_as_type("status", return_type=str).lower() == RelationshipStatus.DELETED.value
+                else DiffAction.ADDED,
+                has_more_data=result.get_as_type("has_more_data", bool),
+            )

@@ -1,10 +1,5 @@
-import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import {
+import type {
   EmptyFieldValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
@@ -14,11 +9,22 @@ import {
 } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
+import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
   objectTemplate: NodeObject | null | undefined;
   isFilterForm?: boolean;
   relationshipName?: string;
+  schema?: ModelSchema | null;
+  parentSchema?: ModelSchema | null;
+  parentData?: NodeObject | null;
 };
 
 export const getRelationshipDefaultValue = ({
@@ -26,6 +32,9 @@ export const getRelationshipDefaultValue = ({
   relationshipData,
   objectTemplate,
   relationshipName,
+  schema,
+  parentData,
+  parentSchema,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
   if (isFilterForm) {
     return { source: null, value: null };
@@ -33,6 +42,25 @@ export const getRelationshipDefaultValue = ({
 
   if (relationshipData) {
     return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
+  }
+
+  if (parentSchema && parentData && schema) {
+    const relationshipToParent = schema.relationships?.find((r) => {
+      return r.kind === "Parent" && r.name === relationshipName;
+    });
+
+    const relationshipFromParent = parentSchema.relationships?.find((r) => {
+      return r.kind === "Component" && isOfKind(r.peer, schema);
+    });
+
+    if (relationshipToParent && relationshipFromParent) {
+      return {
+        source: {
+          type: "user",
+        },
+        value: parentData,
+      };
+    }
   }
 
   return (

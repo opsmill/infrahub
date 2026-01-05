@@ -17,7 +17,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -68,8 +67,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         await delorean.save(db=db)
         await delorean.previous_owner.update(db=db, data={"id": doc_brown.id, "_relation__is_protected": True})  # type: ignore[attr-defined]
         await delorean.save(db=db)
-
-        bus_simulator.service._cache = RedisCache()
 
         return {
             "doc_brown": doc_brown,
@@ -212,12 +209,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
-        marty_label = await marty.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -301,14 +298,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         marty = initial_dataset["marty"]
         biff = initial_dataset["biff"]
-        marty_label = await marty.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
         delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
-        delorean_label = await delorean_main.render_display_label(db=db)
+        delorean_label = await delorean_main.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -392,13 +389,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
-        marty_label = await marty.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -477,12 +474,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
-        doc_brown_label = await doc_brown.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        doc_brown_label = await doc_brown.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -558,11 +555,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
-        doc_brown_label = await doc_brown.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        doc_brown_label = await doc_brown.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()

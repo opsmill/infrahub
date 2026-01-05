@@ -101,4 +101,68 @@ async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDa
     await query.execute(db=db)
     for result in query.results:
         print(result)
-        assert len(result.data) == 1 and result.data[0] == "Edges state is correct"
+        assert len(result.data) == 1
+        assert result.data[0] == "Edges state is correct"
+
+
+async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
+    """Verify that no duplicate paths exist at the database level"""
+    query = """
+MATCH path = (p)-[e]->(q)
+WITH
+    %(id_func)s(p) AS node_id1,
+    e.branch AS branch,
+    e.from AS from_time,
+    type(e) AS edge_type,
+    %(id_func)s(q) AS node_id2,
+    path
+WITH node_id1, branch, from_time, edge_type, node_id2, size(collect(path)) AS num_paths
+WHERE num_paths > 1
+RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
+    """ % {"id_func": db.get_id_function_name()}
+    records = await db.execute_query(query=query)
+    for record in records:
+        node_id1 = record.get("node_id1")
+        branch = record.get("branch")
+        from_time = record.get("from_time")
+        edge_type = record.get("edge_type")
+        node_id2 = record.get("node_id2")
+        num_paths = record.get("num_paths")
+        raise ValueError(
+            f"{num_paths} paths ({branch=},{edge_type=},{from_time=}) between nodes '{node_id1}' and '{node_id2}'"
+        )
+
+
+async def validate_no_duplicate_attributes(db: InfrahubDatabase, branch: Branch) -> list[str]:
+    """
+    Validate that no Nodes have duplicated attribute or relationship names
+    """
+    branch_filter, branch_params = branch.get_query_filter_path()
+
+    query = """
+// -------------
+// get all the active Attributes this branch and count them up
+// -------------
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(field:Attribute)
+WITH DISTINCT n, field
+CALL (n, field) {
+MATCH (n)-[r:HAS_ATTRIBUTE]->(field)
+WHERE %(branch_filter)s
+RETURN r
+ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+LIMIT 1
+}
+WITH n, field, r
+WHERE r.status = "active" AND r.to IS NULL
+WITH n.uuid AS node_id, field.name AS field_name, count(*) AS num_fields
+WHERE num_fields > 1
+RETURN node_id, field_name, num_fields
+    """ % {"branch_filter": branch_filter}
+    results = await db.execute_query(query=query, params=branch_params)
+    errors = []
+    for result in results:
+        node_id = result.get("node_id")
+        field_name = result.get("field_name")
+        num_fields = result.get("num_fields")
+        errors.append(f"Node '{node_id}' has {num_fields} duplicated attributes with {field_name=}")
+    return errors

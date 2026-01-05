@@ -1,21 +1,20 @@
-"use client";
-
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
-  RadioGroupProps as AriaRadioGroupProps,
-  RadioProps as AriaRadioProps,
+  type RadioGroupProps as AriaRadioGroupProps,
+  type RadioProps as AriaRadioProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { classNames } from "@/shared/utils/common";
 
 export const RadioGroup = ({ className, ...props }: AriaRadioGroupProps) => {
   return (
     <AriaRadioGroup
       className={composeRenderProps(className, (className, renderProps) =>
         classNames(
-          "flex flex-col flex-wrap gap-2",
+          "relative flex flex-col flex-wrap gap-1",
           renderProps.orientation === "horizontal" && "flex-row items-center",
           className
         )
@@ -30,7 +29,7 @@ export const Radio = ({ className, children, ...props }: AriaRadioProps) => {
     <AriaRadio
       className={composeRenderProps(className, (className) =>
         classNames(
-          "group/radio flex items-center gap-x-2 cursor-pointer",
+          "group/radio flex cursor-pointer items-center gap-x-2",
           "data-disabled:cursor-not-allowed data-disabled:opacity-70",
           className
         )
@@ -42,12 +41,12 @@ export const Radio = ({ className, children, ...props }: AriaRadioProps) => {
           <span
             className={classNames(
               "flex size-4 items-center justify-center rounded-full border border-gray-300",
-              "transition-colors group-data-focus-visible/radio:outline-hidden group-data-focus-visible/radio:ring-2 group-data-focus-visible/radio:ring-custom-blue-600/25 group-data-focus-visible/radio:border-custom-blue-600",
+              "transition-colors group-data-focus-visible/radio:border-custom-blue-600 group-data-focus-visible/radio:outline-hidden group-data-focus-visible/radio:ring-2 group-data-focus-visible/radio:ring-custom-blue-600/25",
               "group-data-invalid/radio:border-red-600"
             )}
           >
             {renderProps.isSelected && (
-              <Icon icon="mdi:circle" className="text-xs text-custom-blue-800" />
+              <Icon icon="mdi:circle" className="text-custom-blue-800 text-xs" />
             )}
           </span>
           {children}

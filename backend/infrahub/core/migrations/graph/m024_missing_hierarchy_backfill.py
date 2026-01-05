@@ -39,8 +39,7 @@ class BackfillMissingHierarchyQuery(Query):
         MATCH (rel:Relationship {name: "parent__child"})-[e:IS_RELATED]-(n:Node)
         WHERE e.hierarchy IS NULL
         WITH DISTINCT rel, n, default_branch
-        CALL {
-            WITH rel, n, default_branch
+        CALL (rel, n, default_branch) {
             MATCH (rel)-[e:IS_RELATED {branch: default_branch}]-(n)
             RETURN e
             ORDER BY e.from DESC

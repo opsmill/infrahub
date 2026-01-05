@@ -1,28 +1,28 @@
-import { getObjectsCountFromApi } from "@/entities/nodes/object/api/get-objects-count-from-api";
-import { ContextParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import {
+  type GetObjectsCountFromApiParams,
+  getObjectsCountFromApi,
+} from "@/entities/nodes/object/api/get-objects-count-from-api";
 
-export type GetObjectsCountParams = ContextParams & {
-  schemaKind: string;
-  filters?: Array<Filter>;
-};
+export type GetObjectsCountParams = GetObjectsCountFromApiParams;
 
 export type GetObjectsCount = (args: GetObjectsCountParams) => Promise<number>;
 
 export const getObjectsCount: GetObjectsCount = async ({
-  schemaKind,
+  objectKind,
   branchName,
   atDate,
   filters = [],
 }) => {
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
-
-  const { data } = await getObjectsCountFromApi({
-    schemaKind: schemaKindToQuery,
+  const { data, errors } = await getObjectsCountFromApi({
+    objectKind,
     branchName,
     atDate,
+    filters,
   });
 
-  return data[schemaKindToQuery].count;
+  if (errors?.[0]?.message) {
+    throw new Error(errors[0].message);
+  }
+
+  return data[objectKind].count;
 };

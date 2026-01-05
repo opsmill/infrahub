@@ -1,11 +1,14 @@
-import { ARTIFACT_OBJECT } from "@/config/constants";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm from "@/shared/components/form/object-form";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { Button, ButtonProps } from "../buttons/button-primitive";
+
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ObjectForm from "@/shared/components/form/object-form";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
+
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
+
+import { Button, type ButtonProps } from "../buttons/button-primitive";
 import { Tooltip } from "../ui/tooltip";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {
@@ -39,7 +42,7 @@ export const ObjectCreateFormTrigger = ({
           onClick={() => setShowCreateDrawer(true)}
           {...props}
         >
-          <Icon icon="mdi:plus" className="text-sm mr-1.5" />
+          <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
           Add {schema?.label}
         </Button>
       </Tooltip>

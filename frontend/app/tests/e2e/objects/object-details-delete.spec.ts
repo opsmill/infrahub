@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+
 const BRANCH_NAME = "object-details-delete";
 
 test.describe("Object details - delete", () => {

@@ -1,9 +1,11 @@
 from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
+    RepositoryObjects,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
+from infrahub.core.schema.dropdown import DropdownChoice
 
 from ...attribute_schema import AttributeSchema as Attr
 from ...generic_schema import GenericSchema
@@ -68,14 +70,29 @@ core_standard_group = NodeSchema(
 core_generator_group = NodeSchema(
     name="GeneratorGroup",
     namespace="Core",
-    description="Group of nodes that are created by a generator.",
+    description="Group of nodes that are created by a generator. (local)",
     include_in_menu=False,
     icon="mdi:state-machine",
-    label="Generator Group",
+    label="Generator Group (local)",
     default_filter="name__value",
     order_by=["name__value"],
     display_labels=["name__value"],
     branch=BranchSupportType.LOCAL,
+    inherit_from=[InfrahubKind.GENERICGROUP],
+    generate_profile=False,
+)
+
+core_generator_aware_group = NodeSchema(
+    name="GeneratorAwareGroup",
+    namespace="Core",
+    description="Group of nodes that are created by a generator. (Aware)",
+    include_in_menu=False,
+    icon="mdi:state-machine",
+    label="Generator Group (aware)",
+    default_filter="name__value",
+    order_by=["name__value"],
+    display_labels=["name__value"],
+    branch=BranchSupportType.AWARE,
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
 )
@@ -103,6 +120,48 @@ core_graphql_query_group = NodeSchema(
             optional=False,
             cardinality=Cardinality.ONE,
             kind=RelKind.ATTRIBUTE,
+        ),
+    ],
+)
+
+
+core_repository_group = NodeSchema(
+    name="RepositoryGroup",
+    namespace="Core",
+    description="Group of nodes associated with a given repository.",
+    include_in_menu=False,
+    icon="mdi:account-group",
+    label="Repository Group",
+    default_filter="name__value",
+    order_by=["name__value"],
+    display_labels=["name__value"],
+    branch=BranchSupportType.LOCAL,
+    inherit_from=[InfrahubKind.GENERICGROUP],
+    generate_profile=False,
+    attributes=[
+        Attr(
+            name="content",
+            kind="Dropdown",
+            description="Type of data to load, can be either `object` or `menu`",
+            choices=[
+                DropdownChoice(
+                    name=RepositoryObjects.OBJECT.value,
+                    label="Objects",
+                ),
+                DropdownChoice(
+                    name=RepositoryObjects.MENU.value,
+                    label="Menus",
+                ),
+            ],
+            optional=False,
+        ),
+    ],
+    relationships=[
+        Rel(
+            name="repository",
+            peer=InfrahubKind.GENERICREPOSITORY,
+            optional=False,
+            cardinality=Cardinality.ONE,
         ),
     ],
 )

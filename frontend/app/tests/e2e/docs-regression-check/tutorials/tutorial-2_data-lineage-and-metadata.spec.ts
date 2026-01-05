@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { saveScreenshotForDocs } from "../../../utils";
 
@@ -36,6 +37,9 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByRole("button", { name: "Save" }).click();
 
       await expect(page.getByText("Metadata updated")).toBeVisible();
+
+      // Wait for the metadata edit slide-over to close before checking updated data
+      await expect(page.getByTestId("side-panel-container")).toBeHidden();
 
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
 

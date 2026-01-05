@@ -8,8 +8,11 @@ on:
       - published
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   check_release:
     runs-on: ubuntu-22.04
+    needs: prepare-environment
     outputs:
       is_prerelease: ${{ steps.release.outputs.is_prerelease }}
       is_devrelease: ${{ steps.release.outputs.is_devrelease }}
@@ -18,37 +21,30 @@ jobs:
       latest_tag: ${{ steps.release.outputs.latest_tag }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
       - name: "Set up Python"
-        uses: "actions/setup-python@v5"
+        id: python
+        uses: "actions/setup-python@v6"
         with:
           python-version: "3.12"
 
-      - name: "Install Poetry"
-        uses: "snok/install-poetry@v1"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          version: 1.8.5
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          installer-parallel: true
-
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: "Check prerelease type"
         id: release
         run: |
-          echo is_prerelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_prerelease))") >> "$GITHUB_OUTPUT"
-          echo is_devrelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_devrelease))") >> "$GITHUB_OUTPUT"
-          echo "version=$(poetry version -s)" >> "$GITHUB_OUTPUT"
-          echo major_minor_version=$(poetry run python -c "from packaging.version import Version; print(f\"{Version('$(poetry version -s)').major}.{Version('$(poetry version -s)').minor}\")") >> "$GITHUB_OUTPUT"
+          echo is_prerelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$(uv version --short)').is_prerelease))") >> "$GITHUB_OUTPUT"
+          echo is_devrelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$(uv version --short)').is_devrelease))") >> "$GITHUB_OUTPUT"
+          echo "version=$(uv version --short)" >> "$GITHUB_OUTPUT"
+          echo major_minor_version=$(uv run python -c "from packaging.version import Version; print(f\"{Version('$(uv version --short)').major}.{Version('$(uv version --short)').minor}\")") >> "$GITHUB_OUTPUT"
           echo latest_tag=$(curl -L \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ github.token }}" \

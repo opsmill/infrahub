@@ -1,11 +1,14 @@
+import { Icon } from "@iconify-icon/react";
+import type { InputHTMLAttributes } from "react";
+import { Link } from "react-router";
+
+import { classNames } from "@/shared/utils/common";
+
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { InputHTMLAttributes } from "react";
-import { Link } from "react-router";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export interface ObjectInlineDisplayProps extends InputHTMLAttributes<HTMLDivElement> {
   node: NodeCore;
@@ -18,13 +21,13 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
   return (
     <div className={classNames("flex flex-col text-sm", className)} {...props}>
       <div className="flex items-center gap-1">
-        <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400 text-xs" />
+        <Icon icon={getSchemaIcon(schema)} className="text-gray-400 text-xs" />
         {schemaLabel}
       </div>
 
       <Link
         to={getObjectDetailsUrl(node.__typename, node.id)}
-        className="text-custom-blue-800 font-medium hover:underline"
+        className="font-medium text-custom-blue-800 hover:underline"
       >
         {getNodeLabel(node)}
       </Link>

@@ -1,20 +1,16 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { createObject } from "@/entities/nodes/api/createObject";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { DynamicInput } from "@/shared/components/form/dynamic-form";
-import RelationshipField from "@/shared/components/form/fields/relationship.field";
-import { NodeFormProps } from "@/shared/components/form/node-form";
+import { DynamicField } from "@/shared/components/form/dynamic-form";
+import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
+import type { NodeFormProps } from "@/shared/components/form/node-form";
+import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { Card, CardProps } from "@/shared/components/ui/card";
+import { Card, type CardProps } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 
 const RepositoryForm = ({
   onSuccess,
@@ -22,11 +18,20 @@ const RepositoryForm = ({
   currentObject,
   onSubmit,
   onCancel,
+  ...props
 }: NodeFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
-  const fields = getFormFieldsFromSchema({ auth, schema, initialObject: currentObject });
+  const { parentSchema, parentData } = useCurrentFormContext();
+  const createObject = useCreateObjectMutation();
+
+  const fields = getFormFieldsFromSchema({
+    auth,
+    initialObject: currentObject,
+    schema,
+    parentSchema,
+    parentData,
+    ...props,
+  });
 
   const gitUrlFieldProps = fields.find(({ name }) => name === "location");
 
@@ -41,34 +46,24 @@ const RepositoryForm = ({
 
   return (
     <Form
-      className="p-2 bg-stone-100 h-full overflow-auto"
+      className="h-full overflow-auto bg-stone-100 p-2"
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 
-        const data = getCreateMutationFromFormData(fields, formData);
-
-        const mutation = gql(
-          createObject({
-            kind: schema?.kind,
-            data: stringifyWithoutQuotes(data),
-          })
-        );
-
-        const result = await graphqlClient.mutate({
-          mutation,
-          context: {
-            branch: branch?.name,
-            date,
+        await createObject.mutateAsync(
+          {
+            objectKind: schema.kind as string,
+            data: getCreateMutationFromFormData(fields, formData, props.objectTemplate?.id),
           },
-        });
-
-        await graphqlClient.reFetchObservableQueries();
-        if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
+          {
+            onSuccess,
+          }
+        );
       }}
     >
       <FormGroup>
         {gitUrlFieldProps && (
-          <DynamicInput
+          <DynamicField
             {...gitUrlFieldProps}
             label="Repository location"
             placeholder="https://github.com/organization/project.git"
@@ -80,26 +75,28 @@ const RepositoryForm = ({
           type="relationship"
           label="Authentication"
           placeholder="Select your credential"
-          relationship={{ peer: "CorePasswordCredential", name: "credential", cardinality: "one" }}
+          relationship={
+            { peer: "CorePasswordCredential", name: "credential", cardinality: "one" } as any
+          }
           schema={schema}
         />
       </FormGroup>
 
       <FormGroup>
-        {nameFieldProps && <DynamicInput {...nameFieldProps} placeholder="example-name" />}
+        {nameFieldProps && <DynamicField {...nameFieldProps} placeholder="example-name" />}
         {descriptionFieldProps && (
-          <DynamicInput {...descriptionFieldProps} placeholder="Add your description here..." />
+          <DynamicField {...descriptionFieldProps} placeholder="Add your description here..." />
         )}
       </FormGroup>
 
       <FormGroup>
-        {refFieldProps && <DynamicInput {...refFieldProps} />}
-        {defaultBranchFieldProps && <DynamicInput {...defaultBranchFieldProps} />}
+        {refFieldProps && <DynamicField {...refFieldProps} />}
+        {defaultBranchFieldProps && <DynamicField {...defaultBranchFieldProps} />}
       </FormGroup>
 
       {tagsFieldProps && (
         <FormGroup>
-          <DynamicInput {...tagsFieldProps} />
+          <DynamicField {...tagsFieldProps} />
         </FormGroup>
       )}
 
@@ -117,7 +114,7 @@ const RepositoryForm = ({
 };
 
 const FormGroup = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("shadow-xs space-y-4", className)} {...props} />;
+  return <Card className={classNames("space-y-4 shadow-xs", className)} {...props} />;
 };
 
 export default RepositoryForm;

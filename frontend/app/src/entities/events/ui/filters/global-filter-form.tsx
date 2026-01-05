@@ -1,8 +1,9 @@
-import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { FormFieldValue } from "@/shared/components/form/type";
+import type { FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
+
+import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export type GlobalFilterFormProps = {
   name: string;
@@ -34,9 +35,9 @@ export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterF
   };
 
   return (
-    <div className="flex items-center gap-4 min-w-64">
+    <div className="flex min-w-64 items-center gap-4">
       <Form
-        className="space-y-0 flex items-center gap-2 grow"
+        className="flex grow items-center gap-2 space-y-0"
         onSubmit={(formData) => {
           handleSubmit(formData);
         }}

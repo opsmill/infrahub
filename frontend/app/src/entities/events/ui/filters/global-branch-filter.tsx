@@ -1,105 +1,92 @@
-import { QSP } from "@/config/qsp";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import type { TagProps } from "react-aria-components";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
-import { Icon } from "@iconify-icon/react";
-import React, { useEffect, useState } from "react";
-import { TagProps } from "react-aria-components";
-import { useQueryParam } from "use-query-params";
-import { GlobalFilterForm } from "./global-filter-form";
-import { FilterTag } from "./global-filter-tag";
 
-interface FilterTagProps extends TagProps {
-  label: React.ReactNode;
-  name: string;
-  fieldSchema: AttributeSchema | RelationshipSchema;
-}
+import { branchesState } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { GlobalFilterForm } from "@/entities/events/ui/filters/global-filter-form";
+import { FilterTag } from "@/entities/events/ui/filters/global-filter-tag";
 
-export function GlobalBranchFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
+interface FilterTagProps extends TagProps {}
+
+const branchFilterName = "branches__value" as const;
+
+export function GlobalBranchFilter({ ...props }: FilterTagProps) {
+  const branches = useAtomValue(branchesState);
+
   const [filters, setFilters] = useFilters();
-  const [branch] = useQueryParam(QSP.BRANCH);
+  const { currentBranch } = useCurrentBranch();
   const [showFilters, setShowFilters] = useState(false);
 
-  const currentFilter = filters.find((filter) => filter.name.startsWith(name));
+  const currentFilter = filters.find((filter) => filter.name === branchFilterName);
 
   const handleRemoveFilter = () => {
-    setFilters([...filters, { name: "branches__value", value: null }]);
-  };
-
-  const getFilterDisplayValue = () => {
-    if (typeof currentFilter?.value === "boolean") {
-      return JSON.stringify(currentFilter?.value);
-    }
-
-    if (fieldSchema.kind === "Dropdown") {
-      return fieldSchema.choices?.find((choice) => {
-        return choice.name === currentFilter?.value;
-      })?.label;
-    }
-
-    if (Array.isArray(currentFilter?.value)) {
-      return currentFilter?.value
-        .map((value) => {
-          return value.display_label;
-        })
-        .join(", ");
-    }
-
-    return currentFilter?.value;
+    setFilters([
+      ...filters.filter((filter) => filter.name !== branchFilterName),
+      { name: branchFilterName, value: null },
+    ]);
   };
 
   useEffect(() => {
-    if (!branch || branch === "main") return;
-
-    if (currentFilter?.value === null) return;
+    if (currentBranch.name === "main" || currentFilter) return;
 
     // Set the current branch if it's not main and if it has not been removed from the filters
-    setFilters([...filters, { name: "branches__value", value: branch }]);
+    setFilters([...filters, { name: branchFilterName, value: currentBranch.name }]);
   }, []);
 
   return (
     <FilterTag label="branches" currentFilter={currentFilter} {...props}>
       <Popover open={showFilters} onOpenChange={setShowFilters}>
-        <PopoverTrigger className="flex items-center h-6 pl-1">
-          <span>{label}</span>
+        <PopoverTrigger className="flex h-6 items-center pl-1">
+          <span>Branch</span>
 
-          <div className="w-px bg-gray-300 self-stretch ml-1" />
+          <div className="ml-1 w-px self-stretch bg-gray-300" />
 
-          {(currentFilter?.value === undefined || currentFilter?.value === null) && (
-            <Icon
-              icon="mdi:plus-circle-outline"
-              className="text-base text-gray-400 group-hover:text-custom-blue-700 transition-all mx-1"
-            />
-          )}
-
-          {currentFilter?.value !== undefined && currentFilter?.value !== null && (
+          {currentFilter?.value ? (
             <div
-              className="flex items-center gap-1 h-6 rounded-r-full px-1 hover:bg-gray-300 transition-all"
+              className="flex h-6 items-center gap-1 rounded-r-full px-1 transition-all hover:bg-gray-300"
               onClick={(event) => {
                 event.stopPropagation();
                 handleRemoveFilter();
               }}
             >
-              <div className="text-custom-blue-700 font-medium inline-flex items-center">
-                {getFilterDisplayValue()}
+              <div className="inline-flex items-center font-medium text-custom-blue-700">
+                {currentFilter.value}
               </div>
 
               <Icon
                 icon="mdi:close-circle-outline"
-                className="text-base text-gray-400 group-hover:text-custom-blue-700 transition-all"
+                className="text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
               />
             </div>
+          ) : (
+            <Icon
+              icon="mdi:plus-circle-outline"
+              className="mx-1 text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
+            />
           )}
         </PopoverTrigger>
+
         <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-[1.8rem] bg-white border border-gray-200 px-2 py-1 rounded-t-md border-b-0 -left-px">
-            Filter by
-            <span className="ml-1 font-semibold">{label}</span>
+          <div className="-top-[1.8rem] -left-px absolute rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1">
+            Filter by <span className="ml-1 font-semibold">branch</span>
           </div>
 
           <GlobalFilterForm
-            name={name}
-            fieldSchema={fieldSchema}
+            name="branches"
+            fieldSchema={{
+              kind: "Dropdown",
+              choices: branches.map((branch) => {
+                return {
+                  label: branch.name,
+                  name: branch.name,
+                };
+              }),
+            }}
             onSuccess={() => {
               setShowFilters(false);
             }}

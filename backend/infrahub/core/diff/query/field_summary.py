@@ -45,8 +45,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode)
         WHERE n.action <> $unchanged_str
         WITH DISTINCT n.kind AS kind
-        CALL {
-            WITH kind
+        CALL (kind) {
             OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_ATTRIBUTE]->(a:DiffAttribute)
             WHERE n.action <> $unchanged_str
             AND a.action <> $unchanged_str
@@ -54,8 +53,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
             RETURN collect(attr_name) AS attr_names
         }
         WITH kind, attr_names
-        CALL {
-            WITH kind
+        CALL (kind) {
             OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
             WHERE n.action <> $unchanged_str
             AND r.action <> $unchanged_str
@@ -64,6 +62,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         }
         """
         self.add_to_query(query=query)
+        self.order_by = ["kind"]
         self.return_labels = ["kind", "attr_names", "rel_names"]
 
     async def get_field_summaries(self) -> list[NodeDiffFieldSummary]:

@@ -1,0 +1,14 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: "Define versions"
+on:
+  workflow_call:
+    outputs:
+      UV_VERSION:
+        value: "0.9.9"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

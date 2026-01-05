@@ -1,4 +1,9 @@
-import { GenericSchema, NodeSchema, ProfileSchema, TemplateSchema } from "@/entities/schema/types";
+import type {
+  GenericSchema,
+  NodeSchema,
+  ProfileSchema,
+  TemplateSchema,
+} from "@/entities/schema/types";
 
 export type SchemaResult =
   | {

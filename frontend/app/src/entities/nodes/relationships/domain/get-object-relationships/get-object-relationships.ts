@@ -1,8 +1,9 @@
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
+
 import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-object-relationships-from-api";
-import { NodeObject } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -10,14 +11,13 @@ export const OBJECT_RELATIONSHIPS_PER_PAGE = 40;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetObjectRelationshipsParams = ContextParams &
-  PaginationParams & {
-    parentKind: string;
-    parentId: string;
-    relationshipName: string;
-    relationshipSchema: ModelSchema;
-    filters?: Array<Filter>;
-  };
+export interface GetObjectRelationshipsParams extends ContextParams, PaginationParams {
+  parentKind: string;
+  parentId: string;
+  relationshipName: string;
+  relationshipSchema: ModelSchema;
+  filters?: Array<Filter>;
+}
 
 export type GetObjectRelationships = (
   params: GetObjectRelationshipsParams

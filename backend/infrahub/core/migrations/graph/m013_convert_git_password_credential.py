@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
 default_branch = Branch(
     name="main",
-    status="OPEN",
+    status=BranchStatus.OPEN,
     description="Default Branch",
     hierarchy_level=1,
     is_global=False,
@@ -42,7 +43,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
 
         global_branch = Branch(
             name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
+            status=BranchStatus.OPEN,
             description="Global Branch",
             hierarchy_level=1,
             is_global=True,
@@ -77,7 +78,6 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
 
         self.params["rel_identifier"] = "gitrepository__credential"
 
-        # ruff: noqa: E501
         query = """
         // --------------------------------
         // Identify the git repositories to convert
@@ -98,8 +98,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
         // --------------------------------
         MATCH (git_repo)-[:HAS_ATTRIBUTE]-(git_attr_name:Attribute)-[:HAS_VALUE]->(git_name_value:AttributeValue)
         WHERE git_attr_name.name = "name"
-        CALL {
-            WITH git_repo
+        CALL (git_repo) {
             MATCH path1 = (git_repo)-[r1:HAS_ATTRIBUTE]-(git_attr_name2:Attribute)-[r2:HAS_VALUE]->(git_name_value2:AttributeValue)
             WHERE git_attr_name2.name = "name"
               AND all(r IN relationships(path1) WHERE %(filters)s)
@@ -178,7 +177,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
 
         global_branch = Branch(
             name=GLOBAL_BRANCH_NAME,
-            status="OPEN",
+            status=BranchStatus.OPEN,
             description="Global Branch",
             hierarchy_level=1,
             is_global=True,
@@ -195,7 +194,6 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
 
         self.params["current_time"] = self.at.to_string()
 
-        # ruff: noqa: E501
         query = """
         // --------------------------------
         // Identify the git repositories to convert
@@ -204,8 +202,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
         WHERE a.name in ["username", "password"]
             AND av.value = "NULL"
             AND all(r IN relationships(path) WHERE %(filters)s AND r.status = "active")
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(filters)s
             RETURN node as n1, r as r1
@@ -289,7 +286,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
         kwargs.pop("branch", None)
 
         super().__init__(
-            node_kind="CoreGenericRepository",
+            node_kinds=["CoreGenericRepository"],
             attribute_name="internal_status",
             attribute_kind="Dropdown",
             branch_support=BranchSupportType.LOCAL.value,

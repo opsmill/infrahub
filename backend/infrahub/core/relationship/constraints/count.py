@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipCountPerNodeQuery
 from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
@@ -25,7 +26,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:  # noqa: ARG002
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
 
         # NOTE adding resolve here because we need to retrieve the real ID
@@ -39,7 +40,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         # peer_ids_present_database_only:
         #    relationship to be deleted, need to check if the schema on the other side has a min_count defined
         # TODO see how to manage Generic node
-        peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch)
+        peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
         peer_rels = peer_schema.get_relationships_by_identifier(id=relm.schema.get_identifier())
         if not peer_rels:
             return
@@ -63,7 +64,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
 
         query = await RelationshipCountPerNodeQuery.init(
             db=self.db,
-            node_ids=[node.uuid for node in nodes_to_validate],
+            node_ids=[n.uuid for n in nodes_to_validate],
             identifier=relm.schema.identifier,
             direction=relm.schema.direction.neighbor_direction,
             branch=branch,
@@ -74,14 +75,14 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         # Need to adjust the number based on what we will add / remove
         #  +1 for max_count
         #  -1 for min_count
-        for node in nodes_to_validate:
-            if node.max_count and count_per_peer[node.uuid] + 1 > node.max_count:
+        for node_to_validate in nodes_to_validate:
+            if node_to_validate.max_count and count_per_peer[node_to_validate.uuid] + 1 > node_to_validate.max_count:
                 raise ValidationError(
-                    f"Node {node.uuid} has {count_per_peer[node.uuid] + 1} peers "
-                    f"for {relm.schema.identifier}, maximum of {node.max_count} allowed",
+                    f"Node {node_to_validate.uuid} has {count_per_peer[node_to_validate.uuid] + 1} peers "
+                    f"for {relm.schema.identifier}, maximum of {node_to_validate.max_count} allowed",
                 )
-            if node.min_count and count_per_peer[node.uuid] - 1 < node.min_count:
+            if node_to_validate.min_count and count_per_peer[node_to_validate.uuid] - 1 < node_to_validate.min_count:
                 raise ValidationError(
-                    f"Node {node.uuid} has {count_per_peer[node.uuid] - 1} peers "
-                    f"for {relm.schema.identifier}, no fewer than {node.min_count} allowed",
+                    f"Node {node_to_validate.uuid} has {count_per_peer[node_to_validate.uuid] - 1} peers "
+                    f"for {relm.schema.identifier}, no fewer than {node_to_validate.min_count} allowed",
                 )

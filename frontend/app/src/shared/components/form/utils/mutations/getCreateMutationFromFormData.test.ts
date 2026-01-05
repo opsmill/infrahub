@@ -1,6 +1,7 @@
-import {
+import { describe, expect, it } from "vitest";
+
+import type {
   AttributeValueFromProfile,
-  AttributeValueFromTemplate,
   DynamicFieldProps,
   FormAttributeValue,
   FormFieldValue,
@@ -10,23 +11,9 @@ import {
   getCreateMutationFromFormData,
   getCreateMutationFromFormDataOnly,
 } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { describe, expect, it } from "vitest";
-import { generateRelationshipNode } from "../../../../../../tests/fake/node";
 
-export const buildField = (override?: Partial<DynamicFieldProps>): DynamicFieldProps => {
-  return {
-    name: "field1",
-    label: "Field 1",
-    defaultValue: null,
-    disabled: false,
-    type: "Text",
-    rules: {
-      required: true,
-    },
-    unique: true,
-    ...override,
-  } as DynamicFieldProps;
-};
+import { buildFormField } from "../../../../../../tests/fake/form";
+import { generateRelationshipNode } from "../../../../../../tests/fake/node";
 
 describe("getCreateMutationFromFormData", () => {
   it("returns empty if there is no fields in form", () => {
@@ -41,9 +28,9 @@ describe("getCreateMutationFromFormData", () => {
     expect(mutationData).to.deep.equal({});
   });
 
-  it("returns empty if form data if empty", () => {
+  it("returns empty if form data is empty", () => {
     // GIVEN
-    const fields: Array<DynamicFieldProps> = [buildField()];
+    const fields: Array<DynamicFieldProps> = [buildFormField()];
     const formData: Record<string, FormFieldValue> = {};
 
     // WHEN
@@ -55,7 +42,7 @@ describe("getCreateMutationFromFormData", () => {
 
   it("keeps items if value is null and it's from the user", () => {
     // GIVEN
-    const fields: Array<DynamicFieldProps> = [buildField({ name: "field1" })];
+    const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: null },
     };
@@ -72,7 +59,7 @@ describe("getCreateMutationFromFormData", () => {
   it("removes items if value is from schema's default value", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: {
           source: { type: "schema" },
@@ -107,7 +94,7 @@ describe("getCreateMutationFromFormData", () => {
     };
 
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         type: "Text",
         defaultValue: profileFieldValue,
@@ -127,7 +114,7 @@ describe("getCreateMutationFromFormData", () => {
   it("keeps attribute value if it's from user input", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         type: "Text",
         defaultValue: {
@@ -160,7 +147,7 @@ describe("getCreateMutationFromFormData", () => {
   it("keeps relationship with cardinality one's value if it's from user input", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "relationship1",
         type: "relationship",
         defaultValue: {
@@ -192,7 +179,7 @@ describe("getCreateMutationFromFormData", () => {
   it("keeps relationship with cardinality one's value if it's from pool", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "relationship1",
         type: "relationship",
         defaultValue: {
@@ -218,16 +205,14 @@ describe("getCreateMutationFromFormData", () => {
 
     // THEN
     expect(mutationData).to.deep.equal({
-      relationship1: {
-        from_pool: { id: "pool-id" },
-      },
+      relationship1: { from_pool: { id: "pool-id" } },
     });
   });
 
   it("keeps relationship with cardinality many's value if it's from user input", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "relationship1",
         type: "relationship",
         defaultValue: {
@@ -258,9 +243,9 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
-  it("set value as null is value is an empty string", () => {
+  it("set value as null if value is an empty string", () => {
     // GIVEN
-    const fields: Array<DynamicFieldProps> = [buildField({ name: "field1" })];
+    const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: "" },
     };
@@ -276,7 +261,7 @@ describe("getCreateMutationFromFormData", () => {
 
   it("keeps items if value is 0", () => {
     // GIVEN
-    const fields: Array<DynamicFieldProps> = [buildField({ name: "field1" })];
+    const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
     const formData: Record<string, FormAttributeValue> = {
       field1: { source: { type: "user" }, value: 0 },
     };
@@ -290,10 +275,13 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
-  it("handles template values correctly", () => {
+  it("does not include field whose source is template", () => {
     // GIVEN
-    const fields: Array<DynamicFieldProps> = [buildField({ name: "field1" })];
-    const formData: Record<string, AttributeValueFromTemplate> = {
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({ name: "field1" }),
+      buildFormField({ name: "field2" }),
+    ];
+    const formData: Record<string, FormFieldValue> = {
       field1: {
         source: {
           type: "template",
@@ -303,13 +291,32 @@ describe("getCreateMutationFromFormData", () => {
         },
         value: "template-value",
       },
+      field2: { source: { type: "user" }, value: 0 },
     };
 
     // WHEN
-    const mutationData = getCreateMutationFromFormData(fields, formData);
+    const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
 
     // THEN
     expect(mutationData).to.deep.equal({
+      object_template: { id: "template-id" },
+      field2: { value: 0 },
+    });
+  });
+
+  it("includes object_template in mutation data even with no template fields", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [buildFormField({ name: "field1" })];
+    const formData: Record<string, FormAttributeValue> = {
+      field1: { source: { type: "user" }, value: "value1" },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: { value: "value1" },
       object_template: { id: "template-id" },
     });
   });
@@ -318,7 +325,7 @@ describe("getCreateMutationFromFormData", () => {
     it("set correctly attribute of kind list when value is from schema", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
-        buildField({
+        buildFormField({
           name: "listField",
           type: "List",
           defaultValue: { source: { type: "schema" }, value: ["item1"] },
@@ -338,7 +345,7 @@ describe("getCreateMutationFromFormData", () => {
     it("set correctly attribute of kind list when value is from user", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
-        buildField({
+        buildFormField({
           name: "listField",
           type: "List",
           defaultValue: { source: null, value: null },
@@ -360,7 +367,7 @@ describe("getCreateMutationFromFormData", () => {
     it("set correctly attribute field if value is from user and is an empty array", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
-        buildField({
+        buildFormField({
           name: "listField",
           type: "List",
           defaultValue: { source: { type: "schema" }, value: ["item1"] },
@@ -484,6 +491,26 @@ describe("getCreateMutationFromFormDataOnly", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       field2: { value: "changed" },
+    });
+  });
+
+  it("handles relationship value correctly", () => {
+    // GIVEN
+    const formData: Record<string, FormFieldValue> = {
+      field1: {
+        source: {
+          type: "user",
+        },
+        value: { id: "peer-id", display_label: "peer test", __typename: "PeerKind" },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormDataOnly(formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: { id: "peer-id" },
     });
   });
 });

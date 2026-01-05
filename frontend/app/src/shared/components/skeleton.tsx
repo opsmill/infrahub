@@ -1,5 +1,6 @@
+import type { HTMLAttributes } from "react";
+
 import { classNames } from "@/shared/utils/common";
-import { HTMLAttributes } from "react";
 
 export const Skeleton = ({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (

@@ -9,13 +9,12 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
-from infrahub.permissions import LocalPermissionBackend, PermissionManager
+from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -28,13 +27,13 @@ class TestMergeBranchPermission:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
-        registry.permission_backends = [LocalPermissionBackend()]
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -66,7 +65,7 @@ class TestMergeBranchPermission:
     )
     async def test_supports_merge_branch_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = MergeBranchPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -81,8 +80,9 @@ class TestMergeBranchPermission:
         operation_name: str,
         checker_resolution: CheckerResolution | None,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
-    ):
+    ) -> None:
         checker = MergeBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -119,7 +119,7 @@ class TestMergeBranchPermission:
         checker_resolution: CheckerResolution | None,
         db: InfrahubDatabase,
         permissions_helper: PermissionsHelper,
-    ):
+    ) -> None:
         checker = MergeBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT

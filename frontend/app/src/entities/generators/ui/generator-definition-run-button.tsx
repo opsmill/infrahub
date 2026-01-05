@@ -1,9 +1,9 @@
-import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { PlayIcon } from "lucide-react";
+import { useState } from "react";
+import { Text } from "react-aria-components";
+import { Link } from "react-router";
+import { toast } from "react-toastify";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -11,12 +11,14 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
-import { PlayIcon } from "lucide-react";
-import { useState } from "react";
-import { Text } from "react-aria-components";
-import { Link } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
@@ -51,7 +53,7 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
                 <>
                   Generator started successfully.
                   <br />
-                  <Link to={url} className="underline flex items-center gap-1">
+                  <Link to={url} className="flex items-center gap-1 underline">
                     View task details
                   </Link>
                 </>
@@ -68,12 +70,12 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
     <Popover open={isPopoverOpen} onOpenChange={handlePopoverOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="active" isLoading={isPending} disabled={isPending || !isAuthenticated}>
-          {!isPending && <PlayIcon className="size-4 mr-2" />}
+          {!isPending && <PlayIcon className="mr-2 size-4" />}
           Run
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="p-1 min-w-[200px] max-w-sm" align="end">
+      <PopoverContent className="min-w-[200px] max-w-sm p-1" align="end">
         {showTargetForm ? (
           <GeneratorTargetSelectionForm
             generatorId={generatorId}
@@ -83,7 +85,7 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
           />
         ) : (
           <Menu aria-label="Run generator options">
-            <MenuItem onAction={() => handleRunGenerator()} className="flex-col gap-0 items-start">
+            <MenuItem onAction={() => handleRunGenerator()} className="flex-col items-start gap-0">
               <Text slot="label" className="font-semibold">
                 All targets
               </Text>
@@ -93,7 +95,7 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
             </MenuItem>
             <MenuItem
               onAction={() => setShowTargetForm(true)}
-              className="flex-col gap-0 items-start"
+              className="flex-col items-start gap-0"
             >
               <Text slot="label" className="font-semibold">
                 Selected targets
@@ -135,13 +137,13 @@ export function GeneratorTargetSelectionForm({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-medium">Select target nodes</h3>
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="font-medium text-sm">Select target nodes</h3>
         <Button
           variant="ghost"
           size="xs"
           onClick={onCancel}
-          className="text-gray-500 hover:text-gray-700 text-xs h-5 p-1"
+          className="h-5 p-1 text-gray-500 text-xs hover:text-gray-700"
         >
           Back
         </Button>
@@ -161,7 +163,7 @@ export function GeneratorTargetSelectionForm({
                     onClick={() => handleRemoveTarget(node.id)}
                     className={classNames(
                       focusVisibleStyle,
-                      "text-xs hover:text-gray-900 border border-transparent rounded-full size-3.5 flex items-center justify-center"
+                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-gray-900"
                     )}
                     aria-label={`Remove ${label}`}
                   >

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Self, cast
 from graphene import InputObjectType, Mutation
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreWebhook
 from infrahub.core.schema import NodeSchema
 from infrahub.database import retry_db_transaction
 from infrahub.events.utils import get_all_infrahub_node_kind_events
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreWebhook
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -67,6 +67,7 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         database: InfrahubDatabase | None = None,
+        override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
@@ -74,7 +75,9 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
 
         _validate_input(graphql_context=graphql_context, branch=branch, input_data=input_data)
 
-        obj, result = await super().mutate_create(info=info, data=data, branch=branch, database=database)
+        obj, result = await super().mutate_create(
+            info=info, data=data, branch=branch, database=database, override_data=override_data
+        )
 
         return obj, result
 
@@ -104,7 +107,7 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
             branch=branch,
         )
 
-        webhook = cast(CoreWebhook, obj)
+        webhook = cast("CoreWebhook", obj)
 
         event_type = input_data.event_type.value if input_data.event_type else webhook.event_type.value.value
         node_kind = input_data.node_kind.value if input_data.node_kind else webhook.node_kind.value
@@ -124,7 +127,7 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
 
 
 def _validate_input(graphql_context: GraphqlContext, branch: Branch, input_data: WebhookCreate) -> None:
-    if input_data.node_kind:
+    if input_data.node_kind and input_data.node_kind.value:
         # Validate that the requested node_kind exists, will raise an error if not
         graphql_context.db.schema.get(name=input_data.node_kind.value, branch=branch, duplicate=False)
 

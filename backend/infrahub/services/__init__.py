@@ -9,9 +9,7 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP
 
 from .adapters.event import InfrahubEventService
 from .adapters.http.httpx import HttpxAdapter
-from .adapters.workflow.local import WorkflowLocalExecution
 from .adapters.workflow.worker import WorkflowWorkerExecution
-from .component import InfrahubComponent
 from .scheduler import InfrahubScheduler
 
 if TYPE_CHECKING:
@@ -25,6 +23,7 @@ if TYPE_CHECKING:
     from .adapters.http import InfrahubHTTP
     from .adapters.message_bus import InfrahubMessageBus
     from .adapters.workflow import InfrahubWorkflow
+    from .component import InfrahubComponent
     from .protocols import InfrahubLogger
 
 
@@ -54,6 +53,7 @@ class InfrahubServices:
         database: InfrahubDatabase | None = None,
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
+        component: InfrahubComponent | None = None,
     ):
         """
         This method should not be called directly, use `new` instead for a proper initialization.
@@ -64,12 +64,12 @@ class InfrahubServices:
         self._database = database
         self._message_bus = message_bus
         self._workflow = workflow
+        self._component = component
         self.log = log
         self.component_type = component_type
         self.http = http
         self.event = event
         self.scheduler = scheduler
-        self._component = None
 
     @classmethod
     async def new(
@@ -81,6 +81,7 @@ class InfrahubServices:
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
         log: InfrahubLogger | None = None,
+        component: InfrahubComponent | None = None,
         component_type: ComponentType | None = None,
         http: InfrahubHTTP | None = None,
     ) -> InfrahubServices:
@@ -99,6 +100,7 @@ class InfrahubServices:
             message_bus=message_bus,
             workflow=workflow,
             log=log or get_logger(),
+            component=component,
             component_type=component_type,
             scheduler=scheduler,
             event=event or InfrahubEventService(message_bus),
@@ -108,33 +110,17 @@ class InfrahubServices:
         # This circular dependency could be removed if InfrahubScheduler only depends on what it needs.
         scheduler.service = service
 
-        if message_bus is not None:
-            # Need circular dependency for injecting `service`  within `execute_message`. This might be removed
-            # using proper dependency injections.
-            message_bus.service = service
-
-            if cache is not None and database is not None:
-                component = await InfrahubComponent.new(
-                    cache=cache, component_type=component_type, db=database, message_bus=message_bus
-                )
-                # We need to post init `service._component` because InfrahubComponent.new relies on message_bus
-                # itself relying on service.
-                service._component = component
-
-        if workflow is not None:
-            if isinstance(workflow, WorkflowWorkerExecution):
-                assert service.component is not None
-                # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
-                # constructor but this requires some redesign as it depends on InfrahubComponent which is instantiated
-                # after workflow instantiation.
-                await workflow.initialize(
-                    component_is_primary_server=await service.component.is_primary_gunicorn_worker()
-                )
-            elif isinstance(workflow, WorkflowLocalExecution):
-                # Circular dependency is only needed for injecting `service` within `execute_workflow` while testing.
-                workflow.service = service
-
         return service
+
+    async def initialize_workflow(self, is_initial_setup: bool = False) -> None:
+        if self.workflow is not None and isinstance(self.workflow, WorkflowWorkerExecution):
+            assert self.component is not None
+            # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
+            # constructor but this requires some redesign as it depends on InfrahubComponent which is instantiated
+            # after workflow instantiation.
+            await self.component.refresh_heartbeat()
+            is_primary = await self.component.is_primary_gunicorn_worker()
+            await self.workflow.initialize(component_is_primary_server=is_primary, is_initial_setup=is_initial_setup)
 
     @property
     def component(self) -> InfrahubComponent:
@@ -181,6 +167,8 @@ class InfrahubServices:
     async def shutdown(self) -> None:
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
+        if self._cache is not None:
+            await self._cache.close_connection()
 
     async def send(self, message: InfrahubMessage, delay: MessageTTL | None = None, is_retry: bool = False) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))

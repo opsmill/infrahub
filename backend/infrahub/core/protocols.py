@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .protocols_base import CoreNode
+from infrahub.core.protocols_base import CoreNode
 
 if TYPE_CHECKING:
     from enum import Enum
@@ -60,6 +60,12 @@ class BuiltinIPPrefix(CoreNode):
     resource_pool: RelationshipManager
     parent: RelationshipManager
     children: RelationshipManager
+
+
+class CoreAction(CoreNode):
+    name: String
+    description: StringOptional
+    triggers: RelationshipManager
 
 
 class CoreArtifactTarget(CoreNode):
@@ -119,6 +125,7 @@ class CoreGenericRepository(CoreNode):
     queries: RelationshipManager
     checks: RelationshipManager
     generators: RelationshipManager
+    groups_objects: RelationshipManager
 
 
 class CoreGroup(CoreNode):
@@ -146,6 +153,10 @@ class CoreMenu(CoreNode):
     section: Enum
     parent: RelationshipManager
     children: RelationshipManager
+
+
+class CoreNodeTriggerMatch(CoreNode):
+    trigger: RelationshipManager
 
 
 class CoreObjectComponentTemplate(CoreNode):
@@ -189,6 +200,14 @@ class CoreTransformation(CoreNode):
     tags: RelationshipManager
 
 
+class CoreTriggerRule(CoreNode):
+    name: String
+    description: StringOptional
+    active: Boolean
+    branch_scope: Dropdown
+    action: RelationshipManager
+
+
 class CoreValidator(CoreNode):
     label: StringOptional
     state: Enum
@@ -207,6 +226,10 @@ class CoreWebhook(CoreNode):
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
+
+
+class CoreWeightedPoolResource(CoreNode):
+    allocation_weight: IntegerOptional
 
 
 class LineageOwner(CoreNode):
@@ -297,6 +320,7 @@ class CoreCheckDefinition(CoreTaskTarget):
 
 
 class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
+    shared_key: StringOptional
     transformation: RelationshipManager
 
 
@@ -322,6 +346,14 @@ class CoreFileThread(CoreThread):
     repository: RelationshipManager
 
 
+class CoreGeneratorAction(CoreAction):
+    generator: RelationshipManager
+
+
+class CoreGeneratorAwareGroup(CoreGroup):
+    pass
+
+
 class CoreGeneratorCheck(CoreCheck):
     instance: String
 
@@ -333,6 +365,8 @@ class CoreGeneratorDefinition(CoreTaskTarget):
     file_path: String
     class_name: String
     convert_query_response: BooleanOptional
+    execute_in_proposed_change: BooleanOptional
+    execute_after_merge: BooleanOptional
     query: RelationshipManager
     repository: RelationshipManager
     targets: RelationshipManager
@@ -376,6 +410,16 @@ class CoreGraphQLQueryGroup(CoreGroup):
     query: RelationshipManager
 
 
+class CoreGroupAction(CoreAction):
+    member_action: Dropdown
+    group: RelationshipManager
+
+
+class CoreGroupTriggerRule(CoreTriggerRule):
+    member_update: Dropdown
+    group: RelationshipManager
+
+
 class CoreIPAddressPool(CoreResourcePool, LineageSource):
     default_address_type: String
     default_prefix_length: IntegerOptional
@@ -395,11 +439,31 @@ class CoreMenuItem(CoreMenu):
     pass
 
 
+class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
+    attribute_name: String
+    value: StringOptional
+    value_previous: StringOptional
+    value_match: Dropdown
+
+
+class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
+    relationship_name: String
+    modification_type: Dropdown
+    peer: StringOptional
+
+
+class CoreNodeTriggerRule(CoreTriggerRule):
+    node_kind: String
+    mutation_action: Enum
+    matches: RelationshipManager
+
+
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
     start_range: Integer
     end_range: Integer
+    pool_type: Enum
 
 
 class CoreObjectPermission(CoreBasePermission):
@@ -424,7 +488,10 @@ class CoreProposedChange(CoreTaskTarget):
     source_branch: String
     destination_branch: String
     state: Enum
+    is_draft: Boolean
+    total_comments: IntegerOptional
     approved_by: RelationshipManager
+    rejected_by: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager
     comments: RelationshipManager
@@ -440,6 +507,11 @@ class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository,
 class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
     default_branch: String
     commit: StringOptional
+
+
+class CoreRepositoryGroup(CoreGroup):
+    content: Dropdown
+    repository: RelationshipManager
 
 
 class CoreRepositoryValidator(CoreValidator):
@@ -491,6 +563,14 @@ class InternalAccountToken(CoreNode):
     token: String
     expiration: DateTimeOptional
     account: RelationshipManager
+
+
+class InternalIPPrefixAvailable(BuiltinIPPrefix):
+    pass
+
+
+class InternalIPRangeAvailable(BuiltinIPAddress):
+    last_address: IPHost
 
 
 class InternalRefreshToken(CoreNode):

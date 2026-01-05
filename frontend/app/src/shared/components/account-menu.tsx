@@ -1,18 +1,14 @@
-import {
-  INFRAHUB_DISCORD_URL,
-  INFRAHUB_DOC_LOCAL,
-  INFRAHUB_GITHUB_URL,
-  INFRAHUB_SWAGGER_DOC_URL,
-} from "@/config/config";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
-import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
+import { gql, useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { Link, useLocation } from "react-router";
+import { toast } from "react-toastify";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
-import { AppVersion } from "@/shared/components/layout/app-version";
 import { Skeleton } from "@/shared/components/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
@@ -22,15 +18,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { gql, useQuery } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
-import { Link, useLocation } from "react-router";
-import { toast } from "react-toastify";
+import { Spinner } from "@/shared/components/ui/spinner";
+import {
+  INFRAHUB_DISCORD_URL,
+  INFRAHUB_DOC_LOCAL,
+  INFRAHUB_GITHUB_URL,
+  INFRAHUB_SWAGGER_DOC_URL,
+} from "@/shared/config/config";
+import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
+
+import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { AppInfo } from "@/entities/config/ui/app-info";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { ModelSchema } from "@/entities/schema/types";
+import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 
 export const AccountMenu = () => {
-  const { isAuthenticated, signOut } = useAuth();
+  const { isAuthenticated } = useAuth();
   const generics = useAtomValue(genericSchemasAtom);
   const schema = generics.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
@@ -42,7 +47,7 @@ export const AccountMenu = () => {
     return <AccountMenuSkeleton />;
   }
 
-  return <AuthenticatedAccountMenu schema={schema} signOut={signOut} />;
+  return <AuthenticatedAccountMenu schema={schema} />;
 };
 
 const CommonMenuItems = () => (
@@ -93,17 +98,17 @@ const UnauthenticatedAccountMenu = () => {
     <DropdownMenu>
       <LinkButton
         variant="ghost"
-        className="p-2 h-auto w-full rounded-lg gap-2 hover:bg-indigo-50 overflow-hidden shrink-0"
+        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 hover:bg-indigo-50"
         to="/login"
         state={{ from: location }}
       >
-        <div className="bg-indigo-50 rounded-full size-9 flex items-center justify-center overflow-hidden border border-white shrink-0">
-          <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
+        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50">
+          <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600" />
         </div>
 
-        <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
-          <div className="font-semibold text-sm truncate">Log in</div>
-          <div className="text-xs text-neutral-500 truncate">anonymous</div>
+        <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
+          <div className="truncate font-semibold text-sm">Log in</div>
+          <div className="truncate text-neutral-500 text-xs">anonymous</div>
         </div>
 
         <DropdownMenuTrigger
@@ -116,7 +121,7 @@ const UnauthenticatedAccountMenu = () => {
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="shrink-0 ml-auto hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
+            className="ml-auto shrink-0 hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
           >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
@@ -133,35 +138,36 @@ const UnauthenticatedAccountMenu = () => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <AppVersion />
+        <AppInfo />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
 
-const AuthenticatedAccountMenu = ({
-  schema,
-  signOut,
-}: {
-  schema: ModelSchema;
-  signOut: () => void;
-}) => {
+const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
   const query = gql(getProfileDetails({ ...schema }));
-  const { error, loading, data } = useQuery(query);
+  const { setToken } = useAuth();
+  const { loading, data } = useQuery(query);
+  const { mutateAsync: logout, isPending } = useLogoutMutation();
 
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-
-    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
-      toastId: "profile-alert",
+  const handleSignOut = async () => {
+    await logout(undefined, {
+      onSuccess: () => {
+        setToken(null);
+        queryClient.refetchQueries();
+        graphqlClient.refetchQueries({
+          include: "active",
+          onQueryUpdated: ({ queryName }) => queryName !== "GET_PROFILE_DETAILS",
+        });
+      },
+      onError: (error) => {
+        console.error("Error when logging out: ", error);
+        toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to log out" />, {
+          toastId: "alert-error-sign-out",
+        });
+      },
     });
-  }, []);
-
-  useEffect(() => {
-    if (error) {
-      handleSignOut();
-    }
-  }, [error, signOut]);
+  };
 
   if (loading) {
     return <AccountMenuSkeleton />;
@@ -174,18 +180,18 @@ const AuthenticatedAccountMenu = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full justify-start gap-2 hover:bg-indigo-50 rounded-lg p-2 overflow-hidden text-left shrink-0"
+          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50"
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="size-9 shrink-0" />
 
-          <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
-            <div className="font-semibold text-sm truncate">{profile?.label?.value}</div>
+          <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
+            <div className="truncate font-semibold text-sm">{profile?.label?.value}</div>
           </div>
 
           <Icon
             icon="mdi:dots-vertical"
-            className="text-lg m-2 ml-auto group-data-[collapsed=true]/sidebar:hidden transition-all"
+            className="m-2 ml-auto text-lg transition-all group-data-[collapsed=true]/sidebar:hidden"
           />
         </Button>
       </DropdownMenuTrigger>
@@ -200,12 +206,12 @@ const AuthenticatedAccountMenu = ({
         <DropdownMenuDivider />
         <CommonMenuItems />
         <DropdownMenuDivider />
-        <DropdownMenuItem onClick={signOut}>
-          <Icon icon="mdi:logout" className="text-base" />
+        <DropdownMenuItem onClick={handleSignOut} disabled={isPending}>
+          {isPending ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
           Logout
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <AppVersion />
+        <AppInfo />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -213,8 +219,8 @@ const AuthenticatedAccountMenu = ({
 
 const AccountMenuSkeleton = () => {
   return (
-    <div className="flex items-center gap-2 p-2 shrink-0 border border-transparent">
-      <Skeleton className="rounded-full size-9" />
+    <div className="flex shrink-0 items-center gap-2 border border-transparent p-2">
+      <Skeleton className="size-9 rounded-full" />
 
       <div className="grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
         <Skeleton className="h-4 w-4/5" />

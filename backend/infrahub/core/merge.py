@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateValidationResult
-from infrahub.core.protocols import CoreRepository
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MergeFailedError, ValidationError
 from infrahub.log import get_logger
 
 from ..git.models import GitRepositoryMerge
@@ -18,6 +18,7 @@ from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
+    from infrahub.core.diff.diff_locker import DiffLocker
     from infrahub.core.diff.merger.merger import DiffMerger
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 log = get_logger()
@@ -39,8 +40,9 @@ class BranchMerger:
         diff_coordinator: DiffCoordinator,
         diff_merger: DiffMerger,
         diff_repository: DiffRepository,
+        diff_locker: DiffLocker,
         destination_branch: Branch | None = None,
-        service: InfrahubServices | None = None,
+        workflow: InfrahubWorkflow | None = None,
     ):
         self.source_branch = source_branch
         self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
@@ -48,6 +50,7 @@ class BranchMerger:
         self.diff_coordinator = diff_coordinator
         self.diff_merger = diff_merger
         self.diff_repository = diff_repository
+        self.diff_locker = diff_locker
         self.migrations: list[SchemaUpdateMigrationInfo] = []
         self._merge_at = Timestamp()
 
@@ -55,7 +58,7 @@ class BranchMerger:
         self._destination_schema: SchemaBranch | None = None
         self._initial_source_schema: SchemaBranch | None = None
 
-        self._service = service
+        self._workflow = workflow
 
     @property
     def source_schema(self) -> SchemaBranch:
@@ -78,10 +81,10 @@ class BranchMerger:
         raise ValueError("_initial_source_schema hasn't been initialized")
 
     @property
-    def service(self) -> InfrahubServices:
-        if not self._service:
-            raise ValueError("BranchMerger hasn't been initialized with a service object")
-        return self._service
+    def workflow(self) -> InfrahubWorkflow:
+        if not self._workflow:
+            raise ValueError("BranchMerger hasn't been initialized with a workflow object")
+        return self._workflow
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
@@ -185,22 +188,34 @@ class BranchMerger:
         )
         log.info("Diff updated for merge")
 
-        errors: list[str] = []
-        async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
-            diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+        log.info("Acquiring lock for merge")
+        async with self.diff_locker.acquire_lock(
+            target_branch_name=self.destination_branch.name,
+            source_branch_name=self.source_branch.name,
+            is_incremental=False,
         ):
-            if conflict.selected_branch is None or conflict.resolvable is False:
-                errors.append(conflict_path)
+            log.info("Lock acquired for merge")
+            try:
+                errors: list[str] = []
+                async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
+                    diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+                ):
+                    if conflict.selected_branch is None or conflict.resolvable is False:
+                        errors.append(conflict_path)
 
-        if errors:
-            raise ValidationError(
-                f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
-            )
+                if errors:
+                    raise ValidationError(
+                        f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
+                    )
 
-        # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
-        # From the Graph or From the repositories
-        self._merge_at = Timestamp(at)
-        branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+                # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
+                # From the Graph or From the repositories
+                self._merge_at = Timestamp(at)
+                branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+            except Exception as exc:
+                log.exception("Merge failed, beginning rollback")
+                await self.rollback()
+                raise MergeFailedError(branch_name=self.source_branch.name) from exc
         await self.merge_repositories()
         return branch_diff
 
@@ -208,6 +223,32 @@ class BranchMerger:
         await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:
+        await self.merge_core_read_only_repositories()
+        await self.merge_core_repositories()
+
+    async def merge_core_read_only_repositories(self) -> None:
+        repos_in_main_list = await NodeManager.query(schema=CoreReadOnlyRepository, db=self.db)
+        repos_in_main = {repo.id: repo for repo in repos_in_main_list}
+
+        repos_in_branch_list = await NodeManager.query(
+            schema=CoreReadOnlyRepository, db=self.db, branch=self.source_branch
+        )
+        for repo in repos_in_branch_list:
+            if repo.id not in repos_in_main:
+                continue
+
+            model = GitRepositoryMerge(
+                repository_id=repo.id,
+                repository_name=repo.name.value,
+                source_branch=self.source_branch.name,
+                destination_branch=self.destination_branch.name,
+                destination_branch_id=str(self.destination_branch.get_uuid()),
+                internal_status=repo.internal_status.value,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+            )
+            await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+
+    async def merge_core_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema=CoreRepository, db=self.db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
@@ -230,7 +271,6 @@ class BranchMerger:
                     destination_branch=self.destination_branch.name,
                     destination_branch_id=str(self.destination_branch.get_uuid()),
                     default_branch=repo.default_branch.value,
+                    repository_kind=InfrahubKind.REPOSITORY,
                 )
-                await self.service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model}
-                )
+                await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})

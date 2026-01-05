@@ -1,6 +1,7 @@
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef } from "react";
+
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 
 export interface MoreButtonProps extends ButtonProps {}
 

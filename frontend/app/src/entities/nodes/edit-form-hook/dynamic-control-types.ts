@@ -1,7 +1,10 @@
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { SelectOption } from "@/shared/components/inputs/select-old";
-import { RegisterOptions } from "react-hook-form";
-import { FormFieldError } from "./form";
+import type { RegisterOptions } from "react-hook-form";
+
+import type { SelectOption } from "@/shared/components/inputs/select-old";
+
+import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
+import type { FormFieldError } from "./form";
 
 // Interface for every field in a create/edit form
 export interface DynamicFieldData {

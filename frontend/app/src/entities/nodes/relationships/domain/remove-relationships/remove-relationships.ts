@@ -1,5 +1,6 @@
+import type { BranchContextParams } from "@/shared/api/types";
+
 import { removeRelationshipsFromApi } from "@/entities/nodes/relationships/api/remove-relationships-from-api";
-import { BranchContextParams } from "@/shared/api/types";
 
 export type RemoveRelationshipsParams = BranchContextParams & {
   objectId: string;

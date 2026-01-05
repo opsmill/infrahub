@@ -19,12 +19,16 @@ sdk_files: &sdk_files
 testcontainers_files:
   - "python_testcontainers/**"
 
-infrahub_poetry_files: &infrahub_poetry_files
+infrahub_uv_files: &infrahub_uv_files
   - "**/pyproject.toml"
-  - "**/poetry.lock"
+  - "**/uv.lock"
 
 frontend_files: &frontend_files
   - "frontend/app/**"
+
+openapi_schema_files: &openapi_schema_files
+  - "schema/openapi.json"
+  - "frontend/app/src/shared/api/rest/types.generated.ts"
 
 e2e_test_files:
   - "frontend/app/tests/e2e/**"
@@ -68,7 +72,7 @@ backend_all:
   - *backend_files
   - *ci_config
   - *development_files
-  - *infrahub_poetry_files
+  - *infrahub_uv_files
   - *sdk_files
 
 documentation_all:
@@ -85,8 +89,12 @@ release_all:
 
 frontend_all:
   - *frontend_files
+  - *openapi_schema_files
   - *ci_config
   - *development_files
+
+openapi_schema_all:
+  - *openapi_schema_files
 
 e2e_all:
   - *backend_files
@@ -94,3 +102,4 @@ e2e_all:
   - *demo_files
   - *ci_config
   - *development_files
+  - *infrahub_uv_files

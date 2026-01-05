@@ -1,6 +1,7 @@
-import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { gql } from "@apollo/client";
-import { VariableType, jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
+
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export const updateGroupsQuery = ({
   schema,

@@ -6,7 +6,7 @@ from uuid import UUID
 from prefect import Flow
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import DeploymentScheduleCreate
-from prefect.client.schemas.objects import FlowRun
+from prefect.client.schemas.objects import ConcurrencyLimitStrategy, FlowRun
 from prefect.client.schemas.schedules import CronSchedule
 from pydantic import BaseModel, Field
 from typing_extensions import Self
@@ -48,9 +48,19 @@ class WorkflowDefinition(BaseModel):
     function: str
     cron: str | None = None
     tags: list[WorkflowTag] = Field(default_factory=list)
+    concurrency_limit: int | None = Field(
+        default=None,
+        description="The concurrency limit for the deployment.",
+    )
+    concurrency_limit_strategy: ConcurrencyLimitStrategy | None = Field(
+        default=None,
+        description="The concurrency options for the deployment.",
+    )
 
     @property
     def entrypoint(self) -> str:
+        if self.type == WorkflowType.USER:
+            return f"{self.module}:{self.function}"
         return f"backend/{self.module.replace('.', '/')}:{self.function}"
 
     @property
@@ -58,7 +68,14 @@ class WorkflowDefinition(BaseModel):
         return f"{self.name}/{self.name}"
 
     def to_deployment(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {"name": self.name, "entrypoint": self.entrypoint, "tags": self.get_tags()}
+        payload: dict[str, Any] = {
+            "name": self.name,
+            "entrypoint": self.entrypoint,
+            "tags": self.get_tags(),
+            "concurrency_limit": self.concurrency_limit,
+        }
+        if self.concurrency_limit_strategy:
+            payload["concurrency_options"] = {"collision_strategy": self.concurrency_limit_strategy}
         if self.type == WorkflowType.CORE:
             payload["version"] = __version__
         if self.cron:

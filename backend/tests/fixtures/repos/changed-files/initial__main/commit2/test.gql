@@ -1,0 +1,10 @@
+ query tags_query {
+  BuiltinTag {
+    edges {
+      node {
+	      id
+	      hfid
+      }
+    }
+  }
+}

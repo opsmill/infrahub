@@ -1,6 +1,7 @@
 from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
+    NumberPoolType,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -29,6 +30,26 @@ core_resource_pool = GenericSchema(
     attributes=[
         Attr(name="name", kind="Text", order_weight=1000, unique=True),
         Attr(name="description", kind="Text", optional=True, order_weight=2000),
+    ],
+)
+
+core_weighted_pool_resource = GenericSchema(
+    name="WeightedPoolResource",
+    namespace="Core",
+    label="Weighted Pool Resource",
+    description="Resource to be used in a pool, its weight is used to determine its priority on allocation.",
+    include_in_menu=False,
+    branch=BranchSupportType.AWARE,
+    generate_profile=False,
+    attributes=[
+        Attr(
+            name="allocation_weight",
+            label="Weight",
+            description="Weight determines allocation priority, resources with higher values are selected first.",
+            kind="Number",
+            optional=True,
+            order_weight=10000,
+        )
     ],
 )
 
@@ -165,6 +186,14 @@ core_number_pool = NodeSchema(
         ),
         Attr(
             name="end_range", kind="Number", optional=False, description="The end range for the pool", order_weight=6000
+        ),
+        Attr(
+            name="pool_type",
+            kind="Text",
+            description="Defines how this number pool was created",
+            default_value=NumberPoolType.USER.value,
+            enum=NumberPoolType.available_types(),
+            read_only=True,
         ),
     ],
 )

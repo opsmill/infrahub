@@ -1,11 +1,13 @@
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { Permission } from "@/entities/permission/types";
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-
-import { ModelSchema } from "@/entities/schema/types";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+
+import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;
@@ -43,8 +45,8 @@ const ObjectEditSlideOverTrigger = ({
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={data.display_label}
-            title={`Edit ${data.display_label}`}
+            currentObjectLabel={getNodeLabel(data)}
+            title={`Edit ${getNodeLabel(data)}`}
             subtitle={data?.description?.value}
           />
         }
@@ -53,8 +55,11 @@ const ObjectEditSlideOverTrigger = ({
       >
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditDrawerOpen(false)}
-          onUpdateComplete={onUpdateComplete}
-          objectid={data.id}
+          onUpdateComplete={() => {
+            onUpdateComplete?.();
+            setIsEditDrawerOpen(false);
+          }}
+          objectId={data.id}
           objectname={schema.kind!}
         />
       </SlideOver>

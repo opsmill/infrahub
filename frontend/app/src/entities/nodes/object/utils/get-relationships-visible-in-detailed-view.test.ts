@@ -1,5 +1,7 @@
-import { RelationshipSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
+
+import type { RelationshipSchema } from "@/entities/schema/types";
+
 import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import { getRelationshipsVisibleInDetailedView } from "./get-relationships-visible-in-detailed-view";
 
@@ -24,6 +26,20 @@ describe("getRelationshipsVisibleInDetailedView", () => {
 
     // THEN
     expect(result).toEqual(relationships);
+  });
+
+  it("should return only Generic relationships with cardinality 'one'", () => {
+    // GIVEN
+    const relationships = [
+      generateRelationshipSchema({ kind: "Generic", cardinality: "one" }),
+      generateRelationshipSchema({ kind: "Generic", cardinality: "many" }),
+    ];
+
+    // WHEN
+    const result = getRelationshipsVisibleInDetailedView(relationships);
+
+    // THEN
+    expect(result).toEqual([generateRelationshipSchema({ kind: "Generic", cardinality: "one" })]);
   });
 
   it("should return only Component relationships with cardinality 'one'", () => {
@@ -54,10 +70,10 @@ describe("getRelationshipsVisibleInDetailedView", () => {
     expect(result).toEqual([generateRelationshipSchema({ kind: "Hierarchy", cardinality: "one" })]);
   });
 
-  it("should not return other relationship types", () => {
+  it("should not return Group relationship types", () => {
     // GIVEN
     const relationships = [
-      generateRelationshipSchema({ kind: "Generic", cardinality: "one" }),
+      generateRelationshipSchema({ kind: "Group", cardinality: "one" }),
       generateRelationshipSchema({ kind: "Group", cardinality: "many" }),
     ];
 
@@ -73,11 +89,13 @@ describe("getRelationshipsVisibleInDetailedView", () => {
     const relationships = [
       generateRelationshipSchema({ kind: "Attribute", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Parent", cardinality: "one" }),
+      generateRelationshipSchema({ kind: "Generic", cardinality: "one" }),
+      generateRelationshipSchema({ kind: "Generic", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Component", cardinality: "one" }),
       generateRelationshipSchema({ kind: "Component", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Hierarchy", cardinality: "one" }),
       generateRelationshipSchema({ kind: "Hierarchy", cardinality: "many" }),
-      generateRelationshipSchema({ kind: "Generic", cardinality: "one" }),
+      generateRelationshipSchema({ kind: "Group", cardinality: "many" }),
     ];
 
     // WHEN
@@ -87,6 +105,7 @@ describe("getRelationshipsVisibleInDetailedView", () => {
     expect(result).toEqual([
       generateRelationshipSchema({ kind: "Attribute", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Parent", cardinality: "one" }),
+      generateRelationshipSchema({ kind: "Generic", cardinality: "one" }),
       generateRelationshipSchema({ kind: "Component", cardinality: "one" }),
       generateRelationshipSchema({ kind: "Hierarchy", cardinality: "one" }),
     ]);

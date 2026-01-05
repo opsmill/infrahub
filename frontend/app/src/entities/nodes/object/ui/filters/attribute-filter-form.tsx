@@ -1,15 +1,17 @@
+import { useState } from "react";
+
+import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
+import type { FormAttributeValue } from "@/shared/components/form/type";
+import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
+import useFilters, { type Filter } from "@/shared/hooks/useFilters";
+
 import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
 import {
   FILTER_CONDITION,
-  FilterCondition,
+  type FilterCondition,
   FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { AttributeSchema } from "@/entities/schema/types";
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
-import { FormAttributeValue } from "@/shared/components/form/type";
-import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
-import { useState } from "react";
+import type { AttributeSchema } from "@/entities/schema/types";
 
 export type AttributeFilterFormProps = {
   attributeSchema: AttributeSchema;
@@ -27,7 +29,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
     if (condition === FILTER_CONDITION.CONTAINS) {
       const { attribute } = formData;
 
-      if (!attribute && attribute !== 0) {
+      if (!attribute && attribute !== 0 && attribute !== false) {
         return setFilters(filters.filter((f) => !f.name.startsWith(attributeSchema.name)));
       }
 
@@ -69,16 +71,16 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
 
   return (
     <div className="flex gap-2 p-2">
-      <div className="h-10 inline-flex items-center">Where</div>
+      <div className="inline-flex h-10 items-center">Where</div>
 
       <FilterConditionSelect
         filterType="attribute"
-        selectedKey={condition}
-        onSelectionChange={(key) => setCondition(key as FilterCondition)}
+        value={condition}
+        onChange={(key) => setCondition(key as FilterCondition)}
       />
 
       <Form
-        className="space-y-0 flex gap-2"
+        className="flex gap-2 space-y-0"
         onSubmit={(formData) => {
           handleSubmit(formData);
           onSuccess?.();

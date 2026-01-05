@@ -1,12 +1,13 @@
-import {
+import type { Filter } from "@/shared/hooks/useFilters";
+
+import type {
   AttributeType,
   Node,
   RelationshipManyType,
   RelationshipOneType,
   RelationshipType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { ModelSchema } from "@/entities/schema/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export const getObjectFromFilters = (
   schema: ModelSchema | null,

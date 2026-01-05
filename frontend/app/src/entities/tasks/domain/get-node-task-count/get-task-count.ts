@@ -1,5 +1,6 @@
+import type { BranchContextParams } from "@/shared/api/types";
+
 import { getTaskCountFromApi } from "@/entities/tasks/api/get-task-count-from-api";
-import { BranchContextParams } from "@/shared/api/types";
 
 export interface GetTaskCountParams extends BranchContextParams {
   nodeId: string;

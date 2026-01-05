@@ -1,13 +1,16 @@
-import { CONFIG } from "@/config/config";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import {
-  OperationVariables,
+  type OperationVariables,
   useLazyQuery as useApolloLazyQuery,
   useMutation as useApolloMutation,
   useQuery as useApolloQuery,
 } from "@apollo/client";
 import { useAtomValue } from "jotai";
+
+import { CONFIG } from "@/shared/config/config";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+
 import usePagination from "../../hooks/usePagination";
 
 interface Options extends OperationVariables {

@@ -7,7 +7,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, Infra
 from infrahub.core.manager import get_schema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import GraphQLOperation, InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.utils import extract_camelcase_words
@@ -119,34 +119,46 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
     permission_required = GlobalPermission(
         action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
+    # Map kinds and the relationship to protect from being read
+    kind_relationship_to_check = {
+        InfrahubKind.ACCOUNTROLE: "permissions",
+        InfrahubKind.BASEPERMISSION: "roles",
+        InfrahubKind.GLOBALPERMISSION: "roles",
+        InfrahubKind.OBJECTPERMISSION: "roles",
+    }
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
-        db: InfrahubDatabase,
+        db: InfrahubDatabase,  # noqa: ARG002
         account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch,
+        branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
-        is_permission_operation = False
-        kinds = analyzed_query.query_report.impacted_models
+        for kind, relationship in self.kind_relationship_to_check.items():
+            if (
+                kind in analyzed_query.query_report.requested_read
+                and relationship in analyzed_query.query_report.requested_read[kind].relationships
+            ):
+                query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
-        for kind in kinds:
-            schema = get_schema(db=db, branch=branch, node_schema=kind)
-            if is_permission_operation := kind in (
-                InfrahubKind.BASEPERMISSION,
-                InfrahubKind.GLOBALPERMISSION,
-                InfrahubKind.OBJECTPERMISSION,
-            ) or (isinstance(schema, NodeSchema) and InfrahubKind.BASEPERMISSION in schema.inherit_from):
-                break
+        for query in analyzed_query.query_report.queries:
+            if not query.infrahub_model:
+                continue
 
-        if not is_permission_operation:
-            return CheckerResolution.NEXT_CHECKER
-
-        query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
+            # Prevent mutations on permissions and account roles
+            if (
+                query.operation == GraphQLOperation.MUTATION
+                and isinstance(query.infrahub_model, NodeSchema)
+                and (
+                    InfrahubKind.BASEPERMISSION in query.infrahub_model.inherit_from
+                    or query.infrahub_model.kind == InfrahubKind.ACCOUNTROLE
+                )
+            ):
+                query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER
 

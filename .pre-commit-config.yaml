@@ -10,10 +10,11 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
+        exclude: ^(schema/schema\.graphql|schema/openapi\.json)$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.11.0
+    rev: v0.11.9
     hooks:
       # Run the linter.
       - id: ruff

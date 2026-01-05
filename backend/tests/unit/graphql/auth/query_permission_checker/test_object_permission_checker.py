@@ -21,7 +21,6 @@ from infrahub.graphql.auth.query_permission_checker.object_permission_checker im
     RepositoryManagerPermissionChecker,
 )
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions.local_backend import LocalPermissionBackend
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -108,6 +107,7 @@ MUTATION_ACCOUNT_ROLE = """
 mutation {
   CoreAccountRoleCreate(data: {
     name: {value: "test"}
+    permissions: []
   }) {
     ok
   }
@@ -178,6 +178,24 @@ query {
 }
 """
 
+QUERY_CORE_NODE = """
+query {
+  CoreNode {
+    edges {
+      node {
+        id
+        ... on CoreRepository {
+          name {
+            value
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+
 MUTATION_REPOSITORY = """
 mutation {
   CoreRepositoryCreate(data: {
@@ -216,12 +234,12 @@ class TestObjectPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
-    ):
-        registry.permission_backends = [LocalPermissionBackend()]
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permissions = []
@@ -263,7 +281,9 @@ class TestObjectPermissions:
 
         permissions_helper._first = first_account
 
-    async def test_first_account_tags(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
+    async def test_first_account_tags(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ) -> None:
         checker = ObjectPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -314,7 +334,9 @@ class TestObjectPermissions:
                 query_parameters=gql_params,
             )
 
-    async def test_first_account_graphql(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
+    async def test_first_account_graphql(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ) -> None:
         """The user should have permissions to list GraphQLQueries."""
         checker = ObjectPermissionChecker()
         session = AccountSession(
@@ -374,13 +396,13 @@ class TestAccountManagerPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
-        registry.permission_backends = [LocalPermissionBackend()]
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -412,7 +434,7 @@ class TestAccountManagerPermissions:
     )
     async def test_supports_manage_accounts_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -420,8 +442,12 @@ class TestAccountManagerPermissions:
 
     @pytest.mark.parametrize("operation", [MUTATION_ACCOUNT, MUTATION_ACCOUNT_GROUP, MUTATION_ACCOUNT_ROLE])
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -458,8 +484,13 @@ class TestAccountManagerPermissions:
         ],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -502,13 +533,13 @@ class TestPermissionManagerPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
-        registry.permission_backends = [LocalPermissionBackend()]
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -540,18 +571,29 @@ class TestPermissionManagerPermissions:
     )
     async def test_supports_manage_accounts_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = PermissionManagerPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
             assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
-        "operation", [MUTATION_GLOBAL_PERMISSION, MUTATION_OBJECT_PERMISSION, QUERY_ACCOUNT_PERMISSIONS]
+        "operation",
+        [
+            MUTATION_GLOBAL_PERMISSION,
+            MUTATION_OBJECT_PERMISSION,
+            MUTATION_ACCOUNT_ROLE,
+            QUERY_ACCOUNT_PERMISSIONS,
+            QUERY_CORE_NODE,
+        ],
     )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+    ) -> None:
         checker = PermissionManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -578,17 +620,86 @@ class TestPermissionManagerPermissions:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
+        "kind,relationship",
+        [
+            (InfrahubKind.ACCOUNTROLE, "permissions"),
+            (InfrahubKind.BASEPERMISSION, "roles"),
+            (InfrahubKind.GLOBALPERMISSION, "roles"),
+            (InfrahubKind.OBJECTPERMISSION, "roles"),
+        ],
+    )
+    async def test_corenode_query_account_with_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        kind: str,
+        relationship: str,
+    ) -> None:
+        query = """
+        query {
+          CoreNode {
+            edges {
+              node {
+                id
+                ... on %s {
+                  %s {
+                    edges {
+                      node {
+                        identifier
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """ % (kind, relationship)
+        checker = PermissionManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=query,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        resolution = await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            query_parameters=gql_params,
+            branch=permissions_helper.default_branch,
+        )
+        assert resolution == CheckerResolution.NEXT_CHECKER
+
+    @pytest.mark.parametrize(
         "operation,must_raise",
         [
             (MUTATION_GLOBAL_PERMISSION, True),
             (MUTATION_OBJECT_PERMISSION, True),
+            (MUTATION_ACCOUNT_ROLE, True),
             (QUERY_TAGS, False),
             (QUERY_ACCOUNT_PERMISSIONS, False),
+            (QUERY_CORE_NODE, False),
         ],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
+    ) -> None:
         checker = PermissionManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -624,18 +735,80 @@ class TestPermissionManagerPermissions:
                     branch=permissions_helper.default_branch,
                 )
 
+    @pytest.mark.parametrize(
+        "kind,relationship",
+        [
+            (InfrahubKind.ACCOUNTROLE, "permissions"),
+            (InfrahubKind.BASEPERMISSION, "roles"),
+            (InfrahubKind.GLOBALPERMISSION, "roles"),
+            (InfrahubKind.OBJECTPERMISSION, "roles"),
+        ],
+    )
+    async def test_corenode_query_account_without_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        kind: str,
+        relationship: str,
+    ) -> None:
+        query = """
+        query {
+          CoreNode {
+            edges {
+              node {
+                id
+                ... on %s {
+                  %s {
+                    edges {
+                      node {
+                        identifier
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """ % (kind, relationship)
+        checker = PermissionManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=query,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage permissions"):
+            await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                query_parameters=gql_params,
+                branch=permissions_helper.default_branch,
+            )
+
 
 class TestRepositoryManagerPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
-        registry.permission_backends = [LocalPermissionBackend()]
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -667,7 +840,7 @@ class TestRepositoryManagerPermissions:
     )
     async def test_supports_manage_repositories_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -677,8 +850,12 @@ class TestRepositoryManagerPermissions:
         "operation", [MUTATION_REPOSITORY, MUTATION_READONLY_REPOSITORY, MUTATION_GENERIC_REPOSITORY]
     )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+    ) -> None:
         checker = RepositoryManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -714,8 +891,13 @@ class TestRepositoryManagerPermissions:
         ],
     )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, operation: str, must_raise: bool
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
+    ) -> None:
         checker = RepositoryManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT

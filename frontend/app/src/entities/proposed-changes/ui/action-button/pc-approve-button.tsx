@@ -1,93 +1,97 @@
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
-interface PcApproveButtonProps extends ButtonProps {
-  proposedChangeId: string;
-  approvers: Array<any>;
-  state: "closed" | "open" | "merged";
-}
+import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 
-export const PcApproveButton = ({
-  approvers = [],
-  proposedChangeId,
-  state,
-  disabled,
-  ...props
-}: PcApproveButtonProps) => {
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
+import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/domain/update-review.mutation";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
+
+import type { ProposedChangeActionButtonProps } from "./types";
+
+export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
-  const [isLoadingApprove, setIsLoadingApprove] = useState(false);
+  const { approve, cancelApprove } = usePcActionsContext();
 
-  const approverId = auth?.data?.sub;
-  const canApprove = !approvers?.map((a: any) => a.id).includes(approverId);
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const handleApprove = async () => {
-    if (!approverId) {
-      return;
-    }
+  const hasApproved = auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user);
 
-    setIsLoadingApprove(true);
-
-    const oldApproversId = approvers.map((a: any) => a.id);
-    const newApproversId = Array.from(new Set([...oldApproversId, approverId]));
-    const newApprovers = newApproversId.map((id: string) => ({ id }));
-
-    const data = {
-      approved_by: newApprovers,
-    };
-
-    try {
-      const mutationString = updateObjectWithId({
-        kind: PROPOSED_CHANGES_OBJECT,
-        data: stringifyWithoutQuotes({
-          id: proposedChangeId,
-          ...data,
-        }),
+  const { mutate, isPending } = useUpdateProposedChangeReview({
+    onSuccess: async () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={hasApproved ? "Proposed change approval canceled!" : "Proposed change approved!"}
+        />
+      );
+    },
+    onError: () => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={
+            hasApproved
+              ? "An error occurred while canceling the approval"
+              : "An error occurred while approving"
+          }
+        />
+      );
+    },
+  });
 
-      const mutation = gql`
-        ${mutationString}
-      `;
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
 
-      await graphqlClient.mutate({
-        mutation,
-        context: { branch: branch?.name, date },
-      });
-
-      await graphqlClient.reFetchObservableQueries();
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
-
-      setIsLoadingApprove(false);
-
-      return;
-    } catch (e) {
-      console.error("Something went wrong while updating the object:", e);
-
-      return;
-    }
+    mutate({
+      proposedChangeId: proposedChangesDetails.id,
+      decision: hasApproved ? CANCEL_APPROVE_DECISION : APPROVE_DECISION,
+    });
   };
 
+  const tooltipContent = hasApproved
+    ? cancelApprove.unavailability_reason
+    : approve.unavailability_reason;
+  const tooltipEnabled = hasApproved ? !cancelApprove.available : !approve.available;
+
   return (
-    <Button
-      variant="outline"
-      onClick={handleApprove}
-      isLoading={isLoadingApprove}
-      disabled={disabled || !approverId || !canApprove || state === "closed" || state === "merged"}
-      {...props}
-    >
-      Approve
-    </Button>
+    <>
+      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+        <Button
+          className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
+          onClick={handleAction}
+          variant={"primary"}
+          isLoading={isPending}
+          disabled={tooltipEnabled || isPending}
+        >
+          {hasApproved ? "Cancel Approve" : "Approve"}
+        </Button>
+      </Tooltip>
+
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"primary"}
+        size={"sm"}
+        onClick={() => {
+          setOpen(true);
+        }}
+        disabled={isPending}
+        data-testid="proposed-change-action-button-select"
+        aria-label="More actions"
+        type="button"
+      >
+        <Icon icon="mdi:unfold-more-horizontal" />
+      </Button>
+    </>
   );
 };

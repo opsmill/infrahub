@@ -1,12 +1,14 @@
-import {
+import { describe, expect, it } from "vitest";
+
+import type {
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
-import { buildField } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData.test";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
-import { describe, expect } from "vitest";
+
+import { buildFormField } from "../../../../../../tests/fake/form";
 
 describe("getUpdateMutationFromFormData - test", () => {
   it("returns empty if there is no fields in form", () => {
@@ -24,7 +26,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("keeps value if it's from the user", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: "old-value" },
       }),
@@ -45,7 +47,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("correctly unset the array for multiselect", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: ["test"] },
       }),
@@ -66,7 +68,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("set value to null if it's from the user and is an empty string", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: "old-value" },
       }),
@@ -87,7 +89,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("set attribute to null if it's from the user and value is null", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: "old-value" },
       }),
@@ -108,7 +110,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("set relationship to null if it's from the user and value is null", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "relationship1",
         type: "relationship",
         defaultValue: {
@@ -133,7 +135,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("removes field if value and source are not updated", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: "old-value" },
       }),
@@ -152,7 +154,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("keeps field if source is updated", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "schema" }, value: "value1" },
       }),
@@ -173,7 +175,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("keeps field if source change from user to pool", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         type: "relationship",
         defaultValue: {
@@ -210,7 +212,7 @@ describe("getUpdateMutationFromFormData - test", () => {
   it("set is_default: true if field if value is from profile", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: "value1" },
       }),
@@ -238,7 +240,7 @@ describe("getUpdateMutationFromFormData - test", () => {
 
   it("set is_default: true if field if value is from schema", () => {
     const fields: Array<DynamicFieldProps> = [
-      buildField({
+      buildFormField({
         name: "field1",
         defaultValue: { source: { type: "user" }, value: "value1" },
       }),
@@ -260,7 +262,7 @@ describe("getUpdateMutationFromFormData - test", () => {
     it("set correctly attribute of kind list when initial value is null", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
-        buildField({
+        buildFormField({
           name: "listField",
           type: "List",
           defaultValue: { source: null, value: null },
@@ -282,7 +284,7 @@ describe("getUpdateMutationFromFormData - test", () => {
     it("set correctly attribute of kind list when initial has items", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
-        buildField({
+        buildFormField({
           name: "listField",
           type: "List",
           defaultValue: { source: { type: "user" }, value: ["item1"] },

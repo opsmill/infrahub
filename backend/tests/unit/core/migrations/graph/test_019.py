@@ -11,7 +11,7 @@ from tests.helpers.db_validation import validate_node_relationships
 async def test_migration_019(
     db: InfrahubDatabase,
     default_branch,
-):
+) -> None:
     """
     Reproduce corrupted state introduced by migration 12, and apply the migration fixing it.
     """
@@ -129,7 +129,7 @@ async def test_migration_019(
 
 async def test_incorrectly_deleted_aware_nodes_and_relationship(
     db: InfrahubDatabase, branch, car_person_schema_unregistered
-):
+) -> None:
     """
     Reproduce a state where a branch aware node would have been incorrectly deleted, this node being
     connected to another node through a branch aware relationship.
@@ -167,7 +167,9 @@ async def test_incorrectly_deleted_aware_nodes_and_relationship(
     await validate_node_relationships(node=car, branch=branch, db=db)
 
 
-async def test_incorrectly_deleted_agnostic_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema):
+async def test_incorrectly_deleted_agnostic_node(
+    db: InfrahubDatabase, branch, car_person_branch_agnostic_schema
+) -> None:
     """
     Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
     connected to another node through 2 relationships, both aware and agnostic.
@@ -206,7 +208,7 @@ async def test_incorrectly_deleted_agnostic_node(db: InfrahubDatabase, branch, c
     await validate_node_relationships(node=agnostic_car, branch=registry.get_global_branch(), db=db)
 
 
-async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema):
+async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema) -> None:
     """
     Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
     connected to another node through 2 relationships, both aware and agnostic.

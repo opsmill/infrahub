@@ -20,8 +20,7 @@ class NodeNotPresentValidatorQuery(SchemaValidatorQuery):
 
         query = """
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)
             WHERE all(
                 r in relationships(path)
@@ -31,7 +30,6 @@ class NodeNotPresentValidatorQuery(SchemaValidatorQuery):
             ORDER BY rr.branch_level DESC, rr.from DESC
             LIMIT 1
         }
-        WITH full_path, node, root_relationship
         WITH full_path, node, root_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}

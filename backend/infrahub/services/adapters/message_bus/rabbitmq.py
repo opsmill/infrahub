@@ -12,7 +12,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.log import clear_log_context, get_log_data
+from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 
     from infrahub.config import BrokerSettings
-    from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
@@ -72,7 +71,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.channel: AbstractChannel
         self.exchange: AbstractExchange
         self.delayed_exchange: AbstractExchange
-        self.service: InfrahubServices  # Needed because we inject `service` while sending messages.
         self.connection: AbstractRobustConnection
         self.callback_queue: AbstractQueue
         self.events_queue: AbstractQueue
@@ -130,23 +128,23 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         clear_log_context()
         if message.routing_key in messages.MESSAGE_MAP:
-            await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+            await execute_message(routing_key=message.routing_key, message_body=message.body, message_bus=self)
         else:
-            self.service.log.error("Invalid message received", message=f"{message!r}")
+            get_logger().error("Invalid message received", message=f"{message!r}")
 
     async def on_message(self, message: AbstractIncomingMessage) -> None:
         async with message.process():
             clear_log_context()
             if message.routing_key in messages.MESSAGE_MAP:
-                await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+                await execute_message(routing_key=message.routing_key, message_body=message.body, message_bus=self)
             else:
-                self.service.log.error("Invalid message received", message=f"{message!r}")
+                get_logger().error("Invalid message received", message=f"{message!r}")
 
     async def on_reconnect(
         self,
         weak: bool = False,  # noqa: ARG002
     ) -> None:
-        self.service.log.info("Reconnected to RabbitMQ, reinitializing connection")
+        get_logger().info("Reconnected to RabbitMQ, reinitializing connection")
         await self._initialize_connection()
 
     async def _initialize_api_server(self) -> None:
@@ -246,7 +244,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         request_id = log_data.get("request_id", "")
         message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.name)
 
-        await self.service.message_bus.send(message=message)
+        await self.send(message=message)
 
         response: AbstractIncomingMessage = await future
         data = ujson.loads(response.body)

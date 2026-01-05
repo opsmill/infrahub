@@ -50,8 +50,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         query = """
         // get the nodes on these branches nodes
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
             RETURN path as full_path, n as active_node
@@ -60,11 +59,9 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // filter to only the active nodes
         WITH full_path, active_node
-        WITH full_path, active_node
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         // get the relationships using the given identifier for each node
-        CALL {
-            WITH active_node
+        CALL (active_node) {
             MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $relationship_id })-[rrel2:IS_RELATED]-(peer:Node)
             WHERE ($relationship_direction <> "outbound" OR (startNode(rrel1) = active_node AND startNode(rrel2) = rel))
             AND ($relationship_direction <> "inbound" OR (startNode(rrel1) = rel AND startNode(rrel2) = peer))
@@ -87,8 +84,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
             start_node,
             peer_node
         // make sure to only use the latest version of this particular path
-        CALL {
-            WITH enriched_paths, peer_node
+        CALL (enriched_paths, peer_node) {
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[3] as current_path, path_to_check[4] as branch_name, peer_node as current_peer
             ORDER BY
@@ -100,8 +96,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // filter to only the current active paths
         WITH collect([current_peer, current_path]) as peers_and_paths, start_node, branch_name
-        CALL {
-            WITH peers_and_paths
+        CALL (peers_and_paths) {
             UNWIND peers_and_paths AS peer_and_path
             WITH peer_and_path
             WHERE all(r in relationships(peer_and_path[1]) WHERE r.status = "active")
@@ -109,9 +104,8 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // sum all the relationships across branches and identify the violators
         WITH collect([branch_name, num_relationships_on_branch]) as branches_and_counts, start_node
-        CALL {
-            WITH start_node, branches_and_counts
-            WITH start_node, branches_and_counts, reduce(rel_total = 0, bnc in branches_and_counts | rel_total + bnc[1]) AS total_relationships_count
+        CALL (start_node, branches_and_counts) {
+            WITH reduce(rel_total = 0, bnc in branches_and_counts | rel_total + bnc[1]) AS total_relationships_count
             WHERE
                 (toInteger($min_count) IS NOT NULL AND total_relationships_count < toInteger($min_count))
                 OR (toInteger($max_count) IS NOT NULL AND total_relationships_count > toInteger($max_count))

@@ -1,56 +1,39 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
-/**
-  * Creating a sidebar enables you to:
-  - create an ordered group of docs
-  - render a sidebar for each doc of that group
-  - provide next/previous navigation
-
-  The sidebars can be generated from the filesystem, or explicitly defined here.
-
-  Create as many sidebars as you want.
- */
 const sidebars: SidebarsConfig = {
   docsSidebar: [
-    'readme',
+    "home",
     {
       type: 'category',
-      label: 'Infrahub Overview',
-      link: { type: 'doc', id: 'overview/readme' },
+      label: 'Getting Started',
+      collapsed: false,
+      collapsible: false,
       items: [
-        'overview/interfaces',
-        'overview/schema',
-        'overview/data',
-        'overview/transformations',
-        'overview/versioning',
-        'overview/generators',
-        'overview/integrations',
+        'getting-started/overview',
+        'getting-started/quick-start',
+        'getting-started/next-steps',
+        'getting-started/concepts',
       ],
     },
     {
       type: 'category',
-      label: 'Tutorials',
+      label: 'Academy',
+      collapsed: false,
+      collapsible: false,
       link: {
-        type: 'generated-index',
-        slug: 'tutorials'
+        type: 'doc',
+        id: 'academy/academy'
       },
       items: [
         {
           type: 'category',
-          label: 'Getting started',
-          link: { type: 'doc', id: 'tutorials/getting-started/readme' },
+          label: 'Getting Started',
+          link: {
+            type: 'generated-index',
+          },
           items: [
-            'tutorials/getting-started/introduction-to-infrahub',
-            'tutorials/getting-started/schema',
-            'tutorials/getting-started/creating-an-object',
-            'tutorials/getting-started/branches',
-            'tutorials/getting-started/historical-data',
-            'tutorials/getting-started/lineage-information',
-            'tutorials/getting-started/resource-manager',
-            'tutorials/getting-started/git-integration',
-            'tutorials/getting-started/rendering-configuration',
-            'tutorials/getting-started/graphql-query',
-            'tutorials/getting-started/graphql-mutation'
+            'academy/getting-started/infrahub-introduction',
+            'academy/getting-started/deploy-first-configuration',
           ],
         },
       ],
@@ -58,75 +41,291 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Guides',
+      collapsed: false,
+      collapsible: false,
       link: {
         type: 'generated-index',
         slug: 'guides'
       },
       items: [
-        'guides/installation',
-        'guides/installation-enterprise',
-        'guides/create-schema',
-        'guides/import-schema',
-        'guides/menu',
-        'guides/computed-attributes',
-        'guides/resource-manager',
-        'guides/accounts-permissions',
-        'guides/groups',
-        'guides/generator',
-        'guides/repository',
-        'guides/jinja2-transform',
-        'guides/python-transform',
-        'guides/artifact',
-        'guides/database-backup',
-        'guides/managing-api-tokens',
-        'guides/object-template',
-        'guides/profiles',
-        'guides/object-storage',
-        'guides/sso',
-        'guides/check',
-        'guides/upgrade',
-        'guides/upgrade-enterprise',
-        'guides/webhooks',
+        {
+          type: 'category',
+          label: 'Installation & Setup',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/installation',
+            'guides/production-deployment',
+            'guides/configuration-changes',
+            'guides/database-backup',
+            'guides/upgrade',
+            'guides/repository',
+            'guides/selective-branch-sync',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Schema & Data Modeling',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/create-schema',
+            'guides/import-schema',
+            'guides/customize-field-ordering',
+            'guides/menu',
+            'guides/computed-attributes',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Data Management',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/object-load',
+            'guides/resource-manager',
+            'guides/groups',
+            'guides/object-template',
+            'guides/profiles',
+            'guides/check',
+            'guides/object-conversion',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Artifact & Transform',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/jinja2-transform',
+            'guides/python-transform',
+            'guides/artifact',
+            'guides/object-storage',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Generators',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/generator',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Integration & Events',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/events-rules-actions',
+            'guides/webhooks',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'User Management & Authentication',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/sso',
+            'guides/managing-api-tokens',
+            'guides/accounts-permissions',
+            'guides/change-approval-workflow',
+          ],
+        },
       ],
     },
     {
       type: 'category',
       label: 'Topics',
+      collapsed: false,
+      collapsible: false,
       link: {
         type: 'generated-index',
         slug: 'topics'
       },
       items: [
-        'topics/infrahub-yml',
-        'topics/auth',
-        'topics/activity-log',
-        'topics/architecture',
-        'topics/artifact',
-        'topics/check',
-        'topics/computed-attributes',
-        'topics/metadata',
-        'topics/database-backup',
-        'topics/developer-guide',
-        'topics/events',
-        'topics/local-demo-environment',
-        'topics/generator',
-        'topics/graphql',
-        'topics/groups',
-        'topics/hardware-requirements',
-        'topics/ipam',
-        'topics/object-storage',
-        'topics/object-template',
-        'topics/permissions-roles',
-        'topics/profiles',
-        'topics/proposed-change',
-        'topics/repository',
-        'topics/resource-manager',
-        'topics/resources-testing-framework',
-        'topics/schema',
-        'topics/tasks',
-        'topics/transformation',
-        'topics/version-control',
-        'topics/webhooks',
+        {
+          type: 'category',
+          label: 'Overview',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'topics/architecture',
+            'topics/community-vs-enterprise',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Core Concepts',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            {
+              type: 'category',
+              label: 'Git Integration',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/infrahub-yml',
+                'topics/repository',
+                'topics/branch-synchronization',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Transforms',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/transformation',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Generators',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/generator',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Version Control & Branching',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/version-control',
+                'topics/branching',
+                'topics/proposed-change',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Artifacts',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/artifact',
+                'topics/object-storage',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Schema',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/schema',
+                'topics/order-weight',
+                'topics/schema-attr-kind-number-pool',
+                'topics/computed-attributes',
+                'topics/labels',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Data Management',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/check',
+                'topics/metadata',
+                'topics/groups',
+                'topics/graphql',
+                'topics/object-conversion',
+                'topics/resource-manager',
+                'topics/object-template',
+                'topics/profiles',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'IPAM',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/ipam',
+              ],
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Platform Capabilities',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            {
+              type: 'category',
+              label: 'User Management & Authentication',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/authentication',
+                'topics/permissions-roles',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Event Management & Logging',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/activity-log',
+                'topics/events',
+                'topics/event-actions',
+                'topics/tasks',
+                'topics/webhooks',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'System Administration',
+              link: {
+                type: 'generated-index',
+              },
+              items: [
+                'topics/database-backup',
+                'topics/hardware-requirements',
+              ],
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Development Resources',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'topics/developer-guide',
+            'topics/local-demo-environment',
+            'topics/resources-testing-framework',
+          ],
+        },
       ],
     },
     {
@@ -148,8 +347,9 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'reference/infrahub-cli/infrahub-db',
-            'reference/infrahub-cli/infrahub-git-agent',
-            'reference/infrahub-cli/infrahub-server'
+            'reference/infrahub-cli/infrahub-server',
+            'reference/infrahub-cli/infrahub-dev',
+            'reference/infrahub-cli/infrahub-upgrade',
           ],
         },
         'reference/infrahub-events',
@@ -178,17 +378,18 @@ const sidebars: SidebarsConfig = {
         'reference/schema-validation',
         'reference/task-worker',
         'reference/infrahub-tests',
+        'reference/sso'
       ],
     },
     {
       type: 'category',
-      label: 'Development',
+      label: 'Contributing',
       link: {
         type: 'generated-index',
         slug: 'development'
       },
-
       items: [
+        'development/git-best-practices',
         'development/editor',
         'development/changelog',
         'development/backend',
@@ -220,6 +421,37 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_6_2',
+            'release-notes/infrahub/release-1_6_1',
+            'release-notes/infrahub/release-1_6_0',
+            'release-notes/infrahub/release-1_5_3',
+            'release-notes/infrahub/release-1_5_2',
+            'release-notes/infrahub/release-1_5_1',
+            'release-notes/infrahub/release-1_5_0',
+            'release-notes/infrahub/release-1_4_13',
+            'release-notes/infrahub/release-1_4_12',
+            'release-notes/infrahub/release-1_4_11',
+            'release-notes/infrahub/release-1_4_10',
+            'release-notes/infrahub/release-1_4_9',
+            'release-notes/infrahub/release-1_4_8',
+            'release-notes/infrahub/release-1_4_7',
+            'release-notes/infrahub/release-1_4_6',
+            'release-notes/infrahub/release-1_4_5',
+            'release-notes/infrahub/release-1_4_4',
+            'release-notes/infrahub/release-1_4_3',
+            'release-notes/infrahub/release-1_4_2',
+            'release-notes/infrahub/release-1_4_1',
+            'release-notes/infrahub/release-1_4_0',
+            'release-notes/infrahub/release-1_3_7',
+            'release-notes/infrahub/release-1_3_6',
+            'release-notes/infrahub/release-1_3_5',
+            'release-notes/infrahub/release-1_3_3',
+            'release-notes/infrahub/release-1_3_2',
+            'release-notes/infrahub/release-1_3_1',
+            'release-notes/infrahub/release-1_3_0',
+            'release-notes/infrahub/release-1_2_12',
+            'release-notes/infrahub/release-1_2_11',
+            'release-notes/infrahub/release-1_2_10',
             'release-notes/infrahub/release-1_2_9',
             'release-notes/infrahub/release-1_2_8',
             'release-notes/infrahub/release-1_2_7',
@@ -269,6 +501,17 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_8',
             'release-notes/infrahub/release-0_7',
             'release-notes/infrahub/release-0_6'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Deprecation Guides',
+          link: {
+            type: 'generated-index',
+            slug: 'release-notes/deprecation-guides',
+          },
+          items: [
+            'release-notes/deprecation-guides/display_labels',
           ],
         },
       ],

@@ -1,6 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import * as TooltipPrimitives from "@radix-ui/react-tooltip";
-import { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
+
+import { classNames } from "@/shared/utils/common";
 
 export interface TooltipProps
   extends Omit<ComponentPropsWithoutRef<typeof TooltipPrimitives.Content>, "content"> {
@@ -24,7 +25,7 @@ export function Tooltip({
           <TooltipPrimitives.Content
             side={side}
             className={classNames(
-              "bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded-lg shadow-xs z-50",
+              "z-50 rounded-lg bg-gray-600 px-3 py-2 font-medium text-white text-xs shadow-xs",
               !enabled && "hidden",
               className
             )}

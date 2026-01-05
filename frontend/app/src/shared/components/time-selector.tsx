@@ -1,25 +1,27 @@
-import { QSP } from "@/config/qsp";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { classNames } from "@/shared/utils/common";
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { format, isPast } from "date-fns";
-import { useAtom } from "jotai/index";
-import { useEffect } from "react";
+import { useAtom } from "jotai";
+import { parseAsIsoDateTime, useQueryState } from "nuqs";
+import React from "react";
 import DateTimePicker from "react-datepicker";
-import { DateTimeParam, useQueryParam } from "use-query-params";
+
+import { QSP } from "@/shared/config/qsp";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { classNames } from "@/shared/utils/common";
+
 import { Button } from "./buttons/button-primitive";
 
 import "react-datepicker/dist/react-datepicker.css";
 
 export const TimeFrameSelector = () => {
+  const [qspDate, setQspDate] = useQueryState(QSP.DATETIME, parseAsIsoDateTime);
   const [date, setDate] = useAtom(datetimeAtom);
-  const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, DateTimeParam);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (date === qspDate) return;
     setDate(qspDate ?? null);
-  }, [qspDate]);
+  }, []);
 
   const onChange = (newDate: Date | null) => {
     setDate(newDate);
@@ -28,13 +30,13 @@ export const TimeFrameSelector = () => {
 
   const reset = () => {
     setDate(null);
-    setQspDate(undefined);
+    setQspDate(null);
   };
 
   return (
     <div
       className={classNames(
-        "inline-flex items-center h-8 border border-neutral-200 rounded-lg overflow-hidden",
+        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200",
         date && "bg-neutral-800"
       )}
     >
@@ -72,7 +74,7 @@ export const TimeFrameSelector = () => {
         leaveTo="w-0 opacity-0"
         className="inline-flex items-center text-white text-xxs"
       >
-        <Icon icon="mdi:history" className="text-xl m-1.5" />
+        <Icon icon="mdi:history" className="m-1.5 text-xl" />
 
         <div className="flex flex-col items-center truncate">
           <span className="font-medium">Current view time</span>

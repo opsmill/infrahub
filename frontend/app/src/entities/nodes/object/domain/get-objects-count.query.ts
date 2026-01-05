@@ -1,29 +1,24 @@
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
-import { GetObjectsCountParams, getObjectsCount } from "./get-objects-count";
 
-export function getObjectsCountQueryOptions({
-  schemaKind,
-  filters,
-  branchName,
-  atDate,
-}: GetObjectsCountParams) {
+import type { ContextParams } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+
+import { type GetObjectsCountParams, getObjectsCount } from "./get-objects-count";
+
+export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "objects", schemaKind, "count", JSON.stringify(filters)],
+    queryKey: objectQueryKeys.count(params),
     queryFn: async () => {
-      return getObjectsCount({
-        schemaKind,
-        branchName,
-        atDate,
-        filters,
-      });
+      return getObjectsCount(params);
     },
   });
 }
 
-export function useObjectsCount(params: Omit<GetObjectsCountParams, "branchName" | "atDate">) {
+export function useObjectsCount(params: Omit<GetObjectsCountParams, keyof ContextParams>) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 

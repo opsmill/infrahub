@@ -1,7 +1,8 @@
+import { cva, type VariantProps } from "class-variance-authority";
+import { forwardRef, type HTMLAttributes } from "react";
+
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
-import { type VariantProps, cva } from "class-variance-authority";
-import { HTMLAttributes, forwardRef } from "react";
 
 export const initials = (name: string) =>
   name
@@ -10,7 +11,7 @@ export const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-const avatarVariants = cva("rounded-full flex justify-center items-center", {
+const avatarVariants = cva("flex items-center justify-center rounded-full", {
   variants: {
     variant: {
       primary: "bg-custom-blue-200 text-custom-white",

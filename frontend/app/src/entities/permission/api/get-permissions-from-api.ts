@@ -1,7 +1,9 @@
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import type { ContextParams } from "@/shared/api/types";
+
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 
 export type GetPermissionsFromApiParams = ContextParams & { kind: string };
 

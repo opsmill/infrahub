@@ -1,26 +1,46 @@
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { PressEvent } from "react-aria-components";
+
+import { Checkbox } from "@/shared/components/aria/checkbox";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
-import { TableCell } from "@/shared/components/table/table-cell";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface TableIdentifierCellProps {
   objectKind: string;
   objectId: string;
-  label: string;
+  label: React.ReactNode;
+  isSelected?: boolean;
+  onClickCheckbox?: (e: PressEvent) => void;
 }
 
-export function TableIdentifierCell({ objectKind, objectId, label }: TableIdentifierCellProps) {
+export function TableIdentifierCell({
+  objectKind,
+  objectId,
+  label,
+  isSelected,
+  onClickCheckbox,
+}: TableIdentifierCellProps) {
+  const { isAuthenticated } = useAuth();
   return (
-    <TableCell className="sticky left-0 bg-white px-1" data-testid="identifier-cell">
+    <StickyLeftCell data-testid="identifier-cell">
+      {isAuthenticated && (
+        <Checkbox
+          isSelected={isSelected}
+          onPress={onClickCheckbox}
+          data-testid="identifier-checkbox-cell"
+        />
+      )}
+
       <LinkButton
         variant="ghost"
         size="sm"
         to={getObjectDetailsUrl(objectKind, objectId)}
-        className="truncate px-2.5 rounded-full text-custom-blue-700 hover:underline hover:bg-custom-blue-700/10"
+        className="truncate rounded-full px-2.5 text-custom-blue-700 hover:bg-custom-blue-700/10 hover:underline"
       >
         {label}
       </LinkButton>
-
-      <div className="absolute -right-4 top-0 bottom-0 w-4 bg-linear-to-r from-gray-500/10 pointer-events-none" />
-    </TableCell>
+    </StickyLeftCell>
   );
 }

@@ -1,5 +1,7 @@
-import { RelationshipSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
+
+import type { RelationshipSchema } from "@/entities/schema/types";
+
 import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import { getRelationshipsVisibleInTab } from "./get-relationships-visible-in-tab";
 

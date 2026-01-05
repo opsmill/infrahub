@@ -1,0 +1,79 @@
+---
+title: Quick Start
+---
+import VideoPlayer from '../../src/components/VideoPlayer';
+import ReferenceLink from "../../src/components/Card";
+
+To see Infrahub in action, you have several options. Depending on your available time and preferred learning style, you can choose from the following — ranging from the quickest to the most in-depth experience:
+
+- **[Videos](#videos)** - A series of short videos that provide an overview of Infrahub and its capabilities.
+- **[Infrahub sandbox](#infrahub-sandbox)** - A public instance of Infrahub that you can use to explore the platform.
+- **[Getting started lab](#getting-started-lab)** - Interactive lab that explores the basic concepts of Infrahub.
+- **[Infrahub demos](#infrahub-bundles-and-demos)** - Full-blown demo of Infrahub that showcases its capabilities in specific business scenarios.
+- **[Meeting OpsMill](#meeting-opsmill)** - Book a session with OpsMill to discuss your use case and how Infrahub can help you.
+
+:::note
+
+If you are looking to build your own Infrahub instance to evaluate it in your environment, please refer to the [Next steps](./next-steps.mdx) section!
+
+:::
+
+## Videos
+
+Find below a selection of videos that provide an overview of Infrahub and its capabilities. More videos are available on the [OpsMill YouTube channel](https://www.youtube.com/@OpsMill).
+
+<center>
+  <VideoPlayer url='https://youtu.be/c5YbZoEpcDs?si=6iARuul7TuGVhl2A' light />
+</center>
+
+<center>
+  <VideoPlayer url='https://youtu.be/_I7liNBkNC8?si=TknqM4a6A9x892Fl' light />
+</center>
+
+<center>
+  <VideoPlayer url='https://youtu.be/OAXk3dKKgf0?si=who6Ot7DNnrxqPcl' light />
+</center>
+
+<ReferenceLink title="OpsMill YouTube Channel" url="https://www.youtube.com/@OpsMill" openInNewTab />
+
+## Infrahub sandbox
+
+The Infrahub Sandbox is a publicly hosted version of Infrahub, pre-loaded with sample data and examples. It's a great way to explore and get a first look at the Infrahub UI!
+
+<ReferenceLink title="Infrahub Sandbox" url="https://sandbox.infrahub.app/login" openInNewTab />
+
+## Getting started lab
+
+No configuration or installation needed! In this lab, we'll guide you through the fundamentals of Infrahub and how to use it effectively. Version control, flexible schemas, and Git integration are all on the menu for this action-packed 30-minute session.
+
+<ReferenceLink title="Getting Started Lab" url="https://opsmill.instruqt.com/pages/labs" openInNewTab />
+
+## Infrahub bundles and demos
+
+Below is the current list of available demos developed and maintained by OpsMill and the community:
+
+- **Bundle DC**
+
+A bundle is an end-to-end reference implementation you can actually learn from. This bundle includes:
+
+- Schema-driven modelling — spine-leaf fabrics, VxLAN/EVPN overlays, POPs, security zones, load balancers
+- Design-driven automation — create a topology design, watch generators spawn all the devices, interfaces, IPs, BGP peers (the otters do the work)
+- Branch-based workflows — proposed changes with diffs, validation checks, artifact regeneration before merge
+- Firewall policy abstracted from vendor implementations
+- Multi-vendor configuration generation — Arista, Juniper, Cisco, SONiC templates included
+- Containerlab integration — deploy to a virtual lab and actually test your configurations
+- Service Catalog — simplified provisioning for when clicking buttons is preferable to YAML
+
+<ReferenceLink title="Bundle DC" url="$(base_url)bundle-dc" openInNewTab />
+
+- **Demo Service Catalog**
+
+The Service Catalog demo demonstrates how Infrahub can be used to manage and deploy services within an ISP environment. It walks through the process of creating a service catalog using Infrahub and Streamlit. From modeling services in the schema, codifying them in Generator, to making these capabilities accessible across the organization via a Streamlit app. This demo provides a comprehensive, end-to-end overview of the workflow.
+
+<ReferenceLink title="Demo Service Catalog" url="$(base_url)demo-service-catalog" openInNewTab />
+
+## Meeting OpsMill
+
+If you are interested in Infrahub and would like to discuss your use case with OpsMill, please book a meeting with us.
+
+<ReferenceLink title="Book a meeting with OpsMill" url="https://cal.com/team/opsmill/meet" openInNewTab />

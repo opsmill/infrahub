@@ -33,6 +33,7 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **branch** | not_supported |
 | **default_filter** | allowed |
 | **human_friendly_id** | allowed |
+| **display_label** | allowed |
 | **display_labels** | allowed |
 | **include_in_menu** | allowed |
 | **menu_placement** | allowed |
@@ -53,7 +54,7 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | Name | Status |
 | ---- | ---- |
 | **name** | migration_required |
-| **kind** | validate_constraint |
+| **kind** | migration_required |
 | **enum** | validate_constraint |
 | **computed_attribute** | allowed |
 | **choices** | validate_constraint |
@@ -62,13 +63,14 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **min_length** | validate_constraint |
 | **label** | allowed |
 | **description** | allowed |
-| **read_only** | allowed |
+| **read_only** | migration_required |
 | **unique** | validate_constraint |
-| **optional** | validate_constraint |
+| **optional** | migration_required |
 | **branch** | not_supported |
 | **order_weight** | allowed |
 | **default_value** | allowed |
 | **allow_override** | allowed |
+| **parameters** | validate_constraint |
 | **deprecation** | allowed |
 
 
@@ -85,6 +87,8 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **cardinality** | validate_constraint |
 | **min_count** | validate_constraint |
 | **max_count** | validate_constraint |
+| **common_parent** | validate_constraint |
+| **common_relatives** | allowed |
 | **order_weight** | allowed |
 | **optional** | validate_constraint |
 | **branch** | not_supported |
@@ -107,6 +111,7 @@ In this context, an element represent either a Node, a Generic, an Attribute or 
 | **branch** | not_supported |
 | **default_filter** | allowed |
 | **human_friendly_id** | allowed |
+| **display_label** | allowed |
 | **display_labels** | allowed |
 | **include_in_menu** | allowed |
 | **menu_placement** | allowed |

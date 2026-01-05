@@ -1,16 +1,19 @@
-import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import React, { forwardRef } from "react";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
-  ComboboxListProps,
+  type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
-import React, { forwardRef } from "react";
+
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipComboboxListProps
   extends Omit<ComboboxListProps, "value" | "onSelect"> {
@@ -40,7 +43,7 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
         {...props}
       >
         {isPending ? (
-          <Spinner className="flex justify-center m-2" />
+          <Spinner className="m-2 flex justify-center" />
         ) : (
           <>
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
@@ -55,7 +58,7 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
                   selectedValue={value?.id}
                   onSelect={() => onSelect(node)}
                 >
-                  <span className="truncate">{node.display_label}</span>
+                  <span className="truncate">{getNodeLabel(node)}</span>
                 </ComboboxItem>
               ));
             })}

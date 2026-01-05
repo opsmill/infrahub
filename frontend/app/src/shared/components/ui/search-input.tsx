@@ -1,7 +1,9 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef } from "react";
-import { Input, InputProps } from "./input";
+
+import { classNames } from "@/shared/utils/common";
+
+import { Input, type InputProps } from "./input";
 import { Spinner } from "./spinner";
 
 export interface SearchInputProps extends InputProps {
@@ -14,15 +16,15 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       <div className={classNames("relative", containerClassName)}>
         <Icon
           icon="mdi:magnify"
-          className="text-lg text-custom-blue-10 absolute inset-y-0 left-0 pl-2 flex items-center"
+          className="absolute inset-y-0 left-0 flex items-center pl-2 text-custom-blue-10 text-lg"
           aria-hidden="true"
         />
 
-        <Input ref={ref} {...props} className={classNames("pl-8 h-auto", className)} />
+        <Input ref={ref} {...props} className={classNames("h-auto pl-8", className)} />
 
         {loading && (
           <Spinner
-            className="absolute inset-y-0 right-0 pr-2 flex items-center"
+            className="absolute inset-y-0 right-0 flex items-center pr-2"
             data-testid="objects-search-input-loader"
           />
         )}

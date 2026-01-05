@@ -1,9 +1,12 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { store } from "@/shared/stores";
+
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { store } from "@/shared/stores";
-import { describe, expect, it, vi } from "vitest";
+
 import { render } from "../../../../../tests/components/render";
 import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 
@@ -83,7 +86,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     const notHierarchicalSchema = generateNodeSchema();
 
     // WHEN
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={notHierarchicalSchema.kind} onSelect={vi.fn()} />
     );
 
@@ -98,7 +101,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     vi.mocked(getRelationships).mockResolvedValue([]);
 
     // WHEN
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={vi.fn()} />
     );
 
@@ -111,7 +114,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     vi.mocked(getRelationships).mockResolvedValue(relationships);
 
     // WHEN
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
     );
 
@@ -129,7 +132,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     // GIVEN
     vi.mocked(getRelationships).mockResolvedValue(relationships);
     const onSelect = vi.fn();
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={onSelect} />
     );
 
@@ -147,7 +150,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
       .mockResolvedValueOnce(parentRelationships)
       .mockResolvedValueOnce(childRelationships);
     const onSelect = vi.fn();
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
     );
 
@@ -168,7 +171,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
       .mockResolvedValueOnce(parentRelationships)
       .mockResolvedValueOnce(childRelationships);
     const onSelect = vi.fn();
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
     );
 
@@ -196,7 +199,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
 
     // WHEN
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
     );
 
@@ -214,7 +217,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
 
     // WHEN
-    const component = render(
+    const component = await render(
       <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
     );
 

@@ -1,11 +1,13 @@
-import {
+import { warnUnexpectedType } from "@/shared/utils/common";
+
+import type {
   Permission,
   PermissionAction,
   PermissionData,
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
-import { warnUnexpectedType } from "@/shared/utils/common";
+
 import { PERMISSION_ALLOW_ALL } from "./constants";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {

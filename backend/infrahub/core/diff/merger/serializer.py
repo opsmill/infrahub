@@ -39,6 +39,7 @@ class DiffMergeSerializer:
 
     def _reset_caches(self) -> None:
         self._attribute_type_cache = {}
+        self._conflicted_cardinality_one_relationships = set()
 
     @property
     def source_branch_name(self) -> str:

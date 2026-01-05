@@ -12,7 +12,6 @@ from infrahub.patch.edge_deleter import PatchPlanEdgeDeleter
 from infrahub.patch.edge_updater import PatchPlanEdgeUpdater
 from infrahub.patch.plan_reader import PatchPlanReader
 from infrahub.patch.plan_writer import PatchPlanWriter
-from infrahub.patch.queries.consolidate_duplicated_nodes import ConsolidateDuplicatedNodesPatchQuery
 from infrahub.patch.queries.delete_duplicated_edges import DeleteDuplicatedEdgesPatchQuery
 from infrahub.patch.runner import (
     PatchPlanEdgeDbIdTranslator,
@@ -31,7 +30,7 @@ class TestKindMigrationDeduplicationPatches:
         temporary_directory.cleanup()
 
     @pytest.fixture(scope="class", autouse=True)
-    async def load_bad_data(self, db: InfrahubDatabase):
+    async def load_bad_data(self, db: InfrahubDatabase) -> None:
         await delete_all_nodes(db=db)
         export_dir = Path(__file__).parent / ("data_export")
         await load_export(db=db, export_dir=export_dir)
@@ -49,29 +48,11 @@ class TestKindMigrationDeduplicationPatches:
             edge_updater=PatchPlanEdgeUpdater(db=db, batch_size_limit=1),
         )
 
-    async def validate_node_deduplication_patch(self, db: InfrahubDatabase) -> list[str]:
-        query = """
-MATCH (n:Node)
-WITH labels(n) AS node_labels, n.uuid AS node_uuid, count(*) AS num_dups
-WITH node_labels, node_uuid, num_dups
-WHERE num_dups > 1
-RETURN node_labels, node_uuid, num_dups
-        """
-        results = await db.execute_query(query=query)
-        errors = []
-        for result in results:
-            node_labels = result.get("node_labels")
-            node_uuid = result.get("node_uuid")
-            num_dups = result.get("num_dups")
-            errors.append(f"{num_dups} duplicate nodes exist for {node_uuid=}, {node_labels=}")
-        return errors
-
     async def validate_edge_deduplication_patch(self, db: InfrahubDatabase) -> list[str]:
         query = """
 MATCH (a)-[e]->(b)
 WITH DISTINCT a, b, type(e) AS edge_type
-CALL {
-    WITH a, b, edge_type
+CALL (a, b, edge_type) {
     MATCH (a)-[e]->(b)
     WHERE type(e) = edge_type
     WITH %(id_func)s(a) as db_id_a, %(id_func)s(b) as db_id_b, e.branch AS branch, e.status AS status, count(*) AS num_dups
@@ -94,20 +75,7 @@ RETURN db_id_a, db_id_b, edge_type, branch, status, num_dups
             )
         return errors
 
-    async def test_node_deduplication_patch(self, db: InfrahubDatabase, temporary_directory_path: Path):
-        before_errors = await self.validate_node_deduplication_patch(db=db)
-        assert len(before_errors) == 5
-
-        patch_runner = self.get_patch_runner(db=db)
-        patch_plan_dir = await patch_runner.prepare_plan(
-            patch_query=ConsolidateDuplicatedNodesPatchQuery(db=db), directory=temporary_directory_path
-        )
-        await patch_runner.apply(patch_plan_directory=patch_plan_dir)
-
-        after_errors = await self.validate_node_deduplication_patch(db=db)
-        assert not after_errors
-
-    async def test_edge_deduplication_patch(self, db: InfrahubDatabase, temporary_directory_path: Path):
+    async def test_edge_deduplication_patch(self, db: InfrahubDatabase, temporary_directory_path: Path) -> None:
         before_errors = await self.validate_edge_deduplication_patch(db=db)
         assert before_errors
 
@@ -117,5 +85,5 @@ RETURN db_id_a, db_id_b, edge_type, branch, status, num_dups
         )
         await patch_runner.apply(patch_plan_directory=patch_plan_dir)
 
-        after_errors = await self.validate_node_deduplication_patch(db=db)
+        after_errors = await self.validate_edge_deduplication_patch(db=db)
         assert not after_errors

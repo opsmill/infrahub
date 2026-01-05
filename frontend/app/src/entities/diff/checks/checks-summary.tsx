@@ -1,39 +1,40 @@
-import {
-  CHECKS_LABEL,
-  PROPOSED_CHANGES_VALIDATOR_OBJECT,
-  VALIDATIONS_ENUM_MAP,
-} from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { runCheck } from "@/entities/diff/api/runCheck";
-import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { useAtomValue } from "jotai";
+import { useParams } from "react-router";
+import { toast } from "react-toastify";
+
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import {
+  CHECKS_LABEL,
+  PROPOSED_CHANGES_VALIDATOR_OBJECT,
+  VALIDATIONS_ENUM_MAP,
+} from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useParams } from "react-router";
-import { toast } from "react-toastify";
 
-type tChecksSummaryProps = {
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { proposedChangeValidatorsKeys } from "@/entities/diff/domain/diff.query-keys";
+import { useRunCheckMutation } from "@/entities/diff/domain/run-check.mutation";
+import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+
+type ChecksSummaryProps = {
   validators: any[];
   isLoading: boolean;
-  refetch: Function;
 };
 
-export const ChecksSummary = (props: tChecksSummaryProps) => {
-  const { isLoading, validators, refetch } = props;
+export const ChecksSummary = (props: ChecksSummaryProps) => {
+  const { isLoading, validators } = props;
 
   const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const schemaList = useAtomValue(genericSchemasAtom);
   const { isAuthenticated } = useAuth();
+  const { mutate, isPending } = useRunCheckMutation();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 
@@ -46,24 +47,20 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   }, {});
 
   const handleRetry = async (validator: string) => {
-    const runParams = {
-      id: proposedChangeId,
-      check_type: VALIDATIONS_ENUM_MAP[validator],
-    };
-
-    const mustationString = runCheck(runParams);
-
-    const mutation = gql`
-      ${mustationString}
-    `;
-
-    const result = await graphqlClient.mutate({ mutation });
-
-    refetch();
-
-    if (result?.data?.CoreProposedChangeRunCheck?.ok) {
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
-    }
+    mutate(
+      {
+        proposedChangeId: proposedChangeId!,
+        checkType: VALIDATIONS_ENUM_MAP[validator]!,
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: proposedChangeValidatorsKeys.allWithinProposedChange(proposedChangeId!),
+          });
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
+        },
+      }
+    );
   };
 
   const canRetry = (stats: any) => {
@@ -80,9 +77,9 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   };
 
   return (
-    <div className="flex justify-center m-4" data-testid="checks-summary">
-      <div className="flex flex-col-reverse items-center relative">
-        <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
+    <div className="m-4 flex justify-center" data-testid="checks-summary">
+      <div className="relative flex flex-col-reverse items-center">
+        <div className="lg:-left-28 lg:-translate-y-1/2 flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:transform">
           <Button
             onClick={() => handleRetry("all")}
             disabled={!isAuthenticated}
@@ -90,7 +87,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
             className="gap-1 hover:bg-neutral-200"
           >
             Retry all
-            <Icon icon="mdi:reload" className={classNames(isLoading && "animate-spin")} />
+            <Retry isLoading={isPending || isLoading} isDisabled={isPending || isLoading} />
           </Button>
         </div>
 
@@ -99,21 +96,29 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
           {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
             <div key={kind} className="flex items-center justify-center gap-2 p-2">
-              <div className={"flex flex-col items-center group relative"}>
-                <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
+              <div className={"group relative flex flex-col items-center"}>
+                <PieChart data={data} />
+
+                <div className="flex h-6 items-center justify-center">
+                  <span
+                    className={classNames(
+                      "text-xs",
+                      canRetry(data) && "absolute text-xs group-hover:invisible"
+                    )}
+                  >
+                    {(schemaKindLabel[kind] ?? kind)?.replace("Validator", "").trim()}
+                  </span>
+
                   {canRetry(data) && (
-                    <div className="absolute invisible group-hover:visible cursor-pointer">
+                    <div className="invisible absolute group-hover:visible">
                       <Retry
-                        isLoading={isLoading || !!data.inProgress}
+                        isLoading={isPending || isLoading || !!data.inProgress}
                         isDisabled={!canRetry(data)}
+                        onClick={() => canRetry(data) && handleRetry(kind)}
                       />
                     </div>
                   )}
-                </PieChart>
-
-                <span className="text-xs">
-                  {schemaKindLabel[kind]?.replace("Validator", "").trim()}
-                </span>
+                </div>
               </div>
             </div>
           ))}
