@@ -108,6 +108,7 @@ Here are some example payloads of some events that may be sent.
 <!-- vale off -->
 <Tabs>
   <TabItem value="infrahub.branch.created" label="infrahub.branch.created" default>
+
 ```json
 {
   "data": {
@@ -122,8 +123,10 @@ Here are some example payloads of some events that may be sent.
   "event": "infrahub.branch.created"
 }
 ```
+
   </TabItem>
   <TabItem value="infrahub.node.created" label="infrahub.node.created">
+
 ```json
 {
   "data": {
@@ -195,9 +198,11 @@ Here are some example payloads of some events that may be sent.
   "event": "infrahub.node.created"
 }
 ```
+
   </TabItem>
 
   <TabItem value="infrahub.node.updated" label="infrahub.node.updated">
+
 ```json
 {
   "data": {
@@ -240,6 +245,7 @@ Here are some example payloads of some events that may be sent.
   "event": "infrahub.node.updated"
 }
 ```
+
   </TabItem>
 </Tabs>
 <!-- vale on -->
@@ -247,7 +253,3 @@ Here are some example payloads of some events that may be sent.
 ## Custom webhook transformation
 
 The `data` object from the payloads above is passed to the `transform` method of your [Python transform](../guides/python-transform.mdx).
-
-:::note
-In a future release, we plan to pass the full event payload (not just `data`). Track progress in [issue #6815](https://github.com/opsmill/infrahub/issues/6815).
-:::
