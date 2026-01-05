@@ -380,11 +380,11 @@ class Branch(StandardNode):
         for idx in range(len(branches_times)):
             filters.append(
                 f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
                 f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from < ${pp}time{idx} "
+                f"AND {variable_name}.from <= ${pp}time{idx} "
                 f"AND {variable_name}.to >= ${pp}time{idx})"
             )
 
