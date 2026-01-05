@@ -994,7 +994,6 @@ include = ["python_testcontainers/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-invalid-argument-type = "ignore"
 possibly-missing-attribute = "ignore"
 too-many-positional-arguments = "ignore"
 unresolved-attribute = "ignore"
