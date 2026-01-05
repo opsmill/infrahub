@@ -280,13 +280,6 @@ class ListAttributeSchema(AttributeSchema):
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
-    @model_validator(mode="after")
-    def reconcile_parameters(self) -> Self:
-        if self.regex != self.parameters.regex:
-            final_regex = self.parameters.regex if self.parameters.regex is not None else self.regex
-            self.regex = self.parameters.regex = final_regex
-        return self
-
     def get_regex(self) -> str | None:
         return self.parameters.regex
 

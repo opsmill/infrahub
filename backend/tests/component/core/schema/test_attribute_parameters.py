@@ -405,29 +405,6 @@ def test_list_attribute_with_regex_parameter() -> None:
     assert protocols_attribute.get_regex() == "ssh|ping|telnet"
 
 
-def test_list_attribute_regex_reconciliation() -> None:
-    """Test that regex in parameters and at schema level are reconciled."""
-    node_schema: dict[str, Any] = {
-        "name": "Node",
-        "namespace": "Testing",
-        "attributes": [
-            {
-                "name": "protocols",
-                "kind": "List",
-                "optional": True,
-                "parameters": {"regex": "ssh|ping|telnet"},
-                "regex": None,
-            },
-        ],
-    }
-
-    node = NodeSchema(**node_schema)
-    protocols_attribute = node.get_attribute("protocols")
-    assert isinstance(protocols_attribute.parameters, ListAttributeParameters)
-    assert protocols_attribute.regex == "ssh|ping|telnet"
-    assert protocols_attribute.parameters.regex == "ssh|ping|telnet"
-
-
 async def test_list_attribute_regex_parameter_validation(
     db: InfrahubDatabase, default_branch, register_core_models_schema
 ) -> None:
