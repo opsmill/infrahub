@@ -1,23 +1,73 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator
-
-from pydantic import BaseModel, ConfigDict
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipStatus
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import Query, QueryResult, QueryType
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 
 
-class NumberPoolIdentifierData(BaseModel):
-    model_config = ConfigDict(frozen=True)
+@dataclass(frozen=True)
+class NumberPoolIdentifierData:
+    """Result containing a pool reservation value and its identifier."""
 
     value: int
     identifier: str
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> NumberPoolIdentifierData:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            value=result.get_as_type("value", return_type=int),
+            identifier=result.get_as_type("identifier", return_type=str),
+        )
+
+
+@dataclass(frozen=True)
+class PoolIdentifierResult:
+    """Result from pool identifier queries containing allocation and identifier data."""
+
+    allocated_uuid: str
+    """UUID of the allocated resource (address or prefix)."""
+
+    identifier: str
+    """Identifier used for the reservation."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> PoolIdentifierResult:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            allocated_uuid=result.get_as_type("allocated_uuid", str),
+            identifier=result.get_as_type("identifier", str),
+        )
+
+
+@dataclass(frozen=True)
+class NumberPoolAllocatedResult:
+    """Result from NumberPoolGetAllocated containing allocated number info."""
+
+    id: str
+    """UUID of the node with the allocated number."""
+
+    branch: str
+    """Branch where the allocation exists."""
+
+    value: int
+    """The allocated number value."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> NumberPoolAllocatedResult:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            id=result.get_as_type("id", str),
+            branch=result.get_as_type("branch", str),
+            value=result.get_as_type("value", int),
+        )
 
 
 class IPAddressPoolGetIdentifiers(Query):
@@ -44,7 +94,15 @@ class IPAddressPoolGetIdentifiers(Query):
         WHERE allocated.uuid in $addresses
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
-        self.return_labels = ["allocated", "reservation"]
+        self.return_labels = ["allocated.uuid AS allocated_uuid", "reservation.identifier AS identifier"]
+
+    def get_data(self) -> list[PoolIdentifierResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of PoolIdentifierResult containing allocation and identifier data.
+        """
+        return [PoolIdentifierResult.from_db(result) for result in self.get_results()]
 
 
 class IPAddressPoolGetReserved(Query):
@@ -159,6 +217,14 @@ class NumberPoolGetAllocated(Query):
         self.return_labels = ["n.uuid as id", "hv.branch as branch", "av.value as value"]
         self.order_by = ["av.value"]
 
+    def get_data(self) -> list[NumberPoolAllocatedResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of NumberPoolAllocatedResult containing allocated number info.
+        """
+        return [NumberPoolAllocatedResult.from_db(result) for result in self.get_results()]
+
 
 class NumberPoolGetReserved(Query):
     name = "numberpool_get_reserved"
@@ -205,17 +271,31 @@ class NumberPoolGetReserved(Query):
         self.return_labels = ["reservation.value AS value", "r.identifier AS identifier"]
 
     def get_reservation(self) -> int | None:
+        """Return the reserved value for a single identifier.
+
+        Returns:
+            The reserved integer value, or None if no reservation exists.
+        """
         result = self.get_result()
         if result:
             return result.get_as_optional_type("value", return_type=int)
         return None
 
+    def get_data(self) -> list[NumberPoolIdentifierData]:
+        """Return all reservations as typed dataclass instances.
+
+        Returns:
+            List of NumberPoolIdentifierData containing value and identifier.
+        """
+        return [NumberPoolIdentifierData.from_db(result) for result in self.get_results()]
+
     def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
-        for result in self.results:
-            yield NumberPoolIdentifierData.model_construct(
-                value=result.get_as_type("value", return_type=int),
-                identifier=result.get_as_type("identifier", return_type=str),
-            )
+        """Yield reservations as typed dataclass instances.
+
+        Yields:
+            NumberPoolIdentifierData for each reservation.
+        """
+        yield from self.get_data()
 
 
 class PoolChangeReserved(Query):
@@ -282,7 +362,6 @@ This will be especially important as we want to support upsert with NumberPool
 class NumberPoolGetUsed(Query):
     name = "number_pool_get_used"
     type = QueryType.READ
-    return_model = NumberPoolIdentifierData
 
     def __init__(
         self,
@@ -331,11 +410,13 @@ class NumberPoolGetUsed(Query):
         self.order_by = ["value"]
 
     def iter_results(self) -> Generator[NumberPoolIdentifierData]:
-        for result in self.results:
-            yield self.return_model.model_construct(
-                value=result.get_as_type("value", return_type=int),
-                identifier=result.get_as_type("identifier", return_type=str),
-            )
+        """Yield used pool values as typed dataclass instances.
+
+        Yields:
+            NumberPoolIdentifierData for each used value in the pool.
+        """
+        for result in self.get_results():
+            yield NumberPoolIdentifierData.from_db(result)
 
 
 class NumberPoolSetReserved(Query):
@@ -405,7 +486,15 @@ class PrefixPoolGetIdentifiers(Query):
         WHERE allocated.uuid in $prefixes
         """ % {"ipaddress_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)
-        self.return_labels = ["allocated", "reservation"]
+        self.return_labels = ["allocated.uuid AS allocated_uuid", "reservation.identifier AS identifier"]
+
+    def get_data(self) -> list[PoolIdentifierResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of PoolIdentifierResult containing allocation and identifier data.
+        """
+        return [PoolIdentifierResult.from_db(result) for result in self.get_results()]
 
 
 class PrefixPoolGetReserved(Query):
