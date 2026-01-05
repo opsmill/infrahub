@@ -62,7 +62,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     ).toBeVisible();
     await expect(page.getByText("1query GET_TAGS {")).toBeVisible();
 
-    await page.getByTestId("object-header").getByTestId("edit-button");
+    await page.getByTestId("object-header").getByTestId("edit-button").click();
     await page.getByLabel("Description").fill("A profile for E2E test updated");
     await page.getByRole("button", { name: "Save" }).click();
 
