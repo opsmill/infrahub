@@ -34,7 +34,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
 // ------------
 // start with all the Attribute vertices we might care about
 // ------------
-MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -70,7 +70,7 @@ CALL (av_is_default, av_value) {
 // ------------
 WITH 1 AS one
 LIMIT 1
-MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -87,7 +87,6 @@ CALL (n, attr) {
     WHERE is_active AND is_indexed <> $needs_index
     RETURN has_value_e, av
 }
-
 
 // ------------
 // create and update the HAS_VALUE edges
@@ -136,7 +135,9 @@ CALL (has_value_e) {
     SET has_value_e.to = $at
 }
         """ % {
-            "schema_kind": self.migration.previous_schema.kind,
+            "schema_kinds": (
+                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
+            ),
             "branch_filter": branch_filter,
             "new_attr_value_labels": new_attr_value_labels,
         }
