@@ -133,15 +133,11 @@ test.describe("Branches creation and deletion", () => {
     test("should search for a branch", async ({ page }) => {
       await page.goto("/branches");
       await expect(page.getByRole("option", { name: "main default Default Branch" })).toBeVisible();
-      await expect(
-        page.getByRole("option", { name: "den1-maintenance-conflict Put" })
-      ).toBeVisible();
+      await expect(page.getByRole("option", { name: "den1-maintenance-conflict" })).toBeVisible();
       await expect(page.getByRole("option", { name: "atl1-delete-upstream Delete" })).toBeVisible();
       await page.getByRole("searchbox", { name: "Search" }).fill("main");
       await expect(page.getByRole("option", { name: "main default Default Branch" })).toBeVisible();
-      await expect(
-        page.getByRole("option", { name: "den1-maintenance-conflict Put" })
-      ).toBeVisible();
+      await expect(page.getByRole("option", { name: "den1-maintenance-conflict" })).toBeVisible();
       await expect(
         page.getByRole("option", { name: "atl1-delete-upstream Delete" })
       ).not.toBeVisible();
