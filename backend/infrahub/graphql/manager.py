@@ -598,7 +598,10 @@ class GraphQLSchemaManager:
                 required=False,
                 description="Human friendly identifier",
             ),
-            "_updated_at": graphene.DateTime(required=False),
+            "_updated_at": graphene.DateTime(
+                required=False,
+                deprecation_reason="Query the node_metadata field instead. Will be removed in Infrahub 1.9",
+            ),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
@@ -1209,7 +1212,10 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(base_interface, required=False),
-            "_updated_at": graphene.DateTime(required=False),
+            "_updated_at": graphene.DateTime(
+                required=False,
+                deprecation_reason="Query the node_metadata field instead. Will be removed in Infrahub 1.9",
+            ),
             "node_metadata": graphene.Field(node_metadata, required=True),
             "Meta": type("Meta", (object,), meta_attrs),
         }
