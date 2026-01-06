@@ -90,8 +90,8 @@ query {
 
 @dataclass
 class PermissionsTestData:
-    first_account: CoreAccount
-    default_branch: Branch
+    account: CoreAccount
+    branch: Branch
 
 
 @pytest.fixture
@@ -169,7 +169,7 @@ async def object_permissions_data(
     await group.members.add(db=db, data={"id": first_account.id})
     await group.members.save(db=db)
 
-    return PermissionsTestData(first_account=first_account, default_branch=default_branch)
+    return PermissionsTestData(account=first_account, branch=default_branch)
 
 
 class TestObjectPermissions:
@@ -177,12 +177,12 @@ class TestObjectPermissions:
         """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
         session = AccountSession(
             authenticated=True,
-            account_id=object_permissions_data.first_account.id,
+            account_id=object_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
         gql_params = await prepare_graphql_params(
-            db=db, include_mutation=True, branch=object_permissions_data.default_branch, account_session=session
+            db=db, include_mutation=True, branch=object_permissions_data.branch, account_session=session
         )
 
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
@@ -207,7 +207,7 @@ class TestObjectPermissions:
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
             authenticated=True,
-            account_id=object_permissions_data.first_account.id,
+            account_id=object_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
@@ -232,12 +232,12 @@ class TestObjectPermissions:
         """In the main branch the first account doesn't have the permission to make changes"""
         session = AccountSession(
             authenticated=True,
-            account_id=object_permissions_data.first_account.id,
+            account_id=object_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
         gql_params = await prepare_graphql_params(
-            db=db, include_mutation=True, branch=object_permissions_data.default_branch, account_session=session
+            db=db, include_mutation=True, branch=object_permissions_data.branch, account_session=session
         )
 
         result = await graphql(
@@ -274,12 +274,12 @@ class TestObjectPermissions:
         """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
         session = AccountSession(
             authenticated=True,
-            account_id=object_permissions_data.first_account.id,
+            account_id=object_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
         gql_params = await prepare_graphql_params(
-            db=db, include_mutation=True, branch=object_permissions_data.default_branch, account_session=session
+            db=db, include_mutation=True, branch=object_permissions_data.branch, account_session=session
         )
 
         result = await graphql(schema=gql_params.schema, source=QUERY_IP_PREFIX_POOL, context_value=gql_params.context)
@@ -306,7 +306,7 @@ class TestObjectPermissions:
 
         session = AccountSession(
             authenticated=True,
-            account_id=object_permissions_data.first_account.id,
+            account_id=object_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
@@ -343,7 +343,7 @@ class TestObjectPermissions:
 
         session = AccountSession(
             authenticated=True,
-            account_id=object_permissions_data.first_account.id,
+            account_id=object_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
@@ -443,7 +443,7 @@ async def attribute_permissions_data(
     await tag.new(db=db, name="Blue", description="Blue tag")
     await tag.save(db=db)
 
-    return PermissionsTestData(first_account=first_account, default_branch=default_branch)
+    return PermissionsTestData(account=first_account, branch=default_branch)
 
 
 class TestAttributePermissions:
@@ -453,12 +453,12 @@ class TestAttributePermissions:
         """In the main branch the first account doesn't have the permission to make changes, so attribute cannot be changed"""
         session = AccountSession(
             authenticated=True,
-            account_id=attribute_permissions_data.first_account.id,
+            account_id=attribute_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
         gql_params = await prepare_graphql_params(
-            db=db, include_mutation=True, branch=attribute_permissions_data.default_branch, account_session=session
+            db=db, include_mutation=True, branch=attribute_permissions_data.branch, account_session=session
         )
 
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS_ATTR, context_value=gql_params.context)
@@ -477,7 +477,7 @@ class TestAttributePermissions:
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
             authenticated=True,
-            account_id=attribute_permissions_data.first_account.id,
+            account_id=attribute_permissions_data.account.id,
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
