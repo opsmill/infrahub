@@ -4,9 +4,7 @@ from abc import abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from infrahub_sdk.template import Jinja2Template
-
-from infrahub.computed_attribute.jinja2_filters import FILTERS
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 
@@ -123,7 +121,7 @@ class DisplayLabel(NodePropertyAttribute[str]):
         if self.template is None or not self.is_jinja2_template:
             return
 
-        tpl = Jinja2Template(template=self.template, filters=FILTERS)
+        tpl = InfrahubJinja2Template(template=self.template)
         for variable in tpl.get_variables():
             items = variable.split("__", maxsplit=1)
             if items[0] in self.node_schema.attribute_names:
@@ -156,7 +154,7 @@ class DisplayLabel(NodePropertyAttribute[str]):
             self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
             return
 
-        jinja2_template = Jinja2Template(template=self.template, filters=FILTERS)
+        jinja2_template = InfrahubJinja2Template(template=self.template)
 
         variables: dict[str, Any] = {}
         for variable in jinja2_template.get_variables():

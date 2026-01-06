@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import TYPE_CHECKING
+
+from infrahub_sdk.template import Jinja2Template
 
 from infrahub.core.constants import PermissionAction, PermissionDecision
 
-__all__ = ["FILTERS"]
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+__all__ = ["InfrahubJinja2Template"]
 
 
-def value_to_permission_decision_name(value: int | Enum) -> str:
+def _value_to_permission_decision_name(value: int | Enum) -> str:
     """Convert a permission decision value to its enum member name.
 
     Usage example: `{{ decision__value | value_to_permission_decision_name }}` will return `"ALLOW_ALL"` for value `6`.
@@ -24,7 +31,7 @@ def value_to_permission_decision_name(value: int | Enum) -> str:
         raise ValueError(msg) from exc
 
 
-def value_to_permission_action_name(value: str | Enum) -> str:
+def _value_to_permission_action_name(value: str | Enum) -> str:
     """Convert a permission action value to its enum member name.
 
     Usage example: `{{ action__value | value_to_permission_action_name }}` will return `"MANAGE_ACCOUNTS"` for value `"manage_accounts"`.
@@ -41,7 +48,21 @@ def value_to_permission_action_name(value: str | Enum) -> str:
         raise ValueError(msg) from exc
 
 
-FILTERS = {
-    "value_to_permission_decision_name": value_to_permission_decision_name,
-    "value_to_permission_action_name": value_to_permission_action_name,
+FILTERS: dict[str, Callable[..., str]] = {
+    "value_to_permission_decision_name": _value_to_permission_decision_name,
+    "value_to_permission_action_name": _value_to_permission_action_name,
 }
+
+
+class InfrahubJinja2Template(Jinja2Template):
+    """Extend SDK's `Jinja2Template` with Infrahub server-specific filters pre-configured."""
+
+    def __init__(
+        self,
+        template: str | Path,
+        template_directory: Path | None = None,
+        filters: dict[str, Callable[..., str]] | None = None,
+    ) -> None:
+        super().__init__(
+            template=template, template_directory=template_directory, filters={**FILTERS, **(filters or {})}
+        )

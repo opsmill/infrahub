@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk.template import Jinja2Template
 from rich.progress import Progress, TaskID
 
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType
@@ -41,7 +41,7 @@ def _is_jinja2_template(display_label: str) -> bool:
 
 
 def _extract_jinja2_variables(template_str: str) -> list[str]:
-    return Jinja2Template(template=template_str).get_variables()
+    return InfrahubJinja2Template(template=template_str).get_variables()
 
 
 async def _render_display_label(display_label: str, variable_names: list[str], values: list[Any]) -> str | None:
@@ -49,7 +49,7 @@ async def _render_display_label(display_label: str, variable_names: list[str], v
         return values[0] if values and values[0] is not None else None
 
     variables = dict(zip(variable_names, values, strict=False))
-    jinja_template = Jinja2Template(template=display_label)
+    jinja_template = InfrahubJinja2Template(template=display_label)
     return await jinja_template.render(variables=variables)
 
 
