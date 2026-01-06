@@ -17,7 +17,7 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
   const { data: objectData, isPending, error } = useGetObject({ objectSchema, objectId });
 
   if (isPending) {
-    return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   if (error) {
@@ -26,11 +26,7 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
 
   return (
     <>
-      <ObjectDetailsTabs
-        objectSchema={objectSchema}
-        objectData={objectData}
-        permission={permission}
-      />
+      <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
       <ObjectDetails objectSchema={objectSchema} objectData={objectData} permission={permission} />
     </>
   );

@@ -1,6 +1,6 @@
 # Writing Documentation
 
-> Part of: `dev/guidelines/` | Related: `dev/guidelines/markdown.md`, `docs/AGENTS.md`
+> Part of: `dev/guidelines/` | Related: [Markdown Standards](markdown.md), `docs/AGENTS.md`
 
 Guidelines for writing documentation in the Infrahub project. These principles apply to all documentation, regardless of format.
 
@@ -93,8 +93,8 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 
 1. **Choose documentation type** using the table above
 2. **Follow specialized guide**:
-   - Guides: `dev/guides/docs/writing-a-guide.md`
-   - Topics: `dev/guides/docs/writing-a-topic.md`
+   - Guides: [Writing a Guide](../guides/docs/writing-a-guide.md)
+   - Topics: [Writing a Topic](../guides/docs/writing-a-topic.md)
 3. **Create the .mdx file** in the appropriate directory
 4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
 5. **Lint before committing**: `uv run invoke docs.lint`
@@ -117,8 +117,8 @@ uv run invoke docs.format        # Auto-format markdown files
 
 ## See Also
 
-- `dev/guidelines/markdown.md` - Markdown formatting standards
-- `dev/guides/docs/writing-a-guide.md` - Step-by-step guide for writing guides
-- `dev/guides/docs/writing-a-topic.md` - Step-by-step guide for writing topics
+- [Markdown Standards](markdown.md) - Markdown formatting standards
+- [Writing a Guide](../guides/docs/writing-a-guide.md) - Step-by-step guide for writing guides
+- [Writing a Topic](../guides/docs/writing-a-topic.md) - Step-by-step guide for writing topics
 - `docs/AGENTS.md` - Main documentation guidelines
 - [Diataxis Framework](https://diataxis.fr/) - Documentation framework

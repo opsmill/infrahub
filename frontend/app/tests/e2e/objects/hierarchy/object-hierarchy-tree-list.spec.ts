@@ -97,7 +97,8 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
       await expect(objectHierarchyTreeLite).toBeVisible();
       await expect(objectHierarchyTree).not.toBeVisible();
 
-      await page.getByTestId("delete-button").click();
+      await page.getByTestId("object-details-menu").click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Object Country 1 deleted")).toBeVisible();
 
