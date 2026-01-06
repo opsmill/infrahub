@@ -77,7 +77,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db: InfrahubDatabase,
         result: MigrationResult,
         branch: Branch,
-        at: Timestamp,  # noqa: ARG002
+        at: Timestamp,
         user_id: str,  # noqa: ARG002
     ) -> MigrationResult:
         if self.new_attribute_schema.kind != "NumberPool":
@@ -88,6 +88,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             branch=branch,
             schema_node=self.new_schema,  # type: ignore
             schema_attribute=self.new_attribute_schema,
+            at=at,
         )
 
         await update_branch_registry(db=db, branch=branch)
@@ -108,11 +109,11 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             return result
 
         for node, number in zip(nodes, numbers, strict=True):
-            await number_pool.reserve(db=db, number=number, identifier=node.get_id())
+            await number_pool.reserve(db=db, number=number, identifier=node.get_id(), at=at)
             attr = getattr(node, self.new_attribute_schema.name)
             attr.value = number
             attr.source = number_pool.id
 
-            await node.save(db=db, fields=[self.new_attribute_schema.name])
+            await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
 
         return result
