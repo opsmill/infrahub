@@ -40,7 +40,7 @@ class TestingTag(BuiltinTag): ...
 
 class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
-    def builtin_tag_schema(self):
+    def builtin_tag_schema(self) -> NodeSchema:
         return NodeSchema(
             name="Tag",
             namespace="Builtin",
@@ -59,7 +59,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         )
 
     @pytest.fixture(scope="class")
-    def testing_tag_schema(self):
+    def testing_tag_schema(self) -> NodeSchema:
         return NodeSchema(
             name="Tag",
             namespace="Testing",
