@@ -8,6 +8,7 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import lock
+from infrahub.computed_attribute.jinja2_filters import FILTERS
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
@@ -698,7 +699,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
                 continue
 
-            jinja_template = Jinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            jinja_template = Jinja2Template(template=attr_schema.computed_attribute.jinja2_template, filters=FILTERS)
             for variable in jinja_template.get_variables():
                 attribute_path = schema_branch.validate_schema_path(
                     node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types

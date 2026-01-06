@@ -5,6 +5,7 @@ from infrahub_sdk.template import Jinja2Template
 from prefect import flow
 from prefect.logging import get_run_logger
 
+from infrahub.computed_attribute.jinja2_filters import FILTERS
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
@@ -100,7 +101,7 @@ async def process_display_label(
             related_kind=node_kind, target_kind=target_kind
         )
 
-    jinja_template = Jinja2Template(template=display_label_template.template)
+    jinja_template = Jinja2Template(template=display_label_template.template, filters=FILTERS)
     variables = jinja_template.get_variables()
     display_label_graphql = DisplayLabelJinja2GraphQL(
         node_schema=node_schema, variables=variables, filter_key=display_label_template.filter_key

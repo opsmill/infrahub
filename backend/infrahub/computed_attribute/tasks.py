@@ -26,6 +26,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
+from .jinja2_filters import FILTERS
 from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
@@ -242,7 +243,7 @@ async def process_jinja2(
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
             template_string = computed_macro.attribute.computed_attribute.jinja2_template
 
-        jinja_template = Jinja2Template(template=template_string)
+        jinja_template = Jinja2Template(template=template_string, filters=FILTERS)
         variables = jinja_template.get_variables()
 
         attribute_graphql = ComputedAttrJinja2GraphQL(
