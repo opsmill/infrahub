@@ -27,6 +27,7 @@ from infrahub.core.models import (  # noqa: TC001
     SchemaUpdateConstraintInfo,
     SchemaUpdateValidationResult,
 )
+from infrahub.core.query.rollback import RollbackQuery
 from infrahub.core.schema import (
     GenericSchema,
     MainSchemaTypes,
@@ -37,7 +38,6 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
-from infrahub.core.schema.query import SchemaLoadRollbackQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -390,7 +390,7 @@ async def _updated_schema_and_migrate(
         log.error("Schema migration returned errors, beginning rollback", branch=branch.name)
 
     # Rollback database changes (no transaction - rollback may be large)
-    rollback_query = await SchemaLoadRollbackQuery.init(db=db, branch=branch, target_branch=branch, at=schema_load_at)
+    rollback_query = await RollbackQuery.init(db=db, branch=branch, target_branch=branch, at=schema_load_at)
     await rollback_query.execute(db=db)
 
     # Restore original schema in registry

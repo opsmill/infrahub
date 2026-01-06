@@ -150,14 +150,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         raise InitializationError("The node has not been saved yet and doesn't have an id")
 
     def get_attribute(self, name: str) -> BaseAttribute:
-        attribute = getattr(self, name)
-        if not isinstance(attribute, BaseAttribute):
+        attribute = getattr(self, name, None)
+        if not attribute or not isinstance(attribute, BaseAttribute):
             raise ValueError(f"{name} is not an attribute of {self.get_kind()}")
         return attribute
 
     def get_relationship(self, name: str) -> RelationshipManager:
-        relationship = getattr(self, name)
-        if not isinstance(relationship, RelationshipManager):
+        relationship = getattr(self, name, None)
+        if not relationship or not isinstance(relationship, RelationshipManager):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
 

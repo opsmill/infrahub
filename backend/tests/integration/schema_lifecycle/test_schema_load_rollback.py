@@ -14,7 +14,7 @@ import pytest
 import infrahub.core.migrations.schema.tasks as tasks_module
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.shared import MigrationResult, SchemaMigration
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult, SchemaMigration
 from infrahub.core.node import Node
 
 from ..shared import load_schema
@@ -43,9 +43,8 @@ class BrokenMigration(SchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
         """Raise an error to simulate a migration failure."""
