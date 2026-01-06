@@ -83,9 +83,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("Update confirmation and update UI", async () => {
       await expect(page.getByText("Tenant updated")).toBeVisible();
-      await expect(
-        page.getByTestId("object-header").getByText("Changes from branch cr1234")
-      ).toBeVisible();
+      await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
     await test.step("See initial value on main branch", async () => {
