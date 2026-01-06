@@ -7,10 +7,7 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
-import { ObjectFileRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-file-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
-import type { FileRelationshipData } from "@/entities/nodes/object/ui/object-details/object-data-display/types/file-types";
-import { isFileRelationship } from "@/entities/nodes/object/ui/object-details/object-data-display/utils/is-file-relationship";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
@@ -72,17 +69,6 @@ export function ObjectDataDisplay({
         if (!fieldData) return null;
 
         if ("peer" in field) {
-          if (isFileRelationship(field)) {
-            return (
-              <ObjectFileRow
-                key={fieldName}
-                relationshipSchema={field}
-                relationshipData={fieldData as FileRelationshipData}
-                permission={permission}
-              />
-            );
-          }
-
           return (
             <ObjectRelationshipRow
               key={fieldName}
