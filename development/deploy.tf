@@ -23,7 +23,7 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
-  infrahub_version = "1.4.10"
+  infrahub_version = "1.7.0"
 }
 
 ### Infrahub
@@ -33,7 +33,7 @@ resource "helm_release" "infrahub_ha" {
 
   name    = "infrahub"
   chart   = "oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise"
-  version = "3.9.4"
+  version = "3.13.0"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -134,7 +134,7 @@ resource "helm_release" "database_ha_service" {
   name       = "database-service"
   chart      = "neo4j-headless-service"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.3.0"
+  version    = "2025.10.1-4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -155,7 +155,7 @@ resource "helm_release" "database_ha" {
   name       = "database-${count.index}"
   chart      = "neo4j"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.3.0"
+  version    = "2025.10.1-4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -257,7 +257,7 @@ resource "helm_release" "taskmanager_ha" {
   name       = "taskmanager"
   chart      = "prefect-server"
   repository = "https://prefecthq.github.io/prefect-helm"
-  version    = "2025.7.31204438"
+  version    = "2025.12.11201923"
 
   create_namespace = true
   namespace        = local.target_namespace
