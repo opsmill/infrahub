@@ -2205,6 +2205,7 @@ class SchemaBranch:
             self.set(name=core_profile_schema_definition.kind, schema=core_profile_schema_definition)
 
         profile_schema_kinds = set()
+        restricted_namespace_profiles_to_create = (InfrahubKind.TAG, InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS)
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             if (
@@ -2212,9 +2213,10 @@ class SchemaBranch:
                 or not node.generate_profile
                 or node.state == HashableModelState.ABSENT
             ):
-                with contextlib.suppress(SchemaNotFoundError):
-                    self.delete(name=self._get_profile_kind(node_kind=node.kind))
-                continue
+                if node.kind not in restricted_namespace_profiles_to_create:
+                    with contextlib.suppress(SchemaNotFoundError):
+                        self.delete(name=self._get_profile_kind(node_kind=node.kind))
+                    continue
 
             profile = self.generate_profile_from_node(node=node)
             self.add_relationships_to_profile(profile=profile, node=node)

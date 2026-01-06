@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
 def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
@@ -152,7 +152,7 @@ def schema_all_in_one():
             {
                 "name": "StandardGroup",
                 "namespace": "Core",
-                "inherit_from": ["CoreGroup"],
+                "inherit_from": [InfrahubKind.GENERICGROUP],
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
