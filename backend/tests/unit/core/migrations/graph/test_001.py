@@ -1,6 +1,7 @@
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.migrations.graph import Migration001
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -12,7 +13,7 @@ async def test_migration_001_no_version(db: InfrahubDatabase, reset_registry, de
     await db.execute_query(query=query_init_root)
 
     migration = Migration001()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(db=db, at=Timestamp())
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)
@@ -27,7 +28,7 @@ async def test_migration_001_initial_version(db: InfrahubDatabase, reset_registr
     await db.execute_query(query=query_init_root)
 
     migration = Migration001()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(db=db, at=Timestamp())
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)
@@ -44,7 +45,7 @@ async def test_migration_001_validate(db: InfrahubDatabase, reset_registry, dele
     await db.execute_query(query=query_init_root)
 
     migration = Migration001()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(db=db, at=Timestamp())
     assert not execution_result.errors
 
     query_init_root = """

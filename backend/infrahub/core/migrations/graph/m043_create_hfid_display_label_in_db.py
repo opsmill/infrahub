@@ -16,6 +16,7 @@ from infrahub.core.query import Query, QueryType
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -48,7 +49,7 @@ class Migration043(MigrationRequiringRebase):
     name: str = "043_create_hfid_display_label_in_db"
     minimum_version: int = 42
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         result = MigrationResult()
 
         root_node = await get_root_node(db=db, initialize=False)
@@ -104,7 +105,7 @@ class Migration043(MigrationRequiringRebase):
 
             for migration in migrations:
                 try:
-                    execution_result = await migration.execute(db=db, branch=default_branch)
+                    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:
@@ -113,7 +114,7 @@ class Migration043(MigrationRequiringRebase):
 
         return result
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:
         result = MigrationResult()
 
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
@@ -155,7 +156,7 @@ class Migration043(MigrationRequiringRebase):
 
             for migration in migrations:
                 try:
-                    execution_result = await migration.execute(db=db, branch=branch)
+                    execution_result = await migration.execute(db=db, branch=branch, at=at)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:

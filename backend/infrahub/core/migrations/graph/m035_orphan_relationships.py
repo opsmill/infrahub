@@ -7,6 +7,7 @@ from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from ...query import Query, QueryType
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -38,6 +39,6 @@ class Migration035(GraphMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         # overrides parent class to skip transaction in case there are a lot of relationships to delete
-        return await self.do_execute(db=db)
+        return await self.do_execute(db=db, at=at)

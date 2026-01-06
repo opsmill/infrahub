@@ -100,7 +100,7 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
     assert await count_relationships(db=db) == count_rels + 18
@@ -135,7 +135,7 @@ async def test_migration_agnostic_relationship(
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label="TestCar") == 1

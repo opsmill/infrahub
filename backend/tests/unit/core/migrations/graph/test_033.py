@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph.m033_deduplicate_relationship_vertices import Migration033
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
@@ -338,7 +339,7 @@ CREATE (rel_node_two)-[:IS_RELATED {status: "active", branch: rel.branch, branch
     async def test_migration_033(self, db: InfrahubDatabase, load_bad_data, legal_relationship_dicts) -> None:
         # Run the migration
         migration = Migration033()
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(db=db, at=Timestamp())
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors

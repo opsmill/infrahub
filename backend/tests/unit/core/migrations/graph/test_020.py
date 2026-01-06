@@ -65,7 +65,7 @@ class TestDuplicateEdgesDeleted:
 
         # run the migration
         migration = Migration020()
-        await migration.execute(db=db)
+        await migration.execute(db=db, at=Timestamp())
         await migration.validate_migration(db=db)
 
         # validate no duplicate edges

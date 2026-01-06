@@ -269,7 +269,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     rel_schema = person_schema.get_relationship("tags")
@@ -634,7 +634,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
@@ -1099,7 +1099,7 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     query = await RelationshipGetPeerQuery.init(
@@ -1136,7 +1136,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
@@ -1178,7 +1178,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Builtin2NewTag", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     # delete other tag relationship

@@ -12,6 +12,7 @@ from infrahub.database.neo4j import IndexManagerNeo4j
 from ..shared import GraphMigration
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -23,7 +24,7 @@ class Migration014(GraphMigration):
     queries: Sequence[type[Query]] = []
     minimum_version: int = 13
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
         # Only execute this migration for Neo4j

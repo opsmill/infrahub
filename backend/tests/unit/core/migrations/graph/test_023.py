@@ -7,6 +7,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m023_deduplicate_cardinality_one_relationships import Migration023
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 # redis is required as we will call `initialization` later
@@ -77,7 +78,7 @@ async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, re
     )
 
     migration = Migration023()
-    await migration.execute(db=db)
+    await migration.execute(db=db, at=Timestamp())
     await migration.validate_migration(db=db)
 
     await check_number_path_between_nodes(

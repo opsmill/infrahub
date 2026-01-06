@@ -11,6 +11,7 @@ from infrahub.log import get_logger
 from ..shared import ArbitraryMigration
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -574,7 +575,7 @@ class Migration029(ArbitraryMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
         migration_result = MigrationResult()
         limit = self.limit
         offset = 0

@@ -1212,7 +1212,7 @@ async def test_query_multiple_filters(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
 
     query05 = """

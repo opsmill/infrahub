@@ -11,6 +11,7 @@ from infrahub.log import get_logger
 from ..shared import ArbitraryMigration
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -25,7 +26,7 @@ class Migration015(ArbitraryMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
         default_branch = registry.get_branch_from_registry()
         build_component_registry()
         component_registry = get_component_registry()

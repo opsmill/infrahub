@@ -19,6 +19,7 @@ from ..shared import ArbitraryMigration
 
 if TYPE_CHECKING:
     from infrahub.core.ipam.constants import AllIPTypes
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -233,7 +234,7 @@ class Migration039(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
         console = get_migration_console()
         result = MigrationResult()
         # load schemas from database into registry

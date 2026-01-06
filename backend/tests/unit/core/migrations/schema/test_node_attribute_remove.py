@@ -119,7 +119,7 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
     assert await count_nodes(db=db, label="Attribute") == count_attr_node

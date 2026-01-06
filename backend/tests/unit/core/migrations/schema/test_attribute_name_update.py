@@ -121,7 +121,7 @@ async def test_migration(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
 
     assert execution_result.nbr_migrations_executed == 3

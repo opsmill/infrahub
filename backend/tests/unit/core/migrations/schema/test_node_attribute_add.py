@@ -151,7 +151,7 @@ async def test_migration(db: InfrahubDatabase, default_branch, init_database, sc
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 0
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 5
     assert await count_nodes(db=db, label="TestCar") == 5

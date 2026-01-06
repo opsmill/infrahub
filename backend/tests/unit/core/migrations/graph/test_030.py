@@ -93,7 +93,7 @@ async def test_migration_030(
         await _add_attribute(db=db, node_id=node.id, branch=branch, at=right_now)
 
     migration = Migration030()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(db=db, at=Timestamp())
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)

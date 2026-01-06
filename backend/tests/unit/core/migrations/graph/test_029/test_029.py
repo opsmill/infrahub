@@ -4,6 +4,7 @@ import pytest
 
 from infrahub.cli.db import load_export
 from infrahub.core.migrations.graph.m029_duplicates_cleanup import Migration029
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships
@@ -47,7 +48,7 @@ CALL () {
 
         migration = Migration029()
         migration.limit = 33
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(db=db, at=Timestamp())
         assert not execution_result.errors
 
         await verify_no_duplicate_paths(db=db)

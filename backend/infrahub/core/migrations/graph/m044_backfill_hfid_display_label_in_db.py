@@ -24,8 +24,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, TemplateSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
 
 console = get_migration_console()
 
@@ -631,6 +631,7 @@ class Migration044(MigrationRequiringRebase):
         schema: NodeSchema | ProfileSchema | TemplateSchema,
         schema_branch: SchemaBranch,
         attribute_schema_map: dict[AttributeSchema, AttributeSchema],
+        at: Timestamp,
         progress: Progress | None = None,
         update_task: TaskID | None = None,
     ) -> None:
@@ -696,6 +697,7 @@ class Migration044(MigrationRequiringRebase):
                     branch=branch,
                     attribute_schema=destination_attribute_schema,
                     values_by_id_map=formatted_schema_path_values_map,
+                    at=at,
                 )
                 await update_display_label_query.execute(db=db)
 
@@ -709,7 +711,7 @@ class Migration044(MigrationRequiringRebase):
 
         print("done")
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
@@ -754,6 +756,7 @@ class Migration044(MigrationRequiringRebase):
                         schema=node_schema,
                         schema_branch=main_schema_branch,
                         attribute_schema_map=attribute_schema_map,
+                        at=at,
                         progress=progress,
                         update_task=update_task,
                     )
@@ -770,6 +773,7 @@ class Migration044(MigrationRequiringRebase):
         schema_branch: SchemaBranch,
         source_attribute_schema: AttributeSchema,
         destination_attribute_schema: AttributeSchema,
+        at: Timestamp,
     ) -> None:
         print(f"Processing {schema.kind}.{destination_attribute_schema.name} for {branch.name}...", end="")
 
@@ -814,12 +818,13 @@ class Migration044(MigrationRequiringRebase):
                 branch=branch,
                 attribute_schema=destination_attribute_schema,
                 values_by_id_map=formatted_schema_path_values_map,
+                at=at,
             )
             await update_attr_values_query.execute(db=db)
 
             offset += self.update_batch_size
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:
         default_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
@@ -869,6 +874,7 @@ class Migration044(MigrationRequiringRebase):
                         schema=node_schema,
                         schema_branch=schema_branch,
                         attribute_schema_map=schemas_for_universal_update_map,
+                        at=at,
                     )
 
                 if not schemas_for_targeted_update_map:
@@ -882,6 +888,7 @@ class Migration044(MigrationRequiringRebase):
                         schema_branch=schema_branch,
                         source_attribute_schema=source_attribute_schema,
                         destination_attribute_schema=destination_attribute_schema,
+                        at=at,
                     )
 
         except Exception as exc:

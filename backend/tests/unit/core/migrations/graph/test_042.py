@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m042_profile_attrs_in_db import Migration042
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.test_app import TestInfrahubApp
@@ -181,14 +182,14 @@ class TestMigration042(TestInfrahubApp):
         deleted_node_branch: Branch,
     ):
         migration = WrappedMigration042()
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(db=db, at=Timestamp())
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors
 
         for branch in [value_branch, priority_branch, deleted_profile_branch, deleted_node_branch]:
             await branch.rebase(db=db)
-            execution_result = await migration.execute_against_branch(db=db, branch=branch)
+            execution_result = await migration.execute_against_branch(db=db, branch=branch, at=Timestamp())
             assert not execution_result.errors
 
         default_crit_low_profile_attrs = [

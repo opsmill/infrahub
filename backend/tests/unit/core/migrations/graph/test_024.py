@@ -98,7 +98,7 @@ SET main_e.hierarchy = NULL
         real_schema_manager = registry.schema
         try:
             registry.schema = mock_schema_manager
-            await migration.execute(db=db)
+            await migration.execute(db=db, at=Timestamp())
         finally:
             registry.schema = real_schema_manager
         mock_load_schema_from_db.assert_awaited_once()

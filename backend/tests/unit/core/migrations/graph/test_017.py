@@ -1,5 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.migrations.graph import Migration017
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -26,7 +27,7 @@ async def test_migration_017(
 
     async with db.start_session() as dbs:
         migration = Migration017()
-        execution_result = await migration.execute(db=dbs)
+        execution_result = await migration.execute(db=dbs, at=Timestamp())
         assert not execution_result.errors
 
         validation_result = await migration.validate_migration(db=dbs)

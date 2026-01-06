@@ -25,6 +25,7 @@ from .load_schema_branch import get_or_load_schema_branch
 if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -134,13 +135,13 @@ class Migration046(ArbitraryMigration):
 
         print("done")
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         try:
-            return await self._do_execute(db=db)
+            return await self._do_execute(db=db, at=at)
         except Exception as exc:
             return MigrationResult(errors=[str(exc)])
 
-    async def _do_execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def _do_execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         console = get_migration_console()
         result = MigrationResult()
 
@@ -188,7 +189,7 @@ class Migration046(ArbitraryMigration):
 
             for migration in migrations:
                 try:
-                    execution_result = await migration.execute(db=db, branch=global_branch)
+                    execution_result = await migration.execute(db=db, branch=global_branch, at=at)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:

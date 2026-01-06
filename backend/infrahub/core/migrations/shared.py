@@ -101,7 +101,7 @@ class SchemaMigration(BaseModel):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        at: Timestamp | str | None = None,
+        at: Timestamp,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
@@ -174,15 +174,15 @@ class GraphMigration(BaseModel):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         async with db.start_transaction() as ts:
-            return await self.do_execute(db=ts)
+            return await self.do_execute(db=ts, at=at)
 
-    async def do_execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def do_execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         result = MigrationResult()
         for migration_query in self.queries:
             try:
-                query = await migration_query.init(db=db)
+                query = await migration_query.init(db=db, at=at)
                 await query.execute(db=db)
             except Exception as exc:
                 result.errors.append(str(exc))
@@ -216,14 +216,14 @@ class InternalSchemaMigration(BaseModel):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
 
-    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> MigrationResult:
         result = MigrationResult()
 
         default_branch = registry.get_branch_from_registry()
 
         for migration in self.migrations:
             try:
-                execution_result = await migration.execute(db=db, branch=default_branch, user_id=user_id)
+                execution_result = await migration.execute(db=db, branch=default_branch, at=at, user_id=user_id)
                 result.errors.extend(execution_result.errors)
             except Exception as exc:
                 result.errors.append(str(exc))
@@ -243,7 +243,7 @@ class ArbitraryMigration(BaseModel):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         raise NotImplementedError()
 
 
@@ -259,11 +259,11 @@ class MigrationRequiringRebase(BaseModel):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:
         """Method that will be run against non-default branches, it assumes that the branches have been rebased."""
         raise NotImplementedError()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         """Method that will be run against the default branch."""
         raise NotImplementedError()
 

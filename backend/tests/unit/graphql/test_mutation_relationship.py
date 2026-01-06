@@ -18,6 +18,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
@@ -897,7 +898,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
     core_node_schema = schema.get_generic(name="CoreNode")
     core_node_schema.used_by.append(new_person_kind)

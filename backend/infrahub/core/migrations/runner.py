@@ -11,6 +11,7 @@ from .shared import MigrationRequiringRebase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -35,12 +36,12 @@ class MigrationRunner:
     def has_migrations(self) -> bool:
         return bool(self.applicable_migrations)
 
-    async def run(self, db: InfrahubDatabase) -> None:
+    async def run(self, db: InfrahubDatabase, at: Timestamp) -> None:
         if not self.has_migrations():
             return
 
         for migration in self.applicable_migrations:
-            execution_result = await migration.execute_against_branch(db=db, branch=self.branch)
+            execution_result = await migration.execute_against_branch(db=db, branch=self.branch, at=at)
             validation_result = None
 
             if execution_result.success:

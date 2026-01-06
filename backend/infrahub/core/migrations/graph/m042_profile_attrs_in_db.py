@@ -87,13 +87,13 @@ class Migration042(MigrationRequiringRebase):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
         return await self._do_execute_for_branch(db=db, branch=default_branch)
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:  # noqa: ARG002
         return await self._do_execute_for_branch(db=db, branch=branch)
 
     async def _do_execute_for_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:

@@ -11,6 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.db_validation import validate_no_duplicate_attributes
 
@@ -37,6 +38,7 @@ class TestMigration040:
                     )
                 ]
                 * 3,
+                at=Timestamp(),
             )
         )
         assert not migration_errors
@@ -79,7 +81,7 @@ class TestMigration040:
         await camry_branch.save(db=db)
 
         migration = Migration040.init(db=db)
-        result = await migration.execute(db=db)
+        result = await migration.execute(db=db, at=Timestamp())
         assert not result.errors
 
         # validate the result

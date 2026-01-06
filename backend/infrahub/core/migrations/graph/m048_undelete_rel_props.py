@@ -7,6 +7,7 @@ from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult,
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -143,18 +144,18 @@ class Migration048(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
         console = get_migration_console()
 
         console.log("Deleting duplicate edges for all Relationships", end="...")
         delete_duplicate_edges_query = await DeleteDuplicatedRelationshipEdges.init(
-            db=db, migrated_kind_nodes_only=False
+            db=db, migrated_kind_nodes_only=False, at=at
         )
         await delete_duplicate_edges_query.execute(db=db)
         console.log("done")
 
         console.log("Undeleting Relationship properties", end="...")
-        undelete_rel_props_query = await UndeleteRelationshipProperties.init(db=db)
+        undelete_rel_props_query = await UndeleteRelationshipProperties.init(db=db, at=at)
         await undelete_rel_props_query.execute(db=db)
         console.log("done")
 

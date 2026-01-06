@@ -3302,7 +3302,7 @@ async def test_calculate_with_migrated_kind_node(
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     # attribute and rel changes after migration
@@ -3882,7 +3882,7 @@ async def test_calculate_with_migrated_attr_name(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
     )
 
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     diff_calculator = DiffCalculator(db=db)
@@ -4117,7 +4117,7 @@ async def test_migrated_kind_node_then_peer_delete(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
 
     # migrate TestPerson kind back to original on a different branch
@@ -4133,7 +4133,7 @@ async def test_migrated_kind_node_then_peer_delete(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     # create a branch and delete a car on the branch
@@ -4212,7 +4212,7 @@ async def test_migrated_kind_with_property_level_changes(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
     assert not execution_result.errors
 
     # property-level change after migration
@@ -4398,7 +4398,7 @@ async def test_migrated_kind_on_main_then_relationship_update_on_branch(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
     assert not execution_result.errors
 
     # Create a branch after the migration

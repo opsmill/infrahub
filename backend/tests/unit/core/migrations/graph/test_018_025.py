@@ -7,6 +7,7 @@ from infrahub.core.migrations.graph import Migration018, Migration025
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -66,7 +67,7 @@ async def test_migration_018_success(
 ) -> None:
     # check no validation errors for now
     async with db.start_session() as dbs:
-        execution_result = await migration.execute(db=dbs)
+        execution_result = await migration.execute(db=dbs, at=Timestamp())
         assert not execution_result.errors
 
         validation_result = await migration.validate_migration(db=dbs)
@@ -94,7 +95,7 @@ async def test_migration_018_fail(
 
     # check validation errors for two cars now
     async with db.start_session() as dbs:
-        execution_result = await migration.execute(db=dbs)
+        execution_result = await migration.execute(db=dbs, at=Timestamp())
         assert len(execution_result.errors) == 3
         for error_str in execution_result.errors[1:]:
             assert car_red.name.value in error_str or car_invisible.name.value in error_str

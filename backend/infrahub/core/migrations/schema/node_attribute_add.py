@@ -64,7 +64,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        at: Timestamp | str | None = None,
+        at: Timestamp,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
