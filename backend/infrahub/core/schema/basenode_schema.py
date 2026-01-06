@@ -263,6 +263,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     ) -> AttributeSchema | RelationshipSchema | None: ...
 
     def get_field(self, name: str, raise_on_error: bool = True) -> AttributeSchema | RelationshipSchema | None:
+        if name in NODE_PROPERTY_ATTRIBUTES:
+            return self.get_attribute(name=name)
+
         if field := self.get_attribute_or_none(name=name):
             return field
 

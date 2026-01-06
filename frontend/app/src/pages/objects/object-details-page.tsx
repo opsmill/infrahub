@@ -28,14 +28,15 @@ function ObjectDetailsPage() {
   }
 
   return (
-    <Content.Card className="flex flex-col">
-      <RequireObjectPermissions
-        objectKind={schema.kind as string}
-        loadingClassName="h-[calc(100vh-10.5rem)]"
-      >
+    <Content.Card className="flex grow flex-col">
+      <RequireObjectPermissions objectKind={schema.kind!} loadingClassName="h-full">
         {({ permission }) => (
           <>
-            <ObjectDetailsHeader schema={schema} objectId={objectId} />
+            <ObjectDetailsHeader
+              objectSchema={schema}
+              objectId={objectId}
+              permission={permission}
+            />
 
             {objectKind === GRAPHQL_QUERY_OBJECT ? (
               <GraphqlQueryDetails

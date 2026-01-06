@@ -1,6 +1,6 @@
 # Markdown Formatting Standards
 
-> Part of: `dev/guidelines/` | Related: `dev/guidelines/documentation.md`
+> Part of: `dev/guidelines/` | Related: [Documentation Guidelines](documentation.md)
 
 Markdown formatting rules enforced by markdownlint and project conventions.
 
@@ -203,6 +203,6 @@ import TabItem from '@theme/TabItem';
 
 ## See Also
 
-- `dev/guidelines/documentation.md` - Documentation writing guidelines
+- [Documentation Guidelines](documentation.md) - Documentation writing guidelines
 - `docs/AGENTS.md` - Documentation-specific guidelines for user-facing docs
-- `dev/guidelines/git-workflow.md` - Git workflow and commit conventions
+- [Git Workflow](git-workflow.md) - Git workflow and commit conventions

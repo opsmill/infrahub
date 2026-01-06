@@ -60,10 +60,10 @@ class ConflictDetails(ObjectType):
 
 
 class DiffSummaryCounts(ObjectType):
-    num_added = Int(required=False)
-    num_updated = Int(required=False)
-    num_removed = Int(required=False)
-    num_conflicts = Int(required=False)
+    num_added = Int(required=True)
+    num_updated = Int(required=True)
+    num_removed = Int(required=True)
+    num_conflicts = Int(required=True)
 
 
 class DiffProperty(ObjectType):
@@ -146,7 +146,7 @@ class DiffTreeSummary(DiffSummaryCounts):
     diff_branch = String(required=True)
     from_time = DateTime(required=True)
     to_time = DateTime(required=True)
-    num_unchanged = Int(required=False)
+    num_unchanged = Int(required=True)
     num_untracked_base_changes = Int(required=False)
     num_untracked_diff_changes = Int(required=False)
 

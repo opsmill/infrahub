@@ -1674,6 +1674,15 @@ async def all_attribute_default_types_schema(
 
 @pytest.fixture
 async def criticality_schema_root(register_core_models_schema: None) -> SchemaRoot:
+    return do_criticality_schema_root()
+
+
+@pytest.fixture(scope="class")
+async def criticality_schema_root_scope_class(register_core_models_schema_scope_class: None) -> SchemaRoot:
+    return do_criticality_schema_root()
+
+
+def do_criticality_schema_root() -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1725,11 +1734,24 @@ async def criticality_schema(
     data_schema,
     criticality_schema_root: SchemaRoot,
 ) -> NodeSchema:
-    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get_node_schema(
-        name=criticality_schema_root.nodes[0].kind, branch=default_branch.name, duplicate=False
-    )
+    return do_criticality_schema(branch=default_branch, schema_root=criticality_schema_root)
+
+
+@pytest.fixture(scope="class")
+async def criticality_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    group_schema_scope_class: None,
+    data_schema_scope_class: None,
+    criticality_schema_root_scope_class: SchemaRoot,
+) -> NodeSchema:
+    return do_criticality_schema(branch=default_branch_scope_class, schema_root=criticality_schema_root_scope_class)
+
+
+def do_criticality_schema(branch: Branch, schema_root: SchemaRoot) -> NodeSchema:
+    registry.schema.register_schema(schema=schema_root, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+    return registry.schema.get_node_schema(name=schema_root.nodes[0].kind, branch=branch.name, duplicate=False)
 
 
 @pytest.fixture

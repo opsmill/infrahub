@@ -4,12 +4,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.graphql import graphql
+from tests.helpers.graphql import graphql, graphql_query
+from tests.helpers.schema import COLOR, TSHIRT, load_schema
 
 
 async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
@@ -422,3 +423,131 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
     assert result.data
     assert len(result.data["TestObjectB"]["edges"]) == 1
     assert result.data["TestObjectB"]["edges"][0]["node"]["display_label"] == "first SECOND"
+
+
+async def test_filter_by_display_label(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), branch_name=default_branch.name)
+    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
+    tshirt_schema = registry.schema.get_node_schema(name=TSHIRT.kind, branch=default_branch.name)
+
+    red = await Node.init(db=db, schema=color_schema)
+    await red.new(db=db, name="Red", description="A red color")
+    await red.save(db=db)
+
+    blue = await Node.init(db=db, schema=color_schema)
+    await blue.new(db=db, name="Blue", description="A blue color")
+    await blue.save(db=db)
+
+    green = await Node.init(db=db, schema=color_schema)
+    await green.new(db=db, name="Green", description="A green color")
+    await green.save(db=db)
+
+    dark_red = await Node.init(db=db, schema=color_schema)
+    await dark_red.new(db=db, name="Dark Red", description="A dark red color")
+    await dark_red.save(db=db)
+
+    light_red = await Node.init(db=db, schema=color_schema)
+    await light_red.new(db=db, name="Light Red", description="A light red color")
+    await light_red.save(db=db)
+
+    tshirt_classic = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_classic.new(db=db, name="Classic", color=red)
+    await tshirt_classic.save(db=db)
+
+    tshirt_sport = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_sport.new(db=db, name="Sport", color=red)
+    await tshirt_sport.save(db=db)
+
+    tshirt_casual = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_casual.new(db=db, name="Casual", color=blue)
+    await tshirt_casual.save(db=db)
+
+    tshirt_vintage = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_vintage.new(db=db, name="Vintage", color=dark_red)
+    await tshirt_vintage.save(db=db)
+
+    tshirt_summer = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_summer.new(db=db, name="Summer", color=light_red)
+    await tshirt_summer.save(db=db)
+
+    query_color = """
+    query FilterColors($value: String, $values: [String!], $partial: Boolean) {
+        TestingColor(display_label__value: $value, display_label__values: $values, partial_match: $partial) {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    query_tshirt = """
+    query FilterTShirts($value: String, $partial: Boolean) {
+        TestingTShirt(color__display_label__value: $value, partial_match: $partial) {
+            edges {
+                node {
+                    id
+                    display_label
+                    color {
+                        node {
+                            display_label
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    # Test 1: Filter by exact display_label value
+    result = await graphql_query(query=query_color, db=db, branch=default_branch, variables={"value": "Red"})
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestingColor"]["edges"]) == 1
+    assert result.data["TestingColor"]["edges"][0]["node"]["display_label"] == "Red"
+
+    # Test 2: Filter by multiple display_label values
+    result = await graphql_query(
+        query=query_color, db=db, branch=default_branch, variables={"values": ["Red", "Green"]}
+    )
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]} == {"Green", "Red"}
+
+    # Test 3: Filter by display_label with partial_match
+    result = await graphql_query(
+        query=query_color, db=db, branch=default_branch, variables={"value": "red", "partial": True}
+    )
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]} == {
+        "Dark Red",
+        "Light Red",
+        "Red",
+    }
+
+    # Test 4: Filter by nested relationship display_label (exact match)
+    result = await graphql_query(query=query_tshirt, db=db, branch=default_branch, variables={"value": "Red"})
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {
+        "Classic Red",
+        "Sport Red",
+    }
+    assert {edge["node"]["color"]["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {"Red"}
+
+    # Test 5: Filter by nested relationship display_label with partial match
+    result = await graphql_query(
+        query=query_tshirt, db=db, branch=default_branch, variables={"value": "Red", "partial": True}
+    )
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {
+        "Classic Red",
+        "Sport Red",
+        "Summer Light Red",
+        "Vintage Dark Red",
+    }
