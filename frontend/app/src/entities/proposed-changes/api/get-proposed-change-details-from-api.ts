@@ -28,6 +28,7 @@ const GET_PROPOSED_CHANGE_DETAILS = graphql(`
         node {
           id
           display_label
+          __typename
           _updated_at
           name {
             value
@@ -120,7 +121,7 @@ export interface ProposedChangeDetailsFromApiResponse {
 export const getProposedChangeDetailsFromApi = async ({
   proposedChangeId,
 }: ProposedChangeDetailsFromApiParams) => {
-  return graphqlClient.query<ProposedChangeDetailsFromApiResponse>({
+  return graphqlClient.query({
     query: GET_PROPOSED_CHANGE_DETAILS,
     variables: {
       proposedChangeId,

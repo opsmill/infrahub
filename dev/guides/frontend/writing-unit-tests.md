@@ -1,6 +1,6 @@
 # Writing Unit Tests
 
-> Part of: `dev/guides/frontend/` | Related: `dev/guidelines/frontend/typescript.md`
+> Part of: `dev/guides/frontend/` | Related: [TypeScript Standards](../../guidelines/frontend/typescript.md)
 
 Step-by-step guide for writing unit tests for TypeScript functions following the project's testing patterns and best practices.
 
@@ -380,7 +380,7 @@ Before submitting your unit tests:
 
 ## Related Resources
 
-- `dev/guides/frontend/writing-component-tests.md` - Guide for writing component tests
-- `dev/guidelines/frontend/typescript.md` - TypeScript coding standards
+- [Writing Component Tests](writing-component-tests.md) - Guide for writing component tests
+- [TypeScript Standards](../../guidelines/frontend/typescript.md) - TypeScript coding standards
 - `frontend/app/tests/fake/` - Test data factories
 - Vitest documentation - [vitest.dev](https://vitest.dev)

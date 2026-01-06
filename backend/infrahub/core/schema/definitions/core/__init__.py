@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TypedDict
 
 from infrahub.actions.schema import (
     core_action,
@@ -93,7 +93,13 @@ from .template import core_object_component_template, core_object_template
 from .transform import core_transform, core_transform_jinja2, core_transform_python
 from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
 
-core_models_mixed: dict[str, list] = {
+
+class CoreModelsMixedType(TypedDict):
+    generics: list[GenericSchema]
+    nodes: list[NodeSchema]
+
+
+core_models_mixed: CoreModelsMixedType = {
     "generics": [
         core_action,
         core_trigger_rule,
