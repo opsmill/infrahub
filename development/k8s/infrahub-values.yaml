@@ -1,7 +1,7 @@
 ---
 infrahub:
   global:
-    infrahubTag: 1.4.10
+    infrahubTag: 1.7.0
   infrahubServer:
     replicas: 3
     persistence:
