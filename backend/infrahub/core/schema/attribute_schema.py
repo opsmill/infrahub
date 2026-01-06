@@ -114,13 +114,20 @@ class AttributeSchema(GeneratedAttributeSchema):
     @field_validator("parameters", mode="before")
     @classmethod
     def set_parameters_type(cls, value: Any, info: ValidationInfo) -> Any:
-        """Override parameters class if using base AttributeParameters class and should be using a subclass"""
+        """Override parameters class if using base AttributeParameters class and should be using a subclass.
+
+        This validator handles parameter type conversion when an attribute's kind changes.
+        Fields from the source that don't exist in the target are silently dropped.
+        Fields with the same name in both classes are preserved.
+        """
         kind = info.data["kind"]
         expected_parameters_class = get_attribute_parameters_class_for_kind(kind=kind)
         if value is None:
             return expected_parameters_class()
         if not isinstance(value, expected_parameters_class) and isinstance(value, AttributeParameters):
-            return expected_parameters_class(**value.model_dump())
+            return expected_parameters_class.convert_from(value)
+        if isinstance(value, dict):
+            return expected_parameters_class.convert_from_dict(source_data=value)
         return value
 
     @model_validator(mode="after")

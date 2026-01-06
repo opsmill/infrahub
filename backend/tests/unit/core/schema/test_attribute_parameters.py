@@ -12,10 +12,12 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
+    AttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
 )
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -260,3 +262,119 @@ def test_validate_min_max_text_attribute() -> None:
         TextAttributeParameters(min_length=10, max_length=5)
 
     assert config.SETTINGS.main.schema_strict_mode
+
+
+def test_convert_from_text_to_number_parameters() -> None:
+    """Test converting TextAttributeParameters to NumberAttributeParameters."""
+    text_params = TextAttributeParameters(regex="^[a-z]+$", min_length=1, max_length=10)
+    number_params = NumberAttributeParameters.convert_from(text_params)
+
+    # Should create a valid NumberAttributeParameters with default values
+    assert isinstance(number_params, NumberAttributeParameters)
+    assert number_params.min_value is None
+    assert number_params.max_value is None
+    assert number_params.excluded_values is None
+
+
+def test_convert_from_number_to_text_parameters() -> None:
+    """Test converting NumberAttributeParameters to TextAttributeParameters."""
+    number_params = NumberAttributeParameters(min_value=0, max_value=100)
+    text_params = TextAttributeParameters.convert_from(number_params)
+
+    # Should create a valid TextAttributeParameters with default values
+    assert isinstance(text_params, TextAttributeParameters)
+    assert text_params.regex is None
+    assert text_params.min_length is None
+    assert text_params.max_length is None
+
+
+def test_convert_from_to_base_parameters() -> None:
+    """Test converting to base AttributeParameters class."""
+    text_params = TextAttributeParameters(regex="test", min_length=5)
+    base_params = AttributeParameters.convert_from(text_params)
+    assert isinstance(base_params, AttributeParameters)
+
+
+def test_convert_from_same_class() -> None:
+    """Test converting from the same class type preserves values."""
+    text_params = TextAttributeParameters(regex="test", min_length=5, max_length=20)
+    converted = TextAttributeParameters.convert_from(text_params)
+
+    assert isinstance(converted, TextAttributeParameters)
+    assert converted.regex == "test"
+    assert converted.min_length == 5
+    assert converted.max_length == 20
+
+
+def test_convert_from_number_pool_to_number_parameters() -> None:
+    """Test converting NumberPoolParameters to NumberAttributeParameters."""
+    pool_params = NumberPoolParameters(start_range=10, end_range=100)
+    number_params = NumberAttributeParameters.convert_from(pool_params)
+
+    assert isinstance(number_params, NumberAttributeParameters)
+    assert number_params.min_value is None
+    assert number_params.max_value is None
+
+
+def test_attribute_schema_kind_change_text_to_number() -> None:
+    """Test that changing AttributeSchema kind from Text to Number handles parameters."""
+    # Create a Text attribute with parameters
+    text_attr = AttributeSchema(
+        name="test_attr",
+        kind="Text",
+        parameters=TextAttributeParameters(regex="^[a-z]+$", min_length=1, max_length=10),
+    )
+
+    # Create a Number attribute by modifying the kind in the dumped data
+    # This simulates what happens during schema updates
+    attr_data = text_attr.model_dump()
+    attr_data["kind"] = "Number"
+
+    # This should not raise an error about extra fields
+    number_attr = AttributeSchema(**attr_data)
+
+    assert number_attr.kind == "Number"
+    assert isinstance(number_attr.parameters, NumberAttributeParameters)
+    # Parameters should have default values since fields don't overlap
+    assert number_attr.parameters.min_value is None
+    assert number_attr.parameters.max_value is None
+
+
+def test_attribute_schema_kind_change_number_to_text() -> None:
+    """Test that changing AttributeSchema kind from Number to Text handles parameters."""
+    # Create a Number attribute with parameters
+    number_attr = AttributeSchema(
+        name="test_attr",
+        kind="Number",
+        parameters=NumberAttributeParameters(min_value=0, max_value=100),
+    )
+
+    # Create a Text attribute by modifying the kind in the dumped data
+    attr_data = number_attr.model_dump()
+    attr_data["kind"] = "Text"
+
+    # This should not raise an error about extra fields
+    text_attr = AttributeSchema(**attr_data)
+
+    assert text_attr.kind == "Text"
+    assert isinstance(text_attr.parameters, TextAttributeParameters)
+    # Parameters should have default values since fields don't overlap
+    assert text_attr.parameters.regex is None
+    assert text_attr.parameters.min_length is None
+    assert text_attr.parameters.max_length is None
+
+
+def test_attribute_schema_kind_change_with_parameters_object() -> None:
+    """Test kind change when AttributeParameters object is passed directly (not dict)."""
+    text_params = TextAttributeParameters(regex="test")
+
+    # This simulates a case where parameters is an object (not a dict) and kind doesn't match
+    # The validator should handle this by using convert_from
+    number_attr = AttributeSchema(
+        name="test_attr",
+        kind="Number",
+        parameters=text_params,
+    )
+
+    assert number_attr.kind == "Number"
+    assert isinstance(number_attr.parameters, NumberAttributeParameters)
