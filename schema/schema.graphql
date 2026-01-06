@@ -785,7 +785,7 @@ type CoreAccountRole implements CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
-  permissions(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], identifier__is_protected: Boolean, identifier__owner__id: ID, identifier__source__id: ID, identifier__value: String, identifier__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreBasePermission!
+  permissions(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreBasePermission!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
@@ -1543,8 +1543,6 @@ interface CoreBasePermission {
   hfid: [String!]
   """Unique identifier"""
   id: String
-  """Identifier for the permission"""
-  identifier: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   roles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -13092,11 +13090,6 @@ type Query {
     permissions__description__source__id: ID
     permissions__description__value: String
     permissions__description__values: [String]
-    permissions__identifier__is_protected: Boolean
-    permissions__identifier__owner__id: ID
-    permissions__identifier__source__id: ID
-    permissions__identifier__value: String
-    permissions__identifier__values: [String]
     permissions__ids: [ID]
     permissions__isnull: Boolean
     subscriber_of_groups__description__value: String
@@ -14147,12 +14140,6 @@ type Query {
     description__source__id: ID
     description__value: String
     description__values: [String]
-    identifier__is_protected: Boolean
-    identifier__isnull: Boolean
-    identifier__owner__id: ID
-    identifier__source__id: ID
-    identifier__value: String
-    identifier__values: [String]
     ids: [ID]
     limit: Int
     member_of_groups__description__value: String
