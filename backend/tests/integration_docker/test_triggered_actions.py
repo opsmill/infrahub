@@ -33,6 +33,9 @@ from tests.helpers.fixtures import get_fixtures_dir
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
+class TestingTag(BuiltinTag): ...
+
+
 class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
@@ -50,10 +53,11 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         schema_car_base: NodeSchema,
         schema_person_artifact: NodeSchema,
         schema_manufacturer_base: NodeSchema,
+        testing_tag_base: NodeSchema,
     ) -> SchemaRoot:
         return SchemaRoot(
             version="1.0",
-            nodes=[schema_person_artifact, schema_car_base, schema_manufacturer_base],
+            nodes=[schema_person_artifact, schema_car_base, schema_manufacturer_base, testing_tag_base],
         )
 
     @pytest.fixture(scope="class")
@@ -120,7 +124,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         group_action = await client.create(kind=CoreGroupAction, name="add-to-people", group=group_people)
         await group_action.save()
 
-        tags_original = await client.all(kind=BuiltinTag)
+        tags_original = await client.all(kind=TestingTag)
         tag_names_original = [tag.name.value for tag in tags_original]
 
         node_trigger = await client.create(
@@ -190,7 +194,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
 
         await group_people.members.fetch()
         for _ in range(30):
-            tags_updated = await client.all(kind=BuiltinTag)
+            tags_updated = await client.all(kind=TestingTag)
             tag_names_updated = [tag.name.value for tag in tags_updated]
             if len(tag_names_updated) > len(tag_names_original):
                 break
