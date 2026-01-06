@@ -6,7 +6,7 @@ Location: `frontend/app/src/entities/`
 
 Each entity represents a domain concept (artifacts, branches, tasks, nodes, etc.) and follows a three-layer architecture:
 
-```
+```text
 entities/<entity-name>/
 ├── api/       # Raw API calls (REST or GraphQL)
 ├── domain/    # Business logic, transformations, React Query hooks
@@ -27,6 +27,7 @@ Raw data fetching. No business logic.
 - Function naming: `get<Entity>FromApi`, `create<Entity>FromApi`
 
 Example: `api/generate-artifact-from-api.ts`
+
 ```typescript
 export function generateArtifactFromApi({ artifactDefinitionId, branchName }) {
   return apiClient.POST("/api/artifact/generate/{artifact_definition_id}", {
@@ -45,6 +46,7 @@ Business logic layer. Transforms API data for UI consumption.
 - Data transformations
 
 Example: `domain/generate-artifact.ts`
+
 ```typescript
 export const generateArtifact = async (params) => {
   const { error } = await generateArtifactFromApi(params);
@@ -61,6 +63,7 @@ React components. Presentational and container components.
 - Subdirectories for related components
 
 Example: `ui/artifact-status-badge.tsx`
+
 ```typescript
 export function ArtifactStatusBadge({ status }) {
   return <Badge variant={getVariant(status)}>{status}</Badge>;
