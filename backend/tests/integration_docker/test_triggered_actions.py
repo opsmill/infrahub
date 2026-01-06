@@ -14,7 +14,9 @@ from infrahub_sdk.protocols import (
     CoreNodeTriggerRule,
     CoreStandardGroup,
 )
+from infrahub_sdk.schema import AttributeSchema as Attr
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
+from infrahub_sdk.schema.main import AttributeKind
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.testing.schemas.car_person import (
@@ -38,6 +40,44 @@ class TestingTag(BuiltinTag): ...
 
 class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
+    def builtin_tag_schema(self):
+        return NodeSchema(
+            name="Tag",
+            namespace="Builtin",
+            description="Standard Tag object to attach to other objects to provide some context.",
+            include_in_menu=True,
+            icon="mdi:tag-multiple",
+            label="Tag",
+            default_filter="name__value",
+            order_by=["name__value"],
+            display_labels=["name__value"],
+            uniqueness_constraints=[["name__value"]],
+            attributes=[
+                Attr(name="name", kind=AttributeKind.TEXT, unique=True),
+                Attr(name="description", kind=AttributeKind.TEXT, optional=True),
+            ],
+        )
+
+    @pytest.fixture(scope="class")
+    def testing_tag_schema(self):
+        return NodeSchema(
+            name="Tag",
+            namespace="Testing",
+            description="Standard Tag object to attach to other objects to provide some context.",
+            include_in_menu=True,
+            icon="mdi:tag-multiple",
+            label="Tag",
+            default_filter="name__value",
+            order_by=["name__value"],
+            display_labels=["name__value"],
+            uniqueness_constraints=[["name__value"]],
+            attributes=[
+                Attr(name="name", kind=AttributeKind.TEXT, unique=True),
+                Attr(name="description", kind=AttributeKind.TEXT, optional=True),
+            ],
+        )
+
+    @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
         return "local"
 
@@ -53,11 +93,18 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         schema_car_base: NodeSchema,
         schema_person_artifact: NodeSchema,
         schema_manufacturer_base: NodeSchema,
-        testing_tag_base: NodeSchema,
+        builtin_tag_schema: NodeSchema,
+        testing_tag_schema: NodeSchema,
     ) -> SchemaRoot:
         return SchemaRoot(
             version="1.0",
-            nodes=[schema_person_artifact, schema_car_base, schema_manufacturer_base, testing_tag_base],
+            nodes=[
+                schema_person_artifact,
+                schema_car_base,
+                schema_manufacturer_base,
+                builtin_tag_schema,
+                testing_tag_schema,
+            ],
         )
 
     @pytest.fixture(scope="class")
