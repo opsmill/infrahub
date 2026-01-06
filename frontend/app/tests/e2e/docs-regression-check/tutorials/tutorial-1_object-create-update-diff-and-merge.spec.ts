@@ -89,7 +89,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("See initial value on main branch", async () => {
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("option", { name: "main default" }).click();
-      await expect(page.getByText("Testing Infrahub")).toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("Testing Infrahub")).toBeVisible();
     });
   });
 
