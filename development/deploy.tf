@@ -49,7 +49,7 @@ infrahub:
       enabled: false
     infrahubServer:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -83,7 +83,7 @@ infrahub:
     replicas: 3
     infrahubTaskWorker:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
