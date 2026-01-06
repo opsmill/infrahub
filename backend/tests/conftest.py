@@ -146,6 +146,11 @@ async def db(
         await driver.close()
 
 
+@pytest.fixture(scope="class")
+async def db_class() -> InfrahubDatabase:
+    return await build_database(singleton=False)
+
+
 @pytest.fixture
 async def empty_database(db: InfrahubDatabase) -> None:
     await do_empty_database(db=db)
