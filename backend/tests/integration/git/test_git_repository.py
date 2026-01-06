@@ -64,18 +64,14 @@ class TestInfrahubClient:
         await initialization(db=db)
 
     @pytest.fixture(scope="class")
-    async def class_db(self) -> InfrahubDatabase:
-        return await build_database(singleton=False)
-
-    @pytest.fixture(scope="class")
     async def test_client(
         self,
         base_dataset,
         workflow_local,
-        class_db,
+        db_class: InfrahubDatabase,
     ) -> AsyncGenerator[InfrahubTestClient, None]:
         async def _db(singleton: bool = True) -> InfrahubDatabase:
-            return class_db
+            return db_class
 
         with dependency_provider.scope(build_database, _db):
             async with lifespan(app):
