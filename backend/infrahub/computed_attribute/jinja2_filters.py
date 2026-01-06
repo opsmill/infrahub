@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, IntEnum, StrEnum
 
 from infrahub.core.constants import PermissionAction, PermissionDecision
 
 __all__ = ["FILTERS"]
 
 
-def value_to_permission_decision_name(value: int | Enum) -> str:
+def value_to_permission_decision_name(value: int | IntEnum) -> str:
     """Convert a permission decision value to its enum member name.
 
     Usage example: `{{ decision__value | value_to_permission_decision_name }}` will return `"ALLOW_ALL"` for value `6`.
     """
-    if isinstance(value, Enum):
+    if isinstance(value, IntEnum):
         value = value.value
 
     try:
@@ -27,7 +27,7 @@ def value_to_permission_action_name(value: str | Enum) -> str:
 
     Usage example: `{{ action__value | value_to_permission_action_name }}` will return `"MANAGE_ACCOUNTS"` for value `"manage_accounts"`.
     """
-    if isinstance(value, Enum):
+    if isinstance(value, StrEnum):
         value = value.value
 
     try:
