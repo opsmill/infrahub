@@ -152,6 +152,37 @@ This metadata enables:
 - `source`: Reference to the specific profile providing the value
 - `is_protected`: (Future) Will indicate if value is locked from changes
 
+## Relationships in profiles
+
+:::info Infrahub Version
+
+Available since Infrahub 1.7!
+
+:::
+
+Starting with Infrahub 1.7, profiles can define relationship values in addition to attributes. This enables you to set default relationships that nodes inherit when assigned to a profile.
+
+### How relationship inheritance works
+
+Relationship inheritance in profiles follows the same principles as attribute inheritance:
+
+1. **Optional relationships only**: Profiles can only define values for optional relationships. Required relationships must still be set directly on the node.
+
+2. **Cardinality support**: Both `one` and `many` cardinality relationships are supported:
+   - For `one` relationships, the profile defines a single related node
+   - For `many` relationships, the profile defines a set of related nodes that the inheriting node will be connected to
+
+3. **Priority-based resolution**: When multiple profiles define the same relationship, the profile with the highest priority (lowest priority number) takes precedence.
+
+4. **Override capability**: Just like attributes, relationship values can be overridden on individual nodes when exceptions are needed.
+
+5. **Metadata tracking**: Relationship values inherited from profiles include metadata indicating their source, enabling full data lineage tracking.
+
+### Example use cases
+
+- **Default VLAN assignment**: Define a profile that sets the untagged VLAN for all end-user interfaces
+- **Default location assignment**: Set a default location or site for nodes of a specific type
+
 ## Profile constraints and limitations
 
 ### Current constraints
@@ -159,14 +190,17 @@ This metadata enables:
 1. **Attribute restrictions**:
    - Cannot define unique constraint attributes (like primary keys)
    - Required attributes need schema defaults for profile use
-   - Relationship definitions not yet supported
 
-2. **Assignment limitations**:
+2. **Relationship restrictions**:
+   - Can only define optional relationships (not required ones)
+   - Hierarchical relationships (`parent`/`children`) are not supported in profiles
+
+3. **Assignment limitations**:
    - Static assignment only (no dynamic rules yet)
    - No conditional logic (if X then apply profile Y)
    - No profile composition (profile extending another profile)
 
-3. **Scope boundaries**:
+4. **Scope boundaries**:
    - Profiles are node-type specific
    - Cannot share profiles across different node types
    - No global or cross-schema profiles
@@ -175,9 +209,10 @@ This metadata enables:
 
 These constraints exist to:
 
-- Maintain data integrity (unique constraints)
+- Maintain data integrity (unique constraints, required relationships)
 - Ensure predictable behavior (static assignment)
 - Simplify mental model (type-specific profiles)
+- Preserve hierarchy integrity (hierarchical relationships excluded)
 - Enable future enhancements without breaking changes
 
 ## Mental models for profiles
@@ -239,14 +274,6 @@ Profiles implement policy-based management where:
    extends: base-interface
    overrides:
      mtu: 9000
-   ```
-
-3. **Relationship profiles**: Define standard relationships
-
-   ```yaml
-   profile: standard-server
-   relationships:
-     connected_to: {id: "spine-switch-01"}
    ```
 
 ### Architecture evolution
