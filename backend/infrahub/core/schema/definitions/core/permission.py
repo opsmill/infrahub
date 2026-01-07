@@ -48,7 +48,7 @@ core_object_permission = NodeSchema(
     include_in_menu=False,
     order_by=["namespace__value", "name__value", "action__value", "decision__value"],
     display_label=(
-        "object:{{ namespace__value }}:{{ name__value }}:{{ action__value.name | lower }}:"
+        "object:{{ namespace__value }}:{{ name__value }}:{{ action__value | value_to_permission_action_name | lower }}:"
         "{{ decision__value | value_to_permission_decision_name | lower }}"
     ),
     human_friendly_id=["namespace__value", "name__value", "action__value", "decision__value"],

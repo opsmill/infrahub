@@ -14,20 +14,23 @@ if TYPE_CHECKING:
 __all__ = ["InfrahubJinja2Template"]
 
 
-def _value_to_permission_decision_name(value: int | Enum) -> str:
+def _value_to_permission_decision_name(value: int | str | Enum) -> str:
     """Convert a permission decision value to its enum member name.
 
     Usage example: `{{ decision__value | value_to_permission_decision_name }}` will return `"ALLOW_ALL"` for value `6`.
     """
-    if isinstance(value, Enum):
-        value = value.value
-    if not isinstance(value, int):
-        raise ValueError(f"Expected int or Enum for permission decision value, got {type(value)}")
+    raw_value = value.value if isinstance(value, Enum) else value
 
     try:
-        return PermissionDecision(value).name
+        int_value = int(raw_value)
     except ValueError as exc:
-        msg = f"Value '{value}' not found in enum 'PermissionDecision': {exc}"
+        msg = f"Value '{value}' is not a valid int for permission decision value: {exc}"
+        raise ValueError(msg) from exc
+
+    try:
+        return PermissionDecision(int_value).name
+    except ValueError as exc:
+        msg = f"Value '{int_value}' not found in enum 'PermissionDecision': {exc}"
         raise ValueError(msg) from exc
 
 
@@ -38,11 +41,9 @@ def _value_to_permission_action_name(value: str | Enum) -> str:
     """
     if isinstance(value, Enum):
         value = value.value
-    if not isinstance(value, str):
-        raise ValueError(f"Expected str or Enum for permission action value, got {type(value)}")
 
     try:
-        return PermissionAction(value).name
+        return PermissionAction(str(value)).name
     except ValueError as exc:
         msg = f"Value '{value}' not found in enum 'PermissionAction': {exc}"
         raise ValueError(msg) from exc
