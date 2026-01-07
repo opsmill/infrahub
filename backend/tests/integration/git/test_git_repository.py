@@ -1,7 +1,9 @@
 from pathlib import Path
+from typing import AsyncGenerator
 
 import pytest
 import yaml
+from fast_depends import dependency_provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTransformJinja2, CoreTransformPython
@@ -15,9 +17,10 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
-from infrahub.server import app, app_initialization
+from infrahub.server import app, lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
+from infrahub.workers.dependencies import build_database
 from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
@@ -65,9 +68,14 @@ class TestInfrahubClient:
         self,
         base_dataset,
         workflow_local,
-    ) -> InfrahubTestClient:
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
+        db_class: InfrahubDatabase,
+    ) -> AsyncGenerator[InfrahubTestClient, None]:
+        async def _db(singleton: bool = True) -> InfrahubDatabase:
+            return db_class
+
+        with dependency_provider.scope(build_database, _db):
+            async with lifespan(app):
+                yield InfrahubTestClient(app=app)
 
     @pytest.fixture
     async def client(self, test_client: InfrahubTestClient, integration_helper) -> InfrahubClient:
