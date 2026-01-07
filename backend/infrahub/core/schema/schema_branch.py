@@ -1712,7 +1712,7 @@ class SchemaBranch:
         for name in self.nodes.keys():
             node = self.get_node(name=name, duplicate=False)
 
-            if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
+            if node.inherit_from or node.namespace == "Builtin" or node.namespace not in RESTRICTED_NAMESPACES:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
