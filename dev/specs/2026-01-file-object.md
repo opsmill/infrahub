@@ -1,6 +1,6 @@
 ---
 Title: File object feature
-Author: 
+Author:
   - Wim Van Deun
   - Yvonne Jouffrault
 Status: draft
@@ -198,10 +198,6 @@ We should be able to create file objects in a branch, and use the branch merge o
 
 Users should also have the capability to define file objects as branch agnostic.
 
-#### Open issues
-
-A known issue will occur when there is a merge conflict. For example, a branch was created after which a file object is updated in the main branch and the newly created branch. When opening a proposed change the user will be asked to resolve a conflict. Today conflict resolution works at the attribute or relationship level, not at the object level. This means it is possible for the user to pick the checksum of the main branch and the storage_id of the other branch, invalidating the file object. For the first implementation this is going to be a documented limitation, but we should look at object level conflict resolution (new card to be created)
-
 ### Permission system
 
 File object's need to be integrated with Infrahub's permission system, so that you can control who can view/edit/create file objects.
@@ -223,10 +219,6 @@ If this configuration setting is not provided, we should provide a default value
 driver = "local"
 max_file_size=200 #in MB
 ```
-
-#### Open question
-
-- What should be the default file size limitation?
 
 ### GraphQL API
 
@@ -303,7 +295,7 @@ query {
         circuit {
           node {
             id
-          }	
+          }
         }
         contract_start {
           value
@@ -450,7 +442,7 @@ We need to add new REST API endpoints that allow you to upload and download `Fil
 
 #### Download FileObject
 
-```
+```text
 GET /api/CoreFileObject/object/{identifier}
 Return headers:
 - Content-Length
@@ -465,7 +457,7 @@ We can then validate that the user has the correct permission to view/download t
 
 #### Upload FileObject
 
-```
+```text
 POST /api/CoreFileObject/upload
 Body: {"file": "String"} # binary
 Return: {"identifier": {identifier}, "checksum": "String"}
@@ -500,12 +492,12 @@ circuit = client.get(kind=InfraCircuit, id=<uuid>)
 identifier = client.file_object.upload(content=Path("/tmp/contract.pdf").read())
 circuit_contract = client.create(
     kind=NetworkCircuitContract,
-	circuit=circuit,
-	name="contract",
-	contract_start="2026-01-01",
-	contract_end="2026-12-31",
-	signed_by=account,
-	storaged_id=identifier
+    circuit=circuit,
+    name="contract",
+    contract_start="2026-01-01",
+    contract_end="2026-12-31",
+    signed_by=account,
+    storaged_id=identifier
 )
 circuit_contract.save()
 ```
@@ -527,7 +519,7 @@ content = client.file_object.get(identifier=contract.storage_id.value)
 
 with open(f"/tmp/{contract.file_name.value}", "wb") as f:
     f.write(content)
-	
+
 # for card one
 circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contract"], prefetch_relationships=True)
 
@@ -595,13 +587,34 @@ contract.storage_id = identifier
 contract.save()
 ```
 
+### Open issues
+
+- A known issue will occur when there is a merge conflict. For example, a branch was created after which a file object is updated in the main branch and the newly created branch. When opening a proposed change the user will be asked to resolve a conflict. Today conflict resolution works at the attribute or relationship level, not at the object level. This means it is possible for the user to pick the checksum of the main branch and the storage_id of the other branch, invalidating the file object. For the first implementation this is going to be a documented limitation, but we should look at object level conflict resolution (new card to be created)
+- What should be default file size limitation that we implement
+- Are we going to implement the file upload feature using the GraphQL API, or do we implement a separate REST API. An implementation for Graphene seems to exist here: https://github.com/lmcgartland/graphene-file-upload
+  - The current storage system only supports text based files
+  - REST API is currently not branch aware, meaning we can't automatically generate rest endpoints for new `FileObjects` in the schema, but we can probably just work with one generic Rest API endpoint
+  - If we implement a REST API endpoint, we need to make sure we cannot download object files using the storage api, since it doesn't have permission enforcement. For this there's 2 options 1) introduce permissions for artifacts 2) have separate storage "directories" so that object files with permissions cannot be retrieved using the storage API.
+
+### Future considerations
+
+- How can we implement a `FileObject` for which the actual file will not be stored in Infrahub's storage system, for example a config backup in an external system
+- Can we implement a system where permissions are automatically inherited from the object that the `FileObject` relates too. For example, a circuit contract would automatically inherit the permissions of the circuit.
+  - Probably this effort could be part of a bigger effort around revisiting the permission system (more granular permission system)
+  - What do we do in the case where a `FileObject` is related to many other objects
+- What is the overlap with the existing Artifacts feature in Infrahub and how can we consolidate some of the functionality
+- Can we implement a file type restriction for a given `FileObject` type. For example, I only want to have PDF files for `NetworkCircuitContract` file objects
+  - Should be defined in the schema
+  - Special type of attribute kind?
+  - How do we handle migrations?
+
 ## Frontend Scope
 
 ### Schema-Driven Display
 
 - FileObjects should behave like any other object type in Infrahub
-	- File object list view
-	- File object detailed view
+  - File object list view
+  - File object detailed view
 - FileObject detailed view will have a section at the bottom that renders the content of the file object, if it is of a supported file type. This section is similar to what the artifact detailed page has today and will be displayed at the bottom of the FileObject detailed page.
 - The FileObject create/update form, will have a "file upload" widget that allows you to upload the file that should be stored for this FileObject object.
 
@@ -626,9 +639,9 @@ This give the user the impression of attachments.
 - **Error handling**: File size exceeded, upload failures, permission denied
 - **Loading states**: Upload progress, file preview loading
 
-### Open Questions [UI] 
+### Open Questions [UI]
 
-- ‘delete’ :  do we allow ‘delete file’ and allow the ‘file object’ to be saved with custom fields but no file' OR do we only allow ‘delete’ file object in which case the user must delete the entire file object and then ‘create/upload’ a new one.  [there might be a use case where they want to replace the file but delete existing and then save/come back to upload a new one] 
-- What metadata do we want to display for the file (file size, upload date, type, who uploaded it?) 
-- Do we want to give the user the option to preview/replace/delete inline in the Object detail view or ONLY on the ‘edit modal’ in the right panel.  [the simpler option] 
-- For cardinality ‘many’ :  will we also allow min + max ?  from paul: “so when creating an object that has attachments, we won't be able to have a min count since we don't provide file attachments in the object creation form, only afterwardswe can see later if that's an issue but having it as 2 steps for now and figure it out”. 
+- ‘delete’ :  do we allow ‘delete file’ and allow the ‘file object’ to be saved with custom fields but no file' OR do we only allow ‘delete’ file object in which case the user must delete the entire file object and then ‘create/upload’ a new one.  [there might be a use case where they want to replace the file but delete existing and then save/come back to upload a new one]
+- What metadata do we want to display for the file (file size, upload date, type, who uploaded it?)
+- Do we want to give the user the option to preview/replace/delete inline in the Object detail view or ONLY on the ‘edit modal’ in the right panel.  [the simpler option]
+- For cardinality ‘many’ :  will we also allow min + max ?  from paul: “so when creating an object that has attachments, we won't be able to have a min count since we don't provide file attachments in the object creation form, only afterwardswe can see later if that's an issue but having it as 2 steps for now and figure it out”.
