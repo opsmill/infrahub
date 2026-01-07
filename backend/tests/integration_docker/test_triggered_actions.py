@@ -40,26 +40,7 @@ class TestingTag(BuiltinTag): ...
 
 class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
-    def builtin_tag_schema(self):
-        return NodeSchema(
-            name="Tag",
-            namespace="Builtin",
-            description="Standard Tag object to attach to other objects to provide some context.",
-            include_in_menu=True,
-            icon="mdi:tag-multiple",
-            label="Tag",
-            default_filter="name__value",
-            order_by=["name__value"],
-            display_labels=["name__value"],
-            uniqueness_constraints=[["name__value"]],
-            attributes=[
-                Attr(name="name", kind=AttributeKind.TEXT, unique=True),
-                Attr(name="description", kind=AttributeKind.TEXT, optional=True),
-            ],
-        )
-
-    @pytest.fixture(scope="class")
-    def testing_tag_schema(self):
+    def testing_tag_base(self) -> NodeSchema:
         return NodeSchema(
             name="Tag",
             namespace="Testing",
@@ -93,18 +74,11 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         schema_car_base: NodeSchema,
         schema_person_artifact: NodeSchema,
         schema_manufacturer_base: NodeSchema,
-        builtin_tag_schema: NodeSchema,
-        testing_tag_schema: NodeSchema,
+        testing_tag_base: NodeSchema,
     ) -> SchemaRoot:
         return SchemaRoot(
             version="1.0",
-            nodes=[
-                schema_person_artifact,
-                schema_car_base,
-                schema_manufacturer_base,
-                builtin_tag_schema,
-                testing_tag_schema,
-            ],
+            nodes=[schema_person_artifact, schema_car_base, schema_manufacturer_base, testing_tag_base],
         )
 
     @pytest.fixture(scope="class")
