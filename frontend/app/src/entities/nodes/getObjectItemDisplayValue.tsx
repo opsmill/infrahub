@@ -13,13 +13,13 @@ import type {
   RelationshipProperty,
   TextAttribute,
 } from "@/shared/api/graphql/generated/graphql";
-import { Badge } from "@/shared/components/display/badge";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
+import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
@@ -229,9 +229,11 @@ export const ObjectAttributeValue = ({
       const rest = attributeData.value.slice(5).length;
 
       return (
-        <div className="flex flex-wrap items-center">
+        <div className="flex flex-wrap items-center gap-1">
           {items?.map((item: string, index: number) => (
-            <Badge key={index}>{item}</Badge>
+            <Badge key={index} className="font-normal">
+              {item}
+            </Badge>
           ))}
 
           {items?.length !== attributeData.value?.length && <i>{`(${rest} more)`}</i>}

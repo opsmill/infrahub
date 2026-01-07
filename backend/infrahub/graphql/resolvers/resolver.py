@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from graphql.type.definition import GraphQLNonNull
@@ -7,11 +8,12 @@ from opentelemetry import trace
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
+from infrahub.core.order import OrderModel
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options
 
-from ..models import OrderModel
+from ..order import deserialize_order_input
 from ..parser import extract_selection
 from ..permissions import get_permissions
 
@@ -140,6 +142,45 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
     return parent[info.field_name]
 
 
+def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
+    """Transform metadata datetime filters with 00:00:00 time into day range filters.
+
+    When a filter like `node_metadata__created_at="2025-02-03T00:00:00"` has a time
+    of exactly midnight, transform it into __after and __before filters to match
+    the entire day (inclusive of midnight).
+
+    If __after or __before filters are already explicitly defined, they will not be
+    overwritten by the generated day range filters.
+    """
+    result = dict(filters)
+    metadata_datetime_fields = ("node_metadata__created_at", "node_metadata__updated_at")
+
+    for field in metadata_datetime_fields:
+        if field not in result:
+            continue
+        value = result[field]
+        if not isinstance(value, datetime):
+            continue
+        # Check if time is midnight (00:00:00)
+        if value.hour == 0 and value.minute == 0 and value.second == 0 and value.microsecond == 0:
+            # Remove the exact match filter
+            del result[field]
+            # Add __after filter with one microsecond before midnight to include objects at exactly midnight
+            # Skip if __after is already explicitly defined
+            after_key = f"{field}__after"
+            if after_key not in result:
+                one_microsecond_before = value - timedelta(microseconds=1)
+                result[after_key] = one_microsecond_before
+            # Add __before filter with next day (exclusive: <)
+            # Skip if __before is already explicitly defined
+            before_key = f"{field}__before"
+            if before_key not in result:
+                next_day = value + timedelta(days=1)
+                result[before_key] = next_day
+
+    return result
+
+
 @trace.get_tracer(__name__).start_as_current_span("default_paginated_list_resolver")
 async def default_paginated_list_resolver(
     root: dict,  # noqa: ARG001
@@ -156,7 +197,7 @@ async def default_paginated_list_resolver(
         else info.return_type.graphene_type._meta.schema
     )
 
-    order_model = OrderModel.from_input(input_data=order)
+    order_model = deserialize_order_input(input_data=order)
 
     fields = await extract_selection(info=info, schema=schema)
 
@@ -166,6 +207,7 @@ async def default_paginated_list_resolver(
         filters = {
             key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
         }
+        filters = _transform_metadata_day_filters(filters)
 
         edges: dict[str, Any] = fields.get("edges", {})
         node_fields = edges.get("node", {})
@@ -203,7 +245,6 @@ async def default_paginated_list_resolver(
                 branch=graphql_context.branch,
                 limit=limit,
                 offset=offset,
-                account=graphql_context.account_session,
                 partial_match=partial_match,
                 order=order_model,
             )

@@ -1,14 +1,10 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import type {
-  NodeMetadata,
-  NodeRelationshipMany,
-  NodeRelationshipOne,
-} from "@/entities/nodes/types";
+import type { NodeMetadata, NodeRelationshipMany } from "@/entities/nodes/types";
 
-const GET_PROPOSED_CHANGE_DETAILS = gql`
+const GET_PROPOSED_CHANGE_DETAILS = graphql(`
   query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {
     CoreProposedChange(ids: [$proposedChangeId]) {
       count
@@ -32,6 +28,7 @@ const GET_PROPOSED_CHANGE_DETAILS = gql`
         node {
           id
           display_label
+          __typename
           _updated_at
           name {
             value
@@ -76,12 +73,6 @@ const GET_PROPOSED_CHANGE_DETAILS = gql`
               }
             }
           }
-          created_by {
-            node {
-              id
-              display_label
-            }
-          }
           comments {
             count
           }
@@ -92,7 +83,7 @@ const GET_PROPOSED_CHANGE_DETAILS = gql`
       count
     }
   }
-`;
+`);
 
 export interface ProposedChangeDetailsFromApiParams {
   proposedChangeId: string;
@@ -120,7 +111,6 @@ export interface ProposedChangeDetailsFromApiResponse {
         approved_by: NodeRelationshipMany;
         rejected_by: NodeRelationshipMany;
         reviewers: NodeRelationshipMany;
-        created_by: NodeRelationshipOne;
         comments: { count: number };
       };
     }>;
@@ -131,7 +121,7 @@ export interface ProposedChangeDetailsFromApiResponse {
 export const getProposedChangeDetailsFromApi = async ({
   proposedChangeId,
 }: ProposedChangeDetailsFromApiParams) => {
-  return graphqlClient.query<ProposedChangeDetailsFromApiResponse>({
+  return graphqlClient.query({
     query: GET_PROPOSED_CHANGE_DETAILS,
     variables: {
       proposedChangeId,

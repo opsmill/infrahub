@@ -21,7 +21,13 @@ test.describe("/objects/:objectKind/:objectId", () => {
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeDisabled();
-      await expect(page.getByTestId("manage-groups")).toBeDisabled();
+
+      await page.getByTestId("object-details-menu").click();
+      await expect(page.getByRole("menuitem", { name: "Groups" })).toHaveAttribute(
+        "aria-disabled",
+        "true"
+      );
+      await page.keyboard.press("Escape");
     });
   });
 
@@ -34,7 +40,13 @@ test.describe("/objects/:objectKind/:objectId", () => {
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeEnabled();
-      await expect(page.getByTestId("manage-groups")).toBeEnabled();
+
+      await page.getByTestId("object-details-menu").click();
+      await expect(page.getByRole("menuitem", { name: "Groups" })).not.toHaveAttribute(
+        "aria-disabled",
+        "true"
+      );
+      await page.keyboard.press("Escape");
     });
 
     test("should display relationships correctly", async ({ page }) => {

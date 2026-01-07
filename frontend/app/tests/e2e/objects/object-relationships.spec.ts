@@ -25,8 +25,17 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("all buttons are disabled", async () => {
         await expect(page.getByTestId("edit-button")).toBeDisabled();
-        await expect(page.getByTestId("manage-groups")).toBeDisabled();
-        await expect(page.getByTestId("delete-button")).toBeDisabled();
+
+        await page.getByTestId("object-details-menu").click();
+        await expect(page.getByRole("menuitem", { name: "Groups" })).toHaveAttribute(
+          "aria-disabled",
+          "true"
+        );
+        await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveAttribute(
+          "aria-disabled",
+          "true"
+        );
+        await page.keyboard.press("Escape");
 
         await page.getByRole("link", { name: "Devices 10" }).click();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
@@ -150,7 +159,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.getByRole("link", { name: "Devices 10" }).click();
     });
     await page.getByRole("link", { name: "atl1", exact: true }).first().click();
-    await expect(page.getByText("Nameatl1")).toBeVisible();
+    await expect(page.getByTestId("object-details").getByText("Nameatl1")).toBeVisible();
     expect(page.url()).toContain("/objects/LocationSite/");
   });
 });

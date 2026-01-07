@@ -493,6 +493,57 @@ Now that you've created a basic schema:
 - Try [importing existing schemas](../guides/import-schema.mdx) from other sources
 - Set up [external repositories](../guides/repository.mdx) to manage schemas with Git
 
+## Troubleshooting
+
+### Input should be a valid string (string_type)
+
+When loading a schema, you may encounter the error "Input should be a valid string (string_type)". This typically occurs when YAML interprets certain unquoted values as booleans instead of strings.
+
+YAML automatically converts unquoted `on`, `off`, `yes`, `no`, `true`, and `false` values to boolean types. When these values appear in fields expecting strings (like choice names), schema validation fails.
+
+**Example of the problem:**
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Stuff
+    namespace: Random
+    attributes:
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: on  # Interpreted as boolean true
+            label: On
+          - name: off  # Interpreted as boolean false
+            label: Off
+```
+
+**Solution:**
+
+Quote all boolean-like string values in your schema:
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Stuff
+    namespace: Random
+    attributes:
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: "on"  # Properly interpreted as string
+            label: "On"
+          - name: "off"
+            label: "Off"
+```
+
+This issue commonly appears in:
+
+- Dropdown choice names
+- Attribute names
+
 ## Related resources
 
 - [Schema topic](../topics/schema.mdx) - Complete schema documentation

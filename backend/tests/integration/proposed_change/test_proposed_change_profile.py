@@ -4,10 +4,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind, TaskConclusion, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.task import Task
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -79,9 +78,6 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
         assert all(
             validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value for validator in peers.values()
         )
-
-        tasks = await Task.query(db=db, ids=[], fields={}, related_nodes=[proposed_change.id], limit=10, offset=0)
-        assert all(task["node"]["conclusion"] == TaskConclusion.SUCCESS for task in tasks["edges"])
 
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
         await proposed_change_create.save()

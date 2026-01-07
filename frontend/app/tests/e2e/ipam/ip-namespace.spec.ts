@@ -249,7 +249,8 @@ test.describe("/ipam - IP Namespace", () => {
     await page.goto(`/ipam/namespaces?branch=${BRANCH_NAME}`);
 
     await page.getByRole("link", { name: "test-namespace" }).click();
-    await page.getByTestId("delete-button").click();
+    await page.getByTestId("object-details-menu").click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
     await expect(page.getByTestId("modal-delete")).toContainText(
       'Are you sure you want to remove the IPAM Namespace"test-namespace"?'
     );

@@ -1385,12 +1385,14 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 
 @pytest.fixture
-async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def person_tag_schema(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, register_core_models_schema
+) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1672,6 +1674,15 @@ async def all_attribute_default_types_schema(
 
 @pytest.fixture
 async def criticality_schema_root(register_core_models_schema: None) -> SchemaRoot:
+    return do_criticality_schema_root()
+
+
+@pytest.fixture(scope="class")
+async def criticality_schema_root_scope_class(register_core_models_schema_scope_class: None) -> SchemaRoot:
+    return do_criticality_schema_root()
+
+
+def do_criticality_schema_root() -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1723,11 +1734,24 @@ async def criticality_schema(
     data_schema,
     criticality_schema_root: SchemaRoot,
 ) -> NodeSchema:
-    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get_node_schema(
-        name=criticality_schema_root.nodes[0].kind, branch=default_branch.name, duplicate=False
-    )
+    return do_criticality_schema(branch=default_branch, schema_root=criticality_schema_root)
+
+
+@pytest.fixture(scope="class")
+async def criticality_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    group_schema_scope_class: None,
+    data_schema_scope_class: None,
+    criticality_schema_root_scope_class: SchemaRoot,
+) -> NodeSchema:
+    return do_criticality_schema(branch=default_branch_scope_class, schema_root=criticality_schema_root_scope_class)
+
+
+def do_criticality_schema(branch: Branch, schema_root: SchemaRoot) -> NodeSchema:
+    registry.schema.register_schema(schema=schema_root, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+    return registry.schema.get_node_schema(name=schema_root.nodes[0].kind, branch=branch.name, duplicate=False)
 
 
 @pytest.fixture
@@ -1899,12 +1923,12 @@ async def vehicule_person_schema(
 
 
 @pytest.fixture
-async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
+async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema, register_core_models_schema) -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1938,7 +1962,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1952,7 +1976,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "related_tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": True},
+                    {"name": "related_tags", "peer": "TestingTag", "cardinality": "many", "optional": True},
                     {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
@@ -1972,7 +1996,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
                     },
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": True},
+                    {"name": "tags", "peer": "TestingTag", "cardinality": "many", "optional": True},
                     {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
@@ -2273,7 +2297,7 @@ async def builtin_schema() -> SchemaRoot:
         "nodes": [
             {
                 "name": "Status",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "description": "Represent the status of an object: active, maintenance",
                 "include_in_menu": True,
                 "icon": "mdi:list-status",
@@ -2290,7 +2314,7 @@ async def builtin_schema() -> SchemaRoot:
             },
             {
                 "name": "Role",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "description": "Represent the role of an object",
                 "include_in_menu": True,
                 "icon": "mdi:ballot",
@@ -2307,7 +2331,7 @@ async def builtin_schema() -> SchemaRoot:
             },
             {
                 "name": "Site",
-                "namespace": "Infra",
+                "namespace": "Testing",
                 "description": "A location represent a physical element site",
                 "include_in_menu": True,
                 "icon": "mdi:map-marker-radius-outline",
@@ -2332,7 +2356,7 @@ async def builtin_schema() -> SchemaRoot:
             },
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "description": "Level of criticality expressed from 1 to 10.",
                 "include_in_menu": True,
                 "icon": "mdi:alert-octagon-outline",

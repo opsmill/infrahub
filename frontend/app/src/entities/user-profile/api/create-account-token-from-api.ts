@@ -1,10 +1,10 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const CREATE_ACCOUNT_TOKEN = gql`
-  mutation InfrahubAccountTokenCreate($name: String!, $expiration: String) {
-    InfrahubAccountTokenCreate(data: { name: $name, expiration: $expiration }) {
+const CREATE_ACCOUNT_TOKEN = graphql(`
+  mutation InfrahubAccountTokenCreate($tokenName: String!, $tokenExpirationDate: String) {
+    InfrahubAccountTokenCreate(data: { name: $tokenName, expiration: $tokenExpirationDate }) {
       object {
         id
         token {
@@ -14,12 +14,9 @@ export const CREATE_ACCOUNT_TOKEN = gql`
       ok
     }
   }
-`;
+`);
 
-export interface CreateAccountTokenFromApiParams {
-  tokenName: string;
-  tokenExpirationDate: string | null | undefined;
-}
+export interface CreateAccountTokenFromApiParams extends VariablesOf<typeof CREATE_ACCOUNT_TOKEN> {}
 
 export function createAccountTokenFromApi({
   tokenName,
@@ -28,8 +25,8 @@ export function createAccountTokenFromApi({
   return graphqlClient.mutate({
     mutation: CREATE_ACCOUNT_TOKEN,
     variables: {
-      name: tokenName,
-      expiration: tokenExpirationDate,
+      tokenName,
+      tokenExpirationDate,
     },
   });
 }

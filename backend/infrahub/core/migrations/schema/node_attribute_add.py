@@ -41,7 +41,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         node_kinds = self._get_node_kinds(
             schema=migration.new_schema, new_attribute_schema=migration.new_attribute_schema
         )
