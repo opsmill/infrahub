@@ -248,7 +248,7 @@ query {
           file_name {
             value
           }
-          file_checksum {
+          checksum {
             value
           }
           file_size {
@@ -348,7 +348,7 @@ The following mutations need to be implemented, although the goal is that they s
 mutation {
   NetworkCircuitContractCreate(
     data: {
-      name: {value: ""}, 
+      name: {value: ""},
       checksum: {value: ""},
       file_size: {value: 123},
       file_type: {value: ""},
@@ -374,7 +374,7 @@ mutation {
     data: {
       id: "",
       hfid: [""],
-      name: {value: ""}, 
+      name: {value: ""},
       checksum: {value: ""},
       file_size: {value: 123},
       file_type: {value: ""},
@@ -400,7 +400,7 @@ mutation {
     data: {
       id: "",
       hfid: [""],
-      name: {value: ""}, 
+      name: {value: ""},
       checksum: {value: ""},
       file_size: {value: 123},
       file_type: {value: ""},
