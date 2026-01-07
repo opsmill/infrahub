@@ -848,7 +848,7 @@ jobs:
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
