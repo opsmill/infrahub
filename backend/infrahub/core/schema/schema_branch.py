@@ -1712,7 +1712,7 @@ class SchemaBranch:
         for name in self.nodes.keys():
             node = self.get_node(name=name, duplicate=False)
 
-            if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
+            if node.inherit_from or node.namespace == "Builtin" or node.namespace not in RESTRICTED_NAMESPACES:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
@@ -2274,7 +2274,7 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             if (
-                node.namespace in RESTRICTED_NAMESPACES
+                (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
                 or node.state == HashableModelState.ABSENT
             ):
@@ -2320,9 +2320,14 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
-            if node.namespace in RESTRICTED_NAMESPACES and node.kind not in (
-                InfrahubKind.IPRANGEAVAILABLE,
-                InfrahubKind.IPPREFIXAVAILABLE,
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                and node.namespace != "Builtin"
+                and node.kind
+                not in (
+                    InfrahubKind.IPRANGEAVAILABLE,
+                    InfrahubKind.IPPREFIXAVAILABLE,
+                )
             ):
                 continue
 
