@@ -52,10 +52,10 @@ The following attributes will have to be defined:
 - `file_name` (read-only, required) : the name of the file, as uploaded by the user
 - `checksum` (read-only, required): checksum (md5 or sha1) calculated on the uploaded file
 - `file_size` (read-only, required): the size of the file in bytes
-- `file_type` (read-only, required): the type of the file, derived from the uploaded file’s file extension, or derived from the meme-type.
+- `file_type` (read-only, required): the type of the file, derived from the uploaded file’s file extension, or derived from the mime-type.
 - `storage_id` (read-only, required): the id of the uploaded file in Infrahub’s storage
 
-#### User defined file object type
+#### User-defined file object type
 
 A user will have to define their own file attachment types in their schema. Multiple file attachment types can be defined.
 
@@ -202,13 +202,13 @@ Users should also have the capability to define file objects as branch agnostic.
 
 File object's need to be integrated with Infrahub's permission system, so that you can control who can view/edit/create file objects.
 
-It's important that the permission system not only considers the permission on the file object, but also on the storage object itself. A user that has no permission to view a `FileObject` object should also not have a capability to download the object using the storage API.
+It's important that the permission system not only considers the permission on the file object, but also on the storage object itself. A user who has no permission to view a `FileObject` object should also not have a capability to download the object using the storage API.
 
 ### File size limitation
 
 We should be able to configure a maximum file size for CoreFileObject. When a user tries to upload an file object that is to big, we should be able to deny the creation of this file object.
 
-The feature is scoped to add "small" file objects (config, word type documents, images), IE no multi GB size of files, for example device firmware.
+The feature is scoped to add small file objects (config, office-type documents, images), IE no multi-GB size of files, for example device firmware.
 
 In Infrahub's configuration file, we need add a new setting that allows us to set the maximum file size of file objects.
 
@@ -471,7 +471,7 @@ Return: {"identifier": {identifier}, "checksum": "String"}
 
 We need to add the ability to create `CoreFileObjects` and relate them to other objects using the Python SDK.
 
-#### Adding a new FileOjbect
+#### Adding a new FileObject
 
 This method, would allow the user to upload and attach a new attachment to an object.
 This method should work for cardinality one or many attachment relationships.
@@ -497,7 +497,7 @@ circuit_contract = client.create(
     contract_start="2026-01-01",
     contract_end="2026-12-31",
     signed_by=account,
-    storaged_id=identifier
+    storage_id=identifier
 )
 circuit_contract.save()
 ```
@@ -589,7 +589,7 @@ contract.save()
 
 ### Open issues
 
-- A known issue will occur when there is a merge conflict. For example, a branch was created after which a file object is updated in the main branch and the newly created branch. When opening a proposed change the user will be asked to resolve a conflict. Today conflict resolution works at the attribute or relationship level, not at the object level. This means it is possible for the user to pick the checksum of the main branch and the storage_id of the other branch, invalidating the file object. For the first implementation this is going to be a documented limitation, but we should look at object level conflict resolution (new card to be created)
+- A known issue will occur when there is a merge conflict. For example, a branch was created after which a file object is updated in the main branch and the newly created branch. When opening a proposed change the user will be asked to resolve a conflict. Today conflict resolution works at the attribute or relationship level, not at the object-level. This means it is possible for the user to pick the checksum of the main branch and the storage_id of the other branch, invalidating the file object. For the first implementation this will be a documented limitation, but we should look at object level conflict resolution (new card to be created)
 - What should be default file size limitation that we implement
 - Are we going to implement the file upload feature using the GraphQL API, or do we implement a separate REST API. An implementation for Graphene seems to exist here: https://github.com/lmcgartland/graphene-file-upload
   - The current storage system only supports text based files
