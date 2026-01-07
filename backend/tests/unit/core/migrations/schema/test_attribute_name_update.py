@@ -17,6 +17,8 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.db_snapshot import DbSnapshotter
+from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
 async def test_query_default_branch(
@@ -112,22 +114,35 @@ async def test_migration(
     new_attr.name = "new-color"
     new_attr.id = prev_attr.id
 
+    # 1. Snapshot before migration
+    snapshotter = DbSnapshotter(db)
+    before_snapshot = await snapshotter.snapshot()
+
+    # 2. Count nodes and relationships before migration
     count_attr_node = await count_nodes(db=db, label="Attribute")
     count_rels = await count_relationships(db=db)
 
+    # 3. Create explicit timestamp
+    at = Timestamp()
+    at_str = at.to_string()
+
+    # 4. Execute migration
     migration = AttributeNameUpdateMigration(
         previous_node_schema=prev_car_schema,
         new_node_schema=new_car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
     )
-
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
     assert not execution_result.errors
-
     assert execution_result.nbr_migrations_executed == 3
 
+    # 5. Validate nodes and relationships after migration
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
     assert await count_relationships(db=db) == count_rels + 9
+
+    # 6. Validate edge timestamps
+    after_snapshot = await snapshotter.snapshot()
+    assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
 
 
 async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:

@@ -7,43 +7,8 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.db_snapshot import DbEdge, DbSnapshot, DbSnapshotter
-
-
-async def assert_edge_timestamps(
-    db: InfrahubDatabase,
-    before_edges_by_id: dict[str, DbEdge],
-    expected_timestamp: str,
-) -> DbSnapshot:
-    """Take a snapshot and verify all new/modified edges use the expected timestamp.
-
-    For new edges: 'from' must equal expected_timestamp
-    For modified edges: changed 'to' must equal expected_timestamp
-    """
-    snapshotter = DbSnapshotter(db)
-    after_snapshot = await snapshotter.snapshot()
-    after_edges_by_id = {e.db_id: e for e in after_snapshot.edge_map.values()}
-
-    for edge_id, after_edge in after_edges_by_id.items():
-        before_edge = before_edges_by_id.get(edge_id)
-
-        if before_edge is None:
-            # New edge - 'from' must equal expected_timestamp
-            from_time = after_edge.properties.get("from")
-            assert from_time == expected_timestamp, (
-                f"New edge {after_edge.edge_type} has from={from_time}, expected {expected_timestamp}"
-            )
-        else:
-            # Check for modified 'to' time (from never changes once set)
-            before_to = before_edge.properties.get("to")
-            after_to = after_edge.properties.get("to")
-
-            if before_to != after_to:
-                assert after_to == expected_timestamp, (
-                    f"Modified edge {after_edge.edge_type} has to={after_to}, expected {expected_timestamp}"
-                )
-
-    return after_snapshot
+from tests.db_snapshot import DbSnapshotter
+from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
 def create_updated_schema(branch: Branch) -> SchemaBranch:
@@ -154,8 +119,7 @@ async def test_schema_load_edges_use_at_timestamp(
     """
     # 1. Snapshot before loading the schema
     snapshotter = DbSnapshotter(db)
-    before_snapshot = await snapshotter.snapshot()
-    before_edges_by_id = {e.db_id: e for e in before_snapshot.edge_map.values()}
+    snapshot_0 = await snapshotter.snapshot()
 
     # 2. Create explicit timestamp for the 'at' parameter
     at = Timestamp()
@@ -174,8 +138,8 @@ async def test_schema_load_edges_use_at_timestamp(
     )
 
     # 4. Verify all new/modified edges use the 'at' timestamp
-    snapshot_1 = await assert_edge_timestamps(db, before_edges_by_id, at_str)
-    snapshot_1_edges_by_id = {e.db_id: e for e in snapshot_1.edge_map.values()}
+    snapshot_1 = await snapshotter.snapshot()
+    assert_edge_timestamps(snapshot_0, snapshot_1, at_str)
 
     # 5. Load updated schema with new attribute, new relationship, and updated properties
     updated_schema = create_updated_schema(default_branch)
@@ -185,8 +149,8 @@ async def test_schema_load_edges_use_at_timestamp(
     await load_updated_schema(db, default_branch, updated_schema, at_2)
 
     # 6. Verify all new/modified edges (since snapshot_1) use the 'at_2' timestamp
-    snapshot_2 = await assert_edge_timestamps(db, snapshot_1_edges_by_id, at_2_str)
-    snapshot_2_edges_by_id = {e.db_id: e for e in snapshot_2.edge_map.values()}
+    snapshot_2 = await snapshotter.snapshot()
+    assert_edge_timestamps(snapshot_1, snapshot_2, at_2_str)
 
     # 7. Delete an attribute and relationship from the schema
     at_3 = Timestamp()
@@ -201,4 +165,5 @@ async def test_schema_load_edges_use_at_timestamp(
     await load_updated_schema(db, default_branch, schema_with_deletes, at_3)
 
     # 8. Verify all new/modified edges (since snapshot_2) use the 'at_3' timestamp
-    await assert_edge_timestamps(db, snapshot_2_edges_by_id, at_3_str)
+    snapshot_3 = await snapshotter.snapshot()
+    assert_edge_timestamps(snapshot_2, snapshot_3, at_3_str)

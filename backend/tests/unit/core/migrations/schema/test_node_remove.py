@@ -12,6 +12,8 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.db_snapshot import DbSnapshotter
+from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import load_schema
 from tests.unit.core.migrations.schema.test_node_kind_update import validate_node_relationships
 
@@ -90,22 +92,37 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
 
-    assert await count_nodes(db=db, label="TestCar") == 2
+    # 1. Snapshot before migration
+    snapshotter = DbSnapshotter(db)
+    before_snapshot = await snapshotter.snapshot()
 
+    # 2. Create explicit timestamp
+    at = Timestamp()
+    at_str = at.to_string()
+
+    # 3. Count nodes and relationships before migration
+    assert await count_nodes(db=db, label="TestCar") == 2
     count_rels = await count_relationships(db=db)
 
+    # 4. Execute migration
     migration = NodeRemoveMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
-
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
+
+    # 5. Validate nodes and relationships after migration
     assert await count_relationships(db=db) == count_rels + 18
     assert await count_nodes(db=db, label="TestCar") == 2
 
+    # 6. Validate edge timestamps
+    after_snapshot = await snapshotter.snapshot()
+    assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
+
+    # 7. Validate node relationships
     await validate_node_relationships(node=car_accord_main, db=db, branch=default_branch)
     await validate_node_relationships(node=car_camry_main, db=db, branch=default_branch)
 
