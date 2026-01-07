@@ -35,9 +35,6 @@ from tests.helpers.fixtures import get_fixtures_dir
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
-class TestingTag(BuiltinTag): ...
-
-
 class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")
     def testing_tag_base(self) -> NodeSchema:
@@ -145,7 +142,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         group_action = await client.create(kind=CoreGroupAction, name="add-to-people", group=group_people)
         await group_action.save()
 
-        tags_original = await client.all(kind=TestingTag)
+        tags_original = await client.all(kind=BuiltinTag)
         tag_names_original = [tag.name.value for tag in tags_original]
 
         node_trigger = await client.create(
@@ -215,7 +212,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
 
         await group_people.members.fetch()
         for _ in range(30):
-            tags_updated = await client.all(kind=TestingTag)
+            tags_updated = await client.all(kind=BuiltinTag)
             tag_names_updated = [tag.name.value for tag in tags_updated]
             if len(tag_names_updated) > len(tag_names_original):
                 break
