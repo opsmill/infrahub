@@ -1082,8 +1082,17 @@ include = ["backend/infrahub/services/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 deprecated = "ignore"
-possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/services/adapters/**/nats.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/proposed_change/**"]
