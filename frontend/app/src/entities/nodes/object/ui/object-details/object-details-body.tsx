@@ -28,7 +28,6 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
   }
 
   const isFileAttachment = isOfKind(FILE_ATTACHMENT_KIND, objectSchema);
-  console.log("isFileAttachment: ", isFileAttachment);
 
   return (
     <>
