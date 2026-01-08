@@ -1,1 +1,0 @@
-Add display label based GraphQL filters `display_label__isnull`, `display_label__value` and `display_label__values`
