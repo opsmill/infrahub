@@ -403,7 +403,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None)
 
     container = (
         DockerContainer(image=memgraph_image, init=True)
-        .with_env("APP_CYPHER_QUERY_MAX_LEN", 10000)
+        .with_env("APP_CYPHER_QUERY_MAX_LEN", "10000")
         .with_exposed_ports(PORT_MEMGRAPH)
     )
 
