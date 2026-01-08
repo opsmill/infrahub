@@ -128,7 +128,7 @@ export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipCom
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
             {data.pages.map((page) => {
-              return page
+              return page.items
                 .filter((node) => !value?.some((v) => v.id === node.id))
                 .map((n) => {
                   const node = n as unknown as PermissionNode;

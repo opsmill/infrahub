@@ -58,7 +58,7 @@ export function GitRepositoriesWidgetContent() {
     return <ErrorScreen message={error.message} />;
   }
 
-  const flatData = data?.pages?.flat() ?? [];
+  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
 
   if (flatData.length === 0) {
     return (

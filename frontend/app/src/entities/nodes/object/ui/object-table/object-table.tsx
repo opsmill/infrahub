@@ -20,7 +20,7 @@ export const ObjectTable = () => {
   const columns = React.useMemo(() => {
     return [...getObjectTableColumns(selectedSchema), getObjectActionsColumn(permission)];
   }, [selectedSchema.hash]);
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flatMap((page) => page.items) ?? [], [data]);
 
   const isLoading = isPending || isFetchingNextPage;
 
