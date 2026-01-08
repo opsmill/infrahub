@@ -47,7 +47,7 @@ class BrokenMigration(SchemaMigration):
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
         """Raise an error to simulate a migration failure."""
-        raise ValueError("Simulated migration failure - this is intentional for testing")
+        return MigrationResult(errors=["Simulated migration failure - this is intentional for testing"])
 
 
 @pytest.fixture
@@ -139,22 +139,10 @@ class TestSchemaLoadRollback(TestSchemaLifecycleBase):
         schema_step02["nodes"][0]["attributes"][0]["id"] = attr.id
 
         # Attempt to load the schema - should fail and trigger rollback
-        caught_exception = None
-        try:
-            await client.schema.load(schemas=[schema_step02])
-            pytest.fail("Expected schema load to fail due to migration error")
-        except httpx.HTTPStatusError as exc:
-            # HTTP error indicates the server returned an error response
-            caught_exception = exc
-        except Exception as exc:
-            # Other exceptions might occur
-            caught_exception = exc
 
-        # Verify an exception was caught
-        assert caught_exception is not None, "Expected an exception to be raised"
-        if isinstance(caught_exception, httpx.HTTPStatusError):
-            # Verify it's a 500 Internal Server Error
-            assert caught_exception.response.status_code == 500
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            await client.schema.load(schemas=[schema_step02])
+            assert exc_info.value.response.status_code == 500, "Expected a 500 Internal Server Error"
 
         # Verify schema registry has been restored
         person_schema_after = registry.schema.get_node_schema(name=PERSON_KIND)
