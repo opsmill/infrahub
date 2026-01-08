@@ -108,64 +108,63 @@ const CheckConnectivityModal = ({
   };
 
   const isConnectivityOk = data?.InfrahubRepositoryConnectivity?.ok;
+  const showResult = called && !loading;
 
   return (
-    <>
-      <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
-        <div className="fixed inset-0 flex w-screen items-center justify-center bg-gray-600/25">
-          <Dialog.Panel className="max-w-lg space-y-4 rounded-lg border border-gray-200 bg-white p-4">
-            <Dialog.Title className="font-semibold text-lg">
-              Check{loading && "ing"} repository connectivity
-            </Dialog.Title>
+    <Dialog open={isOpen} onClose={handleClose}>
+      <div className="fixed inset-0 flex w-screen items-center justify-center bg-gray-600/25">
+        <Dialog.Panel className="max-w-lg space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+          {!showResult ? (
+            <>
+              <Dialog.Title className="font-semibold text-lg">
+                Check{loading && "ing"} repository connectivity
+              </Dialog.Title>
 
-            <Dialog.Description>
-              Check the connectivity to this repository to validate your connection and
-              authentication status.
-            </Dialog.Description>
+              <Dialog.Description>
+                Check the connectivity to this repository to validate your connection and
+                authentication status.
+              </Dialog.Description>
 
-            <div className="space-x-2 text-right">
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button isLoading={loading} disabled={loading} onClick={() => checkConnectivity()}>
-                Check now
-              </Button>
-            </div>
-
-            <Dialog open={called && !loading} onClose={handleClose}>
-              <div className="fixed inset-0 flex w-screen items-center justify-center">
-                <Dialog.Panel className="max-w-lg space-y-4 rounded-lg border border-gray-200 bg-white p-4">
-                  <Dialog.Title className="font-semibold text-lg">
-                    Connection {isConnectivityOk ? "Successful" : "Failed"}
-                  </Dialog.Title>
-
-                  <Dialog.Description>
-                    {data?.InfrahubRepositoryConnectivity?.message || error?.message}
-                  </Dialog.Description>
-
-                  {isConnectivityOk && (
-                    <Button variant="active" onClick={handleClose}>
-                      Done
-                    </Button>
-                  )}
-
-                  {!isConnectivityOk && (
-                    <div className="space-x-2 text-right">
-                      <Button variant="outline" onClick={handleClose}>
-                        Cancel
-                      </Button>
-
-                      <Button variant="danger" onClick={() => checkConnectivity()}>
-                        Retry
-                      </Button>
-                    </div>
-                  )}
-                </Dialog.Panel>
+              <div className="space-x-2 text-right">
+                <Button variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button isLoading={loading} disabled={loading} onClick={() => checkConnectivity()}>
+                  Check now
+                </Button>
               </div>
-            </Dialog>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-    </>
+            </>
+          ) : (
+            <>
+              <Dialog.Title className="font-semibold text-lg">
+                Connection {isConnectivityOk ? "Successful" : "Failed"}
+              </Dialog.Title>
+
+              <Dialog.Description>
+                {data?.InfrahubRepositoryConnectivity?.message || error?.message}
+              </Dialog.Description>
+
+              {isConnectivityOk ? (
+                <div className="text-right">
+                  <Button variant="active" onClick={handleClose}>
+                    Done
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-x-2 text-right">
+                  <Button variant="outline" onClick={handleClose}>
+                    Cancel
+                  </Button>
+
+                  <Button variant="danger" onClick={() => checkConnectivity()}>
+                    Retry
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </Dialog.Panel>
+      </div>
+    </Dialog>
   );
 };
