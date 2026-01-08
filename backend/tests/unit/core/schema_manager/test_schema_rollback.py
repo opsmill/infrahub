@@ -12,10 +12,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
-from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.query.rollback import RollbackQuery
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -119,28 +118,25 @@ class TestSchemaUpdateAndRollback:
         # Verify we have migrations to run
         assert validation_result.migrations, "Should have migrations to apply"
 
-        # Step 3 (cont): Apply schema update with timestamp
+        # Steps 3 & 4: Apply schema update and run migrations using SchemaUpdateCoordinator
         schema_update_at = Timestamp()
 
-        await registry.schema.update_schema_branch(
-            schema=updated_schema_branch,
+        coordinator = SchemaUpdateCoordinator(
             db=db,
             branch=default_branch,
-            diff=diff,
-            update_db=True,
+            schema_manager=registry.schema,
+            origin_schema=original_schema_copy,
+            migration_executor=MigrationExecutor.DIRECT,
+        )
+        result = await coordinator.execute(
+            candidate_schema=updated_schema_branch,
             at=schema_update_at,
+            diff=diff,
+            migrations=validation_result.migrations,
+            update_db=True,
+            update_registry=True,
         )
-        # Step 4: Run schema_apply_migrations with same timestamp
-        migration_errors = await schema_apply_migrations(
-            message=SchemaApplyMigrationData(
-                branch=default_branch,
-                previous_schema=original_schema_copy,
-                new_schema=updated_schema_branch,
-                migrations=validation_result.migrations,
-                at=schema_update_at,
-            )
-        )
-        assert not migration_errors, f"Migrations should succeed: {migration_errors}"
+        assert result.success, f"Schema update should succeed: {result.error_messages}"
 
         # Step 5: Verify changes applied
         # - Relationship should be removed from schema
