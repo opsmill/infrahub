@@ -1,3 +1,5 @@
+import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
+
 import {
   getRelationshipsFromApi,
   type getRelationshipsFromApiParams,
@@ -6,18 +8,21 @@ import type { NodeCore } from "@/entities/nodes/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const RELATIONSHIPS_PER_PAGE = 20;
+/** @deprecated Use DEFAULT_PAGE_SIZE from @/shared/utils/pagination instead */
+export const RELATIONSHIPS_PER_PAGE = DEFAULT_PAGE_SIZE;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
-export type GetRelationships = (params: GetRelationshipsParams) => Promise<Array<NodeCore>>;
+export type GetRelationships = (
+  params: GetRelationshipsParams
+) => Promise<PaginatedResponse<NodeCore>>;
 
 export const getRelationships: GetRelationships = async ({
   branchName,
   atDate,
-  limit = RELATIONSHIPS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   peer,
   search,
@@ -35,5 +40,8 @@ export const getRelationships: GetRelationships = async ({
 
   const relationshipsData = data[peer];
 
-  return relationshipsData.edges.map(({ node }: { node: NodeCore }) => node);
+  return {
+    items: relationshipsData.edges.map(({ node }: { node: NodeCore }) => node),
+    count: relationshipsData.count ?? 0,
+  };
 };

@@ -103,7 +103,7 @@ function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespace
           <ComboboxEmpty>No IP namespace found</ComboboxEmpty>
 
           {data.pages.map((page) => {
-            return page.map((namespace) => (
+            return page.items.map((namespace) => (
               <ComboboxItem
                 key={namespace.id}
                 value={namespace.id}

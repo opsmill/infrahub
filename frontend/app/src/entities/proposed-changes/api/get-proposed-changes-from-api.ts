@@ -9,6 +9,7 @@ import {
 } from "@/shared/api/graphql/utils";
 import type { PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
@@ -17,7 +18,8 @@ import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entitie
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const OBJECTS_PER_PAGE = 40;
+/** @deprecated Use DEFAULT_PAGE_SIZE from @/shared/utils/pagination instead */
+export const OBJECTS_PER_PAGE = DEFAULT_PAGE_SIZE;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -30,7 +32,7 @@ export interface ProposedChangesFromApiParams extends PaginationParams {
 
 export const getProposedChangesFromApi = async ({
   schema,
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
@@ -50,6 +52,7 @@ export const getProposedChangesFromApi = async ({
           offset,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
+        count: true,
         edges: {
           node: {
             id: true,

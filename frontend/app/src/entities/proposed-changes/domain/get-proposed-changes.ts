@@ -1,3 +1,5 @@
+import type { PaginatedResponse } from "@/shared/utils/pagination";
+
 import type { NodeCore } from "@/entities/nodes/types";
 import {
   getProposedChangesFromApi,
@@ -20,7 +22,7 @@ export type ProposedChangeItem = {
 
 export type GetProposedChangesParams = ProposedChangesFromApiParams;
 
-export type GetProposedChangesResult = Array<ProposedChangeItem>;
+export type GetProposedChangesResult = PaginatedResponse<ProposedChangeItem>;
 
 export type GetProposedChanges = (
   params: GetProposedChangesParams
@@ -34,6 +36,10 @@ export const getProposedChanges: GetProposedChanges = async (params) => {
   }
 
   const schemaKindToQuery = params.schema.kind as string;
+  const result = data[schemaKindToQuery];
 
-  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
+  return {
+    items: result?.edges?.map((edge: any) => edge.node) ?? [],
+    count: result?.count ?? 0,
+  };
 };
