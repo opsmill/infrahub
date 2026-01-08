@@ -9,12 +9,12 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.node import Node as InfrahubNode
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -105,9 +105,25 @@ async def search_resolver(
     limit: int = 10,
     partial_match: bool = True,
 ) -> dict[str, Any]:
+    """Search for nodes by attribute value.
+
+    This resolver uses the NodeGetListByAttributeValueQuery which is optimized for search
+    operations by starting from AttributeValueIndexed nodes and using a TEXT index for
+    efficient CONTAINS searches.
+
+    Args:
+        root: GraphQL root (unused)
+        info: GraphQL resolve info
+        q: Search query string
+        limit: Maximum number of results to return
+        partial_match: If True, performs partial/substring matching; if False, exact matching
+
+    Returns:
+        Dictionary with 'edges' (list of matching nodes) and 'count' fields
+    """
     graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
-    results: list[InfrahubNode] = []
+    results: list[dict[str, str]] = []
 
     fields = extract_graphql_fields(info=info)
 
@@ -116,25 +132,31 @@ async def search_resolver(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:
-            results.append(matching)
+            results.append({"id": matching.id, "kind": matching.get_kind()})
     else:
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
             q = _collapse_ipv6(q)
 
-        for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
-            objs = await NodeManager.query(
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                schema=kind,
-                filters={"any__value": q},
-                limit=limit,
-                partial_match=partial_match,
-            )
-            results.extend(objs)
+        # Use the optimized query that starts from AttributeValueIndexed nodes
+        # and leverages the TEXT index for efficient CONTAINS searches
+        query = await NodeGetListByAttributeValueQuery.init(
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            at=graphql_context.at,
+            search_value=q,
+            kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
+            limit=limit,
+            partial_match=partial_match,
+        )
+        await query.execute(db=graphql_context.db)
+
+        # Collect results with their kinds
+        for uuid, kind in query.get_results_with_kind():
+            results.append({"id": uuid, "kind": kind})
 
     if "edges" in fields:
-        response["edges"] = [{"node": {"id": obj.id, "kind": obj.get_kind()}} for obj in results]
+        response["edges"] = [{"node": result} for result in results]
 
     if "count" in fields:
         response["count"] = len(results)
