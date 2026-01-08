@@ -11,6 +11,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.6.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.3) - 2026-01-07
+
+### Changed
+
+- Changed DiffTreeSummary GraphQL type count fields to be non-optional ([#7778](https://github.com/opsmill/infrahub/issues/7778))
+
+### Fixed
+
+- Stop showing warnings for deprecated attribute schema fields (regex, min_length, max_length) when they are not used ([#7995](https://github.com/opsmill/infrahub/issues/7995))
+
 ## [Infrahub - v1.6.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.2) - 2025-12-22
 
 ### Fixed
