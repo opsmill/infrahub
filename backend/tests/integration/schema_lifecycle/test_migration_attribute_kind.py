@@ -10,6 +10,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.attribute_parameters import AttributeParameters, TextAttributeParameters
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError
 from tests.helpers.test_app import TestInfrahubApp
@@ -17,6 +18,8 @@ from tests.helpers.test_app import TestInfrahubApp
 from ..shared import load_schema
 
 THING_KIND = "TestingThing"
+PROFILE_THING_KIND = "ProfileTestingThing"
+TEMPLATE_THING_KIND = "TemplateTestingThing"
 
 
 @dataclass
@@ -91,6 +94,8 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         return {
             "name": "Thing",
             "namespace": "Testing",
+            "generate_template": True,
+            "generate_profile": True,
             "attributes": [
                 {"name": "text_value", "kind": "Text"},
                 {"name": "text_area_value", "kind": "TextArea"},
@@ -112,8 +117,8 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_thing_illegal_updates(self, schema_thing: dict[str, Any]) -> dict[str, Any]:
         updated_schema = deepcopy(schema_thing)
-        updated_schema["attributes"][0]["kind"] = "TextArea"
-        updated_schema["attributes"][1]["kind"] = "Text"
+        updated_schema["attributes"][0]["kind"] = "JSON"
+        updated_schema["attributes"][1]["kind"] = "List"
         return updated_schema
 
     @pytest.fixture(scope="class")
@@ -220,9 +225,31 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         )
         await thing_two.save(db=db)
 
+        profile_thing = await Node.init(db=db, schema=PROFILE_THING_KIND, branch=default_branch)
+        await profile_thing.new(
+            db=db,
+            profile_name="test_profile",
+            text_value="PROFILE_TEXT",
+            text_area_value="profile area value",
+            url_value="https://profile.example.com",
+        )
+        await profile_thing.save(db=db)
+
+        template_thing = await Node.init(db=db, schema=TEMPLATE_THING_KIND, branch=default_branch)
+        await template_thing.new(
+            db=db,
+            template_name="test_template",
+            text_value="TEMPLATE_TEXT",
+            text_area_value="template area value",
+            url_value="https://template.example.com",
+        )
+        await template_thing.save(db=db)
+
         objs = {
             "thing_one": thing_one,
             "thing_two": thing_two,
+            "profile_thing": profile_thing,
+            "template_thing": template_thing,
         }
 
         return objs
@@ -251,6 +278,25 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "display_label": True,
                 "human_friendly_id": True,
             },
+            (PROFILE_THING_KIND, initial_objects["profile_thing"].id): {
+                "profile_name": True,
+                "profile_priority": True,
+                "text_value": True,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            (TEMPLATE_THING_KIND, initial_objects["template_thing"].id): {
+                "template_name": True,
+                "text_value": True,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
         }
         await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
 
@@ -264,10 +310,16 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     ) -> None:
         response = await client.schema.load(schemas=[schema_step_02], branch=branch.name)
         assert response.errors
-        error_messages = response.errors["errors"][0]["message"].split("\n")
-        assert len(error_messages)
+        error_messages: list[str] = response.errors["errors"][0]["message"].split("\n")
+        assert len(error_messages) == 8
         assert all(
-            em.startswith("Attribute-level 'kind' constraint violation on schema 'TestingThing")
+            em.startswith(
+                (
+                    ("Attribute-level 'kind' constraint violation on schema 'TestingThing"),
+                    ("Attribute-level 'kind' constraint violation on schema 'ProfileTestingThing"),
+                    ("Attribute-level 'kind' constraint violation on schema 'TemplateTestingThing"),
+                )
+            )
             for em in error_messages
         )
 
@@ -282,6 +334,18 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         response = await client.schema.load(schemas=[schema_step_03], branch=branch.name)
         assert not response.errors
 
+        # Validate corresponding profile schema attribute has the correct kind and parameters
+        profile_schema = registry.schema.get(name=PROFILE_THING_KIND, branch=branch)
+        updated_profile_attr = profile_schema.get_attribute("text_value")
+        assert updated_profile_attr.kind == "TextArea"
+        assert isinstance(updated_profile_attr.parameters, TextAttributeParameters)
+
+        # Validate corresponding template schema attribute has the correct kind and parameters
+        template_schema = registry.schema.get(name=TEMPLATE_THING_KIND, branch=branch)
+        updated_template_attr = template_schema.get_attribute("text_value")
+        assert updated_template_attr.kind == "TextArea"
+        assert isinstance(updated_template_attr.parameters, TextAttributeParameters)
+
         kind_index_map = {
             (THING_KIND, initial_objects["thing_one"].id): {
                 "text_value": False,
@@ -292,6 +356,27 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Profile instance text_value should now be non-indexed (TextArea)
+            (PROFILE_THING_KIND, initial_objects["profile_thing"].id): {
+                "profile_name": True,
+                "profile_priority": True,
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Template instance text_value should now be non-indexed (TextArea)
+            (TEMPLATE_THING_KIND, initial_objects["template_thing"].id): {
+                "template_name": True,
                 "text_value": False,
                 "text_area_value": False,
                 "list_value": False,
@@ -327,6 +412,18 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         response = await client.schema.load(schemas=[schema_step_04], branch=branch.name)
         assert not response.errors
 
+        # Validate corresponding profile schema attribute has the correct kind and parameters
+        profile_schema = registry.schema.get(name=PROFILE_THING_KIND, branch=branch)
+        updated_profile_attr = profile_schema.get_attribute("text_area_value")
+        assert updated_profile_attr.kind == "Text"
+        assert isinstance(updated_profile_attr.parameters, TextAttributeParameters)
+
+        # Validate corresponding template schema attribute has the correct kind and parameters
+        template_schema = registry.schema.get(name=TEMPLATE_THING_KIND, branch=branch)
+        updated_template_attr = template_schema.get_attribute("text_area_value")
+        assert updated_template_attr.kind == "Text"
+        assert isinstance(updated_template_attr.parameters, TextAttributeParameters)
+
         kind_index_map = {
             (THING_KIND, initial_objects["thing_one"].id): {
                 "text_value": False,
@@ -337,6 +434,27 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Profile instance text_area_value should now be indexed (Text)
+            (PROFILE_THING_KIND, initial_objects["profile_thing"].id): {
+                "profile_name": True,
+                "profile_priority": True,
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Template instance text_area_value should now be indexed (Text)
+            (TEMPLATE_THING_KIND, initial_objects["template_thing"].id): {
+                "template_name": True,
                 "text_value": False,
                 "text_area_value": True,
                 "list_value": False,
@@ -355,8 +473,31 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         schema_step_05: dict[str, Any],
         client: InfrahubClient,
     ) -> None:
+        # First verify the url_value attribute has base AttributeParameters before the update
+        profile_schema_before = registry.schema.get(name=PROFILE_THING_KIND, branch=branch)
+        url_attr_before = profile_schema_before.get_attribute("url_value")
+        assert url_attr_before.kind == "URL"
+        assert type(url_attr_before.parameters) is AttributeParameters
+
+        template_schema_before = registry.schema.get(name=TEMPLATE_THING_KIND, branch=branch)
+        template_url_attr_before = template_schema_before.get_attribute("url_value")
+        assert template_url_attr_before.kind == "URL"
+        assert type(template_url_attr_before.parameters) is AttributeParameters
+
         response = await client.schema.load(schemas=[schema_step_05], branch=branch.name)
         assert not response.errors
+
+        # Validate corresponding profile schema attribute has the correct kind and parameters
+        profile_schema = registry.schema.get(name=PROFILE_THING_KIND, branch=branch)
+        updated_profile_attr = profile_schema.get_attribute("url_value")
+        assert updated_profile_attr.kind == "Text"
+        assert isinstance(updated_profile_attr.parameters, TextAttributeParameters)
+
+        # Validate corresponding template schema attribute has the correct kind and parameters
+        template_schema = registry.schema.get(name=TEMPLATE_THING_KIND, branch=branch)
+        updated_template_attr = template_schema.get_attribute("url_value")
+        assert updated_template_attr.kind == "Text"
+        assert isinstance(updated_template_attr.parameters, TextAttributeParameters)
 
         kind_index_map = {
             (THING_KIND, initial_objects["thing_one"].id): {
@@ -368,6 +509,27 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Profile instance url_value stays indexed (Text is also indexed)
+            (PROFILE_THING_KIND, initial_objects["profile_thing"].id): {
+                "profile_name": True,
+                "profile_priority": True,
+                "text_value": False,
+                "text_area_value": True,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Template instance url_value stays indexed (Text is also indexed)
+            (TEMPLATE_THING_KIND, initial_objects["template_thing"].id): {
+                "template_name": True,
                 "text_value": False,
                 "text_area_value": True,
                 "list_value": False,
@@ -389,6 +551,18 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         response = await client.schema.load(schemas=[schema_step_06], branch=branch.name)
         assert not response.errors
 
+        # Validate corresponding profile schema attribute has the correct kind and parameters
+        profile_schema = registry.schema.get(name=PROFILE_THING_KIND, branch=branch)
+        updated_profile_attr = profile_schema.get_attribute("text_area_value")
+        assert updated_profile_attr.kind == "TextArea"
+        assert isinstance(updated_profile_attr.parameters, TextAttributeParameters)
+
+        # Validate corresponding template schema attribute has the correct kind and parameters
+        template_schema = registry.schema.get(name=TEMPLATE_THING_KIND, branch=branch)
+        updated_template_attr = template_schema.get_attribute("text_area_value")
+        assert updated_template_attr.kind == "TextArea"
+        assert isinstance(updated_template_attr.parameters, TextAttributeParameters)
+
         kind_index_map = {
             (THING_KIND, initial_objects["thing_one"].id): {
                 "text_value": False,
@@ -399,6 +573,27 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Profile instance text_area_value should now be non-indexed (TextArea)
+            (PROFILE_THING_KIND, initial_objects["profile_thing"].id): {
+                "profile_name": True,
+                "profile_priority": True,
+                "text_value": False,
+                "text_area_value": False,
+                "list_value": False,
+                "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
+            },
+            # Template instance text_area_value should now be non-indexed (TextArea)
+            (TEMPLATE_THING_KIND, initial_objects["template_thing"].id): {
+                "template_name": True,
                 "text_value": False,
                 "text_area_value": False,
                 "list_value": False,

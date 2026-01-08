@@ -287,6 +287,18 @@ Heading back to the main menu we will create a device object.
     }
     ```
   </TabItem>
+    <TabItem value="python-sdk" label="Via the Python SDK">
+    ```python
+    device = await client.create(
+      kind="InfraDevice",
+      object_template="Template-SwitchModel123", # This is the template name
+      name="my-device",
+      serial="OWI62IUHQ",
+      description="This is a Core Switch",
+    )
+    await device.save()
+    ```
+  </TabItem>
 </Tabs>
 
 ![Component List](../media/guides/object-template/object_components_created_using_template.png)
