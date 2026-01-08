@@ -1,6 +1,5 @@
 import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
@@ -15,13 +14,39 @@ import {
   REIMPORT_LAST_COMMIT,
 } from "@/entities/repository/api/actions";
 
-interface RepositoryMenuActionsProps {
-  repositoryId: string;
+interface RepositoryMenuSectionProps {
+  onCheckConnectivity: () => void;
+  onReimportLastCommit: () => void;
 }
 
-export function RepositoryMenuActions({ repositoryId }: RepositoryMenuActionsProps) {
-  const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
+export function RepositoryMenuSection({
+  onCheckConnectivity,
+  onReimportLastCommit,
+}: RepositoryMenuSectionProps) {
+  return (
+    <MenuSection title="Repository">
+      <MenuItem onAction={onCheckConnectivity}>
+        <Icon icon="mdi:access-point" />
+        Check connectivity
+      </MenuItem>
 
+      <MenuItem onAction={onReimportLastCommit}>
+        <Icon icon="mdi:reload" />
+        Reimport last commit
+      </MenuItem>
+    </MenuSection>
+  );
+}
+
+interface RepositoryActionsMenuProps {
+  repositoryId: string;
+  onCheckConnectivity: () => void;
+}
+
+export function RepositoryActionsMenu({
+  repositoryId,
+  onCheckConnectivity,
+}: RepositoryActionsMenuProps) {
   const [reimportLastCommit] = useMutation(REIMPORT_LAST_COMMIT, {
     variables: {
       repositoryId,
@@ -39,28 +64,26 @@ export function RepositoryMenuActions({ repositoryId }: RepositoryMenuActionsPro
     },
   });
 
-  return {
-    menuSection: (
-      <MenuSection title="Repository">
-        <MenuItem onAction={() => setIsCheckConnectivityOpen(true)}>
-          <Icon icon="mdi:access-point" />
-          Check connectivity
-        </MenuItem>
+  return (
+    <RepositoryMenuSection
+      onCheckConnectivity={onCheckConnectivity}
+      onReimportLastCommit={() => reimportLastCommit()}
+    />
+  );
+}
 
-        <MenuItem onAction={() => reimportLastCommit()}>
-          <Icon icon="mdi:reload" />
-          Reimport last commit
-        </MenuItem>
-      </MenuSection>
-    ),
-    modal: (
-      <CheckConnectivityModal
-        repositoryId={repositoryId}
-        isOpen={isCheckConnectivityOpen}
-        setIsOpen={setIsCheckConnectivityOpen}
-      />
-    ),
-  };
+interface RepositoryActionsModalProps {
+  repositoryId: string;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function RepositoryActionsModal({
+  repositoryId,
+  isOpen,
+  onClose,
+}: RepositoryActionsModalProps) {
+  return <CheckConnectivityModal repositoryId={repositoryId} isOpen={isOpen} setIsOpen={onClose} />;
 }
 
 const CheckConnectivityModal = ({

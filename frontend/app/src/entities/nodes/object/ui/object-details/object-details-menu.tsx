@@ -32,7 +32,10 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
-import { RepositoryMenuActions } from "@/entities/repository/ui/repository-menu-actions";
+import {
+  RepositoryActionsMenu,
+  RepositoryActionsModal,
+} from "@/entities/repository/ui/repository-menu-actions";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -51,6 +54,7 @@ export function ObjectDetailsMenu({
   const [isManageGroupsDrawerOpen, setIsManageGroupsDrawerOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
   const navigate = useNavigate();
 
   const nodeLabel = getNodeLabel(objectData);
@@ -59,9 +63,6 @@ export function ObjectDetailsMenu({
   const isDeleteAllowed = permission.delete.isAllowed;
 
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
-  const repositoryActions = isRepository
-    ? RepositoryMenuActions({ repositoryId: objectData.id })
-    : null;
 
   return (
     <>
@@ -141,7 +142,12 @@ export function ObjectDetailsMenu({
               )}
             </MenuSection>
 
-            {repositoryActions?.menuSection}
+            {isRepository && (
+              <RepositoryActionsMenu
+                repositoryId={objectData.id}
+                onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
+              />
+            )}
 
             <MenuSection title="Manage">
               <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
@@ -236,7 +242,13 @@ export function ObjectDetailsMenu({
         }}
       />
 
-      {repositoryActions?.modal}
+      {isRepository && (
+        <RepositoryActionsModal
+          repositoryId={objectData.id}
+          isOpen={isCheckConnectivityOpen}
+          onClose={() => setIsCheckConnectivityOpen(false)}
+        />
+      )}
     </>
   );
 }
