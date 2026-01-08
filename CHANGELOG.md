@@ -67,16 +67,19 @@ Additionally the branch list page displays the new object level metadata, which 
 The object detail page has been significantly improved to provide better access to key information and actions.
 
 Header improvements:
+
 - New info icon provides quick access to the new object-level metadata
 - Action button was redesigned and relocated for better accessibility
 - New dedicated button to navigate directly to the object's schema definition
 - Refreshed button styling
 
 Groups management:
+
 - New dedicated section displays all groups the object belongs to
 - Easily add or remove the object from groups without navigating away
 
 Profiles management:
+
 - New section shows all profiles currently applied to the object
 - Manage profile assignments directly from the object detail view
 
@@ -105,7 +108,7 @@ The upgrades have been thoroughly tested to ensure compatibility and performance
 
 Infrahub v1.7.0 requires the usage of [infrahub-sdk v1.18.0](https://github.com/opsmill/infrahub-sdk-python/releases/tag/v1.18.0), please update the `infrahub-sdk` package accordingly.
 
-### Full chanelog
+### Full changelog
 
 #### Deprecated
 
