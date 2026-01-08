@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import HashableModelState, InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -212,8 +212,8 @@ async def test_merge_update_schema(
 
     # Update Schema in MAIN
     person_schema_main = schema_main.get(name="TestPerson")
-    person_attribute_names = {attr.name: idx for idx, attr in enumerate(person_schema_main.attributes)}
-    person_schema_main.attributes.pop(person_attribute_names["height"])
+    height_attr = person_schema_main.get_attribute(name="height")
+    height_attr.state = HashableModelState.ABSENT
     person_schema_main.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
     schema_main.set(name="TestPerson", schema=person_schema_main)
     schema_main.process()
@@ -240,6 +240,7 @@ async def test_merge_update_schema(
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
     merger = await _get_branch_merger(db=db, source_branch=branch2, destination_branch=default_branch)
+    await merger.calculate_migrations(target_schema=schema_branch)
     assert sorted(merger.migrations, key=lambda x: x.path.get_path()) == sorted(
         [
             SchemaUpdateMigrationInfo(
