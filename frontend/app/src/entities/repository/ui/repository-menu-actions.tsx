@@ -65,8 +65,7 @@ export function RepositoryActionsMenu({
           <Alert
             type={ALERT_TYPES.ERROR}
             message={
-              data?.InfrahubRepositoryProcess?.message ||
-              "Failed to start reimport of last commit."
+              data?.InfrahubRepositoryProcess?.message || "Failed to start reimport of last commit."
             }
           />
         );
