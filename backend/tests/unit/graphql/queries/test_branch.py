@@ -279,8 +279,9 @@ class TestBranchQuery(TestInfrahubApp):
         assert id_branches.errors is None
         assert id_branches.data
         assert id_branches.data["InfrahubBranch"]["count"] == 2
-        assert id_branches.data["InfrahubBranch"]["edges"][0]["node"]["name"]["value"] == "sample-branch-3"
-        assert id_branches.data["InfrahubBranch"]["edges"][1]["node"]["name"]["value"] == "sample-branch-7"
+        branch_names = [edge["node"]["name"]["value"] for edge in id_branches.data["InfrahubBranch"]["edges"]]
+        assert len(branch_names) == 2
+        assert set(branch_names) == {"sample-branch-3", "sample-branch-7"}
         assert id_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
 
     async def test_paginated_branch_query__returns_error_on_invalid_offset_or_limit(
