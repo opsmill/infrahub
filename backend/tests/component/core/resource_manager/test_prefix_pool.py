@@ -191,11 +191,19 @@ async def test_ipv6_large_prefix_pool_allocation(
     await parent_v6.new(db=db, prefix="2001:db8:abcd::/48", ip_namespace=ns_v6)
     await parent_v6.save(db=db)
 
+    prefixes: list[Node] = []
     for i in range(100):
         existing = await Node.init(db=db, schema=prefix_schema)
         address_offset = i * 2
-        await existing.new(db=db, prefix=f"2001:db8:abcd::{address_offset:x}/127", ip_namespace=ns_v6)
+        await existing.new(db=db, prefix=f"2001:db8:abcd::{address_offset:x}/127", ip_namespace=ns_v6, parent=parent_v6)
         await existing.save(db=db)
+        prefixes.append(existing)
+
+    # Create fragmentation by deleting prefixes at positions 10, 50, and 90
+    deleted_values = [prefixes[10].prefix.value, prefixes[50].prefix.value, prefixes[90].prefix.value]
+    await prefixes[10].delete(db=db)
+    await prefixes[50].delete(db=db)
+    await prefixes[90].delete(db=db)
 
     prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
@@ -204,19 +212,28 @@ async def test_ipv6_large_prefix_pool_allocation(
     await pool.save(db=db)
 
     new_prefixes: list[Node] = []
-    for i in range(5):
-        prefix = await pool.get_resource(
+    for i in range(3):
+        new_prefix = await pool.get_resource(
             db=db,
             prefixlen=127,
             prefix_type="IpamIPPrefix",
             member_type="prefix",
-            identifier=f"v6_large_item_{i}",
+            identifier=f"v6_large_new_{i}",
             branch=default_branch,
         )
-        new_prefixes.append(prefix)
+        new_prefixes.append(new_prefix)
 
-    assert new_prefixes[0].prefix.value == "2001:db8:abcd::c8/127"
-    assert new_prefixes[1].prefix.value == "2001:db8:abcd::ca/127"
-    assert new_prefixes[2].prefix.value == "2001:db8:abcd::cc/127"
-    assert new_prefixes[3].prefix.value == "2001:db8:abcd::ce/127"
-    assert new_prefixes[4].prefix.value == "2001:db8:abcd::d0/127"
+    # Verify gaps are reused in order
+    assert new_prefixes[0].prefix.value == deleted_values[0]
+    assert new_prefixes[1].prefix.value == deleted_values[1]
+    assert new_prefixes[2].prefix.value == deleted_values[2]
+
+    next_prefix = await pool.get_resource(
+        db=db,
+        prefixlen=127,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="v6_large_next",
+        branch=default_branch,
+    )
+    assert next_prefix.prefix.value == "2001:db8:abcd::c8/127"
