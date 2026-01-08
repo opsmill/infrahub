@@ -46,13 +46,14 @@ export function DetailsButtons({
     <>
       <div className={classNames("flex items-center gap-2", className)}>
         {schema.kind === ARTIFACT_DEFINITION_KIND && (
-          <ArtifactGenerateButton artifactDefinitionId={objectDetailsData.id} />
+          <ArtifactGenerateButton artifactDefinitionId={objectDetailsData.id} size="sm" />
         )}
 
         {isOfKind(GENERATOR_DEFINITION_KIND, schema) && (
           <GeneratorDefinitionRunButton
             generatorId={objectDetailsData.id}
             groupId={objectDetailsData.targets.node.id}
+            size="sm"
           />
         )}
 
@@ -60,6 +61,7 @@ export function DetailsButtons({
           <GeneratorRunButton
             generatorId={objectDetailsData.definition.node.id}
             targetNodeIds={[objectDetailsData.object.node.id]}
+            size="sm"
           />
         )}
 
