@@ -114,32 +114,6 @@ class BranchMerger:
             return False
         return bool(diff_summary.num_added or diff_summary.num_removed or diff_summary.num_updated)
 
-    async def update_schema(self) -> bool:
-        """After the merge, if there was some changes, we need to:
-        - update the schema in the registry
-        - Identify if we need to execute some migrations
-        """
-
-        # NOTE we need to revisit how to calculate an accurate diff to pull only what needs to be updated from the schema
-        # for now the best solution is to pull everything to ensure the integrity of the schema
-
-        if not await self.has_schema_changes():
-            return False
-
-        updated_schema = await registry.schema.load_schema_from_db(
-            db=self.db,
-            branch=self.destination_branch,
-            # schema=self.destination_schema.duplicate(),
-            # schema_diff=schema_diff,
-        )
-        registry.schema.set_schema_branch(name=self.destination_branch.name, schema=updated_schema)
-        self.destination_branch.update_schema_hash()
-        await self.destination_branch.save(db=self.db)
-
-        await self.calculate_migrations(target_schema=updated_schema)
-
-        return True
-
     def get_candidate_schema(self) -> SchemaBranch:
         # For now, we retrieve the latest schema for each branch from the registry
         # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
