@@ -44,6 +44,7 @@ Diataxis
 datacenter
 dataloader
 datastore
+datetime
 default_branch
 default_filter
 deserialized

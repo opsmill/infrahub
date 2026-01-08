@@ -88,6 +88,50 @@ The `created_by` and `updated_by` fields return account objects, which have a `d
 
 Query results can be ordered by object-level metadata timestamps using the `order` parameter with `node_metadata`. The example above demonstrates ordering by `created_at` in descending order to show the most recently created objects first. You can also order by `updated_at` to sort by modification time.
 
+### Filtering by metadata
+
+Query results can be filtered by object-level metadata using the following filter parameters:
+
+| Filter | Description |
+|--------|-------------|
+| `node_metadata__created_by__id` | Filter by a single creator account UUID |
+| `node_metadata__created_by__ids` | Filter by multiple creator account UUIDs |
+| `node_metadata__created_at` | Filter by exact creation timestamp (see date range shorthand below) |
+| `node_metadata__created_at__before` | Filter for objects created before a timestamp |
+| `node_metadata__created_at__after` | Filter for objects created after a timestamp |
+| `node_metadata__updated_by__id` | Filter by a single updater account UUID |
+| `node_metadata__updated_by__ids` | Filter by multiple updater account UUIDs |
+| `node_metadata__updated_at` | Filter by exact update timestamp (see date range shorthand below) |
+| `node_metadata__updated_at__before` | Filter for objects updated before a timestamp |
+| `node_metadata__updated_at__after` | Filter for objects updated after a timestamp |
+
+#### Date range shorthand
+
+When filtering by `node_metadata__created_at` or `node_metadata__updated_at`, there is special handling for timestamps that end in `00:00:00`. If the input datetime ends in `00:00:00` (regardless of timezone), Infrahub will automatically expand this to a 24-hour range query covering that entire day.
+
+For example, the following filter:
+
+```graphql
+{
+  BuiltinTag(node_metadata__created_at: "2025-03-15T00:00:00+08:00") {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Will return all objects created on March 15, 2025 in the `+08:00` timezone. Internally, this is transformed into a range query:
+
+- `node_metadata__created_at__after` is set to one microsecond before midnight (to include objects created at exactly midnight)
+- `node_metadata__created_at__before` is set to midnight of the next day
+
+This makes it convenient to query all objects created or updated on a specific day without needing to manually specify both `__after` and `__before` parameters.
+
 ### Backfill behavior for existing data
 
 :::info
