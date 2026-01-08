@@ -11,7 +11,7 @@ from infrahub.core.query import QueryResult, QueryType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
-from . import Query
+from . import Query, QueryResult
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -36,6 +36,43 @@ class IPPrefixData:
 class IPAddressData:
     id: UUID
     address: IPAddressType
+
+
+@dataclass(frozen=True)
+class IPPrefixFreeData:
+    free_start: int
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPPrefixFreeData:
+        return cls(
+            free_start=result.get_as_type("free_start", return_type=int),
+        )
+
+
+@dataclass(frozen=True)
+class IPv6PrefixFreeData:
+    free_start_bin: str
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPv6PrefixFreeData:
+        return cls(
+            free_start_bin=result.get_as_type("free_start_bin", return_type=str),
+        )
+
+
+@dataclass(frozen=True)
+class IPAddressFreeData:
+    free_addr: int
+    is_free: bool
+    is_last: bool
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPAddressFreeData:
+        return cls(
+            free_addr=result.get_as_type("free_addr", return_type=int),
+            is_free=result.get_as_type("is_free", return_type=bool),
+            is_last=result.get_as_type("is_last", return_type=bool),
+        )
 
 
 def _get_namespace_id(
@@ -243,6 +280,13 @@ class IPPrefixSubnetFetchFree(Query):
         self.return_labels = ["free_start"]
         self.limit = 1
 
+    def get_prefix_data(self) -> IPPrefixFreeData | None:
+        result = self.get_result()
+        if not result:
+            return None
+
+        return IPPrefixFreeData.from_db(result=result)
+
 
 class IPv6PrefixSubnetFetchFree(Query):
     """Query to find the next free IPv6 prefix within a parent prefix.
@@ -390,6 +434,13 @@ class IPv6PrefixSubnetFetchFree(Query):
         self.add_to_query(query)
         self.return_labels = ["free_start_bin", "target_prefixlen"]
         self.limit = 1
+
+    def get_prefix_data(self) -> IPv6PrefixFreeData | None:
+        result = self.get_result()
+        if not result:
+            return None
+
+        return IPv6PrefixFreeData.from_db(result=result)
 
 
 class IPPrefixIPAddressFetch(Query):
@@ -546,17 +597,22 @@ class IPPrefixIPAddressFetchFree(Query):
         self.return_labels = ["free_addr", "is_free", "is_last"]
         self.order_by = ["free_addr"]
 
+    def get_address_data(self) -> IPAddressFreeData | None:
+        if not self.results:
+            return None
+
+        return IPAddressFreeData.from_db(result=self.results[0])
+
     def get_address(self) -> IPAddressType | None:
-        """Return a list of all addresses fitting in the prefix."""
-        result = self.results[0]
-        free_addr = result.get_as_type("free_addr", return_type=int)
-        is_free = result.get_as_type("is_free", return_type=bool)
-        is_last = result.get_as_type("is_last", return_type=bool)
-        if not is_free:
-            if is_last and free_addr < self.params["end_range"]:
-                return ipaddress.ip_interface(free_addr + 1)
-        else:
-            return ipaddress.ip_interface(free_addr)
+        """Return the next free address fitting in the prefix."""
+        result_data = self.get_address_data()
+        if result_data is None:
+            return None
+
+        if result_data.is_free:
+            return ipaddress.ip_interface(result_data.free_addr)
+        if result_data.is_last and result_data.free_addr < self.params["end_range"]:
+            return ipaddress.ip_interface(result_data.free_addr + 1)
 
         return None
 
@@ -686,12 +742,12 @@ async def _get_next_free_ipv4_prefix(
         branch_agnostic=branch_agnostic,
     )
     await query.execute(db=db)
-    result = query.get_result()
-    if not result:
+
+    result_data = query.get_prefix_data()
+    if not result_data:
         return None
 
-    start_value = result.get_as_type("free_start", return_type=int)
-    network_address = ipaddress.IPv4Address(start_value)
+    network_address = ipaddress.IPv4Address(result_data.free_start)
     return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
 
 
@@ -721,13 +777,13 @@ async def _get_next_free_ipv6_prefix(
         branch_agnostic=branch_agnostic,
     )
     await query.execute(db=db)
-    result = query.get_result()
-    if not result:
+
+    result_data = query.get_prefix_data()
+    if not result_data:
         return None
 
-    free_start_bin = result.get_as_type("free_start_bin", return_type=str)
     # Convert binary string to IPv6 address
-    addr_int = int(free_start_bin, 2)
+    addr_int = int(result_data.free_start_bin, 2)
     network_address = ipaddress.IPv6Address(addr_int)
     return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
 

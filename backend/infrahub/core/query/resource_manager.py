@@ -70,6 +70,21 @@ class NumberPoolAllocatedResult:
         )
 
 
+@dataclass(frozen=True)
+class NumberPoolFreeData:
+    value: int
+    is_free: bool
+    is_last: bool
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> NumberPoolFreeData:
+        return cls(
+            value=result.get_as_type("value", return_type=int),
+            is_free=result.get_as_type("is_free", return_type=bool),
+            is_last=result.get_as_type("is_last", return_type=bool),
+        )
+
+
 class IPAddressPoolGetIdentifiers(Query):
     name = "ipaddresspool_get_identifiers"
     type = QueryType.READ
@@ -486,28 +501,30 @@ class NumberPoolGetFree(Query):
         self.return_labels = ["free_number as value", "is_free", "is_last"]
         self.order_by = ["value"]
 
+    def get_free_data(self) -> NumberPoolFreeData | None:
+        if not self.results:
+            return None
+
+        return NumberPoolFreeData.from_db(result=self.results[0])
+
     def get_result_value(self) -> int | None:
         """Get the free number from query results, handling edge cases.
 
         Returns:
             The free number if found, None if pool is exhausted in queried range.
         """
-        if not self.results:
+        result_data = self.get_free_data()
+        if result_data is None:
             # No reservations in range - return start_range
             if self.params["start_range"] <= self.params["end_range"]:
                 return self.params["start_range"]
             return None
 
-        result = self.results[0]
-        value = result.get_as_type("value", return_type=int)
-        is_free = result.get_as_type("is_free", return_type=bool)
-        is_last = result.get_as_type("is_last", return_type=bool)
-
-        if is_free:
-            return value
+        if result_data.is_free:
+            return result_data.value
         # is_last=True and is_free=False means all numbers up to value are used
-        if is_last and value < self.params["end_range"]:
-            return value + 1
+        if result_data.is_last and result_data.value < self.params["end_range"]:
+            return result_data.value + 1
         return None
 
 
