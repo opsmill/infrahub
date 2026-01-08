@@ -59,7 +59,9 @@ export function ObjectDetailsMenu({
   const isDeleteAllowed = permission.delete.isAllowed;
 
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
-  const repositoryActions = isRepository ? RepositoryMenuActions({ repositoryId: objectData.id }) : null;
+  const repositoryActions = isRepository
+    ? RepositoryMenuActions({ repositoryId: objectData.id })
+    : null;
 
   return (
     <>
