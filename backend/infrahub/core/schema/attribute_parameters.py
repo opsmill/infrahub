@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Self
+from typing import Any, Self
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -23,6 +23,33 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
 
 class AttributeParameters(HashableModel):
     model_config = ConfigDict(extra="forbid")
+
+    @classmethod
+    def convert_from(cls, source: AttributeParameters) -> Self:
+        """Convert from another AttributeParameters subclass.
+
+        Args:
+            source: The source AttributeParameters instance to convert from
+
+        Returns:
+            A new instance of the target class with compatible fields populated
+        """
+        source_data = source.model_dump()
+        return cls.convert_from_dict(source_data=source_data)
+
+    @classmethod
+    def convert_from_dict(cls, source_data: dict[str, Any]) -> Self:
+        """Convert from a dictionary to the target class.
+
+        Args:
+            source_data: The source dictionary to convert from
+
+        Returns:
+            A new instance of the target class with compatible fields populated
+        """
+        target_fields = set(cls.model_fields.keys())
+        filtered_data = {k: v for k, v in source_data.items() if k in target_fields}
+        return cls(**filtered_data)
 
 
 class TextAttributeParameters(AttributeParameters):

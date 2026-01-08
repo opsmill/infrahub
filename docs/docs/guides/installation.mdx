@@ -609,9 +609,9 @@ These examples are for reference purposes and may require customization for your
   helm repo add neo4j https://helm.neo4j.com/neo4j/
   helm repo update
   kubectl create secret generic neo4j-user --namespace infrahub --from-literal=NEO4J_AUTH=neo4j/admin
-  helm install database-0 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-1 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-2 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-0 neo4j/neo4j --version 2025.10.1-4 --namespace infrahub --values neo4j-values.yaml
+  helm install database-1 neo4j/neo4j --version 2025.10.1-4 --namespace infrahub --values neo4j-values.yaml
+  helm install database-2 neo4j/neo4j --version 2025.10.1-4 --namespace infrahub --values neo4j-values.yaml
   ```
 
   Once all instances are running, install the headless service:
@@ -619,7 +619,7 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
 
   ```bash
-  helm install database-service neo4j/neo4j-headless-service --version 2025.03.0 --namespace infrahub --values service-values.yaml
+  helm install database-service neo4j/neo4j-headless-service --version 2025.10.1-4 --namespace infrahub --values service-values.yaml
   ```
 
   <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
@@ -644,13 +644,13 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="prefect-values.yaml">{import_prefectValuesYaml}</CodeBlock>
 
   ```bash
-  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.7.31204438 --namespace infrahub --create-namespace --values prefect-values.yaml
+  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.12.11201923 --namespace infrahub --create-namespace --values prefect-values.yaml
   ```
 
   <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
 
   ```bash
-  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.9.4 --namespace infrahub --create-namespace --values infrahub-values.yaml
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.13.0 --namespace infrahub --create-namespace --values infrahub-values.yaml
   ```
 
 </details>
