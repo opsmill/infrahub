@@ -21,6 +21,7 @@ import {
 import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
+import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
@@ -31,7 +32,9 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
+import { RepositoryMenuActions } from "@/entities/repository/ui/repository-menu-actions";
 import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;
@@ -54,6 +57,9 @@ export function ObjectDetailsMenu({
 
   const isEditAllowed = permission.update.isAllowed;
   const isDeleteAllowed = permission.delete.isAllowed;
+
+  const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
+  const repositoryActions = isRepository ? RepositoryMenuActions({ repositoryId: objectData.id }) : null;
 
   return (
     <>
@@ -132,6 +138,8 @@ export function ObjectDetailsMenu({
                 </MenuItem>
               )}
             </MenuSection>
+
+            {repositoryActions?.menuSection}
 
             <MenuSection title="Manage">
               <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
@@ -225,6 +233,8 @@ export function ObjectDetailsMenu({
           }
         }}
       />
+
+      {repositoryActions?.modal}
     </>
   );
 }

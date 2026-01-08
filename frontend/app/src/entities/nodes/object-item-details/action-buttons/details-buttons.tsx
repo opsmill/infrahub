@@ -6,7 +6,6 @@ import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip, LinkButton } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
@@ -22,7 +21,6 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
-import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -63,9 +61,6 @@ export function DetailsButtons({
             generatorId={objectDetailsData.definition.node.id}
             targetNodeIds={[objectDetailsData.object.node.id]}
           />
-        )}
-        {isOfKind(GENERIC_REPOSITORY_KIND, schema) && (
-          <RepositoryActionMenu repositoryId={objectDetailsData.id} />
         )}
 
         <ButtonWithTooltip
