@@ -345,6 +345,7 @@ class Query:
 
     def __init__(
         self,
+        db: InfrahubDatabase,
         branch: Branch | None = None,
         at: Timestamp | str | None = None,
         limit: int | None = None,
@@ -356,6 +357,7 @@ class Query:
         if branch:
             self.branch = branch
 
+        self.db = db
         self.branch_agnostic = branch_agnostic
 
         if not hasattr(self, "at"):
@@ -398,7 +400,7 @@ class Query:
         offset: int | None = None,
         **kwargs: Any,
     ) -> Self:
-        query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
+        query = cls(db=db, branch=branch, at=at, limit=limit, offset=offset, **kwargs)
 
         await query.query_init(db=db, **kwargs)
 
@@ -530,10 +532,10 @@ class Query:
         return ":params { " + ", ".join(params) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
-    async def execute(self, db: InfrahubDatabase) -> Self:
+    async def execute(self, db: InfrahubDatabase | None = None) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
-
+        db = db or self.db
         if config.SETTINGS.miscellaneous.print_query_details:
             self.print(include_var=True)
 

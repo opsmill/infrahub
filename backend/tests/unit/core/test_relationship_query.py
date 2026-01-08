@@ -122,13 +122,15 @@ async def test_RelationshipQuery_init(
     assert "Either an instance of Relationship or a valid branch must be provided." in str(exc.value)
 
     # Initialization with the Relationship class
-    rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema, branch=branch)
+    rq = DummyRelationshipQuery(db=db, source=person_jack_main, rel=Relationship, schema=rel_schema, branch=branch)
     assert rq.schema == rel_schema
     assert rq.branch == branch
     assert rq.source_id == person_jack_main.id
     assert rq.source == person_jack_main
 
-    rq = DummyRelationshipQuery(source_id=person_jack_main.id, rel=Relationship, schema=rel_schema, branch=branch)
+    rq = DummyRelationshipQuery(
+        db=db, source_id=person_jack_main.id, rel=Relationship, schema=rel_schema, branch=branch
+    )
     assert rq.schema == rel_schema
     assert rq.branch == branch
     assert rq.source_id == person_jack_main.id
@@ -136,7 +138,7 @@ async def test_RelationshipQuery_init(
 
     # Initialization with an instance of Relationship
     rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
-    rq = DummyRelationshipQuery(source=person_jack_main, rel=rel)
+    rq = DummyRelationshipQuery(db=db, source=person_jack_main, rel=rel)
     assert rq.schema == rel_schema
     assert rq.branch == branch
 

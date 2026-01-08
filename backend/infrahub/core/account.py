@@ -56,11 +56,12 @@ class AccountGlobalPermissionQuery(Query):
 
     def __init__(
         self,
+        db: InfrahubDatabase,
         account_id: str,
         branch: Branch | None = None,
         branch_agnostic: bool = False,
     ) -> None:
-        super().__init__(branch=branch, branch_agnostic=branch_agnostic)
+        super().__init__(db=db, branch=branch, branch_agnostic=branch_agnostic)
         self.account_id = account_id
 
         self.params["account_id"] = self.account_id
@@ -296,7 +297,7 @@ class AccountObjectPermissionQuery(Query):
 
 
 async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    query1 = AccountGlobalPermissionQuery(branch=branch, account_id=account_id, branch_agnostic=True)
+    query1 = AccountGlobalPermissionQuery(db=db, branch=branch, account_id=account_id, branch_agnostic=True)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 

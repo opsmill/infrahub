@@ -46,7 +46,7 @@ class DiffQuery(Query):
 
         self.branch_names = branch.get_branches_in_scope()
 
-        super().__init__(branch, **kwargs)
+        super().__init__(branch=branch, **kwargs)
 
 
 class DiffCountChanges(Query):
@@ -55,6 +55,7 @@ class DiffCountChanges(Query):
 
     def __init__(
         self,
+        db: InfrahubDatabase,
         branch_names: list[str],
         diff_from: Timestamp,
         diff_to: Timestamp,
@@ -63,7 +64,7 @@ class DiffCountChanges(Query):
         self.branch_names = branch_names
         self.diff_from = diff_from
         self.diff_to = diff_to
-        super().__init__(**kwargs)
+        super().__init__(db=db, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params = {
