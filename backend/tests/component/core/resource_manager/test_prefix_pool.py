@@ -176,3 +176,47 @@ async def test_get_all_resources(
         prefix5.prefix.value,
     ]
     assert sorted(all_prefixes) == ["10.10.0.0/24", "10.10.128.0/17", "10.10.4.0/24", "10.11.0.0/17", "10.11.128.0/17"]
+
+
+async def test_ipv6_large_prefix_pool_allocation(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns_v6 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns_v6.new(db=db, name="ns_v6_large")
+    await ns_v6.save(db=db)
+
+    parent_v6 = await Node.init(db=db, schema=prefix_schema)
+    await parent_v6.new(db=db, prefix="2001:db8:abcd::/48", ip_namespace=ns_v6)
+    await parent_v6.save(db=db)
+
+    for i in range(100):
+        existing = await Node.init(db=db, schema=prefix_schema)
+        address_offset = i * 2
+        await existing.new(db=db, prefix=f"2001:db8:abcd::{address_offset:x}/127", ip_namespace=ns_v6)
+        await existing.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_v6_large", resources=[parent_v6], ip_namespace=ns_v6)
+    await pool.save(db=db)
+
+    new_prefixes: list[Node] = []
+    for i in range(5):
+        prefix = await pool.get_resource(
+            db=db,
+            prefixlen=127,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier=f"v6_large_item_{i}",
+            branch=default_branch,
+        )
+        new_prefixes.append(prefix)
+
+    assert new_prefixes[0].prefix.value == "2001:db8:abcd::c8/127"
+    assert new_prefixes[1].prefix.value == "2001:db8:abcd::ca/127"
+    assert new_prefixes[2].prefix.value == "2001:db8:abcd::cc/127"
+    assert new_prefixes[3].prefix.value == "2001:db8:abcd::ce/127"
+    assert new_prefixes[4].prefix.value == "2001:db8:abcd::d0/127"
