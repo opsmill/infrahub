@@ -72,7 +72,8 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   } = useGetObject({
     objectSchema: schema!,
     objectId: node.id,
-    getRelationshipsVisible: (rel) => rel,
+    getRelationshipsVisible: (relationships) =>
+      relationships.filter((rel) => rel.cardinality === "one"),
   });
 
   if (!schema) return null;
@@ -90,7 +91,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
     schema,
     forListView: true,
     limit: displayIpNamespace ? 6 : 7,
-  });
+  }).filter((column) => !("cardinality" in column && column.cardinality === "many"));
 
   const url = getObjectDetailsUrl(objectDetailsData.__typename, objectDetailsData.id);
 
