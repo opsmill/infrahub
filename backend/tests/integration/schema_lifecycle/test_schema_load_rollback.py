@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.migrations.query import MigrationBaseQuery
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
