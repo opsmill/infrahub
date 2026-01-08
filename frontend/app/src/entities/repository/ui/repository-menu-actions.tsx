@@ -60,7 +60,25 @@ export function RepositoryActionsMenu({
           />
         );
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+      } else {
+        toast(
+          <Alert
+            type={ALERT_TYPES.ERROR}
+            message={
+              data?.InfrahubRepositoryProcess?.message ||
+              "Failed to start reimport of last commit."
+            }
+          />
+        );
       }
+    },
+    onError: (error) => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={`Error reimporting last commit: ${error.message}`}
+        />
+      );
     },
   });
 
