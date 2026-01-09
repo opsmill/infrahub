@@ -1,13 +1,6 @@
 // type AlertProps = {};
 
-import {
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  InformationCircleIcon,
-  LightBulbIcon,
-  XCircleIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { CircleCheck, Info, Lightbulb, TriangleAlert, X, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
 import Accordion from "@/shared/components/display/accordion";
@@ -34,21 +27,21 @@ export const Alert = (props: AlertProps) => {
   const getIcon = () => {
     switch (type) {
       case ALERT_TYPES.SUCCESS: {
-        return <CheckCircleIcon className="h-4 w-4 text-green-400" aria-hidden="true" />;
+        return <CircleCheck className="h-4 w-4 text-green-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.INFO: {
         return (
-          <InformationCircleIcon className="h-4 w-4 text-custom-blue-500" aria-hidden="true" />
+          <Info className="h-4 w-4 text-custom-blue-500" aria-hidden="true" />
         );
       }
       case ALERT_TYPES.WARNING: {
-        return <ExclamationTriangleIcon className="h-4 w-4 text-yellow-400" aria-hidden="true" />;
+        return <TriangleAlert className="h-4 w-4 text-yellow-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.ERROR: {
-        return <XCircleIcon className="h-4 w-4 text-red-400" aria-hidden="true" />;
+        return <XCircle className="h-4 w-4 text-red-400" aria-hidden="true" />;
       }
       default: {
-        return <LightBulbIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />;
+        return <Lightbulb className="h-4 w-4 text-gray-400" aria-hidden="true" />;
       }
     }
   };
@@ -132,7 +125,7 @@ export const Alert = (props: AlertProps) => {
               onClick={handleDismiss}
               data-testid="close-alert"
             >
-              <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -73,7 +73,7 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
                 ])}
               >
                 Propose change
-                <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                <Plus className="ml-2 h-4 w-4" aria-hidden="true" />
               </LinkButton>
 
               <BranchRebaseButton branch={branch} />
@@ -86,7 +86,7 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
                 variant={"danger"}
               >
                 Delete
-                <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                <Trash2 className="ml-2 h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           )}

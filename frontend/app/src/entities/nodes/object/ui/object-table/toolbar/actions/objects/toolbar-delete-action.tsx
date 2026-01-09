@@ -1,4 +1,4 @@
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { Trash2 } from "lucide-react";
 import React from "react";
 
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
@@ -16,7 +16,7 @@ export function ToolbarDeleteAction({ selectedRows }: ToolbarDeleteActionProps) 
   return (
     <>
       <ToolbarButton variant="danger" onPress={() => setIsOpen((prev) => !prev)}>
-        <TrashIcon className="size-3.5" />
+        <Trash2 className="size-3.5" />
         Delete
       </ToolbarButton>
 

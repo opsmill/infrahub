@@ -1,5 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { Pencil } from "lucide-react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
@@ -343,7 +343,7 @@ export const FileContentDiff = (props: any) => {
             className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
             onClick={handleClick}
           >
-            <PencilIcon className="h-3 w-3" />
+            <Pencil className="h-3 w-3" />
           </Button>
         )}
       </>

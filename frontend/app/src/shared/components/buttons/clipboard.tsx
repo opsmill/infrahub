@@ -1,4 +1,4 @@
-import { ClipboardDocumentCheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import { Clipboard as ClipboardIcon, ClipboardCheck } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -27,9 +27,9 @@ export const Clipboard = (props: tClipboard) => {
   return (
     <Tooltip enabled content={tooltip}>
       <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={handleCopy} className={className}>
-        {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
+        {!isCopied && <ClipboardIcon className="h-4 w-4" />}
 
-        {isCopied && <ClipboardDocumentCheckIcon className="h-4 w-4" />}
+        {isCopied && <ClipboardCheck className="h-4 w-4" />}
       </Button>
     </Tooltip>
   );

@@ -1,4 +1,4 @@
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Check, X } from "lucide-react";
 
 import type {
   AnyAttribute,
@@ -56,11 +56,11 @@ export const getDisplayValue = (
   }
 
   if (row[attribute?.name]?.value === false) {
-    return <XMarkIcon className="h-4 w-4" />;
+    return <X className="h-4 w-4" />;
   }
 
   if (row[attribute?.name]?.value === true) {
-    return <CheckIcon className="h-4 w-4" />;
+    return <Check className="h-4 w-4" />;
   }
 
   if (attribute?.kind === "TextArea") {
@@ -204,9 +204,9 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX:
       return attributeData.value ? (
-        <CheckIcon className="size-4" />
+        <Check className="size-4" />
       ) : (
-        <XMarkIcon className="size-4" />
+        <X className="size-4" />
       );
     case ATTRIBUTE_KIND.DATETIME:
       return <DateDisplay date={getTextValue(attributeData)} />;
