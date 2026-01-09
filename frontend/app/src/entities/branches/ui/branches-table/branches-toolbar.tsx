@@ -68,7 +68,7 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
   return (
     <>
       <div
-        role="dialog"
+        role="toolbar"
         className={classNames(
           "fixed bottom-10 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap",
           "text rounded-xl border border-neutral-300 px-1.5 text-sm shadow-lg backdrop-blur-lg",
