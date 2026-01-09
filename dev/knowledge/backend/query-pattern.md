@@ -435,6 +435,7 @@ Specialized base classes for different domains:
 
 ## See Also
 
+- [Database Schema](database-schema.md) - Neo4j vertex/edge structure and temporal branching rules
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Testing](testing.md) - Query testing patterns
 - [Python Coding Standards](../../guidelines/backend/python.md) - Dataclass conventions

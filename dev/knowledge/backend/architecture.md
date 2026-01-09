@@ -25,6 +25,10 @@ Infrahub provides version control for infrastructure data. Multiple branches can
 
 All database access goes through Query classes that encapsulate Cypher queries with proper parameterization. See [query-pattern.md](query-pattern.md).
 
+### Database Schema
+
+The Neo4j database uses a temporal graph structure with branch support. All vertices and edges include branch and timestamp metadata for version control. See [database-schema.md](database-schema.md).
+
 ### Proposed Changes
 
 Similar to pull requests, proposed changes allow reviewing and approving data modifications before merging. See [proposed-change.md](proposed-change.md).
