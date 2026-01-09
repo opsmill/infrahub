@@ -130,7 +130,7 @@ test.describe("Branches creation and deletion", () => {
       expect(page.url()).not.toContain("/?branch=unknown-branch-for-testing");
     });
 
-    test.only("should search for a branch", async ({ page }) => {
+    test("should search for a branch", async ({ page }) => {
       await page.goto("/branches");
       await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
@@ -138,9 +138,7 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("searchbox", { name: "Search" }).fill("main");
       await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
-      await expect(
-        page.getByRole("link", { name: "atl1-delete-upstream" })
-      ).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).not.toBeVisible();
 
       await page.getByRole("searchbox", { name: "Search" }).fill("");
       await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
