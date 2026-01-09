@@ -1,7 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-toastify";
 
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { classNames } from "@/shared/utils/common";
 
@@ -22,9 +24,25 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
   const deletableBranches = selectedBranches.filter((branch) => !branch.is_default);
 
   const handleDelete = async () => {
+    const failedBranches: string[] = [];
+
     for (const branch of deletableBranches) {
-      await deleteBranch({ name: branch.name });
+      try {
+        await deleteBranch({ name: branch.name });
+      } catch {
+        failedBranches.push(branch.name);
+      }
     }
+
+    if (failedBranches.length > 0) {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={`Failed to delete ${failedBranches.length === 1 ? "branch" : "branches"}: ${failedBranches.join(", ")}`}
+        />
+      );
+    }
+
     setShowDeleteModal(false);
     onClose();
   };
