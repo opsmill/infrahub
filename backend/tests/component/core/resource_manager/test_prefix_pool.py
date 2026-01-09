@@ -178,6 +178,66 @@ async def test_get_all_resources(
     assert sorted(all_prefixes) == ["10.10.0.0/24", "10.10.128.0/17", "10.10.4.0/24", "10.11.0.0/17", "10.11.128.0/17"]
 
 
+async def test_ipv4_large_prefix_pool_allocation(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns_v4 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns_v4.new(db=db, name="ns_v4_large")
+    await ns_v4.save(db=db)
+
+    parent_v4 = await Node.init(db=db, schema=prefix_schema)
+    await parent_v4.new(db=db, prefix="10.0.0.0/16", ip_namespace=ns_v4)
+    await parent_v4.save(db=db)
+
+    prefixes: list[Node] = []
+    for i in range(100):
+        existing = await Node.init(db=db, schema=prefix_schema)
+        await existing.new(db=db, prefix=f"10.0.0.{i * 2}/31", ip_namespace=ns_v4, parent=parent_v4)
+        await existing.save(db=db)
+        prefixes.append(existing)
+
+    # Create fragmentation by deleting prefixes at positions 10, 50, and 90
+    deleted_values = [prefixes[10].prefix.value, prefixes[50].prefix.value, prefixes[90].prefix.value]
+    await prefixes[10].delete(db=db)
+    await prefixes[50].delete(db=db)
+    await prefixes[90].delete(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_v4_large", resources=[parent_v4], ip_namespace=ns_v4)
+    await pool.save(db=db)
+
+    new_prefixes: list[Node] = []
+    for i in range(3):
+        new_prefix = await pool.get_resource(
+            db=db,
+            prefixlen=31,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier=f"v4_large_new_{i}",
+            branch=default_branch,
+        )
+        new_prefixes.append(new_prefix)
+
+    # Verify gaps are reused in order
+    assert new_prefixes[0].prefix.value == deleted_values[0]
+    assert new_prefixes[1].prefix.value == deleted_values[1]
+    assert new_prefixes[2].prefix.value == deleted_values[2]
+
+    next_prefix = await pool.get_resource(
+        db=db,
+        prefixlen=31,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="v4_large_next",
+        branch=default_branch,
+    )
+    assert next_prefix.prefix.value == "10.0.0.200/31"
+
+
 async def test_ipv6_large_prefix_pool_allocation(
     db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
 ) -> None:
@@ -194,8 +254,7 @@ async def test_ipv6_large_prefix_pool_allocation(
     prefixes: list[Node] = []
     for i in range(100):
         existing = await Node.init(db=db, schema=prefix_schema)
-        address_offset = i * 2
-        await existing.new(db=db, prefix=f"2001:db8:abcd::{address_offset:x}/127", ip_namespace=ns_v6, parent=parent_v6)
+        await existing.new(db=db, prefix=f"2001:db8:abcd::{i * 2:x}/127", ip_namespace=ns_v6, parent=parent_v6)
         await existing.save(db=db)
         prefixes.append(existing)
 
