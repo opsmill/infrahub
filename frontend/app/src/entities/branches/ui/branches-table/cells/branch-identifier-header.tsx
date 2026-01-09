@@ -17,7 +17,9 @@ export function BranchIdentifierHeader({ className, ...props }: BranchIdentifier
     <div
       className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white", className)}
     >
-      {isAuthenticated && <Checkbox {...props} data-testid="select-all-rows" />}
+      {isAuthenticated && (
+        <Checkbox aria-label="Select all branches" {...props} data-testid="select-all-rows" />
+      )}
       <Icon icon="mdi:source-branch" className="text-stone-400" />
       <span className="truncate">Branch</span>
     </div>
