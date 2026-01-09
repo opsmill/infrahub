@@ -7,7 +7,6 @@ from infrahub.core.query import Query, QueryType
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.timestamp import Timestamp
-    from infrahub.database import InfrahubDatabase
 
 
 class RollbackQuery(Query):
@@ -23,17 +22,11 @@ class RollbackQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(
-        self,
-        at: Timestamp,
-        target_branch: Branch,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, at: Timestamp, target_branch: Branch, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
         self.rollback_at = at
         self.target_branch = target_branch
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "at": self.rollback_at.to_string(),
             "target_branch": self.target_branch.name,

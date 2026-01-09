@@ -31,8 +31,8 @@ _default_log = get_logger()
 class MigrationExecutor(Enum):
     """Determines how migrations are executed."""
 
-    DIRECT = "direct"  # Call schema_apply_migrations directly (for tasks)
-    WORKFLOW = "workflow"  # Execute via workflow service (for API)
+    DIRECT = "direct"  # Call schema_apply_migrations directly
+    WORKFLOW = "workflow"  # Execute via workflow service
 
 
 @dataclass
@@ -124,7 +124,7 @@ class SchemaUpdateCoordinator:
             diff: Schema diff for update_schema_branch (optional, for incremental updates)
             migrations: List of migrations to run
             limit: Limit schema update to specific items
-            update_db: Whether to update the database (implies update_registry=True)
+            update_db: Whether to update the database
             update_registry: Whether to update the registry (used when DB already updated externally)
             user_id: User ID for all operations
 
@@ -294,12 +294,7 @@ class SchemaUpdateCoordinator:
 
     async def _rollback(self, at: Timestamp) -> None:
         """Rollback all changes made at the unified timestamp."""
-        rollback_query = await RollbackQuery.init(
-            db=self.db,
-            branch=self.branch,
-            target_branch=self.branch,
-            at=at,
-        )
+        rollback_query = RollbackQuery(target_branch=self.branch, at=at)
         await rollback_query.execute(db=self.db)
 
     async def _restore_registry_state(self) -> None:
