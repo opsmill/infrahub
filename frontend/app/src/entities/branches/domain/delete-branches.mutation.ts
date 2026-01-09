@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
 import { deleteBranches } from "@/entities/branches/domain/delete-branches";
 import { getBranchesInfiniteQueryOptions } from "@/entities/branches/domain/get-branches.query";
 
@@ -22,7 +23,8 @@ export function useDeleteBranchesMutation() {
           ),
         };
       });
-      queryClient.invalidateQueries({ queryKey });
+
+      await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
     },
   });
 }
