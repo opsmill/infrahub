@@ -139,6 +139,10 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
                 " Please review the diff for details and manually update the conflicts before rebasing."
             )
+
+        # rebase to the end time of the diff in case conflicting changes happen on
+        # either branch while rebasing and migrating
+        rebase_at = enriched_diff_metadata.to_time
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
@@ -169,7 +173,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
-                rebase_at = Timestamp()
                 await obj.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph successfully rebased")
 
