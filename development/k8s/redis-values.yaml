@@ -6,6 +6,8 @@ architecture: replication
 auth:
   enabled: false
 master:
+  podLabels:
+    infrahub/service: cache
   podAntiAffinityPreset: hard
   persistence:
     enabled: true

@@ -3,8 +3,10 @@ global:
   prefect:
     image:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
-      prefectTag: 1.4.10
+      prefectTag: 1.7.0
 server:
+  podLabels:
+    infrahub/service: task-manager
   replicaCount: 3
   command:
     - /usr/bin/tini

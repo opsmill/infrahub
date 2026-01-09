@@ -1,5 +1,7 @@
 ---
 replicaCount: 3
+podLabels:
+  infrahub/service: message-queue
 image:
   repository: bitnamilegacy/rabbitmq
 auth:
