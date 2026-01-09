@@ -1,6 +1,6 @@
-import { TrashIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { Icon } from "@iconify-icon/react";
 import { XIcon } from "lucide-react";
+import { useState } from "react";
 
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { classNames } from "@/shared/utils/common";
@@ -53,7 +53,7 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
           isDisabled={deletableBranches.length === 0}
           onPress={() => setShowDeleteModal(true)}
         >
-          <TrashIcon className="size-3.5" />
+          <Icon icon="mdi:delete-outline" className="text-sm" />
           Delete
         </ToolbarButton>
       </div>
