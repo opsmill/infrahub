@@ -7,11 +7,9 @@ from typing import TYPE_CHECKING, Iterable
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
-from infrahub.core.query import QueryResult, QueryType
+from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
-
-from . import Query, QueryResult
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -184,7 +182,7 @@ class IPPrefixSubnetFetchFree(Query):
         target_prefixlen: int,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
         self.namespace_id = _get_namespace_id(namespace)
@@ -304,7 +302,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         target_prefixlen: int,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
         self.namespace_id = _get_namespace_id(namespace)
@@ -526,7 +524,7 @@ class IPPrefixIPAddressFetchFree(Query):
         is_pool: bool,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
         self.is_pool = is_pool
