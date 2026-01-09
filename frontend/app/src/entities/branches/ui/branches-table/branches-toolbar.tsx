@@ -1,14 +1,17 @@
 import { Icon } from "@iconify-icon/react";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
+import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
+import { useDeleteBranchesMutation } from "@/entities/branches/domain/delete-branches.mutation";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 
@@ -19,26 +22,42 @@ export interface BranchesToolbarProps {
 
 export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
+  const { mutateAsync: deleteBranches, isPending: isDeleting } = useDeleteBranchesMutation();
+  const navigate = useNavigate();
 
   const deletableBranches = selectedBranches.filter((branch) => !branch.is_default);
 
   const handleDelete = async () => {
-    const failedBranches: string[] = [];
+    const branchNames = deletableBranches.map((branch) => branch.name);
 
-    for (const branch of deletableBranches) {
-      try {
-        await deleteBranch({ name: branch.name });
-      } catch {
-        failedBranches.push(branch.name);
+    try {
+      const result = await deleteBranches({ names: branchNames });
+
+      if (result.failed.length > 0) {
+        toast(
+          <Alert
+            type={ALERT_TYPES.ERROR}
+            message={`Failed to delete ${result.failed.length === 1 ? "branch" : "branches"}: ${result.failed.join(", ")}`}
+          />
+        );
       }
-    }
 
-    if (failedBranches.length > 0) {
+      if (result.deleted.length > 0) {
+        const queryStringParams = getCurrentQsp();
+        const currentBranch = queryStringParams.get(QSP.BRANCH);
+        const isCurrentBranchDeleted =
+          currentBranch && result.deleted.includes(currentBranch);
+
+        if (isCurrentBranchDeleted) {
+          const path = constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }]);
+          navigate(path);
+        }
+      }
+    } catch {
       toast(
         <Alert
           type={ALERT_TYPES.ERROR}
-          message={`Failed to delete ${failedBranches.length === 1 ? "branch" : "branches"}: ${failedBranches.join(", ")}`}
+          message={`Failed to delete ${branchNames.length === 1 ? "branch" : "branches"}: ${branchNames.join(", ")}`}
         />
       );
     }
