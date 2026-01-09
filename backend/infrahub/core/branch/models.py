@@ -333,7 +333,7 @@ class Branch(StandardNode):
                     f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
                 )
                 filters_per_rel.append(
-                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to >= $time{idx})"
+                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to > $time{idx})"
                 )
 
             if not include_outside_parentheses:
@@ -366,7 +366,9 @@ class Branch(StandardNode):
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            filter_str = (
+                f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to > ${pp}time1)"
+            )
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
@@ -380,129 +382,21 @@ class Branch(StandardNode):
         for idx in range(len(branches_times)):
             filters.append(
                 f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
                 f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from < ${pp}time{idx} "
-                f"AND {variable_name}.to >= ${pp}time{idx})"
+                f"AND {variable_name}.from <= ${pp}time{idx} "
+                f"AND {variable_name}.to > ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"
 
         return filter_str, params
 
-    def get_query_filter_relationships_range(
-        self,
-        rel_labels: list,
-        start_time: Timestamp,
-        end_time: Timestamp,
-        include_outside_parentheses: bool = False,
-        include_global: bool = False,
-    ) -> tuple[list, dict]:
-        """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph.
-        The goal is to return all the values that are valid during this timerange.
-        """
-
-        filters = []
-        params = {}
-
-        if not isinstance(rel_labels, list):
-            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
-
-        start_time = Timestamp(start_time)
-        end_time = Timestamp(end_time)
-
-        if include_global:
-            branches_times = self.get_branches_and_times_to_query_global(at=start_time)
-        else:
-            branches_times = self.get_branches_and_times_to_query(at=start_time)
-
-        params["branches"] = list({branch for branches in branches_times for branch in branches})
-        params["start_time"] = start_time.to_string()
-        params["end_time"] = end_time.to_string()
-
-        for rel in rel_labels:
-            filters_per_rel = [
-                f"({rel}.branch IN $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
-                f"({rel}.branch IN $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
-            ]
-
-            if not include_outside_parentheses:
-                filters.append("\n OR ".join(filters_per_rel))
-
-            filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
-
-        return filters, params
-
-    def get_query_filter_relationships_diff(
-        self, rel_labels: list, diff_from: Timestamp, diff_to: Timestamp
-    ) -> tuple[list, dict]:
-        """
-        Generate a CYPHER Query filter to query all events that are applicable to a given branch based
-        - The time when the branch as created
-        - The branched_from time of the branch
-        - The diff_to and diff_from time as provided
-        """
-
-        if not isinstance(rel_labels, list):
-            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
-
-        start_times, end_times = self.get_branches_and_times_for_range(start_time=diff_from, end_time=diff_to)
-
-        filters = []
-        params = {}
-
-        for idx, branch_name in enumerate(start_times.keys()):
-            params[f"branch{idx}"] = branch_name
-            params[f"start_time{idx}"] = start_times[branch_name]
-            params[f"end_time{idx}"] = end_times[branch_name]
-
-        for rel in rel_labels:
-            filters_per_rel = []
-            for idx in range(len(start_times)):
-                filters_per_rel.extend(
-                    [
-                        f"""({rel}.branch = $branch{idx}
-                             AND {rel}.from >= $start_time{idx}
-                             AND {rel}.from <= $end_time{idx}
-                             AND ( r2.to is NULL or r2.to >= $end_time{idx}))""",
-                        f"""({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx}
-                            AND {rel}.to <= $start_time{idx})""",
-                    ]
-                )
-
-            filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
-
-        return filters, params
-
-    def get_query_filter_range(self, rel_label: list, start_time: Timestamp, end_time: Timestamp) -> tuple[list, dict]:
-        """
-        Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
-
-        filters = []
-        params = {}
-
-        start_time = Timestamp(start_time)
-        end_time = Timestamp(end_time)
-
-        params["branches"] = self.get_branches_in_scope()
-        params["start_time"] = start_time.to_string()
-        params["end_time"] = end_time.to_string()
-
-        filters_per_rel = [
-            f"""({rel_label}.branch IN $branches AND {rel_label}.from >= $start_time
-                 AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)""",
-            f"""({rel_label}.branch IN $branches AND (({rel_label}.from >= $start_time
-                 AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time
-                 AND {rel_label}.to <= $end_time)))""",
-        ]
-
-        filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
-
-        return filters, params
-
-    async def rebase(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
+    async def rebase(
+        self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
         """Rebase the current Branch with its origin branch"""
 
         at = Timestamp()
