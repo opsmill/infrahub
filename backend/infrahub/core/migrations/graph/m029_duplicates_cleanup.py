@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.log import get_logger
 
@@ -574,8 +574,9 @@ class Migration029(ArbitraryMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         migration_result = MigrationResult()
+        db = migration_input.db
         limit = self.limit
         offset = 0
         more_nodes_to_process = True

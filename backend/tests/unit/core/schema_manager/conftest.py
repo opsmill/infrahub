@@ -247,7 +247,7 @@ def schema_criticality_tag():
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -259,14 +259,14 @@ def schema_criticality_tag():
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -276,7 +276,7 @@ def schema_criticality_tag():
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [

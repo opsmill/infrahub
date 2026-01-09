@@ -3,6 +3,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m034_find_orphaned_schema_fields import Migration034
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -42,7 +43,7 @@ class TestMigration034(TestInfrahubApp):
 
         # run the migration
         migration = Migration034()
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors

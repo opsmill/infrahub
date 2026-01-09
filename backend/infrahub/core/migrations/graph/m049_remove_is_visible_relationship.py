@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
 
-from ..shared import GraphMigration
+from ..shared import GraphMigration, MigrationInput
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -49,5 +49,5 @@ class Migration049(GraphMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        return await self.do_execute(db=db)
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        return await self.do_execute(migration_input=migration_input)
