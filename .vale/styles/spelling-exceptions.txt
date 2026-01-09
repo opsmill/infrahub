@@ -34,6 +34,7 @@ Containerlab
 content_type
 convert_query_response
 coroutine
+created_at
 created_by
 cron
 Cron
@@ -43,6 +44,7 @@ Diataxis
 datacenter
 dataloader
 datastore
+datetime
 default_branch
 default_filter
 deserialized
@@ -222,6 +224,8 @@ UIs
 uncheck
 unoptimized
 uniqueness_constraints
+updated_at
+updated_by
 upsert
 upserting
 Upserting
