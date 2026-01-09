@@ -226,45 +226,37 @@ class IPPrefixSubnetFetchFree(Query):
             AND av.prefixlen > $maxprefixlen
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
-        WITH
-            collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw,
-            $block_size AS block_size,
-            $parent_start AS parent_start,
-            $parent_end AS parent_end
-        WITH block_size, parent_start, parent_end,
-            [r IN ranges_raw |
+        WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        WITH [r IN ranges_raw |
                 {
                     start: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)),
                     end: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)) + toInteger(2 ^ (32 - r.prefixlen)) - 1
                 }
             ] AS ranges
         UNWIND CASE WHEN size(ranges) = 0 THEN [{start: null, end: null}] ELSE ranges END AS r
-        WITH block_size, parent_start, parent_end, r
+        WITH r
         ORDER BY r.start ASC
-        WITH block_size, parent_start, parent_end, collect(r) AS ranges_sorted_raw
-        WITH block_size, parent_start, parent_end,
-            [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
-        WITH block_size, parent_start, parent_end,
-            reduce(acc = {cursor: parent_start, found: null}, r IN ranges_sorted |
+        WITH collect(r) AS ranges_sorted_raw
+        WITH [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
+        WITH reduce(acc = {cursor: $parent_start, found: null}, r IN ranges_sorted |
                 CASE
                     WHEN acc.found IS NOT NULL THEN acc
                     WHEN r.end < acc.cursor THEN acc
-                    WHEN acc.cursor + block_size - 1 < r.start THEN {cursor: acc.cursor, found: acc.cursor}
+                    WHEN acc.cursor + $block_size - 1 < r.start THEN {cursor: acc.cursor, found: acc.cursor}
                     ELSE
                         {
                             cursor: CASE
-                                WHEN toInteger((r.end + 1 + block_size - 1) / block_size) * block_size > parent_end + 1
-                                THEN parent_end + 1
-                                ELSE toInteger((r.end + 1 + block_size - 1) / block_size) * block_size
+                                WHEN toInteger((r.end + 1 + $block_size - 1) / $block_size) * $block_size > $parent_end + 1
+                                THEN $parent_end + 1
+                                ELSE toInteger((r.end + 1 + $block_size - 1) / $block_size) * $block_size
                             END,
                             found: null
                         }
                 END
             ) AS res
-        WITH res, block_size, parent_end
         WITH CASE
             WHEN res.found IS NOT NULL THEN res.found
-            WHEN res.cursor + block_size - 1 <= parent_end THEN res.cursor
+            WHEN res.cursor + $block_size - 1 <= $parent_end THEN res.cursor
             ELSE NULL
         END AS free_start
         WHERE free_start IS NOT NULL
@@ -347,32 +339,25 @@ class IPv6PrefixSubnetFetchFree(Query):
             AND av.prefixlen > $maxprefixlen
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
-        WITH
-            collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw,
-            $target_prefixlen AS target_prefixlen,
-            $parent_start_bin AS parent_start_bin,
-            $parent_end_bin AS parent_end_bin
+        WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
         // Create ranges with start (block-aligned) and end_block (the block containing the end address)
-        WITH target_prefixlen, parent_start_bin, parent_end_bin,
-            [r IN ranges_raw WHERE r.binary IS NOT NULL |
+        WITH [r IN ranges_raw WHERE r.binary IS NOT NULL |
                 {
                     // Start block: first target_prefixlen bits of network address
-                    start_block: left(r.binary, target_prefixlen),
+                    start_block: left(r.binary, $target_prefixlen),
                     // End block: first target_prefixlen bits of broadcast address
                     // For a prefix, broadcast = network with all host bits set to 1
-                    end_block: left(left(r.binary, r.prefixlen) + reduce(s = "", i IN range(1, 128 - r.prefixlen) | s + "1"), target_prefixlen)
+                    end_block: left(left(r.binary, r.prefixlen) + reduce(s = "", i IN range(1, 128 - r.prefixlen) | s + "1"), $target_prefixlen)
                 }
             ] AS ranges
         UNWIND CASE WHEN size(ranges) = 0 THEN [{start_block: null, end_block: null}] ELSE ranges END AS r
-        WITH target_prefixlen, parent_start_bin, parent_end_bin, r
+        WITH r
         ORDER BY r.start_block ASC
-        WITH target_prefixlen, parent_start_bin, parent_end_bin, collect(r) AS ranges_sorted_raw
-        WITH target_prefixlen, parent_start_bin, parent_end_bin,
-            [r IN ranges_sorted_raw WHERE r.start_block IS NOT NULL] AS ranges_sorted
+        WITH collect(r) AS ranges_sorted_raw
+        WITH [r IN ranges_sorted_raw WHERE r.start_block IS NOT NULL] AS ranges_sorted
         // Find first available slot using binary string comparison
         // We track cursor as the current candidate block (target_prefixlen bits)
-        WITH target_prefixlen, parent_start_bin, parent_end_bin,
-            reduce(acc = {cursor: left(parent_start_bin, target_prefixlen), found: null}, r IN ranges_sorted |
+        WITH reduce(acc = {cursor: left($parent_start_bin, $target_prefixlen), found: null}, r IN ranges_sorted |
                 CASE
                     WHEN acc.found IS NOT NULL THEN acc
                     // Range ends before cursor, skip it
@@ -380,12 +365,12 @@ class IPv6PrefixSubnetFetchFree(Query):
                     // Gap found: cursor is before this range starts
                     WHEN acc.cursor < r.start_block THEN {cursor: acc.cursor, found: acc.cursor}
                     // Cursor overlaps with range: advance cursor past this range
-                    // Increment end_block by 1 using binary string increment
+                    // Increment end_block by 1 using binary string increment, then join back to string
                     ELSE
                         {
                             cursor: reduce(s = "", c IN reduce(
                                 inc = {bits: split(r.end_block, ""), carry: 1, result: []},
-                                idx IN reverse(range(0, target_prefixlen - 1)) |
+                                idx IN reverse(range(0, $target_prefixlen - 1)) |
                                 {
                                     bits: inc.bits,
                                     carry: CASE
@@ -410,19 +395,17 @@ class IPv6PrefixSubnetFetchFree(Query):
                 WHEN res.found IS NOT NULL THEN res.found
                 ELSE res.cursor
             END AS cursor_str,
-            res.found AS found,
-            target_prefixlen,
-            parent_end_bin
+            res.found AS found
         // Check if we found a slot or if there's space after all ranges
         WITH CASE
             WHEN found IS NOT NULL THEN found
             // Check cursor is valid (not overflowed) and within parent range
-            WHEN size(cursor_str) = target_prefixlen AND cursor_str <= left(parent_end_bin, target_prefixlen) THEN cursor_str
+            WHEN size(cursor_str) = $target_prefixlen AND cursor_str <= left($parent_end_bin, $target_prefixlen) THEN cursor_str
             ELSE NULL
-        END AS free_start_partial, target_prefixlen
+        END AS free_start_partial
         WHERE free_start_partial IS NOT NULL
         // Pad the partial binary to full 128 bits
-        WITH free_start_partial + reduce(s = "", i IN range(1, 128 - target_prefixlen) | s + "0") AS free_start_bin, target_prefixlen
+        WITH free_start_partial + reduce(s = "", i IN range(1, 128 - $target_prefixlen) | s + "0") AS free_start_bin
         """ % {
             "ns_label": InfrahubKind.IPNAMESPACE,
             "node_label": InfrahubKind.IPPREFIX,
@@ -430,7 +413,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         }
 
         self.add_to_query(query)
-        self.return_labels = ["free_start_bin", "target_prefixlen"]
+        self.return_labels = ["free_start_bin"]
         self.limit = 1
 
     def get_prefix_data(self) -> IPv6PrefixFreeData | None:
