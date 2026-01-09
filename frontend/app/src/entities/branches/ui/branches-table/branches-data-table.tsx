@@ -1,58 +1,39 @@
-import {
-  type ColumnDef,
-  type ColumnOrderState,
-  flexRender,
-  getCoreRowModel,
-  type RowSelectionOptions,
-  useReactTable,
-} from "@tanstack/react-table";
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
-import {
-  type ObjectTableSelectionToolbarProps,
-  ObjectTableToolbar,
-} from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
-import type { NodeCore } from "@/entities/nodes/types";
 
-export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
-  columnOrder?: ColumnOrderState;
-  columns: ColumnDef<T>[];
-  data: Array<T>;
+export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElement> {
+  columns: ColumnDef<BranchListItem>[];
+  data: Array<BranchListItem>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
-  enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
   gridTemplateColumns?: (columnCount: number) => string;
 }
 
 const defaultGridTemplateColumns = (columnCount: number) =>
-  `repeat(${columnCount - 2}, auto) 1fr 2.5rem`;
+  `minmax(auto, 400px) repeat(${columnCount - 2}, auto) 2.5rem`;
 
-export function DataTable<T extends NodeCore>({
-  columnOrder,
+export function BranchesDataTable({
   columns,
   data,
   isLoading,
   renderEmpty,
-  toolbarActions,
-  enableRowSelection,
   gridTemplateColumns = defaultGridTemplateColumns,
   ...props
-}: DataTableProps<T>) {
+}: BranchesDataTableProps) {
   const { isAuthenticated } = useAuth();
 
   const table = useReactTable({
     columns,
     data,
-    enableRowSelection,
+    enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,
-    state: {
-      columnOrder,
-    },
   });
 
   React.useEffect(() => {
@@ -75,11 +56,7 @@ export function DataTable<T extends NodeCore>({
   return (
     <div className="grid content-start" style={style} {...props}>
       {selectedRows.length > 0 && (
-        <ObjectTableToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-          renderMore={toolbarActions}
-        />
+        <BranchesToolbar selectedBranches={selectedRows} onClose={table.resetRowSelection} />
       )}
 
       {allHeaders.map((header) => {

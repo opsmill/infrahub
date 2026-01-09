@@ -1,4 +1,5 @@
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
+import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -86,7 +87,7 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
                 variant={"danger"}
               >
                 Delete
-                <Trash2Icon className="ml-2 h-4 w-4" aria-hidden="true" />
+                <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
               </Button>
             </div>
           )}
