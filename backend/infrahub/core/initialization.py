@@ -455,6 +455,53 @@ async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAcco
     return role
 
 
+async def create_thread_comment_role(db: InfrahubDatabase) -> CoreAccountRole:
+    thread_comment_create_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await thread_comment_create_permission.new(
+        db=db,
+        name="ThreadComment",
+        namespace="Core",
+        action=PermissionAction.CREATE.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to create thread comments reply",
+    )
+    await thread_comment_create_permission.save(db=db)
+
+    change_thread_view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await change_thread_view_permission.new(
+        db=db,
+        name="ChangeThread",
+        namespace="Core",
+        action=PermissionAction.VIEW.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to view comments",
+    )
+    await change_thread_view_permission.save(db=db)
+
+    change_thread_create_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await change_thread_create_permission.new(
+        db=db,
+        name="ChangeThread",
+        namespace="Core",
+        action=PermissionAction.CREATE.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to create a new comment",
+    )
+    await change_thread_create_permission.save(db=db)
+
+    role_name = "Thread Comment"
+    role = await Node.init(db=db, schema=CoreAccountRole)
+    await role.new(
+        db=db,
+        name=role_name,
+        permissions=[thread_comment_create_permission, change_thread_view_permission, change_thread_create_permission],
+    )
+    await role.save(db=db)
+    log.info(f"Created thread comment role: {role_name}")
+
+    return role
+
+
 async def create_anonymous_role(db: InfrahubDatabase) -> CoreAccountRole:
     deny_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await deny_permission.new(
@@ -506,8 +553,12 @@ async def create_default_account_groups(
 
     default_role = await create_default_role(db=db)
     proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
+    thread_comment_role = await create_thread_comment_role(db=db)
     await create_accounts_group(
-        db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts or []
+        db=db,
+        name="Infrahub Users",
+        roles=[default_role, proposed_change_reviewer_role, thread_comment_role],
+        accounts=accounts or [],
     )
 
 
