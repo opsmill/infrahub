@@ -24,7 +24,8 @@ export function useDeleteBranchesMutation() {
         };
       });
 
-      await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.list({}) });
+      await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.count() });
     },
   });
 }

@@ -45,12 +45,11 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
       if (result.deleted.length > 0) {
         const queryStringParams = getCurrentQsp();
         const currentBranch = queryStringParams.get(QSP.BRANCH);
-        const isCurrentBranchDeleted =
-          currentBranch && result.deleted.includes(currentBranch);
+        const isCurrentBranchDeleted = currentBranch && result.deleted.includes(currentBranch);
 
         if (isCurrentBranchDeleted) {
           const path = constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }]);
-          navigate(path);
+          navigate(path, { replace: true });
         }
       }
     } catch {
