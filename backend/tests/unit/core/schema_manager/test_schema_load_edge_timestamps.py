@@ -25,7 +25,7 @@ def create_updated_schema(branch: Branch) -> SchemaBranch:
     new_schema = current_schema.duplicate()
 
     # Get a duplicate of the Criticality node to modify
-    node = new_schema.get(name="BuiltinCriticality", duplicate=False)
+    node = new_schema.get(name="TestingCriticality", duplicate=False)
 
     # Update node property
     node.label = "Updated Criticality"
@@ -53,7 +53,7 @@ def create_updated_schema(branch: Branch) -> SchemaBranch:
     tags_rel = node.get_relationship(name="tags")
     tags_rel.label = "Updated Tags"
 
-    new_schema.set(name="BuiltinCriticality", schema=node)
+    new_schema.set(name="TestingCriticality", schema=node)
     new_schema.process()
 
     return new_schema
@@ -158,7 +158,7 @@ async def test_schema_load_edges_use_at_timestamp(
 
     schema_with_deletes = update_schema_with_deletes(
         branch=default_branch,
-        node_kind="BuiltinCriticality",
+        node_kind="TestingCriticality",
         attribute_name="priority",  # Delete the attribute we added in step 5
         relationship_name="secondary_tag",  # Delete the relationship we added in step 5
     )
