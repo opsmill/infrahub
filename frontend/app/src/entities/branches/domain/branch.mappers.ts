@@ -15,6 +15,7 @@ export type InfrahubBranchResponse = {
 // Base fields present in both list and detail views
 interface BranchBase {
   id: string;
+  __typename: "Branch";
   name: string;
   description?: string | null;
   branched_from?: string | null;
@@ -60,6 +61,7 @@ export function mapToBranchListItem({
 }: MapToBranchListItemParams): BranchListItem {
   return {
     id: node.id,
+    __typename: "Branch",
     name: node.name.value,
     description: node.description?.value,
     branched_from: node.branched_from?.value,
@@ -77,6 +79,7 @@ export function mapToBranchListItem({
 export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
   return {
     id: node.id,
+    __typename: "Branch",
     name: node.name.value,
     description: node.description?.value,
     origin_branch: node.origin_branch?.value,
