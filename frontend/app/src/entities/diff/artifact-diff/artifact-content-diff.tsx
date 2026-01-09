@@ -1,5 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
-import { Pencil } from "lucide-react";
+import { PencilLineIcon } from "lucide-react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
@@ -336,7 +336,7 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
             className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
             onClick={handleClick}
           >
-            <Pencil className="h-3 w-3" />
+            <PencilLineIcon className="h-3 w-3" />
           </Button>
         )}
       </>

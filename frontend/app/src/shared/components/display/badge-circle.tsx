@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { XIcon } from "lucide-react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -141,7 +141,7 @@ export const BadgeCircle = (props: tBadgeCircleProps) => {
 
       {onDelete && (
         <div className="ml-2 flex flex-col justify-center">
-          <X className="h-4 w-4 text-gray-500" aria-hidden="true" />
+          <XIcon className="h-4 w-4 text-gray-500" aria-hidden="true" />
         </div>
       )}
     </span>
