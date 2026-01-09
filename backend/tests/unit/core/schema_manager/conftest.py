@@ -247,7 +247,7 @@ def schema_criticality_tag():
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -276,7 +276,7 @@ def schema_criticality_tag():
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
