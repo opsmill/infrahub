@@ -100,9 +100,9 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
                 )
                 attr = node.get_attribute(name=self.new_attribute_schema.name)
                 attr.value = number
-                attr.source = number_pool.id
+                attr.set_source(number_pool)
 
-            await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
+                await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
 
         if db.is_transaction:
             await allocate_numbers(db=db)
