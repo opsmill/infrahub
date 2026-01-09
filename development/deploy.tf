@@ -211,6 +211,7 @@ podLabels:
   infrahub/service: message-queue
 image:
   repository: bitnamilegacy/rabbitmq
+  tag: 4.1.3-debian-12-r1
 auth:
   username: infrahub
   password: infrahub
@@ -433,6 +434,7 @@ resource "helm_release" "cache_ha" {
 nameOverride: cache
 image:
   repository: bitnamilegacy/redis
+  tag: 8.2.1-debian-12-r0
 architecture: replication
 auth:
   enabled: false
@@ -452,6 +454,7 @@ sentinel:
   enabled: true
   image:
     repository: bitnamilegacy/redis-sentinel
+    tag: 8.2.1-debian-12-r0
 EOT
   ]
 }
