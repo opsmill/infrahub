@@ -98,7 +98,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
                 number = await number_pool.get_resource(
                     db=db, branch=branch, node=node, attribute=self.new_attribute_schema, at=at
                 )
-                attr = getattr(node, self.new_attribute_schema.name)
+                attr = node.get_attribute(name=self.new_attribute_schema.name)
                 attr.value = number
                 attr.source = number_pool.id
 
