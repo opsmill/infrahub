@@ -14,6 +14,7 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.relationship import (
@@ -269,7 +270,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     rel_schema = person_schema.get_relationship("tags")
@@ -634,7 +635,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
@@ -1099,7 +1100,7 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     query = await RelationshipGetPeerQuery.init(
@@ -1136,7 +1137,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
@@ -1178,7 +1179,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Builtin2NewTag", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     # delete other tag relationship

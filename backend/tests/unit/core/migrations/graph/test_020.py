@@ -1,5 +1,6 @@
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m020_duplicate_edges import Migration020
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -65,7 +66,7 @@ class TestDuplicateEdgesDeleted:
 
         # run the migration
         migration = Migration020()
-        await migration.execute(db=db, at=Timestamp())
+        await migration.execute(migration_input=MigrationInput(db=db))
         await migration.validate_migration(db=db)
 
         # validate no duplicate edges

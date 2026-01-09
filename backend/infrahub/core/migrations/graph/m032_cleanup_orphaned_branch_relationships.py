@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import DeleteBranchRelationshipsQuery
 from infrahub.log import get_logger
@@ -10,7 +10,6 @@ from infrahub.log import get_logger
 from ..shared import ArbitraryMigration
 
 if TYPE_CHECKING:
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -69,7 +68,8 @@ class Migration032(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         migration_result = MigrationResult()
 
         try:

@@ -6,6 +6,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m040_duplicated_attributes import Migration040
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -81,7 +82,7 @@ class TestMigration040:
         await camry_branch.save(db=db)
 
         migration = Migration040.init(db=db)
-        result = await migration.execute(db=db, at=Timestamp())
+        result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not result.errors
 
         # validate the result

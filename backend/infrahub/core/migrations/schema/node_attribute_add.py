@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.node import Node
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
@@ -12,16 +11,14 @@ from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
 from ..query.attribute_add import AttributeAddQuery
-from ..shared import AttributeSchemaMigration, MigrationResult
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
-    from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
-    from ...timestamp import Timestamp
 
 
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuery):
@@ -62,26 +59,25 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
-        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         if self.new_attribute_schema.inherited is True:
             return MigrationResult()
-        return await super().execute(db=db, branch=branch, at=at, queries=queries, user_id=user_id)
+        return await super().execute(migration_input=migration_input, branch=branch, queries=queries)
 
     async def execute_post_queries(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         result: MigrationResult,
         branch: Branch,
-        at: Timestamp,
-        user_id: str,  # noqa: ARG002
     ) -> MigrationResult:
         if self.new_attribute_schema.kind != "NumberPool":
             return result
+
+        db = migration_input.db
+        at = migration_input.at
 
         number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(
             db=db,

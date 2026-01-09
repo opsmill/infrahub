@@ -5,6 +5,7 @@ from infrahub.core.migrations.schema.attribute_kind_update import (
     AttributeKindUpdateMigration,
     AttributeKindUpdateMigrationQuery,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
@@ -105,7 +106,7 @@ async def test_migration_no_change_when_same_index_status(db: InfrahubDatabase, 
     )
 
     # Migration should return early without executing any queries
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 0
 
@@ -140,7 +141,7 @@ async def test_migration_edge_timestamps(db: InfrahubDatabase, default_branch: B
         new_node_schema=new_car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="description"),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
 
     # 4. Validate edge timestamps

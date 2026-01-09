@@ -9,6 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema, SchemaRoot
@@ -1212,7 +1213,7 @@ async def test_query_multiple_filters(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
 
     query05 = """

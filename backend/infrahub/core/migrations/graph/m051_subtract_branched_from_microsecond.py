@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.branch import Branch
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -17,7 +17,8 @@ class Migration051(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         result = MigrationResult()
 
         branches = await Branch.get_list(db=db)

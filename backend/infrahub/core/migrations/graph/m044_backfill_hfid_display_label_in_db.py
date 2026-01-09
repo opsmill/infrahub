@@ -11,7 +11,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipDirection
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.shared import MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
@@ -711,7 +711,9 @@ class Migration044(MigrationRequiringRebase):
 
         print("done")
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
@@ -824,7 +826,9 @@ class Migration044(MigrationRequiringRebase):
 
             offset += self.update_batch_size
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch, at: Timestamp) -> MigrationResult:
+    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         default_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)

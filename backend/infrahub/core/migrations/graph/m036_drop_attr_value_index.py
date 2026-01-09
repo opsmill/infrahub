@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.constants.database import IndexType
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.database import DatabaseType
 from infrahub.database.index import IndexItem
@@ -12,7 +12,6 @@ from infrahub.database.neo4j import IndexManagerNeo4j
 from ..shared import GraphMigration
 
 if TYPE_CHECKING:
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -24,7 +23,8 @@ class Migration036(GraphMigration):
     queries: Sequence[type[Query]] = []
     minimum_version: int = 35
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         result = MigrationResult()
 
         # Only execute this migration for Neo4j

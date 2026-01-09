@@ -40,7 +40,7 @@ from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
-from infrahub.core.migrations.shared import get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, get_migration_console
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
@@ -358,7 +358,7 @@ async def migrate_database(
     root_node = await get_root_node(db=db)
 
     for migration in migrations:
-        execution_result = await migration.execute(db=db, at=Timestamp())
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         validation_result = None
 
         if execution_result.success:

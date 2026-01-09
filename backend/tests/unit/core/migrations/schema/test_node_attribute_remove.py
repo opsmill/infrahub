@@ -9,6 +9,7 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
     NodeAttributeRemoveMigrationQuery01,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
@@ -130,7 +131,7 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
 

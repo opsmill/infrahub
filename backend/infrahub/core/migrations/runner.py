@@ -7,7 +7,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import MIGRATIONS
 
 from .exceptions import MigrationFailureError
-from .shared import MigrationRequiringRebase
+from .shared import MigrationInput, MigrationRequiringRebase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -41,7 +41,9 @@ class MigrationRunner:
             return
 
         for migration in self.applicable_migrations:
-            execution_result = await migration.execute_against_branch(db=db, branch=self.branch, at=at)
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=db, at=at), branch=self.branch
+            )
             validation_result = None
 
             if execution_result.success:

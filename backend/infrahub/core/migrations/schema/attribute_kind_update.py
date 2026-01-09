@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
-from ..shared import AttributeSchemaMigration, MigrationResult
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -168,15 +166,13 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
-        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         is_indexed_previous = is_large_attribute_type(self.previous_attribute_schema.kind)
         is_indexed_new = is_large_attribute_type(self.new_attribute_schema.kind)
         if is_indexed_previous is is_indexed_new:
             return MigrationResult()
 
-        return await super().execute(db=db, branch=branch, at=at, queries=queries, user_id=user_id)
+        return await super().execute(migration_input=migration_input, branch=branch, queries=queries)

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m047_backfill_or_null_display_label import Migration047
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.query.node import NodeListGetAttributeQuery
-from infrahub.core.timestamp import Timestamp
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -61,7 +61,7 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
             validation_result = await migration.validate_migration(db=dbs)
@@ -95,7 +95,7 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         final_values = await self.get_attribute_values_from_db(
@@ -117,7 +117,7 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         first_values = await self.get_attribute_values_from_db(db=db, branch=default_branch, node_ids=node_ids)
@@ -125,7 +125,7 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         second_values = await self.get_attribute_values_from_db(db=db, branch=default_branch, node_ids=node_ids)
@@ -160,7 +160,9 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute_against_branch(db=dbs, branch=test_branch, at=Timestamp())
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=dbs), branch=test_branch
+            )
             assert not execution_result.errors
 
         branch_final_values = await self.get_attribute_values_from_db(
@@ -193,7 +195,7 @@ class TestMigration047(TestInfrahubApp):
         # Migrate main
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         main_values = await self.get_attribute_values_from_db(
@@ -207,7 +209,9 @@ class TestMigration047(TestInfrahubApp):
         # Migrate branch
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute_against_branch(db=dbs, branch=test_branch, at=Timestamp())
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=dbs), branch=test_branch
+            )
             assert not execution_result.errors
 
         branch_values = await self.get_attribute_values_from_db(
@@ -229,7 +233,7 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         main_values = await self.get_attribute_values_from_db(
@@ -241,7 +245,9 @@ class TestMigration047(TestInfrahubApp):
 
         async with db.start_session() as dbs:
             migration = Migration047()
-            execution_result = await migration.execute_against_branch(db=dbs, branch=test_branch, at=Timestamp())
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=dbs), branch=test_branch
+            )
             assert not execution_result.errors
 
         branch_values = await self.get_attribute_values_from_db(

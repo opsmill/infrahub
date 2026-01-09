@@ -6,6 +6,7 @@ from infrahub.core.migrations.schema.node_remove import (
     NodeRemoveMigrationQueryIn,
     NodeRemoveMigrationQueryOut,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
@@ -110,7 +111,7 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
         new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
 
@@ -152,7 +153,7 @@ async def test_migration_agnostic_relationship(
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label="TestCar") == 1

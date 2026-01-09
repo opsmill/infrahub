@@ -16,7 +16,7 @@ from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db impor
     UpdateAttributeValuesQuery,
 )
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 
@@ -25,7 +25,6 @@ from .load_schema_branch import get_or_load_schema_branch
 if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -135,13 +134,14 @@ class Migration046(ArbitraryMigration):
 
         print("done")
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         try:
-            return await self._do_execute(db=db, at=at)
+            return await self._do_execute(migration_input=migration_input)
         except Exception as exc:
             return MigrationResult(errors=[str(exc)])
 
-    async def _do_execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
+    async def _do_execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         console = get_migration_console()
         result = MigrationResult()
 
@@ -189,7 +189,7 @@ class Migration046(ArbitraryMigration):
 
             for migration in migrations:
                 try:
-                    execution_result = await migration.execute(db=db, branch=global_branch, at=at)
+                    execution_result = await migration.execute(migration_input=migration_input, branch=global_branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:

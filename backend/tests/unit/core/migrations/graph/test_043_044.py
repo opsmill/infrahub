@@ -12,11 +12,11 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m043_create_hfid_display_label_in_db import Migration043
 from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import Migration044
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.schema import load_schema
@@ -616,7 +616,9 @@ DETACH DELETE attr
         await branch.rebase(db=db)
         async with db.start_session() as dbs:
             migration = Migration043(migrations=[])
-            execution_result = await migration.execute_against_branch(db=dbs, branch=branch, at=Timestamp())
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=dbs), branch=branch
+            )
             assert not execution_result.errors
 
         branch_schema_branch = SchemaBranch(
@@ -635,7 +637,9 @@ DETACH DELETE attr
 
         async with db.start_session() as dbs:
             migration = Migration044()
-            execution_result = await migration.execute_against_branch(db=dbs, branch=branch, at=Timestamp())
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=dbs), branch=branch
+            )
             assert not execution_result.errors
 
     async def _validate_branch_updates(
@@ -678,7 +682,7 @@ DETACH DELETE attr
         # test adding display label and HFID attributes on default branch
         async with db.start_session() as dbs:
             migration = Migration043(migrations=[])
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
             validation_result = await migration.validate_migration(db=dbs)
@@ -687,7 +691,7 @@ DETACH DELETE attr
         # test backfilling display label and HFID attributes on default branch
         async with db.start_session() as dbs:
             migration = Migration044()
-            execution_result = await migration.execute(db=dbs, at=Timestamp())
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
             validation_result = await migration.validate_migration(db=dbs)

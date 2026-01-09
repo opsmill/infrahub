@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.timestamp import Timestamp
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
@@ -59,7 +59,8 @@ class Migration034(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         try:
             initialize_lock()
             await initialization(db=db)

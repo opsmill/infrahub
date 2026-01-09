@@ -4,14 +4,13 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.diff.repository.repository import DiffRepository
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.dependencies.registry import build_component_registry, get_component_registry
 from infrahub.log import get_logger
 
 from ..shared import ArbitraryMigration
 
 if TYPE_CHECKING:
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -26,7 +25,8 @@ class Migration015(ArbitraryMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         default_branch = registry.get_branch_from_registry()
         build_component_registry()
         component_registry = get_component_registry()

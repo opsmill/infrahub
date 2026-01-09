@@ -2,7 +2,7 @@ from infrahub.constants.database import IndexType
 from infrahub.core.migrations.graph.m014_remove_index_attr_value import (
     Migration014,
 )
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import DatabaseType, InfrahubDatabase
 from infrahub.database.index import IndexItem
 from infrahub.database.memgraph import IndexManagerMemgraph
@@ -29,7 +29,7 @@ async def test_migration_014(
 
     async with db.start_session() as dbs:
         migration = Migration014()
-        execution_result = await migration.execute(db=dbs, at=Timestamp())
+        execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
         assert not execution_result.errors
 
         validation_result = await migration.validate_migration(db=dbs)

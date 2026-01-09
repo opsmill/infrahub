@@ -4,8 +4,8 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m032_cleanup_orphaned_branch_relationships import Migration032
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 
@@ -43,7 +43,7 @@ SET e.branch = "dead-branch"
 
     # Step 4: Run Migration032
     migration = Migration032()
-    execution_result = await migration.execute(db=db, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)

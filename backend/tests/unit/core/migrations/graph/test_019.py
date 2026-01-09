@@ -1,9 +1,10 @@
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import Migration019
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models
-from infrahub.core.timestamp import Timestamp, current_timestamp
+from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.db_validation import validate_node_relationships
 
@@ -91,7 +92,7 @@ async def test_migration_019(
     # but a manual test confirmed migration solves this issue.
 
     migration = Migration019()
-    await migration.execute(db=db, at=Timestamp())
+    await migration.execute(migration_input=MigrationInput(db=db))
     await migration.validate_migration(db=db)
 
     # Verify edges are correct, ie:
@@ -161,7 +162,7 @@ async def test_incorrectly_deleted_aware_nodes_and_relationship(
     )
 
     migration = Migration019()
-    await migration.execute(db=db, at=Timestamp())
+    await migration.execute(migration_input=MigrationInput(db=db))
     await migration.validate_migration(db=db)
 
     await validate_node_relationships(node=car, branch=branch, db=db)
@@ -201,7 +202,7 @@ async def test_incorrectly_deleted_agnostic_node(
     )
 
     migration = Migration019()
-    await migration.execute(db=db, at=Timestamp())
+    await migration.execute(migration_input=MigrationInput(db=db))
     await migration.validate_migration(db=db)
 
     await validate_node_relationships(node=agnostic_car, branch=branch, db=db)
@@ -240,7 +241,7 @@ async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_
     )
 
     migration = Migration019()
-    await migration.execute(db=db, at=Timestamp())
+    await migration.execute(migration_input=MigrationInput(db=db))
     await migration.validate_migration(db=db)
 
     await validate_node_relationships(node=aware_person, branch=branch, db=db)

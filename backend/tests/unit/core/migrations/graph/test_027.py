@@ -1,5 +1,5 @@
 from infrahub.core.migrations.graph.m027_delete_isolated_nodes import Migration027
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import InfrahubDatabase
 
 
@@ -22,7 +22,7 @@ async def test_migration_027(
     assert len(results) == 1
 
     migration = Migration027()
-    execution_result = await migration.execute(db=db, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)

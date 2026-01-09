@@ -3,7 +3,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub import config
 from infrahub.core.migrations.graph.m031_check_number_attributes import Migration031
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.migrations.shared import MigrationInput
 from tests.helpers.test_app import TestInfrahubApp
 
 schema_number_parameters = {
@@ -43,14 +43,14 @@ class TestMigration031(TestInfrahubApp):
 
         # Run the migration without strict mode, nothing should happen
         migration = Migration031(db=db)
-        execution_result = await migration.execute(db=db, at=Timestamp())
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors
 
         # Run the migration with strict mode, invalid node should show up
         config.SETTINGS.main.schema_strict_mode = True
-        execution_result = await migration.execute(db=db, at=Timestamp())
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert len(execution_result.errors) == 2
         assert (
             execution_result.errors[0]
@@ -70,7 +70,7 @@ class TestMigration031(TestInfrahubApp):
         # Run the migration with strict mode to make sure it doesn't raise an error now that the node has been fixed
         config.SETTINGS.main.schema_strict_mode = True
         migration = Migration031(db=db)
-        execution_result = await migration.execute(db=db, at=Timestamp())
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 
         config.SETTINGS.main.schema_strict_mode = strict_mode_original_value

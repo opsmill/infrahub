@@ -11,9 +11,9 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m039_ipam_reconcile import Migration039
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -228,7 +228,7 @@ class TestMigration039(TestInfrahubApp):
         branch_address_updates: dict[str, IpAddressDetails],
     ) -> None:
         migration = WrappedMigration039()
-        await migration.execute(db=db, at=Timestamp())
+        await migration.execute(migration_input=MigrationInput(db=db))
 
         # validate that we only reconciled on the branch
         assert set(migration._reconcilers_by_branch.keys()) == {self.branch_name, self.branch_2_name}

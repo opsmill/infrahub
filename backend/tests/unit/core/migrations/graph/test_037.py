@@ -9,10 +9,10 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m037_index_attr_vals import Migration037
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -473,7 +473,7 @@ REMOVE avi:AttributeValueIndexed
         )
 
         migration = Migration037()
-        await migration.execute(db=db, at=Timestamp())
+        await migration.execute(migration_input=MigrationInput(db=db))
 
         await self._verify_all(
             db=db,

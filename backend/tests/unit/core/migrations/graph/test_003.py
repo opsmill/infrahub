@@ -1,9 +1,9 @@
 import pytest
 
 from infrahub.core.migrations.graph.m003_relationship_parent_optional import Migration003, Migration003Query01
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 
@@ -54,7 +54,7 @@ async def test_migration_003(
     nbr_rels_before = await count_relationships(db=db)
 
     migration = Migration003()
-    execution_result = await migration.execute(db=db, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)

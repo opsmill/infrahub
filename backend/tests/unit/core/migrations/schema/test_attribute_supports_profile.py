@@ -8,6 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.attribute_supports_profile import (
     AttributeSupportsProfileUpdateMigration,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.timestamp import Timestamp
@@ -37,7 +38,7 @@ async def test_migration_no_change_when_support_profiles_unchanged(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 0
 
@@ -63,7 +64,7 @@ async def test_migration_no_change_for_new_attribute(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 0
 
@@ -96,7 +97,7 @@ async def test_migration_disable_support_profiles(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch, at=Timestamp())
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
 
     fresh_car_profle = await NodeManager.get_one(db=db, id=car_profile1_main.id)
@@ -135,7 +136,7 @@ async def test_migration_edge_timestamps(
         new_node_schema=new_car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch, at=at)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
 
     # 4. Validate edge timestamps

@@ -7,7 +7,7 @@ from rich import print as rprint
 from infrahub.core.branch import Branch
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.dependencies.registry import build_component_registry, get_component_registry
 from infrahub.log import get_logger
@@ -15,7 +15,6 @@ from infrahub.log import get_logger
 from ..shared import ArbitraryMigration
 
 if TYPE_CHECKING:
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -141,7 +140,8 @@ class Migration041(ArbitraryMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         root_node = await get_root_node(db=db)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)

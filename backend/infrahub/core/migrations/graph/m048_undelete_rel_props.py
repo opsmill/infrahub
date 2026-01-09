@@ -3,11 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.graph.m041_deleted_dup_edges import DeleteDuplicatedRelationshipEdges
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -144,7 +143,9 @@ class Migration048(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase, at: Timestamp) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         console = get_migration_console()
 
         console.log("Deleting duplicate edges for all Relationships", end="...")
