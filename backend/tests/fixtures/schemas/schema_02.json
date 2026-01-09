@@ -572,7 +572,7 @@
         },
         {
             "name": "Criticality",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "description": "Level of criticality expressed from 1 to 10.",
             "default_filter": "name__value",
             "order_by": [
@@ -676,11 +676,11 @@
             "label": "Criticality",
             "inherit_from": [],
             "branch": "aware",
-            "kind": "BuiltinCriticality"
+            "kind": "TestingCriticality"
         },
         {
             "name": "Tag",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "description": "Standard Tag object to attach to other objects to provide some context.",
             "default_filter": "name__value",
             "order_by": [
@@ -756,7 +756,7 @@
             "label": "Tag",
             "inherit_from": [],
             "branch": "aware",
-            "kind": "BuiltinTag"
+            "kind": "TestingTag"
         },
         {
             "name": "Organization",
@@ -825,7 +825,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -2006,7 +2006,7 @@
         },
         {
             "name": "Status",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "description": "Represent the status of an object: active, maintenance",
             "default_filter": "name__value",
             "order_by": [
@@ -2099,11 +2099,11 @@
             "label": "Status",
             "inherit_from": [],
             "branch": "aware",
-            "kind": "BuiltinStatus"
+            "kind": "TestingStatus"
         },
         {
             "name": "Role",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "description": "Represent the role of an object",
             "default_filter": "name__value",
             "order_by": [
@@ -2196,11 +2196,11 @@
             "label": "Role",
             "inherit_from": [],
             "branch": "aware",
-            "kind": "BuiltinRole"
+            "kind": "TestingRole"
         },
         {
             "name": "Location",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "description": "A location represent a physical element: a building, a site, a city",
             "default_filter": "name__value",
             "order_by": [
@@ -2265,7 +2265,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -2456,7 +2456,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -2681,7 +2681,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -2858,7 +2858,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -3079,7 +3079,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -3204,7 +3204,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -3399,7 +3399,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
@@ -4336,7 +4336,7 @@
                 },
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "kind": "Attribute",
                     "label": null,
                     "description": null,

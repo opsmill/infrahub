@@ -1730,10 +1730,10 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
 
 
 async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> None:
-    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
+    t1 = await Node.init(db=db, schema="TestingTag")
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
+    t2 = await Node.init(db=db, schema="TestingTag")
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
 
@@ -1744,7 +1744,7 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
 
     query = """
     query {
-        BuiltinTag {
+        TestingTag {
             edges {
                 node {
                     name {
@@ -1767,14 +1767,14 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
 
     assert result.errors is None
     assert result.data
-    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
+    assert len(result.data["TestingTag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["TestingTag"]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
     query = """
     query {
-        BuiltinTag {
+        TestingTag {
             edges {
                 node {
                     name {
@@ -1797,8 +1797,8 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
 
     assert result.errors is None
     assert result.data
-    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
+    assert len(result.data["TestingTag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["TestingTag"]["edges"]])
     assert names == ["Blue", "Red"]
 
 

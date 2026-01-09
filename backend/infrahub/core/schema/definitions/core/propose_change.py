@@ -93,16 +93,6 @@ core_proposed_change = NodeSchema(
             identifier="coreaccount__proposedchange_reviewed_by",
         ),
         Rel(
-            name="created_by",
-            peer=InfrahubKind.GENERICACCOUNT,
-            optional=True,
-            cardinality=Cardinality.ONE,
-            kind=RelKind.ATTRIBUTE,
-            branch=BranchSupportType.AGNOSTIC,
-            identifier="coreaccount__proposedchange_created_by",
-            read_only=True,
-        ),
-        Rel(
             name="comments",
             peer=InfrahubKind.CHANGECOMMENT,
             kind=RelKind.COMPONENT,

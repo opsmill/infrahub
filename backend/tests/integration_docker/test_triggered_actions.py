@@ -14,7 +14,9 @@ from infrahub_sdk.protocols import (
     CoreNodeTriggerRule,
     CoreStandardGroup,
 )
+from infrahub_sdk.schema import AttributeSchema as Attr
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
+from infrahub_sdk.schema.main import AttributeKind
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.testing.schemas.car_person import (
@@ -33,7 +35,29 @@ from tests.helpers.fixtures import get_fixtures_dir
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
+class TestingTag(BuiltinTag): ...
+
+
 class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
+    @pytest.fixture(scope="class")
+    def testing_tag_base(self) -> NodeSchema:
+        return NodeSchema(
+            name="Tag",
+            namespace="Testing",
+            description="Standard Tag object to attach to other objects to provide some context.",
+            include_in_menu=True,
+            icon="mdi:tag-multiple",
+            label="Tag",
+            default_filter="name__value",
+            order_by=["name__value"],
+            display_labels=["name__value"],
+            uniqueness_constraints=[["name__value"]],
+            attributes=[
+                Attr(name="name", kind=AttributeKind.TEXT, unique=True),
+                Attr(name="description", kind=AttributeKind.TEXT, optional=True),
+            ],
+        )
+
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
         return "local"
@@ -50,10 +74,11 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         schema_car_base: NodeSchema,
         schema_person_artifact: NodeSchema,
         schema_manufacturer_base: NodeSchema,
+        testing_tag_base: NodeSchema,
     ) -> SchemaRoot:
         return SchemaRoot(
             version="1.0",
-            nodes=[schema_person_artifact, schema_car_base, schema_manufacturer_base],
+            nodes=[schema_person_artifact, schema_car_base, schema_manufacturer_base, testing_tag_base],
         )
 
     @pytest.fixture(scope="class")
@@ -120,7 +145,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         group_action = await client.create(kind=CoreGroupAction, name="add-to-people", group=group_people)
         await group_action.save()
 
-        tags_original = await client.all(kind=BuiltinTag)
+        tags_original = await client.all(kind=TestingTag)
         tag_names_original = [tag.name.value for tag in tags_original]
 
         node_trigger = await client.create(
@@ -190,7 +215,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
 
         await group_people.members.fetch()
         for _ in range(30):
-            tags_updated = await client.all(kind=BuiltinTag)
+            tags_updated = await client.all(kind=TestingTag)
             tag_names_updated = [tag.name.value for tag in tags_updated]
             if len(tag_names_updated) > len(tag_names_original):
                 break
