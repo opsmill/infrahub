@@ -2245,38 +2245,40 @@ class NodeGetListByAttributeValueQuery(Query):
         # 2. Traverses from matching values back to their owning nodes
         # 3. Filters nodes by branch and status
         query = """
-        MATCH (av:AttributeValueIndexed)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n)
+        // --------------------------
+        // start with all possible Node-Attribute-AttributeValue combinations
+        // --------------------------
+        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE %(search_predicate)s %(kind_filter)s
-        AND (%(branch_filter_hv)s)
-        AND (%(branch_filter_ha)s)
-        WITH n, attr, hv, ha
-        // Get the latest HAS_VALUE relationship for this attribute on this branch
+        WITH DISTINCT n, attr, av
+        // --------------------------
+        // filter HAS_VALUE edges
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr
+        WHERE r.status = "active"
+        // --------------------------
+        // filter HAS_ATTRIBUTE edges
+        // --------------------------
         CALL (n, attr) {
-            MATCH (attr)<-[ha2:HAS_ATTRIBUTE]-(n)
-            WHERE (%(branch_filter_ha2)s)
-            RETURN ha2
-            ORDER BY ha2.branch_level DESC, ha2.from DESC
+            MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, ha2, attr
-        WHERE ha2.status = "active"
-        // Verify the node is active on this branch
-        CALL (n) {
-            MATCH (root:Root)<-[rp:IS_PART_OF]-(n)
-            WHERE (%(branch_filter_rp)s)
-            RETURN rp
-            ORDER BY rp.branch_level DESC, rp.from DESC
-            LIMIT 1
-        }
-        WITH n, rp
-        WHERE rp.status = "active"
+        WITH n, attr, r
+        WHERE r.status = "active"
         """ % {
             "search_predicate": search_predicate,
             "kind_filter": kind_filter,
-            "branch_filter_hv": branch_filter.replace("r.", "hv."),
-            "branch_filter_ha": branch_filter.replace("r.", "ha."),
-            "branch_filter_ha2": branch_filter.replace("r.", "ha2."),
-            "branch_filter_rp": branch_filter.replace("r.", "rp."),
+            "branch_filter": branch_filter,
         }
 
         self.add_to_query(query)
