@@ -1,7 +1,7 @@
 import { gql, useQuery } from "@apollo/client";
-import { PencilLineIcon } from "lucide-react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
+import { PencilLineIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 

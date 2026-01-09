@@ -1,6 +1,13 @@
 // type AlertProps = {};
 
-import { CircleCheckIcon, InfoIcon, LightbulbIcon, TriangleAlertIcon, XCircleIcon, XIcon } from "lucide-react";
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  LightbulbIcon,
+  TriangleAlertIcon,
+  XCircleIcon,
+  XIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import Accordion from "@/shared/components/display/accordion";
@@ -30,9 +37,7 @@ export const Alert = (props: AlertProps) => {
         return <CircleCheckIcon className="h-4 w-4 text-green-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.INFO: {
-        return (
-          <InfoIcon className="h-4 w-4 text-custom-blue-500" aria-hidden="true" />
-        );
+        return <InfoIcon className="h-4 w-4 text-custom-blue-500" aria-hidden="true" />;
       }
       case ALERT_TYPES.WARNING: {
         return <TriangleAlertIcon className="h-4 w-4 text-yellow-400" aria-hidden="true" />;
