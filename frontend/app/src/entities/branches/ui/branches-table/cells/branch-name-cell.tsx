@@ -23,7 +23,10 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
   const { isAuthenticated } = useAuth();
 
   return (
-    <StickyLeftCell className="h-auto min-h-14 items-start gap-1.5" data-testid="branch-identifier-cell">
+    <StickyLeftCell
+      className="h-auto min-h-14 items-start gap-1.5"
+      data-testid="branch-identifier-cell"
+    >
       {isAuthenticated && (
         <Checkbox
           isSelected={isSelected}

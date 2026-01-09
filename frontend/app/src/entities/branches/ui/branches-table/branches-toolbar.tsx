@@ -3,8 +3,8 @@ import { XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";

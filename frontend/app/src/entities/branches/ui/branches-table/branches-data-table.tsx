@@ -1,9 +1,4 @@
-import {
-  type ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -61,10 +56,7 @@ export function BranchesDataTable({
   return (
     <div className="grid content-start" style={style} {...props}>
       {selectedRows.length > 0 && (
-        <BranchesToolbar
-          selectedBranches={selectedRows}
-          onClose={table.resetRowSelection}
-        />
+        <BranchesToolbar selectedBranches={selectedRows} onClose={table.resetRowSelection} />
       )}
 
       {allHeaders.map((header) => {

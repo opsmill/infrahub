@@ -4,8 +4,8 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { sortByName } from "@/shared/utils/common";
 
 import { useGetBranchesPaginated } from "@/entities/branches/domain/get-branches.query";
-import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { BranchesEmpty } from "@/entities/branches/ui/branches-empty";
+import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
 
 interface BranchesTableProps {
