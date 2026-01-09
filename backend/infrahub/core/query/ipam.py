@@ -385,7 +385,7 @@ class IPv6PrefixSubnetFetchFree(Query):
                     // Increment end_block by 1 using binary string increment
                     ELSE
                         {
-                            cursor: reduce(
+                            cursor: reduce(s = "", c IN reduce(
                                 inc = {bits: split(r.end_block, ""), carry: 1, result: []},
                                 idx IN reverse(range(0, target_prefixlen - 1)) |
                                 {
@@ -401,7 +401,7 @@ class IPv6PrefixSubnetFetchFree(Query):
                                         ELSE ["1"] + inc.result
                                     END
                                 }
-                            ).result,
+                            ).result | s + c),
                             found: null
                         }
                 END
@@ -410,7 +410,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         WITH
             CASE
                 WHEN res.found IS NOT NULL THEN res.found
-                ELSE reduce(s = "", c IN res.cursor | s + c)
+                ELSE res.cursor
             END AS cursor_str,
             res.found AS found,
             target_prefixlen,
