@@ -269,7 +269,9 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=migration_time, user_id=test_user_id)
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+    )
     assert not execution_result.errors
 
     registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)

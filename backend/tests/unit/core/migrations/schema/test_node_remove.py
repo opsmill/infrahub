@@ -176,7 +176,9 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=migration_time, user_id=test_user_id)
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+    )
     assert not execution_result.errors
 
     # Query for the deleted Node and its edge metadata

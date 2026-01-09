@@ -399,7 +399,7 @@ class Branch(StandardNode):
     ) -> None:
         """Rebase the current Branch with its origin branch"""
 
-        at = Timestamp()
+        at = Timestamp(at)
 
         await self.rebase_graph(db=db, at=at)
 

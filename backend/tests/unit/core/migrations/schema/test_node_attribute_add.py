@@ -188,7 +188,7 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
     )
-    await remove_migration.execute(db=db, branch=branch, at=Timestamp())
+    await remove_migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
 
     test_user_id = "test-metadata-user"
     migration_time = Timestamp()
@@ -198,7 +198,9 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         previous_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=migration_time, user_id=test_user_id)
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+    )
     assert not execution_result.errors
 
     nodes = await NodeManager.get_many(

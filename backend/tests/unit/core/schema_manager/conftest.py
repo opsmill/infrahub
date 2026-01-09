@@ -259,14 +259,14 @@ def schema_criticality_tag():
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
