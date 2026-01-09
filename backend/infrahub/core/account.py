@@ -167,7 +167,7 @@ class AccountObjectPermissionQuery(Query):
     name: str = "account_object_permissions"
     type: QueryType = QueryType.READ
 
-    def __init__(self, account_id: str, **kwargs: Any):
+    def __init__(self, account_id: str, **kwargs: Any) -> None:
         self.account_id = account_id
         super().__init__(**kwargs)
 
@@ -311,7 +311,7 @@ class AccountRoleGlobalPermissionQuery(Query):
     name: str = "account_role_global_permissions"
     type: QueryType = QueryType.READ
 
-    def __init__(self, role_id: str, **kwargs: Any):
+    def __init__(self, role_id: str, **kwargs: Any) -> None:
         self.role_id = role_id
         super().__init__(**kwargs)
 
@@ -397,7 +397,7 @@ class AccountRoleObjectPermissionQuery(Query):
     name: str = "account_role_object_permissions"
     type: QueryType = QueryType.READ
 
-    def __init__(self, role_id: str, **kwargs: Any):
+    def __init__(self, role_id: str, **kwargs: Any) -> None:
         self.role_id = role_id
         super().__init__(**kwargs)
 
@@ -518,7 +518,7 @@ class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
     type: QueryType = QueryType.READ
 
-    def __init__(self, token: str, **kwargs: Any):
+    def __init__(self, token: str, **kwargs: Any) -> None:
         self.token = token
         super().__init__(**kwargs)
 

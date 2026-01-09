@@ -18,6 +18,7 @@ export function GeneratorRunButton({
   generatorId,
   targetNodeIds,
   children,
+  variant = "active",
   ...props
 }: GeneratorRunButtonProps) {
   const { isPending, mutate } = useRunGeneratorMutation();
@@ -55,7 +56,7 @@ export function GeneratorRunButton({
     <Button
       isLoading={isPending}
       disabled={isPending}
-      variant="active"
+      variant={variant}
       onClick={handleRunGenerator}
       {...props}
     >

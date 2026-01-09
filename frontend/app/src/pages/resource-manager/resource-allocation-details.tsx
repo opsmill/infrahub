@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Table } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";

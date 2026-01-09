@@ -24,7 +24,7 @@ import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { debounce } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
+import { GET_TASK_ITEMS } from "@/entities/tasks/api/getTasksItems";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 
 import { getStateBadge } from "./task-item-details";
@@ -52,7 +52,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     error,
     data = {},
     refetch,
-  } = useQuery(GET_TASKS, {
+  } = useQuery(GET_TASK_ITEMS, {
     variables: {
       search,
       branch,

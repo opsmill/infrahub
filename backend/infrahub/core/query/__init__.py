@@ -12,7 +12,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
 
 from infrahub import config
-from infrahub.core.constants import PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -159,7 +159,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]):
+    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]) -> None:
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -351,7 +351,8 @@ class Query:
         offset: int | None = None,
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
-    ):
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         if branch:
             self.branch = branch
 
@@ -366,6 +367,7 @@ class Query:
         self.limit = limit
         self.offset = offset
         self.order_by = order_by
+        self.user_id = user_id
 
         # Initialize internal variables
         self.params: dict = {}

@@ -207,6 +207,14 @@ class MainSettings(BaseSettings):
     def convert_to_path(cls, value: Path | str) -> Path:
         return Path(value) if isinstance(value, str) else value
 
+    @property
+    def infrahub_address(self) -> str:
+        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        if self.internal_address:
+            return self.internal_address
+
+        raise InitializationError()
+
 
 class FileSystemStorageSettings(BaseSettings):
     # Make variable lookup case-sensitive to avoid fetching $PATH value

@@ -4,6 +4,7 @@ import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
@@ -71,7 +72,7 @@ async def test_get_one_attribute_with_node_property(
     )
     await obj2.save(db=db)
 
-    obj = await NodeManager.get_one(db=db, id=obj2.id, include_source=True)
+    obj = await NodeManager.get_one(db=db, id=obj2.id, include_metadata=MetadataOptions.SOURCE)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -93,7 +94,7 @@ async def test_get_one_attribute_with_flag_property(
     db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
-    await obj1.new(db=db, name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False})
+    await obj1.new(db=db, name={"value": "low", "is_protected": True}, level={"value": 4})
     await obj1.save(db=db)
 
     obj = await NodeManager.get_one(db=db, id=obj1.id, fields={"name": True, "level": True, "color": True})
@@ -102,17 +103,14 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.db_id == obj1.db_id
     assert obj.name.value == "low"
     assert obj.name.id
-    assert obj.name.is_visible is True
     assert obj.name.is_protected is True
 
     assert obj.level.value == 4
     assert obj.level.id
-    assert obj.level.is_visible is False
     assert obj.level.is_protected is False
 
     assert obj.color.value == "#444444"
     assert obj.color.id
-    assert obj.color.is_visible is True
     assert obj.color.is_protected is False
 
 
@@ -164,7 +162,7 @@ async def test_get_one_relationship_with_flag_property(
         name="volt",
         nbr_seats=4,
         is_electric=True,
-        owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": p1.id, "_relation__is_protected": True},
     )
     await c1.save(db=db)
 
@@ -174,7 +172,7 @@ async def test_get_one_relationship_with_flag_property(
         name="accord",
         nbr_seats=5,
         is_electric=False,
-        owner={"id": p1.id, "_relation__is_visible": False},
+        owner={"id": p1.id},
     )
     await c2.save(db=db)
 
@@ -186,7 +184,6 @@ async def test_get_one_relationship_with_flag_property(
     c11_peer = await c11.owner.get_peer(db=db)
     assert c11_peer.id == p1.id
     rel = await c11.owner.get(db=db)
-    assert rel.is_visible is False
     assert rel.is_protected is True
 
     p11 = await NodeManager.get_one(db=db, id=p1.id)
@@ -195,8 +192,6 @@ async def test_get_one_relationship_with_flag_property(
 
     rels = await p11.cars.get(db=db)
     assert len(rels) == 2
-    assert rels[0].is_visible is False
-    assert rels[1].is_visible is False
 
 
 async def test_get_one_by_id_or_default_filter(

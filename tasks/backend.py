@@ -25,8 +25,8 @@ def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
-    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
+    exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 

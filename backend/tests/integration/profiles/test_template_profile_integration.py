@@ -5,8 +5,9 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -390,7 +391,11 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert obj["height"]["source"]["id"] == device_profile.id
 
         # Verify via direct database query
-        retrieved_template = await NodeManager.get_one(db=db, id=template_with_value.id, include_source=True)
+        retrieved_template = await NodeManager.get_one(
+            db=db,
+            id=template_with_value.id,
+            include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE),
+        )
         assert retrieved_template.airflow.value == "Rear to front"
         assert retrieved_template.airflow.is_from_profile is False
         assert retrieved_template.airflow.is_default is False
@@ -640,7 +645,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert obj["height"]["source"]["id"] == test_profile.id
 
         # Verify via database
-        retrieved = await NodeManager.get_one(db=db, id=test_template.id, include_source=True)
+        retrieved = await NodeManager.get_one(
+            db=db, id=test_template.id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert retrieved.airflow.value == "Explicitly set airflow"
         assert retrieved.airflow.is_from_profile is False
         assert retrieved.airflow.source_id is None
@@ -877,7 +884,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via database retrieval
         template_id = obj["id"]
-        retrieved = await NodeManager.get_one(db=db, id=template_id, include_source=True)
+        retrieved = await NodeManager.get_one(
+            db=db, id=template_id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert retrieved.mtu.value == 9000
         assert retrieved.mtu.is_from_profile is True
         assert retrieved.mtu.source_id == interface_profile.id
@@ -982,7 +991,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         assert result.errors is None
 
         # Verify device template has profile applied
-        retrieved_device_template = await NodeManager.get_one(db=db, id=device_template.id, include_source=True)
+        retrieved_device_template = await NodeManager.get_one(
+            db=db, id=device_template.id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert retrieved_device_template.role.value == "spine"
         assert retrieved_device_template.role.is_from_profile is True
         assert retrieved_device_template.role.source_id == device_component_profile.id
@@ -1193,14 +1204,18 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via direct database query
         device_id = obj["id"]
-        retrieved_device = await NodeManager.get_one(db=db, id=device_id, include_source=True)
+        retrieved_device = await NodeManager.get_one(
+            db=db, id=device_id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
 
         assert retrieved_device.role.value == "spine"
         assert retrieved_device.role.is_from_profile is True
         assert retrieved_device.role.source_id == device_component_profile.id
 
         # Get and verify interfaces
-        interfaces_rel = await retrieved_device.interfaces.get_peers(db=db, include_source=True)
+        interfaces_rel = await retrieved_device.interfaces.get_peers(
+            db=db, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert len(interfaces_rel) == 2
 
         for interface in interfaces_rel.values():

@@ -24,7 +24,7 @@ class SchemaAttributeUpdateQuery(Query):
         new_value: Any,
         previous_value: Any | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.attr_name = attribute_name
         self.node_name = node_name
         self.node_namespace = node_namespace

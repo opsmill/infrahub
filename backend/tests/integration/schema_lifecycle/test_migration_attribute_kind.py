@@ -97,10 +97,10 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
             "generate_template": True,
             "generate_profile": True,
             "attributes": [
-                {"name": "text_value", "kind": "Text", "optional": True},
-                {"name": "text_area_value", "kind": "TextArea", "optional": True},
-                {"name": "list_value", "kind": "List", "optional": True},
-                {"name": "url_value", "kind": "URL", "optional": True},
+                {"name": "text_value", "kind": "Text"},
+                {"name": "text_area_value", "kind": "TextArea"},
+                {"name": "list_value", "kind": "List"},
+                {"name": "url_value", "kind": "URL"},
             ],
         }
 

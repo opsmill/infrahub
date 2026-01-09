@@ -1,8 +1,8 @@
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import * as R from "remeda";
 
 import { TableCell } from "@/shared/components/table/table-cell";
+import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
@@ -81,10 +81,7 @@ export function getObjectFieldsColumns(
 ): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
-  const sortedColumns = R.pipe(
-    [...attributes, ...relationships],
-    R.sortBy((column) => column.order_weight ?? 0)
-  );
+  const sortedColumns = sortByOrderWeight([...attributes, ...relationships]);
 
   return sortedColumns.map((columnSchema) => {
     return columnHelper.accessor(columnSchema.name, {

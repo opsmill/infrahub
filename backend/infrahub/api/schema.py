@@ -366,6 +366,7 @@ async def load_schema(
                 diff=result.diff,
                 limit=result.diff.all,
                 update_db=True,
+                user_id=account_session.account_id,
             )
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
@@ -375,7 +376,7 @@ async def load_schema(
                 branch.is_isolated = True
                 log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
 
-            await branch.save(db=dbt)
+            await branch.save(db=dbt, user_id=account_session.account_id)
             updated_branch = registry.schema.get_schema_branch(name=branch.name)
             updated_hash = updated_branch.get_hash()
 
@@ -387,6 +388,7 @@ async def load_schema(
             new_schema=candidate_schema,
             previous_schema=origin_schema,
             migrations=result.migrations,
+            user_id=account_session.account_id,
         )
         migration_error_msgs = await service.workflow.execute_workflow(
             workflow=SCHEMA_APPLY_MIGRATION,

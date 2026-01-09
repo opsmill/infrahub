@@ -83,7 +83,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -171,7 +171,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -251,7 +251,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -350,7 +350,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
@@ -404,7 +404,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
@@ -451,7 +451,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
@@ -501,7 +501,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install tini
         run: "apt-get update && apt-get install -y tini"
       - name: "Setup git credentials"
@@ -541,7 +541,7 @@ jobs:
   #     !contains(needs.*.result, 'failure') &&
   #     !contains(needs.*.result, 'cancelled') &&
   #     needs.files-changed.outputs.backend == 'true'
-  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
   #   runs-on:
   #     group: huge-runners
   #   timeout-minutes: 45
@@ -568,7 +568,7 @@ jobs:
   #     - name: Set up Python
   #       uses: actions/setup-python@v6
   #       with:
-  #         python-version: '3.12'
+  #         python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
   #     - name: "Setup git credentials"
   #       run: "git config --global user.name 'Infrahub' && \
   #             git config --global user.email 'infrahub@opsmill.com' && \
@@ -602,7 +602,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -668,7 +668,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -694,7 +694,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -731,7 +731,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -768,7 +768,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -848,7 +848,7 @@ jobs:
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -883,7 +883,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -1060,7 +1060,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -1155,7 +1155,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \

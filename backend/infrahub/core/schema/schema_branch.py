@@ -93,7 +93,7 @@ class SchemaBranch:
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
-    ):
+    ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
@@ -236,8 +236,8 @@ class SchemaBranch:
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
-        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
-        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+        reversed_map_local: dict[str | None, str] = {v: k for k, v in local_kind_id_map.items()}
+        reversed_map_other: dict[str | None, str] = {v: k for k, v in other_kind_id_map.items()}
 
         for shared_id in shared_ids:
             local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
@@ -2225,6 +2225,45 @@ class SchemaBranch:
 
             self.set(name=node_name, schema=node)
 
+    def add_relationships_to_profile(self, profile: ProfileSchema, node: NodeSchema | GenericSchema) -> None:
+        # Remove previous relationships to account for new ones
+        profile.relationships = [r for r in profile.relationships if r.kind == RelationshipKind.PROFILE]
+
+        for relationship in node.relationships:
+            if not relationship.support_profiles:
+                continue
+
+            # Ignore relationship if it is part of a uniqueness constraint
+            ignore_relationship = False
+            for constraint in node.uniqueness_constraints or []:
+                if relationship.name in constraint:
+                    ignore_relationship = True
+                    break
+            if ignore_relationship:
+                continue
+
+            identifier = (
+                f"profile_{relationship.identifier}"
+                if relationship.identifier
+                else self._generate_identifier_string(profile.kind, relationship.peer)
+            )
+
+            profile.relationships.append(
+                RelationshipSchema(
+                    name=relationship.name,
+                    peer=relationship.peer,
+                    kind=relationship.kind,
+                    cardinality=relationship.cardinality,
+                    direction=relationship.direction,
+                    branch=relationship.branch,
+                    identifier=identifier,
+                    min_count=relationship.min_count,
+                    max_count=relationship.max_count,
+                    label=relationship.label,
+                    inherited=False,
+                )
+            )
+
     def manage_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
             # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
@@ -2244,6 +2283,7 @@ class SchemaBranch:
                 continue
 
             profile = self.generate_profile_from_node(node=node)
+            self.add_relationships_to_profile(profile=profile, node=node)
             self.set(name=profile.kind, schema=profile)
             profile_schema_kinds.add(profile.kind)
 
@@ -2318,13 +2358,13 @@ class SchemaBranch:
         core_name_attr = core_profile_schema.get_attribute(name="profile_name")
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
         profile_name_attr = name_attr_schema_class(
-            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+            **core_name_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_name_attr.branch = node.branch
         core_priority_attr = core_profile_schema.get_attribute(name="profile_priority")
         priority_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_priority_attr.kind)
         profile_priority_attr = priority_attr_schema_class(
-            **core_priority_attr.model_dump(exclude=["id", "inherited"]),
+            **core_priority_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_priority_attr.branch = node.branch
         profile = ProfileSchema(
@@ -2369,7 +2409,7 @@ class SchemaBranch:
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "default_value", "inherited"]),
+                **node_attr.model_dump(exclude={"id", "unique", "optional", "read_only", "default_value", "inherited"}),
             )
             profile.attributes.append(attr)
 
@@ -2513,9 +2553,7 @@ class SchemaBranch:
         )
         core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
-        template_name_attr = name_attr_schema_class(
-            **core_name_attr.model_dump(exclude=["id", "inherited"]),
-        )
+        template_name_attr = name_attr_schema_class(**core_name_attr.model_dump(exclude={"id", "inherited"}))
         template_name_attr.branch = node.branch
 
         template: TemplateSchema | GenericSchema
@@ -2574,7 +2612,7 @@ class SchemaBranch:
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=node_attr.optional if is_autogenerated_subtemplate else True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "order_weight"]),
+                **node_attr.model_dump(exclude={"id", "unique", "optional", "read_only", "order_weight"}),
             )
             template.attributes.append(attr)
 

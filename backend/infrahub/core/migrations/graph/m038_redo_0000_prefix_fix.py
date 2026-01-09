@@ -4,6 +4,7 @@ import ipaddress
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core.branch.models import Branch
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
@@ -37,7 +38,7 @@ class Migration038(InternalSchemaMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:  # noqa: ARG002
         # load schemas from database into registry
         initialize_lock()
         await initialization(db=db)

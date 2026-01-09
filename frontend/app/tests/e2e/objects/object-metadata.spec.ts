@@ -20,9 +20,6 @@ test.describe("Object metadata", () => {
     // Owner should be empty
     await expect(page.getByLabel("Kind").first().getByTestId("select-value")).not.toBeVisible();
 
-    // Is visible should be checked
-    await expect(page.getByLabel("is visible *")).toBeChecked();
-
     // Is protected should not be checked
     await expect(page.getByLabel("is protected *")).not.toBeChecked();
 

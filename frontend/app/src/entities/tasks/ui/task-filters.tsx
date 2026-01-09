@@ -3,12 +3,13 @@ import { useState } from "react";
 
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
-import { TasksFilterForm } from "@/shared/components/filters/tasks-filter-form";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { SEARCH_FILTERS } from "@/shared/config/constants";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
+
+import { TasksFilterForm } from "@/entities/tasks/ui/tasks-filter-form";
 
 export const TaskFilters = () => {
   const [filters, setFilters] = useFilters();

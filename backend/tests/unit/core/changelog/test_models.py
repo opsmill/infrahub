@@ -40,11 +40,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                         value=False,
                         value_previous=None,
                     ),
-                    "is_visible": PropertyChangelog(
-                        name="is_visible",
-                        value=True,
-                        value_previous=None,
-                    ),
                 },
                 kind="List",
             ),
@@ -55,11 +50,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 properties={
                     "is_protected": PropertyChangelog(
                         name="is_protected",
-                        value=True,
-                        value_previous=None,
-                    ),
-                    "is_visible": PropertyChangelog(
-                        name="is_visible",
                         value=True,
                         value_previous=None,
                     ),
@@ -76,11 +66,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                         value=False,
                         value_previous=None,
                     ),
-                    "is_visible": PropertyChangelog(
-                        name="is_visible",
-                        value=True,
-                        value_previous=None,
-                    ),
                 },
                 kind="Text",
             ),
@@ -92,11 +77,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                     "is_protected": PropertyChangelog(
                         name="is_protected",
                         value=False,
-                        value_previous=None,
-                    ),
-                    "is_visible": PropertyChangelog(
-                        name="is_visible",
-                        value=True,
                         value_previous=None,
                     ),
                 },
@@ -114,7 +94,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
             peer_kind="TestPerson",
             properties={
                 "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
             },
         )
     }
@@ -129,7 +108,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
                 kind="List",
             ),
@@ -139,7 +117,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
                 kind="Text",
             ),
@@ -149,7 +126,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
                 kind="Color",
             ),
@@ -160,7 +136,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 properties={
                     "owner": PropertyChangelog(name="owner", value=person1.id, value_previous=None),
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
                 kind="Text",
             ),
@@ -170,7 +145,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
                 kind="Text",
             ),
@@ -180,7 +154,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
                 kind="Number",
             ),
@@ -300,7 +273,7 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
     await group1.new(
         db=db,
         name="People",
-        members=[person1, {"id": person2.id, "_relation__is_protected": True, "_relation__is_visible": True}],
+        members=[person1, {"id": person2.id, "_relation__is_protected": True}],
     )
     await group1.save(db=db)
     assert isinstance(group1.node_changelog.relationships["members"], RelationshipCardinalityManyChangelog)
@@ -311,7 +284,6 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
             peer_status=DiffAction.ADDED,
             properties={
                 "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
-                "is_visible": PropertyChangelog(name="is_visible", value=False, value_previous=None),
             },
         )
         in group1.node_changelog.relationships["members"].peers
@@ -323,7 +295,6 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
             peer_status=DiffAction.ADDED,
             properties={
                 "is_protected": PropertyChangelog(name="is_protected", value=True, value_previous=None),
-                "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
             },
         )
         in group1.node_changelog.relationships["members"].peers

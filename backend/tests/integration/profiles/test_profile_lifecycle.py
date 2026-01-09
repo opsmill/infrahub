@@ -3,7 +3,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import HashableModelState, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -98,8 +98,23 @@ mutation ($update_data: PretendPersonUpdateInput!) {
 }
 """ % {"person_values": PERSON_VALUES}
 
+REFRESH_PROFILES_MUTATION = """
+mutation RefreshProfiles($id: String!) {
+  InfrahubProfilesRefresh(data: {id: $id}) {
+    ok
+  }
+}
+"""
+
 
 class TestProfileLifecycle(TestInfrahubApp):
+    async def refresh_profiles(self, client: InfrahubClient, branch_name: str, node_id: str) -> None:
+        # This should be done using a trigger but for test purpose we do it manually
+        response = await client.execute_graphql(
+            query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name
+        )
+        assert response["InfrahubProfilesRefresh"]["ok"]
+
     @pytest.fixture(scope="class")
     def generic_schema_base(self) -> GenericSchema:
         return GenericSchema(
@@ -412,7 +427,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": False,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Starbuck"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -559,7 +574,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": False,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -649,7 +664,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "source": {"id": person_profile_1.id},
             "is_default": False,
         }
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Kara Thrace"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -784,7 +799,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": True,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -985,6 +1000,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_1.id
 
+        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_1.id)
+
     async def test_step_12_check_persons_again(
         self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
     ) -> None:
@@ -1048,6 +1065,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         await updated_person_profile_1.related_nodes.fetch()
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_2.id
+
+        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_2.id)
 
     async def test_step_14_check_persons_again(
         self, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
@@ -1167,6 +1186,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "generic_nothing",
             "height",
             "is_alive",
+            "name",
             "lifespan",
             "nothing",
             "profile_name",
@@ -1374,9 +1394,12 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert set(updated_schema.attribute_names) == {
             "age",
             "eye_color",
+            "height",
             "is_alive",
+            "name",
             "profile_name",
             "profile_priority",
+            "shape",
             "size",
             "value",
             "weight",
@@ -1385,6 +1408,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             kind="ProfilePretendLifeform", branch=default_branch.name, refresh=True
         )
         assert set(updated_lifeform_profile_schema.attribute_names) == {
+            "shape",
             "size",
             "is_alive",
             "profile_name",
@@ -1401,13 +1425,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert person_profile_1.weight.value is None
 
         with pytest.raises(AttributeError):
-            _ = person_profile_1.height
-        with pytest.raises(AttributeError):
             _ = person_profile_1.description
         with pytest.raises(AttributeError):
             _ = person_profile_1.nothing
-        with pytest.raises(AttributeError):
-            _ = person_profile_1.shape
         with pytest.raises(AttributeError):
             _ = person_profile_1.lifespan
         with pytest.raises(AttributeError):
@@ -1418,8 +1438,6 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert lifeform_profile_1.is_alive.value is None
         assert lifeform_profile_1.value.value == 84
 
-        with pytest.raises(AttributeError):
-            _ = lifeform_profile_1.shape
         with pytest.raises(AttributeError):
             _ = lifeform_profile_1.lifespan
         with pytest.raises(AttributeError):

@@ -7,6 +7,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     DiffAction,
     InfrahubKind,
+    MetadataOptions,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -486,7 +487,6 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "__typename": "Text",
             "id": c1.color.id,
             "is_protected": False,
-            "is_visible": True,
             "owner": None,
             "source": None,
             "value": "#444444",
@@ -497,7 +497,6 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "__typename": "Boolean",
             "id": c1.is_electric.id,
             "is_protected": False,
-            "is_visible": True,
             "owner": None,
             "source": None,
             "value": True,
@@ -506,7 +505,6 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "__typename": "Text",
             "id": c1.name.id,
             "is_protected": False,
-            "is_visible": True,
             "owner": None,
             "source": None,
             "value": "volt",
@@ -515,7 +513,6 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "__typename": "Number",
             "id": c1.nbr_seats.id,
             "is_protected": False,
-            "is_visible": True,
             "owner": None,
             "source": None,
             "value": 4,
@@ -524,7 +521,6 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "__typename": "Text",
             "id": c1.transmission.id,
             "is_protected": False,
-            "is_visible": True,
             "owner": None,
             "source": None,
         },
@@ -565,7 +561,6 @@ async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branc
         "__typename",
         "id",
         "is_protected",
-        "is_visible",
         "owner",
         "source",
         "value",
@@ -778,7 +773,7 @@ async def test_node_create_with_single_relationship(
         name="smart",
         nbr_seats=2,
         is_electric=True,
-        owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": p1.id, "_relation__is_protected": True},
     )
     await c3.save(db=db)
 
@@ -789,7 +784,6 @@ async def test_node_create_with_single_relationship(
     assert c3_owner.id == p1.id
     rel = await c3.owner.get(db=db)
     assert rel.is_protected is True
-    assert rel.is_visible is False
     paths = await get_paths_between_nodes(
         db=db, source_id=c3.db_id, destination_id=p1.db_id, max_length=2, relationships=["IS_RELATED"]
     )
@@ -927,6 +921,63 @@ async def test_node_create_with_object_template(
         == device.node_changelog.attributes["airflow"].properties["source"].value
         == template.id
     )
+
+
+async def test_node_create_user_timestamp_metadata(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
+    # Assume test user id for created_by
+    test_user_id = "user-123"
+
+    # Create object on default branch
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=2)
+    before_create_default = Timestamp()
+    await obj.save(db=db, user_id=test_user_id)
+    after_create_default = Timestamp()
+
+    # validate created object on default branch
+    assert before_create_default < obj._get_created_at() < after_create_default
+    assert obj._get_created_by() == test_user_id
+    assert obj._get_updated_at() == obj._get_created_at()
+    assert obj._get_updated_by() == test_user_id
+
+    # validate save with no changes does not update updated times
+    await obj.save(db=db, user_id="no-change-user")
+    assert obj._get_updated_at() == obj._get_created_at()
+    assert obj._get_updated_by() == obj._get_created_by()
+
+    # Retrieve node and validate metadata
+    retrieved_obj = await NodeManager.get_one(db=db, id=obj.id, include_metadata=MetadataOptions.USER_TIMESTAMPS)
+    assert retrieved_obj._get_created_at() == obj._get_created_at()
+    assert retrieved_obj._get_created_by() == obj._get_created_by()
+    assert retrieved_obj._get_updated_at() == obj._get_updated_at()
+    assert retrieved_obj._get_updated_by() == obj._get_updated_by()
+
+    # Create a branch and create another object on the branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+    branch_user_id = "user-456"
+
+    obj_branch = await Node.init(db=db, schema=criticality_schema, branch=branch1)
+    await obj_branch.new(db=db, name="medium", level=3)
+    before_create_branch = Timestamp()
+    await obj_branch.save(db=db, user_id=branch_user_id)
+    after_create_branch = Timestamp()
+
+    # Validate created object on branch
+    assert before_create_branch < obj_branch._get_created_at() < after_create_branch
+    assert obj_branch._get_created_by() == branch_user_id
+    assert obj_branch._get_updated_at() == obj_branch._get_created_at()
+    assert obj_branch._get_updated_by() == branch_user_id
+
+    # Retrieve node from branch and validate metadata
+    retrieved_obj_branch = await NodeManager.get_one(
+        db=db, id=obj_branch.id, branch=branch1, include_metadata=MetadataOptions.USER_TIMESTAMPS
+    )
+    assert retrieved_obj_branch._get_created_at() == obj_branch._get_created_at()
+    assert retrieved_obj_branch._get_created_by() == obj_branch._get_created_by()
+    assert retrieved_obj_branch._get_updated_at() == obj_branch._get_updated_at()
+    assert retrieved_obj_branch._get_updated_by() == obj_branch._get_updated_by()
 
 
 async def test_node_create_with_object_template_with_profile(
@@ -1214,12 +1265,10 @@ async def test_node_update_local_attrs_with_flags(
 
     obj2 = await NodeManager.get_one(id=obj1.id, fields=fields_to_query, db=db)
     obj2.name.is_protected = True
-    obj2.level.is_visible = False
     await obj2.save(db=db)
 
     obj3 = await NodeManager.get_one(id=obj1.id, fields=fields_to_query, db=db)
     assert obj3.name.is_protected is True
-    assert obj3.level.is_visible is False
 
 
 async def test_node_update_local_attrs_with_metadata(
@@ -1230,44 +1279,38 @@ async def test_node_update_local_attrs_with_metadata(
     obj1.name.source = first_account
     await obj1.save(db=db)
 
-    obj2 = await NodeManager.get_one(id=obj1.id, include_source=True, db=db, branch=branch)
+    obj2 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.SOURCE, db=db, branch=branch)
     assert obj2.name.value == "low"
     assert obj2.name.source_id == first_account.id
     assert obj2.name.owner_id is None
-    assert obj2.name.is_visible is True
     assert obj2.name.is_protected is False
     # make sure that source can be set when not included in get request
     obj2 = await NodeManager.get_one(id=obj1.id, db=db, branch=branch)
     assert obj2.name.value == "low"
     assert obj2.name.source_id is None
     assert obj2.name.owner_id is None
-    assert obj2.name.is_visible is True
     assert obj2.name.is_protected is False
     obj2.name.source = second_account
     obj2.name.owner = first_account
-    obj2.name.is_visible = False
     obj2.name.is_protected = True
     await obj2.save(db=db)
 
-    obj3 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    obj3 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch)
     assert obj3.name.value == "low"
     assert obj3.name.source_id == second_account.id
     assert obj3.name.owner_id == first_account.id
-    assert obj3.name.is_visible is False
     assert obj3.name.is_protected is True
     # make sure that source can be cleared when not included in get request
     obj3 = await NodeManager.get_one(id=obj1.id, db=db, branch=branch)
     assert obj3.name.value == "low"
     assert obj3.name.source_id is None
     obj3.name.clear_source()
-    obj3.name.is_visible = True
     await obj3.save(db=db)
 
-    obj4 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    obj4 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch)
     assert obj4.name.value == "low"
     assert obj4.name.source_id is None
     assert obj4.name.owner_id == first_account.id
-    assert obj4.name.is_visible is True
     assert obj4.name.is_protected is True
 
 
@@ -1370,7 +1413,6 @@ async def test_update_related_node(db: InfrahubDatabase, data_schema, default_br
     assert len(t1_tag_rel) == 1
     t1_tag_rel[0].source = t2
     t1_tag_rel[0].owner = t3
-    t1_tag_rel[0].is_visible = False
     t1_tag_rel[0].is_protected = True
     await p13.save(db=db)
     p14 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
@@ -1381,7 +1423,6 @@ async def test_update_related_node(db: InfrahubDatabase, data_schema, default_br
     assert t1_source.get_id() == t2.id
     t1_owner = await t1_tag_rel[0].get_owner(db=db)
     assert t1_owner.get_id() == t3.id
-    assert t1_tag_rel[0].is_visible is False
     assert t1_tag_rel[0].is_protected is True
 
     # ----------------------------------------------------------------
@@ -1389,7 +1430,6 @@ async def test_update_related_node(db: InfrahubDatabase, data_schema, default_br
     # ----------------------------------------------------------------
     t1_tag_rel[0].source = t3
     t1_tag_rel[0].clear_owner()
-    t1_tag_rel[0].is_visible = True
     await p14.save(db=db)
     p15 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
     tag_rels = await p15.tags.get_relationships(db=db)
@@ -1399,7 +1439,6 @@ async def test_update_related_node(db: InfrahubDatabase, data_schema, default_br
     assert t1_source.get_id() == t3.id
     t1_owner = await t1_tag_rel[0].get_owner(db=db)
     assert t1_owner is None
-    assert t1_tag_rel[0].is_visible is True
     assert t1_tag_rel[0].is_protected is True
 
     # ----------------------------------------------------------------
@@ -1415,7 +1454,6 @@ async def test_update_related_node(db: InfrahubDatabase, data_schema, default_br
     assert t1_source is None
     t1_owner = await t1_tag_rel[0].get_owner(db=db)
     assert t1_owner is None
-    assert t1_tag_rel[0].is_visible is True
     assert t1_tag_rel[0].is_protected is True
 
 

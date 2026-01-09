@@ -6,9 +6,9 @@ This topic explains the concept of profiles in Infrahub, their purpose in the sy
 
 ## What are profiles?
 
-Profiles in Infrahub are configuration templates that define common attribute values for nodes. They represent a fundamental approach to managing configuration at scale by separating the definition of common settings from individual node instances.
+Profiles in Infrahub are configuration templates that define common attribute and relationship values for objects. They represent a fundamental approach to managing configuration at scale by separating the definition of common settings from individual object instances.
 
-Think of profiles as reusable configuration blueprints. Just as a class in object-oriented programming defines properties that instances inherit, profiles define attribute values that nodes inherit. This design pattern promotes consistency while maintaining flexibility for exceptions.
+Think of profiles as reusable configuration blueprints. Just as a class in object-oriented programming defines properties that instances inherit, profiles define attribute values that objects inherit. This design pattern promotes consistency while maintaining flexibility for exceptions.
 
 ## Why profiles matter
 
@@ -32,9 +32,9 @@ Without profiles, you would need to:
 Profiles address these issues through:
 
 1. **Centralized definition**: Define configuration once, apply everywhere
-2. **Automatic inheritance**: Nodes automatically receive profile values
-3. **Dynamic updates**: Changes to profiles propagate to all associated nodes
-4. **Override capability**: Individual nodes can still have exceptions
+2. **Automatic inheritance**: Objects automatically receive profile values
+3. **Dynamic updates**: Changes to profiles propagate to all associated objects
+4. **Override capability**: Individual objects can still have exceptions
 5. **Data lineage**: Track where each configuration value originated
 
 ## Profile architecture and design
@@ -61,9 +61,9 @@ Each profile contains:
    - `profile_name`: Unique identifier (3-32 characters)
    - `profile_priority`: Numeric priority for inheritance order (default: 1000)
 
-2. **Node-specific attributes**: All attributes from the corresponding node schema, except:
-   - Attributes that are part of unique constraints
-   - Attributes without default values (if required)
+2. **Node-specific attributes and relationships**: All attributes and relationships from the corresponding node schema, except:
+   - Attributes and relationships that are part of unique constraints
+   - Relationships that are not of kind Generic or Attribute
 
 ### Inheritance mechanism
 
@@ -74,7 +74,7 @@ Node Creation/Update
        ↓
 Check if profiles assigned (If created from a template, inherit its profiles)
        ↓
-For each attribute:
+For each attribute/relationship:
   - Is value explicitly set on node? → Use node value
   - Is default value being used? → Check profiles
        ↓
@@ -152,21 +152,52 @@ This metadata enables:
 - `source`: Reference to the specific profile providing the value
 - `is_protected`: (Future) Will indicate if value is locked from changes
 
+## Relationships in profiles
+
+:::info Infrahub Version
+
+Available since Infrahub 1.7!
+
+:::
+
+Starting with Infrahub 1.7, profiles can define relationship values in addition to attributes. This enables you to set relationships that objects inherit when assigned to a profile.
+
+### How relationship inheritance works
+
+Relationship inheritance in profiles follows the same principles as attribute inheritance:
+
+1. **Cardinality support**: Both `one` and `many` cardinality relationships are supported:
+   - For cardinality `one` relationships, the profile defines a single related object
+   - For cardinality `many` relationships, the profile defines a set of related objects that the inheriting object will be connected to
+
+2. **Priority-based resolution**: When multiple profiles define the same relationship, the profile with the highest priority (lowest priority number) takes precedence.
+
+3. **Override capability**: Just like attributes, relationship values can be overridden on individual objects when exceptions are needed.
+
+4. **Metadata tracking**: Relationship values inherited from profiles include metadata indicating their source, enabling full data lineage tracking.
+
+### Example use cases
+
+- **VLAN assignment**: Define a profile that sets the untagged VLAN for all end-user interfaces
+- **Default location assignment**: Set a default location or site for objects of a specific type
+
 ## Profile constraints and limitations
 
 ### Current constraints
 
 1. **Attribute restrictions**:
-   - Cannot define unique constraint attributes (like primary keys)
-   - Required attributes need schema defaults for profile use
-   - Relationship definitions not yet supported
+   - Attributes that are part of a uniqueness constraint (and/or HFID) are not supported
 
-2. **Assignment limitations**:
+2. **Relationship restrictions**:
+   - Relationships that are part of a uniqueness constraint (and/or HFID) are not supported
+   - Only generic and attribute kind relationships are supported
+
+3. **Assignment limitations**:
    - Static assignment only (no dynamic rules yet)
    - No conditional logic (if X then apply profile Y)
    - No profile composition (profile extending another profile)
 
-3. **Scope boundaries**:
+4. **Scope boundaries**:
    - Profiles are node-type specific
    - Cannot share profiles across different node types
    - No global or cross-schema profiles
@@ -178,6 +209,7 @@ These constraints exist to:
 - Maintain data integrity (unique constraints)
 - Ensure predictable behavior (static assignment)
 - Simplify mental model (type-specific profiles)
+- Preserve hierarchy integrity (hierarchical relationships excluded)
 - Enable future enhancements without breaking changes
 
 ## Mental models for profiles
@@ -239,14 +271,6 @@ Profiles implement policy-based management where:
    extends: base-interface
    overrides:
      mtu: 9000
-   ```
-
-3. **Relationship profiles**: Define standard relationships
-
-   ```yaml
-   profile: standard-server
-   relationships:
-     connected_to: {id: "spine-switch-01"}
    ```
 
 ### Architecture evolution

@@ -18,6 +18,7 @@ import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branc
 import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 
 const BRANCH_TABS = {
   DETAILS: "details",
@@ -52,6 +53,7 @@ function BranchDetailsPage() {
       <header className="p-5 pb-2">
         <Row>
           <h1 className="font-bold text-xl">{branch.name}</h1>
+          <NodeMetadataPopover objectKind="InfrahubBranch" objectId={branch.id} />
           {branch.is_default ? (
             <BranchDefaultBadge className="text-sm" />
           ) : (

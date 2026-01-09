@@ -50,23 +50,55 @@ Pydantic is appropriate when you need:
 
 ### Dataclasses (Internal Structures)
 
-Use dataclasses for internal data structures that don't require validation or serialization:
+Use dataclasses for internal data structures that don't require validation or serialization.
+
+**Prefer frozen dataclasses** (`frozen=True`) when instances don't need to be mutated after creation. Frozen dataclasses are immutable, memory efficient, hashable, and make code easier to reason about:
 
 ```python
-# ✅ Good - Internal data transfer
+# ✅ Good - Frozen dataclass for immutable data
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(frozen=True)
 class QueryContext:
     branch_name: str
     at_time: str | None = None
     include_deleted: bool = False
 
+# ✅ Good - Mutable dataclass only when mutation is required
 @dataclass
-class NodeDiff:
+class NodeDiffBuilder:
     node_id: str
-    changed_attributes: list[str]
-    previous_values: dict[str, Any]
+    changed_attributes: list[str]  # Will be appended to during processing
+```
+
+**Document attributes with inline docstrings** below each attribute, not in the class docstring:
+
+```python
+# ✅ Good - Attribute docstrings below each field
+@dataclass(frozen=True)
+class RelationshipPeerData:
+    branch: str
+
+    source_id: UUID
+    """UUID of the Source Node."""
+
+    peer_kind: str
+    """Kind of the Peer Node."""
+
+    rel_node_db_id: str | None = None
+    """Internal DB ID of the Relationship Node."""
+
+# ❌ Bad - Attributes documented in class docstring
+@dataclass(frozen=True)
+class RelationshipPeerData:
+    """Data about a relationship peer.
+
+    Attributes:
+        source_id: UUID of the Source Node.
+        peer_id: UUID of the Peer Node.
+    """
+    source_id: UUID
+    peer_id: UUID
 ```
 
 Dataclasses are appropriate when you need:
@@ -74,6 +106,8 @@ Dataclasses are appropriate when you need:
 - Simple internal data containers
 - Lightweight objects without validation overhead
 - Data passed between internal functions/classes
+
+Use `frozen=True` unless you have a specific reason to mutate instances (e.g., builder pattern, accumulating results during iteration).
 
 ### Avoid Plain Dictionaries
 
@@ -139,6 +173,36 @@ class MyQuery(Query):
 - All function parameters and return types must be type-hinted
 - Use `str | None` for optional strings (Python 3.10+)
 - Use `list[Type]` instead of `List[Type]` (Python 3.9+)
+
+## Python Version Compatibility
+
+The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
+
+### datetime.UTC (Python 3.11+)
+
+The `datetime.UTC` constant was introduced in Python 3.11. For Python 3.10 compatibility, use `timezone.utc` instead:
+
+```python
+# ❌ Bad - Python 3.11+ only
+from datetime import UTC, datetime
+now = datetime.now(UTC)
+
+# ✅ Good - Works in Python 3.10+
+from datetime import datetime, timezone
+now = datetime.now(timezone.utc)
+```
+
+### Other Version-Specific Features
+
+When using newer Python features, verify they're available in the minimum supported version:
+
+| Feature | Minimum Version |
+|---------|-----------------|
+| `datetime.UTC` | 3.11 |
+| `str \| None` union syntax | 3.10 |
+| `list[Type]` generic syntax | 3.9 |
+| `match` statements | 3.10 |
+| `Self` type hint | 3.11 (use `typing_extensions.Self` for 3.10) |
 
 ## Function Call Style
 

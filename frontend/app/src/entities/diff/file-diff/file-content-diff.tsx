@@ -7,8 +7,6 @@ import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
-import { AddComment } from "@/shared/components/conversations/add-comment";
-import { Thread } from "@/shared/components/conversations/thread";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -21,6 +19,8 @@ import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
+import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
+import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
@@ -340,7 +340,7 @@ export const FileContentDiff = (props: any) => {
 
         {inHoverState && (
           <Button
-            className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 transform"
+            className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
             onClick={handleClick}
           >
             <PencilIcon className="h-3 w-3" />

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Iterable
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
-from infrahub.core.query import QueryType
+from infrahub.core.query import QueryResult, QueryType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
@@ -57,7 +57,7 @@ class IPPrefixSubnetFetch(Query):
         obj: IPNetworkType,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
@@ -146,7 +146,7 @@ class IPPrefixIPAddressFetch(Query):
         obj: IPNetworkType,
         namespace: Node | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
@@ -242,11 +242,53 @@ async def get_ip_addresses(
     return query.get_addresses()
 
 
+@dataclass(frozen=True)
+class IPPrefixUtilizationResult:
+    """Result from IPPrefixUtilization containing prefix child allocation data."""
+
+    prefix_uuid: str
+    """UUID of the parent prefix node."""
+
+    child_uuid: str
+    """UUID of the child node (prefix or address)."""
+
+    child_kind: str
+    """Kind/type of the child node."""
+
+    child_labels: tuple[str, ...]
+    """Labels of the child node (used to determine if IPADDRESS or IPPREFIX)."""
+
+    ip_value: str
+    """IP value (address or prefix) of the child."""
+
+    prefixlen: int
+    """Prefix length of the child IP value."""
+
+    branch: str
+    """Branch name where this allocation exists."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPPrefixUtilizationResult:
+        """Convert raw QueryResult to typed dataclass."""
+        pfx = result.get_node("pfx")
+        child = result.get_node("child")
+        av = result.get_node("av")
+        return cls(
+            prefix_uuid=str(pfx.get("uuid")),
+            child_uuid=str(child.get("uuid")),
+            child_kind=child.get("kind"),
+            child_labels=tuple(child.labels),
+            ip_value=av.get("value"),
+            prefixlen=av.get("prefixlen"),
+            branch=str(result.get("branch")),
+        )
+
+
 class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
 
-    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs):
+    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs) -> None:
         self.ip_prefixes = ip_prefixes
         self.allocated_kinds: list[str] = []
         self.allocated_kinds_rel: list[str] = []
@@ -315,6 +357,55 @@ class IPPrefixUtilization(Query):
         self.return_labels = ["pfx", "child", "av", "branch_level", "branch"]
         self.add_to_query(query)
 
+    def get_data(self) -> list[IPPrefixUtilizationResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of IPPrefixUtilizationResult containing prefix child allocation data.
+        """
+        return [IPPrefixUtilizationResult.from_db(result) for result in self.get_results()]
+
+
+@dataclass(frozen=True)
+class IPPrefixReconcileQueryResult:
+    """Result from IPPrefixReconcileQuery containing IP reconciliation data."""
+
+    ip_node_uuid: str | None
+    """UUID of the IP node being reconciled, or None if not found."""
+
+    current_parent_uuid: str | None
+    """UUID of the current parent prefix, or None if no parent exists."""
+
+    calculated_parent_uuid: str | None
+    """UUID of the calculated correct parent prefix, or None if should be top-level."""
+
+    current_children_uuids: tuple[str, ...]
+    """UUIDs of current child prefixes/addresses."""
+
+    calculated_children_uuids: tuple[str, ...]
+    """UUIDs of calculated correct child prefixes/addresses."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPPrefixReconcileQueryResult:
+        """Convert raw QueryResult to typed dataclass."""
+
+        def get_optional_node_uuid(label: str) -> str | None:
+            """Extract UUID from an optional node (may be None from OPTIONAL MATCH)."""
+            node = result.get(label)
+            return str(node.get("uuid")) if node and node.get("uuid") else None
+
+        def get_collection_uuids(label: str) -> tuple[str, ...]:
+            """Extract UUIDs from a node collection (may contain None from COLLECT)."""
+            return tuple(str(n.get("uuid")) for n in result.get_node_collection(label) if n and n.get("uuid"))
+
+        return cls(
+            ip_node_uuid=get_optional_node_uuid("ip_node"),
+            current_parent_uuid=get_optional_node_uuid("current_parent"),
+            calculated_parent_uuid=get_optional_node_uuid("new_parent"),
+            current_children_uuids=get_collection_uuids("current_children"),
+            calculated_children_uuids=get_collection_uuids("new_children"),
+        )
+
 
 class IPPrefixReconcileQuery(Query):
     name = "ip_prefix_reconcile"
@@ -326,7 +417,7 @@ class IPPrefixReconcileQuery(Query):
         namespace: Node | str | None = None,
         node_uuid: str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         self.ip_value = ip_value
         self.ip_uuid = node_uuid
         self.namespace_id = _get_namespace_id(namespace)
@@ -702,44 +793,14 @@ class IPPrefixReconcileQuery(Query):
         self.order_by = ["ip_node.uuid"]
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
 
-    def _get_uuid_from_query(self, node_name: str) -> str | None:
+    def get_data(self) -> IPPrefixReconcileQueryResult | None:
+        """Return single result as typed dataclass instance.
+
+        Returns:
+            IPPrefixReconcileQueryResult containing reconciliation data,
+            or None if no results found.
+        """
         results = list(self.get_results())
         if not results:
             return None
-        result = results[0]
-        node = result.get(node_name)
-        if not node:
-            return None
-        node_uuid = node.get("uuid")
-        if node_uuid:
-            return str(node_uuid)
-        return None
-
-    def _get_uuids_from_query_list(self, alias_name: str) -> list[str]:
-        results = list(self.get_results())
-        if not results:
-            return []
-        result = results[0]
-        element_uuids = []
-        for element in result.get(alias_name):
-            if not element:
-                continue
-            element_uuid = element.get("uuid")
-            if element_uuid:
-                element_uuids.append(str(element_uuid))
-        return element_uuids
-
-    def get_ip_node_uuid(self) -> str | None:
-        return self._get_uuid_from_query("ip_node")
-
-    def get_current_parent_uuid(self) -> str | None:
-        return self._get_uuid_from_query("current_parent")
-
-    def get_calculated_parent_uuid(self) -> str | None:
-        return self._get_uuid_from_query("new_parent")
-
-    def get_current_children_uuids(self) -> list[str]:
-        return self._get_uuids_from_query_list("current_children")
-
-    def get_calculated_children_uuids(self) -> list[str]:
-        return self._get_uuids_from_query_list("new_children")
+        return IPPrefixReconcileQueryResult.from_db(results[0])

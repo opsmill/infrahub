@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Mapping
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import SYSTEM_USER_ID, RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
@@ -180,11 +180,12 @@ async def _do_create_node(
     fields_to_validate: list[str],
     data: dict[str, Any],
     at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     obj = await node_class.init(db=db, schema=schema, branch=branch)
     await obj.new(db=db, **data)
     await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-    await obj.save(db=db, at=at)
+    await obj.save(db=db, at=at, user_id=user_id)
 
     object_template = await obj.get_object_template(db=db)
     if object_template:
@@ -205,6 +206,7 @@ async def create_node(
     branch: Branch,
     schema: MainSchemaTypes,
     at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     """Create a node in the database if constraint checks succeed."""
 
@@ -237,6 +239,7 @@ async def create_node(
                 fields_to_validate=fields_to_validate,
                 data=data,
                 at=at,
+                user_id=user_id,
             )
         else:
             async with db.start_transaction() as dbt:
@@ -253,11 +256,12 @@ async def create_node(
                     fields_to_validate=fields_to_validate,
                     data=data,
                     at=at,
+                    user_id=user_id,
                 )
 
     if await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         await node_profiles_applier.apply_profiles(node=obj)
-        await obj.save(db=db)
+        await obj.save(db=db, user_id=user_id)
 
     return obj

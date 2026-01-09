@@ -3,15 +3,20 @@ from typing import TYPE_CHECKING, Any
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
+from infrahub.core.constants import (
+    BranchSupportType,
+    RelationshipHierarchyDirection,
+)
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.query.node import NodeGetHierarchyQuery
+from infrahub.core.relationship import Relationship
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.utils import has_any_key
+from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -68,6 +73,25 @@ class ManyRelationshipResolver:
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
             )
 
+    def _build_relationship_meta_response(
+        self, relationship: Relationship, metadata_fields: dict[str, Any]
+    ) -> dict[str, Any]:
+        data: dict[str, Any] = {}
+        for meta_field in metadata_fields.keys():
+            if meta_field == "created_at":
+                created_at = relationship._get_created_at()
+                data["created_at"] = created_at.to_datetime() if created_at else None
+            elif meta_field == "created_by":
+                account_id = relationship._get_created_by()
+                data["created_by"] = {"id": account_id} if account_id else None
+            elif meta_field == "updated_at":
+                updated_at = relationship._get_updated_at()
+                data["updated_at"] = updated_at.to_datetime() if updated_at else None
+            elif meta_field == "updated_by":
+                account_id = relationship._get_updated_by()
+                data["updated_by"] = {"id": account_id} if account_id else None
+        return data
+
     async def resolve(
         self,
         parent: dict,
@@ -93,6 +117,10 @@ class ManyRelationshipResolver:
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
         property_fields = edges.get("properties", {})
+        metadata_fields = {
+            "node_metadata": edges.get("node_metadata", {}),
+            "relationship_metadata": edges.get("relationship_metadata", {}),
+        }
         for key, value in property_fields.items():
             mapped_name = RELATIONS_PROPERTY_MAP[key]
             node_fields[mapped_name] = value
@@ -138,45 +166,71 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
+        include_metadata = build_metadata_query_options(
+            node_metadata_fields=metadata_fields.get("node_metadata"),
+            relationship_metadata_fields=metadata_fields.get("relationship_metadata"),
+            node_fields=node_fields,
+        )
+        # Add relationship properties metadata to relationship_level
+        include_metadata |= MetadataQueryOptions(relationship_level=get_metadata_options_from_fields(property_fields))
+
         if offset or limit:
-            node_graph = await self._get_entities_simple(
+            relationships = await self._get_entities_simple(
                 db=graphql_context.db,
                 branch=graphql_context.branch,
                 ids=ids,
                 at=graphql_context.at,
-                related_node_ids=graphql_context.related_node_ids,
                 source_kind=source_kind,
                 rel_schema=node_rel,
                 filters=filters,
                 node_fields=node_fields,
+                include_metadata=include_metadata,
                 offset=offset,
                 limit=limit,
             )
         else:
-            node_graph = await self._get_entities_with_data_loader(
+            relationships = await self._get_entities_with_data_loader(
                 db=graphql_context.db,
                 branch=graphql_context.branch,
                 ids=ids,
                 at=graphql_context.at,
-                related_node_ids=graphql_context.related_node_ids,
                 source_kind=source_kind,
                 rel_schema=node_rel,
                 filters=filters,
                 node_fields=node_fields,
+                include_metadata=include_metadata,
             )
 
-        if not node_graph:
+        if not relationships:
             return response
 
         entries = []
-        for node in node_graph:
-            entry: dict[str, dict[str, Any]] = {"node": {}, "properties": {}}
-            for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
-                value = node.pop(key, None)
-                if value:
-                    entry["properties"][mapped] = value
-            entry["node"] = node
-            entries.append(entry)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            for rel in relationships:
+                node = await rel.to_graphql(
+                    db=db,
+                    fields=node_fields,
+                    related_node_ids=graphql_context.related_node_ids,
+                )
+                entry: dict[str, dict[str, Any]] = {"node": {}, "properties": {}}
+                for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
+                    value = node.pop(key, None)
+                    if value:
+                        entry["properties"][mapped] = value
+                entry["node"] = node
+
+                if metadata_fields.get("node_metadata"):
+                    peer = await rel.get_peer(db=db)
+                    if peer:
+                        entry["node_metadata"] = await peer._build_meta_response("node_metadata", edges)
+
+                if metadata_fields.get("relationship_metadata"):
+                    entry["relationship_metadata"] = self._build_relationship_meta_response(
+                        relationship=rel,
+                        metadata_fields=metadata_fields["relationship_metadata"],
+                    )
+
+                entries.append(entry)
 
         response["edges"] = entries
         return response
@@ -187,17 +241,14 @@ class ManyRelationshipResolver:
         branch: Branch,
         ids: list[str],
         at: Timestamp | None,
-        related_node_ids: set[str] | None,
         source_kind: str,
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
         node_fields: dict[str, Any],
+        include_metadata: MetadataQueryOptions,
         offset: int | None = None,
         limit: int | None = None,
-    ) -> list[dict[str, Any]] | None:
-        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
-        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
-
+    ) -> list[Relationship] | None:
         async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
@@ -212,12 +263,11 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
-                include_source=include_source,
-                include_owner=include_owner,
+                include_metadata=include_metadata,
             )
             if not objs:
                 return None
-            return [await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids) for obj in objs]
+            return objs
 
     async def _get_entities_with_data_loader(
         self,
@@ -225,17 +275,14 @@ class ManyRelationshipResolver:
         branch: Branch,
         ids: list[str],
         at: Timestamp | None,
-        related_node_ids: set[str] | None,
         source_kind: str,
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
         node_fields: dict[str, Any],
-    ) -> list[dict[str, Any]] | None:
+        include_metadata: MetadataQueryOptions,
+    ) -> list[Relationship] | None:
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
-
-        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
-        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
 
         query_params = QueryPeerParams(
             branch=branch,
@@ -245,8 +292,7 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
-            include_source=include_source,
-            include_owner=include_owner,
+            include_metadata=include_metadata,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]
@@ -259,8 +305,4 @@ class ManyRelationshipResolver:
             all_peer_rels.extend(node_peer_rels)
         if not all_peer_rels:
             return None
-        async with db.start_session(read_only=True) as dbs:
-            return [
-                await obj.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)
-                for obj in all_peer_rels
-            ]
+        return all_peer_rels

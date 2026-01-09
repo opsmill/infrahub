@@ -64,7 +64,6 @@ export default function AddGroupForm({
           rules: { required: true },
           defaultValue: defaultGroupIds,
           relationship: memberOfGroupsRelationship,
-          schema,
         },
       ]}
       onSubmit={async (formData) => {

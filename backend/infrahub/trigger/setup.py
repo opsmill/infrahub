@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable, Sequence
 
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
@@ -46,7 +46,7 @@ def compare_automations(
 
 @task(name="trigger-setup-specific", task_run_name="Setup triggers of a specific kind", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_triggers_specific(
-    gatherer: Callable[[InfrahubDatabase | None], Awaitable[list[TriggerDefinition]]],
+    gatherer: Callable[[InfrahubDatabase | None], Awaitable[Sequence[TriggerDefinition]]],
     trigger_type: TriggerType,
     db: InfrahubDatabase | None = None,
 ) -> TriggerSetupReport:
@@ -69,7 +69,7 @@ async def setup_triggers_specific(
 @task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)
 async def setup_triggers(
     client: PrefectClient,
-    triggers: list[TriggerDefinition],
+    triggers: Sequence[TriggerDefinition],
     trigger_type: TriggerType | None = None,
     force_update: bool = False,
 ) -> TriggerSetupReport:

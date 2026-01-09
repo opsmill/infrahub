@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     CheckType,
     GlobalPermissions,
     InfrahubKind,
+    MetadataOptions,
     PermissionDecision,
 )
 from infrahub.core.manager import NodeManager
@@ -128,8 +129,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         state = ProposedChangeState(obj.state.value.value)
         state.validate_updatable()
@@ -292,7 +292,7 @@ class ProposedChangeReview(Mutation):
                     current_user=current_user,
                     context=graphql_context,
                 )
-                await proposed_change.save(db=db)
+                await proposed_change.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
                 if event:
                     event_service = await get_event_service()
@@ -426,7 +426,7 @@ class ProposedChangeMerge(Mutation):
 
         async with graphql_context.db.start_session() as db:
             proposed_change.state.value = ProposedChangeState.MERGING.value
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=graphql_context.assigned_user_id)
 
         if wait_until_completion:
             await graphql_context.service.workflow.execute_workflow(

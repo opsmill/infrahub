@@ -41,7 +41,7 @@ class BranchDiffer:
         diff_to: str | Timestamp | None = None,
         db: InfrahubDatabase | None = None,
         service: InfrahubServices | None = None,
-    ):
+    ) -> None:
         """_summary_
 
         Args:

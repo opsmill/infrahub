@@ -3,7 +3,7 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import InfrahubKind, RelationshipKind, SchemaPathType
+from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipKind, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
@@ -395,7 +395,7 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
         TestPersonCreate(
             data: {
                 name: { value: "John", is_protected: true }
-                height: { value: 182, is_visible: false }
+                height: { value: 182 }
             }
         ) {
             ok
@@ -431,9 +431,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
                             value
                             is_protected
                         }
-                        height {
-                            is_visible
-                        }
                     }
                 }
             }
@@ -452,7 +449,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
     assert result1.errors is None
     assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_protected"] is True
-    assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["is_visible"] is False
 
 
 async def test_create_object_with_node_property(
@@ -802,7 +798,7 @@ async def test_create_object_with_multiple_relationships_with_node_property(
     assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # length of an UUID
 
     fruit = await NodeManager.get_one(
-        db=db, id=result.data["GardenFruitCreate"]["object"]["id"], include_owner=True, include_source=True
+        db=db, id=result.data["GardenFruitCreate"]["object"]["id"], include_metadata=MetadataOptions.LINKED_NODES
     )
     tags = {tag.peer_id: tag for tag in await fruit.tags.get(db=db)}
     assert len(tags) == 3
@@ -1392,7 +1388,7 @@ async def test_create_with_object_template(
         kind=TestKind.DEVICE,
         branch=branch,
         id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"],
-        include_source=True,
+        include_metadata=MetadataOptions.SOURCE,
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
@@ -1454,7 +1450,9 @@ async def test_create_with_object_template(
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # Validate that interfaces relationship has been populated according to object template
-    interfaces = await NodeManager.query(db=db, branch=branch, schema=TestKind.PHYSICAL_INTERFACE, include_source=True)
+    interfaces = await NodeManager.query(
+        db=db, branch=branch, schema=TestKind.PHYSICAL_INTERFACE, include_metadata=MetadataOptions.SOURCE
+    )
     assert len(interfaces) == len(if_names)
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert len(device_interfaces) == len(if_names)

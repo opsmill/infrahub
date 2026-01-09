@@ -8,12 +8,13 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "**",
       "!coverage",
       "!dist",
       "!playwright-report",
       "!test-results",
       "!tests/e2e/.auth",
+      "!src/shared/api/graphql/graphql-env.d.ts",
+      "!src/shared/api/graphql/graphql-cache.d.ts",
       "!src/shared/api/rest/types.generated.ts",
       "!src/shared/api/graphql/generated"
     ]

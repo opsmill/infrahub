@@ -1303,7 +1303,9 @@ export interface components {
              */
             transform?: string | null;
         } & (unknown & unknown);
-        "ComputedAttribute-Output": Record<string, never>;
+        "ComputedAttribute-Output": {
+            [key: string]: unknown;
+        };
         /**
          * ComputedAttributeKind
          * @enum {string}
@@ -1531,12 +1533,18 @@ export interface components {
              * Properties
              * @description Properties of the object if type is 'object'
              */
-            properties?: Record<string, never> | null;
+            properties?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Items
              * @description Items of the array if type is 'array'
              */
-            items?: Record<string, never> | Record<string, never>[] | null;
+            items?: {
+                [key: string]: unknown;
+            } | {
+                [key: string]: unknown;
+            }[] | null;
             /**
              * Required
              * @description List of required properties if type is 'object'
@@ -1551,7 +1559,9 @@ export interface components {
              * Additionalproperties
              * @description Specifies whether additional properties are allowed
              */
-            additionalProperties?: boolean | Record<string, never> | null;
+            additionalProperties?: boolean | {
+                [key: string]: unknown;
+            } | null;
         };
         /** LoggingSettings */
         LoggingSettings: {
@@ -1914,7 +1924,9 @@ export interface components {
         /** QueryPayload */
         QueryPayload: {
             /** Variables */
-            variables?: Record<string, never>;
+            variables?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * RelationshipCardinality
@@ -2812,7 +2824,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -2857,7 +2871,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

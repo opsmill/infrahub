@@ -70,7 +70,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @property
     def support_profiles(self) -> bool:
-        return self.read_only is False and self.optional is True
+        return self.read_only is False and self.unique is False
 
     def get_id(self) -> str:
         if self.id is None:
@@ -175,7 +175,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     def update_from_generic(self, other: AttributeSchema) -> None:
         fields_to_exclude = ("id", "order_weight", "branch", "inherited")
-        for name in self.model_fields:
+        for name in self.__class__.model_fields:
             if name in fields_to_exclude:
                 continue
             if getattr(self, name) != getattr(other, name):

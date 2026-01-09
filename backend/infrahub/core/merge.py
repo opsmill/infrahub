@@ -43,7 +43,7 @@ class BranchMerger:
         diff_locker: DiffLocker,
         destination_branch: Branch | None = None,
         workflow: InfrahubWorkflow | None = None,
-    ):
+    ) -> None:
         self.source_branch = source_branch
         self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
         self.db = db

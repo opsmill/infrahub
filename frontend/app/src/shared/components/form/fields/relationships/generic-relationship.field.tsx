@@ -42,7 +42,6 @@ export const GenericRelationshipField = ({
   options,
   parent,
   relationship,
-  schema,
   shouldUnregister,
   ...props
 }: GenericRelationshipFieldProps) => {

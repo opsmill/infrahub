@@ -73,8 +73,8 @@ async def authenticate_with_password(
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
 
-    response: list[CoreGenericAccount] = await NodeManager.query(
-        schema=InfrahubKind.GENERICACCOUNT,
+    response = await NodeManager.query(
+        schema=CoreGenericAccount,
         db=db,
         branch=selected_branch,
         filters={"name__value": credentials.username},

@@ -10,6 +10,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
+from infrahub.graphql.types.node import InfrahubObjectWithoutMeta
 
 
 async def test_input_type_registration() -> None:
@@ -129,11 +130,11 @@ async def test_generate_object_types(
     relationship_property = gqlm.get_type(name="RelationshipProperty")
 
     assert issubclass(car, InfrahubObject)
-    assert issubclass(edged_car, InfrahubObject)
-    assert issubclass(nested_edged_car, InfrahubObject)
+    assert issubclass(edged_car, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_car, InfrahubObjectWithoutMeta)
     assert issubclass(person, InfrahubObject)
-    assert issubclass(edged_person, InfrahubObject)
-    assert issubclass(nested_edged_person, InfrahubObject)
+    assert issubclass(edged_person, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_person, InfrahubObjectWithoutMeta)
     assert issubclass(relationship_property, graphene.ObjectType)
 
     assert sorted(car._meta.fields.keys()) == [
@@ -153,9 +154,14 @@ async def test_generate_object_types(
         "transmission",
     ]
 
-    assert sorted(edged_car._meta.fields.keys()) == ["node"]
+    assert sorted(edged_car._meta.fields.keys()) == ["node", "node_metadata"]
     assert str(edged_car._meta.fields["node"].type) == "TestCar"
-    assert sorted(nested_edged_car._meta.fields.keys()) == ["node", "properties"]
+    assert sorted(nested_edged_car._meta.fields.keys()) == [
+        "node",
+        "node_metadata",
+        "properties",
+        "relationship_metadata",
+    ]
     assert str(nested_edged_car._meta.fields["node"].type) == "TestCar"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
@@ -172,14 +178,18 @@ async def test_generate_object_types(
         "profiles",
         "subscriber_of_groups",
     ]
-    assert sorted(edged_person._meta.fields.keys()) == ["node"]
+    assert sorted(edged_person._meta.fields.keys()) == ["node", "node_metadata"]
     assert str(edged_person._meta.fields["node"].type) == "TestPerson"
-    assert sorted(nested_edged_person._meta.fields.keys()) == ["node", "properties"]
+    assert sorted(nested_edged_person._meta.fields.keys()) == [
+        "node",
+        "node_metadata",
+        "properties",
+        "relationship_metadata",
+    ]
     assert str(nested_edged_person._meta.fields["node"].type) == "TestPerson"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
     assert sorted(relationship_property._meta.fields.keys()) == [
         "is_protected",
-        "is_visible",
         "owner",
         "source",
         "updated_at",
@@ -195,39 +205,50 @@ async def test_generate_filters(
     person = schema.get(name="TestPerson")
     filters = gqlm.generate_filters(schema=person, top_level=True)
     expected_filters = [
+        "node_metadata__created_at",
+        "node_metadata__created_at__after",
+        "node_metadata__created_at__before",
+        "node_metadata__created_by__id",
+        "node_metadata__created_by__ids",
+        "node_metadata__updated_at",
+        "node_metadata__updated_at__after",
+        "node_metadata__updated_at__before",
+        "node_metadata__updated_by__id",
+        "node_metadata__updated_by__ids",
         "offset",
         "limit",
         "order",
         "partial_match",
         "ids",
         "any__is_protected",
-        "any__is_visible",
         "any__owner__id",
         "any__source__id",
         "any__value",
         "any__values",
         "cars__color__is_protected",
-        "cars__color__is_visible",
         "cars__color__owner__id",
         "cars__color__source__id",
         "cars__color__value",
         "cars__color__values",
+        "cars__display_label__isnull",
+        "cars__display_label__value",
+        "cars__display_label__values",
         "cars__ids",
         "cars__isnull",
         "cars__name__is_protected",
-        "cars__name__is_visible",
         "cars__name__owner__id",
         "cars__name__source__id",
         "cars__name__value",
         "cars__name__values",
         "cars__nbr_seats__is_protected",
-        "cars__nbr_seats__is_visible",
         "cars__nbr_seats__owner__id",
         "cars__nbr_seats__source__id",
         "cars__nbr_seats__value",
         "cars__nbr_seats__values",
+        "display_label__isnull",
+        "display_label__value",
+        "display_label__values",
         "height__is_protected",
-        "height__is_visible",
         "height__isnull",
         "height__owner__id",
         "height__source__id",
@@ -236,6 +257,9 @@ async def test_generate_filters(
         "hfid",
         "member_of_groups__description__value",
         "member_of_groups__description__values",
+        "member_of_groups__display_label__isnull",
+        "member_of_groups__display_label__value",
+        "member_of_groups__display_label__values",
         "member_of_groups__group_type__value",
         "member_of_groups__group_type__values",
         "member_of_groups__ids",
@@ -245,7 +269,6 @@ async def test_generate_filters(
         "member_of_groups__name__value",
         "member_of_groups__name__values",
         "name__is_protected",
-        "name__is_visible",
         "name__isnull",
         "name__owner__id",
         "name__source__id",
@@ -253,20 +276,24 @@ async def test_generate_filters(
         "name__values",
         "profiles__ids",
         "profiles__isnull",
+        "profiles__display_label__isnull",
+        "profiles__display_label__value",
+        "profiles__display_label__values",
         "profiles__profile_name__is_protected",
-        "profiles__profile_name__is_visible",
         "profiles__profile_name__owner__id",
         "profiles__profile_name__source__id",
         "profiles__profile_name__value",
         "profiles__profile_name__values",
         "profiles__profile_priority__is_protected",
-        "profiles__profile_priority__is_visible",
         "profiles__profile_priority__owner__id",
         "profiles__profile_priority__source__id",
         "profiles__profile_priority__value",
         "profiles__profile_priority__values",
         "subscriber_of_groups__description__value",
         "subscriber_of_groups__description__values",
+        "subscriber_of_groups__display_label__isnull",
+        "subscriber_of_groups__display_label__value",
+        "subscriber_of_groups__display_label__values",
         "subscriber_of_groups__group_type__value",
         "subscriber_of_groups__group_type__values",
         "subscriber_of_groups__ids",

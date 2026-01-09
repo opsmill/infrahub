@@ -4,16 +4,15 @@ import { Link } from "react-router";
 
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { classNames } from "@/shared/utils/common";
-
-import type { Permission } from "@/entities/permission/types";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+} from "@/shared/components/ui/dropdown-menu";
+import { classNames } from "@/shared/utils/common";
+
+import type { Permission } from "@/entities/permission/types";
 
 export type tRowValue = {
   value: unknown;
