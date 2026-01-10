@@ -294,7 +294,7 @@ class SchemaUpdateCoordinator:
 
     async def _rollback(self, at: Timestamp) -> None:
         """Rollback all changes made at the unified timestamp."""
-        rollback_query = RollbackQuery(target_branch=self.branch, at=at)
+        rollback_query = await RollbackQuery.init(db=self.db, target_branch=self.branch, at=at)
         await rollback_query.execute(db=self.db)
 
     async def _restore_registry_state(self) -> None:
