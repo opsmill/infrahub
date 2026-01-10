@@ -142,7 +142,8 @@ class TestSchemaLoadRollback(TestSchemaLifecycleBase):
 
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
             await client.schema.load(schemas=[schema_step02])
-            assert exc_info.value.response.status_code == 500, "Expected a 500 Internal Server Error"
+        # MigrationError is a 502
+        assert exc_info.value.response.status_code == 502, "Expected a 502 Internal Server Error"
 
         # Verify schema registry has been restored
         person_schema_after = registry.schema.get_node_schema(name=PERSON_KIND)

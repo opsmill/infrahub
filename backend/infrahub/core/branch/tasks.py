@@ -318,7 +318,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 db=db,
                 branch=merger.destination_branch,
                 schema_manager=registry.schema,
-                origin_schema=merger.initial_source_schema,
+                origin_schema=merger.destination_schema,
                 workflow=workflow,
                 context=context,
                 migration_executor=MigrationExecutor.WORKFLOW,

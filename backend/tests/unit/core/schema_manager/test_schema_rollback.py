@@ -166,7 +166,6 @@ class TestSchemaUpdateAndRollback:
         # Step 6: Run rollback
         rollback_query = await RollbackQuery.init(
             db=db,
-            branch=default_branch,
             target_branch=default_branch,
             at=schema_update_at,
         )
