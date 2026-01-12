@@ -137,8 +137,7 @@ def markdownlint(context: Context) -> None:
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
-        print("Warning, markdownlint-cli2 is not installed")
-        return
+        raise SystemExit("Error: markdownlint-cli2 is not installed. Run: cd docs && npm install")
     exec_cmd = "markdownlint-cli2"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
