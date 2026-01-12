@@ -20,7 +20,7 @@ Resource managers support three primary types of pools:
 :::warning
 When an attribute is assigned by a resource manager, the attribute cannot be used as part of the Human Friendly Identifier (HFID).
 
-This is due the dynamic nature of using resource managers and the idempotence of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
+This is due the dynamic nature of using resource managers and the idempotency of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
 :::
 
 ### Branch-agnostic allocation
@@ -46,7 +46,7 @@ Resource managers support idempotent allocation through the use of identifiers. 
 
 ```graphql
 mutation {
-  IPAddressPoolGetResource(data: {
+  InfrahubIPAddressPoolGetResource(data: {
     id: "<pool-id>",
     identifier: "web-server-primary-ip",
   })
@@ -123,7 +123,7 @@ Example: Allocating an IP address for future assignment:
 
 ```graphql
 mutation {
-  IPAddressPoolGetResource(data: {
+  InfrahubIPAddressPoolGetResource(data: {
     id: "<pool-id>",
     data: {
       description: "Reserved for new web server"

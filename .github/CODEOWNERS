@@ -1,6 +1,6 @@
 /backend/ @opsmill/backend
 /frontend/ @opsmill/frontend
-/docs/ @opsmill/customer-success @opsmill/backend @opsmill/frontend
+/docs/ @opsmill/sa @opsmill/backend @opsmill/frontend
 /docker-compose.yml @opsmill/cloud
 uv.lock @opsmill/backend
 pyproject.toml @opsmill/backend
