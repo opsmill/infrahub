@@ -5,8 +5,8 @@ import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
 import type { BranchStatus } from "@/entities/branches/constants";
-import { BranchStatusEnum } from "@/entities/branches/ui/filters/branch-status-enum";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
+import { BranchStatusEnum } from "@/entities/branches/ui/filters/branch-status-enum";
 import {
   FILTER_CONDITION,
   type FilterCondition,

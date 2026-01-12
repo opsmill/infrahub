@@ -1,5 +1,5 @@
-import { store } from "@/shared/stores";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { store } from "@/shared/stores";
 
 import {
   type GetBranchesFromApiParams,

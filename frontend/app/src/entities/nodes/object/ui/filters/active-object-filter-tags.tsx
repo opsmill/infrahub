@@ -1,5 +1,5 @@
-import type { TagGroupProps } from "react-aria-components";
 import { useMemo } from "react";
+import type { TagGroupProps } from "react-aria-components";
 
 import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
 
