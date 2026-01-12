@@ -126,7 +126,6 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [project.entry-points.pytest11]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
-"pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
 [project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
