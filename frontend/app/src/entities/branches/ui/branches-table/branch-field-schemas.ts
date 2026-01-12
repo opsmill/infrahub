@@ -1,3 +1,4 @@
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export const BRANCH_FIELD_SCHEMAS = {
@@ -10,6 +11,7 @@ export const BRANCH_FIELD_SCHEMAS = {
     name: "status",
     label: "Status",
     kind: "Text",
+    enum: Object.values(BRANCH_STATUS),
   } as AttributeSchema,
   branched_from: {
     name: "branched_from",
