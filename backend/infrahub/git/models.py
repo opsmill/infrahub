@@ -108,6 +108,10 @@ class GitRepositoryImportObjects(BaseModel):
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
 
 
+class GitReadOnlyRepositoryImportCommit(GitRepositoryImportObjects):
+    ref: str = Field(..., description="The ref of the repository")
+
+
 class GitDiffNamesOnly(BaseModel):
     """Request a list of modified files between two commits."""
 

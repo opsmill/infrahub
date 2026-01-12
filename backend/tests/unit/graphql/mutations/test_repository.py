@@ -12,11 +12,11 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.git.models import GitRepositoryImportObjects
+from infrahub.git.models import GitReadOnlyRepositoryImportCommit, GitRepositoryImportObjects
 from infrahub.graphql.mutations.repository import cleanup_payload
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_IMPORT_OBJECTS
+from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_IMPORT_OBJECTS
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
 
@@ -161,3 +161,62 @@ async def test_repository_update(
 def test_cleanup_payload(test_input, expected) -> None:
     cleanup_payload(data=test_input)
     assert test_input == expected
+
+
+async def test_import_read_only_repository_last_commit(
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch, create_test_admin: Node
+) -> None:
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    recorder = BusRecorder()
+    service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+    ) as mock_submit_workflow:
+        IMPORT_LAST_COMMIT = """
+        mutation InfrahubReadOnlyRepositoryImportLastCommit($id: String!) {
+            InfrahubReadOnlyRepositoryImportLastCommit(
+                data: {
+                    id: $id
+                }) {
+                ok
+            }
+        }
+        """
+
+        repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+        commit_id = "d85571671cf51f561fb0695d8657747f9ce84057"
+        await repo.new(db=db, name="test-read-only-repo", location="/tmp/repo", ref="main", commit=commit_id)
+        await repo.save(db=db)
+
+        result = await graphql_mutation(
+            query=IMPORT_LAST_COMMIT,
+            db=db,
+            variables={"id": repo.id},
+            service=service,
+            account_session=account_session,
+        )
+
+        assert not result.errors
+        assert result.data
+
+        expected_calls = [
+            call(
+                workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+                parameters={
+                    "model": GitReadOnlyRepositoryImportCommit(
+                        repository_id=repo.id,
+                        repository_name=str(repo.name.value),
+                        repository_kind=repo.get_kind(),
+                        commit=commit_id,
+                        infrahub_branch_name=default_branch.name,
+                        ref="main",
+                    )
+                },
+                context=mock_submit_workflow.call_args.kwargs["context"],
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)

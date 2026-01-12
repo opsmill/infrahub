@@ -254,6 +254,17 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.import_objects_from_files(infrahub_branch_name=self.infrahub_branch_name, commit=commit)
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
 
+    async def update_latest_commit(self) -> None:
+        git_repo = self.get_git_repo_main()
+        git_repo.remotes.origin.fetch()
+        try:
+            latest_commit = git_repo.git.rev_parse(f"origin/{self.ref}")
+            git_repo.commit(latest_commit)
+        except BadName as err:
+            log.error(f"No object found for ref {self.ref} on repository {self.name}")
+            raise ValueError(f"Ref {self.ref} not found.") from err
+        await self.sync_from_remote(commit=latest_commit)
+
 
 @cached(
     TTLCache(maxsize=100, ttl=30),
@@ -267,15 +278,12 @@ async def _get_initialized_repo(
     name: str,
     repository_kind: str,
     commit: str | None = None,
-    infrahub_branch_name: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
         return await InfrahubRepository.init(id=repository_id, name=name, commit=commit, client=client)
 
     if repository_kind == InfrahubKind.READONLYREPOSITORY:
-        return await InfrahubReadOnlyRepository.init(
-            id=repository_id, name=name, commit=commit, client=client, infrahub_branch_name=infrahub_branch_name
-        )
+        return await InfrahubReadOnlyRepository.init(id=repository_id, name=name, commit=commit, client=client)
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
 
@@ -291,7 +299,6 @@ async def get_initialized_repo(
     name: str,
     repository_kind: str,
     commit: str | None = None,
-    infrahub_branch_name: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     return await _get_initialized_repo(
         client=client,
@@ -299,5 +306,4 @@ async def get_initialized_repo(
         name=name,
         repository_kind=repository_kind,
         commit=commit,
-        infrahub_branch_name=infrahub_branch_name,
     )

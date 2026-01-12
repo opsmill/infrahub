@@ -10,7 +10,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
-from infrahub.git.models import GitRepositoryImportObjects
+from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import import_read_only_repository_last_commit
 from infrahub.services import InfrahubServices
@@ -133,15 +133,16 @@ async def test_import_read_only_repository_last_commit(
         return repo
 
     mock_add_branch_tag.return_value = None
-    mock_get_client.return_value = AsyncMock()
+    mock_get_client.return_value = AsyncMock(InfrahubClient)
     mock_get_initialized_repo.side_effect = return_repo
 
-    model = GitRepositoryImportObjects(
+    model = GitReadOnlyRepositoryImportCommit(
         repository_id=str(repo.id),
         repository_name=str(repo.name),
         repository_kind=InfrahubKind.READONLYREPOSITORY,
         commit=initial_commit_id,
         infrahub_branch_name="main",
+        ref="main",
     )
     await import_read_only_repository_last_commit(model=model)
 

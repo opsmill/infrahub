@@ -9,8 +9,10 @@ from graphene import Boolean, Field, InputObjectType, Mutation, String
 from infrahub import config
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.schema import NodeSchema
 from infrahub.git.models import (
+    GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
     GitRepositoryPullReadOnly,
 )
@@ -34,7 +36,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+    from infrahub.core.protocols import CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -220,19 +222,20 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
         repository_id = str(data.id)
-        repo: CoreReadOnlyRepository = await NodeManager.get_one_by_id_or_default_filter(
+        repo = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
-            kind=InfrahubKind.READONLYREPOSITORY,
+            kind=CoreReadOnlyRepository,
             id=str(data.id),
             branch=branch,
         )
 
-        model = GitRepositoryImportObjects(
+        model = GitReadOnlyRepositoryImportCommit(
             repository_id=repository_id,
             repository_name=str(repo.name.value),
             repository_kind=repo.get_kind(),
             commit=str(repo.commit.value),
             infrahub_branch_name=branch.name,
+            ref=str(repo.ref.value),
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,

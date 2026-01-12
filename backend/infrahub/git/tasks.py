@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
@@ -47,6 +47,7 @@ from .models import (
     CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
+    GitReadOnlyRepositoryImportCommit,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
     GitRepositoryImportObjects,
@@ -590,7 +591,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
 @flow(
     name="git-read-only-repository-import-last-commit", flow_run_name="Import last commit from read only git repository"
 )
-async def import_read_only_repository_last_commit(model: GitRepositoryImportObjects) -> None:
+async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryImportCommit) -> None:
     await add_branch_tag(model.infrahub_branch_name)
 
     if not model.repository_kind == InfrahubKind.READONLYREPOSITORY:
@@ -598,15 +599,15 @@ async def import_read_only_repository_last_commit(model: GitRepositoryImportObje
 
     client = get_client()
 
-    repo = await get_initialized_repo(
-        client=client,
-        repository_id=model.repository_id,
-        name=model.repository_name,
-        repository_kind=model.repository_kind,
-        infrahub_branch_name=model.infrahub_branch_name,
-    )
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
-        await cast("InfrahubReadOnlyRepository", repo).sync_from_remote()
+        repo = await InfrahubReadOnlyRepository.init(
+            id=model.repository_id,
+            name=model.repository_name,
+            client=client,
+            infrahub_branch_name=model.infrahub_branch_name,
+            ref=model.ref,
+        )
+        await repo.update_latest_commit()
 
 
 @flow(
