@@ -1,9 +1,10 @@
-from infrahub.core.migrations.graph import Migration051
+from infrahub.core.migrations.graph import Migration052
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_051(db: InfrahubDatabase, default_branch) -> None:
+async def test_migration_052(db: InfrahubDatabase, default_branch) -> None:
     account1_uuid = "account-uuid-1"
     account2_uuid = "account-uuid-2"
     pc1_uuid = "pc-uuid-1"
@@ -33,8 +34,8 @@ async def test_migration_051(db: InfrahubDatabase, default_branch) -> None:
         },
     )
 
-    migration = Migration051()
-    await migration.execute(db=db)
+    migration = Migration052()
+    await migration.execute(MigrationInput(db=db))
     result = await migration.validate_migration(db=db)
     assert result.success
 

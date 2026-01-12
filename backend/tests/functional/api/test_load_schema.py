@@ -190,7 +190,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         default_branch: Branch,
     ) -> None:
         schema = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db, at=Timestamp())
         creation = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
         assert not creation.errors
 
@@ -224,7 +224,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         default_branch: Branch,
     ) -> None:
         schema = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db, at=Timestamp())
         simple = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
         assert not simple.errors
         org_schema = registry.schema.get(name="TestingOrganization", branch=default_branch.name)

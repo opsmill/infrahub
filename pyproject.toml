@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.7.0rc0"
+version = "1.7.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.14"
@@ -53,7 +53,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.5",
+    "authlib==1.6.6",
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
@@ -126,7 +126,6 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [project.entry-points.pytest11]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
-"pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
 [project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"

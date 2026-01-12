@@ -408,6 +408,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         schema_node: NodeSchema | GenericSchema,
         schema_attribute: AttributeSchema,
         branch: Branch | None = None,
+        at: Timestamp | None = None,
     ) -> CoreNumberPool:
         """Fetch or create a number pool based on the schema attribute parameters.
 
@@ -456,7 +457,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     end_range=number_pool_parameters.end_range,
                     pool_type=NumberPoolType.SCHEMA.value,
                 )
-                await number_pool.save(db=db)
+                await number_pool.save(db=db, at=at)
 
                 # Do a lookup of the number pool to get the correct mapped type from the registry
                 # without this we don't get access to the .get_resource() method.

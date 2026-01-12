@@ -40,10 +40,11 @@ from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
-from infrahub.core.migrations.shared import get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, get_migration_console
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
@@ -357,7 +358,7 @@ async def migrate_database(
     root_node = await get_root_node(db=db)
 
     for migration in migrations:
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         validation_result = None
 
         if execution_result.success:
@@ -502,6 +503,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     schema_default_branch.process()
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
+    update_at = Timestamp()
     async with db.start_transaction() as dbt:
         await registry.schema.update_schema_branch(
             schema=candidate_schema,
@@ -510,6 +512,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
             diff=result.diff,
             limit=result.diff.all,
             update_db=True,
+            at=update_at,
         )
         default_branch.update_schema_hash()
         get_migration_console().log(
@@ -527,6 +530,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         new_schema=candidate_schema,
         previous_schema=origin_schema,
         migrations=result.migrations,
+        at=update_at,
     )
     migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
 
