@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.log import get_logger
@@ -27,17 +26,20 @@ class Migration017(InternalSchemaMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         """
         Load CoreProfile schema node in db.
         """
+        db = migration_input.db
+        at = migration_input.at
+        user_id = migration_input.user_id
         default_branch = registry.get_branch_from_registry()
         manager = SchemaManager()
         manager.set_schema_branch(name=default_branch.name, schema=self.get_internal_schema())
 
         db.add_schema(manager.get_schema_branch(default_branch.name))
         await manager.load_node_to_db(
-            node=core_profile_schema_definition, db=db, branch=default_branch, user_id=user_id
+            node=core_profile_schema_definition, db=db, branch=default_branch, user_id=user_id, at=at
         )
 
         return MigrationResult()

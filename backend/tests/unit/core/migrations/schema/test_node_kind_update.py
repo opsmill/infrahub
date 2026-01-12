@@ -5,6 +5,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
@@ -13,7 +14,9 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
+from tests.db_snapshot import DbSnapshotter
 from tests.helpers.db_validation import validate_node_relationships, verify_no_duplicate_paths
+from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
@@ -72,24 +75,39 @@ async def test_migration_aware_relationship(
     candidate_schema.set(name="Test2NewCar", schema=car_schema)
     assert car_schema.kind == "Test2NewCar"
 
+    # 1. Snapshot before migration
+    snapshotter = DbSnapshotter(db)
+    before_snapshot = await snapshotter.snapshot()
+
+    # 2. Create explicit timestamp
+    at = Timestamp()
+    at_str = at.to_string()
+
+    # 3. Count nodes and relationships before migration
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 0
-
     count_rels = await count_relationships(db=db)
 
+    # 4. Execute migration
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
     )
-
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
+
+    # 5. Validate nodes and relationships after migration
     assert await count_relationships(db=db) == count_rels + 36
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
 
+    # 6. Validate edge timestamps
+    after_snapshot = await snapshotter.snapshot()
+    assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
+
+    # 7. Validate node relationships
     await validate_node_relationships(node=car_accord_main, db=db, branch=default_branch)
     await validate_node_relationships(node=car_camry_main, db=db, branch=default_branch)
 
@@ -125,7 +143,7 @@ async def test_migration_agnostic_relationship(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label="TestCar") == 1
@@ -167,7 +185,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
         ),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label=TestKind.CONTINENT) == 1
@@ -212,7 +230,7 @@ async def test_inheritance_migration_on_branch_and_main(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
     )
 
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
 
@@ -224,7 +242,9 @@ async def test_inheritance_migration_on_branch_and_main(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
     )
 
-    execution_result_default = await migration_default.execute(db=db, branch=default_branch)
+    execution_result_default = await migration_default.execute(
+        migration_input=MigrationInput(db=db), branch=default_branch
+    )
     assert not execution_result_default.errors
 
     await verify_no_duplicate_paths(db=db)
@@ -249,7 +269,9 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
     )
-    execution_result = await migration.execute(db=db, branch=branch, at=migration_time, user_id=test_user_id)
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+    )
     assert not execution_result.errors
 
     registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)

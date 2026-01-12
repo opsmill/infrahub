@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from infrahub.core.branch import Branch
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
+from infrahub.core.timestamp import Timestamp
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+
+
+class Migration052(ArbitraryMigration):
+    name: str = "052_subtract_branched_from_microsecond"
+    minimum_version: int = 51
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
+        return MigrationResult()
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        result = MigrationResult()
+
+        branches = await Branch.get_list(db=db)
+
+        for branch in branches:
+            if branch.is_default or branch.is_global:
+                continue
+
+            if not branch.branched_from:
+                continue
+
+            original_ts = Timestamp(branch.branched_from)
+            new_ts = original_ts.subtract(microseconds=1)
+            branch.branched_from = new_ts.to_string()
+
+            await branch.save(db=db)
+
+        return result

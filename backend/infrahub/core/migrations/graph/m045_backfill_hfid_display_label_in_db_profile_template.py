@@ -8,14 +8,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import DefaultBranchNodeCount, Migration044
-from infrahub.core.migrations.shared import MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
 from infrahub.exceptions import SchemaNotFoundError
 
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
     from infrahub.core.schema import ProfileSchema, TemplateSchema
-    from infrahub.database import InfrahubDatabase
 
 
 console = get_migration_console()
@@ -30,7 +29,9 @@ class Migration045(Migration044):
     minimum_version: int = 44
     update_batch_size: int = 1000
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
@@ -77,6 +78,7 @@ class Migration045(Migration044):
                         schema=node_schema,
                         schema_branch=main_schema_branch,
                         attribute_schema_map=attribute_schema_map,
+                        at=at,
                         progress=progress,
                         update_task=update_task,
                     )
@@ -85,7 +87,9 @@ class Migration045(Migration044):
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         default_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
@@ -143,6 +147,7 @@ class Migration045(Migration044):
                         schema=node_schema,
                         schema_branch=schema_branch,
                         attribute_schema_map=schemas_for_universal_update_map,
+                        at=at,
                     )
 
                 if not schemas_for_targeted_update_map:
@@ -156,6 +161,7 @@ class Migration045(Migration044):
                         schema_branch=schema_branch,
                         source_attribute_schema=source_attribute_schema,
                         destination_attribute_schema=destination_attribute_schema,
+                        at=at,
                     )
 
         except Exception as exc:

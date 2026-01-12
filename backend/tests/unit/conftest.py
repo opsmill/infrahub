@@ -2421,7 +2421,9 @@ async def register_organization_schema(default_branch: Branch, organization_sche
 
 @pytest.fixture
 async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
-    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, db=db)
+    await registry.schema.load_schema_to_db(
+        schema=register_core_models_schema, branch=default_branch, db=db, at=Timestamp()
+    )
     updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
 

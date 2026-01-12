@@ -4,6 +4,8 @@ allowed-tools: Bash(uv run mypy:*), Read, Edit, Glob
 argument-hint: <module-name e.g., infrahub.core.attribute> [error-code e.g., arg-type]
 ---
 
+# Fix Mypy Module Typing
+
 Fix mypy typing violations for module: $ARGUMENTS
 
 **Important**: The argument should be either:

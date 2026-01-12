@@ -22,6 +22,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.metadata.query.node_metadata import NodeMetadataDefaultBranchQuery
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
@@ -1903,7 +1904,9 @@ class TestDiffAndMerge:
             ),
         )
         migration_at = Timestamp()
-        execution_result = await migration.execute(db=db, branch=branch2, at=migration_at, user_id="migration-user")
+        execution_result = await migration.execute(
+            migration_input=MigrationInput(db=db, at=migration_at, user_id="migration-user"), branch=branch2
+        )
         assert not execution_result.errors
 
         # update car owner and color
@@ -2194,7 +2197,7 @@ class TestDiffAndMerge:
         )
         migration1_at = Timestamp()
         execution_result = await migration.execute(
-            db=db, branch=branch2, at=migration1_at, user_id="migration-user-one"
+            migration_input=MigrationInput(db=db, at=migration1_at, user_id="migration-user-one"), branch=branch2
         )
         assert not execution_result.errors
 
@@ -2223,7 +2226,7 @@ class TestDiffAndMerge:
         )
         migration2_at = Timestamp()
         execution_result = await migration.execute(
-            db=db, branch=branch2, at=migration2_at, user_id="migration-user-two"
+            migration_input=MigrationInput(db=db, at=migration2_at, user_id="migration-user-two"), branch=branch2
         )
         assert not execution_result.errors
 
@@ -2485,7 +2488,7 @@ class TestDiffAndMerge:
         )
         migration_at = Timestamp()
         execution_result = await migration.execute(
-            db=db, branch=default_branch, at=migration_at, user_id="migration-user"
+            migration_input=MigrationInput(db=db, at=migration_at, user_id="migration-user"), branch=default_branch
         )
         assert not execution_result.errors
 
