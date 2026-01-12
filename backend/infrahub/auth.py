@@ -153,6 +153,17 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
             filters={"name__values": sso_groups},
             prefetch_relationships=True,
         )
+
+        if config.SETTINGS.security.sso_generate_groups:
+            existing_group_names = {group.name.value for group in infrahub_groups}
+            for group_name in sso_groups:
+                if group_name not in existing_group_names:
+                    new_group = await Node.init(db=db, schema=CoreAccountGroup)
+                    await new_group.new(db=db, name=group_name)
+                    await new_group.save(db=db)
+                    infrahub_groups.append(new_group)
+                    log.info(f"Auto-created SSO group: {group_name}")
+
         for group in infrahub_groups:
             members = await group.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
             if account.id not in members:
