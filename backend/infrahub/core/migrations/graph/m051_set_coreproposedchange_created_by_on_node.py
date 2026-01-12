@@ -30,9 +30,9 @@ class SetCoreProposedChangeCreatedByOnNodeQuery(Query):
         self.add_to_query(query)
 
 
-class Migration051(GraphMigration):
+class Migration052(GraphMigration):
     name: str = "051_set_coreproposedchange_created_by_on_node"
-    minimum_version: int = 50
+    minimum_version: int = 51
     queries: Sequence[type[Query]] = [SetCoreProposedChangeCreatedByOnNodeQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

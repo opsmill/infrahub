@@ -1,4 +1,5 @@
 from infrahub.core.migrations.graph import Migration049
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -49,7 +50,7 @@ async def test_migration_049(db: InfrahubDatabase, default_branch, person_john_m
     assert is_visible_count[0].get("is_visible_count") == 4
 
     migration = Migration049()
-    await migration.execute(db=db)
+    await migration.execute(migration_input=MigrationInput(db=db))
     result = await migration.validate_migration(db=db)
     assert result.success
 

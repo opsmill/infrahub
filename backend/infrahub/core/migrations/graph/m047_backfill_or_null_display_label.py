@@ -9,7 +9,12 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.shared import MigrationRequiringRebase, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import (
+    MigrationInput,
+    MigrationRequiringRebase,
+    MigrationResult,
+    get_migration_console,
+)
 from infrahub.core.query import Query, QueryType
 
 from .load_schema_branch import get_or_load_schema_branch
@@ -24,6 +29,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -409,6 +415,7 @@ class Migration047(MigrationRequiringRebase):
         schema: MainSchemaTypes,
         schema_branch: SchemaBranch,
         attribute_schema: AttributeSchema,
+        at: Timestamp,
         progress: Progress | None = None,
         update_task: TaskID | None = None,
     ) -> None:
@@ -466,6 +473,7 @@ class Migration047(MigrationRequiringRebase):
                     branch=branch,
                     attribute_schema=attribute_schema,
                     values_by_id_map=formatted_schema_path_values_map,
+                    at=at,
                 )
                 await update_display_label_query.execute(db=db)
 
@@ -477,7 +485,9 @@ class Migration047(MigrationRequiringRebase):
 
             offset += self.update_batch_size
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
@@ -531,7 +541,7 @@ class Migration047(MigrationRequiringRebase):
                             break
 
                         create_display_label_query = await CreateDisplayLabelNullQuery.init(
-                            db=db, branch=default_branch, node_uuids=batch_uuids
+                            db=db, branch=default_branch, node_uuids=batch_uuids, at=at
                         )
                         await create_display_label_query.execute(db=db)
 
@@ -551,6 +561,7 @@ class Migration047(MigrationRequiringRebase):
                             schema=main_schema_branch.get(name=node_schema_name, duplicate=False),
                             schema_branch=main_schema_branch,
                             attribute_schema=display_label_attribute_schema,
+                            at=at,
                             progress=progress,
                             update_task=backfill_task,
                         )
@@ -559,7 +570,9 @@ class Migration047(MigrationRequiringRebase):
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
 
         base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
@@ -579,7 +592,7 @@ class Migration047(MigrationRequiringRebase):
                         break
 
                     create_display_label_query = await CreateDisplayLabelNullQuery.init(
-                        db=db, branch=branch, node_uuids=batch_uuids
+                        db=db, branch=branch, node_uuids=batch_uuids, at=at
                     )
                     await create_display_label_query.execute(db=db)
 
@@ -599,6 +612,7 @@ class Migration047(MigrationRequiringRebase):
                     schema=node_schema,
                     schema_branch=schema_branch,
                     attribute_schema=display_label_attribute_schema,
+                    at=at,
                 )
 
         except Exception as exc:

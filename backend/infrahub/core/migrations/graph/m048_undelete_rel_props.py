@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.graph.m041_deleted_dup_edges import DeleteDuplicatedRelationshipEdges
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -143,18 +143,20 @@ class Migration048(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         console = get_migration_console()
 
         console.log("Deleting duplicate edges for all Relationships", end="...")
         delete_duplicate_edges_query = await DeleteDuplicatedRelationshipEdges.init(
-            db=db, migrated_kind_nodes_only=False
+            db=db, migrated_kind_nodes_only=False, at=at
         )
         await delete_duplicate_edges_query.execute(db=db)
         console.log("done")
 
         console.log("Undeleting Relationship properties", end="...")
-        undelete_rel_props_query = await UndeleteRelationshipProperties.init(db=db)
+        undelete_rel_props_query = await UndeleteRelationshipProperties.init(db=db, at=at)
         await undelete_rel_props_query.execute(db=db)
         console.log("done")
 
