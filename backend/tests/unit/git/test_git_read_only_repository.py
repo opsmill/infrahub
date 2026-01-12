@@ -116,6 +116,7 @@ async def test_import_read_only_repository_last_commit(
 ) -> None:
     repo = git_repo_01_read_only
     repo.client = AsyncMock()
+    repo.ref = "main"
     initial_commit_id = repo.get_commit_value(branch_name="main")
 
     upstream = Repo(git_upstream_repo_01["path"])
@@ -144,7 +145,6 @@ async def test_import_read_only_repository_last_commit(
     )
     await import_read_only_repository_last_commit(model=model)
 
-    local = Repo(git_upstream_repo_01["path"])
-    local.git.checkout("main")
-    assert initial_commit_id != str(local.commit)
-    assert str(local.commit) == str(upstream.commit)
+    new_commit_id = repo.get_commit_value(branch_name="main")
+    assert initial_commit_id != new_commit_id
+    assert new_commit_id == str(upstream.head.commit)
