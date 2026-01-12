@@ -40,12 +40,14 @@ See `dev/guidelines/backend/python.md` for detailed coding standards including:
 
 ### Neo4j/Cypher Queries
 
-When writing or modifying Cypher queries, **read `DATABASE.md`** first. It documents:
+When writing or modifying Cypher queries, **read `dev/knowledge/backend/database-schema.md`** first. It documents:
 
 - Vertex types (Root, Branch, Node, Relationship, Attribute, AttributeValue)
 - Edge types and properties (branch, from, to, status)
 - Temporal branching rules and valid path patterns
 - Example queries for common operations
+
+Also see `dev/knowledge/backend/query-pattern.md` for the Query class pattern used to execute Cypher queries.
 
 ## Testing
 

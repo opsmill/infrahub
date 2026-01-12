@@ -11,6 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.relationship.model import RelationshipManager
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.db_validation import validate_no_duplicate_attributes
@@ -1562,6 +1563,7 @@ class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGener
                     parent=node_schema_instance,
                     item=attr,
                     user_id="user-id",
+                    at=Timestamp(),
                 )
                 attr.id = new_attr.id
             for rel_name in ("things", "favorite_thing"):
@@ -1573,6 +1575,7 @@ class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGener
                     parent=node_schema_instance,
                     item=rel,
                     user_id="user-id",
+                    at=Timestamp(),
                 )
                 rel.id = new_rel.id
             main_schema_branch.set(name=schema_kind, schema=node_schema)

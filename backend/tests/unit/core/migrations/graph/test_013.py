@@ -10,6 +10,7 @@ from infrahub.core.migrations.graph.m013_convert_git_password_credential import 
     Migration013ConvertCoreRepositoryWithoutCred,
     Migration013DeleteUsernamePasswordGenericSchema,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.utils import count_nodes, count_relationships
@@ -297,7 +298,7 @@ async def test_migration_013(
     nbr_nodes_before = await count_nodes(db=db)
 
     migration = Migration013()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)
