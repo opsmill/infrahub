@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
-    from tests.unit.graphql.conftest import PermissionsHelper
+    from tests.component.graphql.conftest import PermissionsHelper
 
 
 QUERY_TAGS = """

@@ -17,7 +17,18 @@ Infrahub uses pytest with TestContainers to provide reproducible, isolated tests
 
 ### Unit Tests (`backend/tests/unit/`)
 
-Despite the name, these are not traditional unit tests. Many tests leverage the database and use TestContainers for external dependencies.
+Fast unittests that require no external services to run. I.e. no database or network access. Tests in this directory can read from local folders and files.
+
+**Characteristics:**
+
+- Fast feedback loop
+- Sanity checks
+
+**When to use:** Testing smaller functions that doesn't require network services.
+
+### Component Tests (`backend/tests/component/`)
+
+Many tests leverage the database and use TestContainers for external dependencies.
 
 **Characteristics:**
 
