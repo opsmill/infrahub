@@ -1,4 +1,5 @@
 import { store } from "@/shared/stores";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
   type GetBranchesFromApiParams,
@@ -11,7 +12,9 @@ import {
 } from "@/entities/branches/domain/branch.mappers";
 import { branchesState } from "@/entities/branches/stores";
 
-export type GetBranchesParams = GetBranchesFromApiParams;
+export type GetBranchesParams = GetBranchesFromApiParams & {
+  filters?: Filter[];
+};
 
 export type GetBranchesResult = Array<BranchListItem>;
 
