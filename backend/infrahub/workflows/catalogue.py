@@ -473,6 +473,14 @@ GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT = WorkflowDefinition(
+    name="git-read-only-repository-import-last-commit",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="import_read_only_repository_last_commit",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 REQUEST_PROPOSED_CHANGE_PIPELINE = WorkflowDefinition(
     name="proposed-changed-pipeline",
     type=WorkflowType.INTERNAL,
@@ -681,6 +689,7 @@ WORKFLOWS = [
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
     DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
+    GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,

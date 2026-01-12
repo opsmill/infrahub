@@ -588,6 +588,26 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
 
 
 @flow(
+    name="git-read-only-repository-import-last-commit", flow_run_name="Import last commit from read only git repository"
+)
+async def import_read_only_repository_last_commit(model: GitRepositoryImportObjects) -> None:
+    await add_branch_tag(model.infrahub_branch_name)
+
+    if not model.repository_kind == InfrahubKind.READONLYREPOSITORY:
+        raise RepositoryError(identifier=model.repository_name, message="Repository is not a read only repository")
+
+    client = get_client()
+
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=model.repository_kind,
+    )
+    await repo.sync_from_remote()
+
+
+@flow(
     name="git-repository-diff-names-only",
     flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",
     persist_result=True,

@@ -20,6 +20,7 @@ from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
 from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workflows.catalogue import (
+    GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
 )
@@ -197,6 +198,46 @@ class ProcessRepository(Mutation):
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
+        )
+        task = {"id": workflow.id}
+        return cls(ok=True, task=task)
+
+
+class ReadOnlyRepositoryImportLastCommit(Mutation):
+    class Arguments:
+        data = IdentifierInput(required=True)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: IdentifierInput,
+    ) -> dict[str, bool]:
+        graphql_context: GraphqlContext = info.context
+        branch = graphql_context.branch
+        repository_id = str(data.id)
+        repo: CoreReadOnlyRepository = await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db,
+            kind=InfrahubKind.READONLYREPOSITORY,
+            id=str(data.id),
+            branch=branch,
+        )
+
+        model = GitRepositoryImportObjects(
+            repository_id=repository_id,
+            repository_name=str(repo.name.value),
+            repository_kind=repo.get_kind(),
+            commit=str(repo.commit.value),
+            infrahub_branch_name=branch.name,
+        )
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)
