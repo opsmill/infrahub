@@ -9,6 +9,7 @@ from infrahub.core.migrations.graph.m012_convert_account_generic import (
     Migration012RenameTypeAttributeData,
     Migration012RenameTypeAttributeSchema,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.utils import count_nodes, count_relationships
@@ -278,7 +279,7 @@ async def test_migration_012(
     nbr_attrs_before = await count_nodes(db=db, label="Attribute")
 
     migration = Migration012()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)

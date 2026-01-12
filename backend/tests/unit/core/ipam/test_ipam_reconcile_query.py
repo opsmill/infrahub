@@ -9,6 +9,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch, get_default_ipnamespace
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
@@ -715,7 +716,7 @@ async def test_reconcile_query_on_migrated_kind_node(
         new_node_schema=prefix_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="IpamIPPrefixTwo", field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     registry.schema.set(name="IpamIPPrefixTwo", schema=prefix_schema, branch=branch.name)

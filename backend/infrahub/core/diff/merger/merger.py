@@ -125,7 +125,11 @@ class DiffMerger:
                 )
                 await metadata_query.execute(db=self.db)
 
-        self.source_branch.branched_from = at.to_string()
+        # set the branched_from time to the previous microsecond to prevent duplicated
+        # relationships on the branch after the merge
+        branched_from = at.subtract(microseconds=1)
+
+        self.source_branch.branched_from = branched_from.to_string()
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
         return enriched_diff
