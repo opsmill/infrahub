@@ -408,7 +408,9 @@ class NumberPoolGetUsed(Query):
                 n.uuid = res.identifier AND
                 attr.name = $attribute_name AND
                 all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC, res.from DESC, hv.from DESC, ha.from DESC
+            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
+                res.from DESC, hv.from DESC, ha.from DESC,
+                res.status ASC, hv.status ASC, ha.status ASC
             RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
             LIMIT 1
         }
@@ -474,7 +476,9 @@ class NumberPoolGetFree(Query):
                 n.uuid = res.identifier AND
                 attr.name = $attribute_name AND
                 all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC, res.from DESC, hv.from DESC, ha.from DESC
+            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
+                res.from DESC, hv.from DESC, ha.from DESC,
+                res.status ASC, hv.status ASC, ha.status ASC
             RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
             LIMIT 1
         }
