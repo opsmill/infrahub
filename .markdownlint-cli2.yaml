@@ -1,11 +1,10 @@
 ---
 # markdownlint-cli2 configuration
 # https://github.com/DavidAnson/markdownlint-cli2
-
-# Only lint markdown files in docs/docs/
-globs:
-  - "docs/docs/**/*.md"
-  - "docs/docs/**/*.mdx"
+#
+# Note: Globs are passed explicitly via CLI/CI action, not in this file,
+# because markdownlint-cli2 config globs are not consistently respected.
+# Target: docs/docs/**/*.md and docs/docs/**/*.mdx
 
 config:
   default: true

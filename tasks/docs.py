@@ -138,7 +138,7 @@ def markdownlint(context: Context) -> None:
 
     if not has_markdownlint:
         raise SystemExit("Error: markdownlint-cli2 is not installed. Run: cd docs && npm install")
-    exec_cmd = "markdownlint-cli2"
+    exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -151,7 +151,7 @@ def format_markdownlint(context: Context) -> None:
     Uses .markdownlint-cli2.yaml for configuration and ignore patterns.
     """
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 --fix"
+    exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx' --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
