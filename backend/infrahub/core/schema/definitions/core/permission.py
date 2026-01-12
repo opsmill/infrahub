@@ -1,7 +1,6 @@
 from infrahub.core.constants import (
     AllowOverrideType,
     BranchSupportType,
-    ComputedAttributeKind,
     GlobalPermissions,
     InfrahubKind,
     PermissionAction,
@@ -9,7 +8,6 @@ from infrahub.core.constants import (
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
-from infrahub.core.schema.computed_attribute import ComputedAttribute
 
 from ...attribute_schema import AttributeSchema as Attr
 from ...dropdown import DropdownChoice
@@ -27,7 +25,18 @@ core_base_permission = GenericSchema(
     icon="mdi:user-key",
     include_in_menu=False,
     generate_profile=False,
-    attributes=[Attr(name="description", kind="Text", optional=True)],
+    attributes=[
+        Attr(name="description", kind="Text", optional=True),
+        Attr(
+            name="identifier",
+            kind="Text",
+            description="Identifier for the permission",
+            read_only=True,
+            optional=True,
+            allow_override=AllowOverrideType.NONE,
+            deprecation="Use permission display_label instead",
+        ),
+    ],
     relationships=[
         Rel(
             name="roles",
@@ -80,21 +89,6 @@ core_object_permission = NodeSchema(
             description="Decide to deny or allow the action."
             "If allowed, it can be configured for the default branch, any other branches or all branches",
         ),
-        Attr(
-            name="identifier",
-            kind="Text",
-            description="Identifier for the permission",
-            read_only=True,
-            optional=True,
-            allow_override=AllowOverrideType.NONE,
-            computed_attribute=ComputedAttribute(
-                kind=ComputedAttributeKind.JINJA2,
-                jinja2_template=(
-                    "object:{{ namespace__value }}:{{ name__value }}:{{ action__value | value_to_permission_action_name | lower }}:"
-                    "{{ decision__value | value_to_permission_decision_name | lower }}"
-                ),
-            ),
-        ),
     ],
 )
 
@@ -127,18 +121,6 @@ core_global_permission = NodeSchema(
             default_value=PermissionDecision.ALLOW_ALL.value,
             order_weight=3000,
             description="Decide to deny or allow the action at a global level",
-        ),
-        Attr(
-            name="identifier",
-            kind="Text",
-            description="Identifier for the permission",
-            read_only=True,
-            optional=True,
-            allow_override=AllowOverrideType.NONE,
-            computed_attribute=ComputedAttribute(
-                kind=ComputedAttributeKind.JINJA2,
-                jinja2_template="global:{{ action__value | lower }}:{{ decision__value | value_to_permission_decision_name | lower }}",
-            ),
         ),
     ],
 )
