@@ -218,7 +218,7 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: IdentifierInput,
-    ) -> dict[str, bool]:
+    ) -> Self:
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
         repository_id = str(data.id)
