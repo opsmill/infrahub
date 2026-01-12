@@ -1,12 +1,13 @@
 import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
+import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
 import Content from "@/shared/components/layout/content";
 import useFilters from "@/shared/hooks/useFilters";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
 import { useGetBranchesCount } from "@/entities/branches/domain/get-branches-count.query";
-import { ActiveBranchFilterTags } from "@/entities/branches/ui/filters/active-branch-filter-tags";
+import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 
@@ -29,6 +30,8 @@ function BranchesListHeader() {
 }
 
 function BranchesListToolbar() {
+  const [filters, setFilters] = useFilters();
+
   return (
     <Col className="gap-0">
       <BranchesListHeader />
@@ -37,7 +40,11 @@ function BranchesListToolbar() {
         <div className="max-w-56 py-3">
           <FilterSearchInput placeholder="Search branches" />
         </div>
-        <ActiveBranchFilterTags />
+        <ActiveFilterTags
+          filters={filters}
+          setFilters={setFilters}
+          fieldSchemas={BRANCH_FIELD_SCHEMAS}
+        />
       </Row>
     </Col>
   );
