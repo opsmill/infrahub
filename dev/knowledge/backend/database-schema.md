@@ -1,5 +1,7 @@
 # Neo4j Database Schema
 
+> Part of: `dev/knowledge/backend/` | Related: [Query Pattern](query-pattern.md), [Architecture](architecture.md)
+
 Infrahub uses a temporal graph database with branch support. All queries target a specific branch and point in time.
 
 ## Branches
@@ -351,3 +353,8 @@ CALL (peer, rl) {
 - **DISTINCT first**: When multiple vertices may match, get DISTINCT nodes first, then validate each
 - **Order then filter**: Always `ORDER BY ... LIMIT 1` first, then `WHERE status = "active"` to handle the case where the latest edge is a deletion
 - **No `to` timestamp**: `to IS NULL` ensures the edge is currently valid (not expired)
+
+## See Also
+
+- [Query Pattern](query-pattern.md) - How to write database queries
+- [Architecture](architecture.md) - Backend architecture overview

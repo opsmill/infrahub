@@ -24,7 +24,8 @@ def __init__(self, node_id: str, **kwargs):
     self.params["node_id"] = node_id
     self.add_to_query("MATCH (n:Node { uuid: $node_id })")
     self.add_to_query("WHERE n.status = 'active'")
-    self.update_return_labels(["n"])
+    self.add_to_query("RETURN n.uuid AS node_uuid, n.name AS node_name")
+    self.update_return_labels(["node_uuid", "node_name"])
 ```
 
 | Method | Purpose |
@@ -81,11 +82,18 @@ self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 
 ### Return Labels
 
-The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return:
+The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
+
+**Important:** Only return the specific properties you need, not entire nodes or relationships. This reduces data transfer and memory usage.
 
 ```python
+# Good: Return only needed properties
 self.add_to_query("MATCH (n:Node)-[r:REL]->(p:Peer)")
-self.update_return_labels(["n", "r", "p"])  # Generates: RETURN n, r, p
+self.add_to_query("RETURN n.uuid AS node_uuid, r.branch AS rel_branch, p.uuid AS peer_uuid")
+self.update_return_labels(["node_uuid", "rel_branch", "peer_uuid"])
+
+# Avoid: Returning entire nodes transfers unnecessary data
+self.update_return_labels(["n", "r", "p"])  # Returns all properties of n, r, p
 ```
 
 To write the RETURN clause directly in your query, set `insert_return = False`:
@@ -99,7 +107,8 @@ class MyQuery(Query):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_to_query("MATCH (n:Node)")
-        self.add_to_query("RETURN n.uuid AS uuid, n.name AS name")  # Manual RETURN
+        self.add_to_query("RETURN n.uuid AS uuid, n.name AS name")  # Only needed properties
+        self.updated_return_labels(["uuid", "name"])
 ```
 
 ### Pagination
@@ -115,7 +124,7 @@ class MyQuery(Query):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_to_query("MATCH (n:Node)")
-        self.add_to_query("RETURN n LIMIT 100")  # Manual pagination
+        self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
 ```
 
 ## Result Dataclass Pattern
@@ -125,6 +134,7 @@ All queries must expose results through frozen dataclasses. This provides type s
 ### Basic Structure
 
 ```python
+from typing import Generator
 from dataclasses import dataclass
 from infrahub.core.query import Query, QueryResult, QueryType
 
@@ -134,12 +144,6 @@ class MyQueryResult:
     uuid: str
     name: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> MyQueryResult:
-        """Convert raw QueryResult to typed dataclass."""
-        node = result.get_node("n")
-        return cls(uuid=node.get("uuid"), name=node.get("name"))
-
 class MyQuery(Query):
     name = "my-query"
     type = QueryType.READ
@@ -147,12 +151,15 @@ class MyQuery(Query):
     def __init__(self, node_id: str, **kwargs):
         super().__init__(**kwargs)
         self.params["node_id"] = node_id
-        self.add_to_query("MATCH (n:Node { uuid: $node_id })")
-        self.update_return_labels(["n"])
+        self.add_to_query("MATCH (n:Node { uuid: $node_id }) RETURN n.uuid AS node_uuid, n.name AS node_name")
+        self.update_return_labels(["node_uuid", "node_name"])
 
-    def get_data(self) -> list[MyQueryResult]:
-        """Return results as typed dataclass instances."""
-        return [MyQueryResult.from_db(r) for r in self.get_results()]
+    def get_data(self) -> Generator[MyQueryResult, None, None]:
+        """Yield results as typed dataclass instances."""
+        for result in self.get_results():
+            node_uuid = result.get_as_type("node_uuid", str)
+            node_name = result.get_as_type("node_name", str)
+            yield MyQueryResult(uuid=node_uuid, name=node_name)
 ```
 
 ### Naming Conventions
@@ -160,10 +167,11 @@ class MyQuery(Query):
 | Element | Convention | Example |
 |---------|------------|---------|
 | Result dataclass | `{QueryName}Result` | `NodeGetListQueryResult` |
-| Factory method | `from_db(cls, result)` | `MyQueryResult.from_db(result)` |
-| Query method | `get_data()` | Returns typed results |
+| Query method | `get_data()` | Yields typed results as a Generator |
 
 ### Pattern Examples
+
+The following examples show common patterns for building dataclasses within the `get_data()` method.
 
 **Scalar values** (`RETURN n.uuid AS uuid, n.kind AS kind`):
 
@@ -173,27 +181,35 @@ class ScalarResult:
     uuid: str
     kind: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> ScalarResult:
-        return cls(uuid=result.get_as_type("uuid", str), kind=result.get_as_type("kind", str))
+# In get_data():
+def get_data(self) -> Generator[ScalarResult, None, None]:
+    for result in self.get_results():
+        yield ScalarResult(
+            uuid=result.get_as_type("uuid", str),
+            kind=result.get_as_type("kind", str),
+        )
 ```
 
-**Single node** (`RETURN n`):
+**Node properties** (`RETURN n.uuid AS node_uuid, n.kind AS node_kind, elementId(n) AS db_id`):
 
 ```python
 @dataclass(frozen=True)
-class SingleNodeResult:
+class NodePropertiesResult:
     uuid: str
     kind: str
     db_id: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> SingleNodeResult:
-        node = result.get_node("n")
-        return cls(uuid=node.get("uuid"), kind=node.get("kind"), db_id=node.element_id)
+# In get_data():
+def get_data(self) -> Generator[NodePropertiesResult, None, None]:
+    for result in self.get_results():
+        yield NodePropertiesResult(
+            uuid=result.get_as_str("node_uuid"),
+            kind=result.get_as_str("node_kind"),
+            db_id=result.get_as_str("db_id"),
+        )
 ```
 
-**Node + relationship** (`RETURN n, r`):
+**Node + relationship properties** (`RETURN n.uuid AS node_uuid, r.branch AS rel_branch, r.status AS rel_status`):
 
 ```python
 @dataclass(frozen=True)
@@ -202,13 +218,17 @@ class NodeWithRelResult:
     rel_branch: str
     rel_status: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NodeWithRelResult:
-        node, rel = result.get_node("n"), result.get_rel("r")
-        return cls(node_uuid=node.get("uuid"), rel_branch=rel.get("branch"), rel_status=rel.get("status"))
+# In get_data():
+def get_data(self) -> Generator[NodeWithRelResult, None, None]:
+    for result in self.get_results():
+        yield NodeWithRelResult(
+            node_uuid=result.get_as_str("node_uuid"),
+            rel_branch=result.get_as_str("rel_branch"),
+            rel_status=result.get_as_str("rel_status"),
+        )
 ```
 
-**Collection** (`RETURN n, collect(related) AS related`):
+**Collection of properties** (`RETURN n.uuid AS primary_uuid, collect(peer.uuid) AS related_uuids`):
 
 ```python
 @dataclass(frozen=True)
@@ -216,11 +236,13 @@ class CollectionResult:
     primary_uuid: str
     related_uuids: tuple[str, ...]  # tuple for frozen dataclass
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> CollectionResult:
-        node = result.get_node("n")
-        related = result.get_node_collection("related")
-        return cls(primary_uuid=node.get("uuid"), related_uuids=tuple(r.get("uuid") for r in related))
+# In get_data():
+def get_data(self) -> Generator[CollectionResult, None, None]:
+    for result in self.get_results():
+        yield CollectionResult(
+            primary_uuid=result.get_as_str("primary_uuid"),
+            related_uuids=tuple(r_uuid for r_uuid in result.get("related_uuids")),
+        )
 ```
 
 **Optional values**:
@@ -231,51 +253,68 @@ class OptionalResult:
     uuid: str
     description: str | None
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> OptionalResult:
-        return cls(uuid=result.get_as_type("uuid", str), description=result.get_as_optional_type("description", str))
+# In get_data():
+def get_data(self) -> Generator[OptionalResult, None, None]:
+    for result in self.get_results():
+        yield OptionalResult(
+            uuid=result.get_as_type("uuid", str),
+            description=result.get_as_optional_type("description", str),
+        )
 ```
 
 ### Query Method Patterns
 
 ```python
-# Multiple results:
-def get_data(self) -> list[MyQueryResult]:
-    return [MyQueryResult.from_db(r) for r in self.get_results()]
-
-# Large result sets (memory efficient):
-def get_data_iterator(self) -> Iterator[MyQueryResult]:
+# Multiple results (standard pattern):
+# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
+def get_data(self) -> Generator[MyQueryResult, None, None]:
     for result in self.get_results():
-        yield MyQueryResult.from_db(result)
+        yield MyQueryResult(
+            uuid=result.get_as_str("node_uuid"),
+            name=result.get_as_str("node_name"),
+        )
 
 # Single result:
+# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
 def get_data(self) -> MyQueryResult | None:
     result = self.get_result()
-    return MyQueryResult.from_db(result) if result else None
+    if result is None:
+        return None
+    return MyQueryResult(
+        uuid=result.get_as_str("node_uuid"),
+        name=result.get_as_str("node_name"),
+    )
 ```
 
 ### Guidelines
 
+- **Return only necessary data:** Never return entire nodes (`RETURN n`) when you only need specific properties (`RETURN n.uuid AS uuid`). This significantly reduces data transfer and memory usage.
 - Use `@dataclass(frozen=True)` for immutability and hashability (NOT Pydantic)
 - Flatten aggressively: replace `node.get("prop")` chains with simple attributes
 - Only include fields actually used by callers
 - Use tuples instead of lists for collection fields (frozen dataclass requirement)
-- Use `get_as_type()` for scalars, `get_as_optional_type()` for nullable values
-- Use generators for large result sets to avoid memory issues
+- Use `get_as_str()`, `get_as_type()` for scalars, `get_as_optional_type()` for nullable values
+- Use `Generator` return type since `get_results()` returns a generator
 
-### Optimizing Cypher RETURN
+### Why Return Only Needed Properties
 
-When possible, return only needed properties instead of entire nodes:
+Returning entire nodes (`RETURN n`) transfers all properties from the database, even those you don't use. This wastes:
+
+1. **Network bandwidth** between Neo4j and the application
+2. **Memory** for deserializing and storing unused data
+3. **CPU cycles** for parsing unnecessary properties
 
 ```cypher
--- Before (returns entire nodes)
+-- Bad: Returns all properties of n, r, and p
+MATCH (n:Node)-[r:REL]->(p:Peer)
 RETURN n, r, p
 
--- After (returns only needed properties)
+-- Good: Returns only the 3 properties actually needed
+MATCH (n:Node)-[r:REL]->(p:Peer)
 RETURN n.uuid AS node_uuid, n.name AS node_name, r.branch AS rel_branch
 ```
 
-This reduces data transfer and memory usage.
+Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just to access `node.element_id`.
 
 ## Internals
 
@@ -317,7 +356,7 @@ class Query:
 
 ### QueryResult (Internal)
 
-> **Note:** QueryResult is for internal query implementation. Use it only inside `from_db()` methods. External callers must use typed dataclass results.
+> **Note:** QueryResult is for internal query implementation. Use it only inside `get_data()` methods. External callers must use typed dataclass results.
 
 Wraps Neo4j records and provides typed access methods:
 
@@ -396,6 +435,7 @@ Specialized base classes for different domains:
 
 ## See Also
 
+- [Database Schema](database-schema.md) - Neo4j vertex/edge structure and temporal branching rules
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Testing](testing.md) - Query testing patterns
 - [Python Coding Standards](../../guidelines/backend/python.md) - Dataclass conventions
