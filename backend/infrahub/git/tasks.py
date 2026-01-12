@@ -603,8 +603,10 @@ async def import_read_only_repository_last_commit(model: GitRepositoryImportObje
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.infrahub_branch_name,
     )
-    await cast("InfrahubReadOnlyRepository", repo).sync_from_remote()
+    async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        await cast("InfrahubReadOnlyRepository", repo).sync_from_remote()
 
 
 @flow(

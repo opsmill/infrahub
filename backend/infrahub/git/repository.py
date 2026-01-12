@@ -262,13 +262,20 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     ),
 )
 async def _get_initialized_repo(
-    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
+    client: InfrahubClient,
+    repository_id: str,
+    name: str,
+    repository_kind: str,
+    commit: str | None = None,
+    infrahub_branch_name: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
         return await InfrahubRepository.init(id=repository_id, name=name, commit=commit, client=client)
 
     if repository_kind == InfrahubKind.READONLYREPOSITORY:
-        return await InfrahubReadOnlyRepository.init(id=repository_id, name=name, commit=commit, client=client)
+        return await InfrahubReadOnlyRepository.init(
+            id=repository_id, name=name, commit=commit, client=client, infrahub_branch_name=infrahub_branch_name
+        )
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
 
@@ -279,8 +286,18 @@ async def _get_initialized_repo(
     cache_policy=NONE,
 )
 async def get_initialized_repo(
-    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
+    client: InfrahubClient,
+    repository_id: str,
+    name: str,
+    repository_kind: str,
+    commit: str | None = None,
+    infrahub_branch_name: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     return await _get_initialized_repo(
-        client=client, repository_id=repository_id, name=name, repository_kind=repository_kind, commit=commit
+        client=client,
+        repository_id=repository_id,
+        name=name,
+        repository_kind=repository_kind,
+        commit=commit,
+        infrahub_branch_name=infrahub_branch_name,
     )
