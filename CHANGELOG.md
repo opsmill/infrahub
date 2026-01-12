@@ -11,6 +11,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.1) - 2026-01-12
+
+### Added
+
+- Added option to use username/password authentication on Redis connections ([#7994](https://github.com/opsmill/infrahub/issues/7994))
+
+### Fixed
+
+- Fix failing execution of unit tests within a proposed change pipeline. ([#8075](https://github.com/opsmill/infrahub/issues/8075))
+
 ## [Infrahub - v1.7.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.0) - 2026-01-08
 
 We're excited to announce the release of Infrahub, v1.7.0! This release focuses on enhancing data governance and strengthening the platform foundation for enterprise deployments.
