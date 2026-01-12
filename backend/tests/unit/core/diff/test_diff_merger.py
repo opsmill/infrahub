@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, MetadataOptions
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.merger.serializer import DiffMergeSerializer
@@ -142,13 +142,6 @@ class TestMergeDiff:
             action=DiffAction.REMOVED,
             conflict=None,
         )
-        deleted_height_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value="True",
-            new_value=None,
-            action=DiffAction.REMOVED,
-            conflict=None,
-        )
         deleted_height_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value="False",
@@ -162,19 +155,11 @@ class TestMergeDiff:
             properties={
                 deleted_height_value_property,
                 deleted_height_owner_property,
-                deleted_height_visible_property,
                 deleted_height_protected_property,
             },
         )
         deleted_node_diff.attributes = {deleted_attribute_diff}
         # relationships
-        deleted_rel_is_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value="True",
-            new_value=None,
-            action=DiffAction.REMOVED,
-            conflict=None,
-        )
         deleted_rel_is_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value="False",
@@ -202,7 +187,6 @@ class TestMergeDiff:
             conflict=None,
             properties={
                 deleted_is_related_property,
-                deleted_rel_is_visible_property,
                 deleted_rel_is_protected_property,
                 deleted_rel_source_property,
             },
@@ -234,13 +218,6 @@ class TestMergeDiff:
             action=DiffAction.ADDED,
             conflict=None,
         )
-        added_height_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value=None,
-            new_value="True",
-            action=DiffAction.ADDED,
-            conflict=None,
-        )
         added_height_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value=None,
@@ -254,19 +231,11 @@ class TestMergeDiff:
             properties={
                 added_height_value_property,
                 added_height_owner_property,
-                added_height_visible_property,
                 added_height_protected_property,
             },
         )
         added_node_diff.attributes = {added_attribute_diff}
         # relationships
-        added_rel_is_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value=None,
-            new_value="True",
-            action=DiffAction.ADDED,
-            conflict=None,
-        )
         added_rel_is_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value=None,
@@ -294,7 +263,6 @@ class TestMergeDiff:
             conflict=None,
             properties={
                 added_is_related_property,
-                added_rel_is_visible_property,
                 added_rel_is_protected_property,
                 added_rel_source_property,
             },
@@ -350,13 +318,15 @@ class TestMergeDiff:
         assert mock_diff_repository.get_one.await_args_list == expected_awaits
 
         retrieved_node = await NodeManager.get_one(
-            db=db, id=person_node_branch.id, branch=default_branch, include_owner=True, include_source=True
+            db=db,
+            id=person_node_branch.id,
+            branch=default_branch,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.UPDATED_AT,
         )
-        assert retrieved_node.get_updated_at() == at
+        assert retrieved_node._get_updated_at() == at
         assert retrieved_node.height.value == person_node_branch.height.value
         owner_node = await retrieved_node.height.get_owner(db=db)
         assert owner_node.id == retrieved_node.id
-        assert retrieved_node.height.is_visible is True
         assert retrieved_node.height.is_protected is True
         car_rel_elements = await retrieved_node.cars.get(db=db)
         car_elements_by_peer_id = {c.get_peer_id(): c for c in car_rel_elements}
@@ -454,9 +424,11 @@ class TestMergeDiff:
             with pytest.raises(NodeNotFoundError):
                 await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id, raise_on_error=True)
         else:
-            target_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_branch.id)
+            target_person = await NodeManager.get_one(
+                db=db, branch=default_branch, id=person_node_branch.id, include_metadata=MetadataOptions.UPDATED_AT
+            )
             assert target_person.id == person_node_branch.id
-            assert target_person.get_updated_at() < at
+            assert target_person._get_updated_at() < at
 
         await diff_merger.rollback(at=at)
 
@@ -515,13 +487,6 @@ class TestMergeDiff:
             action=DiffAction.REMOVED,
             conflict=None,
         )
-        deleted_rel_is_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value="True",
-            new_value=None,
-            action=DiffAction.REMOVED,
-            conflict=None,
-        )
         deleted_rel_is_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value="False",
@@ -549,7 +514,6 @@ class TestMergeDiff:
             conflict=None,
             properties={
                 deleted_is_related_property,
-                deleted_rel_is_visible_property,
                 deleted_rel_is_protected_property,
                 deleted_rel_source_property,
                 deleted_rel_owner_property,
@@ -679,9 +643,13 @@ class TestMergeDiff:
             expected_awaits *= 2
         assert mock_diff_repository.get_one.await_args_list == expected_awaits
         updated_person = await NodeManager.get_one(
-            db=db, branch=default_branch, id=person_node_main.id, include_owner=True
+            db=db,
+            branch=default_branch,
+            id=person_node_main.id,
+            include_metadata=MetadataOptions.OWNER | MetadataOptions.UPDATED_AT,
         )
-        assert updated_person.get_updated_at() < at
+        # Node's updated_at is rolled up to the latest updated_at of its Attribute/Relationship children
+        assert updated_person._get_updated_at() == at
         assert updated_person.height.value == person_node_main.height.value + 1
         owner_node = await updated_person.height.get_owner(db=db)
         assert owner_node.id == person_node_main.id
@@ -689,11 +657,10 @@ class TestMergeDiff:
         car_rels = await updated_person.cars.get(db=db)
         assert len(car_rels) == 0
         updated_car = await NodeManager.get_one(
-            db=db, branch=default_branch, id=car_node_main.id, include_owner=True, include_source=True
+            db=db, branch=default_branch, id=car_node_main.id, include_metadata=MetadataOptions.LINKED_NODES
         )
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.is_protected is True
-        assert owner_rel.is_visible is True
         assert owner_rel.peer_id == person_node_main2.id
         rel_owner_node = await owner_rel.get_owner(db=db)
         assert rel_owner_node.id == car_node_main.id
@@ -708,12 +675,11 @@ class TestMergeDiff:
         owner_attr = await rolled_back_person.height.get_owner(db=db)
         assert owner_attr is None
         rolled_back_car = await NodeManager.get_one(
-            db=db, branch=default_branch, id=car_node_main.id, include_owner=True, include_source=True
+            db=db, branch=default_branch, id=car_node_main.id, include_metadata=MetadataOptions.LINKED_NODES
         )
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_node_main.id
         assert owner_rel.is_protected is False
-        assert owner_rel.is_visible is True
         owner_prop = await owner_rel.get_owner(db=db)
         assert owner_prop.id == car_node_main2.id
         source_prop = await owner_rel.get_source(db=db)

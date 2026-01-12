@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import { Tag, type TagProps } from "react-aria-components";
 
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 interface FilterTagProps extends TagProps {

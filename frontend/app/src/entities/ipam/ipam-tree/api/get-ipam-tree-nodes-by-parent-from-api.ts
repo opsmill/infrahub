@@ -1,13 +1,9 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-import type {
-  Get_Ipam_Tree_NodesQuery,
-  Get_Ipam_Tree_NodesQueryVariables,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
-export const GET_IPAM_TREE_NODES = gql`
+const GET_IPAM_TREE_NODES = graphql(`
   query GET_IPAM_TREE_NODES(
     $isTopLevel: Boolean
     $parentIds: [ID!]
@@ -36,7 +32,7 @@ export const GET_IPAM_TREE_NODES = gql`
       }
     }
   }
-`;
+`);
 
 export interface GetIpamTreeNodesByParentFromApiParams extends PaginationParams, ContextParams {
   namespaceId: string;
@@ -53,7 +49,7 @@ export function GetIpamTreeNodesByParentFromApi({
   branchName,
   atDate,
 }: GetIpamTreeNodesByParentFromApiParams) {
-  return graphqlClient.query<Get_Ipam_Tree_NodesQuery, Get_Ipam_Tree_NodesQueryVariables>({
+  return graphqlClient.query({
     query: GET_IPAM_TREE_NODES,
     variables: {
       ipNamespaceIds: [namespaceId],

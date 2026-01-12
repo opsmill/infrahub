@@ -38,12 +38,18 @@ See `dev/guidelines/backend/python.md` for detailed coding standards including:
 - Query patterns
 - Type hints
 
+### Neo4j/Cypher Queries
+
+When writing or modifying Cypher queries, **read `DATABASE.md`** first. It documents:
+
+- Vertex types (Root, Branch, Node, Relationship, Attribute, AttributeValue)
+- Edge types and properties (branch, from, to, status)
+- Temporal branching rules and valid path patterns
+- Example queries for common operations
+
 ## Testing
 
-- Unit tests: no external dependencies except database
-- Integration tests: require Neo4j via testcontainers
-- Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
-- Async tests auto-configured via pytest-asyncio
+See `dev/knowledge/backend/testing.md` for detailed testing infrastructure documentation.
 
 ## Boundaries
 
@@ -68,5 +74,26 @@ See `dev/guidelines/backend/python.md` for detailed coding standards including:
 
 ## See Also
 
-- `dev/guidelines/backend/python.md` - Detailed Python coding standards
-- `dev/knowledge/backend/` - Backend architecture documentation (to be created)
+### Guidelines
+
+- `dev/guidelines/backend/python.md` - Python coding standards
+
+### Knowledge (How the system works)
+
+- `dev/knowledge/backend/architecture.md` - Backend architecture overview
+- `dev/knowledge/backend/testing.md` - Testing infrastructure and patterns
+- `dev/knowledge/backend/events.md` - Events system
+- `dev/knowledge/backend/async-tasks.md` - Asynchronous tasks (Prefect)
+- `dev/knowledge/backend/message-bus.md` - Message bus system
+
+### Guides (How to do X)
+
+- `dev/guides/backend/creating-events.md` - Creating new events
+- `dev/guides/backend/creating-async-tasks.md` - Creating async tasks
+- `dev/guides/backend/creating-messages.md` - Creating message bus messages
+
+### ADRs (Why we decided)
+
+- `dev/adr/0002-events-system.md` - Events system design
+- `dev/adr/0003-asynchronous-tasks.md` - Async tasks design
+- `dev/adr/0004-message-bus.md` - Message bus design

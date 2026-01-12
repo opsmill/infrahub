@@ -17,7 +17,6 @@ const nodeData = {
     value: "atl1-edge1",
     updated_at: "2023-07-10T15:01:29.806543+00:00",
     is_protected: true,
-    is_visible: true,
     source: {
       id: "bf26a7e3-db46-40f3-b02b-40c6ef362d13",
       display_label: "Pop-Builder",
@@ -30,7 +29,6 @@ const nodeData = {
     value: null,
     updated_at: "2023-07-10T15:01:29.806543+00:00",
     is_protected: false,
-    is_visible: true,
     source: null,
     owner: null,
     __typename: "TextAttribute",
@@ -39,7 +37,6 @@ const nodeData = {
     value: "7280R3",
     updated_at: "2023-07-10T15:01:29.806543+00:00",
     is_protected: false,
-    is_visible: true,
     source: {
       id: "bf26a7e3-db46-40f3-b02b-40c6ef362d13",
       display_label: "Pop-Builder",
@@ -57,7 +54,6 @@ const nodeData = {
     properties: {
       updated_at: "2023-07-10T15:01:29.806543+00:00",
       is_protected: true,
-      is_visible: true,
       source: {
         id: "bf26a7e3-db46-40f3-b02b-40c6ef362d13",
         display_label: "Pop-Builder",
@@ -77,7 +73,6 @@ const nodeData = {
     properties: {
       updated_at: "2023-07-10T15:01:29.806543+00:00",
       is_protected: null,
-      is_visible: true,
       source: null,
       owner: {
         id: "9622f4c6-2a61-4e71-8d78-36dcab0d219c",
@@ -97,7 +92,6 @@ const nodeData = {
     properties: {
       updated_at: "2023-07-10T15:01:29.806543+00:00",
       is_protected: true,
-      is_visible: true,
       source: {
         id: "bf26a7e3-db46-40f3-b02b-40c6ef362d13",
         display_label: "Pop-Builder",
@@ -121,7 +115,6 @@ const nodeData = {
     properties: {
       updated_at: "2023-07-10T15:01:29.806543+00:00",
       is_protected: true,
-      is_visible: true,
       source: {
         id: "bf26a7e3-db46-40f3-b02b-40c6ef362d13",
         display_label: "Pop-Builder",
@@ -147,7 +140,6 @@ const nodeData = {
         properties: {
           updated_at: "2023-07-10T15:01:29.806543+00:00",
           is_protected: null,
-          is_visible: true,
           source: null,
           owner: null,
           __typename: "RelationshipProperty",
@@ -163,7 +155,6 @@ const nodeData = {
         properties: {
           updated_at: "2023-07-10T15:01:29.806543+00:00",
           is_protected: null,
-          is_visible: true,
           source: null,
           owner: null,
           __typename: "RelationshipProperty",
@@ -182,7 +173,6 @@ const nodeData = {
     properties: {
       updated_at: "2023-07-10T15:01:30.985897+00:00",
       is_protected: null,
-      is_visible: true,
       source: null,
       owner: null,
       __typename: "RelationshipProperty",
@@ -198,7 +188,6 @@ const nodeData = {
     properties: {
       updated_at: "2023-07-10T15:01:29.806543+00:00",
       is_protected: true,
-      is_visible: true,
       source: {
         id: "bf26a7e3-db46-40f3-b02b-40c6ef362d13",
         display_label: "Pop-Builder",
@@ -216,7 +205,6 @@ const nodeData = {
 const newDataForMetaEdit = {
   owner: "owner-id",
   source: "source-id",
-  is_visible: true,
   is_protected: true,
 };
 
@@ -237,7 +225,6 @@ describe("Mutation details from object data", () => {
         id: nodeData.site.node.id,
         _relation__owner: newDataForMetaEdit.owner,
         _relation__source: newDataForMetaEdit.source,
-        _relation__is_visible: newDataForMetaEdit.is_visible,
         _relation__is_protected: newDataForMetaEdit.is_protected,
       },
     });
@@ -257,7 +244,6 @@ mutation ${nodeSchema.kind}Update {
         id: "${nodeData.site.node.id}",
         _relation__owner: "${newDataForMetaEdit.owner}",
         _relation__source: "${newDataForMetaEdit.source}",
-        _relation__is_visible: ${newDataForMetaEdit.is_visible},
         _relation__is_protected: ${newDataForMetaEdit.is_protected}
     }
 }) {

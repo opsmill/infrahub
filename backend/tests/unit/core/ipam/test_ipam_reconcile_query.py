@@ -9,6 +9,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch, get_default_ipnamespace
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
@@ -32,16 +33,18 @@ async def test_ipprefix_reconcile_query_simple(db: InfrahubDatabase, default_bra
     query = await IPPrefixReconcileQuery.init(db=db, branch=default_branch, ip_value=ip_network, namespace=namespace)
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == prefix_140.id
-    assert query.get_current_parent_uuid() == ip_dataset_01["net146"].id
-    assert set(query.get_current_children_uuids()) == {
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == prefix_140.id
+    assert data.current_parent_uuid == ip_dataset_01["net146"].id
+    assert set(data.current_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
         ip_dataset_01["address10"].id,
     }
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert set(query.get_calculated_children_uuids()) == {
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
@@ -58,11 +61,13 @@ async def test_ipprefix_reconcile_query_for_new_prefix(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net140"].id
-    assert set(query.get_calculated_children_uuids()) == {
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net140"].id
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
@@ -79,11 +84,13 @@ async def test_ipprefix_reconcile_query_for_new_address(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net145"].id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net145"].id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_ipprefix_reconcile_query_for_new_address_with_node(
@@ -100,11 +107,13 @@ async def test_ipprefix_reconcile_query_for_new_address_with_node(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == new_address.id
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net145"].id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == new_address.id
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net145"].id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_parents(
@@ -116,11 +125,13 @@ async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_parents
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net143"].id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net143"].id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_children(
@@ -132,11 +143,13 @@ async def test_ipprefix_reconcile_query_for_new_prefix_multiple_possible_childre
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert query.get_calculated_children_uuids() == [ip_dataset_01["net140"].id]
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert data.calculated_children_uuids == (ip_dataset_01["net140"].id,)
 
 
 async def test_ipprefix_reconcile_query_for_new_address_multiple_possible_children(
@@ -148,11 +161,13 @@ async def test_ipprefix_reconcile_query_for_new_address_multiple_possible_childr
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_ipprefix_reconcile_query_for_new_prefix_exactly_one_possible_child_address(
@@ -164,11 +179,13 @@ async def test_ipprefix_reconcile_query_for_new_prefix_exactly_one_possible_chil
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net140"].id
-    assert query.get_calculated_children_uuids() == [ip_dataset_01["address10"].id]
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net140"].id
+    assert data.calculated_children_uuids == (ip_dataset_01["address10"].id,)
 
 
 async def test_ipprefix_reconcile_query_for_new_prefix_v6(
@@ -180,11 +197,13 @@ async def test_ipprefix_reconcile_query_for_new_prefix_v6(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net161"].id
-    assert query.get_calculated_children_uuids() == [ip_dataset_01["net162"].id]
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net161"].id
+    assert data.calculated_children_uuids == (ip_dataset_01["net162"].id,)
 
 
 async def test_ipprefix_reconcile_query_for_new_address_v6(
@@ -196,11 +215,13 @@ async def test_ipprefix_reconcile_query_for_new_address_v6(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net162"].id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net162"].id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_ipprefix_reconcile_query_get_deleted_node_by_prefix(
@@ -215,11 +236,13 @@ async def test_ipprefix_reconcile_query_get_deleted_node_by_prefix(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert set(query.get_calculated_children_uuids()) == {
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
@@ -243,11 +266,13 @@ async def test_ipprefix_reconcile_query_get_deleted_node_by_uuid(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == net140.id
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert set(query.get_calculated_children_uuids()) == {
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == net140.id
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
@@ -277,11 +302,13 @@ async def test_ipprefix_reconcile_query_deleted_children_ignored_on_branch(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == net140_branch.id
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert set(query.get_calculated_children_uuids()) == {
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == net140_branch.id
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         # should not be included b/c the address was deleted
@@ -310,11 +337,13 @@ async def test_ipprefix_reconcile_query_deleted_parent_ignored_on_branch(
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == net140_branch.id
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() is None
-    assert set(query.get_calculated_children_uuids()) == {
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == net140_branch.id
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid is None
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
@@ -348,10 +377,12 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == new_parent_branch.id
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == new_parent_branch.id
     expected_children = {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
@@ -359,17 +390,19 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
         ip_dataset_01["address10"].id,
         new_address_branch.id,
     }
-    assert set(query.get_calculated_children_uuids()) == expected_children
+    assert set(data.calculated_children_uuids) == expected_children
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=branch2, ip_value=ipaddress.ip_interface("10.10.0.1"), namespace=ns1_id
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == new_address_branch.id
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == new_parent_branch.id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == new_address_branch.id
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == new_parent_branch.id
+    assert data.calculated_children_uuids == ()
 
     await branch2.rebase(db=db)
 
@@ -378,10 +411,12 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() is None
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == new_parent_branch.id
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid is None
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == new_parent_branch.id
 
     expected_children_after_rebase = {
         ip_dataset_01["net142"].id,
@@ -390,17 +425,19 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
         new_address_branch.id,
         new_address_main.id,
     }
-    assert set(query.get_calculated_children_uuids()) == expected_children_after_rebase
+    assert set(data.calculated_children_uuids) == expected_children_after_rebase
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=branch2, ip_value=ipaddress.ip_interface("10.10.0.2"), namespace=ns1_id
     )
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == new_address_main.id
-    assert query.get_current_parent_uuid() is None
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == new_parent_branch.id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == new_address_main.id
+    assert data.current_parent_uuid is None
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == new_parent_branch.id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_reconcile_parent_child_identification(
@@ -444,12 +481,13 @@ async def test_reconcile_parent_child_identification(
             db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=prefix_to_check
         )
         await query.execute(db=db)
-        calculated_parent_uuid = query.get_calculated_parent_uuid()
+        data = query.get_data()
+        assert data is not None
         if parent is None:
-            assert calculated_parent_uuid is None
+            assert data.calculated_parent_uuid is None
         else:
-            assert parent == prefix_id_map.get(calculated_parent_uuid)
-        assert children == {prefix_id_map.get(ccu) for ccu in query.get_calculated_children_uuids()}
+            assert parent == prefix_id_map.get(data.calculated_parent_uuid)
+        assert children == {prefix_id_map.get(ccu) for ccu in data.calculated_children_uuids}
 
     for prefix_to_check, parent, prefix_children, address_children in (
         (ipaddress.ip_network("136.136.136.136/32"), "136.136.136.128/28", set(), {"136.136.136.136/32"}),
@@ -466,16 +504,15 @@ async def test_reconcile_parent_child_identification(
         )
         await query.execute(db=db)
 
-        calculated_parent_uuid = query.get_calculated_parent_uuid()
+        data = query.get_data()
+        assert data is not None
         if parent is None:
-            assert calculated_parent_uuid is None
+            assert data.calculated_parent_uuid is None
         else:
-            assert parent == prefix_id_map.get(calculated_parent_uuid)
-        assert prefix_children == {
-            prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map
-        }
+            assert parent == prefix_id_map.get(data.calculated_parent_uuid)
+        assert prefix_children == {prefix_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in prefix_id_map}
         assert address_children == {
-            address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map
+            address_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in address_id_map
         }
 
 
@@ -502,8 +539,10 @@ async def test_address_cannot_be_parent(
             db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ip_value
         )
         await query.execute(db=db)
-        assert query.get_calculated_parent_uuid() is None
-        assert query.get_calculated_children_uuids() == []
+        data = query.get_data()
+        assert data is not None
+        assert data.calculated_parent_uuid is None
+        assert data.calculated_children_uuids == ()
 
 
 async def test_adjacent_parents_and_addresses(
@@ -536,70 +575,78 @@ async def test_adjacent_parents_and_addresses(
         db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/32")
     )
     await query.execute(db=db)
-    assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/31"
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert prefix_id_map[data.calculated_parent_uuid] == "192.0.2.0/31"
+    assert data.calculated_children_uuids == ()
     # test prefix 192.0.2.0/31
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/31")
     )
     await query.execute(db=db)
-    assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/30"
-    assert {address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map} == {
+    data = query.get_data()
+    assert data is not None
+    assert prefix_id_map[data.calculated_parent_uuid] == "192.0.2.0/30"
+    assert {address_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in address_id_map} == {
         "192.0.2.0/31",
         "192.0.2.1/31",
     }
-    assert {prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map} == {
-        "192.0.2.0/32"
-    }
+    assert {prefix_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in prefix_id_map} == {"192.0.2.0/32"}
     # test prefix 192.0.2.0/30
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/30")
     )
     await query.execute(db=db)
-    assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/29"
-    assert {address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map} == {
+    data = query.get_data()
+    assert data is not None
+    assert prefix_id_map[data.calculated_parent_uuid] == "192.0.2.0/29"
+    assert {address_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in address_id_map} == {
         "192.0.2.2/31",
         "192.0.2.3/31",
     }
-    assert {prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map} == {
-        "192.0.2.0/31"
-    }
+    assert {prefix_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in prefix_id_map} == {"192.0.2.0/31"}
     # test prefix 192.0.2.0/29
     query = await IPPrefixReconcileQuery.init(
         db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/29")
     )
     await query.execute(db=db)
-    assert query.get_calculated_parent_uuid() is None
-    assert {address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map} == {
+    data = query.get_data()
+    assert data is not None
+    assert data.calculated_parent_uuid is None
+    assert {address_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in address_id_map} == {
         "192.0.2.4/31",
         "192.0.2.5/31",
         "192.0.2.6/31",
     }
-    assert {prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map} == {
-        "192.0.2.0/30"
-    }
+    assert {prefix_id_map[ccu] for ccu in data.calculated_children_uuids if ccu in prefix_id_map} == {"192.0.2.0/30"}
     # test children address find correct parent
     for address in ("192.0.2.0/31", "192.0.2.1/31"):
         query = await IPPrefixReconcileQuery.init(
             db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address)
         )
         await query.execute(db=db)
-        assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/31"
-        assert query.get_calculated_children_uuids() == []
+        data = query.get_data()
+        assert data is not None
+        assert prefix_id_map[data.calculated_parent_uuid] == "192.0.2.0/31"
+        assert data.calculated_children_uuids == ()
     for address in ("192.0.2.2/31", "192.0.2.3/31"):
         query = await IPPrefixReconcileQuery.init(
             db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address)
         )
         await query.execute(db=db)
-        assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/30"
-        assert query.get_calculated_children_uuids() == []
+        data = query.get_data()
+        assert data is not None
+        assert prefix_id_map[data.calculated_parent_uuid] == "192.0.2.0/30"
+        assert data.calculated_children_uuids == ()
     for address in ("192.0.2.4/31", "192.0.2.5/31", "192.0.2.6/31"):
         query = await IPPrefixReconcileQuery.init(
             db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address)
         )
         await query.execute(db=db)
-        assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/29"
-        assert query.get_calculated_children_uuids() == []
+        data = query.get_data()
+        assert data is not None
+        assert prefix_id_map[data.calculated_parent_uuid] == "192.0.2.0/29"
+        assert data.calculated_children_uuids == ()
 
 
 async def test_root_ip_prefix_exists_reconcile(
@@ -620,8 +667,10 @@ async def test_root_ip_prefix_exists_reconcile(
         db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.168.0.0/16")
     )
     await query.execute(db=db)
-    assert query.get_calculated_parent_uuid() == root_prefix_node.id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.calculated_parent_uuid == root_prefix_node.id
+    assert data.calculated_children_uuids == ()
 
 
 async def test_root_ip_prefix_added_reconcile(
@@ -642,8 +691,10 @@ async def test_root_ip_prefix_added_reconcile(
         db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("0.0.0.0/0")
     )
     await query.execute(db=db)
-    assert query.get_calculated_parent_uuid() is None
-    assert query.get_calculated_children_uuids() == [child_prefix_node.id]
+    data = query.get_data()
+    assert data is not None
+    assert data.calculated_parent_uuid is None
+    assert data.calculated_children_uuids == (child_prefix_node.id,)
 
 
 async def test_reconcile_query_on_migrated_kind_node(
@@ -665,7 +716,7 @@ async def test_reconcile_query_on_migrated_kind_node(
         new_node_schema=prefix_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="IpamIPPrefixTwo", field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     registry.schema.set(name="IpamIPPrefixTwo", schema=prefix_schema, branch=branch.name)
@@ -685,12 +736,14 @@ async def test_reconcile_query_on_migrated_kind_node(
     query = await IPPrefixReconcileQuery.init(db=db, branch=branch, ip_value=ip_network, namespace=namespace)
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == prefix_140.id
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == prefix_140.id
     # the wrong parent and wrong child confirm that we retrieved the correct Node from the database: the IpamIPPrefixTwo instance
-    assert query.get_current_parent_uuid() == wrong_parent.id
-    assert set(query.get_current_children_uuids()) == {wrong_child.id}
-    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
-    assert set(query.get_calculated_children_uuids()) == {
+    assert data.current_parent_uuid == wrong_parent.id
+    assert set(data.current_children_uuids) == {wrong_child.id}
+    assert data.calculated_parent_uuid == ip_dataset_01["net146"].id
+    assert set(data.calculated_children_uuids) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
         ip_dataset_01["net145"].id,
@@ -728,8 +781,10 @@ async def test_reconcile_query_for_address_with_prefix_added_on_branch_and_merge
     query = await IPPrefixReconcileQuery.init(db=db, branch=branch, ip_value=ip_interface, namespace=namespace)
     await query.execute(db=db)
 
-    assert query.get_ip_node_uuid() == address_10.id
-    assert query.get_current_parent_uuid() == new_prefix.id
-    assert query.get_current_children_uuids() == []
-    assert query.get_calculated_parent_uuid() == new_prefix.id
-    assert query.get_calculated_children_uuids() == []
+    data = query.get_data()
+    assert data is not None
+    assert data.ip_node_uuid == address_10.id
+    assert data.current_parent_uuid == new_prefix.id
+    assert data.current_children_uuids == ()
+    assert data.calculated_parent_uuid == new_prefix.id
+    assert data.calculated_children_uuids == ()

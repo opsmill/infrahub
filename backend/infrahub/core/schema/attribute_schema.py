@@ -70,7 +70,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @property
     def support_profiles(self) -> bool:
-        return self.read_only is False and self.optional is True
+        return self.read_only is False and self.unique is False
 
     def get_id(self) -> str:
         if self.id is None:
@@ -114,13 +114,20 @@ class AttributeSchema(GeneratedAttributeSchema):
     @field_validator("parameters", mode="before")
     @classmethod
     def set_parameters_type(cls, value: Any, info: ValidationInfo) -> Any:
-        """Override parameters class if using base AttributeParameters class and should be using a subclass"""
+        """Override parameters class if using base AttributeParameters class and should be using a subclass.
+
+        This validator handles parameter type conversion when an attribute's kind changes.
+        Fields from the source that don't exist in the target are silently dropped.
+        Fields with the same name in both classes are preserved.
+        """
         kind = info.data["kind"]
         expected_parameters_class = get_attribute_parameters_class_for_kind(kind=kind)
         if value is None:
             return expected_parameters_class()
         if not isinstance(value, expected_parameters_class) and isinstance(value, AttributeParameters):
-            return expected_parameters_class(**value.model_dump())
+            return expected_parameters_class.convert_from(value)
+        if isinstance(value, dict):
+            return expected_parameters_class.convert_from_dict(source_data=value)
         return value
 
     @model_validator(mode="after")
@@ -168,7 +175,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     def update_from_generic(self, other: AttributeSchema) -> None:
         fields_to_exclude = ("id", "order_weight", "branch", "inherited")
-        for name in self.model_fields:
+        for name in self.__class__.model_fields:
             if name in fields_to_exclude:
                 continue
             if getattr(self, name) != getattr(other, name):
@@ -237,19 +244,6 @@ class TextAttributeSchema(AttributeSchema):
         description="Extra parameters specific to text attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
-
-    @model_validator(mode="after")
-    def reconcile_parameters(self) -> Self:
-        if self.regex != self.parameters.regex:
-            final_regex = self.parameters.regex if self.parameters.regex is not None else self.regex
-            self.regex = self.parameters.regex = final_regex
-        if self.min_length != self.parameters.min_length:
-            final_min_length = self.parameters.min_length if self.parameters.min_length is not None else self.min_length
-            self.min_length = self.parameters.min_length = final_min_length
-        if self.max_length != self.parameters.max_length:
-            final_max_length = self.parameters.max_length if self.parameters.max_length is not None else self.max_length
-            self.max_length = self.parameters.max_length = final_max_length
-        return self
 
     def get_regex(self) -> str | None:
         return self.parameters.regex

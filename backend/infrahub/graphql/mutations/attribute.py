@@ -8,7 +8,6 @@ from infrahub.graphql.types.attribute import GenericPoolInput
 
 
 class BaseAttributeCreate(InputObjectType):
-    is_visible = Boolean(required=False)
     is_protected = Boolean(required=False)
     source = String(required=False)
     owner = String(required=False)
@@ -21,7 +20,6 @@ class BaseAttributeCreate(InputObjectType):
 
 class BaseAttributeUpdate(InputObjectType):
     is_default = Boolean(required=False)
-    is_visible = Boolean(required=False)
     is_protected = Boolean(required=False)
     source = String(required=False)
     owner = String(required=False)

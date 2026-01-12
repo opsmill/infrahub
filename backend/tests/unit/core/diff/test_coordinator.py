@@ -75,7 +75,6 @@ class TestDiffCoordinator:
             properties_by_type = {p.property_type: p for p in attr_diff.properties}
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.HAS_VALUE,
-                DatabaseEdgeType.IS_VISIBLE,
                 DatabaseEdgeType.IS_PROTECTED,
             }
             for prop_diff in attr_diff.properties:

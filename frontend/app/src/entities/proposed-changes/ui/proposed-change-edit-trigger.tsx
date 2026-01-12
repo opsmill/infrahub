@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
 import {
@@ -13,6 +14,7 @@ import {
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -81,6 +83,7 @@ export const ProposedChangeEditTrigger = ({
           onSuccess={async () => {
             setShowEditDrawer(false);
             await graphqlClient.reFetchObservableQueries();
+            await queryClient.invalidateQueries({ queryKey: proposedChangesQueryKeys.all });
           }}
         />
       </SlideOver>

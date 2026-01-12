@@ -25,8 +25,8 @@ def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
-    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
+    exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -45,10 +45,25 @@ def format_all(context: Context) -> None:
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context) -> None:
-    """Run ruff to check that Python files adherence to black standards."""
+    """Run ruff to check that Python files adherence to ruff standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+    exec_cmd = f"uv run ruff format --check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def ty(context: Context) -> None:
+    """Run ty type checker against project files."""
+
+    print(f" - [{NAMESPACE}] Check code with ty")
+    exec_cmd = "uv run ty check ."
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -69,6 +84,7 @@ def mypy(context: Context) -> None:
 def lint(context: Context) -> None:
     """This will run all linters."""
     ruff(context)
+    ty(context)
     mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")

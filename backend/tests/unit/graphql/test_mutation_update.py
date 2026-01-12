@@ -5,10 +5,11 @@ from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
-from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
+from infrahub.core.constants import DiffAction, InfrahubKind, MetadataOptions, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
@@ -205,15 +206,12 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     query = (
         """
     mutation {
-        TestPersonUpdate(data: {id: "%s", name: { is_protected: true }, height: { is_visible: false}}) {
+        TestPersonUpdate(data: {id: "%s", name: { is_protected: true }}) {
             ok
             object {
                 id
                 name {
                     is_protected
-                }
-                height {
-                    is_visible
                 }
             }
         }
@@ -238,7 +236,6 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     assert obj1.name.is_protected is True
     assert obj1.height.value == 180
-    assert obj1.height.is_visible is False
 
 
 async def test_update_all_attributes(
@@ -372,7 +369,9 @@ async def test_update_object_with_node_property(
     assert result.data
     assert result.data["TestPersonUpdate"]["ok"] is True
 
-    obj1 = await NodeManager.get_one(db=db, id=person_john_with_source_main.id, include_source=True, branch=branch)
+    obj1 = await NodeManager.get_one(
+        db=db, id=person_john_with_source_main.id, include_metadata=MetadataOptions.SOURCE, branch=branch
+    )
     assert obj1.name.source_id == second_account.id
     assert obj1.height.source_id == second_account.id
 
@@ -1251,7 +1250,7 @@ async def test_update_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
     core_node_schema = schema.get_generic(name="CoreNode")
     core_node_schema.used_by.append(new_person_kind)

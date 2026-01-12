@@ -7,7 +7,7 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.git.models import (
@@ -42,7 +42,9 @@ log = get_logger()
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema | None = None, _meta=None, **options) -> None:
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema | None = None, _meta: InfrahubMutationOptions | None = None, **options: Any
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -95,21 +97,21 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
-        if not node:
-            node: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
+        repo_node: CoreReadOnlyRepository | CoreRepository | Node | None = node
+        if not repo_node:
+            repo_node = await NodeManager.get_one_by_id_or_default_filter(
                 db=graphql_context.db,
                 kind=cls._meta.schema.kind,
                 id=data.get("id"),
                 branch=branch,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
-        if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
+        if repo_node.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
 
-        node = cast("CoreReadOnlyRepository", node)
-        current_commit = node.commit.value
-        current_ref = node.ref.value
+        repo_node = cast("CoreReadOnlyRepository", repo_node)
+        current_commit = repo_node.commit.value
+        current_ref = repo_node.ref.value
         new_commit = None
         if data.commit and data.commit.value:
             new_commit = data.commit.value
@@ -117,7 +119,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if data.ref and data.ref.value:
             new_ref = data.ref.value
 
-        obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
+        obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
         obj = cast("CoreReadOnlyRepository", obj)
 
         send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)

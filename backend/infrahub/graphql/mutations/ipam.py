@@ -9,7 +9,7 @@ from typing_extensions import Self
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -196,8 +196,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         namespace = await address.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
@@ -356,8 +355,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         namespace = await prefix.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
@@ -435,7 +433,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             data.get("id"), graphql_context.db, branch=branch, prefetch_relationships=True
         )
         if not prefix:
-            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
+            raise NodeNotFoundError(node_type=cls._meta.schema.kind, identifier=data.get("id"), branch_name=branch.name)
 
         namespace_rels = await prefix.ip_namespace.get_relationships(db=db)
         namespace_id = namespace_rels[0].peer_id

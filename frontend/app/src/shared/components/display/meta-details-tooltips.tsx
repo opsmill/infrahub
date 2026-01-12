@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
 import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
@@ -10,14 +11,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
   updatedAt: AnyAttribute["updated_at"];
-  source: AnyAttribute["source"] & { __typename: string };
-  owner: AnyAttribute["owner"] & { __typename: string };
-  isFromProfile?: AnyAttribute["is_from_profile"];
+  source?: NodeCore | null;
+  owner?: NodeCore | null;
   isProtected: AnyAttribute["is_protected"];
 }
 
@@ -26,18 +28,22 @@ export default function MetaDetailsTooltip({
   updatedAt,
   source,
   owner,
-  isFromProfile,
   isProtected,
 }: MetaDetailsTooltipProps) {
+  const { isProfile, isTemplate } = useSchema(source?.__typename);
+
   const items = [
     {
       name: "Source",
       value: source ? (
         <Link to={getObjectDetailsUrl(source.__typename, source.id)}>
-          {isFromProfile ? (
+          {isProfile ? (
             <Badge variant="green" className="font-normal hover:underline">
-              <Icon icon="mdi:shape-plus-outline" className="mr-1" />
-              {getNodeLabel(source)}
+              <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {getNodeLabel(source)}
+            </Badge>
+          ) : isTemplate ? (
+            <Badge variant="blue" className="font-normal hover:underline">
+              <FileBoxIcon className="mr-1 size-3" /> {getNodeLabel(source)}
             </Badge>
           ) : (
             getNodeLabel(source)
@@ -71,7 +77,7 @@ export default function MetaDetailsTooltip({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button
           size="icon"
           variant="ghost"

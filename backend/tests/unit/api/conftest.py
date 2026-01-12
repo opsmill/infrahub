@@ -1,4 +1,5 @@
 import pytest
+from fast_depends import Provider
 from fastapi.testclient import TestClient
 
 from infrahub import config
@@ -9,16 +10,20 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
 
 
 @pytest.fixture
-def client(nats, redis):
+def client(dependency_provider: Provider, nats, redis):
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 
-    return TestClient(app)
+    async def _db(singleton: bool = True) -> InfrahubDatabase:
+        return await build_database(singleton=False)
+
+    with dependency_provider.scope(build_database, _db):
+        yield TestClient(app)
 
 
 @pytest.fixture

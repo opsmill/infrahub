@@ -120,14 +120,14 @@ async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_da
     default_branch = await registry.get_branch(branch="main", db=db)
 
     filters, params = default_branch.get_query_filter_relationships(
-        rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
+        rel_labels=["r1", "r2"], at=Timestamp(), include_outside_parentheses=False
     )
 
     expected_filters = [
-        "(r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to >= $time0)",
-        "((r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to >= $time0))",
-        "(r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to >= $time0)",
-        "((r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to >= $time0))",
+        "(r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to > $time0)",
+        "((r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to IS NULL)\n OR (r1.branch IN $branch0 AND r1.from <= $time0 AND r1.to > $time0))",
+        "(r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to > $time0)",
+        "((r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to IS NULL)\n OR (r2.branch IN $branch0 AND r2.from <= $time0 AND r2.to > $time0))",
     ]
     assert isinstance(filters, list)
     assert filters == expected_filters
@@ -139,7 +139,7 @@ async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
     filters, params = branch1.get_query_filter_relationships(
-        rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
+        rel_labels=["r1", "r2"], at=Timestamp(), include_outside_parentheses=False
     )
 
     assert isinstance(filters, list)
@@ -157,7 +157,7 @@ async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_d
     assert Timestamp(results[frozenset(["main"])]) > now
 
     t1 = Timestamp("2s")
-    results = main_branch.get_branches_and_times_to_query(at=t1.to_string())
+    results = main_branch.get_branches_and_times_to_query(at=t1)
     assert results[frozenset(["main"])] == t1.to_string()
 
 
@@ -186,7 +186,7 @@ async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase,
     assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "main"))]) > now
 
     t1 = Timestamp("2s")
-    results = main_branch.get_branches_and_times_to_query_global(at=t1.to_string())
+    results = main_branch.get_branches_and_times_to_query_global(at=t1)
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
 
 
@@ -201,7 +201,7 @@ async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDataba
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
-    results = branch1.get_branches_and_times_to_query_global(at=t1.to_string())
+    results = branch1.get_branches_and_times_to_query_global(at=t1)
     assert results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))] == t1.to_string()
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
 

@@ -62,28 +62,6 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
-async def update_relationships_to(
-    ids: list[str], db: InfrahubDatabase, to: Timestamp | None = None
-) -> list[Record] | None:
-    """Update the "to" field on one or multiple relationships."""
-    if not ids:
-        return None
-
-    to = Timestamp(to)
-
-    query = """
-    MATCH ()-[r]->()
-    WHERE %(id_func)s(r) IN $ids
-    AND r.to IS NULL
-    SET r.to = $to
-    RETURN %(id_func)s(r)
-    """ % {"id_func": db.get_id_function_name()}
-
-    params = {"to": to.to_string(), "ids": [db.to_database_id(_id) for _id in ids]}
-
-    return await db.execute_query(query=query, params=params, name="update_relationships_to")
-
-
 async def get_paths_between_nodes(
     db: InfrahubDatabase,
     source_id: str,
@@ -237,7 +215,7 @@ def props(x: Any) -> dict[str, Any]:
 
 
 class SubclassWithMeta_Meta(type):
-    _meta = None
+    _meta: Any = None
 
     def __str__(cls) -> str:
         if cls._meta:
@@ -251,7 +229,7 @@ class SubclassWithMeta_Meta(type):
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     """This class improves __init_subclass__ to receive automatically the options from meta"""
 
-    def __init_subclass__(cls, **meta_options: dict[str, Any]) -> None:
+    def __init_subclass__(cls, **meta_options: Any) -> None:
         """This method just terminates the super() chain"""
         _Meta = getattr(cls, "Meta", None)
         _meta_props = {}
@@ -276,5 +254,5 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
                 super_class.__init_subclass_with_meta__(**options)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options: dict[str, Any]) -> None:
+    def __init_subclass_with_meta__(cls, **meta_options: Any) -> None:
         """This method just terminates the super() chain"""

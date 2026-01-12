@@ -7,6 +7,9 @@ We document significant architectural decisions using ADRs.
 | Number | Title | Status | Date |
 |--------|-------|--------|------|
 | [0001](0001-context-nuggets-pattern.md) | Context Nuggets Pattern for Repository Organization | Accepted | 2024-12-24 |
+| [0002](0002-events-system.md) | Prefect Events System | Accepted | 2024-12-26 |
+| [0003](0003-asynchronous-tasks.md) | Asynchronous Tasks Execution with Prefect | Accepted | 2024-12-26 |
+| [0004](0004-message-bus.md) | Message Bus Architecture | Accepted | 2024-12-26 |
 
 ## Creating a New ADR
 

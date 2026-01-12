@@ -36,7 +36,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["null_value"] = NULL_VALUE
 
         query = """
-        MATCH p = (n:%(node_kind)s)
+        MATCH (n:%(node_kinds)s)
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -51,7 +51,10 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kinds": f"{self.node_schema.kind}|Profile{self.node_schema.kind}|Template{self.node_schema.kind}",
+        }
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship.branch as value_branch"]
@@ -89,7 +92,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeKindChecker(ConstraintCheckerInterface):
     query_classes = [AttributeKindUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

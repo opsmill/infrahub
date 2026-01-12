@@ -36,3 +36,109 @@ When a field is marked as protected, all users that aren't listed as the owner w
 Note that accounts defined with the role of `admin` can always update protected fields, regardless of `Owner`.
 
 :::
+
+## Object-level metadata
+
+In addition to attribute and relationship metadata, Infrahub automatically tracks **object-level metadata** for every node in your infrastructure data. This provides complete audit trails and accountability, enabling you to determine who created or modified an object and when.
+
+Object-level metadata is distinct from the attribute-level metadata described above (Source, Owner, Is Protected, Is Visible). While attribute metadata tracks lineage for individual data points, object-level metadata tracks the lifecycle of the entire object.
+
+The following fields are available on every object:
+
+- **created_at**: The timestamp when the object was created
+- **created_by**: The account that created the object
+- **updated_at**: The timestamp of the last modification to the object
+- **updated_by**: The account that last modified the object
+
+### Accessing object-level metadata
+
+Object-level metadata is available through the UI, GraphQL API, and Python SDK.
+
+#### GraphQL
+
+In GraphQL queries, object-level metadata is accessed via the `node_metadata` field on edges. This is separate from the `node` field which contains the object's attributes and relationships.
+
+```graphql
+{
+  BuiltinTag(order: {node_metadata: {created_at: DESC}}) {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+      node_metadata {
+        created_at
+        updated_at
+        updated_by {
+          display_label
+        }
+        created_by {
+          display_label
+        }
+      }
+    }
+  }
+}
+```
+
+The `created_by` and `updated_by` fields return account objects, which have a `display_label` property for a human-readable name.
+
+### Ordering by metadata
+
+Query results can be ordered by object-level metadata timestamps using the `order` parameter with `node_metadata`. The example above demonstrates ordering by `created_at` in descending order to show the most recently created objects first. You can also order by `updated_at` to sort by modification time.
+
+### Filtering by metadata
+
+Query results can be filtered by object-level metadata using the following filter parameters:
+
+| Filter | Description |
+|--------|-------------|
+| `node_metadata__created_by__id` | Filter by a single creator account UUID |
+| `node_metadata__created_by__ids` | Filter by multiple creator account UUIDs |
+| `node_metadata__created_at` | Filter by exact creation timestamp (see date range shorthand below) |
+| `node_metadata__created_at__before` | Filter for objects created before a timestamp |
+| `node_metadata__created_at__after` | Filter for objects created after a timestamp |
+| `node_metadata__updated_by__id` | Filter by a single updater account UUID |
+| `node_metadata__updated_by__ids` | Filter by multiple updater account UUIDs |
+| `node_metadata__updated_at` | Filter by exact update timestamp (see date range shorthand below) |
+| `node_metadata__updated_at__before` | Filter for objects updated before a timestamp |
+| `node_metadata__updated_at__after` | Filter for objects updated after a timestamp |
+
+#### Date range shorthand
+
+When filtering by `node_metadata__created_at` or `node_metadata__updated_at`, there is special handling for timestamps that end in `00:00:00`. If the input datetime ends in `00:00:00` (regardless of timezone), Infrahub will automatically expand this to a 24-hour range query covering that entire day.
+
+For example, the following filter:
+
+```graphql
+{
+  BuiltinTag(node_metadata__created_at: "2025-03-15T00:00:00+08:00") {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Will return all objects created on March 15, 2025 in the `+08:00` timezone. Internally, this is transformed into a range query:
+
+- `node_metadata__created_at__after` is set to one microsecond before midnight (to include objects created at exactly midnight)
+- `node_metadata__created_at__before` is set to midnight of the next day
+
+This makes it convenient to query all objects created or updated on a specific day without needing to manually specify both `__after` and `__before` parameters.
+
+### Backfill behavior for existing data
+
+:::info
+
+For objects that existed before this feature was introduced:
+
+- `created_at` and `updated_at` are set for all objects
+- `created_by` and `updated_by` are only set for objects that have been created or updated after the feature release; existing objects that have not been modified will not have these fields populated
+
+:::

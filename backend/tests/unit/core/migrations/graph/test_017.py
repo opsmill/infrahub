@@ -1,5 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.migrations.graph import Migration017
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import InfrahubDatabase
 
 
@@ -15,7 +16,7 @@ async def test_migration_017(
     item = registry.schema.get(name="CoreProfile")
     # Make sure to remove CoreProfile from database if it is there
     if item.id is not None:
-        _ = await registry.schema.delete_node_in_db(node=item, branch=default_branch, db=db)
+        _ = await registry.schema.delete_node_in_db(node=item, branch=default_branch, db=db, user_id="user-id")
 
     # Remove CoreProfile from registry
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
@@ -26,7 +27,7 @@ async def test_migration_017(
 
     async with db.start_session() as dbs:
         migration = Migration017()
-        execution_result = await migration.execute(db=dbs)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
         assert not execution_result.errors
 
         validation_result = await migration.validate_migration(db=dbs)

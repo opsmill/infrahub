@@ -1,6 +1,7 @@
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
+from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -278,7 +279,7 @@ async def local_services(db: InfrahubDatabase, dependency_provider) -> InfrahubS
     workflow = WorkflowLocalExecution()
 
     with (
-        dependency_provider.scope(build_database, lambda: db),
+        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
         dependency_provider.scope(build_message_bus, lambda: message_bus),
         dependency_provider.scope(build_workflow, lambda: workflow),
     ):
@@ -343,7 +344,7 @@ async def test_branch_rebase_wrong_branch(
 
 
 async def test_branch_update_description(
-    db: InfrahubDatabase, base_dataset_02, local_services: InfrahubServices
+    db: InfrahubDatabase, base_dataset_02: dict, session_admin: AccountSession, local_services: InfrahubServices
 ) -> None:
     branch4 = await create_branch(branch_name="branch4", db=db)
 
@@ -361,7 +362,9 @@ async def test_branch_update_description(
     """
 
     branch4.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch4, service=local_services)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=branch4, account_session=session_admin, service=local_services
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -376,7 +379,12 @@ async def test_branch_update_description(
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
+    assert branch4.updated_at == branch4.created_at
     assert branch4_updated.description == "testing"
+    assert branch4.updated_at
+    assert branch4_updated.updated_at
+    assert branch4_updated.updated_at > branch4.updated_at
+    assert branch4_updated.updated_by == session_admin.account_id
 
 
 async def test_branch_merge_wrong_branch(

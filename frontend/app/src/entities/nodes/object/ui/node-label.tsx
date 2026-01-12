@@ -1,4 +1,4 @@
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 import { NODE_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 

@@ -86,7 +86,7 @@ class InfrahubPerformanceTest:
         self,
         definition: MeasurementDefinition,
         value: float | str,
-        **kwargs: str | float,
+        **kwargs: dict[str, float],
     ) -> None:
         self.measurements.append(
             InfrahubMeasurementItem(

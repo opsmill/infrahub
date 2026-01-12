@@ -162,7 +162,7 @@ x-task-manager-config:
 
 services:
   message-queue:
-    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:4.2.1-management}
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: *broker_username
@@ -177,7 +177,7 @@ services:
       - 15692:15692
 
   cache:
-    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.11}
+    image: ${CACHE_DOCKER_IMAGE:-redis:8.4.0}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
@@ -186,7 +186,7 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.03.0-community}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.10.1-community}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}
@@ -206,7 +206,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.6.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.0}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -222,14 +222,14 @@ services:
       start_period: 10s
 
   task-manager-db:
-    image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    image: "${POSTGRES_DOCKER_IMAGE:-pgautoupgrade/pgautoupgrade:18-alpine}"
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${INFRAHUB_TASKMANAGER_DB_USER:-postgres}
       - POSTGRES_PASSWORD=${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}
       - POSTGRES_DB=${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
     volumes:
-      - workflow_db:/var/lib/postgresql/data
+      - workflow_db:/var/lib/postgresql/18/docker
     healthcheck:
       test:
         - "CMD-SHELL"
@@ -239,7 +239,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.6.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -285,7 +285,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.6.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.0}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

@@ -573,11 +573,10 @@ async def gql_query_data_01() -> dict:
         "node": {
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "MyQuery",
-            "name": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": "MyQuery"},
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "name": {"is_protected": False, "owner": None, "source": None, "value": "MyQuery"},
+            "description": {"is_protected": False, "owner": None, "source": None, "value": None},
             "query": {
                 "is_protected": False,
-                "is_visible": True,
                 "owner": None,
                 "source": None,
                 "value": "query MyQuery { location { edges { node { name { value }}}}}",
@@ -593,11 +592,10 @@ async def gql_query_data_02() -> dict:
         "node": {
             "id": "mmmmmmmm-nnnn-bbbb-vvvv-cccccccccccc",
             "display_label": "MyOtherQuery",
-            "name": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": "MyQuery"},
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "name": {"is_protected": False, "owner": None, "source": None, "value": "MyQuery"},
+            "description": {"is_protected": False, "owner": None, "source": None, "value": None},
             "query": {
                 "is_protected": False,
-                "is_visible": True,
                 "owner": None,
                 "source": None,
                 "value": "query MyOtherQuery { location { edges { node { name { value }}}}}",
@@ -612,7 +610,10 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
-        method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
+        method="GET",
+        url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"),
+        json=ujson.loads(response_text),
+        is_reusable=True,
     )
     return httpx_mock
 
@@ -649,7 +650,6 @@ async def check_definition_data_01() -> dict:
             "name": {
                 "value": "Check01",
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -660,14 +660,12 @@ async def check_definition_data_01() -> dict:
             "description": {
                 "value": None,
                 "is_protected": False,
-                "is_visible": True,
                 "source": None,
                 "owner": None,
             },
             "file_path": {
                 "value": "checks/check01/check.py",
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -678,7 +676,6 @@ async def check_definition_data_01() -> dict:
             "class_name": {
                 "value": "Check01",
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -689,7 +686,6 @@ async def check_definition_data_01() -> dict:
             "timeout": {
                 "value": 60,
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -705,7 +701,6 @@ async def check_definition_data_01() -> dict:
                 },
                 "properties": {
                     "is_protected": True,
-                    "is_visible": True,
                     "source": {
                         "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                         "display_label": "infrahub-demo-edge",
@@ -722,7 +717,6 @@ async def check_definition_data_01() -> dict:
                 },
                 "properties": {
                     "is_protected": True,
-                    "is_visible": True,
                     "source": {
                         "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                         "display_label": "infrahub-demo-edge",
@@ -774,7 +768,6 @@ async def gql_query_data_03():
             "value": "query01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "description": {
@@ -782,7 +775,6 @@ async def gql_query_data_03():
             "__typename": "Text",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "query": {
@@ -791,7 +783,6 @@ async def gql_query_data_03():
             "value": query_string,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "__typename": InfrahubKind.GRAPHQLQUERY,
@@ -1004,7 +995,6 @@ async def transformation_data_01() -> dict:
             "value": "transform01.py",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "class_name": {
@@ -1013,7 +1003,6 @@ async def transformation_data_01() -> dict:
             "value": "Transform01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "url": {
@@ -1022,7 +1011,6 @@ async def transformation_data_01() -> dict:
             "value": "mytransform",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "name": {
@@ -1031,7 +1019,6 @@ async def transformation_data_01() -> dict:
             "value": "transform01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "label": {
@@ -1040,7 +1027,6 @@ async def transformation_data_01() -> dict:
             "value": "Transform01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "description": {
@@ -1048,7 +1034,6 @@ async def transformation_data_01() -> dict:
             "__typename": "Text",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "timeout": {
@@ -1057,7 +1042,6 @@ async def transformation_data_01() -> dict:
             "value": 10,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "convert_query_response": {
@@ -1066,7 +1050,6 @@ async def transformation_data_01() -> dict:
             "value": False,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "__typename": "CoreTransformPython",
@@ -1131,7 +1114,6 @@ async def car_data_01() -> dict:
             "value": 2,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "name": {
@@ -1140,7 +1122,6 @@ async def car_data_01() -> dict:
             "value": "bolt",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "nbr_seats": {
@@ -1149,7 +1130,6 @@ async def car_data_01() -> dict:
             "value": 2,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "color": {
@@ -1158,7 +1138,6 @@ async def car_data_01() -> dict:
             "value": "#444444",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "__typename": "TestElectricCar",

@@ -5,9 +5,11 @@ import { Row, type RowProps } from "@/shared/components/container";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
 import type {
   NodeAttribute,
   NodeCore,
@@ -46,17 +48,11 @@ export function IpamDetailsHeader({
 
   return (
     <Row className={classNames("relative", className)} {...props}>
-      <Row>
-        <h2 className="font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
+      <h2 className="whitespace-nowrap font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
 
-        <ObjectDetailsMenu
-          objectSchema={ipPrefixSchema}
-          objectData={ipPrefixNode}
-          permission={permission}
-        />
-      </Row>
+      <NodeMetadataPopover objectId={ipPrefixNode.id} objectKind={ipPrefixNode.__typename} />
 
-      <Row className="gap-2.5">
+      <Row className="relative grow gap-2.5 overflow-hidden">
         <Fade />
         {orderedFields.map((field, index) => {
           let displayValue: React.ReactNode = "-";
@@ -98,11 +94,24 @@ export function IpamDetailsHeader({
           );
         })}
       </Row>
+
+      <DetailsButtons
+        schema={ipPrefixSchema}
+        objectDetailsData={ipPrefixNode}
+        permission={permission}
+        className="ml-auto"
+      />
+
+      <ObjectDetailsMenu
+        objectSchema={ipPrefixSchema}
+        objectData={ipPrefixNode}
+        permission={permission}
+      />
     </Row>
   );
 }
 
-const Divider = () => <div className="h-5 w-px bg-gray-200" />;
+const Divider = () => <div className="h-5 w-px shrink-0 bg-gray-200" />;
 
 const Group = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
   <div className={classNames("not-last:max-w-50 text-xs", className)} {...props}>

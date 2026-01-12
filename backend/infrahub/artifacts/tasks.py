@@ -14,6 +14,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
 
     client = get_client()
+    client.request_context = model.context.to_request_context()
 
     validator = await client.get(kind=InfrahubKind.ARTIFACTVALIDATOR, id=model.validator_id, include=["checks"])
 

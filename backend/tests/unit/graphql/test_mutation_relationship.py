@@ -10,15 +10,15 @@ from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
-from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision, SchemaPathType
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, PermissionDecision, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
-from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
@@ -707,7 +707,6 @@ async def test_relationship_groups_add_remove(
     await g2.new(db=db, name="group2", members=[c2])
     await g2.save(db=db)
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -735,14 +734,10 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
-
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -770,9 +765,6 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
-
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -782,7 +774,6 @@ async def test_relationship_groups_add_remove(
     members = await group2.members.get(db=db)
     assert len(members) == 1
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -811,14 +802,10 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
-
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -846,8 +833,6 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -913,7 +898,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
     core_node_schema = schema.get_generic(name="CoreNode")
     core_node_schema.used_by.append(new_person_kind)
@@ -1395,3 +1380,226 @@ async def test_relationship_read_only(
 
     assert remove_result.errors
     assert "'devices' is a read-only relationship at LocationSite" in str(remove_result.errors)
+
+
+async def test_relationship_add_remove_profiles(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: None
+) -> None:
+    """Validates that profiles are applied when adding/removing profiles to a node."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John Doe")
+    await person.save(db=db)
+
+    person_initial = await NodeManager.get_one(db=db, id=person.id, branch=default_branch)
+    assert person_initial.height.value is None
+    assert person_initial.height.is_default is True
+    assert person_initial.height.is_from_profile is False
+
+    profile_schema = registry.schema.get("ProfileTestPerson", branch=default_branch)
+    profile = await Node.init(db=db, schema=profile_schema, branch=default_branch)
+    await profile.new(db=db, profile_name="tall-person", profile_priority=100, height=185)
+    await profile.save(db=db)
+
+    profile_check = await NodeManager.get_one(db=db, id=profile.id, branch=default_branch)
+    assert profile_check.height.value == 185
+
+    add_query = """
+    mutation RelationshipAdd(
+        $id: String!,
+        $relationship_name: String!,
+        $node: String!,
+        ) {
+        RelationshipAdd(
+            data: {id: $id, name: $relationship_name, nodes: [{id: $node}]}
+        ) {
+        ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=add_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person.id, "relationship_name": "profiles", "node": profile.id},
+    )
+
+    assert result.errors is None
+
+    person_check = await NodeManager.get_one(db=db, id=person.id, branch=default_branch)
+    profiles = await person_check.profiles.get(db=db)
+    assert len(profiles) == 1
+    assert profiles[0].peer_id == profile.id
+
+    person_updated = await NodeManager.get_one(
+        db=db, id=person.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert person_updated.height.value == 185
+    assert person_updated.height.is_default is False
+    assert person_updated.height.is_from_profile is True
+    source = await person_updated.height.get_source(db=db)
+    assert source is not None
+    assert source.id == profile.id
+
+    remove_query = """
+    mutation RelationshipRemove(
+        $id: String!,
+        $relationship_name: String!,
+        $node: String!,
+        ) {
+        RelationshipRemove(
+            data: {id: $id, name: $relationship_name, nodes: [{id: $node}]}
+        ) {
+        ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=remove_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person.id, "relationship_name": "profiles", "node": profile.id},
+    )
+
+    assert result.errors is None
+
+    person_final = await NodeManager.get_one(
+        db=db, id=person.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert person_final.height.value is None
+    assert person_final.height.is_default is True
+    assert person_final.height.is_from_profile is False
+    source = await person_final.height.get_source(db=db)
+    assert source is None
+
+
+async def test_relationship_add_remove_related_nodes(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: None
+) -> None:
+    """Validates that profiles are applied to related nodes when adding/removing related_nodes to a profile."""
+    person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person1.new(db=db, name="Alice")
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person2.new(db=db, name="Bob")
+    await person2.save(db=db)
+
+    person1_initial = await NodeManager.get_one(db=db, id=person1.id, branch=default_branch)
+    assert person1_initial.height.value is None
+    assert person1_initial.height.is_default is True
+    assert person1_initial.height.is_from_profile is False
+
+    person2_initial = await NodeManager.get_one(db=db, id=person2.id, branch=default_branch)
+    assert person2_initial.height.value is None
+    assert person2_initial.height.is_default is True
+    assert person2_initial.height.is_from_profile is False
+
+    profile_schema = registry.schema.get("ProfileTestPerson", branch=default_branch)
+    profile = await Node.init(db=db, schema=profile_schema, branch=default_branch)
+    await profile.new(db=db, profile_name="tall-people", profile_priority=100, height=185)
+    await profile.save(db=db)
+
+    add_query = """
+    mutation RelationshipAdd(
+        $id: String!,
+        $relationship_name: String!,
+        $node_1: String!,
+        $node_2: String!,
+        ) {
+        RelationshipAdd(
+            data: {id: $id, name: $relationship_name, nodes: [{id: $node_1}, {id: $node_2}]}
+        ) {
+        ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=add_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": profile.id,
+            "relationship_name": "related_nodes",
+            "node_1": person1.id,
+            "node_2": person2.id,
+        },
+    )
+
+    assert result.errors is None
+
+    person1_updated = await NodeManager.get_one(
+        db=db, id=person1.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert person1_updated.height.value == 185
+    assert person1_updated.height.is_default is False
+    assert person1_updated.height.is_from_profile is True
+    source1 = await person1_updated.height.get_source(db=db)
+    assert source1 is not None
+    assert source1.id == profile.id
+
+    person2_updated = await NodeManager.get_one(
+        db=db, id=person2.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert person2_updated.height.value == 185
+    assert person2_updated.height.is_default is False
+    assert person2_updated.height.is_from_profile is True
+    source2 = await person2_updated.height.get_source(db=db)
+    assert source2 is not None
+    assert source2.id == profile.id
+
+    remove_query = """
+    mutation RelationshipRemove(
+        $id: String!,
+        $relationship_name: String!,
+        $node: String!,
+        ) {
+        RelationshipRemove(
+            data: {id: $id, name: $relationship_name, nodes: [{id: $node}]}
+        ) {
+        ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=remove_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": profile.id, "relationship_name": "related_nodes", "node": person1.id},
+    )
+
+    assert result.errors is None
+
+    person1_final = await NodeManager.get_one(
+        db=db, id=person1.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert person1_final.height.value is None
+    assert person1_final.height.is_default is True
+    assert person1_final.height.is_from_profile is False
+    source1_final = await person1_final.height.get_source(db=db)
+    assert source1_final is None
+
+    person2_final = await NodeManager.get_one(
+        db=db, id=person2.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert person2_final.height.value == 185
+    assert person2_final.height.is_default is False
+    assert person2_final.height.is_from_profile is True
+    source2_final = await person2_final.height.get_source(db=db)
+    assert source2_final is not None
+    assert source2_final.id == profile.id

@@ -5,9 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m042_profile_attrs_in_db import Migration042
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -180,14 +182,16 @@ class TestMigration042(TestInfrahubApp):
         deleted_node_branch: Branch,
     ):
         migration = WrappedMigration042()
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors
 
         for branch in [value_branch, priority_branch, deleted_profile_branch, deleted_node_branch]:
             await branch.rebase(db=db)
-            execution_result = await migration.execute_against_branch(db=db, branch=branch)
+            execution_result = await migration.execute_against_branch(
+                migration_input=MigrationInput(db=db), branch=branch
+            )
             assert not execution_result.errors
 
         default_crit_low_profile_attrs = [
@@ -214,19 +218,25 @@ class TestMigration042(TestInfrahubApp):
         ]
 
         # validate node-level changes on main
-        updated_criticality_low = await NodeManager.get_one(db=db, id=criticality_low.id, include_source=True)
+        updated_criticality_low = await NodeManager.get_one(
+            db=db, id=criticality_low.id, include_metadata=MetadataOptions.SOURCE
+        )
         self.validate_node(
             original_node=criticality_low,
             updated_node=updated_criticality_low,
             expected_profile_attrs=default_crit_low_profile_attrs,
         )
-        updated_criticality_medium = await NodeManager.get_one(db=db, id=criticality_medium.id, include_source=True)
+        updated_criticality_medium = await NodeManager.get_one(
+            db=db, id=criticality_medium.id, include_metadata=MetadataOptions.SOURCE
+        )
         self.validate_node(
             original_node=criticality_medium,
             updated_node=updated_criticality_medium,
             expected_profile_attrs=default_crit_medium_profile_attrs,
         )
-        updated_criticality_high = await NodeManager.get_one(db=db, id=criticality_high.id, include_source=True)
+        updated_criticality_high = await NodeManager.get_one(
+            db=db, id=criticality_high.id, include_metadata=MetadataOptions.SOURCE
+        )
         self.validate_node(
             original_node=criticality_high,
             updated_node=updated_criticality_high,
@@ -235,7 +245,7 @@ class TestMigration042(TestInfrahubApp):
 
         # validate node-level changes on value branch
         updated_criticality_low = await NodeManager.get_one(
-            db=db, branch=value_branch, id=criticality_low.id, include_source=True
+            db=db, branch=value_branch, id=criticality_low.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_low,
@@ -262,7 +272,7 @@ class TestMigration042(TestInfrahubApp):
             ],
         )
         updated_criticality_medium = await NodeManager.get_one(
-            db=db, branch=value_branch, id=criticality_medium.id, include_source=True
+            db=db, branch=value_branch, id=criticality_medium.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_medium,
@@ -277,7 +287,7 @@ class TestMigration042(TestInfrahubApp):
             ],
         )
         updated_criticality_high = await NodeManager.get_one(
-            db=db, branch=value_branch, id=criticality_high.id, include_source=True
+            db=db, branch=value_branch, id=criticality_high.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_high,
@@ -287,7 +297,7 @@ class TestMigration042(TestInfrahubApp):
 
         # validate node-level changes on priority branch
         updated_criticality_low = await NodeManager.get_one(
-            db=db, branch=priority_branch, id=criticality_low.id, include_source=True
+            db=db, branch=priority_branch, id=criticality_low.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_low,
@@ -295,7 +305,7 @@ class TestMigration042(TestInfrahubApp):
             expected_profile_attrs=default_crit_low_profile_attrs,
         )
         updated_criticality_medium = await NodeManager.get_one(
-            db=db, branch=priority_branch, id=criticality_medium.id, include_source=True
+            db=db, branch=priority_branch, id=criticality_medium.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_medium,
@@ -310,7 +320,7 @@ class TestMigration042(TestInfrahubApp):
             ],
         )
         updated_criticality_high = await NodeManager.get_one(
-            db=db, branch=priority_branch, id=criticality_high.id, include_source=True
+            db=db, branch=priority_branch, id=criticality_high.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_high,
@@ -327,7 +337,7 @@ class TestMigration042(TestInfrahubApp):
 
         # validate node-level changes on deleted profile branch
         updated_criticality_low = await NodeManager.get_one(
-            db=db, branch=deleted_profile_branch, id=criticality_low.id, include_source=True
+            db=db, branch=deleted_profile_branch, id=criticality_low.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_low,
@@ -335,7 +345,7 @@ class TestMigration042(TestInfrahubApp):
             expected_profile_attrs=default_crit_low_profile_attrs,
         )
         updated_criticality_medium = await NodeManager.get_one(
-            db=db, branch=deleted_profile_branch, id=criticality_medium.id, include_source=True
+            db=db, branch=deleted_profile_branch, id=criticality_medium.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_medium,
@@ -345,7 +355,7 @@ class TestMigration042(TestInfrahubApp):
             ],
         )
         updated_criticality_high = await NodeManager.get_one(
-            db=db, branch=deleted_profile_branch, id=criticality_high.id, include_source=True
+            db=db, branch=deleted_profile_branch, id=criticality_high.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_high,
@@ -355,11 +365,11 @@ class TestMigration042(TestInfrahubApp):
 
         # validate node-level changes on deleted node branch
         updated_criticality_low = await NodeManager.get_one(
-            db=db, branch=deleted_node_branch, id=criticality_low.id, include_source=True
+            db=db, branch=deleted_node_branch, id=criticality_low.id, include_metadata=MetadataOptions.SOURCE
         )
         assert updated_criticality_low is None
         updated_criticality_medium = await NodeManager.get_one(
-            db=db, branch=deleted_node_branch, id=criticality_medium.id, include_source=True
+            db=db, branch=deleted_node_branch, id=criticality_medium.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_medium,
@@ -367,7 +377,7 @@ class TestMigration042(TestInfrahubApp):
             expected_profile_attrs=default_crit_medium_profile_attrs,
         )
         updated_criticality_high = await NodeManager.get_one(
-            db=db, branch=deleted_node_branch, id=criticality_high.id, include_source=True
+            db=db, branch=deleted_node_branch, id=criticality_high.id, include_metadata=MetadataOptions.SOURCE
         )
         self.validate_node(
             original_node=criticality_high,
