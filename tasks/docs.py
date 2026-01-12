@@ -132,14 +132,14 @@ def vale(context: Context) -> None:
 def markdownlint(context: Context) -> None:
     """Lint markdown files with markdownlint-cli2.
 
-    Uses .markdownlint-cli2.yaml for configuration and ignore patterns.
+    Uses .markdownlint-cli2.yaml for configuration, globs, and ignore patterns.
     """
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
         return
-    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}'"
+    exec_cmd = "markdownlint-cli2"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -152,7 +152,7 @@ def format_markdownlint(context: Context) -> None:
     Uses .markdownlint-cli2.yaml for configuration and ignore patterns.
     """
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}' --fix"
+    exec_cmd = "markdownlint-cli2 --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 

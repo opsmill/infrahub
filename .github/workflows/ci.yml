@@ -201,8 +201,6 @@ jobs:
           submodules: true
       - name: "Linting: markdownlint"
         uses: DavidAnson/markdownlint-cli2-action@v22
-        with:
-          globs: "**/*.{md,mdx}"
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
