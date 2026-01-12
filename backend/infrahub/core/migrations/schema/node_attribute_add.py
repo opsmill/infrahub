@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
