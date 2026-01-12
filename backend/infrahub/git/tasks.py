@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
@@ -604,7 +604,7 @@ async def import_read_only_repository_last_commit(model: GitRepositoryImportObje
         name=model.repository_name,
         repository_kind=model.repository_kind,
     )
-    await repo.sync_from_remote()
+    await cast("InfrahubReadOnlyRepository", repo).sync_from_remote()
 
 
 @flow(
