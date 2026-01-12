@@ -10,9 +10,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration052(ArbitraryMigration):
-    name: str = "052_subtract_branched_from_microsecond"
-    minimum_version: int = 51
+class Migration051(ArbitraryMigration):
+    name: str = "051_subtract_branched_from_microsecond"
+    minimum_version: int = 50
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
