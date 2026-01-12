@@ -227,6 +227,11 @@ class IPPrefixSubnetFetchFree(Query):
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
         WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        // Convert binary strings to integer ranges for gap detection
+        // - start: Convert binary string to decimal by iterating through each bit
+        //          and accumulating (dec * 2 + bit_value), which is binary-to-decimal conversion
+        // - end: start + (2^host_bits - 1), where host_bits = 32 - prefixlen
+        //        This gives the broadcast address (last IP) of the prefix
         WITH [r IN ranges_raw |
                 {
                     start: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)),
@@ -389,7 +394,7 @@ class IPv6PrefixSubnetFetchFree(Query):
                         }
                 END
             ) AS res
-        // Convert result list back to string and handle overflow
+        // Handle overflow case
         WITH
             CASE
                 WHEN res.found IS NOT NULL THEN res.found
