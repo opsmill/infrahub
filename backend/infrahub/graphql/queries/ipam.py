@@ -4,14 +4,12 @@ import ipaddress
 from typing import TYPE_CHECKING
 
 from graphene import Field, Int, ObjectType, String
-from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import BuiltinIPPrefix
 from infrahub.exceptions import NodeNotFoundError, ValidationError
-from infrahub.pools.prefix import get_next_available_prefix
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -80,18 +78,22 @@ class IPPrefixGetNextAvailable(ObjectType):
                 branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
             )
 
+        ip_prefix = prefix.prefix.obj
+
+        if prefix_length is None:
+            raise ValidationError(input_value="prefix_length is required when querying for the next available prefix")
+
+        if not ip_prefix.prefixlen < prefix_length <= ip_prefix.max_prefixlen:
+            raise ValidationError(input_value="Invalid prefix length for current selected prefix")
+
         namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)
         allocator = IPAMResourceAllocator(db=graphql_context.db, namespace=namespace, branch=graphql_context.branch)
-        subnets = await allocator.get_subnets(ip_prefix=ipaddress.ip_network(prefix.prefix.value))
+        next_prefix = await allocator.get_next_prefix(ip_prefix=ip_prefix, target_prefix_length=prefix_length)
 
-        pool = IPSet([prefix.prefix.value])
-        for subnet in subnets:
-            pool.remove(addr=str(subnet.prefix))
+        if not next_prefix:
+            raise IndexError("No prefixes available in prefix")
 
-        prefix_ver = ipaddress.ip_network(prefix.prefix.value).version
-        next_available = get_next_available_prefix(pool=pool, prefix_length=prefix_length, prefix_ver=prefix_ver)
-
-        return {"prefix": str(next_available)}
+        return {"prefix": str(next_prefix)}
 
 
 InfrahubIPAddressGetNextAvailable = Field(
