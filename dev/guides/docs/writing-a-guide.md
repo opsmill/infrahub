@@ -13,7 +13,7 @@ Write a guide when you need to:
 - Address a particular problem or use case
 - Create documentation that can be completed independently by any user
 
-If you're explaining concepts or how something works, write a [topic](../knowledge/) instead.
+If you're explaining concepts or how something works, write a [topic](../../knowledge/) instead.
 
 ## Guide Structure Template
 
