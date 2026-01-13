@@ -4,12 +4,14 @@ import ipaddress
 from typing import TYPE_CHECKING
 
 from graphene import Field, Int, ObjectType, String
+from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import BuiltinIPPrefix
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.pools.prefix import get_next_available_prefix
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -79,19 +81,24 @@ class IPPrefixGetNextAvailable(ObjectType):
             )
 
         ip_prefix = prefix.prefix.obj
-
-        if prefix_length is None:
-            raise ValidationError(input_value="prefix_length is required when querying for the next available prefix")
-
-        if not ip_prefix.prefixlen < prefix_length <= ip_prefix.max_prefixlen:
-            raise ValidationError(input_value="Invalid prefix length for current selected prefix")
-
         namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)
         allocator = IPAMResourceAllocator(db=graphql_context.db, namespace=namespace, branch=graphql_context.branch)
-        next_prefix = await allocator.get_next_prefix(ip_prefix=ip_prefix, target_prefix_length=prefix_length)
 
-        if not next_prefix:
-            raise IndexError("No prefixes available in prefix")
+        # Build available pool by removing existing subnets from parent prefix
+        subnets = await allocator.get_subnets(ip_prefix=ip_prefix)
+        available_pool = IPSet([str(ip_prefix)])
+        for subnet in subnets:
+            available_pool.remove(str(subnet.prefix))
+
+        if prefix_length is not None and not ip_prefix.prefixlen < prefix_length <= ip_prefix.max_prefixlen:
+            raise ValidationError(input_value="Invalid prefix length for current selected prefix")
+
+        try:
+            next_prefix = get_next_available_prefix(
+                pool=available_pool, prefix_length=prefix_length, prefix_ver=ip_prefix.version
+            )
+        except ValueError as exc:
+            raise IndexError("No prefixes available in prefix") from exc
 
         return {"prefix": str(next_prefix)}
 
