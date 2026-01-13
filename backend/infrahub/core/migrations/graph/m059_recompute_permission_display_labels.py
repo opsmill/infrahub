@@ -259,6 +259,7 @@ class Migration059(MigrationRequiringRebase):
         if not core_object_permission.display_label:
             return
 
+        query: GetPermissionAttributesQuery | GetPermissionAttributesBranchQuery
         if branch.is_default:
             query = await GetPermissionAttributesQuery.init(
                 db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, is_branch_agnostic=False
