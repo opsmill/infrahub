@@ -296,3 +296,127 @@ async def test_ipv6_large_prefix_pool_allocation(
         branch=default_branch,
     )
     assert next_prefix.prefix.value == "2001:db8:abcd::c8/127"
+
+
+async def test_ipv4_small_prefix_pool_full_allocation(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    """Test allocating /31 prefixes from a small /28 IPv4 prefix pool until exhausted.
+
+    The prefix 255.255.255.240/28 contains 16 addresses.
+    Allocating 8 x /31 prefixes (2 addresses each) should fill the pool completely.
+    The 9th allocation should fail with IndexError.
+    """
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns_v4 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns_v4.new(db=db, name="ns_v4_small")
+    await ns_v4.save(db=db)
+
+    parent_v4 = await Node.init(db=db, schema=prefix_schema)
+    await parent_v4.new(db=db, prefix="255.255.255.240/28", ip_namespace=ns_v4)
+    await parent_v4.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_v4_small", resources=[parent_v4], ip_namespace=ns_v4)
+    await pool.save(db=db)
+
+    allocated_prefixes: list[Node] = []
+    expected_prefixes = [
+        "255.255.255.240/31",
+        "255.255.255.242/31",
+        "255.255.255.244/31",
+        "255.255.255.246/31",
+        "255.255.255.248/31",
+        "255.255.255.250/31",
+        "255.255.255.252/31",
+        "255.255.255.254/31",
+    ]
+
+    for i in range(8):
+        new_prefix = await pool.get_resource(
+            db=db,
+            prefixlen=31,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier=f"v4_small_{i}",
+            branch=default_branch,
+        )
+        allocated_prefixes.append(new_prefix)
+
+    for i, prefix in enumerate(allocated_prefixes):
+        assert prefix.prefix.value == expected_prefixes[i]
+
+    with pytest.raises(IndexError):
+        await pool.get_resource(
+            db=db,
+            prefixlen=31,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="v4_small_overflow",
+            branch=default_branch,
+        )
+
+
+async def test_ipv6_small_prefix_pool_full_allocation(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    """Test allocating /127 prefixes from a small /124 IPv6 prefix pool until exhausted.
+
+    The prefix ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/124 contains 16 addresses.
+    Allocating 8 x /127 prefixes (2 addresses each) should fill the pool completely.
+    The 9th allocation should fail with IndexError.
+    """
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns_v6 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns_v6.new(db=db, name="ns_v6_small")
+    await ns_v6.save(db=db)
+
+    parent_v6 = await Node.init(db=db, schema=prefix_schema)
+    await parent_v6.new(db=db, prefix="ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/124", ip_namespace=ns_v6)
+    await parent_v6.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_v6_small", resources=[parent_v6], ip_namespace=ns_v6)
+    await pool.save(db=db)
+
+    allocated_prefixes: list[Node] = []
+    expected_prefixes = [
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff2/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff4/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff6/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff8/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffa/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc/127",
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe/127",
+    ]
+
+    for i in range(8):
+        new_prefix = await pool.get_resource(
+            db=db,
+            prefixlen=127,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier=f"v6_small_{i}",
+            branch=default_branch,
+        )
+        allocated_prefixes.append(new_prefix)
+
+    for i, prefix in enumerate(allocated_prefixes):
+        assert prefix.prefix.value == expected_prefixes[i]
+
+    with pytest.raises(IndexError):
+        await pool.get_resource(
+            db=db,
+            prefixlen=127,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="v6_small_overflow",
+            branch=default_branch,
+        )

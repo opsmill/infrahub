@@ -385,27 +385,47 @@ class IPv6PrefixSubnetFetchFree(Query):
                     // - For each bit: if carry=0, keep bit unchanged
                     //   if carry=1 and bit="1", output "0" and carry remains 1
                     //   if carry=1 and bit="0", output "1" and carry becomes 0
-                    // Note: if all bits are "1", result will be all "0"s (overflow)
-                    // The overflow case is handled by size check after the reduce
+                    // Note: if all bits are "1", result will be all "0"s with carry=1 (overflow)
+                    // We track the final carry and set cursor to null if overflow occurred
                     ELSE
                         {
-                            cursor: reduce(s = "", c IN reduce(
-                                inc = {bits: split(r.end_block, ""), carry: 1, result: []},
-                                idx IN reverse(range(0, $target_prefixlen - 1)) |
-                                {
-                                    bits: inc.bits,
-                                    carry: CASE
-                                        WHEN inc.carry = 0 THEN 0
-                                        WHEN inc.bits[idx] = "1" THEN 1
-                                        ELSE 0
-                                    END,
-                                    result: CASE
-                                        WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
-                                        WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
-                                        ELSE ["1"] + inc.result
-                                    END
-                                }
-                            ).result | s + c),
+                            cursor: CASE
+                                // Check for overflow: if final carry is 1, return null
+                                WHEN reduce(
+                                    inc = {bits: split(r.end_block, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, $target_prefixlen - 1)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).carry = 1 THEN null
+                                ELSE reduce(s = "", c IN reduce(
+                                    inc = {bits: split(r.end_block, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, $target_prefixlen - 1)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).result | s + c)
+                            END,
                             found: null
                         }
                 END
