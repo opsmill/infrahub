@@ -190,25 +190,22 @@ class SchemaUpdateCoordinator:
             return updated_hash
 
         if exception:
-            self.log.error(  # type: ignore[call-arg]
+            self.log.error(
                 "Schema migration failed, beginning rollback",
-                branch=self.branch.name,
-                error=str(exception),
+                extra={"branch": self.branch.name, "error": str(exception)},
             )
         else:
-            self.log.error(  # type: ignore[call-arg]
+            self.log.error(
                 "Schema migration returned errors, beginning rollback",
-                branch=self.branch.name,
-                errors=error_msgs,
+                extra={"branch": self.branch.name, "errors": error_msgs},
             )
 
         # Step 4: Rollback on failure
         await self._rollback(at=at)
         await self._restore_registry_state()
 
-        self.log.info("Schema rollback completed", branch=self.branch.name)  # type: ignore[call-arg]
+        self.log.info("Schema rollback completed", extra={"branch": self.branch.name})
 
-        # Re-raise the appropriate error
         if exception:
             raise exception
         raise MigrationError(message=",\n".join(error_msgs))
@@ -250,8 +247,8 @@ class SchemaUpdateCoordinator:
             self.schema_manager.set_schema_branch(name=self.branch.name, schema=candidate_schema)
 
         self.branch.update_schema_hash()
-        self.log.info(  # type: ignore[call-arg]
-            "Schema has been updated", branch=self.branch.name, hash=self.branch.active_schema_hash.main
+        self.log.info(
+            "Schema has been updated", extra={"branch": self.branch.name, "hash": self.branch.active_schema_hash.main}
         )
         await self.branch.save(db=self.db, user_id=user_id)
 

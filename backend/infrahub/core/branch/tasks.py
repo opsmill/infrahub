@@ -174,7 +174,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
                 await obj.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
-                log.info("Branch graph successfully rebased")
+                log.info("Branch graph rebased")
 
             if obj.has_schema_changes:
                 # Load the updated schema from DB after rebase
