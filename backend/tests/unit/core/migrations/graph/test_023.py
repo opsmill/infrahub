@@ -6,6 +6,7 @@ from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m023_deduplicate_cardinality_one_relationships import Migration023
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
@@ -77,7 +78,7 @@ async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, re
     )
 
     migration = Migration023()
-    await migration.execute(db=db)
+    await migration.execute(migration_input=MigrationInput(db=db))
     await migration.validate_migration(db=db)
 
     await check_number_path_between_nodes(

@@ -24,7 +24,11 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   renderEmpty?: () => React.ReactNode;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
+  gridTemplateColumns?: (columnCount: number) => string;
 }
+
+const defaultGridTemplateColumns = (columnCount: number) =>
+  `repeat(${columnCount - 2}, auto) 1fr 2.5rem`;
 
 export function DataTable<T extends NodeCore>({
   columnOrder,
@@ -34,6 +38,7 @@ export function DataTable<T extends NodeCore>({
   renderEmpty,
   toolbarActions,
   enableRowSelection,
+  gridTemplateColumns = defaultGridTemplateColumns,
   ...props
 }: DataTableProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -60,9 +65,9 @@ export function DataTable<T extends NodeCore>({
   const allRows = table.getRowModel().rows;
   const style = React.useMemo<React.CSSProperties>(
     () => ({
-      gridTemplateColumns: `repeat(${allHeaders.length - 2}, auto) 1fr 2.5rem`,
+      gridTemplateColumns: gridTemplateColumns(allHeaders.length),
     }),
-    [allHeaders.length]
+    [allHeaders.length, gridTemplateColumns]
   );
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);

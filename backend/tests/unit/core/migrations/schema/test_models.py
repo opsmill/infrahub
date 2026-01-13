@@ -3,6 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath, SchemaPathType
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -27,6 +28,7 @@ def test_SchemaApplyMigrationData_serializer(
                 migration_name="node.attribute.add",
             ),
         ],
+        at=Timestamp(),
     )
 
     data_dict = data.model_dump(mode="json")
