@@ -300,3 +300,21 @@ async def test_delete_branch_aware_node_with_branch_agnostic_attribute_on_branch
         "Branch-agnostic attribute 'nbr_seats' should not be deleted on branch3 "
         "when the node is deleted on another branch"
     )
+
+    # Now delete the car on the main branch
+    car_on_main_to_delete = await NodeManager.get_one(db=db, id=car_id, branch=default_branch)
+    assert car_on_main_to_delete is not None
+    await car_on_main_to_delete.delete(db=db)
+
+    # Verify the car is deleted on main branch
+    car_on_main_after_main_delete = await NodeManager.get_one(db=db, id=car_id, branch=default_branch)
+    assert car_on_main_after_main_delete is None, "Car should be deleted on main branch"
+
+    # Verify the car still exists on branch3 with its branch-agnostic attribute intact
+    car_on_branch3_after_main_delete = await NodeManager.get_one(db=db, id=car_id, branch=branch3)
+    assert car_on_branch3_after_main_delete is not None, (
+        "Car should still exist on branch3 after being deleted on main branch"
+    )
+    assert car_on_branch3_after_main_delete.nbr_seats.value == 5, (
+        "Branch-agnostic attribute 'nbr_seats' should still exist on branch3 after the node is deleted on main branch"
+    )
