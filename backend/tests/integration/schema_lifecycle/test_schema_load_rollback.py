@@ -115,6 +115,7 @@ class TestSchemaLoadRollback(TestSchemaLifecycleBase):
     async def test_schema_load_rollback_on_migration_failure(
         self,
         db: InfrahubDatabase,
+        default_branch: Branch,
         client: InfrahubClient,
         patched_migrations: None,
         initial_dataset: dict[str, str],
@@ -146,21 +147,34 @@ class TestSchemaLoadRollback(TestSchemaLifecycleBase):
         assert exc_info.value.response.status_code == 502, "Expected a 502 Internal Server Error"
 
         # Verify schema registry has been restored
-        person_schema_after = registry.schema.get_node_schema(name=PERSON_KIND)
-        after_attr_names = {attr.name for attr in person_schema_after.attributes}
-
+        registry_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        registry_node_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=default_branch)
+        after_attr_names = {attr.name for attr in registry_node_schema.attributes}
         # The attribute names should be the same as before (no 'firstname' rename)
         assert after_attr_names == original_attr_names, (
             f"Schema was not rolled back. Expected {original_attr_names}, got {after_attr_names}"
         )
+        # Verify 'name' attribute still exists (wasn't renamed to 'firstname')
+        assert registry_node_schema.get_attribute(name="name") is not None, (
+            "The 'name' attribute should still exist after rollback"
+        )
+        current_schema_hash = registry_schema_branch.get_hash()
+        assert current_schema_hash == original_schema_hash, "Schema hash was not restored after rollback"
 
+        # Verify database schema has been restored
+        restored_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        person_schema_after = restored_schema_branch.get_node(name=PERSON_KIND, duplicate=False)
+        after_attr_names = {attr.name for attr in person_schema_after.attributes}
+        # The attribute names should be the same as before (no 'firstname' rename)
+        assert after_attr_names == original_attr_names, (
+            f"Schema was not rolled back. Expected {original_attr_names}, got {after_attr_names}"
+        )
         # Verify 'name' attribute still exists (wasn't renamed to 'firstname')
         assert person_schema_after.get_attribute(name="name") is not None, (
             "The 'name' attribute should still exist after rollback"
         )
-
         # Verify schema hash is restored
-        current_schema_hash = registry.schema.get_schema_branch(name="main").get_hash()
+        current_schema_hash = restored_schema_branch.get_hash()
         assert current_schema_hash == original_schema_hash, "Schema hash was not restored after rollback"
 
         # Verify data is still queryable with original schema
