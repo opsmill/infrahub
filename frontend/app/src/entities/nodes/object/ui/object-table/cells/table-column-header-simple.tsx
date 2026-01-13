@@ -11,7 +11,7 @@ export interface TableColumnHeaderSimpleProps {
 
 export function TableColumnHeaderSimple({ columnSchema, className }: TableColumnHeaderSimpleProps) {
   return (
-    <div className={classNames(cellsStyle, cellHeaderStyle, className)}>
+    <div className={classNames(cellsStyle, cellHeaderStyle, "hover:bg-white", className)}>
       <TableColumnHeaderIcon fieldSchema={columnSchema} />
       <span className="mr-2 truncate">{columnSchema.label ?? columnSchema.name}</span>
     </div>
