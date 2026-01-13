@@ -37,7 +37,9 @@ def _value_to_permission_decision_name(value: int | str | Enum) -> str:
 def _value_to_permission_action_name(value: str | Enum) -> str:
     """Convert a permission action value to its enum member name.
 
-    Usage example: `{{ action__value | value_to_permission_action_name }}` will return `"MANAGE_ACCOUNTS"` for value `"manage_accounts"`.
+    Usage examples:
+    - `{{ action__value | value_to_permission_action_name }}` will return `"CREATE"` for value `"create"` for object permissions.
+    - `{{ action__value | value_to_permission_action_name }}` will return `"SUPER_ADMIN"` for value `"super_admin"` for global permissions.
     """
     if isinstance(value, Enum):
         value = value.value
