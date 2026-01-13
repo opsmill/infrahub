@@ -120,8 +120,22 @@ export function ActiveFilterTags({
                   return null;
                 }
 
+                if (!Array.isArray(filter.value)) {
+                  return null;
+                }
+
                 const value = filter.value
-                  .map(({ display_label }: { display_label: string }) => display_label)
+                  .map((item: unknown) => {
+                    if (
+                      typeof item === "object" &&
+                      item !== null &&
+                      "display_label" in item &&
+                      typeof item.display_label === "string"
+                    ) {
+                      return item.display_label;
+                    }
+                    return String(item);
+                  })
                   .join(", ");
 
                 return (
