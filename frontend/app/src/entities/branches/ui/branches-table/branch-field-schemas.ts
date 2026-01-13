@@ -29,7 +29,7 @@ export const BRANCH_FIELD_SCHEMAS = {
     kind: "DateTime",
   } as AttributeSchema,
   created_by: {
-    name: "created_by",
+    name: "node_metadata__created_by",
     label: "Created By",
     peer: "CoreAccount",
   } as RelationshipSchema,
