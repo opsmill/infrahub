@@ -194,7 +194,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     origin_schema=pre_rebase_schema,
                     workflow=workflow,
                     context=context,
-                    migration_executor=MigrationExecutor.WORKFLOW,
+                    migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
                     logger=log,
                 )
                 await coordinator.execute(
