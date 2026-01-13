@@ -37,6 +37,11 @@ def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[G
     return validate(schema, document_ast)
 
 
+@lru_cache(maxsize=1024)
+def cached_validate_schema(schema: GraphQLSchema) -> list[GraphQLError]:
+    return validate_schema(schema)
+
+
 def extract_data(query_name: str, result: ExecutionResult) -> dict:
     if result.errors:
         errors = []
@@ -70,7 +75,7 @@ async def graphql_impl(
 ) -> ExecutionResult:
     """Execute a query, return asynchronously only if necessary."""
     # Validate Schema
-    schema_validation_errors = validate_schema(schema)
+    schema_validation_errors = cached_validate_schema(schema)
     if schema_validation_errors:
         return ExecutionResult(data=None, errors=schema_validation_errors)
 
