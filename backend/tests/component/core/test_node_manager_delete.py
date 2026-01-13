@@ -5,6 +5,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipDeleteBehavior
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.relationship_schema import RelationshipSchema
@@ -237,3 +238,65 @@ class TestDeleteUnidirectionalRelationship(TestInfrahubApp):
         res = await NodeManager.get_many(db=db, ids=[car.id])
         rels = await res[car.id].previous_owner.get_relationships(db=db)
         assert len(rels) == 0
+
+
+async def test_delete_branch_aware_node_with_branch_agnostic_attribute_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_global: None,
+) -> None:
+    """Test that deleting a branch-aware node on a branch does not delete its branch-agnostic attribute on other branches.
+
+    The scenario:
+    - TestCar is branch-aware with a branch-agnostic attribute 'nbr_seats'
+    - Create a car on the default branch
+    - Create new branches (branch2 and branch3)
+    - Delete the car while on branch2
+    - Verify the car and its branch-agnostic attribute still exist on default branch and branch3
+    """
+    # Create a person (owner) on default branch - TestPerson is branch-agnostic in this schema
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    # Create a car on default branch with branch-agnostic attribute nbr_seats
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="TestVehicle", nbr_seats=5, color="#FF0000", is_electric=True, owner=person)
+    await car.save(db=db)
+    car_id = car.id
+
+    # Verify initial state on default branch
+    car_on_main = await NodeManager.get_one(db=db, id=car_id, branch=default_branch)
+    assert car_on_main is not None
+    assert car_on_main.nbr_seats.value == 5
+
+    # Create a new branch
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    branch3 = await create_branch(db=db, branch_name="branch3")
+
+    # Get the car on branch2 and delete it
+    car_on_branch2 = await NodeManager.get_one(db=db, id=car_id, branch=branch2)
+    assert car_on_branch2 is not None
+    await car_on_branch2.delete(db=db)
+
+    # Verify the car is deleted on branch2
+    car_on_branch2_after_delete = await NodeManager.get_one(db=db, id=car_id, branch=branch2)
+    assert car_on_branch2_after_delete is None
+
+    # Verify the car still exists on default branch with its branch-agnostic attribute intact
+    car_on_main_after_delete = await NodeManager.get_one(db=db, id=car_id, branch=default_branch)
+    assert car_on_main_after_delete is not None, (
+        "Car should still exist on default branch after being deleted on branch2"
+    )
+    assert car_on_main_after_delete.nbr_seats.value == 5, (
+        "Branch-agnostic attribute 'nbr_seats' should not be deleted on default branch "
+        "when the node is deleted on another branch"
+    )
+
+    # Verify the car still exists on branch3 with its branch-agnostic attribute intact
+    car_on_branch3 = await NodeManager.get_one(db=db, id=car_id, branch=branch3)
+    assert car_on_branch3 is not None
+    assert car_on_branch3.nbr_seats.value == 5, (
+        "Branch-agnostic attribute 'nbr_seats' should not be deleted on branch3 "
+        "when the node is deleted on another branch"
+    )
