@@ -47,22 +47,12 @@ export function BranchStatusFilterForm({ onSuccess }: BranchStatusFilterFormProp
       }
     }
 
-    if (condition === FILTER_CONDITION.IS_EMPTY) {
+    if (condition === FILTER_CONDITION.IS_EMPTY || condition === FILTER_CONDITION.IS_NOT_EMPTY) {
       return setFilters([
         ...filters.filter((f) => !f.name.startsWith(fieldSchema.name)),
         {
           name: `${fieldSchema.name}__isnull`,
           value: true,
-        },
-      ]);
-    }
-
-    if (condition === FILTER_CONDITION.IS_NOT_EMPTY) {
-      return setFilters([
-        ...filters.filter((f) => !f.name.startsWith(fieldSchema.name)),
-        {
-          name: `${fieldSchema.name}__isnull`,
-          value: false,
         },
       ]);
     }
