@@ -283,6 +283,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         merger: BranchMerger | None = None
         workflow = get_workflow()
         merge_at = Timestamp()
+        pre_merge_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
         async with lock.registry.global_graph_lock():
             diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
@@ -302,7 +303,6 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         node_events = changelog_collector.collect_changelogs()
 
         # Handle schema updates and migrations after merge
-        pre_merge_schema = merger.destination_schema.duplicate()
         if merger and await merger.has_schema_changes():
             # Load the updated schema from DB after merge
             log.info("Loading updated schema")
