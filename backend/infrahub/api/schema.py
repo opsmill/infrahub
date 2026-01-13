@@ -384,7 +384,7 @@ async def load_schema(
             migration_executor=MigrationExecutor.WORKFLOW,
         )
 
-        update_result = await coordinator.execute(
+        updated_hash = await coordinator.execute(
             candidate_schema=candidate_schema,
             at=Timestamp(),
             diff=result.diff,
@@ -410,8 +410,6 @@ async def load_schema(
         ),
     )
     await service.event.send(event=event)
-
-    updated_hash = update_result.updated_hash or ""
 
     return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff, warnings=warnings)
 

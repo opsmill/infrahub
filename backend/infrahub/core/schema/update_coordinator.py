@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -33,19 +32,6 @@ class MigrationExecutor(Enum):
 
     DIRECT = "direct"  # Call schema_apply_migrations directly
     WORKFLOW = "workflow"  # Execute via workflow service
-
-
-@dataclass
-class SchemaUpdateResult:
-    """Result of a schema update operation."""
-
-    updated_hash: str | None = None
-    error_messages: list[str] | None = None
-    exception: Exception | None = None
-
-    @property
-    def success(self) -> bool:
-        return not self.error_messages and self.exception is None
 
 
 class SchemaUpdateCoordinator:
@@ -105,6 +91,45 @@ class SchemaUpdateCoordinator:
             raise RuntimeError("Context is required but not provided")
         return self.context
 
+    @overload
+    async def execute(
+        self,
+        candidate_schema: SchemaBranch,
+        at: Timestamp,
+        diff: SchemaDiff | None = None,
+        migrations: list[SchemaUpdateMigrationInfo] | None = None,
+        limit: list[str] | None = None,
+        update_db: Literal[True] = True,
+        update_registry: bool = True,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> str: ...
+
+    @overload
+    async def execute(
+        self,
+        candidate_schema: SchemaBranch,
+        at: Timestamp,
+        diff: SchemaDiff | None = None,
+        migrations: list[SchemaUpdateMigrationInfo] | None = None,
+        limit: list[str] | None = None,
+        update_db: Literal[False] = ...,
+        update_registry: Literal[True] = ...,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> str: ...
+
+    @overload
+    async def execute(
+        self,
+        candidate_schema: SchemaBranch,
+        at: Timestamp,
+        diff: SchemaDiff | None = None,
+        migrations: list[SchemaUpdateMigrationInfo] | None = None,
+        limit: list[str] | None = None,
+        update_db: Literal[False] = ...,
+        update_registry: Literal[False] = ...,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> str | None: ...
+
     async def execute(
         self,
         candidate_schema: SchemaBranch,
@@ -115,7 +140,7 @@ class SchemaUpdateCoordinator:
         update_db: bool = True,
         update_registry: bool = True,
         user_id: str = SYSTEM_USER_ID,
-    ) -> SchemaUpdateResult:
+    ) -> str | None:
         """Execute the schema update with migrations and rollback on failure.
 
         Args:
@@ -129,7 +154,7 @@ class SchemaUpdateCoordinator:
             user_id: User ID for all operations
 
         Returns:
-            SchemaUpdateResult with success status and details
+            The updated schema hash, or None if the schema was not updated
 
         Raises:
             MigrationError: If migrations fail and rollback completes
@@ -150,7 +175,7 @@ class SchemaUpdateCoordinator:
             )
 
         if not migrations:
-            return SchemaUpdateResult(updated_hash=updated_hash)
+            return updated_hash
 
         # Step 2: Run migrations
         error_msgs, exception = await self._run_migrations(
@@ -162,7 +187,7 @@ class SchemaUpdateCoordinator:
 
         # Step 3: Check for failures
         if not error_msgs and exception is None:
-            return SchemaUpdateResult(updated_hash=updated_hash)
+            return updated_hash
 
         if exception:
             self.log.error(  # type: ignore[call-arg]

@@ -128,7 +128,7 @@ class TestSchemaUpdateAndRollback:
             origin_schema=original_schema_copy,
             migration_executor=MigrationExecutor.DIRECT,
         )
-        result = await coordinator.execute(
+        await coordinator.execute(
             candidate_schema=updated_schema_branch,
             at=schema_update_at,
             diff=diff,
@@ -136,7 +136,6 @@ class TestSchemaUpdateAndRollback:
             update_db=True,
             update_registry=True,
         )
-        assert result.success, f"Schema update should succeed: {result.error_messages}"
 
         # Step 5: Verify changes applied
         # - Relationship should be removed from schema
