@@ -8,6 +8,7 @@ from infrahub.core.constants import BranchSupportType, RelationshipDeleteBehavio
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -317,4 +318,142 @@ async def test_delete_branch_aware_node_with_branch_agnostic_attribute_on_branch
     )
     assert car_on_branch3_after_main_delete.nbr_seats.value == 5, (
         "Branch-agnostic attribute 'nbr_seats' should still exist on branch3 after the node is deleted on main branch"
+    )
+
+
+async def test_delete_branch_aware_node_with_agnostic_relationship(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+) -> None:
+    """Test that deleting a branch-aware node with an explicitly branch-agnostic relationship
+    only deletes the relationship on the specific branch, not globally.
+
+    The scenario:
+    - TestDevice is branch-aware with an explicitly branch-agnostic relationship 'location'
+    - TestLocation is branch-aware
+    - Create a device and location on the default branch
+    - Create new branches (branch2 and branch3)
+    - Delete the device on branch2
+    - Verify the device is deleted on branch2
+    - Verify the device and its relationship to the location still exist on branch3
+    """
+
+    # Create a schema with branch-aware nodes and an explicitly agnostic relationship
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    # Explicitly set relationship to branch-agnostic
+                    {
+                        "name": "location",
+                        "peer": "TestLocation",
+                        "optional": True,
+                        "cardinality": "one",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+            {
+                "name": "Location",
+                "namespace": "Test",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "devices",
+                        "peer": "TestDevice",
+                        "cardinality": "many",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    # Create a location on default branch
+    location = await Node.init(db=db, schema="TestLocation", branch=default_branch)
+    await location.new(db=db, name="DataCenter1")
+    await location.save(db=db)
+    location_id = location.id
+
+    # Create a device on default branch with location relationship
+    device = await Node.init(db=db, schema="TestDevice", branch=default_branch)
+    await device.new(db=db, name="Server1", location=location)
+    await device.save(db=db)
+    device_id = device.id
+
+    # Create new branches
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    branch3 = await create_branch(db=db, branch_name="branch3")
+
+    # Delete the device on branch2
+    device_on_branch2 = await NodeManager.get_one(db=db, id=device_id, branch=branch2)
+    await device_on_branch2.delete(db=db)
+
+    # Verify the device is deleted on branch2
+    device_on_branch2_after_delete = await NodeManager.get_one(db=db, id=device_id, branch=branch2)
+    assert device_on_branch2_after_delete is None, "Device should be deleted on branch2"
+
+    # Verify the device still exists on default branch
+    device_on_main_after_delete = await NodeManager.get_one(db=db, id=device_id, branch=default_branch)
+    assert device_on_main_after_delete is not None, (
+        "Device should still exist on default branch after being deleted on branch2"
+    )
+
+    # Verify the device's location relationship still exists on default branch
+    location_rel = device_on_main_after_delete.get_relationship("location")
+    device_location_on_main = await location_rel.get_peer(db=db)
+    assert device_location_on_main is not None, "Device's location relationship should still exist on default branch"
+    assert device_location_on_main.id == location_id
+
+    # Verify the device still exists on branch3 with its location relationship
+    device_on_branch3 = await NodeManager.get_one(db=db, id=device_id, branch=branch3)
+    assert device_on_branch3 is not None, "Device should still exist on branch3 after being deleted on branch2"
+
+    # Verify the location relationship still exists on branch3
+    location_rel = device_on_branch3.get_relationship("location")
+    device_location_on_branch3 = await location_rel.get_peer(db=db)
+    assert device_location_on_branch3 is not None, (
+        "Device's branch-agnostic location relationship should still exist on branch3 after device deleted on branch2"
+    )
+    assert device_location_on_branch3.id == location_id
+
+    # Now verify from the Location side of the relationship
+
+    # On branch2: location's devices should NOT include the deleted device
+    location_on_branch2 = await NodeManager.get_one(db=db, id=location_id, branch=branch2)
+    assert location_on_branch2 is not None
+    devices_rel_branch2 = location_on_branch2.get_relationship("devices")
+    devices_on_branch2 = await devices_rel_branch2.get_peers(db=db)
+    assert not devices_on_branch2, "Location's devices relationship should be empty on branch2"
+
+    # On default branch: location's devices SHOULD include the device
+    location_on_main = await NodeManager.get_one(db=db, id=location_id, branch=default_branch)
+    assert location_on_main is not None
+    devices_rel_main = location_on_main.get_relationship("devices")
+    devices_on_main = await devices_rel_main.get_peers(db=db)
+    device_ids_on_main = [d.id for d in devices_on_main.values()]
+    assert device_ids_on_main == [device_id], (
+        "Location's devices relationship SHOULD include the device on default branch"
+    )
+
+    # On branch3: location's devices SHOULD include the device
+    location_on_branch3 = await NodeManager.get_one(db=db, id=location_id, branch=branch3)
+    assert location_on_branch3 is not None
+    devices_rel_branch3 = location_on_branch3.get_relationship("devices")
+    devices_on_branch3 = await devices_rel_branch3.get_peers(db=db)
+    device_ids_on_branch3 = [d.id for d in devices_on_branch3.values()]
+    assert device_ids_on_branch3 == [device_id], (
+        "Location's devices relationship SHOULD include the device on branch3 after device deleted on branch2"
     )
