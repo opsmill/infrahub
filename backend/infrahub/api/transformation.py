@@ -21,9 +21,8 @@ from infrahub.core.protocols import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import TransformError
-from infrahub.graphql.app import graphql_impl
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.utils import extract_data
+from infrahub.graphql.utils import extract_data, graphql_impl
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
 

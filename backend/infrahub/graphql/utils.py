@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from inspect import isawaitable
+from typing import TYPE_CHECKING, Any, Callable
 
 from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (
@@ -9,15 +10,19 @@ from graphql import (
     GraphQLNonNull,
     GraphQLSchema,
     GraphQLUnionType,
+    execute,
     parse,
     validate,
 )
+from graphql.error import GraphQLError
+from graphql.execution import ExecutionResult
+from graphql.type import validate_schema
 
 from infrahub.exceptions import GraphQLQueryError
 
 if TYPE_CHECKING:
-    from graphql.error import GraphQLError
-    from graphql.execution import ExecutionResult
+    from graphql import ExecutionContext, GraphQLFieldResolver, GraphQLTypeResolver
+    from graphql.execution import Middleware
     from graphql.language import Source
     from graphql.language.ast import DocumentNode
 
@@ -48,6 +53,57 @@ def extract_data(query_name: str, result: ExecutionResult) -> dict:
         raise GraphQLQueryError(errors=errors)
 
     return result.data or {}
+
+
+async def graphql_impl(
+    schema: GraphQLSchema,
+    source: str | Source,
+    root_value: Any = None,
+    context_value: Any = None,
+    variable_values: dict[str, Any] | None = None,
+    operation_name: str | None = None,
+    field_resolver: GraphQLFieldResolver | None = None,
+    type_resolver: GraphQLTypeResolver | None = None,
+    middleware: Middleware | None = None,
+    execution_context_class: type[ExecutionContext] | None = None,
+    is_awaitable: Callable[[Any], bool] | None = None,
+) -> ExecutionResult:
+    """Execute a query, return asynchronously only if necessary."""
+    # Validate Schema
+    schema_validation_errors = validate_schema(schema)
+    if schema_validation_errors:
+        return ExecutionResult(data=None, errors=schema_validation_errors)
+
+    # Parse
+    try:
+        document = cached_parse(source)
+    except GraphQLError as error:
+        return ExecutionResult(data=None, errors=[error])
+
+    validation_errors = cached_validate(schema, document)
+    if validation_errors:
+        return ExecutionResult(data=None, errors=validation_errors)
+
+    # Execute
+    result = execute(
+        schema,
+        document,
+        root_value,
+        context_value,
+        variable_values,
+        operation_name,
+        field_resolver,
+        type_resolver,
+        None,
+        middleware,
+        execution_context_class,
+        is_awaitable,
+    )
+
+    if isawaitable(result):
+        return await result
+
+    return result
 
 
 def find_types_implementing_interface(

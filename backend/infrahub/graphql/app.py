@@ -22,14 +22,11 @@ from graphql import (
     ExecutionContext,
     ExecutionResult,
     GraphQLError,
-    GraphQLFieldResolver,
     OperationType,
-    execute,
     subscribe,
     validate,
 )
 from graphql.error.graphql_error import format_error
-from graphql.type import validate_schema
 from graphql.utilities import (
     get_operation_ast,
 )
@@ -59,17 +56,15 @@ from .metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from .middleware import raise_on_mutation_on_branch_needing_rebase
-from .utils import cached_parse, cached_validate
+from .utils import cached_parse, graphql_impl
 
 if TYPE_CHECKING:
     import graphene
-    from graphql import GraphQLFormattedError, GraphQLSchema, GraphQLTypeResolver
-    from graphql.execution import Middleware
+    from graphql import GraphQLFormattedError, GraphQLSchema
     from graphql.language.ast import (
         DocumentNode,
         OperationDefinitionNode,
     )
-    from graphql.language.source import Source
     from starlette.types import Receive, Scope, Send
 
     from infrahub.core.branch import Branch
@@ -92,57 +87,6 @@ ContextValue = Any | Callable[[HTTPConnection], Any]
 RootValue = Any
 
 subscription_tasks = set()
-
-
-async def graphql_impl(
-    schema: GraphQLSchema,
-    source: str | Source,
-    root_value: Any = None,
-    context_value: Any = None,
-    variable_values: dict[str, Any] | None = None,
-    operation_name: str | None = None,
-    field_resolver: GraphQLFieldResolver | None = None,
-    type_resolver: GraphQLTypeResolver | None = None,
-    middleware: Middleware | None = None,
-    execution_context_class: type[ExecutionContext] | None = None,
-    is_awaitable: Callable[[Any], bool] | None = None,
-) -> ExecutionResult:
-    """Execute a query, return asynchronously only if necessary."""
-    # Validate Schema
-    schema_validation_errors = validate_schema(schema)
-    if schema_validation_errors:
-        return ExecutionResult(data=None, errors=schema_validation_errors)
-
-    # Parse
-    try:
-        document = cached_parse(source)
-    except GraphQLError as error:
-        return ExecutionResult(data=None, errors=[error])
-
-    validation_errors = cached_validate(schema, document)
-    if validation_errors:
-        return ExecutionResult(data=None, errors=validation_errors)
-
-    # Execute
-    result = execute(
-        schema,
-        document,
-        root_value,
-        context_value,
-        variable_values,
-        operation_name,
-        field_resolver,
-        type_resolver,
-        None,
-        middleware,
-        execution_context_class,
-        is_awaitable,
-    )
-
-    if isawaitable(result):
-        return await result
-
-    return result
 
 
 class InfrahubGraphQLApp:
