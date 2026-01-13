@@ -7,8 +7,8 @@ from prefect.cache_policies import NONE
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
-from infrahub.graphql.app import graphql_impl
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.utils import graphql_impl
 
 from .models import ActionTriggerRuleTriggerDefinition
 from .parsers import parse_trigger_rule_response
