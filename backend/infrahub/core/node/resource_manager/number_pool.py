@@ -53,42 +53,26 @@ class CoreNumberPool(Node):
         return [item for item in used if item is not None]
 
     async def get_free(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        limit: int | None = None,
-        offset: int | None = None,
-        min_value: int | None = None,
-        max_value: int | None = None,
-    ) -> list[int]:
-        """Returns a list of free numbers in the pool.
+        self, db: InfrahubDatabase, branch: Branch, min_value: int | None = None, max_value: int | None = None
+    ) -> int | None:
+        """Returns the next free number in the pool.
 
         Args:
             db: Database connection.
             branch: Branch to query.
-            limit: Maximum number of results to return.
-            offset: Number of results to skip.
             min_value: Minimum value to start searching from.
             max_value: Maximum value to search up to.
 
         Returns:
-            List of free numbers in the pool.
+            The next free number, or None if no free numbers are available.
         """
 
         query = await NumberPoolGetFree.init(
-            db=db,
-            branch=branch,
-            pool=self,
-            branch_agnostic=True,
-            limit=limit,
-            offset=offset,
-            min_value=min_value,
-            max_value=max_value,
+            db=db, branch=branch, pool=self, branch_agnostic=True, min_value=min_value, max_value=max_value
         )
         await query.execute(db=db)
 
-        result = query.get_result_value()
-        return [result] if result is not None else []
+        return query.get_result_value()
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
@@ -168,8 +152,6 @@ class CoreNumberPool(Node):
         if effective_start > effective_end:
             raise PoolExhaustedError("There are no more values available in this pool.")
 
-        min_value: int = effective_start
-
         def skip_excluded(value: int) -> int | None:
             """Skip past any excluded values/ranges starting from value.
 
@@ -205,11 +187,9 @@ class CoreNumberPool(Node):
 
         # Re-run the query until we find a non-excluded value or exhaust the pool
         while True:
-            free = await self.get_free(db=db, branch=branch, min_value=min_value, max_value=effective_end)
-            if not free:
+            candidate = await self.get_free(db=db, branch=branch, min_value=min_value, max_value=effective_end)
+            if candidate is None:
                 raise PoolExhaustedError("There are no more values available in this pool.")
-
-            candidate = free[0]
 
             # Check if candidate is excluded (single value or range)
             next_valid = skip_excluded(candidate)
