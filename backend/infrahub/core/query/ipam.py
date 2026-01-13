@@ -117,11 +117,11 @@ class IPPrefixSubnetFetch(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns as ns1, r as r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 as r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         // MATCH all prefixes that are IN SCOPE
@@ -481,11 +481,11 @@ class IPPrefixIPAddressFetch(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns as ns1, r as r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 as r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         // MATCH all IPAddress that are IN SCOPE
