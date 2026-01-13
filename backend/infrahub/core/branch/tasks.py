@@ -169,7 +169,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        schema_in_main_before = merger.destination_schema.duplicate()
+        pre_rebase_schema = merger.destination_schema.duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
@@ -191,7 +191,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     db=db,
                     branch=obj,
                     schema_manager=registry.schema,
-                    origin_schema=schema_in_main_before,
+                    origin_schema=pre_rebase_schema,
                     workflow=workflow,
                     context=context,
                     migration_executor=MigrationExecutor.WORKFLOW,
@@ -302,6 +302,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         node_events = changelog_collector.collect_changelogs()
 
         # Handle schema updates and migrations after merge
+        pre_merge_schema = merger.destination_schema.duplicate()
         if merger and await merger.has_schema_changes():
             # Load the updated schema from DB after merge
             log.info("Loading updated schema")
@@ -318,7 +319,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 db=db,
                 branch=merger.destination_branch,
                 schema_manager=registry.schema,
-                origin_schema=merger.destination_schema,
+                origin_schema=pre_merge_schema,
                 workflow=workflow,
                 context=context,
                 migration_executor=MigrationExecutor.WORKFLOW,
