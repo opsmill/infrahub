@@ -8,9 +8,7 @@ import { BranchDateCell } from "@/entities/branches/ui/branches-table/cells/bran
 import { BranchIdentifierHeader } from "@/entities/branches/ui/branches-table/cells/branch-identifier-header";
 import { BranchNameCell } from "@/entities/branches/ui/branches-table/cells/branch-name-cell";
 import { BranchStatusCell } from "@/entities/branches/ui/branches-table/cells/branch-status-cell";
-import { BranchStatusHeader } from "@/entities/branches/ui/branches-table/cells/branch-status-header";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
-import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 
@@ -41,7 +39,7 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
   return [
     columnHelper.accessor("status", {
       id: "status",
-      header: () => <BranchStatusHeader />,
+      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.status} />,
       cell: ({ cell }) => <BranchStatusCell status={cell.getValue()} />,
     }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("branched_from", {
@@ -61,7 +59,7 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
     }),
     columnHelper.accessor("created_by", {
       id: "created_by",
-      header: () => <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.created_by} />,
+      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.created_by} />,
       cell: ({ cell }) => <BranchCreatedByCell createdBy={cell.getValue()} />,
     }),
   ];
