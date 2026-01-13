@@ -86,11 +86,13 @@ export function ActiveFilterTags({
             {additionalTags}
 
             {filters.map((filter) => {
-              const [fieldName, fieldKey] = filter.name.split("__");
-
-              if (!fieldName || !fieldKey) {
+              const parts = filter.name.split("__");
+              if (parts.length < 2) {
                 return null;
               }
+
+              const fieldKey = parts[parts.length - 1];
+              const fieldName = parts.slice(0, -1).join("__");
 
               const fieldSchema = getFieldSchema(fieldName);
               if (!fieldSchema) {

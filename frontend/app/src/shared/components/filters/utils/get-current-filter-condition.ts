@@ -15,7 +15,7 @@ export function getCurrentFilterCondition(filter?: Filter): FilterCondition | un
   if (!filter) return;
 
   const parts = filter.name.split("__");
-  const condition = parts.length > 1 ? parts[1] : "";
+  const condition = parts.length > 1 ? parts[parts.length - 1] : "";
 
   switch (condition) {
     case "value":
