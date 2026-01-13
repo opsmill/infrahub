@@ -91,10 +91,11 @@ export function ActiveFilterTags({
                 return null;
               }
 
-              const fieldKey = parts[parts.length - 1];
+              const fieldKey = parts.at(-1);
               const fieldName = parts.slice(0, -1).join("__");
 
               const fieldSchema = getFieldSchema(fieldName);
+
               if (!fieldSchema) {
                 return null;
               }
