@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
@@ -14,9 +14,7 @@ from infrahub.core.utils import convert_ip_to_binary_str
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -175,6 +173,7 @@ class IPPrefixSubnetFetch(Query):
 class IPPrefixSubnetFetchFree(Query):
     name = "ipprefix_subnet_fetch_free"
     type = QueryType.READ
+    raise_error_if_empty = False
 
     def __init__(
         self,
@@ -213,11 +212,11 @@ class IPPrefixSubnetFetchFree(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns AS ns1, r AS r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 AS r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
@@ -243,11 +242,20 @@ class IPPrefixSubnetFetchFree(Query):
         ORDER BY r.start ASC
         WITH collect(r) AS ranges_sorted_raw
         WITH [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
+        // Gap detection algorithm using reduce to scan through sorted ranges
+        // acc.cursor: current candidate position for a free block (always block-aligned)
+        // acc.found: set when a gap is found, stops further iteration
         WITH reduce(acc = {cursor: $parent_start, found: null}, r IN ranges_sorted |
                 CASE
+                    // Already found a gap, preserve result
                     WHEN acc.found IS NOT NULL THEN acc
+                    // Range ends before cursor, skip (range already passed)
                     WHEN r.end < acc.cursor THEN acc
+                    // Gap found: cursor + block_size - 1 < range start means there's room before this range
                     WHEN acc.cursor + $block_size - 1 < r.start THEN {cursor: acc.cursor, found: acc.cursor}
+                    // No gap: advance cursor past this range using ceiling division
+                    // Formula: ceil((r.end + 1) / block_size) * block_size
+                    // This aligns the cursor to the next block boundary after the range
                     ELSE
                         {
                             cursor: CASE
@@ -292,6 +300,7 @@ class IPv6PrefixSubnetFetchFree(Query):
 
     name = "ipv6prefix_subnet_fetch_free"
     type = QueryType.READ
+    raise_error_if_empty = False
 
     def __init__(
         self,
@@ -331,11 +340,11 @@ class IPv6PrefixSubnetFetchFree(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns AS ns1, r AS r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 AS r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
@@ -370,7 +379,14 @@ class IPv6PrefixSubnetFetchFree(Query):
                     // Gap found: cursor is before this range starts
                     WHEN acc.cursor < r.start_block THEN {cursor: acc.cursor, found: acc.cursor}
                     // Cursor overlaps with range: advance cursor past this range
-                    // Increment end_block by 1 using binary string increment, then join back to string
+                    // Binary string increment: add 1 to end_block to get the next block
+                    // Algorithm: process bits right-to-left with carry propagation
+                    // - Start with carry=1 (we're adding 1)
+                    // - For each bit: if carry=0, keep bit unchanged
+                    //   if carry=1 and bit="1", output "0" and carry remains 1
+                    //   if carry=1 and bit="0", output "1" and carry becomes 0
+                    // Note: if all bits are "1", result will be all "0"s (overflow)
+                    // The overflow case is handled by size check after the reduce
                     ELSE
                         {
                             cursor: reduce(s = "", c IN reduce(
@@ -547,11 +563,11 @@ class IPPrefixIPAddressFetchFree(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns as ns1, r as r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 as r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         // MATCH all IPAddress that are IN SCOPE
@@ -562,11 +578,18 @@ class IPPrefixIPAddressFetchFree(Query):
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
         ORDER BY av.binary_address
-        WITH DISTINCT av.binary_address AS used_addresses
-        WITH [x IN split(used_addresses, "") | toInteger(x)] AS bits
+        // Gap detection algorithm: collect used addresses and find first available slot
+        // Each used_address is a single binary string representing an allocated IP
+        WITH DISTINCT av.binary_address AS used_address
+        // Convert binary string to integer for comparison
+        WITH [x IN split(used_address, "") | toInteger(x)] AS bits
+        // Build array: [start_range - 1] prepended to all used addresses as integers
+        // This creates a baseline for gap detection starting from the range beginning
         WITH [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
         UNWIND range(0, size(nums) - 1) AS idx
         CALL (nums, idx) {
+            // Compare expected sequential address with actual address at this position
+            // If they differ, we found a gap (is_free = true)
             WITH nums[idx] AS curr, idx - 1 + $start_range AS expected
             RETURN expected AS addr, expected <> curr AS is_free, idx = size(nums) - 1 AS is_last
         }
@@ -597,136 +620,13 @@ class IPPrefixIPAddressFetchFree(Query):
 
         if result_data.is_free:
             return ipaddress.ip_interface(result_data.free_addr)
+        # When is_last=True and is_free=False, we've reached the end of all allocated addresses
+        # without finding a gap. The next available address is one past the last allocated address,
+        # but only if it doesn't exceed the end of the valid range (end_range).
         if result_data.is_last and result_data.free_addr < self.params["end_range"]:
             return ipaddress.ip_interface(result_data.free_addr + 1)
 
         return None
-
-
-class IPAMResourceAllocator:
-    """Allocator for IPAM resources (prefixes and addresses) within pools."""
-
-    def __init__(
-        self,
-        db: InfrahubDatabase,
-        namespace: Node | str | None = None,
-        branch: Branch | None = None,
-        branch_agnostic: bool = False,
-    ) -> None:
-        self.db = db
-        self.namespace = namespace
-        self.branch = branch
-        self.branch_agnostic = branch_agnostic
-
-    async def _get_next_ipv4_prefix(
-        self, ip_prefix: IPNetworkType, target_prefix_length: int, at: Timestamp | str | None = None
-    ) -> IPNetworkType | None:
-        """Get the next available free IPv4 prefix."""
-        if target_prefix_length < 0 or target_prefix_length > 32:
-            return None
-        if target_prefix_length < ip_prefix.prefixlen:
-            return None
-
-        query = await IPPrefixSubnetFetchFree.init(
-            db=self.db,
-            branch=self.branch,
-            obj=ip_prefix,
-            target_prefixlen=target_prefix_length,
-            namespace=self.namespace,
-            at=at,
-            branch_agnostic=self.branch_agnostic,
-        )
-        await query.execute(db=self.db)
-
-        result_data = query.get_prefix_data()
-        if not result_data:
-            return None
-
-        network_address = ipaddress.IPv4Address(result_data.free_start)
-        return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
-
-    async def _get_next_ipv6_prefix(
-        self, ip_prefix: IPNetworkType, target_prefix_length: int, at: Timestamp | str | None = None
-    ) -> IPNetworkType | None:
-        """Get the next available free IPv6 prefix."""
-        if target_prefix_length < 0 or target_prefix_length > 128:
-            return None
-        if target_prefix_length < ip_prefix.prefixlen:
-            return None
-
-        query = await IPv6PrefixSubnetFetchFree.init(
-            db=self.db,
-            branch=self.branch,
-            obj=ip_prefix,
-            target_prefixlen=target_prefix_length,
-            namespace=self.namespace,
-            at=at,
-            branch_agnostic=self.branch_agnostic,
-        )
-        await query.execute(db=self.db)
-
-        result_data = query.get_prefix_data()
-        if not result_data:
-            return None
-
-        # Convert binary string to IPv6 address
-        addr_int = int(result_data.free_start_bin, 2)
-        network_address = ipaddress.IPv6Address(addr_int)
-        return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
-
-    async def get_next_prefix(
-        self, ip_prefix: IPNetworkType, target_prefix_length: int, at: Timestamp | str | None = None
-    ) -> IPNetworkType | None:
-        """Get the next available free prefix of specified length within a parent prefix."""
-        if ip_prefix.version == 4:
-            return await self._get_next_ipv4_prefix(
-                ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at
-            )
-        return await self._get_next_ipv6_prefix(ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at)
-
-    async def get_next_address(
-        self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None, is_pool: bool = False
-    ) -> IPAddressType | None:
-        """Get the next available free IP address within a prefix."""
-        query = await IPPrefixIPAddressFetchFree.init(
-            db=self.db,
-            branch=self.branch,
-            obj=ip_prefix,
-            namespace=self.namespace,
-            at=at,
-            branch_agnostic=self.branch_agnostic,
-            is_pool=is_pool,
-        )
-        await query.execute(db=self.db)
-        return query.get_address()
-
-    async def get_subnets(self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None) -> Iterable[IPPrefixData]:
-        """Get all subnets within a parent prefix."""
-        query = await IPPrefixSubnetFetch.init(
-            db=self.db,
-            branch=self.branch,
-            obj=ip_prefix,
-            namespace=self.namespace,
-            at=at,
-            branch_agnostic=self.branch_agnostic,
-        )
-        await query.execute(db=self.db)
-        return query.get_subnets()
-
-    async def get_ip_addresses(
-        self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None
-    ) -> Iterable[IPAddressData]:
-        """Get all IP addresses within a prefix."""
-        query = await IPPrefixIPAddressFetch.init(
-            db=self.db,
-            branch=self.branch,
-            obj=ip_prefix,
-            namespace=self.namespace,
-            at=at,
-            branch_agnostic=self.branch_agnostic,
-        )
-        await query.execute(db=self.db)
-        return query.get_addresses()
 
 
 @dataclass(frozen=True)

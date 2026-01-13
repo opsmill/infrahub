@@ -7,9 +7,9 @@ from graphene import Field, Int, ObjectType, String
 from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import BuiltinIPPrefix
-from infrahub.core.query.ipam import IPAMResourceAllocator
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.prefix import get_next_available_prefix
 

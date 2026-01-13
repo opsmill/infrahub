@@ -6,9 +6,10 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.reconciler import IpamReconciler
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.ipam import IPAMResourceAllocator, IPPrefixSubnetFetch
+from infrahub.core.query.ipam import IPPrefixSubnetFetch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 

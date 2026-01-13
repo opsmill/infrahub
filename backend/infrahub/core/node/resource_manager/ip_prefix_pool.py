@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.query.ipam import IPAMResourceAllocator
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
