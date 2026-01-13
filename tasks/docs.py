@@ -130,12 +130,15 @@ def vale(context: Context) -> None:
 
 @task
 def markdownlint(context: Context) -> None:
+    """Lint markdown files with markdownlint-cli2.
+
+    Uses .markdownlint-cli2.yaml for configuration, globs, and ignore patterns.
+    """
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
-        print("Warning, markdownlint-cli2 is not installed")
-        return
-    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}' '#**/node_modules/**' '#.venv/**'"
+        raise SystemExit("Error: markdownlint-cli2 is not installed. Run: cd docs && npm install")
+    exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -143,10 +146,12 @@ def markdownlint(context: Context) -> None:
 
 @task
 def format_markdownlint(context: Context) -> None:
-    """Run markdownlint-cli2 to format all .md/mdx files."""
+    """Run markdownlint-cli2 to format all .md/mdx files.
 
+    Uses .markdownlint-cli2.yaml for configuration and ignore patterns.
+    """
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}' '#**/node_modules/**' '#.venv/**' --fix"
+    exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx' --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 

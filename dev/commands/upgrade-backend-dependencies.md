@@ -516,6 +516,7 @@ This PR upgrades backend infrastructure dependencies.
 - [ ] No performance regression when running infrahub-private-tests (scale tests)
 - [ ] Migration and auto-upgrade of persistent containers pass (version-upgrade job succeeds)
 - [ ] Helm chart has been tested with upgraded dependencies
+- [ ] [Deployment examples](https://docs.infrahub.app/guides/installation#high-availability-deployment-examples) have been updated
 ```
 
 ## Step 12: Monitor CI and Report Results

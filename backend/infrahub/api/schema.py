@@ -36,6 +36,7 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
     SchemaValidatorPathResponseData,
@@ -353,6 +354,8 @@ async def load_schema(
         if error_messages:
             raise SchemaNotValidError(",\n".join(error_messages))
 
+        schema_load_at = Timestamp()
+
         # ----------------------------------------------------------
         # Update the schema
         # ----------------------------------------------------------
@@ -367,6 +370,7 @@ async def load_schema(
                 limit=result.diff.all,
                 update_db=True,
                 user_id=account_session.account_id,
+                at=schema_load_at,
             )
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
@@ -389,6 +393,7 @@ async def load_schema(
             previous_schema=origin_schema,
             migrations=result.migrations,
             user_id=account_session.account_id,
+            at=schema_load_at,
         )
         migration_error_msgs = await service.workflow.execute_workflow(
             workflow=SCHEMA_APPLY_MIGRATION,

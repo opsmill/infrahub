@@ -11,117 +11,91 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
-  - AI
-  - Allocate VLAN ID
-  - Alpha
-  - Ansible
-  - API
-  - Attributes
-  - AWS S3
-  - Beta
-  - BGP
-  - CA certificates
-  - CI
-  - CI/CD
-  - Codespaces
-  - Computed Attribute
-  - Computed Attributes
-  - CoreArtifactTarget
-  - CoreGroup
-  - CSS-like cascading
-  - CoreRepository
-  - Create an application in Entra ID
-  - Determine your redirect URI
-  - Docker Compose
-  - E2E
-  - Emma
-  - Generics
+  # Product and company names
+  - Infrahub
+  - OpsMill
+  - Neo4j
+  - GraphQL
+  - RabbitMQ
+  - Kubernetes
+  - Helm
+  - Terraform
+  - Jinja2
   - Git
   - GitHub
-  - GitHub Codespaces
   - GitLab
-  - GitPod
-  - GraphQL
-  - GraphQLQuery
-  - HAProxy
-  - Helm
-  - High Availability
-  - Human Friendly Identifier
-  - IDE
-  - include_in_menu & menu_placement
-  - Infrahub
-  - Infrahub Enterprise
-  - infrahubctl
-  - IP
   - IP Fabric
-  - IPAM
-  - IPHost
-  - IPNetwork
-  - JavaScript
-  - JetStream
-  - Jinja
-  - Jinja2
-  - JWT
-  - Kubernetes
-  - LibreNMS
-  - Namespace
-  - NATS
-  - Nautobot
-  - Neo4j
-  - NGINX
-  - Netbox
-  - NetBox
-  - Netpicker
-  - NetPicker
-  - Node
-  - NumberPool
-  - OAuth 2.0
-  - OAuth 2.0 configuration example
-  - OAuth 2.0 parameters
-  - OAuth 2.0 vs OpenID Connect
-  - OAuth2
-  - Observium
-  - OIDC
-  - Open ID Connect
-  - OpenID Connect
-  - OpenID Connect (OIDC)
-  - OpsMill
-  - Peering Manager
-  - Pydantic
-  - Python
-  - RabbitMQ
-  - Redirect URI formats
+
+  # Acronyms and abbreviations
+  - API
+  - APIs
   - REST
-  - RFile
-  - Schema
   - SDK
-  - Single sign-on
-  - Slurp'it
   - SSO
-  - Terraform
-  - TLS
-  - Tony Stark
-  - TransformPython
-  - Trusted Root Certificate Store
+  - IPAM
+  - IP
+  - CI
+  - CD
   - UI
-  - Vale
-  - VS Code
-  - VS Code extensions
+  - OIDC
+  - OAuth
+  - AWS
+  - S3
+  - E2E
+  - URI
+  - HFID
+  - NATS
+  - JetStream
+  - CSS
+  - VLAN
   - WebUI
-  - Slurp'it
   - IDE
-  - AI
-  - OpenID Connect
-  - OAuth 2.0
-  - OAuth 2.0 vs OpenID Connect
-  - OpenID Connect (OIDC)
-  - Emma
-  - Helm
-  - Kubernetes
-  - Allocate VLAN ID
-  - Determine your redirect URI
-  - Create an application in Entra ID
-  - Configure Infrahub
-  - OAuth 2.0 parameters
-  - Redirect URI formats
-  - OAuth 2.0 configuration example
+
+  # Technical terms that should keep their case
+  - Python
+  - CoreArtifactTarget
+  - CoreGroup
+  - TransformPython
+  - infrahubctl
+  - Namespace
+  - Generics
+  - Docker
+  - Profiles
+  - Display
+  - Label
+  - Enterprise
+  - Alpha
+  - Beta
+  - Release
+  - OpenID
+  - Connect
+  - CA
+  - Object
+  - Schema
+  - Attributes
+  - Relationships
+  - Node
+  - Scalability
+  - High
+  - Availability
+  - Friendly
+  - Identifier
+  - NumberPool
+  - Human
+  - Tony
+  - Stark
+  - include_in_menu
+  - menu_placement
+
+  # Configuration/environment variables
+  - INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
+  - INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS
+  - INFRAHUB_STORAGE_LOCAL
+  - INFRAHUB_STORAGE_S3
+
+  # Roman numerals
+  - I
+  - II
+  - III
+  - IV
+  - V

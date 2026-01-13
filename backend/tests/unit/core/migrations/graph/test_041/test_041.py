@@ -6,6 +6,7 @@ from infrahub.cli.db import load_export
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m041_deleted_dup_edges import Migration041
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.helpers.db_validation import verify_no_duplicate_paths
@@ -118,7 +119,7 @@ DETACH DELETE r
         assert set(before_nodes_map.keys()) == set(expected_node_ids)
 
         migration = Migration041()
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 
         await verify_no_duplicate_paths(db=db)

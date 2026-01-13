@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
-from ..shared import AttributeSchemaMigration, MigrationResult
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -40,7 +38,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
 // ------------
 // start with all the Attribute vertices we might care about
 // ------------
-MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -76,7 +74,7 @@ CALL (av_is_default, av_value) {
 // ------------
 WITH 1 AS one
 LIMIT 1
-MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -93,7 +91,6 @@ CALL (n, attr) {
     WHERE is_active AND is_indexed <> $needs_index
     RETURN has_value_e, av
 }
-
 
 // ------------
 // create and update the HAS_VALUE edges
@@ -154,7 +151,9 @@ CALL (attr, n) {
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
-            "schema_kind": self.migration.previous_schema.kind,
+            "schema_kinds": (
+                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
+            ),
             "branch_filter": branch_filter,
             "new_attr_value_labels": new_attr_value_labels,
         }
@@ -167,15 +166,13 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
-        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         is_indexed_previous = is_large_attribute_type(self.previous_attribute_schema.kind)
         is_indexed_new = is_large_attribute_type(self.new_attribute_schema.kind)
         if is_indexed_previous is is_indexed_new:
             return MigrationResult()
 
-        return await super().execute(db=db, branch=branch, at=at, queries=queries, user_id=user_id)
+        return await super().execute(migration_input=migration_input, branch=branch, queries=queries)

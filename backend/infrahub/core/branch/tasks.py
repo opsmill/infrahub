@@ -88,7 +88,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
 
         try:
             log.info(f"Running migrations for branch '{obj.name}'")
-            await migration_runner.run(db=db)
+            await migration_runner.run(db=db, at=Timestamp())
         except MigrationFailureError as exc:
             log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
             raise
@@ -170,7 +170,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
-                await obj.rebase(db=dbt, user_id=context.account.account_id)
+                rebase_at = Timestamp()
+                await obj.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch successfully rebased")
 
             if obj.has_schema_changes:
@@ -199,6 +200,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                         previous_schema=schema_in_main_before,
                         migrations=migrations,
                         user_id=context.account.account_id,
+                        at=rebase_at,
                     )
                 )
                 for error in errors:
@@ -291,7 +293,8 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 diff_locker=DiffLocker(),
                 workflow=get_workflow(),
             )
-            branch_diff = await merger.merge()
+            merge_at = Timestamp()
+            branch_diff = await merger.merge(at=merge_at)
             await merger.update_schema()
 
         changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
@@ -304,6 +307,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                     previous_schema=merger.initial_source_schema,
                     migrations=merger.migrations,
                     user_id=context.account.account_id,
+                    at=merge_at,
                 )
             )
             for error in errors:

@@ -78,6 +78,7 @@ Points: [1|2|3|5|8]
 
 ## Guidelines
 
+- Always specify a language type in markdown code blocks (e.g., `markdown`, `text`, `python`)
 - Story points: 1=trivial, 2=small, 3=medium, 5=large, 8=needs splitting
 - Each task should have clear, verifiable acceptance criteria
 - Frontend tasks should reference any mockups provided

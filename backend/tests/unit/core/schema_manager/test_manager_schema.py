@@ -2880,7 +2880,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="TestingCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, user_id="user-id")
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -2903,7 +2903,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, user_id="user-id")
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -2955,7 +2955,9 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch, user_id="user-id")
+    await registry.schema.load_node_to_db(
+        node=NodeSchema(**SCHEMA), db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    )
 
     node = registry.schema.get(name="TestingCriticality", branch=default_branch)
 
@@ -2964,7 +2966,9 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch, user_id="user-id")
+    await registry.schema.update_node_in_db(
+        node=new_node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    )
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
@@ -2976,7 +2980,7 @@ async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_b
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name, at=Timestamp())
 
     node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
     results = await SchemaManager.query(schema=node_schema, db=db)
@@ -2990,7 +2994,7 @@ async def test_load_schema_to_db_core_models(
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, at=Timestamp())
 
     node_schema = registry.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
@@ -3004,7 +3008,7 @@ async def test_clean_diff_after_reload_from_db(
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, at=Timestamp())
 
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_pre = schema_branch.duplicate()
