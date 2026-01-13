@@ -10,6 +10,7 @@ from infrahub.core.query.ipam import (
     IPPrefixIPAddressFetchFree,
     IPPrefixSubnetFetch,
     IPPrefixSubnetFetchFree,
+    IPv6PrefixIPAddressFetchFree,
     IPv6PrefixSubnetFetchFree,
 )
 
@@ -158,6 +159,8 @@ class IPAMResourceAllocator:
     ) -> IPAddressType | None:
         """Get the next available free IP address within a prefix.
 
+        Automatically selects the appropriate query based on IP version (IPv4 vs IPv6).
+
         Args:
             ip_prefix: Prefix to allocate an address from.
             at: Optional timestamp for point-in-time queries.
@@ -167,7 +170,9 @@ class IPAMResourceAllocator:
         Returns:
             The next available IP address, or None if no addresses are available.
         """
-        query = await IPPrefixIPAddressFetchFree.init(
+        # Use IPv6-specific query for IPv6 to avoid 64-bit integer overflow
+        query_class = IPv6PrefixIPAddressFetchFree if ip_prefix.version == 6 else IPPrefixIPAddressFetchFree
+        query = await query_class.init(
             db=self.db,
             branch=self.branch,
             obj=ip_prefix,

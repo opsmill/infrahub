@@ -71,6 +71,21 @@ class IPAddressFreeData:
         )
 
 
+@dataclass(frozen=True)
+class IPv6AddressFreeData:
+    free_addr_bin: str
+    is_free: bool
+    is_last: bool
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPv6AddressFreeData:
+        return cls(
+            free_addr_bin=result.get_as_type("free_addr_bin", return_type=str),
+            is_free=result.get_as_type("is_free", return_type=bool),
+            is_last=result.get_as_type("is_last", return_type=bool),
+        )
+
+
 def _get_namespace_id(
     namespace: Node | str | None = None,
 ) -> str:
@@ -645,6 +660,173 @@ class IPPrefixIPAddressFetchFree(Query):
         # but only if it doesn't exceed the end of the valid range (end_range).
         if result_data.is_last and result_data.free_addr < self.params["end_range"]:
             return ipaddress.ip_interface(result_data.free_addr + 1)
+
+        return None
+
+
+class IPv6PrefixIPAddressFetchFree(Query):
+    """Query to find the next free IPv6 address within a prefix.
+
+    This query uses binary string operations to handle IPv6's 128-bit address space,
+    as the integer values would overflow Neo4j's 64-bit integer type.
+    """
+
+    name = "ipv6prefix_ipaddress_fetch_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        is_pool: bool,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ) -> None:
+        self.obj = obj
+        self.namespace_id = _get_namespace_id(namespace)
+        self.is_pool = is_pool
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+
+        # Binary representation of start and end of valid range
+        start_addr = self.obj.network_address
+        end_addr = self.obj.broadcast_address
+        if not self.is_pool:
+            start_addr += 1
+            end_addr -= 1
+        self.params["start_range_bin"] = format(int(start_addr), "0128b")
+        self.params["end_range_bin"] = format(int(end_addr), "0128b")
+
+        self.limit = 1  # Query only works at returning a single, free entry
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r
+        WHERE r.status = "active"
+        WITH ns
+        // MATCH all IPAddress that are IN SCOPE
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(addr:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "address"})-[:HAS_VALUE]-(av:AttributeIPHost)
+        WHERE ns_rel.name = "ip_namespace__ip_address"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen >= $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
+        WITH DISTINCT av.binary_address AS used_address
+        ORDER BY used_address
+        // Collect used addresses as binary strings, prepend a sentinel value before start_range
+        WITH collect(used_address) AS used_addrs_raw
+        WITH [addr IN used_addrs_raw WHERE addr IS NOT NULL AND addr >= $start_range_bin AND addr <= $end_range_bin] AS used_addrs
+        // Gap detection using binary string comparison
+        // We iterate through used addresses and find the first gap
+        WITH reduce(acc = {cursor: $start_range_bin, found: null, is_last: false}, addr IN used_addrs |
+                CASE
+                    // Already found a gap, preserve result
+                    WHEN acc.found IS NOT NULL THEN acc
+                    // Gap found: cursor is less than this address
+                    WHEN acc.cursor < addr THEN {cursor: acc.cursor, found: acc.cursor, is_last: false}
+                    // No gap: advance cursor past this address using binary increment
+                    ELSE
+                        {
+                            cursor: CASE
+                                // Check for overflow: if final carry is 1, return a marker value
+                                WHEN reduce(
+                                    inc = {bits: split(addr, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, 127)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).carry = 1 THEN null
+                                ELSE reduce(s = "", c IN reduce(
+                                    inc = {bits: split(addr, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, 127)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).result | s + c)
+                            END,
+                            found: null,
+                            is_last: false
+                        }
+                END
+            ) AS res
+        // Determine final result
+        WITH CASE
+            // Gap was found during iteration
+            WHEN res.found IS NOT NULL THEN {addr: res.found, is_free: true, is_last: false}
+            // No gap found, check if cursor is still valid and within range
+            WHEN res.cursor IS NOT NULL AND res.cursor <= $end_range_bin THEN {addr: res.cursor, is_free: true, is_last: true}
+            // No addresses available
+            ELSE {addr: null, is_free: false, is_last: true}
+        END AS result
+        WHERE result.addr IS NOT NULL
+        WITH result.addr AS free_addr_bin, result.is_free AS is_free, result.is_last AS is_last
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPADDRESS,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_addr_bin", "is_free", "is_last"]
+
+    def get_address_data(self) -> IPv6AddressFreeData | None:
+        if not self.results:
+            return None
+
+        return IPv6AddressFreeData.from_db(result=self.results[0])
+
+    def get_address(self) -> IPAddressType | None:
+        """Return the next free IPv6 address fitting in the prefix."""
+        result_data = self.get_address_data()
+        if result_data is None:
+            return None
+
+        if result_data.is_free:
+            # Convert binary string to IPv6 address
+            addr_int = int(result_data.free_addr_bin, 2)
+            return ipaddress.ip_interface(ipaddress.IPv6Address(addr_int))
 
         return None
 
