@@ -2,11 +2,10 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import type { components } from "@/shared/api/rest/types.generated";
-import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
-import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
-import Modal, { ModalTitle } from "@/shared/components/modals/modal";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
+import Modal from "@/shared/components/modals/modal";
 import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { ModelDisplay } from "./styled";
 
@@ -22,9 +21,7 @@ export const ComputedAttributeDisplay = ({
   }
 
   if (computedAttribute.kind === "Jinja2" && computedAttribute.jinja2_template) {
-    const fileData = JSON.stringify(computedAttribute.jinja2_template);
-    const blob = new Blob([fileData], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
+    const jinja2TemplateData = computedAttribute.jinja2_template as string;
 
     return (
       <div className="flex items-center gap-2">
@@ -40,24 +37,11 @@ export const ComputedAttributeDisplay = ({
         </Button>
 
         <Modal setOpen={setOpen} open={isOpen}>
-          <div className="mb-2 flex items-center gap-2">
-            <ModalTitle>Jinja2 Template</ModalTitle>
-
-            <Tooltip enabled content="Download template">
-              <LinkButton
-                variant={"ghost"}
-                size={"icon"}
-                to={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download={"jinja2-template.txt"}
-              >
-                <Icon icon={"mdi:download-outline"} />
-              </LinkButton>
-            </Tooltip>
-          </div>
-
-          <CodeViewer>{computedAttribute.jinja2_template}</CodeViewer>
+          <DataViewer
+            title="Jinja2 template"
+            fileName="jinja2-template.txt"
+            data={jinja2TemplateData}
+          />
         </Modal>
       </div>
     );
