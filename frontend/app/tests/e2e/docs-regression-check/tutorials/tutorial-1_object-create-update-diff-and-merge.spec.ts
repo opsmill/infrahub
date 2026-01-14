@@ -98,6 +98,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.goto("/?branch=cr1234");
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("link", { name: "View all branches" }).click();
+      await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
       await page.getByRole("link", { name: "cr1234" }).click();
       await expect(page.getByRole("heading", { name: "cr1234" })).toBeVisible();
