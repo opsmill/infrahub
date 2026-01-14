@@ -116,7 +116,9 @@ class DiffCoordinator:
             name=name,
         )
 
-    async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRootMetadata:
+    async def update_branch_diff(
+        self, base_branch: Branch, diff_branch: Branch, proposed_change_id: str | None = None
+    ) -> EnrichedDiffRootMetadata:
         tracking_id = BranchTrackingId(name=diff_branch.name)
         log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         existing_incremental_lock = self.diff_locker.get_existing_lock(
@@ -154,6 +156,12 @@ class DiffCoordinator:
                 tracking_id=tracking_id,
                 force_branch_refresh=False,
             )
+
+            # set proposed change IDs
+            if proposed_change_id:
+                enriched_diffs.diff_branch_diff.proposed_change_id = proposed_change_id
+                enriched_diffs.base_branch_diff.proposed_change_id = proposed_change_id
+
             await self.diff_repo.save(
                 enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
             )
@@ -224,6 +232,10 @@ class DiffCoordinator:
                 await self.conflict_transferer.transfer(
                     earlier=current_branch_diff, later=enriched_diffs.diff_branch_diff
                 )
+
+            # transfer proposed change IDs
+            enriched_diffs.base_branch_diff.proposed_change_id = current_base_diff.proposed_change_id
+            enriched_diffs.diff_branch_diff.proposed_change_id = current_branch_diff.proposed_change_id
 
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
