@@ -10,7 +10,6 @@ import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -111,8 +110,7 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
         title="Delete"
         description={
           <>
-            Are you sure you want to remove the branch{" "}
-            <Badge className="font-normal">{branch?.name}</Badge> ?
+            Are you sure you want to remove the branch <b>`{branch.name}`</b>?
           </>
         }
         onDelete={async () => {
