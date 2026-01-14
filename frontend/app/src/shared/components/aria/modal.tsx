@@ -23,11 +23,13 @@ export function ModalOverlay({ className, ...props }: AriaModalOverlayProps) {
   );
 }
 
-interface ModalProps extends Pick<AriaModalOverlayProps, "isOpen" | "onOpenChange">, DialogProps {}
+interface ModalProps
+  extends Pick<AriaModalOverlayProps, "isOpen" | "onOpenChange" | "isDismissable">,
+    DialogProps {}
 
-export function Modal({ isOpen, onOpenChange, className, ...props }: ModalProps) {
+export function Modal({ isOpen, onOpenChange, className, isDismissable, ...props }: ModalProps) {
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange}>
+    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={isDismissable}>
       <AriaModal
         className={classNames(
           "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
