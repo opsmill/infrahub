@@ -1031,7 +1031,7 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
     "test_case",
     [pytest.param(tc, id=tc.name) for tc in SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES],
 )
-async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNamesTestCaseData):
+async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNamesTestCaseData) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**test_case.schema))
 
