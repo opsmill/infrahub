@@ -23831,8 +23831,8 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreWeightedPoolResource!
-  DiffTree(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, include_parents: Boolean, limit: Int, name: String, offset: Int, root_node_uuids: [String] @deprecated(reason: "replaced by filters"), to_time: DateTime): DiffTree
-  DiffTreeSummary(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, name: String, to_time: DateTime): DiffTreeSummary
+  DiffTree(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, include_parents: Boolean, limit: Int, name: String, offset: Int, proposed_change_id: String, root_node_uuids: [String] @deprecated(reason: "replaced by filters"), to_time: DateTime): DiffTree
+  DiffTreeSummary(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, name: String, proposed_change_id: String, to_time: DateTime): DiffTreeSummary
   """Retrieve fields mapping for converting object type"""
   FieldsMappingTypeConversion(source_kind: String, target_kind: String): FieldsMapping!
   IPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.")
