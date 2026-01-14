@@ -99,7 +99,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("link", { name: "View all branches" }).click();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
-      await page.getByLabel("Branches list").getByText("cr1234").click();
+      await page.getByRole("link", { name: "cr1234" }).click();
       await expect(page.getByRole("heading", { name: "cr1234" })).toBeVisible();
     });
 
@@ -151,7 +151,10 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
       await page
-        .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
+        .getByRole("option", {
+          name: format(dateBeforeTest, "h:mm aa"),
+          exact: true,
+        })
         .click();
       await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
       await expect(
