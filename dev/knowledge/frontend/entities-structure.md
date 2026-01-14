@@ -23,10 +23,12 @@ entities/<entity-name>/
 Raw data fetching. No business logic.
 
 - REST calls using `apiClient` from `@/shared/api/rest/client`
-- GraphQL queries using Handlebars templates
+- GraphQL queries using `gql.tada` for type-safe queries
 - Function naming: `get<Entity>FromApi`, `create<Entity>FromApi`
 
-Example: `api/generate-artifact-from-api.ts`
+#### REST Example
+
+`api/generate-artifact-from-api.ts`
 
 ```typescript
 export function generateArtifactFromApi({ artifactDefinitionId, branchName }) {
@@ -35,6 +37,42 @@ export function generateArtifactFromApi({ artifactDefinitionId, branchName }) {
   });
 }
 ```
+
+#### GraphQL Example
+
+Use `gql.tada` for type-safe GraphQL queries and mutations. Import `graphql` to define queries and `VariablesOf` to extract variable types.
+
+`api/create-branch-from-api.ts`
+
+```typescript
+import { graphql, type VariablesOf } from "gql.tada";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+const BRANCH_CREATE = graphql(`
+  mutation BRANCH_CREATE($name: String!, $description: String) {
+    BranchCreate(data: { name: $name, description: $description }) {
+      object {
+        id
+        name
+      }
+    }
+  }
+`);
+
+export type CreateBranchFromApiParams = VariablesOf<typeof BRANCH_CREATE>;
+
+export function createBranchFromApi(params: CreateBranchFromApiParams) {
+  return graphqlClient.mutate({
+    mutation: BRANCH_CREATE,
+    variables: params,
+  });
+}
+```
+
+Key points:
+- Define queries/mutations with `graphql()` template literal
+- Use `VariablesOf<typeof QUERY>` to get typed parameters
+- Use `graphqlClient.query()` for queries, `graphqlClient.mutate()` for mutations
 
 ### domain/
 
