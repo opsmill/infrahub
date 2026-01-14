@@ -1050,7 +1050,7 @@ async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNames
 )
 async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_from_api(
     index: int, reserved_name: str
-):
+) -> None:
     schema1 = {
         "generics": [
             {
