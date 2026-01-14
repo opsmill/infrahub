@@ -39,6 +39,25 @@ CALL (diff_root_map) {
     SET diff_root.tracking_id = diff_root_map.tracking_id
     RETURN diff_root
 }
+// -------------------------
+// link the diff root to the proposed change
+// -------------------------
+CALL (diff_root, diff_root_map) {
+    // find the current linked proposed change, if any
+    OPTIONAL MATCH (diff_root)-[current_edge:DIFF_FOR_PROPOSED_CHANGE]->(current_proposed_change)
+    WITH current_edge, current_proposed_change
+    // delete the current link if it is incorrect, including NULL handling
+    WHERE (
+        current_proposed_change.uuid <> diff_root_map.proposed_change_id
+        OR (current_proposed_change IS NULL AND diff_root_map.proposed_change_id IS NOT NULL)
+        OR (current_proposed_change IS NOT NULL AND diff_root_map.proposed_change_id IS NULL)
+    )
+    DELETE current_edge
+    // create the new link
+    WITH diff_root, diff_root_map
+    MATCH (new_proposed_change:Node {uuid: diff_root_map.proposed_change_id})
+    CREATE (diff_root)-[:DIFF_FOR_PROPOSED_CHANGE]->(new_proposed_change)
+}
 WITH DISTINCT diff_root AS diff_root
 WITH collect(diff_root) AS diff_roots
 WHERE SIZE(diff_roots) = 2
@@ -62,6 +81,7 @@ CALL (diff_roots) {
                     "to_time": enriched_diff.to_time.to_string(),
                     "uuid": enriched_diff.uuid,
                     "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
+                    "proposed_change_id": enriched_diff.proposed_change_id,
                 }
             )
         return {"diff_root_list": diff_root_list}
