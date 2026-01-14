@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-aria-components";
 import { toast } from "react-toastify";
 
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { CONTENT_TYPE_CONFIG, DataViewer } from "@/shared/components/data-viewer/data-viewer";
-import { dataViewerActionStyle } from "@/shared/components/data-viewer/data-viewer.styles";
+import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
 
 import type { ArtifactContentType } from "@/entities/artifacts/types";
 
@@ -59,14 +57,9 @@ export const ArtifactFile = ({ artifactId, url, contentType }: ArtifactFileProps
       fileName={`${artifactId}.${config.extension}`}
       contentType={contentType}
       actions={
-        <Link
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={classNames(...dataViewerActionStyle, "leading-4")}
-        >
+        <DataViewerLinkButton href={url} target="_blank" rel="noopener noreferrer">
           Raw
-        </Link>
+        </DataViewerLinkButton>
       }
     />
   );
