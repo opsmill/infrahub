@@ -62,7 +62,7 @@ display_label: "{{ identifier__value }} (Provider: {{ provider__name__value }})"
 3. **Convert to Jinja2 template** using these guidelines:
    - First field should be the primary identifier
    - Additional fields should be wrapped in parentheses with descriptive labels
-   - Use human-readable labels (e.g., "Tenant ID:", "Provider:")
+   - Use human-readable labels (i.e., "Tenant ID:", "Provider:")
    - Maintain semantic meaning from the original field names
 4. **Handle edge cases:**
    - Single-field `display_labels` → `display_label: "{{ field_name }}"`

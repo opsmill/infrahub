@@ -6,6 +6,7 @@ from infrahub.core.constants import BranchSupportType, MetadataOptions, Relation
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m050_backfill_vertex_metadata import Migration050
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -475,7 +476,7 @@ async def test_migration_050(db: InfrahubDatabase, default_branch: Branch, car_p
     # Run the migration first time
     # -------------------------------------------------------------------------
     migration = Migration050()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors, f"Migration execution failed: {execution_result.errors}"
 
     # -------------------------------------------------------------------------
@@ -494,7 +495,7 @@ async def test_migration_050(db: InfrahubDatabase, default_branch: Branch, car_p
     # Run migration again (idempotency test)
     # -------------------------------------------------------------------------
     migration_again = Migration050()
-    execution_result = await migration_again.execute(db=db)
+    execution_result = await migration_again.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors, f"Migration execution failed: {execution_result.errors}"
 
     # -------------------------------------------------------------------------

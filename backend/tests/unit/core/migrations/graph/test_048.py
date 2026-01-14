@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph.m048_undelete_rel_props import Migration048
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from tests.helpers.db_validation import verify_no_duplicate_paths
@@ -420,7 +421,7 @@ RETURN count(e) AS edge_count
 
         # Run the migration
         migration = Migration048.init()
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 
         # Verify no duplicate paths remain

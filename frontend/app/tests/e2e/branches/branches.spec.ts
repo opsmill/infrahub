@@ -58,7 +58,7 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
-      await page.getByLabel("Branches list").getByText(BRANCH_NAME_1).click();
+      await page.getByRole("link", { name: BRANCH_NAME_1 }).click();
       await expect(page.getByText(`Name${BRANCH_NAME_1}`)).toBeVisible();
 
       await page.getByRole("button", { name: "View node metadata" }).click();
@@ -132,18 +132,16 @@ test.describe("Branches creation and deletion", () => {
 
     test("should search for a branch", async ({ page }) => {
       await page.goto("/branches");
-      await expect(page.getByRole("option", { name: "main default" })).toBeVisible();
-      await expect(page.getByRole("option", { name: "den1-maintenance-conflict" })).toBeVisible();
-      await expect(page.getByRole("option", { name: "atl1-delete-upstream Delete" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
       await page.getByRole("searchbox", { name: "Search" }).fill("main");
-      await expect(page.getByRole("option", { name: "main default" })).toBeVisible();
-      await expect(page.getByRole("option", { name: "den1-maintenance-conflict" })).toBeVisible();
-      await expect(
-        page.getByRole("option", { name: "atl1-delete-upstream Delete" })
-      ).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).not.toBeVisible();
 
       await page.getByRole("searchbox", { name: "Search" }).fill("");
-      await expect(page.getByRole("option", { name: "atl1-delete-upstream Delete" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
     });
   });
 });

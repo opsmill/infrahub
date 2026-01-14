@@ -9,6 +9,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -20,7 +21,7 @@ def test_load_node_to_db_node_schema(
 
     SCHEMA: dict[str, Any] = {
         "name": "Criticality",
-        "namespace": "Builtin",
+        "namespace": "Testing",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -29,9 +30,11 @@ def test_load_node_to_db_node_schema(
             {"name": "description", "kind": "Text", "optional": True},
         ],
         "relationships": [
-            {"name": "others", "peer": "BuiltinCriticality", "optional": True, "cardinality": "many"},
+            {"name": "others", "peer": "TestingCriticality", "optional": True, "cardinality": "many"},
         ],
     }
     node = NodeSchema(**SCHEMA)
 
-    aio_benchmark(registry.schema.load_node_to_db, node=node, db=db, branch=default_branch, user_id="user-id")
+    aio_benchmark(
+        registry.schema.load_node_to_db, node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    )

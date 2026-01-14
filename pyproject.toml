@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.7.0rc0"
+version = "1.7.1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.14"
@@ -53,7 +53,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.5",
+    "authlib==1.6.6",
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
@@ -126,7 +126,6 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [project.entry-points.pytest11]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
-"pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
 [project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
@@ -500,21 +499,12 @@ ignore = [
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
-    "PGH",      # pygrep-hooks
-    "ERA",      # eradicate commented-out code
-    "SLF001",   # flake8-self
     "EM",       # flake8-errmsg
     "TRY",      # tryceratops
-    "TD",       # flake8-todos
-    "FIX",      # flake8-fixme
-    "TID",      # flake8-tidy-imports
     "FBT",      # flake8-boolean-trap
     "G",        # flake8-logging-format
     "RSE",      # flake8-raise
     "BLE",      # flake8-blind-except (BLE)
-    "PD",       # pandas-vet
-    "FAST002",  # FastAPI dependency without `Annotated`
-
     ##################################################################################################
     # The ignored rules below should be removed once the code has been updated, they are included    #
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
@@ -624,6 +614,14 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ERA001", # Found commented-out code
+    "FIX",      # flake8-fixme
+    "FAST002",  # FastAPI dependency without `Annotated`
+    "PGH003", # Use specific rule codes when ignoring type issues
+    "PGH004", # Use specific rule codes when using `noqa`
+    "SLF001", # Private member accessed
+    "TD",     # flake8-todos
+    "TID252", # Replace relative imports from parent modules with absolute imports
 ]
 
 "backend/infrahub/cli/db.py" = [
@@ -722,6 +720,13 @@ allow-dunder-method-names = [
     "LOG004",  # `.exception()` call outside exception handlers
 ]
 
+"tasks/container_ops.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "PGH004",  # Use specific rule codes when using `ruff: noqa`
+]
+
 "backend/tests/**.py" = [
     "S101",    # Use of assert detected
     "S105",    # Possible hardcoded password assigned to variable
@@ -737,7 +742,16 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN201",   # Missing return type annotation for public function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "PGH003",   # Use specific rule codes when ignoring type issues
     "PT021",    # Use `yield` instead of `request.addfinalizer`
+    "SLF001",   # Private member accessed
+]
+
+"backend/tests/benchmark/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ERA001",   # Found commented-out code
 ]
 
 "backend/tests/db_snapshot.py" = [
@@ -747,13 +761,17 @@ allow-dunder-method-names = [
     "PLR0915",  # Too many statements
 ]
 
-
 "backend/tests/helpers/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC109", # Async function definition with a `timeout` parameter
+    "ERA001",   # Found commented-out code
+    "FIX",      # flake8-fixme
+    "SLF001",   # Private member accessed
+    "PD011",    # Use `.to_numpy()` instead of `.values`
+    "TD",       # flake8-todos
 ]
 
 "backend/tests/fixtures/**.py" = [
@@ -772,9 +790,12 @@ allow-dunder-method-names = [
     "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "ASYNC109", # Async function definition with a `timeout` parameter
+    "ERA001",   # Found commented-out code
+    "PGH003",   # Use specific rule codes when ignoring type issues
     "PLR0915",  # Too many statements
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "SLF001",   # Private member accessed
 ]
 
 "backend/tests/integration/**.py" = [
@@ -786,11 +807,16 @@ allow-dunder-method-names = [
     "ANN003",   # Missing type annotation for `**kwargs`
     "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
+    "ERA001",   # Found commented-out code
+    "FIX",      # flake8-fixme
     "PLR0915",  # Too many statements
     "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
     "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
     "PT012",    # `pytest.raises()` block should contain a single simple statement
     "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
+    "SLF001",   # Private member accessed
+    "TD",       # flake8-todos
+    "TID252",   # Replace relative imports from parent modules with absolute imports
 ]
 
 "backend/tests/scale/**.py" = [
@@ -802,7 +828,17 @@ allow-dunder-method-names = [
     "ANN003",   # Missing type annotation for `**kwargs`
     "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
+    "SLF001",   # Private member accessed
 ]
+
+"backend/tests/test_data/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ERA001",   # Found commented-out code
+    "PGH004",   # Use specific rule codes when using `ruff: noqa`
+]
+
 
 "backend/tests/unit/**.py" = [
     ##################################################################################################
@@ -814,12 +850,19 @@ allow-dunder-method-names = [
     "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ERA001",   # Found commented-out code
+    "FIX",      # flake8-fixme
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "PGH004",   # Use specific rule codes when using `noqa`
     "PLR0915",  # Too many statements
     "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
     "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
     "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "SLF001",   # Private member accessed
+    "TD",       # flake8-todos
+    "TID252",   # Replace relative imports from parent modules with absolute imports
 ]
 
 "backend/tests/query_benchmark/**.py" = [
@@ -830,6 +873,13 @@ allow-dunder-method-names = [
     "ANN202",   # Missing return type annotation for private function
     "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
     "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+]
+
+"backend/tests/integration_docker/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "SLF001",  # Private member accessed
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -850,9 +900,22 @@ allow-dunder-method-names = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "C901",   # `generate_site` is too complex (34 > 33)"
-    "E501",   # Line too long
+    "C901",    # `generate_site` is too complex (34 > 33)"
+    "E501",    # Line too long
+    "ERA001",  # Found commented-out code
+    "FIX",      # flake8-fixme
     "PLR0915", # Too many statements
+    "SLF001",  # Private member accessed
+    "TD",      # flake8-todos
+]
+
+"models/examples/**.py" = [
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
+    "PGH004", #Use specific rule codes when using `ruff: noqa`
 ]
 
 "python_testcontainers/infrahub_testcontainers/helpers.py" = [
@@ -863,7 +926,9 @@ allow-dunder-method-names = [
 ]
 
 "tasks/**.py" = [
-    "PT028", # Test function parameter has default argument (these are not tests)
+    "PT028",  # Test function parameter has default argument (these are not tests)
+    "ERA001", # Found commented-out code
+    "SLF001", # Private member accessed
 ]
 
 "tasks/release.py" = [
@@ -879,6 +944,7 @@ allow-dunder-method-names = [
     # Review and change the below later                                                              #
     ##################################################################################################
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ERA001",  # Found commented-out code
 ]
 
 [tool.towncrier]

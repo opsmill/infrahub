@@ -21,7 +21,7 @@ If you believe you have found a security vulnerability in Infrahub, please repor
 1. **Use the GitHub Security Advisory feature:** This is the preferred method for reporting vulnerabilities. It provides a confidential channel for communication and automatically handles private disclosure.
     * **[Report a Vulnerability](https://github.com/opsmill/infrahub/security/advisories/new)**
 
-2. **Contact us via email (alternative):** If you are unable to use the GitHub Advisory feature, you may send an email to **opensource-security@opsmill.com**.
+2. **Contact us via email (alternative):** If you are unable to use the GitHub Advisory feature, you may send an email to **<opensource-security@opsmill.com>**.
 
 ***
 

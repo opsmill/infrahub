@@ -9,6 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema, SchemaRoot
@@ -1212,7 +1213,7 @@ async def test_query_multiple_filters(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
 
     query05 = """
@@ -1730,10 +1731,10 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
 
 
 async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> None:
-    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
+    t1 = await Node.init(db=db, schema="TestingTag")
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
+    t2 = await Node.init(db=db, schema="TestingTag")
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
 
@@ -1744,7 +1745,7 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
 
     query = """
     query {
-        BuiltinTag {
+        TestingTag {
             edges {
                 node {
                     name {
@@ -1767,14 +1768,14 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
 
     assert result.errors is None
     assert result.data
-    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
+    assert len(result.data["TestingTag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["TestingTag"]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
     query = """
     query {
-        BuiltinTag {
+        TestingTag {
             edges {
                 node {
                     name {
@@ -1797,8 +1798,8 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
 
     assert result.errors is None
     assert result.data
-    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
+    assert len(result.data["TestingTag"]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data["TestingTag"]["edges"]])
     assert names == ["Blue", "Red"]
 
 

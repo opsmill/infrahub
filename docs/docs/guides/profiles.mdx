@@ -35,6 +35,25 @@ This step is only necessary if you don't already have a schema with profile-enab
 ---
 version: "1.0"
 nodes:
+  - name: VLAN
+    namespace: Ipam
+    description: A VLAN is an isolated layer two domain
+    label: VLAN
+    icon: mdi:lan-pending
+    human_friendly_id:
+      - name__value
+    order_by:
+      - name__value
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vlan_id
+        kind: Number
+
   - name: Interface
     namespace: Infra
     description: "Network Interface"
@@ -110,6 +129,13 @@ nodes:
             label: Server
             description: "Interfaces to connect to servers"
             color: "#98b2d1"
+    relationships:
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: IpamVLAN
+        optional: true
+        cardinality: one
+        kind: Generic
 ```
 
 2. Load the schema with this command:
@@ -139,15 +165,28 @@ The profile will define these standard settings:
 - **MTU**: 1500 bytes
 - **Mode**: access (not trunk)
 - **Role**: end_user
+- **Untagged VLAN**: 10 (this is the default VLAN for end-user devices)
+
+:::info Relationships in profiles
+
+From Infrahub 1.7 relationships can also be defined in profiles. If you are using an earlier version, you can skip the untagged VLAN part. Learn more in the [Understanding profiles in Infrahub](../topics/profiles#relationships-in-profiles) topic.
+
+:::
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
 
 1. Open the **Infrahub UI** in your browser
-2. Navigate to **Object Management** → **Profiles**
-3. Click on **Add Profile**
-4. Select **InfraInterface** as the profile type
-5. Fill in the profile details as follows:
+2. Navigate to **VLAN**
+3. Click on **Add VLAN**
+4. Fill in the VLAN details as follows:
+    - **Name**: VLAN 10
+    - **VLAN ID**: 10
+5. Click **Save** to create the VLAN
+6. Navigate to **Object Management** → **Profiles**
+7. Click on **Add Profile**
+8. Select **InfraInterface** as the profile type
+9. Fill in the profile details as follows:
     - **Profile Name**: end-user-interface
     - **Speed**: 1000
     - **Auto Negotiation**: true
@@ -156,7 +195,8 @@ The profile will define these standard settings:
     - **Mode**: access
     - **Status**: active
     - **Role**: end_user
-6. Click **Save** to create the profile
+    - **Untagged VLAN**: VLAN 10
+10. Click **Save** to create the profile
 
 </TabItem>
 <TabItem value="graphql" label="GraphQL">
@@ -167,6 +207,14 @@ Access the GraphQL sandbox by clicking your user icon in the bottom left corner 
 
 ```graphql
 mutation {
+  IpamVLANCreate(data: {name: {value: "VLAN 10"}, vlan_id: {value: 10}}) {
+    ok
+    object {
+      name {
+        value
+      }
+    }
+  }
   ProfileInfraInterfaceCreate(
     data: {
       profile_name: {value: "end-user-interface"}
@@ -177,6 +225,7 @@ mutation {
       mtu: {value: 1500}
       mode: {value: "access"}
       role: {value: "end_user"}
+      untagged_vlan: {hfid: ["VLAN 10"]}
     }
   ) {
     ok
@@ -223,6 +272,13 @@ query {
         }
         mtu {
           value
+        }
+        untagged_vlan {
+          node {
+            name {
+              value
+            }
+          }
         }
       }
     }
@@ -794,7 +850,7 @@ You should see that:
 
 When both `generate_template` and `generate_profile` are configured on a schema node, you can assign profiles to templates for powerful configuration management. This allows you to:
 
-- **Define structure with templates**: Templates define which components exist (e.g., which interfaces are present)
+- **Define structure with templates**: Templates define which components exist (i.e., which interfaces are present)
 - **Configure values with profiles**: Profiles define the configuration settings for those components
 - **Bulk updates**: Modify profile values to update all objects created from templates using those profiles
 

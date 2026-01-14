@@ -1385,12 +1385,14 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 
 @pytest.fixture
-async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def person_tag_schema(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, register_core_models_schema
+) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1921,12 +1923,12 @@ async def vehicule_person_schema(
 
 
 @pytest.fixture
-async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
+async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema, register_core_models_schema) -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1960,7 +1962,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1974,7 +1976,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "related_tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": True},
+                    {"name": "related_tags", "peer": "TestingTag", "cardinality": "many", "optional": True},
                     {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
@@ -1994,7 +1996,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
                     },
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": True},
+                    {"name": "tags", "peer": "TestingTag", "cardinality": "many", "optional": True},
                     {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
@@ -2295,7 +2297,7 @@ async def builtin_schema() -> SchemaRoot:
         "nodes": [
             {
                 "name": "Status",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "description": "Represent the status of an object: active, maintenance",
                 "include_in_menu": True,
                 "icon": "mdi:list-status",
@@ -2312,7 +2314,7 @@ async def builtin_schema() -> SchemaRoot:
             },
             {
                 "name": "Role",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "description": "Represent the role of an object",
                 "include_in_menu": True,
                 "icon": "mdi:ballot",
@@ -2329,7 +2331,7 @@ async def builtin_schema() -> SchemaRoot:
             },
             {
                 "name": "Site",
-                "namespace": "Infra",
+                "namespace": "Testing",
                 "description": "A location represent a physical element site",
                 "include_in_menu": True,
                 "icon": "mdi:map-marker-radius-outline",
@@ -2354,7 +2356,7 @@ async def builtin_schema() -> SchemaRoot:
             },
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "description": "Level of criticality expressed from 1 to 10.",
                 "include_in_menu": True,
                 "icon": "mdi:alert-octagon-outline",
@@ -2419,7 +2421,9 @@ async def register_organization_schema(default_branch: Branch, organization_sche
 
 @pytest.fixture
 async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
-    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, db=db)
+    await registry.schema.load_schema_to_db(
+        schema=register_core_models_schema, branch=default_branch, db=db, at=Timestamp()
+    )
     updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
 

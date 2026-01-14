@@ -21,6 +21,7 @@ import {
 import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
+import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
@@ -31,7 +32,12 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
+import {
+  RepositoryActionsMenu,
+  RepositoryActionsModal,
+} from "@/entities/repository/ui/repository-menu-actions";
 import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;
@@ -48,12 +54,15 @@ export function ObjectDetailsMenu({
   const [isManageGroupsDrawerOpen, setIsManageGroupsDrawerOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
   const navigate = useNavigate();
 
   const nodeLabel = getNodeLabel(objectData);
 
   const isEditAllowed = permission.update.isAllowed;
   const isDeleteAllowed = permission.delete.isAllowed;
+
+  const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
   return (
     <>
@@ -132,6 +141,13 @@ export function ObjectDetailsMenu({
                 </MenuItem>
               )}
             </MenuSection>
+
+            {isRepository && (
+              <RepositoryActionsMenu
+                repositoryId={objectData.id}
+                onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
+              />
+            )}
 
             <MenuSection title="Manage">
               <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
@@ -225,6 +241,14 @@ export function ObjectDetailsMenu({
           }
         }}
       />
+
+      {isRepository && (
+        <RepositoryActionsModal
+          repositoryId={objectData.id}
+          isOpen={isCheckConnectivityOpen}
+          onClose={() => setIsCheckConnectivityOpen(false)}
+        />
+      )}
     </>
   );
 }
