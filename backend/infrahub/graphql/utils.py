@@ -28,8 +28,21 @@ if TYPE_CHECKING:
 
 
 @lru_cache(maxsize=1024)
-def cached_parse(query: str | Source) -> DocumentNode:
+def _cached_parse(query: str) -> DocumentNode:
+    """Internal cached parse function for queries without @expand directive."""
     return parse(query)
+
+
+def cached_parse(query: str | Source) -> DocumentNode:
+    """Parse a GraphQL query string into a DocumentNode.
+
+    Queries containing the @expand directive are not cached because the parser
+    mutates the AST to add expanded fields, which would corrupt the cache.
+    """
+    query_str = query if isinstance(query, str) else query.body
+    if "@expand" in query_str:
+        return parse(query)
+    return _cached_parse(query_str)
 
 
 @lru_cache(maxsize=1024)
