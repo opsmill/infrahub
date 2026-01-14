@@ -1,65 +1,72 @@
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addFiltersToRequest } from "@/shared/api/graphql/utils";
-import type { PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
 export const BRANCHES_PER_PAGE = 40;
 
-export interface GetBranchesFromApiParams extends PaginationParams {
-  filters?: Filter[];
-}
+const GET_BRANCHES = graphql(`
+  query GetBranches($limit: Int, $offset: Int, $nameValue: String, $partialMatch: Boolean) {
+    InfrahubBranch(limit: $limit, offset: $offset, name__value: $nameValue, partial_match: $partialMatch) {
+      edges {
+        node {
+          id
+          name {
+            value
+          }
+          description {
+            value
+          }
+          origin_branch {
+            value
+          }
+          branched_from {
+            value
+          }
+          status {
+            value
+          }
+          created_at
+          sync_with_git {
+            value
+          }
+          is_default {
+            value
+          }
+          has_schema_changes {
+            value
+          }
+        }
+        node_metadata {
+          created_at
+          created_by {
+            id
+            display_label
+            hfid
+            __typename
+          }
+          updated_at
+          updated_by {
+            id
+            display_label
+            hfid
+            __typename
+          }
+        }
+      }
+    }
+  }
+`);
+
+export type GetBranchesFromApiParams = VariablesOf<typeof GET_BRANCHES>;
 
 export const getBranchesFromApi = async ({
-  filters,
   limit = BRANCHES_PER_PAGE,
   offset,
+  nameValue,
+  partialMatch,
 }: GetBranchesFromApiParams = {}) => {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: "GetBranches",
-      InfrahubBranch: {
-        __args: {
-          limit,
-          ...(offset !== undefined && { offset }),
-          ...(filters ? addFiltersToRequest(filters) : {}),
-        },
-        edges: {
-          node: {
-            id: true,
-            name: { value: true },
-            description: { value: true },
-            origin_branch: { value: true },
-            branched_from: { value: true },
-            status: { value: true },
-            created_at: true,
-            sync_with_git: { value: true },
-            is_default: { value: true },
-            has_schema_changes: { value: true },
-          },
-          node_metadata: {
-            created_at: true,
-            created_by: {
-              id: true,
-              display_label: true,
-              hfid: true,
-              __typename: true,
-            },
-            updated_at: true,
-            updated_by: {
-              id: true,
-              display_label: true,
-              hfid: true,
-              __typename: true,
-            },
-          },
-        },
-      },
-    },
+  return graphqlClient.query({
+    query: GET_BRANCHES,
+    variables: { limit, offset, nameValue, partialMatch },
   });
-
-  const query = gql(queryString);
-  return graphqlClient.query({ query });
 };

@@ -1,27 +1,23 @@
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addFiltersToRequest } from "@/shared/api/graphql/utils";
-import type { Filter } from "@/shared/hooks/useFilters";
 
-export interface GetBranchesCountFromApiParams {
-  filters?: Filter[];
-}
+const GET_BRANCHES_COUNT = graphql(`
+  query GetBranchesCount($nameValue: String, $partialMatch: Boolean) {
+    InfrahubBranch(name__value: $nameValue, partial_match: $partialMatch) {
+      count
+    }
+  }
+`);
 
-export const getBranchesCountFromApi = async ({ filters }: GetBranchesCountFromApiParams = {}) => {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: "GetBranchesCount",
-      InfrahubBranch: {
-        __args: {
-          ...(filters ? addFiltersToRequest(filters) : {}),
-        },
-        count: true,
-      },
-    },
+export type GetBranchesCountFromApiParams = VariablesOf<typeof GET_BRANCHES_COUNT>;
+
+export const getBranchesCountFromApi = async ({
+  nameValue,
+  partialMatch,
+}: GetBranchesCountFromApiParams = {}) => {
+  return graphqlClient.query({
+    query: GET_BRANCHES_COUNT,
+    variables: { nameValue, partialMatch },
   });
-
-  const query = gql(queryString);
-  return graphqlClient.query({ query });
 };
