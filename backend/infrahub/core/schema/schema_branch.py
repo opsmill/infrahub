@@ -57,7 +57,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters, TextAttributeParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
-from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.definitions.core import CORE_MODELS_NODE_KINDS, core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -564,7 +564,7 @@ class SchemaBranch:
                 self._reconcile_text_attr(attr)
             self.set(name=name, schema=node)
 
-    def load_schema(self, schema: SchemaRoot, loading_from_api: bool = False) -> None:
+    def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
@@ -592,10 +592,6 @@ class SchemaBranch:
                 self.set(name=item.kind, schema=new_item)
             except SchemaNotFoundError:
                 self.set(name=item.kind, schema=item)
-
-            if loading_from_api:
-                for relationship in item.relationships:
-                    relationship.loaded_from_api = True
 
         for node_extension in schema.extensions.nodes:
             new_item = self.get(name=node_extension.kind)
@@ -1140,27 +1136,27 @@ class SchemaBranch:
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
+    def _validate_hierarchical_node_restricted_words(self, node: MainSchemaTypes) -> None:
+        is_hierarchical_node = (isinstance(node, GenericSchema) and node.hierarchical) or (
+            isinstance(node, NodeSchema) and node.hierarchy
+        )
+
+        if not is_hierarchical_node or node.kind in INTERNAL_SCHEMA_NODE_KINDS or node.kind in CORE_MODELS_NODE_KINDS:
+            return
+
+        for attr in node.attributes:
+            if attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name on hierarchical nodes.")
+
+        for rel in node.relationships:
+            if rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name on hierarchical nodes.")
+
     def validate_hierarchical_nodes_restricted_words(self) -> None:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
-            is_hierarchical_node = (isinstance(node, GenericSchema) and node.hierarchical) or (
-                isinstance(node, NodeSchema) and node.hierarchy
-            )
-
-            if not is_hierarchical_node or node.kind in INTERNAL_SCHEMA_NODE_KINDS:
-                continue
-
-            for attr in node.attributes:
-                if attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
-                    raise ValueError(
-                        f"{node.kind}: {attr.name} isn't allowed as an attribute name on hierarchical nodes."
-                    )
-
-            for rel in node.relationships:
-                if rel.loaded_from_api and rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
-                    raise ValueError(
-                        f"{node.kind}: {rel.name} isn't allowed as a relationship name on hierarchical nodes."
-                    )
+            if not node.id:
+                self._validate_hierarchical_node_restricted_words(node=node)
 
     def validate_python_keywords(self) -> None:
         """Validate that attribute and relationship names don't use Python keywords."""

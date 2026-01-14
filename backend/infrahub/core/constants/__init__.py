@@ -41,8 +41,8 @@ RESERVED_ATTR_REL_NAMES = [
 ]
 
 RESERVED_ATTR_REL_HIERARCHICAL_NAMES = [
-    "parent",
-    "children",
+    # "parent",
+    # "children",
     "ancestors",
     "descendants",
 ]

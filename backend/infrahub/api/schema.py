@@ -168,7 +168,7 @@ def evaluate_candidate_schemas(
     try:
         schema = _merge_candidate_schemas(schemas=schemas_to_evaluate.schemas)
 
-        candidate_schema.load_schema(schema=schema, loading_from_api=True)
+        candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
 
         schema_diff = branch_schema.diff(other=candidate_schema)

@@ -197,3 +197,5 @@ core_models: dict[str, Any] = {
     "generics": [item.to_dict() if isinstance(item, GenericSchema) else item for item in core_models_mixed["generics"]],
     "nodes": [item.to_dict() if isinstance(item, NodeSchema) else item for item in core_models_mixed["nodes"]],
 }
+
+CORE_MODELS_NODE_KINDS = [node["namespace"] + node["name"] for node in core_models["nodes"] + core_models["generics"]]

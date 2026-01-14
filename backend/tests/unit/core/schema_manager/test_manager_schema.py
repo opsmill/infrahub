@@ -1101,7 +1101,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
         ],
     }
     schema = SchemaBranch(cache={}, name=f"test_{index}")
-    schema.load_schema(schema=SchemaRoot(**schema1), loading_from_api=True)
+    schema.load_schema(schema=SchemaRoot(**schema1))
 
     with pytest.raises(ValueError) as exc:
         schema.process()
@@ -1161,7 +1161,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
         ],
     }
     schema = SchemaBranch(cache={}, name=f"test_{index}")
-    schema.load_schema(schema=SchemaRoot(**schema2), loading_from_api=True)
+    schema.load_schema(schema=SchemaRoot(**schema2))
 
     with pytest.raises(ValueError) as exc:
         schema.process()
