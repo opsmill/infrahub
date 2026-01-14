@@ -7,8 +7,8 @@ import * as R from "remeda";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
+import { ModalConfirm } from "@/shared/components/aria/modal-confirm";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
-import ModalConfirm from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -229,11 +229,10 @@ export const Thread = (props: tThread) => {
 
       <ModalConfirm
         title="Confirm"
-        description={"Are you sure you want to mark this thread as resolved?"}
-        onCancel={() => setConfirmModal(false)}
+        description="Are you sure you want to mark this thread as resolved?"
         onConfirm={handleResolve}
-        open={confirmModal}
-        setOpen={() => setConfirmModal(false)}
+        isOpen={confirmModal}
+        onOpenChange={setConfirmModal}
         isLoading={isLoading}
       />
     </Card>

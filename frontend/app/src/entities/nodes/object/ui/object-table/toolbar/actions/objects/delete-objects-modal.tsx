@@ -1,7 +1,7 @@
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
@@ -11,11 +11,11 @@ import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DeleteObjectModalProps {
   selectedRows: Array<NodeCore>;
-  open: boolean;
-  setOpen: (b: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObjectModalProps) {
+export function DeleteObjectsModal({ selectedRows, isOpen, onOpenChange }: DeleteObjectModalProps) {
   const { mutate, isPending } = useDeleteObjects({
     context: {
       processErrorMessage: (message: string) => {
@@ -28,7 +28,7 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
       },
     },
     onSuccess: () => {
-      setOpen(false);
+      onOpenChange(false);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Objects deleted!"} />);
     },
@@ -56,9 +56,8 @@ export function DeleteObjectsModal({ selectedRows, open, setOpen }: DeleteObject
           <strong>{pluralize(selectedRows.length, "object")}</strong> ?
         </>
       }
-      open={open}
-      setOpen={setOpen}
-      onCancel={() => setOpen(false)}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       onDelete={handleRemoveObjects}
       isLoading={isPending}
     />

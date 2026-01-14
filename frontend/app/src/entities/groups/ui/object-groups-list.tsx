@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
@@ -119,10 +119,9 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
       <ModalDelete
         title="Leave Group"
         description={`Are you sure you want to leave group ${getNodeLabel(group)}?`}
-        onCancel={() => setShowDeleteModal(false)}
         onDelete={handleRemoveGroup}
-        open={showDeleteModal}
-        setOpen={() => setShowDeleteModal(false)}
+        isOpen={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
         isLoading={isPending}
       />
     </>

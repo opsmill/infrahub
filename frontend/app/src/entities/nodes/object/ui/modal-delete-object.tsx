@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
@@ -12,12 +12,18 @@ interface iProps {
   label?: string | null;
   rowToDelete: any;
   isLoading?: boolean;
-  open: boolean;
-  close: () => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onDelete?: () => void;
 }
 
-export default function ModalDeleteObject({ label, rowToDelete, open, close, onDelete }: iProps) {
+export default function ModalDeleteObject({
+  label,
+  rowToDelete,
+  isOpen,
+  onOpenChange,
+  onDelete,
+}: iProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const deleteObject = useDeleteObjectMutation();
 
@@ -49,7 +55,7 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
         onSuccess: async () => {
           if (onDelete) await onDelete();
 
-          close();
+          onOpenChange(false);
 
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Object ${objectDisplay} deleted`} />);
         },
@@ -80,10 +86,9 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
           </>
         )
       }
-      onCancel={close}
       onDelete={handleDeleteObject}
-      open={!!open}
-      setOpen={close}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       isLoading={isLoading}
     />
   );

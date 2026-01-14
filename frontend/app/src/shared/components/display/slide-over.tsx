@@ -2,14 +2,13 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React, { Fragment, useRef, useState } from "react";
 
+import { ModalConfirm } from "@/shared/components/aria/modal-confirm";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import type { ModelSchema } from "@/entities/schema/types";
-
-import ModalDelete from "../modals/modal-delete";
 
 interface Props {
   open: boolean;
@@ -105,14 +104,14 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
         </Dialog>
       </Transition.Root>
 
-      <ModalDelete
+      <ModalConfirm
         title="Closing form"
-        description={"Are you sure you want to close this form? All unsaved changes will be lost."}
-        onCancel={() => setOpen(true)}
-        onDelete={() => setPreventClose(false)}
-        open={!open && !!previousOpen && preventClose}
-        setOpen={() => setPreventClose(false)}
-        confirmLabel="Close"
+        description="Are you sure you want to close this form? All unsaved changes will be lost."
+        onConfirm={() => setPreventClose(false)}
+        isOpen={!open && !!previousOpen && preventClose}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setOpen(true);
+        }}
       />
     </SlideOverContext>
   );

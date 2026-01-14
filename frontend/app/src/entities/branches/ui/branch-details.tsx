@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
+import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -106,33 +107,30 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
         </Accordion>
       </div>
 
-      {displayModal && (
-        <ModalDelete
-          title="Delete"
-          description={
-            <>
-              Are you sure you want to remove the branch
-              <br /> <b>`{branch?.name}`</b>?
-            </>
-          }
-          onCancel={() => setDisplayModal(false)}
-          onDelete={async () => {
-            await deleteBranch({ name: branch.name });
+      <ModalDelete
+        title="Delete"
+        description={
+          <>
+            Are you sure you want to remove the branch{" "}
+            <Badge className="font-normal">{branch?.name}</Badge> ?
+          </>
+        }
+        onDelete={async () => {
+          await deleteBranch({ name: branch.name });
 
-            const queryStringParams = getCurrentQsp();
-            const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
+          const queryStringParams = getCurrentQsp();
+          const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
 
-            const path = isDeletedBranchSelected
-              ? constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }])
-              : constructPath("/branches");
+          const path = isDeletedBranchSelected
+            ? constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }])
+            : constructPath("/branches");
 
-            navigate(path);
-          }}
-          open={displayModal}
-          setOpen={() => setDisplayModal(false)}
-          isLoading={isDeleting}
-        />
-      )}
+          navigate(path);
+        }}
+        isOpen={displayModal}
+        onOpenChange={setDisplayModal}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

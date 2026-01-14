@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import ModalDelete from "@/shared/components/modals/modal-delete";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,25 +71,22 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
         </DropdownMenu>
       </StickyRightCell>
 
-      {showDeleteModal && (
-        <ModalDelete
-          title="Delete"
-          description={
-            <>
-              Are you sure you want to remove the branch
-              <br /> <b>`{branch.name}`</b>?
-            </>
-          }
-          onCancel={() => setShowDeleteModal(false)}
-          onDelete={async () => {
-            await deleteBranch({ name: branch.name });
-            setShowDeleteModal(false);
-          }}
-          open={showDeleteModal}
-          setOpen={setShowDeleteModal}
-          isLoading={isDeleting}
-        />
-      )}
+      <ModalDelete
+        title="Delete"
+        description={
+          <>
+            Are you sure you want to remove the branch
+            <br /> <b>`{branch.name}`</b>?
+          </>
+        }
+        onDelete={async () => {
+          await deleteBranch({ name: branch.name });
+          setShowDeleteModal(false);
+        }}
+        isOpen={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        isLoading={isDeleting}
+      />
     </>
   );
 }

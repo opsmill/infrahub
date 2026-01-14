@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
@@ -94,30 +94,27 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
         </ToolbarButton>
       </div>
 
-      {showDeleteModal && (
-        <ModalDelete
-          title="Delete"
-          description={
-            deletableBranches.length === 1 ? (
-              <>
-                Are you sure you want to remove the branch
-                <br /> <b>`{deletableBranches[0].name}`</b>?
-              </>
-            ) : (
-              <>
-                Are you sure you want to remove {deletableBranches.length} branches?
-                <br />
-                <b>{deletableBranches.map((b) => b.name).join(", ")}</b>
-              </>
-            )
-          }
-          onCancel={() => setShowDeleteModal(false)}
-          onDelete={handleDelete}
-          open={showDeleteModal}
-          setOpen={setShowDeleteModal}
-          isLoading={isDeleting}
-        />
-      )}
+      <ModalDelete
+        title="Delete"
+        description={
+          deletableBranches.length === 1 ? (
+            <>
+              Are you sure you want to remove the branch
+              <br /> <b>`{deletableBranches[0].name}`</b>?
+            </>
+          ) : (
+            <>
+              Are you sure you want to remove {deletableBranches.length} branches?
+              <br />
+              <b>{deletableBranches.map((b) => b.name).join(", ")}</b>
+            </>
+          )
+        }
+        onDelete={handleDelete}
+        isOpen={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        isLoading={isDeleting}
+      />
     </>
   );
 }

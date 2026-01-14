@@ -118,15 +118,13 @@ export function ObjectActionsCell({
         </SlideOver>
       )}
 
-      {showDeleteModal && (
-        <DeleteObjectModal
-          objectKind={objectKind}
-          objectId={objectId}
-          objectLabel={objectLabel}
-          open={true}
-          setOpen={() => setShowDeleteModal(false)}
-        />
-      )}
+      <DeleteObjectModal
+        objectKind={objectKind}
+        objectId={objectId}
+        objectLabel={objectLabel}
+        isOpen={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+      />
     </>
   );
 }
