@@ -1,10 +1,6 @@
-import type React from "react";
+import { Link, type LinkProps } from "react-aria-components";
 
-export interface DownloadProps
-  extends Omit<
-    React.AnchorHTMLAttributes<HTMLAnchorElement>,
-    "download" | "href" | "target" | "rel"
-  > {
+export interface DownloadProps extends Omit<LinkProps, "download" | "href" | "target" | "rel"> {
   contentType?: string;
   fileName: string;
   value: string;
@@ -14,5 +10,7 @@ export function Download({ contentType = "plain/text", value, fileName, ...props
   const blob = new Blob([value], { type: contentType });
   const url = URL.createObjectURL(blob);
 
-  return <a href={url} target="_blank" rel="noopener noreferrer" download={fileName} {...props} />;
+  return (
+    <Link href={url} target="_blank" rel="noopener noreferrer" download={fileName} {...props} />
+  );
 }
