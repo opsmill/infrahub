@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.7.0"
+version = "1.7.1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.14"
@@ -163,7 +163,7 @@ disable_error_code = ["type-abstract"]
 exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
-    "^backend/tests/unit",
+    "^backend/tests/component",
     "^backend/tests/test_data/dataset03.py",
     "^backend/tests/query_benchmark"
 ]
@@ -803,7 +803,7 @@ allow-dunder-method-names = [
     "ANN202",   # Missing return type annotation for private function
 ]
 
-"backend/tests/unit/**.py" = [
+"backend/tests/component/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
@@ -838,7 +838,7 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
-"backend/tests/unit/graphql/test_schema_sort.py" = [
+"backend/tests/component/graphql/test_schema_sort.py" = [
     "W293", # Blank line contains whitespace
 ]
 
@@ -1322,7 +1322,7 @@ possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
-include = ["backend/tests/unit/**"]
+include = ["backend/tests/component/**"]
 
 [tool.ty.overrides.rules]
 ##################################################################################################

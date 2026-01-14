@@ -34,10 +34,10 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
+from tests.component.conftest import _build_hierarchical_location_data
+from tests.component.core.test_utils import verify_all_linked_edges_deleted
 from tests.helpers.db_validation import verify_no_duplicate_paths
 from tests.node_creation import create_and_save
-from tests.unit.conftest import _build_hierarchical_location_data
-from tests.unit.core.test_utils import verify_all_linked_edges_deleted
 
 from .get_one_node import get_one_diff_node
 
