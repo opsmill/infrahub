@@ -51,16 +51,12 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/c2",
         "data/c2/color/value",
         "data/c2/color/property/IS_PROTECTED",
-        "data/c2/color/property/IS_VISIBLE",
         "data/c2/is_electric/value",
         "data/c2/is_electric/property/IS_PROTECTED",
-        "data/c2/is_electric/property/IS_VISIBLE",
         "data/c2/name/value",
         "data/c2/name/property/IS_PROTECTED",
-        "data/c2/name/property/IS_VISIBLE",
         "data/c2/nbr_seats/value",
         "data/c2/nbr_seats/property/IS_PROTECTED",
-        "data/c2/nbr_seats/property/IS_VISIBLE",
         "data/p1/cars/c1/property/IS_PROTECTED",
     ]
 
@@ -68,26 +64,18 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/c1",
         "data/c1/nbr_seats/value",
         "data/c1/nbr_seats/property/IS_PROTECTED",
-        "data/c1/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/p1/property/IS_PROTECTED",
-        "data/c2/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/peer",
         "data/c3",
         "data/c3/color/value",
         "data/c3/color/property/IS_PROTECTED",
-        "data/c3/color/property/IS_VISIBLE",
         "data/c3/is_electric/value",
         "data/c3/is_electric/property/IS_PROTECTED",
-        "data/c3/is_electric/property/IS_VISIBLE",
         "data/c3/name/value",
         "data/c3/name/property/IS_PROTECTED",
-        "data/c3/name/property/IS_VISIBLE",
         "data/c3/nbr_seats/value",
         "data/c3/nbr_seats/property/IS_PROTECTED",
-        "data/c3/nbr_seats/property/IS_VISIBLE",
-        "data/p1/cars/c1/property/IS_VISIBLE",
         "data/p1/cars/c2/property/IS_PROTECTED",
-        "data/p1/cars/c2/property/IS_VISIBLE",
     ]
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -602,12 +590,12 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02) -> 
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
-            "IS_VISIBLE": {
+            "IS_PROTECTED": {
                 "branch": "branch1",
-                "type": "IS_VISIBLE",
+                "type": "IS_PROTECTED",
                 "path": None,
                 "action": DiffAction.UPDATED,
-                "value": {"previous": True, "new": False},
+                "value": {"previous": False, "new": True},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
             }
         },
@@ -637,14 +625,6 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02) -> 
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
-            "IS_VISIBLE": {
-                "branch": "branch1",
-                "type": "IS_VISIBLE",
-                "action": DiffAction.ADDED,
-                "path": None,
-                "value": {"previous": None, "new": True},
-                "changed_at": Timestamp(base_dataset_02["time_m20"]),
-            },
             "IS_PROTECTED": {
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
@@ -768,14 +748,6 @@ async def test_diff_relationship_one_conflict(
                 p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
-                "IS_VISIBLE": {
-                    "branch": "branch2",
-                    "type": "IS_VISIBLE",
-                    "path": None,
-                    "action": DiffAction.ADDED,
-                    "value": {"previous": None, "new": True},
-                    "changed_at": Timestamp(time11),
-                },
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
@@ -809,14 +781,6 @@ async def test_diff_relationship_one_conflict(
                 p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
-                "IS_VISIBLE": {
-                    "branch": "branch2",
-                    "type": "IS_VISIBLE",
-                    "path": None,
-                    "action": DiffAction.REMOVED,
-                    "value": {"previous": True, "new": True},
-                    "changed_at": Timestamp(time11),
-                },
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
@@ -872,14 +836,6 @@ async def test_diff_relationship_one_conflict(
                 p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
-                "IS_VISIBLE": {
-                    "branch": "main",
-                    "type": "IS_VISIBLE",
-                    "path": None,
-                    "action": DiffAction.REMOVED,
-                    "value": {"previous": True, "new": True},
-                    "changed_at": Timestamp(time12),
-                },
                 "IS_PROTECTED": {
                     "branch": "main",
                     "type": "IS_PROTECTED",
@@ -945,14 +901,6 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
             },
         },
         "properties": {
-            "IS_VISIBLE": {
-                "branch": "branch1",
-                "type": "IS_VISIBLE",
-                "action": DiffAction.ADDED,
-                "path": None,
-                "value": {"previous": None, "new": True},
-                "changed_at": Timestamp(base_dataset_04["time_m5"]),
-            },
             "IS_PROTECTED": {
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
@@ -993,14 +941,6 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
             },
         },
         "properties": {
-            "IS_VISIBLE": {
-                "branch": "main",
-                "type": "IS_VISIBLE",
-                "path": None,
-                "action": DiffAction.ADDED,
-                "value": {"previous": None, "new": True},
-                "changed_at": Timestamp(base_dataset_04["time_m10"]),
-            },
             "IS_PROTECTED": {
                 "branch": "main",
                 "type": "IS_PROTECTED",

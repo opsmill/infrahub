@@ -1,4 +1,6 @@
 import os
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -33,7 +35,7 @@ async def reset_environment(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture(scope="module")
-async def default_branch(reset_environment, db: InfrahubDatabase) -> Branch:
+async def default_branch(reset_environment: None, db: InfrahubDatabase) -> Branch:
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
@@ -52,11 +54,17 @@ async def register_default_schema(db: InfrahubDatabase, default_branch: Branch) 
 
 
 @pytest.fixture(scope="module")
-async def dataset04(db: InfrahubDatabase, default_branch, register_default_schema) -> None:
+async def dataset04(db: InfrahubDatabase, default_branch: Branch, register_default_schema: SchemaBranch) -> None:
     await load_data(db=db, nbr_query=250)
 
 
-def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
+def test_query_one_model(
+    exec_async: Callable[..., Any],
+    aio_benchmark: Callable[..., Any],
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dataset04: None,
+) -> None:
     query = """
     query {
         CoreGraphQLQuery {
@@ -96,7 +104,13 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
     )
 
 
-def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
+def test_query_rel_many(
+    exec_async: Callable[..., Any],
+    aio_benchmark: Callable[..., Any],
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dataset04: None,
+) -> None:
     query = """
     query {
         CoreGraphQLQuery {
@@ -144,7 +158,13 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
     )
 
 
-def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
+def test_query_rel_one(
+    exec_async: Callable[..., Any],
+    aio_benchmark: Callable[..., Any],
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dataset04: None,
+) -> None:
     query = """
     query {
         CoreGraphQLQuery {

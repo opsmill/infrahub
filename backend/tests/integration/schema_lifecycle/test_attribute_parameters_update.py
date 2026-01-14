@@ -309,16 +309,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     "kinds": [{"kind": "TestingThingLegacy", "field": "value"}],
                     "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
                 },
-                {
-                    "type": "deprecation",
-                    "kinds": [{"kind": "TestingThing", "field": "value"}],
-                    "message": "Use of 'max_length' on attributes is deprecated, use parameters instead",
-                },
-                {
-                    "type": "deprecation",
-                    "kinds": [{"kind": "TestingThing", "field": "value"}],
-                    "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
-                },
             ],
         }
 

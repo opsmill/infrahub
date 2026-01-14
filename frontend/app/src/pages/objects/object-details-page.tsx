@@ -1,14 +1,13 @@
 import { Navigate, useParams } from "react-router";
 
-import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
+import { GRAPHQL_QUERY_OBJECT, MENU_EXCLUDELIST } from "@/shared/config/constants";
 
 import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
-import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
-import { ObjectDetailsHeader } from "@/entities/nodes/object-header";
+import { ObjectDetailsBody } from "@/entities/nodes/object/ui/object-details/object-details-body";
+import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-details/object-details-header";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -24,15 +23,20 @@ function ObjectDetailsPage() {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
   }
 
+  if (MENU_EXCLUDELIST.includes(schema.kind!)) {
+    return <Navigate to={constructPath("/")} />;
+  }
+
   return (
-    <Content.Card className="flex flex-col">
-      <RequireObjectPermissions
-        objectKind={schema.kind as string}
-        loadingClassName="h-[calc(100vh-10.5rem)]"
-      >
+    <Content.Card className="flex grow flex-col">
+      <RequireObjectPermissions objectKind={schema.kind!} loadingClassName="h-full">
         {({ permission }) => (
           <>
-            <ObjectDetailsHeader schema={schema} objectId={objectId} />
+            <ObjectDetailsHeader
+              objectSchema={schema}
+              objectId={objectId}
+              permission={permission}
+            />
 
             {objectKind === GRAPHQL_QUERY_OBJECT ? (
               <GraphqlQueryDetails
@@ -41,7 +45,11 @@ function ObjectDetailsPage() {
                 permission={permission}
               />
             ) : (
-              <ObjectDetails objectSchema={schema} objectId={objectId} permission={permission} />
+              <ObjectDetailsBody
+                objectSchema={schema}
+                objectId={objectId}
+                permission={permission}
+              />
             )}
           </>
         )}

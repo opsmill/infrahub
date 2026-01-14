@@ -2,14 +2,13 @@ import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { Navigate, useParams } from "react-router";
 
-import { DIFF_TABS } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { Tabs } from "@/shared/components/tabs";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { DIFF_TABS } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { branchesState } from "@/entities/branches/stores";
@@ -19,6 +18,7 @@ import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branc
 import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 
 const BRANCH_TABS = {
   DETAILS: "details",
@@ -53,6 +53,7 @@ function BranchDetailsPage() {
       <header className="p-5 pb-2">
         <Row>
           <h1 className="font-bold text-xl">{branch.name}</h1>
+          <NodeMetadataPopover objectKind="InfrahubBranch" objectId={branch.id} />
           {branch.is_default ? (
             <BranchDefaultBadge className="text-sm" />
           ) : (

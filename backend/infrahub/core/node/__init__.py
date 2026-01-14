@@ -26,7 +26,7 @@ from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
-from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery
+from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -40,6 +40,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
+from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -81,7 +82,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
+    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp) -> None:
         super().__init__()
         self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
         self._branch: Branch = branch
@@ -96,6 +97,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._owner: Node | None = None
         self._is_protected: bool = None
         self._computed_jinja2_attributes: list[str] = []
+        self._profile_provided_attrs: set[str] = set()
+        self._profile_provided_rels: set[str] = set()
 
         self._display_label: DisplayLabel | None = None
         self._human_friendly_id: HumanFriendlyIdentifier | None = None
@@ -158,6 +161,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
 
+    def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
+        for rel_schema in self._schema.relationships:
+            if rel_schema.identifier == identifier:
+                return self.get_relationship(rel_schema.name)
+        raise ValueError(f"Unable to find the relationship with the identifier {identifier} for {self.get_kind()}")
+
     def uses_profiles(self) -> bool:
         for attr_name in self.get_schema().attribute_names:
             try:
@@ -193,7 +202,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._human_friendly_id is not None
 
     async def add_human_friendly_id(self, db: InfrahubDatabase) -> None:
-        if not self._schema.human_friendly_id or self._human_friendly_id:
+        if self._human_friendly_id:
             return
 
         self._human_friendly_id = HumanFriendlyIdentifier(
@@ -202,11 +211,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._human_friendly_id.compute(db=db, node=self)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
-        if self._display_label:
-            if isinstance(self._display_label._value, str):
-                return self._display_label._value
-            if self._display_label._value:
-                return self._display_label._value.value
+        if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
+            return value
 
         return await self.render_display_label(db=db)
 
@@ -214,7 +220,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._display_label is not None
 
     async def add_display_label(self, db: InfrahubDatabase) -> None:
-        if not self._schema.display_label or self._display_label:
+        if self._display_label:
             return
 
         self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
@@ -402,6 +408,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         schema_node: NodeSchema | GenericSchema,
         schema_attribute: AttributeSchema,
         branch: Branch | None = None,
+        at: Timestamp | None = None,
     ) -> CoreNumberPool:
         """Fetch or create a number pool based on the schema attribute parameters.
 
@@ -450,7 +457,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     end_range=number_pool_parameters.end_range,
                     pool_type=NumberPoolType.SCHEMA.value,
                 )
-                await number_pool.save(db=db)
+                await number_pool.save(db=db, at=at)
 
                 # Do a lookup of the number pool to get the correct mapped type from the registry
                 # without this we don't get access to the .get_resource() method.
@@ -490,15 +497,21 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         for attribute_name in template._attributes:
             if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
-            attr_value = getattr(template, attribute_name).value
+            attr = getattr(template, attribute_name)
+            attr_value = attr.value
             if attr_value is not None:
-                fields[attribute_name] = {"value": attr_value, "source": template.id}
+                # Preserve is_from_profile flag when copying from template
+                field_data = {"value": attr_value, "source": attr.source_id or template.id}
+                if attr.is_from_profile:
+                    field_data["is_from_profile"] = True
+                fields[attribute_name] = field_data
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)
             if (
                 relationship_name in list(fields)
-                or relationship_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship_schema.kind
+                not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]
                 or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
             ):
                 continue
@@ -509,6 +522,25 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     fields[relationship_name] = {"id": relationship_peer.id}
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
+
+    async def _get_profile_provided_mandatory_fields(
+        self, db: InfrahubDatabase, fields: dict[str, Any]
+    ) -> tuple[set[str], set[str]]:
+        if not isinstance(self._schema, NodeSchema) or "profiles" not in fields:
+            return set(), set()
+
+        mandatory_attrs_to_check = [a for a in self._schema.mandatory_attribute_names if a not in fields.keys()]
+        mandatory_rels_to_check = [r for r in self._schema.mandatory_relationship_names if r not in fields.keys()]
+        if not mandatory_attrs_to_check and not mandatory_rels_to_check:
+            return set(), set()
+
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=self._branch)
+        return await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
+            schema=self._schema,
+            profiles_data=fields.get("profiles"),
+            mandatory_attr_names=mandatory_attrs_to_check,
+            mandatory_rel_names=mandatory_rels_to_check,
+        )
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
         errors = []
@@ -531,10 +563,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Backfill fields with the ones from the template if there's one
         await self.handle_object_template(fields=fields, db=db, errors=errors)
 
-        # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:
+            (
+                self._profile_provided_attrs,
+                self._profile_provided_rels,
+            ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
+
             for mandatory_attr in self._schema.mandatory_attribute_names:
-                if mandatory_attr not in fields.keys():
+                if mandatory_attr not in fields.keys() and mandatory_attr not in self._profile_provided_attrs:
                     if self._schema.is_node_schema:
                         mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
                         if (
@@ -552,7 +588,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     )
 
             for mandatory_rel in self._schema.mandatory_relationship_names:
-                if mandatory_rel not in fields.keys():
+                if mandatory_rel not in fields.keys() and mandatory_rel not in self._profile_provided_rels:
                     errors.append(
                         ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
                     )
@@ -593,7 +629,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     self,
                     rel_schema.name,
                     await generator_method(
-                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
+                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name)
                     ),
                 )
             except ValidationError as exc:
@@ -623,12 +659,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     self,
                     attr_schema.name,
                     await generator_method(
-                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name, None)
+                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name)
                     ),
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
                     await self.handle_pool(db=db, attribute=attribute, errors=errors, allocate_resources=process_pools)
+
+                    if attr_schema.name in self._profile_provided_attrs:
+                        continue
 
                     if process_pools or attribute.from_pool is None:
                         attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
@@ -945,7 +984,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if node_changelog.has_changes:
             self._set_updated_at(update_at)
             self._set_updated_by(user_id)
-
+            update_branch = self.get_branch_based_on_support_type()
+            if update_branch.is_default or update_branch.is_global:
+                await self._save_metadata(db=db, branch=update_branch)
         return node_changelog
 
     async def save(
@@ -965,6 +1006,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self
 
+    async def _save_metadata(self, db: InfrahubDatabase, branch: Branch) -> None:
+        if user_id := self._get_updated_by():
+            update_metadata_query = await NodeUpdateMetadataQuery.init(
+                db=db, branch=branch, node_id=self.get_id(), user_id=user_id, at=self._get_updated_at()
+            )
+            await update_metadata_query.execute(db=db)
+
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
 
@@ -976,18 +1024,20 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+            if deleted_attribute := await attr.delete(db=db, at=delete_at, user_id=user_id):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._human_friendly_id:
             if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db,
+                user_id=user_id,
+                at=delete_at,
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._display_label:
             if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db, at=delete_at, user_id=user_id
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
@@ -1034,10 +1084,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
-        if fields and isinstance(fields, dict):
-            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
-        else:
-            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+        field_names = (
+            [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+            if fields and isinstance(fields, dict)
+            else self._schema.attribute_names + ["__typename", "display_label"]
+        )
 
         for field_name in field_names:
             if field_name == "__typename":
@@ -1106,6 +1157,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return response
 
+    async def _build_meta_response(self, field_name: str, fields: dict) -> dict:
+        data = {}
+        for meta_field in fields.get(field_name, {}).keys():
+            if meta_field == "created_at":
+                created_at = self._get_created_at()
+                data["created_at"] = created_at.to_datetime() if created_at else None
+
+            if meta_field == "created_by":
+                data["created_by"] = (
+                    {"id": self._get_created_by(), "__kind__": "CoreAccount"} if self._get_created_by() else None
+                )
+
+            if meta_field == "updated_by":
+                data["updated_by"] = (
+                    {"id": self._get_updated_by(), "__kind__": "CoreAccount"} if self._get_updated_by() else None
+                )
+
+            if meta_field == "updated_at":
+                updated_at = self._get_updated_at()
+                data["updated_at"] = updated_at.to_datetime() if updated_at else None
+        return data
+
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""
 
@@ -1118,7 +1191,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
-                changed |= await rel.update(db=db, data=value)
+                changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
 

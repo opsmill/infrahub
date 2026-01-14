@@ -5,6 +5,7 @@ import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 import { formatFullDate } from "@/shared/utils/date";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   type UseGetRelationshipPropertiesParams,
   useGetRelationshipProperties,
@@ -30,7 +31,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
       name: "Source",
       value: source ? (
         <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
-          {source.display_label}
+          {getNodeLabel(source)}
         </Link>
       ) : (
         "-"
@@ -44,7 +45,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
       name: "Owner",
       value: owner ? (
         <Link to={constructPath(`/objects/${owner.__typename}/${owner.id}`)}>
-          {owner.display_label}
+          {getNodeLabel(owner)}
         </Link>
       ) : (
         "-"

@@ -72,7 +72,7 @@ export const Input = forwardRef((props: any, ref: any) => {
 
       {error?.message && (
         <div
-          className="-bottom-2 absolute ml-2 bg-white px-2 text-red-500 text-sm"
+          className="absolute -bottom-2 ml-2 bg-white px-2 text-red-500 text-sm"
           data-cy="field-error-message"
         >
           {error?.message}

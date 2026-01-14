@@ -1,21 +1,14 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-export const GET_ROLE_MANAGEMENT_ROLES = gql`
-  query GET_ROLE_MANAGEMENT_ROLES(
-    $search: String
-    $offset: Int
-    $limit: Int
-  ) {
-    CoreAccountRole(
-      any__value: $search
-      partial_match: true
-      offset: $offset
-      limit: $limit
-    ) {
+export const GET_ROLE_MANAGEMENT_ROLES = graphql(`
+  query GET_ROLE_MANAGEMENT_ROLES($search: String, $offset: Int, $limit: Int) {
+    CoreAccountRole(any__value: $search, partial_match: true, offset: $offset, limit: $limit) {
       count
       edges {
         node {
           id
+          display_label
+          hfid
           name {
             value
           }
@@ -55,4 +48,4 @@ export const GET_ROLE_MANAGEMENT_ROLES = gql`
       }
     }
   }
-`;
+`);

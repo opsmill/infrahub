@@ -2,12 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
-import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { QSP } from "@/config/qsp";
-
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -16,19 +12,20 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
+import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
+import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
-  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
+  objectDetailsData: NodeObject;
 }
 
 export function RelationshipsButtons({
@@ -36,8 +33,9 @@ export function RelationshipsButtons({
   schema: parentSchema,
   objectDetailsData,
 }: RelationshipsButtonsProps) {
-  const { objectKind, objectId } = useParams();
-  const [addRelationship] = useMutation(ADD_RELATIONSHIP);
+  const objectKind = objectDetailsData.__typename;
+  const objectId = objectDetailsData.id;
+  const { mutateAsync: addRelationship } = useAddRelationships();
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
   const [relationshipTab] = useQueryState(QSP.TAB);
@@ -89,11 +87,9 @@ export function RelationshipsButtons({
 
     if (relation?.id || relation?.from_pool) {
       await addRelationship({
-        variables: {
-          objectId,
-          relationshipIds: [{ id: relation.id }],
-          relationshipName: relationshipSchema?.name,
-        },
+        objectId,
+        relationshipIds: [relation.id],
+        relationshipName: relationshipSchema!.name,
       });
 
       await handleRefetch();
@@ -117,6 +113,7 @@ export function RelationshipsButtons({
         tooltipContent={permission.create.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
         data-testid="open-relationship-form-button"
+        size="sm"
       >
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
         {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
@@ -158,8 +155,11 @@ export function RelationshipsButtons({
                   name: "relation",
                   label: relationshipSchema?.label!,
                   type: "relationship",
-                  relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-                  schema: relationshipSchemaData,
+                  relationship: {
+                    ...relationshipSchema,
+                    cardinality: "one",
+                    inherited: true,
+                  } as RelationshipSchema,
                   options,
                 },
               ]}

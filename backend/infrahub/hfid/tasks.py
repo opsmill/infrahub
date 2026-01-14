@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -22,9 +20,11 @@ UPDATE_HFID = """
 mutation UpdateHFID(
     $id: String!,
     $kind: String!,
-    $value: [String!]!
+    $value: [String!]!,
+    $context_account_id: String!
   ) {
   InfrahubUpdateHFID(
+    context: {account: {id: $context_account_id}},
     data: {id: $id, value: $value, kind: $kind}
   ) {
     ok
@@ -42,6 +42,7 @@ async def hfid_update_value(
     obj: HFIDGraphQLResponse,
     node_kind: str,
     hfid_definition: list[str],
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -60,7 +61,12 @@ async def hfid_update_value(
     try:
         await client.execute_graphql(
             query=UPDATE_HFID,
-            variables={"id": obj.node_id, "kind": node_kind, "value": rendered_hfid},
+            variables={
+                "id": obj.node_id,
+                "kind": node_kind,
+                "value": rendered_hfid,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
         log.info(f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id})")
@@ -79,7 +85,7 @@ async def process_hfid(
     node_kind: str,
     object_id: str,
     target_kind: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -117,6 +123,7 @@ async def process_hfid(
             obj=node,
             node_kind=node_schema.kind,
             hfid_definition=hfid_definition.hfid,
+            context=context,
         )
 
     _ = [response async for _, response in batch.execute()]
@@ -138,11 +145,32 @@ async def hfid_setup(context: InfrahubContext, branch_name: str | None = None, e
         )  # type: ignore[misc]
 
         # Configure all DisplayLabelTriggerDefinitions in Prefect
-        hfid_reports = [cast(HFIDTriggerDefinition, entry) for entry in report.updated + report.created]
-        direct_target_triggers = [hfid_report for hfid_report in hfid_reports if hfid_report.target_kind]
+        all_triggers = report.triggers_with_type(trigger_type=HFIDTriggerDefinition)
+        direct_target_triggers = [
+            hfid_report
+            for hfid_report in report.modified_triggers_with_type(trigger_type=HFIDTriggerDefinition)
+            if hfid_report.target_kind
+        ]
 
         for display_report in direct_target_triggers:
             if event_name != BranchDeletedEvent.event_name and display_report.branch == branch_name:
+                if branch_name != registry.default_branch:
+                    default_branch_triggers = [
+                        trigger
+                        for trigger in all_triggers
+                        if trigger.branch == registry.default_branch
+                        and trigger.target_kind == display_report.target_kind
+                    ]
+                    if (
+                        default_branch_triggers
+                        and len(default_branch_triggers) == 1
+                        and default_branch_triggers[0].hfid_hash == display_report.hfid_hash
+                    ):
+                        log.debug(
+                            f"Skipping HFID updates for {display_report.target_kind} [{branch_name}], schema is identical to default branch"
+                        )
+                        continue
+
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_HFID,
                     context=context,

@@ -6,7 +6,6 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
   test.describe.configure({ mode: "serial" });
-  test.slow();
   const BRANCH_NAME = generateRandomBranchName("object-relationships");
 
   test.beforeAll(async ({ request }) => {
@@ -26,8 +25,17 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("all buttons are disabled", async () => {
         await expect(page.getByTestId("edit-button")).toBeDisabled();
-        await expect(page.getByTestId("manage-groups")).toBeDisabled();
-        await expect(page.getByTestId("delete-button")).toBeDisabled();
+
+        await page.getByTestId("object-details-menu").click();
+        await expect(page.getByRole("menuitem", { name: "Groups" })).toHaveAttribute(
+          "aria-disabled",
+          "true"
+        );
+        await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveAttribute(
+          "aria-disabled",
+          "true"
+        );
+        await page.keyboard.press("Escape");
 
         await page.getByRole("link", { name: "Devices 10" }).click();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
@@ -94,8 +102,10 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       });
 
       await test.step("Edit a relationship", async () => {
-        await page.getByTestId("actions-cell-atl1-core1, Loopback0").click();
-        await page.getByRole("menuitem", { name: "Edit" }).click();
+        await page.getByRole("link", { name: "Loopback0", exact: true }).click();
+        await expect(page.getByText("NameLoopback0")).toBeVisible();
+
+        await page.getByTestId("edit-button").click();
         await expect(page.getByText("Device *")).toBeVisible();
         await page.getByRole("textbox", { name: "Name *" }).fill("Loopback0-update");
         await page.getByRole("button", { name: "Save" }).click();
@@ -103,7 +113,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Verify relationship update", async () => {
         await expect(page.getByText("InterfaceL3 updated")).toBeVisible();
-        await expect(page.getByText("Loopback0-update", { exact: true })).toBeVisible();
+        await expect(page.getByText("NameLoopback0-update")).toBeVisible();
       });
     });
 
@@ -132,9 +142,10 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
       await page
         .getByTestId("identifier-cell")
-        .getByRole("link", { name: "den1-edge2, Ethernet1", exact: true })
+        .getByRole("link", { name: "Ethernet1", exact: true })
+        .nth(2)
         .click();
-      await page.getByText("Ip Addresses1").click();
+      await page.getByText("Ip Addresses0").click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByTestId("select-open-pool-option-button").click();
       await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();
@@ -148,7 +159,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.getByRole("link", { name: "Devices 10" }).click();
     });
     await page.getByRole("link", { name: "atl1", exact: true }).first().click();
-    await expect(page.getByText("Nameatl1")).toBeVisible();
+    await expect(page.getByTestId("object-details").getByText("Nameatl1")).toBeVisible();
     expect(page.url()).toContain("/objects/LocationSite/");
   });
 });

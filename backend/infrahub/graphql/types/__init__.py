@@ -66,7 +66,6 @@ __all__ = [
 
 
 RELATIONS_PROPERTY_MAP: dict[str, str] = {
-    "is_visible": "_relation__is_visible",
     "is_protected": "_relation__is_protected",
     "owner": "_relation__owner",
     "source": "_relation__source",

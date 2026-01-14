@@ -7,8 +7,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.shared import MigrationResult
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
@@ -37,12 +36,13 @@ class Migration038(InternalSchemaMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        at = migration_input.at
         # load schemas from database into registry
         initialize_lock()
         await initialization(db=db)
 
-        at = Timestamp()
         for branch in await Branch.get_list(db=db):
             prefix_0000s = await NodeManager.query(
                 db=db, schema="BuiltinIPPrefix", branch=branch, filters={"prefix__values": ["0.0.0.0/0", "::/0"]}

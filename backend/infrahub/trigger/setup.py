@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable, Sequence
 
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
@@ -12,27 +12,41 @@ from infrahub import lock
 from infrahub.database import InfrahubDatabase
 from infrahub.trigger.models import TriggerDefinition
 
-from .models import TriggerSetupReport, TriggerType
+from .models import TriggerComparison, TriggerSetupReport, TriggerType
 
 if TYPE_CHECKING:
     from uuid import UUID
 
 
-def compare_automations(target: AutomationCore, existing: Automation) -> bool:
-    """Compare an AutomationCore with an existing Automation object to identify if they are identical or not
-
-    Return True if the target is identical to the existing automation
+def compare_automations(
+    target: AutomationCore, existing: Automation, trigger_type: TriggerType | None, force_update: bool = False
+) -> TriggerComparison:
+    """Compare an AutomationCore with an existing Automation object to identify if they are identical,
+    if it's a branch specific automation and the branch filter may be different, or if they are different.
     """
+
+    if force_update:
+        return TriggerComparison.UPDATE
 
     target_dump = target.model_dump(exclude_defaults=True, exclude_none=True)
     existing_dump = existing.model_dump(exclude_defaults=True, exclude_none=True, exclude={"id"})
 
-    return target_dump == existing_dump
+    if target_dump == existing_dump:
+        return TriggerComparison.MATCH
+
+    if not trigger_type or not trigger_type.is_branch_specific:
+        return TriggerComparison.UPDATE
+
+    if target.description == existing.description:
+        # If only the branch related info is different, we consider it a refresh
+        return TriggerComparison.REFRESH
+
+    return TriggerComparison.UPDATE
 
 
 @task(name="trigger-setup-specific", task_run_name="Setup triggers of a specific kind", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_triggers_specific(
-    gatherer: Callable[[InfrahubDatabase | None], Awaitable[list[TriggerDefinition]]],
+    gatherer: Callable[[InfrahubDatabase | None], Awaitable[Sequence[TriggerDefinition]]],
     trigger_type: TriggerType,
     db: InfrahubDatabase | None = None,
 ) -> TriggerSetupReport:
@@ -55,7 +69,7 @@ async def setup_triggers_specific(
 @task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)
 async def setup_triggers(
     client: PrefectClient,
-    triggers: list[TriggerDefinition],
+    triggers: Sequence[TriggerDefinition],
     trigger_type: TriggerType | None = None,
     force_update: bool = False,
 ) -> TriggerSetupReport:
@@ -63,10 +77,8 @@ async def setup_triggers(
 
     report = TriggerSetupReport()
 
-    if trigger_type:
-        log.debug(f"Setting up triggers of type {trigger_type.value}")
-    else:
-        log.debug("Setting up all triggers")
+    trigger_log_message = f"triggers of type {trigger_type.value}" if trigger_type else "all triggers"
+    log.debug(f"Setting up {trigger_log_message}")
 
     # -------------------------------------------------------------
     # Retrieve existing Deployments and Automation from the server
@@ -80,16 +92,14 @@ async def setup_triggers(
     }
     deployments_mapping: dict[str, UUID] = {name: item.id for name, item in deployments.items()}
 
-    # If a trigger type is provided, narrow down the list of existing triggers to know which one to delete
-    existing_automations: dict[str, Automation] = {}
+    existing_automations = {item.name: item for item in await gather_all_automations(client=client)}
     if trigger_type:
+        # If a trigger type is provided, narrow down the list of existing triggers to know which one to delete
         existing_automations = {
-            item.name: item
-            for item in await client.read_automations()
-            if item.name.startswith(f"{trigger_type.value}::")
+            automation_name: automation
+            for automation_name, automation in existing_automations.items()
+            if automation_name.startswith(f"{trigger_type.value}::")
         }
-    else:
-        existing_automations = {item.name: item for item in await client.read_automations()}
 
     trigger_names = [trigger.generate_name() for trigger in triggers]
     automation_names = list(existing_automations.keys())
@@ -112,15 +122,16 @@ async def setup_triggers(
             actions=[action.get_prefect(mapping=deployments_mapping) for action in trigger.actions],
         )
 
-        existing_automation = existing_automations.get(trigger.generate_name(), None)
+        existing_automation = existing_automations.get(trigger.generate_name())
 
         if existing_automation:
-            if force_update or not compare_automations(target=automation, existing=existing_automation):
+            trigger_comparison = compare_automations(
+                target=automation, existing=existing_automation, trigger_type=trigger_type, force_update=force_update
+            )
+            if trigger_comparison.update_prefect:
                 await client.update_automation(automation_id=existing_automation.id, automation=automation)
                 log.info(f"{trigger.generate_name()} Updated")
-                report.updated.append(trigger)
-            else:
-                report.unchanged.append(trigger)
+            report.add_with_comparison(trigger, trigger_comparison)
         else:
             await client.create_automation(automation=automation)
             log.info(f"{trigger.generate_name()} Created")
@@ -145,15 +156,31 @@ async def setup_triggers(
             else:
                 raise
 
-    if trigger_type:
-        log.info(
-            f"Processed triggers of type {trigger_type.value}: "
-            f"{len(report.created)} created, {len(report.updated)} updated, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
-        )
-    else:
-        log.info(
-            f"Processed all triggers: "
-            f"{len(report.created)} created, {len(report.updated)} updated, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
-        )
+    log.info(
+        f"Processed {trigger_log_message}: {len(report.created)} created, {len(report.updated)} updated, "
+        f"{len(report.refreshed)} refreshed, {len(report.unchanged)} unchanged, {len(report.deleted)} deleted"
+    )
 
     return report
+
+
+async def gather_all_automations(client: PrefectClient) -> list[Automation]:
+    """Gather all automations from the Prefect server
+
+    By default the Prefect client only retrieves a limited number of automations, this function
+    retrieves them all by paginating through the results. The default within Prefect is 200 items,
+    and client.read_automations() doesn't support pagination parameters.
+    """
+    offset = 0
+    limit = 200
+    automations: list[Automation] = []
+    while True:
+        response = await client.request("POST", "/automations/filter", json={"limit": limit, "offset": offset})
+        response.raise_for_status()
+        batch = Automation.model_validate_list(response.json())
+        automations.extend(batch)
+        if len(batch) < limit:
+            break
+        offset += limit
+
+    return automations

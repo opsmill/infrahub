@@ -27,7 +27,7 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
         className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
         onClick={() => setOpen(!open)}
       >
-        + Add new <span className="truncate">{schema.label}</span>
+        + Add new <span className="ml-1 truncate">{schema.label}</span>
       </Button>
 
       <SlideOver

@@ -2,8 +2,6 @@ import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -13,14 +11,16 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Table, type tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -78,13 +78,17 @@ function Roles() {
     data[ACCOUNT_ROLE_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
         name: { value: edge?.node?.name.value },
         description: { value: edge?.node?.description?.value },
         groups: {
           value: { edges: edge?.node?.groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.groups?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

@@ -7,7 +7,12 @@ from infrahub.core.initialization import (
     create_branch,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
+from infrahub.core.metadata.query.node_metadata import NodeMetadataDefaultBranchQuery
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreAccount
+from infrahub.core.query.node import MetadataOptions
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError, SchemaNotFoundError
@@ -70,7 +75,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         await megane.new(
             db=db, name="Megane", description="Renault Megane", color="#c93420", manufacturer=renault, owner=john
         )
-        await megane.save(db=db)
+        await megane.save(db=db, user_id="megane-creator")
 
         clio = await Node.init(schema=CAR_KIND, db=db)
         await clio.new(
@@ -115,7 +120,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         # Create Data in MAIN after BRANCH1 was created
         jane = await Node.init(schema=PERSON_KIND, db=db)
         await jane.new(db=db, name="Jane", height=165, description="The famous Jane Doe")
-        await jane.save(db=db)
+        await jane.save(db=db, user_id="jane-creator")
 
         honda = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await honda.new(db=db, name="honda", description="Honda Motor Co., Ltd")
@@ -133,7 +138,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         blue = await Node.init(schema=TAG_KIND, db=db)
         await blue.new(db=db, name="blue", cars=[accord, civic], persons=[jane])
-        await blue.save(db=db)
+        await blue.save(db=db, user_id="blue-creator")
 
         objs = {
             "john": john.id,
@@ -340,10 +345,18 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert len(renault_cars) == 2
 
     async def test_rebase(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset,
+        admin_account: CoreAccount,
     ) -> None:
+        time_before_rebase = Timestamp()
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
+        time_after_rebase = Timestamp()
+
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=default_branch)
         height_attr_schema = person_schema.get_attribute(name="height")
         assert height_attr_schema.id
@@ -367,6 +380,34 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         honda = manufacturers[0]
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
+
+        # Validate metadata on nodes modified by rebase migrations
+        # Jane was created in main after branch1 was created, so she was migrated during rebase
+        # The migration added the 'lastname' attribute and removed 'height'
+        updated_branch_1 = await Branch.get_by_name(db=db, name=self.branch1.name)
+        jane_with_metadata = await NodeManager.get_one(
+            db=db,
+            id=initial_dataset["jane"],
+            branch=updated_branch_1,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+        )
+
+        # Node should have been updated during the rebase migration
+        assert jane_with_metadata._get_created_at() < time_before_rebase
+        assert jane_with_metadata._get_created_by() == "jane-creator"
+        assert time_before_rebase < jane_with_metadata._get_updated_at() < time_after_rebase
+        assert jane_with_metadata._get_updated_by() == admin_account.id
+
+        # The new 'lastname' attribute should have been created during the migration
+        lastname_attr = jane_with_metadata.get_attribute(name="lastname")
+        assert lastname_attr._get_created_at() < time_after_rebase
+        assert lastname_attr._get_created_at() > time_before_rebase
+        assert lastname_attr._get_created_by() == admin_account.id
+        assert lastname_attr._get_updated_at() == lastname_attr._get_created_at()
+        assert lastname_attr._get_updated_by() == admin_account.id
 
     async def test_step04_check(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
@@ -474,12 +515,20 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert "profiles" in car_schema.relationship_names
 
     async def test_step05_merge(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step06, schema_interior_base
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset,
+        schema_step06,
+        schema_interior_base,
+        admin_account: CoreAccount,
     ) -> None:
         response = await client.schema.load(schemas=[schema_step06], branch=self.branch1.name)
         assert not response.errors
 
+        time_before_merge = Timestamp()
         await client.branch.merge(branch_name=self.branch1.name)
+        time_after_merge = Timestamp()
 
         updated_branch = await Branch.get_by_name(name=self.branch1.name, db=db)
         updated_schema_default = await registry.schema.load_schema_from_db(db=db)
@@ -490,6 +539,31 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         updated_interiors_schema = updated_schema_branch.get(name="TestingInterior", duplicate=False)
         assert updated_interiors_schema.attribute_names == ["material"]
         assert "cars" in updated_interiors_schema.relationship_names
+
+        # Validate metadata on deleted blue tag using NodeMetadataDefaultBranchQuery
+        # The blue tag was deleted during the merge because TestingTag was removed in schema_step04
+        default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+        blue_metadata_query = await NodeMetadataDefaultBranchQuery.init(
+            db=db, branch=default_branch, node_uuids=[initial_dataset["blue"]]
+        )
+        await blue_metadata_query.execute(db=db)
+        blue_metadatas = blue_metadata_query.get_metadatas()
+
+        assert len(blue_metadatas) == 1
+        blue_metadata = blue_metadatas[0]
+
+        # Verify the blue tag is marked as deleted
+        assert blue_metadata.is_deleted is True
+        assert blue_metadata.uuid == initial_dataset["blue"]
+        assert blue_metadata.kind == TAG_KIND
+
+        # Verify metadata timestamps - created before merge, updated during merge
+        assert blue_metadata.created_at is not None
+        assert blue_metadata.created_at < time_before_merge
+        assert blue_metadata.created_by == "blue-creator"
+        assert blue_metadata.updated_at is not None
+        assert time_before_merge < blue_metadata.updated_at < time_after_merge
+        assert blue_metadata.updated_by == admin_account.id
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)

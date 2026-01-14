@@ -3,8 +3,8 @@ import { useParams } from "react-router";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 
+import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
 import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
-import { ObjectItemsHeader } from "@/entities/nodes/object-header";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 function ObjectItemsPage() {

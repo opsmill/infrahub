@@ -13,7 +13,7 @@ from neo4j import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
-    NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
     Record,
@@ -152,7 +152,7 @@ class InfrahubDatabase:
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: AsyncTransaction | None = None,
         queries_names_to_config: dict[str, QueryConfig] | None = None,
-    ):
+    ) -> None:
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
         self._session: AsyncSession | None = session
@@ -356,7 +356,7 @@ class InfrahubDatabase:
                     type
                     and type == QueryType.READ
                     and runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]
-                    and not (self.is_transaction and runtime in [Neo4jRuntime.PARALLEL])
+                    and not (self.is_transaction and runtime == Neo4jRuntime.PARALLEL)
                 ):
                     query = f"CYPHER runtime = {runtime.value}\n" + query
                 else:
@@ -492,8 +492,8 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
-        notifications_disabled_categories=[
-            NotificationDisabledCategory.UNRECOGNIZED,
+        notifications_disabled_classifications=[
+            NotificationDisabledClassification.UNRECOGNIZED,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )

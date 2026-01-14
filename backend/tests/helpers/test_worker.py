@@ -1,15 +1,16 @@
 import asyncio
-from contextlib import ExitStack
-from typing import Any, Generator
+from typing import Any, AsyncGenerator
 from uuid import UUID
 
 import pytest
 from infrahub_sdk import InfrahubClient
-from prefect import settings as prefect_settings
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
 from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
+from prefect.events.worker import EventsWorker
+from prefect.logging.handlers import APILogWorker
+from prefect.results import _default_storages
 from prefect.workers.base import BaseWorkerResult
 
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN
@@ -19,14 +20,10 @@ from infrahub.workers.infrahub_async import (
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.initialization import setup_blocks
 from infrahub.workflows.models import WorkerPoolDefinition
-from tests.helpers.constants import (
-    PORT_PREFECT,
-)
-from tests.helpers.test_app import TestInfrahubApp
-from tests.helpers.utils import start_prefect_server_container
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 
 
-class TestWorkerInfrahubAsync(TestInfrahubApp):
+class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
     @classmethod
     async def wait_for_flow(
         cls, client: PrefectClient, work_pool_id: UUID, interval: int = 1, timeout: int = 10
@@ -36,7 +33,7 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
                 work_pool_filter=WorkPoolFilter(id=WorkPoolFilterId(any_=[work_pool_id]))
             )
 
-            scheduled_flows = [flow for flow in flows if flow.state_type in [StateType.SCHEDULED]]
+            scheduled_flows = [flow for flow in flows if flow.state_type == StateType.SCHEDULED]
             if scheduled_flows:
                 return scheduled_flows[0]
 
@@ -59,34 +56,8 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         )
 
     @pytest.fixture(scope="class")
-    def prefect_container_class(
-        self, request: pytest.FixtureRequest, load_settings_before_session: Any
-    ) -> dict[int, int] | None:
-        return start_prefect_server_container(request)
-
-    @pytest.fixture(scope="class")
-    def prefect_server(
-        self, prefect_container_class: dict[int, int] | None, reload_settings_before_each_module: Any
-    ) -> Generator[str, None, None]:
-        if prefect_container_class:
-            server_port = prefect_container_class[PORT_PREFECT]
-            server_api_url = f"http://localhost:{server_port}/api"
-        else:
-            server_api_url = f"http://localhost:{PORT_PREFECT}/api"
-
-        with ExitStack() as stack:
-            stack.enter_context(
-                prefect_settings.temporary_settings(
-                    updates={
-                        prefect_settings.PREFECT_API_URL: server_api_url,
-                    }
-                )
-            )
-            yield server_api_url
-
-    @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_server: str) -> PrefectClient:
-        return PrefectClient(api=prefect_server)
+    async def prefect_client(self, prefect_class: str) -> PrefectClient:
+        return PrefectClient(api=prefect_class)
 
     @pytest.fixture(scope="class")
     async def work_pool(self, prefect_client: PrefectClient) -> WorkPool:
@@ -114,7 +85,7 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         prefect_client: PrefectClient,
         work_pool: WorkPool,
         git_global_config_env_setting: Any,
-    ) -> InfrahubWorkerAsync:
+    ) -> AsyncGenerator[InfrahubWorkerAsync, None]:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
 
         await worker.setup(client=client, metric_port=0)
@@ -124,4 +95,11 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         active_workers = await prefect_client.read_workers_for_work_pool(work_pool_name=work_pool.name)
         assert active_workers[0].name == worker.name
 
-        return worker
+        yield worker
+
+        # Clear local worker instances to avoid issues with multiple test classes running in the same pytest worker
+        EventsWorker.drain_all()
+        APILogWorker.drain_all()
+
+        # Clear local worker result storage cache
+        _default_storages.clear()

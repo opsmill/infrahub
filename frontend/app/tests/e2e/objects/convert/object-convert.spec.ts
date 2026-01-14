@@ -20,10 +20,10 @@ test.describe("Object details - convert", () => {
   test("should convert an Interface L3 to an Interface L2", async ({ page }) => {
     await test.step("access object details and convert page", async () => {
       await page.goto(`/objects/InfraInterface?branch=${BRANCH_NAME}`);
-      await page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true }).click();
-      await page.getByTestId("object-details-button").click();
-      await saveScreenshotForDocs(page, "object_convert_button");
+      await page.getByRole("link", { name: "Ethernet1", exact: true }).first().click();
+      await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Convert object type" }).click();
+      await saveScreenshotForDocs(page, "object_convert_button");
       await expect(page.getByText("SOURCE")).toBeVisible();
       await expect(page.getByText("NameEthernet1")).toBeVisible();
       await expect(page.getByTestId("convert-source").getByText("Deviceatl1-edge1")).toBeVisible();

@@ -9,26 +9,13 @@ import { TasksWidget } from "@/entities/homepage/ui/tasks-widget";
 
 const Homepage = () => {
   return (
-    <Content className="flex flex-col gap-4 p-4">
-      <h1 className="font-semibold text-2xl">Welcome to Infrahub!</h1>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="col-span-2 flex flex-col gap-4">
-          <ProposedChangesWidget className="min-h-80" />
-
-          <BranchesWidget className="min-h-80" />
-        </div>
-
-        <div className="space-y-4">
-          <GitRepositoriesWidget className="h-44" />
-
-          <EventsWidget />
-        </div>
-      </div>
-
-      <TasksWidget />
-
-      <GettingStarted />
+    <Content className="grid auto-rows-[10rem] gap-3 p-3 lg:grid-cols-3">
+      <ProposedChangesWidget className="col-span-1 row-span-2 lg:col-span-2" />
+      <GitRepositoriesWidget className="col-span-1 row-span-1" />
+      <BranchesWidget className="col-span-1 row-span-2 lg:col-span-2" />
+      <EventsWidget className="col-span-1 row-span-3 lg:col-start-3 lg:row-start-2" />
+      <TasksWidget className="col-span-full row-span-4 lg:row-span-3" />
+      <GettingStarted className="col-span-full h-fit" />
     </Content>
   );
 };

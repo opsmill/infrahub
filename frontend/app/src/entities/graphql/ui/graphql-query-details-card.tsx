@@ -1,8 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 
-import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-
 import type { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
+import { queryClient } from "@/shared/api/rest/client";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -11,11 +10,14 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { RELATIONSHIP_VIEW_BLACKLIST } from "@/shared/config/constants";
 
 import {
   type AttributeType,
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -23,54 +25,33 @@ import type { ModelSchema } from "@/entities/schema/types";
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
   schema: ModelSchema;
-  refetch: () => Promise<unknown>;
   permission: Permission;
 };
 
-const GraphqlQueryDetailsCard = ({
-  data,
-  schema,
-  refetch,
-  permission,
-}: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryDetailsCard = ({ data, schema, permission }: GraphqlQueryDetailsCardProps) => {
   return (
     <Card className="overflow-x-hidden p-0">
-      <GraphqlQueryDetailsTitle
-        data={data}
-        schema={schema}
-        refetch={refetch}
-        permission={permission}
-      />
+      <GraphqlQueryDetailsTitle data={data} schema={schema} permission={permission} />
 
-      <GraphqlQueryPropertyList
-        data={data}
-        schema={schema}
-        refetch={refetch}
-        permission={permission}
-      />
+      <GraphqlQueryPropertyList data={data} schema={schema} permission={permission} />
     </Card>
   );
 };
 
-const GraphqlQueryDetailsTitle = ({
-  data,
-  schema,
-  refetch,
-  permission,
-}: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryDetailsTitle = ({ data, schema, permission }: GraphqlQueryDetailsCardProps) => {
   return (
     <>
       <CardWithBorder.Title className="flex items-center gap-1 rounded-t">
         <Badge variant="blue">{schema.namespace}</Badge>
 
         <span>
-          {schema.name} - {data.display_label}
+          {schema.name} - {getNodeLabel(data)}
         </span>
 
         <ObjectEditSlideOverTrigger
           data={data}
           schema={schema}
-          onUpdateComplete={refetch}
+          onUpdateComplete={() => queryClient.invalidateQueries({ queryKey: objectQueryKeys.all })}
           permission={permission}
         />
       </CardWithBorder.Title>
@@ -78,12 +59,7 @@ const GraphqlQueryDetailsTitle = ({
   );
 };
 
-const GraphqlQueryPropertyList = ({
-  data,
-  schema,
-  refetch,
-  permission,
-}: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryPropertyList = ({ data, schema, permission }: GraphqlQueryDetailsCardProps) => {
   const properties: Property[] = [
     {
       name: "ID",
@@ -113,7 +89,7 @@ const GraphqlQueryPropertyList = ({
           <div className="flex items-center justify-between">
             <ObjectAttributeValue
               attributeSchema={attributeSchema}
-              attributeValue={graphqlQueryAttribute}
+              attributeData={graphqlQueryAttribute}
             />
 
             <div className="flex items-center">
@@ -123,7 +99,6 @@ const GraphqlQueryPropertyList = ({
                 type="attribute"
                 attributeSchema={attributeSchema}
                 properties={graphqlQueryAttribute}
-                refetch={refetch}
                 data={data}
                 schema={schema}
                 permission={permission}
@@ -144,7 +119,7 @@ const GraphqlQueryPropertyList = ({
             value: relationshipData?.map(({ node, properties }: any) => (
               <div key={node.id} className="flex items-center justify-between">
                 <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
-                  {node?.display_label}
+                  {node ? getNodeLabel(node) : ""}
                 </Link>
 
                 {properties.is_protected && <ProtectedIcon />}
@@ -154,7 +129,6 @@ const GraphqlQueryPropertyList = ({
                   hideHeader
                   attributeSchema={relationshipSchema}
                   properties={properties}
-                  refetch={refetch}
                   data={data}
                   schema={schema}
                   permission={permission}
@@ -173,7 +147,7 @@ const GraphqlQueryPropertyList = ({
           value: relationshipData && (
             <div className="flex items-center justify-between">
               <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
-                {relationshipData?.display_label}
+                {relationshipData ? getNodeLabel(relationshipData) : ""}
               </Link>
 
               <div className="flex items-center">
@@ -183,7 +157,6 @@ const GraphqlQueryPropertyList = ({
                   type="relationship"
                   attributeSchema={relationshipSchema}
                   properties={relationshipProperties}
-                  refetch={refetch}
                   data={data}
                   schema={schema}
                   permission={permission}

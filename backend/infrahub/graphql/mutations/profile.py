@@ -9,7 +9,9 @@ from typing_extensions import Self
 
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.relationship.constraints.profiles_removal import RelationshipProfileRemovalConstraint
 from infrahub.core.schema import ProfileSchema
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -58,6 +60,8 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
     ) -> None:
         if not node_ids:
             related_nodes = await obj.related_nodes.get_relationships(db=db)  # type: ignore[attr-defined]
+            if hasattr(obj, "related_templates"):
+                related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
             node_ids = [rel.peer_id for rel in related_nodes]
         if node_ids:
             await workflow_service.submit_workflow(
@@ -69,18 +73,13 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             )
 
     @classmethod
-    def _get_profile_attr_values_map(cls, obj: Node) -> dict[str, Any]:
-        attr_values_map = {}
-        for attr_schema in obj.get_schema().attributes:
-            # profile name update can be ignored
-            if attr_schema.name == "profile_name":
-                continue
-            attr_values_map[attr_schema.name] = getattr(obj, attr_schema.name).value
-        return attr_values_map
-
-    @classmethod
     async def _get_profile_related_node_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
-        related_nodes = await obj.related_nodes.get_relationships(db=db)  # type: ignore[attr-defined]
+        related_nodes = []
+        related_nodes.extend(await obj.related_nodes.get_relationships(db=db))  # type: ignore[attr-defined]
+
+        if hasattr(obj, "related_templates"):
+            related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
+
         if related_nodes:
             related_node_ids = {rel.peer_id for rel in related_nodes}
         else:
@@ -120,29 +119,24 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
         workflow_service = info.context.active_service.workflow
-        original_attr_values = cls._get_profile_attr_values_map(obj=obj)
         original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
 
         obj, mutation = await super()._call_mutate_update(
             info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
         )
 
-        updated_attr_values = cls._get_profile_attr_values_map(obj=obj)
         updated_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
 
-        if original_attr_values != updated_attr_values:
-            await cls._send_profile_refresh_workflows(
-                db=db, workflow_service=workflow_service, branch_name=branch.name, obj=obj
-            )
-        elif updated_related_node_ids != original_related_node_ids:
-            removed_node_ids = original_related_node_ids - updated_related_node_ids
-            added_node_ids = updated_related_node_ids - original_related_node_ids
+        # Handle nodes removed from related_nodes - these need explicit refresh
+        # since the async automation won't find them in the profile's related_nodes after the change.
+        # Attribute changes and added nodes are handled by the Prefect automation
+        if removed_node_ids := original_related_node_ids - updated_related_node_ids:
             await cls._send_profile_refresh_workflows(
                 db=db,
                 workflow_service=workflow_service,
                 branch_name=branch.name,
                 obj=obj,
-                node_ids=list(removed_node_ids) + list(added_node_ids),
+                node_ids=list(removed_node_ids),
             )
 
         return obj, mutation
@@ -152,6 +146,12 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         db = graphql_context.db
         workflow_service = graphql_context.active_service.workflow
         related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
+
+        profile_schema: ProfileSchema = obj.get_schema()  # type: ignore[assignment]
+        component_registry = get_component_registry()
+        constraint = await component_registry.get_component(RelationshipProfileRemovalConstraint, db=db, branch=branch)
+        await constraint.validate_profile_deletion(profile=obj, profile_schema=profile_schema)
+
         deleted = await super()._delete_obj(graphql_context=graphql_context, branch=branch, obj=obj)
         await cls._send_profile_refresh_workflows(
             db=db, workflow_service=workflow_service, branch_name=branch.name, obj=obj, node_ids=list(related_node_ids)
@@ -192,6 +192,6 @@ class InfrahubProfilesRefresh(Mutation):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)
         if updated_fields:
-            await obj.save(db=db, fields=updated_fields)
+            await obj.save(db=db, fields=updated_fields, user_id=graphql_context.assigned_user_id)
 
         return cls(ok=True)

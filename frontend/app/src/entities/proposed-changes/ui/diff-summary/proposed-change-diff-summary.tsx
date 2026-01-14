@@ -1,7 +1,6 @@
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { QSP } from "@/shared/config/qsp";
 
 import { useGetDiffSummary } from "@/entities/diff/domain/get-diff-summary.query";
 import { DIFF_STATUS } from "@/entities/diff/node-diff/types";

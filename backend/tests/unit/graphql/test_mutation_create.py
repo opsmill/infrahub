@@ -7,6 +7,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipK
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
@@ -395,7 +396,7 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
         TestPersonCreate(
             data: {
                 name: { value: "John", is_protected: true }
-                height: { value: 182, is_visible: false }
+                height: { value: 182 }
             }
         ) {
             ok
@@ -431,9 +432,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
                             value
                             is_protected
                         }
-                        height {
-                            is_visible
-                        }
                     }
                 }
             }
@@ -452,7 +450,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
     assert result1.errors is None
     assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_protected"] is True
-    assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["is_visible"] is False
 
 
 async def test_create_object_with_node_property(
@@ -904,7 +901,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
     core_node_schema = schema.get_generic(name="CoreNode")
     core_node_schema.used_by.append(new_person_kind)

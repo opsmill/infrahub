@@ -2,7 +2,6 @@ from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.permissions import LocalPermissionBackend
@@ -26,6 +25,62 @@ query actions($proposed_change_id: String!) {
 """
 
 
+PROPOSED_CHANGE_META_DATA_QUERY = """
+    query {
+        CoreProposedChange {
+            edges {
+                node_metadata {
+                    created_at
+                    updated_at
+                }
+                node {
+
+                    id
+                    name {
+                        value
+                        updated_by {
+                            id
+                        }
+                        updated_at
+                    }
+                    description {
+                        value
+                        updated_by {
+                            id
+                        }
+                        updated_at
+                    }
+                    reviewers {
+                        edges {
+                            node_metadata {
+                                created_at
+                                updated_at
+                            }
+                            node {
+                                name {
+                                    value
+                                    updated_by {
+                                        id
+                                    }
+                                    updated_at
+                                }
+                                description {
+                                    value
+                                    updated_by {
+                                        id
+                                    }
+                                    updated_at
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+
 async def test_proposed_change_open(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
 ) -> None:
@@ -42,9 +97,8 @@ async def test_proposed_change_open(
         destination_branch="main",
         source_branch=branch_name,
         state="open",
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
@@ -100,9 +154,8 @@ async def test_proposed_change_closed(
         destination_branch="main",
         source_branch=branch_name,
         state="closed",
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
@@ -163,9 +216,8 @@ async def test_proposed_change_draft(
         source_branch=branch_name,
         state="open",
         is_draft=True,
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
@@ -239,3 +291,53 @@ async def test_proposed_change_draft(
         "You do not have the permission to perform this action",
         "The proposed change is a draft",
     ]
+
+
+async def test_proposed_change_query_meta_data(
+    db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
+) -> None:
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    branch_name = "test-pc"
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    initial_user = "bob"
+    update_user = "alice"
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name="pc-1",
+        description="sample description",
+        destination_branch="main",
+        source_branch=branch_name,
+        state="open",
+    )
+    await proposed_change.save(db=db, user_id=initial_user)
+    proposed_change.description.value = "updated description"
+    await proposed_change.save(db=db, user_id=update_user)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    response = await graphql_query(
+        query=PROPOSED_CHANGE_META_DATA_QUERY,
+        db=db,
+        service=service,
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+
+    for prc in response.data["CoreProposedChange"]["edges"]:
+        assert prc["node"]["name"]["value"]
+        assert prc["node"]["name"]["updated_by"]["id"] == initial_user
+        assert prc["node"]["name"]["updated_at"]
+
+        assert prc["node"]["description"]["value"]
+        assert prc["node"]["description"]["updated_by"]["id"] == update_user
+        assert prc["node"]["description"]["updated_at"]
+
+        assert prc["node_metadata"]["created_at"]
+        assert prc["node_metadata"]["updated_at"]

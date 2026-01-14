@@ -30,10 +30,10 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
-    "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:3.13.7-management",
-    "CACHE_DOCKER_IMAGE": "redis:7.2.11",
+    "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:4.2.1-management",
+    "CACHE_DOCKER_IMAGE": "redis:8.4.0",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
-    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
+    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
     "INFRAHUB_TESTING_PRODUCTION": "false",
     "INFRAHUB_TESTING_DB_ADDRESS": "database",
@@ -149,10 +149,10 @@ class InfrahubDockerCompose(DockerCompose):
             PROJECT_ENV_VARIABLES.update(
                 {
                     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub-enterprise",
-                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
+                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.03.0-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-enterprise",
                 }
             )
         if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):

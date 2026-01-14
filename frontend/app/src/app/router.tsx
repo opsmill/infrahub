@@ -1,67 +1,31 @@
-import { RouterProvider } from "react-aria-components";
-import {
-  createBrowserRouter,
-  Navigate,
-  type NavigateOptions,
-  Outlet,
-  type To,
-  useHref,
-  useNavigate,
-} from "react-router";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 
-import { ARTIFACT_OBJECT } from "@/config/constants";
+import { ReactAriaRouterProvider } from "@/app/providers/react-aria-router-provider";
 
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
-
-declare module "react-aria-components" {
-  interface RouterConfig {
-    href: To;
-    routerOptions: NavigateOptions;
-  }
-}
-
-function useAbsoluteHref(path: To) {
-  const relative = useHref(path);
-  if (
-    typeof path === "string" &&
-    (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:"))
-  ) {
-    return path;
-  }
-  return relative;
-}
-
-function RootProviders({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
-
-  return (
-    <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
-      <ToastContainer
-        hideProgressBar={true}
-        transition={Slide}
-        autoClose={5000}
-        closeOnClick={false}
-        newestOnTop
-        position="bottom-right"
-      />
-      {children}
-    </RouterProvider>
-  );
-}
 
 export const router = createBrowserRouter([
   {
     path: "",
     errorElement: <ErrorBoundaryRouter />,
     element: (
-      <RootProviders>
+      <ReactAriaRouterProvider>
+        <ToastContainer
+          hideProgressBar
+          transition={Slide}
+          autoClose={5000}
+          closeOnClick={false}
+          newestOnTop
+          position="bottom-right"
+        />
         <Outlet />
-      </RootProviders>
+      </ReactAriaRouterProvider>
     ),
     children: [
       {
@@ -78,7 +42,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/",
-            lazy: () => import("@/shared/components/layout/app-layout"),
+            lazy: () => import("@/pages/app-layout"),
             children: [
               {
                 index: true,

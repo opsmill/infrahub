@@ -1,5 +1,11 @@
 import { lazy, Suspense } from "react";
 
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
+import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
+import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
@@ -9,17 +15,10 @@ import {
   OBJECT_PERMISSION_OBJECT,
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
-} from "@/config/constants";
-
-import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
-import NoDataFound from "@/shared/components/errors/no-data-found";
-import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
-import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
-import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
-import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+} from "@/shared/config/constants";
 
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeObject } from "@/entities/nodes/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
@@ -40,13 +39,7 @@ import {
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
 
-export type ProfileData = {
-  [key: string]: string | Pick<AttributeType, "value" | "__typename">;
-  display_label: string;
-  id: string;
-  __typename: string;
-  profile_priority: NumberAttribute;
-};
+export type { ProfileData };
 
 const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));
 const RepositoryForm = lazy(() => import("@/entities/repository/ui/repository-form"));
@@ -65,7 +58,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
 }
 
 const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
-  const { schema, isNode, isGeneric } = useSchema(kind);
+  const { schema, isNode, isGeneric, isTemplate } = useSchema(kind);
 
   if (!schema) {
     return (
@@ -150,7 +143,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (isNode && schema.generate_profile) {
+  if ((isNode && schema.generate_profile) || isTemplate) {
     return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 

@@ -1,8 +1,7 @@
 import { parseAsString, useQueryState } from "nuqs";
 
-import { QSP } from "@/config/qsp";
-
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { QSP } from "@/shared/config/qsp";
 
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
 import { useGetDiffSummary } from "@/entities/diff/domain/get-diff-summary.query";

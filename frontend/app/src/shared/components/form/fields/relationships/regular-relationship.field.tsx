@@ -36,7 +36,6 @@ export const NodeRelationshipField = ({
   type,
   options,
   parent,
-  schema,
   shouldUnregister,
   ...props
 }: RegularRelationshipFieldProps) => {

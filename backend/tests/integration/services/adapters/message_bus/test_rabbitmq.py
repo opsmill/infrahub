@@ -54,7 +54,6 @@ class Queue:
     arguments: dict
     durable: bool
     exclusive: bool
-    queue_type: str
 
 
 @dataclass
@@ -99,7 +98,6 @@ class RabbitMQManager:
         return [
             Queue(
                 name=entry["name"],
-                queue_type=entry["type"],
                 durable=entry["durable"],
                 exclusive=entry["exclusive"],
                 arguments=entry["arguments"],
@@ -170,71 +168,73 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
     assert Exchange(durable=True, exchange_type="topic", name="infrahub.events") in api_exchanges
     assert (
         Queue(
-            name=f"api-callback-{WORKER_IDENTITY}",
-            arguments={},
-            durable=False,
-            exclusive=True,
-            queue_type="classic",
+            name=f"api-callback-{WORKER_IDENTITY}", arguments={"x-queue-type": "classic"}, durable=False, exclusive=True
         )
         in api_queues
     )
     assert (
         Queue(
-            name=f"api-events-{WORKER_IDENTITY}",
-            arguments={},
-            durable=False,
-            exclusive=True,
-            queue_type="classic",
+            name=f"api-events-{WORKER_IDENTITY}", arguments={"x-queue-type": "classic"}, durable=False, exclusive=True
         )
         in api_queues
     )
     assert (
         Queue(
             name="infrahub.delay.five_seconds",
-            arguments={"x-dead-letter-exchange": "infrahub.dlx", "x-max-priority": 5, "x-message-ttl": 5000},
+            arguments={
+                "x-queue-type": "classic",
+                "x-dead-letter-exchange": "infrahub.dlx",
+                "x-max-priority": 5,
+                "x-message-ttl": 5000,
+            },
             durable=True,
             exclusive=False,
-            queue_type="classic",
         )
         in api_queues
     )
     assert (
         Queue(
             name="infrahub.delay.ten_seconds",
-            arguments={"x-dead-letter-exchange": "infrahub.dlx", "x-max-priority": 5, "x-message-ttl": 10000},
+            arguments={
+                "x-queue-type": "classic",
+                "x-dead-letter-exchange": "infrahub.dlx",
+                "x-max-priority": 5,
+                "x-message-ttl": 10000,
+            },
             durable=True,
             exclusive=False,
-            queue_type="classic",
         )
         in api_queues
     )
     assert (
         Queue(
             name="infrahub.delay.twenty_seconds",
-            arguments={"x-dead-letter-exchange": "infrahub.dlx", "x-max-priority": 5, "x-message-ttl": 20000},
+            arguments={
+                "x-queue-type": "classic",
+                "x-dead-letter-exchange": "infrahub.dlx",
+                "x-max-priority": 5,
+                "x-message-ttl": 20000,
+            },
             durable=True,
             exclusive=False,
-            queue_type="classic",
         )
         in api_queues
     )
     assert (
         Queue(
             name="infrahub.rpcs",
-            arguments={"x-max-priority": 5},
+            arguments={"x-queue-type": "classic", "x-max-priority": 5},
             durable=True,
             exclusive=False,
-            queue_type="classic",
         )
         in api_queues
     )
     assert (
         Queue(
             name=f"worker-events-{WORKER_IDENTITY}",
-            arguments={},
+            arguments={"x-queue-type": "classic"},
             durable=False,
             exclusive=True,
-            queue_type="classic",
         )
         in agent_queues
     )

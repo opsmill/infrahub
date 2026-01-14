@@ -51,9 +51,11 @@ jobs:
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
+      openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
+      graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check for file changes
@@ -65,19 +67,32 @@ jobs:
 
   # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
-    if: needs.files-changed.outputs.yaml == 'true'
-    needs: ["files-changed"]
+    if: |
+      needs.files-changed.outputs.yaml == 'true' ||
+      needs.files-changed.outputs.infrahub_uv_files == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: "Setup environment"
-        run: "pip install yamllint==1.35.1"
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Linting: yamllint"
-        run: "yamllint -s ."
+        run: "uv run yamllint -s ."
 
   javascript-lint:
     defaults:
@@ -88,7 +103,7 @@ jobs:
       contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -100,22 +115,116 @@ jobs:
       - name: Run Biome
         run: npx biome ci .
 
-  python-lint:
-    if: needs.files-changed.outputs.python == 'true'
+  frontend-validate-openapi-types:
+    if: |
+      needs.files-changed.outputs.openapi_schema == 'true'
     needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate OpenAPI types
+        run: npm run codegen:openapi
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code src/shared/api/rest/types.generated.ts; then
+            echo "❌ Error: Generated OpenAPI types are out of sync with schema/openapi.json"
+            echo ""
+            echo "The OpenAPI schema has been updated, but the generated TypeScript types haven't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd frontend/app"
+            echo "  npm run codegen:openapi"
+            echo "  git add src/shared/api/rest/types.generated.ts"
+            echo "  git commit -m 'chore: regenerate OpenAPI types'"
+            exit 1
+          fi
+
+  frontend-validate-graphql-types:
+    if: |
+      needs.files-changed.outputs.graphql_schema == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate GraphQL types
+        run: npm run codegen:graphql
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts; then
+            echo "❌ Error: Generated GraphQL types are out of sync"
+            echo ""
+            echo "The gql.tada generated files need to be regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd frontend/app"
+            echo "  npm run codegen:graphql"
+            echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
+            echo "  git commit -m 'chore: regenerate GraphQL types'"
+            exit 1
+          fi
+
+  python-lint:
+    if: |
+      needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.python == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: "Setup environment"
-        run: "pip install ruff==0.11.9"
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Linting: ruff check"
-        run: "ruff check . --exclude python_sdk"
+        run: "uv run ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
-        run: "ruff format --check --diff --exclude python_sdk ."
+        run: "uv run ruff format --check --diff --exclude python_sdk ."
+      - name: "Linting: ty check"
+        run: "uv run ty check ."
 
   markdown-lint:
     if: |
@@ -127,15 +236,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v20
+        uses: DavidAnson/markdownlint-cli2-action@v22
         with:
-          config: .markdownlint.yaml
-          globs: |
-            **/*.{md,mdx}
+          globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
@@ -144,7 +251,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check workflow files
@@ -173,7 +280,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -181,7 +288,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -233,7 +340,7 @@ jobs:
         working-directory: ./python_testcontainers
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -273,20 +380,20 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -327,20 +434,20 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -374,20 +481,20 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -424,14 +531,14 @@ jobs:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install tini
         run: "apt-get update && apt-get install -y tini"
       - name: "Setup git credentials"
@@ -439,7 +546,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }}>> $GITHUB_ENV
       - name: "Set environment variables"
@@ -471,7 +578,7 @@ jobs:
   #     !contains(needs.*.result, 'failure') &&
   #     !contains(needs.*.result, 'cancelled') &&
   #     needs.files-changed.outputs.backend == 'true'
-  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
   #   runs-on:
   #     group: huge-runners
   #   timeout-minutes: 45
@@ -492,19 +599,19 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v5"
+  #       uses: "actions/checkout@v6"
   #       with:
   #         submodules: true
   #     - name: Set up Python
   #       uses: actions/setup-python@v6
   #       with:
-  #         python-version: '3.12'
+  #         python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
   #     - name: "Setup git credentials"
   #       run: "git config --global user.name 'Infrahub' && \
   #             git config --global user.email 'infrahub@opsmill.com' && \
   #             git config --global --add safe.directory '*' && \
   #             git config --global credential.usehttppath true && \
-  #             git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #             git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
   #     - name: Install uv
   #       uses: astral-sh/setup-uv@v7
   #       with:
@@ -525,14 +632,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -553,7 +660,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -591,14 +698,14 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -617,14 +724,14 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -648,7 +755,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -661,7 +768,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -685,7 +792,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -698,7 +805,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -719,7 +826,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -745,7 +852,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -778,7 +885,7 @@ jobs:
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -800,7 +907,7 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install NodeJS
@@ -813,10 +920,13 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
-
-      - name: Install Invoke
-        run: pip install invoke
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -846,21 +956,21 @@ jobs:
       - name: Build Demo
         run: |
           echo "::group::Build infrahub container"
-          invoke dev.build
+          uv run invoke dev.build
           echo "::endgroup::"
 
       - name: Initialize Demo
         id: init-demo
-        run: invoke dev.start dev.load-infra-schema
+        run: uv run invoke dev.start dev.load-infra-schema
 
       - name: Check Demo Status
-        run: invoke dev.status
+        run: uv run invoke dev.status
 
       - name: Load Data
-        run: invoke dev.load-infra-data
+        run: uv run invoke dev.load-infra-data
 
       - name: Git Repository
-        run: invoke dev.infra-git-import dev.infra-git-create
+        run: uv run invoke dev.infra-git-import dev.infra-git-create
 
       - name: Set infrahub address
         run: |
@@ -887,7 +997,7 @@ jobs:
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && invoke dev.start
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && uv run invoke dev.start
         env:
           INFRAHUB_MISC_RESPONSE_DELAY: 1
 
@@ -912,7 +1022,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/
@@ -947,7 +1057,7 @@ jobs:
 
       - name: Display server status
         if: always()
-        run: invoke demo.status
+        run: uv run invoke demo.status
 
       - name: "Clear docker environment and force vmagent to stop"
         if: always()
@@ -963,6 +1073,7 @@ jobs:
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -978,7 +1089,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -986,11 +1097,13 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
-
-      - name: Install Invoke
-        run: |
-          pip install invoke
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -1007,7 +1120,7 @@ jobs:
       - name: Run 'invoke demo'
         run: |
           unset INFRAHUB_IMAGE_VER
-          invoke demo.start demo.load-infra-schema demo.load-infra-data
+          uv run invoke demo.start demo.load-infra-schema demo.load-infra-data
 
       - name: Display server logs
         if: always()
@@ -1072,20 +1185,20 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 async def apply_external_context(graphql_context: GraphqlContext, context_input: ContextInput | None) -> None:
     """Applies context provided by an external mutation to the GraphQL context"""
-    if not context_input or not context_input.account:
+    if not context_input or not context_input.account or not context_input.account.id:
         return
 
     if graphql_context.active_account_session.account_id == context_input.account.id:

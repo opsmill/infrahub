@@ -1,7 +1,6 @@
 import { useQueryState } from "nuqs";
 
-import { QSP } from "@/config/qsp";
-
+import { QSP } from "@/shared/config/qsp";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { CLOSE_STATE } from "@/entities/proposed-changes/constants";

@@ -1,11 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
 
-import { INFRAHUB_DOC_LOCAL } from "@/config/config";
-import { MENU_EXCLUDELIST } from "@/config/constants";
-
 import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
+import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/types";

@@ -2,12 +2,11 @@ import { Icon } from "@iconify-icon/react";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
-import { CHECK_OBJECT } from "@/config/constants";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { CHECK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
@@ -15,13 +14,15 @@ import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-s
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type ProposedChangesItemLightProps = {
-  node: ProposedChangeItem;
+  proposedChange: ProposedChangeItem;
 };
 
-export const ProposedChangesItemLight = ({ node }: ProposedChangesItemLightProps) => {
+export const ProposedChangesItemLight = ({ proposedChange }: ProposedChangesItemLightProps) => {
+  const { node } = proposedChange;
+
   return (
     <ListBoxItem className="flex items-center p-4">
-      <div className="grid flex-grow grid-cols-2 items-center">
+      <div className="grid grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}

@@ -4,6 +4,7 @@ import ipaddress
 from typing import TYPE_CHECKING, Any
 
 from graphql.type.definition import GraphQLNonNull
+from infrahub_sdk.utils import deep_merge_dict
 from netaddr import IPSet
 from opentelemetry import trace
 
@@ -18,7 +19,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
-from ..models import OrderModel
+from ..order import deserialize_order_input
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
-    from infrahub.graphql.models import OrderModel
 
 
 def _ip_range_display_label(node: Node) -> str:
@@ -233,6 +233,23 @@ async def _resolve_available_prefix_nodes(
     return available_nodes
 
 
+def _ensure_display_label_fields(
+    db: InfrahubDatabase, branch: Branch, schema: NodeSchema | GenericSchema, node_fields: dict[str, Any]
+) -> None:
+    """Ensure fields needed to compute display_label are included in node_fields.
+
+    This is mostly for virtual nodes (InternalIPPrefixAvailable, InternalIPRangeAvailable) that are not stored in the
+    database.
+    """
+    if "display_label" not in node_fields or schema.kind not in [InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS]:
+        return
+
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    display_label_fields = schema_branch.generate_fields_for_display_label(name=schema.kind)
+    if display_label_fields:
+        deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
+
+
 def _filter_kinds(nodes: list[Node], kinds: list[str], limit: int | None) -> list[Node]:
     filtered: list[Node] = []
     available_node_kinds = [InfrahubKind.IPPREFIXAVAILABLE, InfrahubKind.IPRANGEAVAILABLE]
@@ -293,7 +310,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     info: GraphQLResolveInfo,
     offset: int | None = None,
     limit: int | None = None,
-    order: OrderModel | None = None,
+    order: dict[str, Any] | None = None,
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
@@ -306,6 +323,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     if not isinstance(schema, GenericSchema) or schema.kind not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
         raise ValidationError(f"{schema.kind} is not {InfrahubKind.IPADDRESS} or {InfrahubKind.IPPREFIX}")
 
+    order_model = deserialize_order_input(input_data=order)
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
     kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
@@ -323,6 +341,8 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
 
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
+
+        _ensure_display_label_fields(db=db, branch=graphql_context.branch, schema=schema, node_fields=node_fields)
 
         permission_set: dict[str, Any] | None = None
         permissions = (
@@ -379,10 +399,9 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 branch=graphql_context.branch,
                 limit=query_limit,
                 offset=offset,
-                account=graphql_context.account_session,
                 include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
-                order=order,
+                order=order_model,
             )
 
             if fetch_first_node_context and len(objs) > 2:

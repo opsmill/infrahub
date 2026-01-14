@@ -9,18 +9,19 @@ on:
     paths:
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: source-repo
 
       - name: Checkout target repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: opsmill/infrahub-docs
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}

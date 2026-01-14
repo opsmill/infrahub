@@ -2,12 +2,11 @@ import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { createContext, useEffect } from "react";
 
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";

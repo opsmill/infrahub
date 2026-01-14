@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
 
 
-@dataclass
+@dataclass(frozen=True)
 class MetadataQueryOptions:
     node_level: MetadataOptions = MetadataOptions.NONE
     attribute_level: MetadataOptions = MetadataOptions.NONE

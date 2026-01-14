@@ -3,27 +3,26 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 
-from neo4j.graph import Node as Neo4jNode
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
-from infrahub.core.node.standard import StandardNode
+from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
     BranchNodeGetListQuery,
     DeleteBranchRelationshipsQuery,
-    GetAllBranchInternalRelationshipQuery,
-    RebaseBranchDeleteRelationshipQuery,
-    RebaseBranchUpdateRelationshipQuery,
+    RebaseBranchQuery,
 )
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -36,7 +35,6 @@ class Branch(StandardNode):
     origin_branch: str = "main"
     branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
@@ -91,11 +89,6 @@ class Branch(StandardNode):
         if not self.branched_from:
             raise RuntimeError(f"branched_from not set for branch {self.name}")
         return self.branched_from
-
-    @field_validator("created_at", mode="before")
-    @classmethod
-    def set_created_at(cls, value: str) -> str:
-        return Timestamp(value).to_string()
 
     def get_created_at(self) -> str:
         if not self.created_at:
@@ -161,14 +154,22 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
+        node_ordering: StandardNodeOrdering | None = None,
         **kwargs: Any,
     ) -> list[Self]:
+        node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await BranchNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+            db=db,
+            node_class=cls,
+            ids=ids,
+            node_name=name,
+            limit=limit,
+            node_ordering=node_ordering,
+            **kwargs,
         )
         await query.execute(db=db)
 
-        return [cls.from_db(node=cast(Neo4jNode, result.get("n"))) for result in query.get_results()]
+        return [cls.from_db(node=cast("Neo4jNode", result.get("n"))) for result in query.get_results()]
 
     @classmethod
     async def get_list_count(
@@ -177,10 +178,18 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> int:
         query: Query = await BranchNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, exclude_global=True, **kwargs
+            db=db,
+            node_class=cls,
+            ids=ids,
+            node_name=name,
+            limit=limit,
+            exclude_global=True,
+            partial_match=partial_match,
+            **kwargs,
         )
         return await query.count(db=db)
 
@@ -280,9 +289,9 @@ class Branch(StandardNode):
 
         return start, end
 
-    async def create(self, db: InfrahubDatabase) -> bool:
+    async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         self.graph_version = GRAPH_VERSION
-        return await super().create(db=db)
+        return await super().create(db=db, user_id=user_id)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:
@@ -324,7 +333,7 @@ class Branch(StandardNode):
                     f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
                 )
                 filters_per_rel.append(
-                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to >= $time{idx})"
+                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to > $time{idx})"
                 )
 
             if not include_outside_parentheses:
@@ -357,7 +366,9 @@ class Branch(StandardNode):
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            filter_str = (
+                f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to > ${pp}time1)"
+            )
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
@@ -370,187 +381,49 @@ class Branch(StandardNode):
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from <= ${pp}time{idx} "
+                f"AND {variable_name}.to > ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"
 
         return filter_str, params
 
-    def get_query_filter_relationships_range(
-        self,
-        rel_labels: list,
-        start_time: Timestamp,
-        end_time: Timestamp,
-        include_outside_parentheses: bool = False,
-        include_global: bool = False,
-    ) -> tuple[list, dict]:
-        """Generate a CYPHER Query filter based on a list of relationships to query a range of values in the graph.
-        The goal is to return all the values that are valid during this timerange.
-        """
-
-        filters = []
-        params = {}
-
-        if not isinstance(rel_labels, list):
-            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
-
-        start_time = Timestamp(start_time)
-        end_time = Timestamp(end_time)
-
-        if include_global:
-            branches_times = self.get_branches_and_times_to_query_global(at=start_time)
-        else:
-            branches_times = self.get_branches_and_times_to_query(at=start_time)
-
-        params["branches"] = list({branch for branches in branches_times for branch in branches})
-        params["start_time"] = start_time.to_string()
-        params["end_time"] = end_time.to_string()
-
-        for rel in rel_labels:
-            filters_per_rel = [
-                f"({rel}.branch IN $branches AND {rel}.from <= $end_time AND {rel}.to IS NULL)",
-                f"({rel}.branch IN $branches AND ({rel}.from <= $end_time OR ({rel}.to >= $start_time AND {rel}.to <= $end_time)))",
-            ]
-
-            if not include_outside_parentheses:
-                filters.append("\n OR ".join(filters_per_rel))
-
-            filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
-
-        return filters, params
-
-    def get_query_filter_relationships_diff(
-        self, rel_labels: list, diff_from: Timestamp, diff_to: Timestamp
-    ) -> tuple[list, dict]:
-        """
-        Generate a CYPHER Query filter to query all events that are applicable to a given branch based
-        - The time when the branch as created
-        - The branched_from time of the branch
-        - The diff_to and diff_from time as provided
-        """
-
-        if not isinstance(rel_labels, list):
-            raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
-
-        start_times, end_times = self.get_branches_and_times_for_range(start_time=diff_from, end_time=diff_to)
-
-        filters = []
-        params = {}
-
-        for idx, branch_name in enumerate(start_times.keys()):
-            params[f"branch{idx}"] = branch_name
-            params[f"start_time{idx}"] = start_times[branch_name]
-            params[f"end_time{idx}"] = end_times[branch_name]
-
-        for rel in rel_labels:
-            filters_per_rel = []
-            for idx in range(len(start_times)):
-                filters_per_rel.extend(
-                    [
-                        f"""({rel}.branch = $branch{idx}
-                             AND {rel}.from >= $start_time{idx}
-                             AND {rel}.from <= $end_time{idx}
-                             AND ( r2.to is NULL or r2.to >= $end_time{idx}))""",
-                        f"""({rel}.branch = $branch{idx} AND {rel}.from >= $start_time{idx}
-                            AND {rel}.to <= $start_time{idx})""",
-                    ]
-                )
-
-            filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
-
-        return filters, params
-
-    def get_query_filter_range(self, rel_label: list, start_time: Timestamp, end_time: Timestamp) -> tuple[list, dict]:
-        """
-        Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
-
-        filters = []
-        params = {}
-
-        start_time = Timestamp(start_time)
-        end_time = Timestamp(end_time)
-
-        params["branches"] = self.get_branches_in_scope()
-        params["start_time"] = start_time.to_string()
-        params["end_time"] = end_time.to_string()
-
-        filters_per_rel = [
-            f"""({rel_label}.branch IN $branches AND {rel_label}.from >= $start_time
-                 AND {rel_label}.from <= $end_time AND {rel_label}.to IS NULL)""",
-            f"""({rel_label}.branch IN $branches AND (({rel_label}.from >= $start_time
-                 AND {rel_label}.from <= $end_time) OR ({rel_label}.to >= $start_time
-                 AND {rel_label}.to <= $end_time)))""",
-        ]
-
-        filters.append("(" + "\n OR ".join(filters_per_rel) + ")")
-
-        return filters, params
-
-    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None) -> None:
+    async def rebase(
+        self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
         """Rebase the current Branch with its origin branch"""
 
         at = Timestamp(at)
 
-        # Find all relationships with the name of the branch
-        # Delete all relationship that have a to date defined in the past
-        # Update the from time on all other relationships
-        # If conflict is set, ignore the one with Drop
-
         await self.rebase_graph(db=db, at=at)
 
-        # FIXME, we must ensure that there is no conflict before rebasing a branch
-        #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
         self.status = BranchStatus.OPEN
-        await self.save(db=db)
+        await self.save(db=db, user_id=user_id)
 
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
+    async def rebase_graph(self, db: InfrahubDatabase, at: Timestamp) -> None:
+        """Rebase all relationships on this branch to a new point in time.
 
-        query = await GetAllBranchInternalRelationshipQuery.init(db=db, branch=self)
+        This method updates the graph to reflect the state of the branch as if it had been created
+        at the specified timestamp. Relationships are processed as follows:
+
+        - Relationships with no `to` timestamp and `from` <= at: Updated to start from `at`
+        - Relationships with `to` < at: Deleted (ended before rebase point)
+        - Relationships with `to` >= at: Updated to start from `at`
+
+        Orphaned nodes (nodes with no remaining relationships) are also cleaned up.
+        """
+        query = await RebaseBranchQuery.init(db=db, branch=self, at=at)
         await query.execute(db=db)
-
-        rels_to_delete = []
-        rels_to_update = []
-        for result in query.get_results():
-            element_id = result.get("r").element_id
-
-            conflict_status = result.get("r").get("conflict", None)
-            if conflict_status and conflict_status == "drop":
-                rels_to_delete.append(element_id)
-                continue
-
-            time_to_str = result.get("r").get("to", None)
-            time_from_str = result.get("r").get("from")
-            time_from = Timestamp(time_from_str)
-
-            if not time_to_str and time_from_str and time_from <= at:
-                rels_to_update.append(element_id)
-                continue
-
-            if not time_to_str and time_from_str and time_from > at:
-                rels_to_delete.append(element_id)
-                continue
-
-            time_to = Timestamp(time_to_str)
-            if time_to < at:
-                rels_to_delete.append(element_id)
-                continue
-
-            rels_to_update.append(element_id)
-
-        update_query = await RebaseBranchUpdateRelationshipQuery.init(db=db, ids=rels_to_update, at=at)
-        await update_query.execute(db=db)
-
-        delete_query = await RebaseBranchDeleteRelationshipQuery.init(db=db, ids=rels_to_delete, at=at)
-        await delete_query.execute(db=db)
 
 
 registry.branch_object = Branch

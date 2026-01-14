@@ -23,7 +23,7 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
-  infrahub_version = "1.4.10"
+  infrahub_version = "1.7.0"
 }
 
 ### Infrahub
@@ -33,7 +33,7 @@ resource "helm_release" "infrahub_ha" {
 
   name    = "infrahub"
   chart   = "oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise"
-  version = "3.9.4"
+  version = "3.13.0"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -44,12 +44,14 @@ infrahub:
   global:
     infrahubTag: ${local.infrahub_version}
   infrahubServer:
+    podLabels:
+      infrahub/service: server
     replicas: 3
     persistence:
       enabled: false
     infrahubServer:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -80,10 +82,12 @@ infrahub:
                 service: infrahub-server
             topologyKey: kubernetes.io/hostname
   infrahubTaskWorker:
+    podLabels:
+      infrahub/service: task-worker
     replicas: 3
     infrahubTaskWorker:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -134,7 +138,7 @@ resource "helm_release" "database_ha_service" {
   name       = "database-service"
   chart      = "neo4j-headless-service"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.3.0"
+  version    = "2025.10.1-4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -155,7 +159,7 @@ resource "helm_release" "database_ha" {
   name       = "database-${count.index}"
   chart      = "neo4j"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.3.0"
+  version    = "2025.10.1-4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -164,6 +168,8 @@ resource "helm_release" "database_ha" {
     <<EOT
 neo4j:
   name: "infrahub"
+  labels:
+    infrahub/service: database
   minimumClusterSize: 3
   resources:
     cpu: "4"
@@ -201,8 +207,11 @@ resource "helm_release" "messagequeue_ha" {
   values = [
     <<EOT
 replicaCount: 3
+podLabels:
+  infrahub/service: message-queue
 image:
   repository: bitnamilegacy/rabbitmq
+  tag: 4.1.3-debian-12-r1
 auth:
   username: infrahub
   password: infrahub
@@ -257,7 +266,7 @@ resource "helm_release" "taskmanager_ha" {
   name       = "taskmanager"
   chart      = "prefect-server"
   repository = "https://prefecthq.github.io/prefect-helm"
-  version    = "2025.7.31204438"
+  version    = "2025.12.11201923"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -270,6 +279,8 @@ global:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
       prefectTag: ${local.infrahub_version}
 server:
+  podLabels:
+    infrahub/service: task-manager
   replicaCount: 3
   command:
     - /usr/bin/tini
@@ -423,10 +434,13 @@ resource "helm_release" "cache_ha" {
 nameOverride: cache
 image:
   repository: bitnamilegacy/redis
+  tag: 8.2.1-debian-12-r0
 architecture: replication
 auth:
   enabled: false
 master:
+  podLabels:
+    infrahub/service: cache
   podAntiAffinityPreset: hard
   persistence:
     enabled: true
@@ -440,6 +454,7 @@ sentinel:
   enabled: true
   image:
     repository: bitnamilegacy/redis-sentinel
+    tag: 8.2.1-debian-12-r0
 EOT
   ]
 }
@@ -453,8 +468,13 @@ kind: Cluster
 metadata:
   name: taskmanagerdb
   namespace: ${local.target_namespace}
+  labels:
+    infrahub/service: task-manager-db
 spec:
   instances: 3
+  inheritedMetadata:
+    labels:
+      infrahub/service: task-manager-db
   storage:
     size: 10Gi
   postgresql:

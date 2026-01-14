@@ -21,6 +21,7 @@ test.describe("Relationship hierarchical input", () => {
     await test.step("navigate to InfraDevice creation page", async () => {
       await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
       await page.getByTestId("create-object-button").click();
+      await page.getByRole("button", { name: "Start from scratch" }).click();
     });
 
     await test.step("open site selection and verify All tab", async () => {

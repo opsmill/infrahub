@@ -5,6 +5,7 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/
 import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
@@ -41,7 +42,7 @@ export const PeerInput = ({
           className
         )}
       >
-        {value?.display_label}
+        {value ? getNodeLabel(value) : ""}
       </ComboboxTrigger>
 
       <ComboboxContent>

@@ -1,7 +1,7 @@
 import { parseAsJson, useQueryState } from "nuqs";
 import * as z from "zod";
 
-import { QSP } from "@/config/qsp";
+import { QSP } from "@/shared/config/qsp";
 
 const DEFAULT_OFFSET = 0;
 const DEFAULT_LIMIT = 10;

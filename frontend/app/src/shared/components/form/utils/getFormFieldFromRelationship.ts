@@ -1,3 +1,4 @@
+import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -42,6 +43,7 @@ interface GetFormFieldFromRelationshipParams {
   relationshipSchema: RelationshipSchema;
   relationshipData?: RelationshipType;
   objectTemplate?: NodeObject | null;
+  profiles?: Array<ProfileData>;
   schema: ModelSchema;
   parentSchema: ModelSchema | null;
   parentData?: NodeObject | null;
@@ -53,6 +55,7 @@ export const getFormFieldFromRelationship = ({
   relationshipSchema,
   relationshipData,
   objectTemplate,
+  profiles,
   isFilterForm = false,
   isBulkUpdate,
   schema,
@@ -73,6 +76,7 @@ export const getFormFieldFromRelationship = ({
     defaultValue: getRelationshipDefaultValue({
       relationshipData,
       objectTemplate,
+      profiles,
       isFilterForm,
       relationshipName: relationshipSchema.name,
       schema,
@@ -111,6 +115,5 @@ export const getFormFieldFromRelationship = ({
         return isRequired(formFieldValue) || "Required";
       },
     },
-    schema,
   };
 };

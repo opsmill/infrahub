@@ -5,10 +5,16 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import MetadataOptions, RelationshipDirection, SchemaPathType
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    MetadataOptions,
+    RelationshipDirection,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.relationship import (
@@ -19,6 +25,7 @@ from infrahub.core.query.relationship import (
     RelationshipGetPeerQuery,
     RelationshipPeerData,
     RelationshipQuery,
+    RelationshipUpdatePropertyQuery,
     RelData,
 )
 from infrahub.core.relationship import Relationship
@@ -61,7 +68,7 @@ async def get_relationship_properties(
     MATCH (s {uuid: $source_uuid})-[:IS_RELATED]-(r:Relationship)-[:IS_RELATED]-(d {uuid: $destination_uuid})
     WITH DISTINCT r
     MATCH (r)-[edge]-(p)
-    WHERE type(edge) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"]
+    WHERE type(edge) IN ["IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"]
     RETURN r, edge, p
     """
 
@@ -163,6 +170,49 @@ async def test_query_RelationshipCreateQuery(
     assert len(paths) == 1
 
 
+async def test_query_RelationshipCreateQuery_updates_node_metadata(
+    db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node, person_jack_main: Node
+) -> None:
+    """Test that RelationshipCreateQuery updates updated_at/updated_by on source and destination nodes."""
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    create_time = Timestamp()
+    query = await RelationshipCreateQuery.init(
+        db=db,
+        source=person_jack_main,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=Relationship,
+        branch=default_branch,
+        at=create_time,
+        user_id="test_user",
+    )
+    await query.execute(db=db)
+
+    # Verify node metadata was updated using NodeManager
+    nodes_by_id = await NodeManager.get_many(
+        db=db,
+        branch=default_branch,
+        ids=[person_jack_main.id, tag_blue_main.id],
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+    )
+
+    # Verify source node metadata was updated
+    source_node = nodes_by_id[person_jack_main.id]
+    assert source_node._get_created_by() == SYSTEM_USER_ID
+    assert source_node._get_created_at() < create_time
+    assert source_node._get_updated_by() == "test_user"
+    assert source_node._get_updated_at() == create_time
+
+    # Verify destination node metadata was updated
+    dest_node = nodes_by_id[tag_blue_main.id]
+    assert dest_node._get_created_by() == SYSTEM_USER_ID
+    assert dest_node._get_created_at() < create_time
+    assert dest_node._get_updated_by() == "test_user"
+    assert dest_node._get_updated_at() == create_time
+
+
 async def test_query_RelationshipCreateQuery_w_node_property(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, first_account: Node, branch: Branch
 ) -> None:
@@ -220,7 +270,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
         new_node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     rel_schema = person_schema.get_relationship("tags")
@@ -510,6 +560,55 @@ async def test_query_RelationshipDeleteQuery(
                 assert active_on_main or deleted_on_branch or deleted_on_branch_2
 
 
+async def test_query_RelationshipDeleteQuery_updates_node_metadata(
+    db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node, person_jack_tags_main: Node
+) -> None:
+    """Test that RelationshipDeleteQuery updates updated_at/updated_by on source and destination nodes."""
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    jack_main = await NodeManager.get_one(db=db, id=person_jack_tags_main.id)
+    tags_rels = await jack_main.tags.get(db=db)
+    blue_tag_rel = [t for t in tags_rels if t.peer_id == tag_blue_main.id][0]
+
+    delete_time = Timestamp()
+    query = await RelationshipDeleteQuery.init(
+        db=db,
+        source=person_jack_tags_main,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=blue_tag_rel,
+        branch=default_branch,
+        source_branch=default_branch,
+        destination_branch=default_branch,
+        at=delete_time,
+        user_id="delete_user",
+    )
+    await query.execute(db=db)
+
+    # Verify node metadata was updated using NodeManager
+    nodes_by_id = await NodeManager.get_many(
+        db=db,
+        branch=default_branch,
+        ids=[person_jack_tags_main.id, tag_blue_main.id],
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+    )
+
+    # Verify source node metadata was updated
+    source_node = nodes_by_id[person_jack_tags_main.id]
+    assert source_node._get_created_by() == SYSTEM_USER_ID
+    assert source_node._get_created_at() < delete_time
+    assert source_node._get_updated_by() == "delete_user"
+    assert source_node._get_updated_at() == delete_time
+
+    # Verify destination node metadata was updated
+    dest_node = nodes_by_id[tag_blue_main.id]
+    assert dest_node._get_created_by() == SYSTEM_USER_ID
+    assert dest_node._get_created_at() < delete_time
+    assert dest_node._get_updated_by() == "delete_user"
+    assert dest_node._get_updated_at() == delete_time
+
+
 async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ) -> None:
@@ -536,7 +635,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
@@ -562,6 +661,55 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
     await verify_no_duplicate_paths(db=db)
 
 
+async def test_query_RelationshipUpdatePropertyQuery_updates_node_metadata(
+    db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node, person_jack_tags_main: Node
+) -> None:
+    """Test that RelationshipUpdatePropertyQuery updates updated_at/updated_by on peer nodes."""
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    jack_main = await NodeManager.get_one(db=db, id=person_jack_tags_main.id)
+    tags_rels = await jack_main.tags.get(db=db)
+    blue_tag_rel = [t for t in tags_rels if t.peer_id == tag_blue_main.id][0]
+
+    update_time = Timestamp()
+    query = await RelationshipUpdatePropertyQuery.init(
+        db=db,
+        branch=default_branch,
+        source=person_jack_tags_main,
+        destination=tag_blue_main,
+        schema=rel_schema,
+        rel=blue_tag_rel,
+        at=update_time,
+        user_id="update_user",
+        flag_properties_to_update={"is_protected": True},
+        node_properties_to_update={},
+    )
+    await query.execute(db=db)
+
+    # Verify node metadata was updated using NodeManager
+    nodes_by_id = await NodeManager.get_many(
+        db=db,
+        branch=default_branch,
+        ids=[person_jack_tags_main.id, tag_blue_main.id],
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+    )
+
+    # Verify source node metadata was updated
+    source_node = nodes_by_id[person_jack_tags_main.id]
+    assert source_node._get_created_by() == SYSTEM_USER_ID
+    assert source_node._get_created_at() < update_time
+    assert source_node._get_updated_by() == "update_user"
+    assert source_node._get_updated_at() == update_time
+
+    # Verify destination node metadata was updated
+    dest_node = nodes_by_id[tag_blue_main.id]
+    assert dest_node._get_created_by() == SYSTEM_USER_ID
+    assert dest_node._get_created_at() < update_time
+    assert dest_node._get_updated_by() == "update_user"
+    assert dest_node._get_updated_at() == update_time
+
+
 async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node) -> None:
     person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
     await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
@@ -578,12 +726,10 @@ async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, ta
     )
 
     expected_relationships = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships) == 4
+    assert len(database_relationships) == 2
     assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
     for database_rel in database_relationships:
         if database_rel.status == "active":
@@ -614,12 +760,10 @@ async def test_branch_delete_with_updated_main_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_blue_main.get_id()
     )
     expected_relationships_tag_blue = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships_tag_blue) == 4
+    assert len(database_relationships_tag_blue) == 2
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_blue} == expected_relationships_tag_blue
     for database_rel in database_relationships_tag_blue:
         if database_rel.status == "active":
@@ -633,10 +777,9 @@ async def test_branch_delete_with_updated_main_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_black_main.get_id()
     )
     expected_relationships_tag_black = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
         ("IS_PROTECTED", default_branch.name, "active", True, True),
     }
-    assert len(database_relationships_tag_black) == 2
+    assert len(database_relationships_tag_black) == 1
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_black} == expected_relationships_tag_black
     for database_rel in database_relationships_tag_black:
         assert not database_rel.end_at
@@ -665,14 +808,11 @@ async def test_main_delete_with_updated_branch_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_blue_main.get_id()
     )
     expected_relationships_tag_blue = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", default_branch.name, "deleted", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", default_branch.name, "deleted", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships_tag_blue) == 6
+    assert len(database_relationships_tag_blue) == 3
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_blue} == expected_relationships_tag_blue
     for database_rel in database_relationships_tag_blue:
         if database_rel.status == "active" and database_rel.branch == default_branch.name:
@@ -695,10 +835,9 @@ async def test_main_delete_with_updated_branch_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_black_main.get_id()
     )
     expected_relationships_tag_black = {
-        ("IS_VISIBLE", branch.name, "active", True, True),
         ("IS_PROTECTED", branch.name, "active", True, True),
     }
-    assert len(database_relationships_tag_black) == 2
+    assert len(database_relationships_tag_black) == 1
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_black} == expected_relationships_tag_black
     for database_rel in database_relationships_tag_black:
         assert not database_rel.end_at
@@ -724,12 +863,10 @@ async def test_relationship_update_with_delete_peer(
         db=db, source_uuid=person.get_id(), destination_uuid=tag_blue_main.get_id()
     )
     expected_relationships = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships) == 4
+    assert len(database_relationships) == 2
     assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
     for database_rel in database_relationships:
         if database_rel.status == "active":
@@ -751,7 +888,7 @@ async def test_query_RelationshipGetPeerQuery(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 
@@ -760,8 +897,7 @@ async def test_query_RelationshipGetPeerQuery(
     assert len(peers[0].rels) == 2
     assert isinstance(peers[0].rel_node_db_id, str)
     assert isinstance(peers[0].rel_node_id, str)
-    assert set(peers[0].properties.keys()) == {"is_visible", "is_protected"}
-    assert peers[0].properties["is_visible"].value is True
+    assert set(peers[0].properties.keys()) == {"is_protected"}
     assert peers[0].properties["is_protected"].value is False
     assert peers[0].properties["is_protected"].prop_db_id == peers[1].properties["is_protected"].prop_db_id
     assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
@@ -964,7 +1100,7 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     query = await RelationshipGetPeerQuery.init(
@@ -1001,7 +1137,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     migrated_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
@@ -1043,7 +1179,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Builtin2NewTag", field_name="namespace"
         ),
     )
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
 
     # delete other tag relationship
@@ -1170,3 +1306,89 @@ async def test_query_RelationshipGetByIdentifierQuery(
     )
     await query.execute(db=db)
     assert await query.count(db=db) == 4
+
+
+async def test_query_RelationshipGetPeerQuery_branch_agnostic(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+) -> None:
+    """Test that RelationshipGetPeerQuery works correctly with branch_agnostic=True"""
+    # Create a new branch
+    branch = await create_branch(branch_name="test_agnostic_branch", db=db)
+
+    branch_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_accord.owner.update(db=db, data=person_jane_main.id)
+    before_branch_update = Timestamp()
+    await branch_accord.save(db=db, user_id="user1")
+    after_branch_update = Timestamp()
+
+    person_schema = registry.schema.get(name="TestCar", branch=branch)
+    rel_schema = person_schema.get_relationship("owner")
+
+    # validate query on branch gets correct times
+    query = await RelationshipGetPeerQuery.init(
+        db=db,
+        source_ids=[car_accord_main.id],
+        schema=rel_schema,
+        rel=Relationship,
+        branch=branch,
+        at=Timestamp(),
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
+    )
+    await query.execute(db=db)
+
+    # validate the peer timestamp metadata
+    peer_by_id_map = {peer.peer_id: peer for peer in query.get_peers()}
+    assert set(peer_by_id_map.keys()) == {person_jane_main.id}
+    jane_peer = peer_by_id_map[person_jane_main.id]
+    assert before_branch_update < jane_peer.created_at < after_branch_update
+    assert before_branch_update < jane_peer.updated_at < after_branch_update
+    assert jane_peer.created_by == "user1"
+    assert jane_peer.updated_by == "user1"
+
+    # validate the query on the default branch
+    query = await RelationshipGetPeerQuery.init(
+        db=db,
+        source_ids=[car_accord_main.id],
+        schema=rel_schema,
+        rel=Relationship,
+        branch=default_branch,
+        at=Timestamp(),
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
+    )
+    await query.execute(db=db)
+
+    # validate the peer timestamp metadata
+    peer_by_id_map = {peer.peer_id: peer for peer in query.get_peers()}
+    assert set(peer_by_id_map.keys()) == {person_john_main.id}
+    john_peer = peer_by_id_map[person_john_main.id]
+    assert john_peer.created_at < before_branch_update
+    assert john_peer.updated_at < before_branch_update
+    assert john_peer.created_by == SYSTEM_USER_ID
+    assert john_peer.updated_by == SYSTEM_USER_ID
+
+    # validate query when branch-agnostic gets correct times
+    query = await RelationshipGetPeerQuery.init(
+        db=db,
+        source_ids=[car_accord_main.id],
+        schema=rel_schema,
+        rel=Relationship,
+        branch=branch,
+        branch_agnostic=True,
+        at=Timestamp(),
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
+    )
+    await query.execute(db=db)
+
+    # validate the peer timestamp metadata
+    # john is not included because he is deleted on a branch
+    peer_by_id_map = {peer.peer_id: peer for peer in query.get_peers()}
+    assert set(peer_by_id_map.keys()) == {person_jane_main.id}
+    jane_peer = peer_by_id_map[person_jane_main.id]
+    assert before_branch_update < jane_peer.created_at < after_branch_update
+    assert before_branch_update < jane_peer.updated_at < after_branch_update
+    assert jane_peer.created_by == "user1"
+    assert jane_peer.updated_by == "user1"

@@ -6,10 +6,10 @@ import {
   ListBoxLoadMoreItem as AriaListBoxLoadMoreItem,
   type ListBoxLoadMoreItemProps as AriaListBoxLoadMoreItemProps,
   type ListBoxProps as AriaListBoxProps,
+  composeRenderProps,
 } from "react-aria-components";
 
-import { disabledStyle } from "@/shared/components/style-rac";
-import { PushableItem, pushableItemContainerStyle } from "@/shared/components/ui/pushable-item";
+import { disabledStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 export interface ListBoxProps<T> extends AriaListBoxProps<T> {
@@ -31,6 +31,8 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
   );
 }
 
+const listBoxItemBaseStyle =
+  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors";
 export function ListBoxItem<T extends object>({
   children,
   className,
@@ -40,35 +42,33 @@ export function ListBoxItem<T extends object>({
   return (
     <AriaListBoxItem
       textValue={textValue || (typeof children === "string" ? children : undefined)}
-      className={classNames(disabledStyle, pushableItemContainerStyle)}
+      className={composeRenderProps(className, (className) =>
+        classNames(
+          disabledStyle,
+          listBoxItemBaseStyle,
+          "data-focused:border-stone-100 data-focused:bg-white data-focused:shadow-sm",
+          className
+        )
+      )}
       {...props}
     >
       {(renderProps) => (
-        <PushableItem
-          variant="ghost"
-          isElevated={renderProps.isFocused}
-          isPressed={renderProps.isPressed}
-          className={classNames(
-            renderProps.selectionMode !== "none" && "pl-8",
-            typeof className === "function"
-              ? className({ ...renderProps, defaultClassName: undefined })
-              : className
-          )}
-        >
+        <>
           {renderProps.isSelected && <CheckIcon className="absolute left-2 size-4" />}
           {typeof children === "function" ? children(renderProps) : children}
-        </PushableItem>
+        </>
       )}
     </AriaListBoxItem>
   );
 }
 
-export function ListBoxLoadMoreItem({ ...props }: AriaListBoxLoadMoreItemProps) {
+export function ListBoxLoadMoreItem({ className, ...props }: AriaListBoxLoadMoreItemProps) {
   return (
-    <AriaListBoxLoadMoreItem {...props}>
-      <PushableItem variant="ghost" className="text-stone-400">
-        <LoaderIcon className="size-3.5 animate-spin" /> loading...
-      </PushableItem>
+    <AriaListBoxLoadMoreItem
+      className={classNames(listBoxItemBaseStyle, "text-stone-400", className)}
+      {...props}
+    >
+      <LoaderIcon className="size-3.5 animate-spin" /> loading...
     </AriaListBoxLoadMoreItem>
   );
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -748,10 +749,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         for short_name, branch_data in branches.items():
             branch = None
 
-            try:
+            with contextlib.suppress(BranchNotFoundError):
                 branch = registry.get_branch_from_registry(branch=short_name)
-            except BranchNotFoundError:
-                ...
 
             branch_exists_import_sync_condition = branch and (
                 branch.name not in {registry.default_branch, self.default_branch}

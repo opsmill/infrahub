@@ -10,6 +10,8 @@ from prefect.events.actions import RunDeployment
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.trigger.setup import gather_all_automations
+from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.webhook.models import EventContext, WebhookTriggerDefinition
 from infrahub.webhook.tasks import (
     configure_webhook_all,
@@ -172,6 +174,22 @@ class TestWebhookTasks(TestInfrahubApp):
         await webhook.save(db=db)
         return webhook
 
+    @pytest.fixture(scope="class")
+    async def inactive_webhook(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+        webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+        await webhook.new(
+            db=db,
+            name="InactiveWebhook",
+            url="https://url.mock",
+            shared_key="1234567890",
+            validate_certificates=False,
+            event_type="infrahub.node.created",
+            branch_scope="all_branches",
+            active=False,
+        )
+        await webhook.save(db=db)
+        return webhook
+
     async def test_configure_one(
         self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
     ) -> None:
@@ -199,6 +217,51 @@ class TestWebhookTasks(TestInfrahubApp):
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 0
 
+    async def test_configure_one_inactive_webhook_does_not_create_automation(
+        self, db: InfrahubDatabase, prefect_client: PrefectClient, inactive_webhook: Node, webhook_deployment
+    ) -> None:
+        """Test that configuring an inactive webhook does not create a Prefect automation."""
+        await configure_webhook_one(webhook_name="InactiveWebhook", event_data={"node_id": inactive_webhook.id})
+
+        name = f"webhook::{inactive_webhook.id}"
+        automations = await prefect_client.read_automations_by_name(name=name)
+        assert len(automations) == 0
+
+    async def test_configure_one_deactivating_webhook_deletes_automation(
+        self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
+    ) -> None:
+        """Test that deactivating a webhook deletes its Prefect automation."""
+        # First, ensure the webhook automation exists
+        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
+        name = f"webhook::{webhook1.id}"
+        automations = await prefect_client.read_automations_by_name(name=name)
+        assert len(automations) == 1
+
+        # Deactivate the webhook
+        webhook1.active.value = False
+        await webhook1.save(db=db)
+
+        # Configure again - should delete the automation
+        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
+        automations = await prefect_client.read_automations_by_name(name=name)
+        assert len(automations) == 0
+
+        # Re-activate the webhook for other tests
+        webhook1.active.value = True
+        await webhook1.save(db=db)
+
+    async def test_gather_trigger_webhook_excludes_inactive(
+        self, db: InfrahubDatabase, webhook1: Node, inactive_webhook: Node
+    ) -> None:
+        """Test that gather_trigger_webhook excludes inactive webhooks."""
+        triggers = await gather_trigger_webhook(db=db)
+        trigger_ids = [t.id for t in triggers]
+
+        # Active webhook should be included
+        assert webhook1.id in trigger_ids
+        # Inactive webhook should be excluded
+        assert inactive_webhook.id not in trigger_ids
+
     async def test_configure_all(
         self,
         db: InfrahubDatabase,
@@ -209,7 +272,7 @@ class TestWebhookTasks(TestInfrahubApp):
     ) -> None:
         await configure_webhook_all()
 
-        automations = await prefect_client.read_automations()
+        automations = await gather_all_automations(client=prefect_client)
         automations_by_name = {automation.name: automation for automation in automations}
 
         assert f"webhook::{webhook1.id}" in automations_by_name.keys()

@@ -31,14 +31,14 @@ jobs:
 
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           submodules: true
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -75,7 +75,7 @@ jobs:
 
       - name: Checkout infrahub-helm
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: opsmill/infrahub-helm
           path: helm

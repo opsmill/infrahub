@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import logging
 import os
@@ -6,12 +5,12 @@ import sys
 import tempfile
 import time
 from contextlib import ExitStack
-from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
+import pytest_asyncio
 import ujson
 from fast_depends import Provider
 from fast_depends import dependency_provider as provider
@@ -38,13 +37,17 @@ from infrahub.core.initialization import (
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
-from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.definitions.core import (
+    core_account_token,
+    core_generic_account,
+    core_profile_schema_definition,
+)
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
@@ -52,6 +55,7 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.workers.dependencies import build_database, get_database
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
@@ -76,11 +80,11 @@ pytest.register_assert_rewrite("tests.db_snapshot")
 graphql_registry.clear_cache()
 
 
-def pytest_addoption(parser) -> None:
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
 
 
-def pytest_configure(config) -> None:
+def pytest_configure(config: pytest.Config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
     if not markexpr:
@@ -106,13 +110,11 @@ def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    pytest_asyncio_tests = (item for item in items if pytest_asyncio.is_async_test(item))
+    session_scope_marker = pytest.mark.asyncio(loop_scope="session")
+    for async_test in pytest_asyncio_tests:
+        async_test.add_marker(session_scope_marker, append=False)
 
 
 @pytest.fixture
@@ -122,7 +124,7 @@ def dependency_provider() -> Provider:
 
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module
+    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module: None
 ) -> AsyncGenerator[InfrahubDatabase, None]:
     if INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.database.address = "localhost"
@@ -132,16 +134,30 @@ async def db(
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
-    driver = InfrahubDatabase(driver=await get_db(retry=5))
-    await add_indexes(db=driver)
+    async def _db(singleton: bool = True) -> InfrahubDatabase:
+        return await build_database(singleton=False)
 
-    yield driver
+    with provider.scope(build_database, _db):
+        driver = await get_database()
+        await add_indexes(db=driver)
 
-    await driver.close()
+        yield driver
+
+        await driver.close()
+
+
+@pytest.fixture(scope="class")
+async def db_class() -> InfrahubDatabase:
+    return await build_database(singleton=False)
 
 
 @pytest.fixture
 async def empty_database(db: InfrahubDatabase) -> None:
+    await do_empty_database(db=db)
+
+
+@pytest.fixture(scope="class")
+async def empty_database_scope_class(db: InfrahubDatabase) -> None:
     await do_empty_database(db=db)
 
 
@@ -155,12 +171,29 @@ async def reset_registry(db: InfrahubDatabase) -> None:
     await do_reset_registry(db=db)
 
 
+@pytest.fixture(scope="class")
+async def reset_registry_scope_class(db: InfrahubDatabase) -> None:
+    await do_reset_registry(db=db)
+
+
 async def do_reset_registry(db: InfrahubDatabase) -> None:
     registry.delete_all()
 
 
 @pytest.fixture
-async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+async def default_branch(
+    reset_registry: None, local_storage_dir: Path, empty_database: None, db: InfrahubDatabase
+) -> Branch:
+    return await do_default_branch(db=db)
+
+
+@pytest.fixture(scope="class")
+async def default_branch_scope_class(
+    reset_registry_scope_class: None,
+    local_storage_dir_scope_class: Path,
+    empty_database_scope_class: None,
+    db: InfrahubDatabase,
+) -> Branch:
     return await do_default_branch(db=db)
 
 
@@ -188,7 +221,7 @@ def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
 
 
 @pytest.fixture
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
@@ -209,6 +242,12 @@ def local_storage_dir(tmp_path: Path) -> Path:
     return do_local_storage_dir(tmp_path=tmp_path)
 
 
+@pytest.fixture(scope="class")
+def local_storage_dir_scope_class(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    tmp_path = tmp_path_factory.mktemp("storage_class")
+    return do_local_storage_dir(tmp_path=tmp_path)
+
+
 def do_local_storage_dir(tmp_path: Path) -> Path:
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir()
@@ -224,6 +263,11 @@ async def register_internal_models_schema(default_branch: Branch) -> SchemaBranc
     return await do_register_internal_models_schema(branch=default_branch)
 
 
+@pytest.fixture(scope="class")
+async def register_internal_models_schema_scope_class(default_branch_scope_class: Branch) -> SchemaBranch:
+    return await do_register_internal_models_schema(branch=default_branch_scope_class)
+
+
 async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
     schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
@@ -232,8 +276,17 @@ async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
 
 
 @pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+async def register_core_models_schema(
+    default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> SchemaBranch:
     return await do_register_core_models_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def register_core_models_schema_scope_class(
+    default_branch_scope_class: Branch, register_internal_models_schema_scope_class: SchemaBranch
+) -> SchemaBranch:
+    return await do_register_core_models_schema(branch=default_branch_scope_class)
 
 
 async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
@@ -244,7 +297,7 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -258,12 +311,12 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[
 
 
 @pytest.fixture(scope="session")
-def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.broker.driver != config.BrokerDriver.RabbitMQ:
         return None
 
     container = (
-        DockerContainer(image="rabbitmq:3.13.1-management")
+        DockerContainer(image="rabbitmq:4.2.1-management")
         .with_env("RABBITMQ_DEFAULT_USER", "infrahub")
         .with_env("RABBITMQ_DEFAULT_PASS", "infrahub")
         .with_exposed_ports(PORT_CLIENT_RABBITMQ, PORT_HTTP_RABBITMQ)
@@ -280,7 +333,9 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
 
 
 @pytest.fixture(scope="module")
-def rabbitmq(rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+def rabbitmq(
+    rabbitmq_container: dict[int, int] | None, reload_settings_before_each_module: None
+) -> dict[int, int] | None:
     if (
         rabbitmq_container
         and INFRAHUB_USE_TEST_CONTAINERS
@@ -296,11 +351,11 @@ def rabbitmq(rabbitmq_container: dict[int, int] | None, reload_settings_before_e
 
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
-def redis_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.11").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
@@ -310,7 +365,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
 
 @pytest.fixture(scope="module")
-def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
     if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
@@ -322,7 +377,7 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     return None
 
 
-def wait_for_memgraph_ready(host, port, timeout=15) -> bool:
+def wait_for_memgraph_ready(host: str, port: int, timeout: int = 15) -> bool:
     # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
     URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
 
@@ -340,7 +395,7 @@ def wait_for_memgraph_ready(host, port, timeout=15) -> bool:
 
 
 @pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
@@ -348,7 +403,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> di
 
     container = (
         DockerContainer(image=memgraph_image, init=True)
-        .with_env("APP_CYPHER_QUERY_MAX_LEN", 10000)
+        .with_env("APP_CYPHER_QUERY_MAX_LEN", "10000")
         .with_exposed_ports(PORT_MEMGRAPH)
     )
 
@@ -366,7 +421,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> di
 
 
 @pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def nats_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
@@ -380,7 +435,7 @@ def nats_container(request: pytest.FixtureRequest, load_settings_before_session)
 
 
 @pytest.fixture(scope="module")
-def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module) -> dict[int, int] | None:
+def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
     if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = nats_container[PORT_NATS]
@@ -395,14 +450,44 @@ def nats(nats_container: dict[int, int] | None, reload_settings_before_each_modu
 
 
 @pytest.fixture(scope="session")
-def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
+def prefect_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+    return start_prefect_server_container(request)
+
+
+@pytest.fixture(scope="class")
+def prefect_container_class(
+    request: pytest.FixtureRequest, load_settings_before_session: None
+) -> dict[int, int] | None:
     return start_prefect_server_container(request)
 
 
 @pytest.fixture(scope="module")
-def prefect(prefect_container: dict[int, int] | None, reload_settings_before_each_module) -> Generator[str, None, None]:
+def prefect(
+    prefect_container: dict[int, int] | None, reload_settings_before_each_module: None
+) -> Generator[str, None, None]:
     if prefect_container:
         server_port = prefect_container[PORT_PREFECT]
+        server_api_url = f"http://localhost:{server_port}/api"
+    else:
+        server_api_url = f"http://localhost:{PORT_PREFECT}/api"
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            prefect_settings.temporary_settings(
+                updates={
+                    prefect_settings.PREFECT_API_URL: server_api_url,
+                }
+            )
+        )
+        yield server_api_url
+
+
+@pytest.fixture(scope="class")
+def prefect_class(
+    prefect_container_class: dict[int, int] | None, reload_settings_before_each_module: None
+) -> Generator[str, None, None]:
+    if prefect_container_class:
+        server_port = prefect_container_class[PORT_PREFECT]
         server_api_url = f"http://localhost:{server_port}/api"
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
@@ -424,7 +509,7 @@ def load_settings_before_session() -> None:
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(tmpdir_factory) -> None:
+def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
 
@@ -433,7 +518,7 @@ def reload_settings_before_each_module(tmpdir_factory) -> None:
     config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
 
     storage_dir = tmpdir_factory.mktemp("storage")
-    config.SETTINGS.storage.local.path_ = storage_dir
+    config.SETTINGS.storage.local.path_ = Path(storage_dir)
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
@@ -446,7 +531,7 @@ def reload_settings_before_each_module(tmpdir_factory) -> None:
 
 
 @pytest.fixture
-def enable_broker_config():
+def enable_broker_config() -> Generator[None, None, None]:
     # This is required for situations where we need the broker to be enabled.
     # We should really remove this setting as it doesn't make any sense to have
     # outside of the test environment
@@ -458,6 +543,15 @@ def enable_broker_config():
 
 @pytest.fixture
 async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    do_data_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def data_schema_scope_class(db: InfrahubDatabase, default_branch_scope_class: Branch) -> None:
+    do_data_schema(branch=default_branch_scope_class)
+
+
+def do_data_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -470,15 +564,28 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "namespace": "Lineage",
             },
             core_profile_schema_definition,
-        ]
+            core_generic_account,
+        ],
+        "nodes": [core_account_token],
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture
-async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
+    do_group_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def group_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, data_schema_scope_class: None
+) -> None:
+    do_group_schema(branch=default_branch_scope_class)
+
+
+def do_group_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -511,11 +618,13 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture
-async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def car_person_schema_unregistered(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> SchemaRoot:
     schema: dict[str, Any] = {
         "nodes": [
             {
@@ -585,7 +694,7 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture
-async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> SchemaRoot:
     """
     Person schema with no unicity constraint set except default filter.
     """
@@ -611,7 +720,7 @@ async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, 
 
 @pytest.fixture
 async def car_person_schema(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
@@ -668,13 +777,13 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
 
 @pytest.fixture
 async def car_person_schema_branch_local(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_branch_local_root, branch=default_branch.name)
 
 
 @pytest.fixture
-async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -764,17 +873,8 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
 
 
 @pytest.fixture
-async def animal_person_schema_person_no_default_filter(
-    db: InfrahubDatabase, default_branch, node_group_schema, data_schema, animal_person_schema_unregistered
-) -> SchemaBranch:
-    schema_dict = deepcopy(animal_person_schema_unregistered)
-    del schema_dict["nodes"][2]["default_filter"]
-    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
-
-
-@pytest.fixture
 async def person_schema_unique_attr_non_hfid_unregistered(
-    db: InfrahubDatabase, node_group_schema, data_schema
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
 ) -> SchemaRoot:
     schema: dict[str, Any] = {
         "nodes": [
@@ -834,7 +934,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
 
 @pytest.fixture
 async def person_schema_unique_attr_non_hfid(
-    db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered
+    db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(
         schema=person_schema_unique_attr_non_hfid_unregistered, branch=default_branch.name
@@ -843,14 +943,16 @@ async def person_schema_unique_attr_non_hfid(
 
 @pytest.fixture
 async def animal_person_schema(
-    db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered: dict
 ) -> SchemaBranch:
     schema_root = SchemaRoot(**animal_person_schema_unregistered)
     return registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
 
 
 @pytest.fixture
-async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def dependent_generics_unregistered(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> SchemaRoot:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -945,13 +1047,13 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
 
 @pytest.fixture
 async def dependent_generics_schema(
-    db: InfrahubDatabase, default_branch: Branch, dependent_generics_unregistered
+    db: InfrahubDatabase, default_branch: Branch, dependent_generics_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=dependent_generics_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
-async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -1000,7 +1102,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 
 
 @pytest.fixture
-async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
@@ -1207,7 +1309,7 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
         "nodes": [
@@ -1254,7 +1356,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture(params=["main", "branch2"])
-async def branch(request, db: InfrahubDatabase, default_branch: Branch):
+async def branch(request: pytest.FixtureRequest, db: InfrahubDatabase, default_branch: Branch) -> Branch:
     if request.param == "main":
         return default_branch
 
@@ -1262,7 +1364,7 @@ async def branch(request, db: InfrahubDatabase, default_branch: Branch):
 
 
 @pytest.fixture
-async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def schemas_conversion(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
         "generics": [
@@ -1369,7 +1471,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
 
 
 @pytest.fixture
-async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
         "generics": [
@@ -1425,7 +1527,7 @@ async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_sch
 
 
 @pytest.fixture
-async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
         "generics": [
@@ -1493,7 +1595,7 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
 
 @pytest.fixture
 async def schema_conversion_agnostic_node_with_aware_attributes(
-    db: InfrahubDatabase, node_group_schema, data_schema
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
 ) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
@@ -1586,7 +1688,9 @@ async def schema_conversion_agnostic_node_with_aware_attributes(
 
 
 @pytest.fixture
-async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+async def schema_conversion_unidirectional_relationships(
+    db: InfrahubDatabase, node_group_schema: None, data_schema: None
+) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
         "generics": [
@@ -1645,14 +1749,16 @@ def git_global_config_env_setting() -> Generator[Any, None, None]:
         tmp_git_config = tmpfile.name
 
     os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
-    assert os.getenv("GIT_CONFIG_GLOBAL") is not None and os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
+    assert os.getenv("GIT_CONFIG_GLOBAL") is not None
+    assert os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
     config.SETTINGS.git.global_config_file = tmp_git_config
 
     yield tmp_git_config
 
     if previous_git_config_global:
         os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
-        assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
+        assert os.getenv("GIT_CONFIG_GLOBAL")
+        assert os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
     else:
         os.environ.pop("GIT_CONFIG_GLOBAL", None)
         assert os.getenv("GIT_CONFIG_GLOBAL") is None
@@ -1662,7 +1768,7 @@ def git_global_config_env_setting() -> Generator[Any, None, None]:
 
 
 @pytest.fixture
-def git_user_config():
+def git_user_config() -> Generator[None, None, None]:
     initial_user_name = config.SETTINGS.git.user_name
     initial_user_email = config.SETTINGS.git.user_email
     config.SETTINGS.git.user_email = "test@email.com"

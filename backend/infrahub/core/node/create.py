@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Mapping
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import SYSTEM_USER_ID, RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
@@ -58,18 +58,34 @@ async def extract_peer_data(
             except ValueError:
                 pass
 
-        obj_peer_data[attr_name] = {"value": template_attr.value, "source": template_peer.id}
+        # If the template attribute comes from a profile, preserve the profile as the source
+        # Otherwise, use the template itself as the source
+        source_id = template_attr.source_id or template_peer.id
+        attr_data = {"value": template_attr.value, "source": source_id}
+        if template_attr.is_from_profile:
+            attr_data["is_from_profile"] = True
+        obj_peer_data[attr_name] = attr_data
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)
-
-        if rel_manager.schema.name not in obj_peer_schema.relationship_names:
+        if (
+            rel_manager.schema.kind
+            not in [
+                RelationshipKind.COMPONENT,
+                RelationshipKind.PARENT,
+                RelationshipKind.PROFILE,
+                RelationshipKind.ATTRIBUTE,
+            ]
+            or rel_manager.schema.name not in obj_peer_schema.relationship_names
+        ):
             continue
 
         peers_map = await rel_manager.get_peers(db=db)
-        if rel_manager.schema.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT] and list(
-            peers_map.keys()
-        ) == [current_template.id]:
+        if rel_manager.schema.kind in [
+            RelationshipKind.COMPONENT,
+            RelationshipKind.PARENT,
+            RelationshipKind.PROFILE,
+        ] and list(peers_map.keys()) == [current_template.id]:
             obj_peer_data[rel] = {"id": parent_obj.id}
             continue
 
@@ -80,7 +96,13 @@ async def extract_peer_data(
                 continue
             rel_peer_ids.append({"id": peer_id})
 
-        obj_peer_data[rel] = rel_peer_ids
+        # Only set the relationship data if there are actual peers to set
+        if rel_peer_ids:
+            obj_peer_data[rel] = rel_peer_ids
+
+        if rel_manager.schema.kind == RelationshipKind.PROFILE:
+            profiles = list(await rel_manager.get_peers(db=db))
+            obj_peer_data[rel] = profiles
 
     return obj_peer_data
 
@@ -125,6 +147,12 @@ async def handle_template_relationships(
             await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
             await obj_peer.save(db=db)
 
+            template_profile_ids = await get_profile_ids(db=db, obj=template_relationship_peer)
+            if template_profile_ids:
+                node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+                await node_profiles_applier.apply_profiles(node=obj_peer)
+                await obj_peer.save(db=db)
+
             await handle_template_relationships(
                 db=db,
                 branch=branch,
@@ -136,7 +164,7 @@ async def handle_template_relationships(
             )
 
 
-async def get_profile_ids(db: InfrahubDatabase, obj: Node) -> set[str]:
+async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
     if not hasattr(obj, "profiles"):
         return set()
     profile_rels = await obj.profiles.get_relationships(db=db)
@@ -152,11 +180,12 @@ async def _do_create_node(
     fields_to_validate: list[str],
     data: dict[str, Any],
     at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     obj = await node_class.init(db=db, schema=schema, branch=branch)
     await obj.new(db=db, **data)
     await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-    await obj.save(db=db, at=at)
+    await obj.save(db=db, at=at, user_id=user_id)
 
     object_template = await obj.get_object_template(db=db)
     if object_template:
@@ -177,6 +206,7 @@ async def create_node(
     branch: Branch,
     schema: MainSchemaTypes,
     at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     """Create a node in the database if constraint checks succeed."""
 
@@ -209,6 +239,7 @@ async def create_node(
                 fields_to_validate=fields_to_validate,
                 data=data,
                 at=at,
+                user_id=user_id,
             )
         else:
             async with db.start_transaction() as dbt:
@@ -225,11 +256,12 @@ async def create_node(
                     fields_to_validate=fields_to_validate,
                     data=data,
                     at=at,
+                    user_id=user_id,
                 )
 
     if await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         await node_profiles_applier.apply_profiles(node=obj)
-        await obj.save(db=db)
+        await obj.save(db=db, user_id=user_id)
 
     return obj

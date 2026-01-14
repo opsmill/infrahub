@@ -74,7 +74,7 @@ class FlowLogs(BaseModel):
                 "node": {
                     "message": log.message,
                     "severity": LOG_LEVEL_MAPPING.get(log.level, "error"),
-                    "timestamp": log.timestamp.to_iso8601_string(),
+                    "timestamp": log.timestamp.isoformat(),
                 }
             }
             for log in self.logs[flow_id]

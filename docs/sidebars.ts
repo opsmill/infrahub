@@ -57,9 +57,11 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/installation',
             'guides/production-deployment',
+            'guides/configuration-changes',
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
+            'guides/selective-branch-sync',
           ],
         },
         {
@@ -178,6 +180,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/infrahub-yml',
                 'topics/repository',
+                'topics/branch-synchronization',
               ],
             },
             {
@@ -234,6 +237,7 @@ const sidebars: SidebarsConfig = {
                 'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
+                'topics/labels',
               ],
             },
             {
@@ -417,6 +421,13 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_7_1',
+            'release-notes/infrahub/release-1_7_0',
+            'release-notes/infrahub/release-1_6_3',
+            'release-notes/infrahub/release-1_6_2',
+            'release-notes/infrahub/release-1_6_1',
+            'release-notes/infrahub/release-1_6_0',
+            'release-notes/infrahub/release-1_5_3',
             'release-notes/infrahub/release-1_5_2',
             'release-notes/infrahub/release-1_5_1',
             'release-notes/infrahub/release-1_5_0',

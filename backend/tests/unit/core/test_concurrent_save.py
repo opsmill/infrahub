@@ -36,7 +36,7 @@ class TestNodeConcurrentSave:
 
     async def _validate_no_duplicate_edges(self, db: InfrahubDatabase, node: Node, attribute_name: str) -> None:
         # validate that this node
-        #  - does not have duplicate HAS_VALUE, IS_VISIBLE, or IS_PROTECTED edges
+        #  - does not have duplicate HAS_VALUE or IS_PROTECTED edges
         #  - only connects to one AttributeValue node even though multiple exist
         params = {"node_id": node.get_id(), "attribute_name": attribute_name}
         query = """

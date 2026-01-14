@@ -6,6 +6,7 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/ipam - Allocate an ip prefix with pool", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.slow();
 
   const BRANCH_NAME = generateRandomBranchName("ip-prefix-create");
 
@@ -22,6 +23,9 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
   }) => {
     await test.step("Navigate to IPAM root and open create prefix form", async () => {
       await page.goto(`ipam?branch=${BRANCH_NAME}`);
+      await expect(
+        page.getByTestId("identifier-cell").getByRole("link", { name: "10.0.0.0/8" })
+      ).toBeVisible();
       await page.getByTestId("create-object-button").click();
     });
 
@@ -31,6 +35,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       await page.getByRole("option", { name: "Prefix Prefix serves as" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IP Prefix 11.0.0.0/8 created")).toBeVisible();
+      await expect(page.getByLabel("Prefix *")).not.toBeVisible();
     });
 
     await test.step("Allocate the available child prefix 11.0.0.0/9 from the root prefix", async () => {
@@ -42,6 +47,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       await expect(page.getByLabel("Prefix *")).toHaveValue("11.0.0.0/9");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IP Prefix 11.0.0.0/9 created")).toBeVisible();
+      await expect(page.getByLabel("Prefix *")).not.toBeVisible();
     });
 
     await test.step("Verify child prefix 11.0.0.0/9 details and available ip addresses", async () => {

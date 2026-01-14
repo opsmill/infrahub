@@ -29,6 +29,7 @@ from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_com
 from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
+    ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
 
@@ -41,8 +42,10 @@ mutation UpdateAttribute(
     $kind: String!,
     $attribute: String!,
     $value: String!
+    $context_account_id: String!
   ) {
   InfrahubUpdateComputedAttribute(
+    context: {account: {id: $context_account_id}},
     data: {id: $id, attribute: $attribute, value: $value, kind: $kind}
   ) {
     ok
@@ -61,7 +64,7 @@ async def process_transform(
     object_id: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
@@ -102,7 +105,7 @@ async def process_transform(
             name=transform.repository.peer.name.value,
             repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
-        )  # type: ignore[misc]
+        )
 
         data = await client.query_gql_query(
             name=transform.query.id,
@@ -119,11 +122,17 @@ async def process_transform(
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
             convert_query_response=transform.convert_query_response.value,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
 
         await client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
-            variables={"id": object_id, "kind": node_kind, "attribute": attribute_name, "value": transformed_data},
+            variables={
+                "id": object_id,
+                "kind": node_kind,
+                "attribute": attribute_name,
+                "value": transformed_data,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
 
@@ -167,6 +176,7 @@ async def computed_attribute_jinja2_update_value(
     node_kind: str,
     attribute_name: str,
     template: Jinja2Template,
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -181,7 +191,13 @@ async def computed_attribute_jinja2_update_value(
     try:
         await client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
-            variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
+            variables={
+                "id": obj.node_id,
+                "kind": node_kind,
+                "attribute": attribute_name,
+                "value": value,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
         log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
@@ -201,7 +217,7 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     updated_fields: list[str] | None = None,
 ) -> None:
     log = get_run_logger()
@@ -257,6 +273,7 @@ async def process_jinja2(
                 node_kind=node_schema.kind,
                 attribute_name=computed_macro.attribute.name,
                 template=jinja_template,
+                context=context,
             )
 
         _ = [response async for _, response in batch.execute()]
@@ -312,21 +329,46 @@ async def computed_attribute_setup_jinja2(
         )  # type: ignore[misc]
         # Configure all ComputedAttrJinja2Trigger in Prefect
 
+        all_triggers = report.triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
+
         # Since we can have multiple trigger per NodeKind
-        # we need to extract the list of unique node that should be processed
-        unique_nodes: set[tuple[str, str, str]] = {
-            (trigger.branch, trigger.computed_attribute.kind, trigger.computed_attribute.attribute.name)  # type: ignore[attr-defined]
-            for trigger in report.updated + report.created
-        }
-        for branch, kind, attribute_name in unique_nodes:
-            if event_name != BranchDeletedEvent.event_name and branch == branch_name:
+        # we need to extract the list of unique node that should be processed, this is done by filtering the triggers that targets_self
+        modified_triggers = [
+            trigger
+            for trigger in report.modified_triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
+            if trigger.targets_self
+        ]
+
+        for modified_trigger in modified_triggers:
+            if event_name != BranchDeletedEvent.event_name and modified_trigger.branch == branch_name:
+                if branch_name != registry.default_branch:
+                    default_branch_triggers = [
+                        trigger
+                        for trigger in all_triggers
+                        if trigger.branch == registry.default_branch
+                        and trigger.targets_self
+                        and trigger.computed_attribute.kind == modified_trigger.computed_attribute.kind
+                        and trigger.computed_attribute.attribute.name
+                        == modified_trigger.computed_attribute.attribute.name
+                    ]
+                    if (
+                        default_branch_triggers
+                        and len(default_branch_triggers) == 1
+                        and default_branch_triggers[0].template_hash == modified_trigger.template_hash
+                    ):
+                        log.debug(
+                            f"Skipping computed attribute updates for {modified_trigger.computed_attribute.kind}."
+                            f"{modified_trigger.computed_attribute.attribute.name} [{branch_name}], schema is identical to default branch"
+                        )
+                        continue
+
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
-                        "branch_name": branch,
-                        "computed_attribute_name": attribute_name,
-                        "computed_attribute_kind": kind,
+                        "branch_name": modified_trigger.branch,
+                        "computed_attribute_name": modified_trigger.computed_attribute.attribute.name,
+                        "computed_attribute_kind": modified_trigger.computed_attribute.kind,
                     },
                 )
 
@@ -436,6 +478,7 @@ async def query_transform_targets(
                         "object_id": subscriber.object_id,
                         "computed_attribute_name": computed_attribute.name,
                         "computed_attribute_kind": subscriber.kind,
+                        "context": context,
                     },
                 )
 

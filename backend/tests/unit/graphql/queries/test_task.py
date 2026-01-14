@@ -509,7 +509,7 @@ async def test_task_query_filter_node(
     assert result.data["InfrahubTask"]["edges"][0] == {
         "node": {
             "conclusion": "unknown",
-            "created_at": flow.created.to_iso8601_string(),
+            "created_at": flow.created.isoformat(),
             "id": str(flow.id),
             "state": "SCHEDULED",
             "progress": None,
@@ -525,7 +525,7 @@ async def test_task_query_filter_node(
                 },
             ],
             "title": flow.name,
-            "updated_at": flow.updated.to_iso8601_string(),
+            "updated_at": flow.updated.isoformat(),
             "start_time": None,
             "workflow": "dummy-flow",
         }
@@ -545,7 +545,7 @@ async def test_task_query_filter_node(
     assert result.data["InfrahubTask"]["edges"][0] == {
         "node": {
             "conclusion": "success",
-            "created_at": flow.created.to_iso8601_string(),
+            "created_at": flow.created.isoformat(),
             "id": str(flow.id),
             "state": "COMPLETED",
             "progress": None,
@@ -571,7 +571,7 @@ async def test_task_query_filter_node(
                 },
             ],
             "title": flow.name,
-            "updated_at": flow.updated.to_iso8601_string(),
+            "updated_at": flow.updated.isoformat(),
             "start_time": None,
             "workflow": "dummy-flow-broken",
         }
@@ -738,7 +738,7 @@ async def test_task_query_progress(
     assert result.data["InfrahubTask"]["edges"][0] == {
         "node": {
             "conclusion": "unknown",
-            "created_at": flow.created.to_iso8601_string(),
+            "created_at": flow.created.isoformat(),
             "id": str(flow.id),
             "state": "RUNNING",
             "progress": 33.33,
@@ -754,8 +754,8 @@ async def test_task_query_progress(
                 },
             ],
             "title": flow.name,
-            "updated_at": flow.updated.to_iso8601_string(),
-            "start_time": flow.start_time.to_iso8601_string(),
+            "updated_at": flow.updated.isoformat(),
+            "start_time": flow.start_time.isoformat(),
             "workflow": "dummy-flow",
         }
     }

@@ -2,12 +2,15 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupForm from "@/entities/groups/ui/add-group-form";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 import type { NodeSchema } from "@/entities/schema/types";
 
@@ -48,7 +51,7 @@ export default function AddGroupTriggerButton({
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={objectDetailsData?.display_label}
+            currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
             title="Select group(s)"
             subtitle="Select one or more groups to assign"
           />
@@ -75,6 +78,7 @@ export default function AddGroupTriggerButton({
           onCancel={() => setIsAddGroupFormOpen(false)}
           onUpdateCompleted={async () => {
             await graphqlClient.refetchQueries({ include: ["GET_GROUPS"] });
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsAddGroupFormOpen(false);
           }}
         />

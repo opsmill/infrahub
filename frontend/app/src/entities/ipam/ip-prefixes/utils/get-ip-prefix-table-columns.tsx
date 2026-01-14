@@ -19,6 +19,7 @@ import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/c
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -42,8 +43,8 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
           />
         );
       },
-      cell: ({ cell, row, table }) => {
-        const value: string = cell.getValue() ?? "-";
+      cell: ({ row, table }) => {
+        const value: string = getNodeLabel(row.original) ?? "-";
         const ipPrefixNode = row.original;
 
         if (ipPrefixNode.__typename === IP_PREFIX_AVAILABLE_KIND) {
@@ -53,7 +54,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
+              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
                 {schema.label} available
               </TableCell>
             </>

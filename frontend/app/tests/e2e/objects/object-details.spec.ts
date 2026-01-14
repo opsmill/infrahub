@@ -21,7 +21,13 @@ test.describe("/objects/:objectKind/:objectId", () => {
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeDisabled();
-      await expect(page.getByTestId("manage-groups")).toBeDisabled();
+
+      await page.getByTestId("object-details-menu").click();
+      await expect(page.getByRole("menuitem", { name: "Groups" })).toHaveAttribute(
+        "aria-disabled",
+        "true"
+      );
+      await page.keyboard.press("Escape");
     });
   });
 
@@ -34,7 +40,13 @@ test.describe("/objects/:objectKind/:objectId", () => {
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeEnabled();
-      await expect(page.getByTestId("manage-groups")).toBeEnabled();
+
+      await page.getByTestId("object-details-menu").click();
+      await expect(page.getByRole("menuitem", { name: "Groups" })).not.toHaveAttribute(
+        "aria-disabled",
+        "true"
+      );
+      await page.keyboard.press("Escape");
     });
 
     test("should display relationships correctly", async ({ page }) => {
@@ -67,14 +79,27 @@ test.describe("/objects/:objectKind/:objectId", () => {
 
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
-      await page.getByRole("link", { name: "atl1-edge1, Ethernet4" }).click();
+      await page.getByRole("link", { name: "Ethernet4" }).first().click();
       await page.getByTestId("edit-button").click();
 
       const kindSelector = page.getByLabel("Kind").getByTestId("select-value");
       await expect(kindSelector).toContainText("Circuit Endpoint");
 
       const nodeSelector = page.getByLabel("Circuit Endpoint").getByTestId("select-value");
-      await expect(nodeSelector).toContainText("InfraCircuitEndpoint");
+      await expect(nodeSelector).not.toBeEmpty(); // ID is in the input but it's dynamic
+    });
+
+    test("should display node metadata popover", async ({ page }) => {
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
+
+      await page.getByRole("link", { name: "atl1-edge1" }).click();
+
+      await page.getByRole("button", { name: "View node metadata" }).click();
+
+      await expect(page.getByText("Created at")).toBeVisible();
+      await expect(page.getByText("Created by")).toBeVisible();
+      await expect(page.getByText("Updated at")).toBeVisible();
+      await expect(page.getByText("Updated by")).toBeVisible();
     });
   });
 });

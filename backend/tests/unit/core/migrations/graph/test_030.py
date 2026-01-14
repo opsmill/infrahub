@@ -2,6 +2,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m030_illegal_edges import Migration030
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -17,7 +18,6 @@ MERGE (attr_val:AttributeValue {value: "good"})
 MERGE (bool_true:Boolean {value: true})
 WITH attr, attr_val, bool_true LIMIT 1
 CREATE (attr)-[:HAS_VALUE {branch: $branch_name, branch_level: $branch_level, status: "active", from: $at}]->(attr_val)
-CREATE (attr)-[:IS_VISIBLE {branch: $branch_name, branch_level: $branch_level, status: "active", from: $at}]->(bool_true)
     """
     await db.execute_query(
         query=query,
@@ -94,7 +94,7 @@ async def test_migration_030(
         await _add_attribute(db=db, node_id=node.id, branch=branch, at=right_now)
 
     migration = Migration030()
-    execution_result = await migration.execute(db=db)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 
     validation_result = await migration.validate_migration(db=db)

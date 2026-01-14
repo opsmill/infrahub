@@ -5,11 +5,17 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipDirection
-from infrahub.core.metadata.determiner import MetadataDeterminer
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
+    RelationshipDirection,
+)
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
+from infrahub.core.order import OrderModel
 from infrahub.core.query.node import (
     AttributeFromDB,
     GroupedPeerNodes,
@@ -34,7 +40,6 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
-from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -93,7 +98,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
@@ -113,7 +117,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
@@ -132,7 +135,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         partial_match: bool = False,
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
@@ -166,7 +168,6 @@ class NodeManager:
                 branch=branch,
                 include_metadata=include_metadata,
                 prefetch_relationships=prefetch_relationships,
-                account=account,
                 branch_agnostic=branch_agnostic,
             )
             return [node] if node else []
@@ -187,17 +188,22 @@ class NodeManager:
         await query.execute(db=db)
         node_ids = query.get_node_ids()
 
-        # if display_label or hfid has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields:
+        if (
+            fields
+            and "identifier" in fields
+            and node_schema.kind
+            in [
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ]
+        ):
+            # This is a workaround to ensure we are querying the right fields for permissions
+            # The identifier for permissions needs the same fields as the display label
             schema_branch = db.schema.get_schema_branch(name=branch.name)
             display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
             if display_label_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
-
-        if fields and "hfid" in fields and node_schema.human_friendly_id:
-            hfid_fields = node_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
+                deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         response = await cls.get_many(
             ids=node_ids,
@@ -220,7 +226,6 @@ class NodeManager:
         filters: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        account=None,  # noqa: ARG003
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
@@ -296,11 +301,16 @@ class NodeManager:
         branch: Branch | str | None = None,
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
+        relationship_metadata_options = (
+            include_metadata.relationship_level
+            if isinstance(include_metadata, MetadataQueryOptions)
+            else include_metadata
+        )
         query = await RelationshipGetPeerQuery.init(
             db=db,
             branch=branch,
@@ -313,7 +323,7 @@ class NodeManager:
             limit=limit,
             at=at,
             branch_agnostic=branch_agnostic,
-            include_metadata=include_metadata,
+            include_metadata=relationship_metadata_options,
         )
         await query.execute(db=db)
 
@@ -321,30 +331,40 @@ class NodeManager:
         if not peers_info:
             return []
 
-        # if display_label has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields:
+        if fields and "identifier" in fields:
+            # This is a workaround to ensure we are querying the right fields for permissions
+            # The identifier for permissions needs the same fields as the display label
             peer_schema = schema.get_peer_schema(db=db, branch=branch)
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
-            if display_label_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
-
-        if fields and "hfid" in fields:
-            peer_schema = schema.get_peer_schema(db=db, branch=branch)
-            hfid_fields = peer_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
+            if peer_schema.kind in [
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ]:
+                schema_branch = db.schema.get_schema_branch(name=branch.name)
+                display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
+                if display_label_fields:
+                    deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]
             peer_nodes = await cls.get_many(
-                db=db, ids=peer_ids, fields=fields, at=at, branch=branch, branch_agnostic=branch_agnostic
+                db=db,
+                ids=peer_ids,
+                fields=fields,
+                at=at,
+                branch=branch,
+                branch_agnostic=branch_agnostic,
+                include_metadata=include_metadata,
             )
 
         results = []
         for peer in peers_info:
             result = Relationship(
-                schema=schema, branch=branch, source_kind=peer.source_kind, at=at, node_id=peer.source_id
+                schema=schema,
+                branch=branch,
+                source_kind=peer.source_kind,
+                at=at,
+                node_id=peer.source_id,
             ).load(
                 db=db,
                 id=peer.rel_node_id,
@@ -418,17 +438,13 @@ class NodeManager:
         if not peers_ids:
             return {}
 
-        hierarchy_schema = node_schema.get_hierarchy_schema(db=db, branch=branch)
-
-        # if display_label has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields:
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=hierarchy_schema.kind)
-            if display_label_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
-
         return await cls.get_many(
-            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_metadata=MetadataOptions.LINKED_NODES
+            db=db,
+            ids=peers_ids,
+            fields=fields,
+            at=at,
+            branch=branch,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
 
     @overload
@@ -513,7 +529,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -530,7 +545,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -547,7 +561,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -564,7 +577,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -581,7 +593,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -598,7 +609,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -614,7 +624,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -636,7 +645,6 @@ class NodeManager:
             at=at,
             include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
             order=OrderModel(disable=True),
         )
@@ -673,7 +681,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
     ) -> SchemaProtocol | None: ...
 
     @overload
@@ -689,7 +696,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -706,7 +712,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -723,7 +728,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -740,7 +744,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -757,7 +760,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -773,7 +775,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -807,7 +808,8 @@ class NodeManager:
                 rel_schema = path.related_schema
                 # Keep the relationship attribute path and parse it
                 path = rel_schema.parse_schema_path(
-                    path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
+                    path=key.split("__", maxsplit=1)[1],
+                    schema=registry.schema.get_schema_branch(name=branch.name),
                 )
 
             filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
@@ -822,7 +824,6 @@ class NodeManager:
             at=at,
             include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
             order=OrderModel(disable=True),
         )
@@ -854,7 +855,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -870,7 +870,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Any: ...
 
@@ -885,7 +884,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Any:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -913,7 +911,6 @@ class NodeManager:
             branch=branch,
             include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
         )
         if not node:
@@ -1146,15 +1143,6 @@ class NodeManager:
         if not ids:
             return {}
 
-        if fields:
-            metadata_determiner = MetadataDeterminer()
-            include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(node_fields=fields)
-            if isinstance(include_metadata, MetadataQueryOptions):
-                include_metadata |= include_metadata_for_fields
-            else:
-                include_metadata_for_fields.node_level |= include_metadata
-            include_metadata = include_metadata_for_fields
-
         # Query all nodes
         node_metadata_options = (
             include_metadata.node_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
@@ -1332,7 +1320,9 @@ class NodeManager:
         node_schema = node.get_schema()
         for rel_schema in node_schema.relationships:
             peer_ids = grouped_peer_nodes.get_peer_ids(
-                node_id=node.get_id(), rel_name=rel_schema.get_identifier(), direction=rel_schema.direction
+                node_id=node.get_id(),
+                rel_name=rel_schema.get_identifier(),
+                direction=rel_schema.direction,
             )
             if not peer_ids:
                 continue
@@ -1387,6 +1377,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         at: Timestamp | None = None,
         cascade_delete: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
@@ -1401,7 +1392,7 @@ class NodeManager:
                 nodes_to_delete += list(node_map.values())
 
         for node in nodes_to_delete:
-            await node.delete(db=db, at=at)
+            await node.delete(db=db, at=at, user_id=user_id)
 
         return nodes_to_delete
 

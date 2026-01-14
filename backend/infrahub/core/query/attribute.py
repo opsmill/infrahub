@@ -27,20 +27,18 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute,
-        user_id: str,
         attr_id: str | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
-        self.user_id = user_id
 
         if at:
             self.at = Timestamp(at)
         else:
-            self.at = self.attr.at
+            self.at = Timestamp()
 
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
@@ -115,7 +113,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         flag_name: str,
         **kwargs: Any,
     ) -> None:
-        SUPPORTED_FLAGS = ["is_visible", "is_protected"]
+        SUPPORTED_FLAGS = ["is_protected"]
 
         if flag_name not in SUPPORTED_FLAGS:
             raise ValueError(f"Only {SUPPORTED_FLAGS} are supported for now.")
@@ -173,7 +171,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         prop_name: str,
         prop_id: str | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.prop_name = prop_name
         self.prop_id = prop_id
 
@@ -248,7 +246,7 @@ class AttributeClearNodePropertyQuery(AttributeQuery):
         self,
         prop_name: str,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.prop_name = prop_name
 
         super().__init__(**kwargs)
@@ -325,7 +323,6 @@ CALL (a) {
 UNWIND [
     ["HAS_ATTRIBUTE", "in"],
     ["HAS_VALUE", "out"],
-    ["IS_VISIBLE", "out"],
     ["IS_PROTECTED", "out"],
     ["HAS_SOURCE", "out"],
     ["HAS_OWNER", "out"]
@@ -491,7 +488,7 @@ async def default_attribute_query_filter(
         if property_name not in [v.value for v in NodeProperty]:
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
 
-        if property_attr not in ["id"]:
+        if property_attr != "id":
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
 
         clean_filter_name = f"{property_name}_{property_attr}"

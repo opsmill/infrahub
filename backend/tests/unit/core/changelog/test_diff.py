@@ -32,7 +32,7 @@ async def test_events_from_diff(
     diff = await diff_merger.merge_graph(at=at)
     diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch1)
     changelogs = diff_events.collect_changelogs()
-    assert len(changelogs) == 3
+    assert len(changelogs) == 2
 
 
 async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:

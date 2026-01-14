@@ -26,9 +26,10 @@ async def start_validator[ValidatorType: CoreValidator](
         validator.started_at.value = ""
         validator.completed_at.value = ""
         await validator.save()
-        validator = cast(ValidatorType, validator)
+        validator = cast("ValidatorType", validator)
     else:
         data["proposed_change"] = proposed_change
+        client.request_context = context.to_request_context()
         validator = await client.create(kind=validator_type, data=data)
         await validator.save()
 

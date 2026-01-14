@@ -367,7 +367,6 @@ class MetadataOptions(Flag):
     OWNER = auto()
     LINKED_NODES = SOURCE | OWNER
     IS_PROTECTED = auto()
-    IS_VISIBLE = auto()
     CREATED_BY = auto()
     CREATED_AT = auto()
     UPDATED_BY = auto()
@@ -380,7 +379,7 @@ class MetadataOptions(Flag):
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
-    # "Builtin",
+    "Builtin",
     "Core",
     "Deprecated",
     "Diff",
@@ -409,3 +408,4 @@ DEFAULT_REL_IDENTIFIER_LENGTH = 128
 OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
 OBJECT_TEMPLATE_NAME_ATTR = "template_name"
 PROFILE_NODE_RELATIONSHIP_IDENTIFIER = "node__profile"
+PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER = "template__profile"

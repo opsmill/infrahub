@@ -17,10 +17,13 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
     RelationshipDeleteBehavior,
     RelationshipKind,
     SchemaPathType,
 )
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
@@ -36,6 +39,7 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
@@ -49,7 +53,7 @@ from .conftest import _get_schema_by_kind
 async def test_schema_branch_set() -> None:
     SCHEMA = {
         "name": "Criticality",
-        "namespace": "Builtin",
+        "namespace": "Testing",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -71,7 +75,7 @@ async def test_schema_branch_set() -> None:
 async def test_schema_branch_get(default_branch: Branch) -> None:
     SCHEMA = {
         "name": "Criticality",
-        "namespace": "Builtin",
+        "namespace": "Testing",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -93,7 +97,7 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    assert isinstance(schema.get(name="BuiltinCriticality"), NodeSchema)
+    assert isinstance(schema.get(name="TestingCriticality"), NodeSchema)
     assert isinstance(schema.get(name="InfraGenericInterface"), GenericSchema)
 
 
@@ -104,9 +108,9 @@ async def test_schema_branch_process_inheritance(schema_all_in_one) -> None:
     schema.process_inheritance()
 
     generic = schema.get(name="InfraGenericInterface")
-    assert generic.used_by == ["BuiltinCriticality"]
+    assert generic.used_by == ["TestingCriticality"]
 
-    criticality = schema.get(name="BuiltinCriticality")
+    criticality = schema.get(name="TestingCriticality")
     assert criticality.get_relationship(name="status")
     assert criticality.get_relationship(name="status").inherited
     assert criticality.get_attribute(name="my_generic_name")
@@ -120,10 +124,10 @@ async def test_schema_branch_process_inheritance(schema_all_in_one) -> None:
 
     core_node = schema.get(name="CoreNode")
     assert set(core_node.used_by) == {
-        "BuiltinCriticality",
-        "BuiltinTag",
-        "BuiltinStatus",
-        "BuiltinBadge",
+        "TestingCriticality",
+        "TestingTag",
+        "TestingStatus",
+        "TestingBadge",
         "CoreStandardGroup",
         "InfraTinySchema",
     }
@@ -221,12 +225,14 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
 ) -> None:
     schema = SchemaBranch(cache={}, name="test")
     animal_schema = animal_person_schema_dict["generics"][0]
-    assert animal_schema["name"] == "Animal" and animal_schema["namespace"] == "Test"
+    assert animal_schema["name"] == "Animal"
+    assert animal_schema["namespace"] == "Test"
     animal_schema["uniqueness_constraints"] = None
     animal_schema["human_friendly_id"] = None
 
     dog_schema = animal_person_schema_dict["nodes"][0]
-    assert dog_schema["name"] == "Dog" and dog_schema["namespace"] == "Test"
+    assert dog_schema["name"] == "Dog"
+    assert dog_schema["namespace"] == "Test"
     dog_schema["uniqueness_constraints"] = uniqueness_constraints
     dog_schema["human_friendly_id"] = human_friendly_id
     expected_uniqueness_constraints = []
@@ -354,7 +360,7 @@ async def test_schema_branch_process_branch_support(schema_all_in_one) -> None:
     schema.process_inheritance()
     schema.process_branch_support()
 
-    criticality = schema.get(name="BuiltinCriticality")
+    criticality = schema.get(name="TestingCriticality")
     assert criticality.get_attribute(name="name").branch == BranchSupportType.AGNOSTIC
     assert criticality.get_attribute(name="level").branch == BranchSupportType.AWARE
     assert criticality.get_attribute(name="local_attr").branch == BranchSupportType.LOCAL
@@ -362,7 +368,7 @@ async def test_schema_branch_process_branch_support(schema_all_in_one) -> None:
     assert criticality.get_relationship(name="status").branch == BranchSupportType.AGNOSTIC
     assert criticality.get_relationship(name="badges").branch == BranchSupportType.LOCAL
 
-    criticality = schema.get(name=InfrahubKind.TAG)
+    criticality = schema.get(name="TestingTag")
     assert criticality.get_attribute(name="name").branch == BranchSupportType.AWARE
     assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
@@ -377,8 +383,79 @@ async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
     assert generic.get_attribute(name="mybool").optional is True
     assert generic.get_attribute(name="my_generic_name").optional is False
 
-    criticality = schema.get(name="BuiltinCriticality")
+    criticality = schema.get(name="TestingCriticality")
     assert criticality.get_attribute(name="color").optional is True
+
+
+async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
+    """Test that SchemaBranch.load_schema() syncs top-level and parameters fields for Text attributes."""
+    regex = "abc"
+    min_length = 3
+    max_length = 5
+
+    # Test reconciliation when parameters are set (new style)
+    SCHEMA_WITH_PARAMS: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "parameters": {"regex": regex, "min_length": min_length, "max_length": max_length},
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_PARAMS)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # After load_schema, both deprecated fields and parameters should be synced
+    node = schema_branch.get(name="TestDevice", duplicate=False)
+    desc_attr = node.get_attribute(name="description")
+    assert desc_attr.parameters.regex == desc_attr.regex == regex
+    assert desc_attr.parameters.min_length == desc_attr.min_length == min_length
+    assert desc_attr.parameters.max_length == desc_attr.max_length == max_length
+
+    # Test reconciliation when top-level fields are set (deprecated style)
+    SCHEMA_WITH_TOP_LEVEL: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Router",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "hostname",
+                        "kind": "Text",
+                        "regex": regex,
+                        "min_length": min_length,
+                        "max_length": max_length,
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_TOP_LEVEL)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # After load_schema, both deprecated fields and parameters should be synced
+    node = schema_branch.get(name="TestRouter", duplicate=False)
+    hostname_attr = node.get_attribute(name="hostname")
+    assert hostname_attr.parameters.regex == hostname_attr.regex == regex
+    assert hostname_attr.parameters.min_length == hostname_attr.min_length == min_length
+    assert hostname_attr.parameters.max_length == hostname_attr.max_length == max_length
 
 
 async def test_schema_branch_add_groups(schema_all_in_one) -> None:
@@ -388,7 +465,7 @@ async def test_schema_branch_add_groups(schema_all_in_one) -> None:
     schema.process_inheritance()
     schema.add_groups()
 
-    criticality = schema.get(name="BuiltinCriticality")
+    criticality = schema.get(name="TestingCriticality")
     assert criticality.get_relationship(name="member_of_groups")
     assert criticality.get_relationship(name="subscriber_of_groups")
 
@@ -414,7 +491,7 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one) -> No
     rel1.state = HashableModelState.ABSENT
     schema.set(name=generic.kind, schema=generic)
 
-    node = schema.get(name="BuiltinCriticality")
+    node = schema.get(name="TestingCriticality")
     attr1_node = node.get_attribute(name="mybool")
     assert attr1_node.inherited is True
     assert attr1_node.state == HashableModelState.PRESENT
@@ -423,7 +500,7 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one) -> No
     assert rel1_node.state == HashableModelState.PRESENT
 
     schema.cleanup_inherited_elements()
-    node = schema.get(name="BuiltinCriticality")
+    node = schema.get(name="TestingCriticality")
     attr1_node = node.get_attribute(name="mybool")
     assert attr1_node.inherited is True
     assert attr1_node.state == HashableModelState.ABSENT
@@ -476,7 +553,7 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one) -> No
                         "default_filter": "name__value",
                         "branch": BranchSupportType.AGNOSTIC.value,
                         "relationships": [
-                            {"name": "status", "peer": "BuiltinStatus", "optional": True, "cardinality": "one"}
+                            {"name": "status", "peer": "TestingStatus", "optional": True, "cardinality": "one"}
                         ],
                     },
                     {
@@ -604,7 +681,8 @@ async def test_schema_branch_generate_weight(schema_all_in_one) -> None:
     in_both, in_first, in_second = compare_lists(second_weights, third_weights)
     assert in_first == []
     assert sorted(in_both) == sorted(second_weights)
-    assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
+    assert len(in_second) == 1
+    assert in_second[0].startswith(new_attr2_partial_id)
 
 
 def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema) -> None:
@@ -628,7 +706,7 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": "BuiltinTag",
+                        "peer": "TestingTag",
                         "optional": True,
                         "cardinality": "many",
                         "kind": "Attribute",
@@ -642,7 +720,7 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -716,34 +794,51 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
     schema.process_inheritance()
     schema.manage_profile_schemas()
 
-    node_profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
+    node_profile = schema.get(name="ProfileTestingCriticality", duplicate=False)
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert set(node_profile.attribute_names) == {"profile_name", "profile_priority", "description", "mybool"}
+    assert set(node_profile.attribute_names) == {
+        "profile_name",
+        "profile_priority",
+        "level",
+        "color",
+        "description",
+        "my_generic_name",
+        "mybool",
+        "local_attr",
+    }
+    assert set(node_profile.relationship_names) == {"badges", "primary_tag", "related_nodes", "status", "tags"}
     generic_profile = schema.get(name="ProfileInfraGenericInterface", duplicate=False)
-    assert set(generic_profile.attribute_names) == {"profile_name", "profile_priority", "mybool"}
+    assert set(generic_profile.attribute_names) == {
+        "profile_name",
+        "profile_priority",
+        "my_generic_name",
+        "mybool",
+        "local_attr",
+    }
+    assert set(generic_profile.relationship_names) == {"badges", "primary_tag", "related_nodes", "status"}
     core_profile_schema = schema.get("CoreProfile")
     core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
-        "ProfileBuiltinCriticality",
-        "ProfileBuiltinTag",
-        "ProfileBuiltinStatus",
-        "ProfileBuiltinBadge",
+        "ProfileTestingCriticality",
+        "ProfileTestingTag",
+        "ProfileTestingStatus",
+        "ProfileTestingBadge",
         "ProfileInfraTinySchema",
         "ProfileInfraGenericInterface",
     }
 
     assert set(core_node_schema.used_by) == {
-        "BuiltinBadge",
-        "BuiltinCriticality",
-        "BuiltinStatus",
-        "BuiltinTag",
+        "TestingBadge",
+        "TestingCriticality",
+        "TestingStatus",
+        "TestingTag",
         "CoreStandardGroup",
         "InfraTinySchema",
-        "ProfileBuiltinCriticality",
-        "ProfileBuiltinTag",
-        "ProfileBuiltinStatus",
-        "ProfileBuiltinBadge",
+        "ProfileTestingCriticality",
+        "ProfileTestingTag",
+        "ProfileTestingStatus",
+        "ProfileTestingBadge",
         "ProfileInfraTinySchema",
         "ProfileInfraGenericInterface",
     }
@@ -770,7 +865,7 @@ async def test_schema_branch_diff_core_profile(schema_all_in_one) -> None:
 async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
-    builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
+    builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="TestingTag")
     builtin_tag_schema["generate_profile"] = False
     generic_interface_schema = schema_all_in_one["generics"][0]
     generic_interface_schema["generate_profile"] = False
@@ -780,17 +875,55 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
     schema.manage_profile_schemas()
 
     with pytest.raises(SchemaNotFoundError):
-        schema.get(name="ProfileBuiltinTag")
-    builtin_tag_schema = schema.get_node(name="BuiltinTag", duplicate=False)
+        schema.get(name="ProfileTestingTag")
+    builtin_tag_schema = schema.get_node(name="TestingTag", duplicate=False)
     with pytest.raises(ValueError):
         builtin_tag_schema.get_relationship("profiles")
     core_profile_schema = schema.get("CoreProfile")
     assert set(core_profile_schema.used_by) == {
-        "ProfileBuiltinCriticality",
-        "ProfileBuiltinStatus",
-        "ProfileBuiltinBadge",
+        "ProfileTestingCriticality",
+        "ProfileTestingStatus",
+        "ProfileTestingBadge",
         "ProfileInfraTinySchema",
     }
+
+
+async def test_schema_branch_add_profile_schema_exclude_relationships_in_uniqueness_constraint(
+    schema_all_in_one,
+) -> None:
+    """Test that relationships included in uniqueness constraints are not added to profile schemas."""
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
+    schema_all_in_one["generics"].append(core_profile_schema)
+
+    test_node_schema = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        "relationships": [
+            {
+                "name": "status",
+                "peer": "TestingStatus",
+                "optional": False,
+                "cardinality": RelationshipCardinality.ONE,
+            },
+            {
+                "name": "primary_tag",
+                "peer": "TestingTag",
+                "optional": True,
+                "cardinality": RelationshipCardinality.ONE,
+            },
+        ],
+        "uniqueness_constraints": [["status", "name__value"]],
+    }
+    schema_all_in_one["nodes"].append(test_node_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process()
+
+    profile_schema = schema.get(name="ProfileTestCriticality", duplicate=False)
+    assert "status" not in profile_schema.relationship_names
+    assert "primary_tag" in profile_schema.relationship_names
 
 
 async def test_schema_branch_generate_identifiers(schema_all_in_one) -> None:
@@ -800,7 +933,7 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one) -> None:
     schema.generate_identifiers()
 
     generic = schema.get(name="InfraGenericInterface")
-    assert generic.relationships[1].identifier == "builtinstatus__infragenericinterface"
+    assert generic.relationships[1].identifier == "infragenericinterface__testingstatus"
 
 
 async def test_schema_branch_validate_names() -> None:
@@ -1347,7 +1480,7 @@ async def test_validate_exception_ipam_ip_namespace(
         ),
         (
             [["status__value"]],
-            "InfraGenericInterface.uniqueness_constraints: value is not a valid attribute of BuiltinStatus",
+            "InfraGenericInterface.uniqueness_constraints: value is not a valid attribute of TestingStatus",
         ),
         (
             [["badges__name__value"]],
@@ -1425,7 +1558,7 @@ async def test_validate_display_label_success(schema_all_in_one, display_label: 
         ),
         (
             ["status__value"],
-            "InfraGenericInterface.display_labels: value is not a valid attribute of BuiltinStatus",
+            "InfraGenericInterface.display_labels: value is not a valid attribute of TestingStatus",
         ),
         (["badges__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
         (["badges"], "InfraGenericInterface.display_labels: this property only supports attributes, not relationships"),
@@ -1466,7 +1599,7 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
         ),
         (
             "status__value",
-            "InfraGenericInterface.display_label - non Jinja2: value is not a valid attribute of BuiltinStatus",
+            "InfraGenericInterface.display_label - non Jinja2: value is not a valid attribute of TestingStatus",
         ),
         (
             "badges__name__value",
@@ -1519,7 +1652,7 @@ async def test_validate_order_by_success(schema_all_in_one, order_by) -> None:
             ["my_generic_name__something"],
             "InfraGenericInterface.order_by: something is not a valid property of my_generic_name",
         ),
-        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of BuiltinStatus"),
+        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of TestingStatus"),
         (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (
             ["badges"],
@@ -1761,20 +1894,20 @@ async def test_schema_branch_from_dict_schema_object() -> None:
     schema_branch_after = SchemaBranch.from_dict_schema_object(data=exported_dict)
 
     assert (
-        schema_branch_after.get_node(name=InfrahubKind.TAG).get_hash()
-        == schema_branch.get_node(name=InfrahubKind.TAG).get_hash()
+        schema_branch_after.get_node(name="BuiltinTag").get_hash()
+        == schema_branch.get_node(name="BuiltinTag").get_hash()
     )
 
 
 async def test_process_relationships_on_delete_defaults_set(schema_all_in_one) -> None:
-    schema_dict = _get_schema_by_kind(schema_all_in_one, "BuiltinCriticality")
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "TestingCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.process_relationships()
 
-    processed_criticality = schema.get(name="BuiltinCriticality", duplicate=False)
+    processed_criticality = schema.get(name="TestingCriticality", duplicate=False)
     processed_relationship = processed_criticality.get_relationship(name="tags")
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.CASCADE
     for node_schema in schema.get_all(duplicate=False).values():
@@ -1784,7 +1917,7 @@ async def test_process_relationships_on_delete_defaults_set(schema_all_in_one) -
 
 
 async def test_process_relationships_component_can_be_overridden(schema_all_in_one) -> None:
-    schema_dict = _get_schema_by_kind(schema_all_in_one, "BuiltinCriticality")
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "TestingCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema_dict["relationships"][0]["on_delete"] = "no-action"
     schema = SchemaBranch(cache={}, name="test")
@@ -1792,7 +1925,7 @@ async def test_process_relationships_component_can_be_overridden(schema_all_in_o
 
     schema.process_relationships()
 
-    processed_criticality = schema.get(name="BuiltinCriticality", duplicate=False)
+    processed_criticality = schema.get(name="TestingCriticality", duplicate=False)
     processed_relationship = processed_criticality.get_relationship(name="tags")
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
@@ -1859,7 +1992,7 @@ async def test_schema_branch_copy(
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -1871,14 +2004,14 @@ async def test_schema_branch_copy(
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -1888,7 +2021,7 @@ async def test_schema_branch_copy(
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -1917,7 +2050,7 @@ async def test_schema_branch_diff_attribute(
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -1929,14 +2062,14 @@ async def test_schema_branch_diff_attribute(
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -1946,7 +2079,7 @@ async def test_schema_branch_diff_attribute(
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -1963,15 +2096,15 @@ async def test_schema_branch_diff_attribute(
     schema_branch.load_schema(schema=schema)
     new_schema = schema_branch.duplicate()
 
-    node = new_schema.get(name="BuiltinCriticality")
+    node = new_schema.get(name="TestingCriticality")
     node.attributes[0].unique = False
-    new_schema.set(name="BuiltinCriticality", schema=node)
+    new_schema.set(name="TestingCriticality", schema=node)
 
     diff = schema_branch.diff(other=new_schema)
     assert diff.model_dump() == {
         "added": {},
         "changed": {
-            "BuiltinCriticality": {
+            "TestingCriticality": {
                 "added": {},
                 "changed": {
                     "attributes": {
@@ -1997,7 +2130,7 @@ async def test_schema_branch_diff_rename_element(
             {
                 "id": str(uuid.uuid4()),
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -2022,7 +2155,7 @@ async def test_schema_branch_diff_rename_element(
                     {
                         "id": str(uuid.uuid4()),
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
@@ -2030,7 +2163,7 @@ async def test_schema_branch_diff_rename_element(
                     {
                         "id": str(uuid.uuid4()),
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -2041,7 +2174,7 @@ async def test_schema_branch_diff_rename_element(
             {
                 "id": str(uuid.uuid4()),
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -2062,21 +2195,21 @@ async def test_schema_branch_diff_rename_element(
     schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
     new_schema = schema_branch.duplicate()
 
-    criticality = new_schema.get(name="BuiltinCriticality")
+    criticality = new_schema.get(name="TestingCriticality")
     criticality.attributes[0].name = f"new-{criticality.attributes[0].name}"
     criticality.relationships[0].name = f"new-{criticality.relationships[0].name}"
-    new_schema.set(name="BuiltinCriticality", schema=criticality)
+    new_schema.set(name="TestingCriticality", schema=criticality)
 
-    tag = new_schema.get(name="BuiltinTag")
+    tag = new_schema.get(name="TestingTag")
     tag.name = "NewTag"
-    new_schema.delete(name="BuiltinTag")
-    new_schema.set(name="BuiltinNewTag", schema=tag)
+    new_schema.delete(name="TestingTag")
+    new_schema.set(name="TestingNewTag", schema=tag)
 
     diff = schema_branch.diff(other=new_schema)
     assert diff.model_dump() == {
         "added": {},
         "changed": {
-            "BuiltinCriticality": {
+            "TestingCriticality": {
                 "added": {},
                 "changed": {
                     "attributes": {
@@ -2104,7 +2237,7 @@ async def test_schema_branch_diff_rename_element(
                 },
                 "removed": {},
             },
-            "BuiltinNewTag": {"added": {}, "changed": {"name": None}, "removed": {}},
+            "TestingNewTag": {"added": {}, "changed": {"name": None}, "removed": {}},
         },
         "removed": {},
     }
@@ -2117,7 +2250,7 @@ async def test_schema_branch_diff_add_node_relationship(
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -2134,7 +2267,7 @@ async def test_schema_branch_diff_add_node_relationship(
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -2146,18 +2279,18 @@ async def test_schema_branch_diff_add_node_relationship(
         "extensions": {
             "nodes": [
                 {
-                    "kind": "BuiltinCriticality",
+                    "kind": "TestingCriticality",
                     "relationships": [
                         {
                             "name": "tags",
-                            "peer": InfrahubKind.TAG,
+                            "peer": "TestingTag",
                             "label": "Tags",
                             "optional": True,
                             "cardinality": "many",
                         },
                         {
                             "name": "primary_tag",
-                            "peer": InfrahubKind.TAG,
+                            "peer": "TestingTag",
                             "label": "Primary Tag",
                             "identifier": "primary_tag__criticality",
                             "optional": True,
@@ -2181,9 +2314,9 @@ async def test_schema_branch_diff_add_node_relationship(
 
     diff = schema_branch.diff(other=new_schema)
     assert diff.model_dump() == {
-        "added": {"BuiltinTag": {"added": {}, "changed": {}, "removed": {}}},
+        "added": {"TestingTag": {"added": {}, "changed": {}, "removed": {}}},
         "changed": {
-            "BuiltinCriticality": {
+            "TestingCriticality": {
                 "added": {},
                 "changed": {
                     "relationships": {
@@ -2206,7 +2339,7 @@ async def test_schema_branch_validate_check_missing(
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -2218,14 +2351,14 @@ async def test_schema_branch_validate_check_missing(
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -2235,7 +2368,7 @@ async def test_schema_branch_validate_check_missing(
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -2251,9 +2384,9 @@ async def test_schema_branch_validate_check_missing(
     schema_branch.load_schema(schema=schema)
     new_schema = schema_branch.duplicate()
 
-    node = new_schema.get(name="BuiltinCriticality")
+    node = new_schema.get(name="TestingCriticality")
     node.attributes[0].unique = False
-    new_schema.set(name="BuiltinCriticality", schema=node)
+    new_schema.set(name="TestingCriticality", schema=node)
 
     diff = schema_branch.diff(other=new_schema)
     result = schema_branch.validate_update(other=new_schema, diff=diff)
@@ -2266,7 +2399,7 @@ async def test_schema_branch_validate_check_missing(
                     "path_type": SchemaPathType.ATTRIBUTE,
                     "property_name": "unique",
                     "schema_id": None,
-                    "schema_kind": "BuiltinCriticality",
+                    "schema_kind": "TestingCriticality",
                 },
             },
         ],
@@ -2283,7 +2416,7 @@ async def test_schema_branch_validate_node_deletion(
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -2295,7 +2428,7 @@ async def test_schema_branch_validate_node_deletion(
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
@@ -2304,7 +2437,7 @@ async def test_schema_branch_validate_node_deletion(
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -2326,9 +2459,9 @@ async def test_schema_branch_validate_node_deletion(
     broken_schema_branch.load_schema(schema=broken_schema)
 
     diff = schema_branch.diff(other=broken_schema_branch)
-    assert "BuiltinTag" in diff.removed
+    assert "TestingTag" in diff.removed
 
-    with pytest.raises(ValueError, match="'BuiltinTag' has been removed but is still referenced"):
+    with pytest.raises(ValueError, match="'TestingTag' has been removed but is still referenced"):
         schema_branch.validate_node_deletions(diff=diff)
 
 
@@ -2339,7 +2472,7 @@ async def test_schema_branch_validate_add_node_relationships(
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -2356,7 +2489,7 @@ async def test_schema_branch_validate_add_node_relationships(
         "nodes": [
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -2368,18 +2501,18 @@ async def test_schema_branch_validate_add_node_relationships(
         "extensions": {
             "nodes": [
                 {
-                    "kind": "BuiltinCriticality",
+                    "kind": "TestingCriticality",
                     "relationships": [
                         {
                             "name": "tags",
-                            "peer": InfrahubKind.TAG,
+                            "peer": "TestingTag",
                             "label": "Tags",
                             "optional": True,
                             "cardinality": "many",
                         },
                         {
                             "name": "primary_tag",
-                            "peer": InfrahubKind.TAG,
+                            "peer": "TestingTag",
                             "label": "Primary Tag",
                             "identifier": "primary_tag__criticality",
                             "optional": True,
@@ -2412,7 +2545,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "path_type": SchemaPathType.RELATIONSHIP,
                     "property_name": None,
                     "schema_id": None,
-                    "schema_kind": "BuiltinCriticality",
+                    "schema_kind": "TestingCriticality",
                 },
             },
             {
@@ -2422,7 +2555,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "path_type": SchemaPathType.RELATIONSHIP,
                     "property_name": None,
                     "schema_id": None,
-                    "schema_kind": "BuiltinCriticality",
+                    "schema_kind": "TestingCriticality",
                 },
             },
         ],
@@ -2438,7 +2571,7 @@ async def test_schema_branch_validate_add_node_relationships(
 async def test_schema_manager_set() -> None:
     SCHEMA = {
         "name": "Criticality",
-        "namespace": "Builtin",
+        "namespace": "Testing",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -2459,7 +2592,7 @@ async def test_schema_manager_set() -> None:
 async def test_schema_manager_get(default_branch: Branch) -> None:
     SCHEMA = {
         "name": "Criticality",
-        "namespace": "Builtin",
+        "namespace": "Testing",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -2542,7 +2675,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
 
     node = NodeSchema(
         name="Criticality",
-        namespace="Builtin",
+        namespace="Testing",
         default_filter="name__value",
         attributes=[
             AttributeSchema(name="name", kind="Text", unique=True),
@@ -2555,9 +2688,9 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
                 computed_attribute=ComputedAttribute(kind="Jinja2", jinja2_template="{{ name__value }}"),
             ),
         ],
-        relationships=[RelationshipSchema(name="others", peer="BuiltinCriticality", optional=True, cardinality="many")],
+        relationships=[RelationshipSchema(name="others", peer="TestingCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -2580,7 +2713,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -2617,7 +2750,7 @@ async def test_get_incorrect_kinds(default_branch: Branch) -> None:
 async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     SCHEMA = {
         "name": "Criticality",
-        "namespace": "Builtin",
+        "namespace": "Testing",
         "default_filter": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
@@ -2626,22 +2759,26 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
             {"name": "description", "kind": "Text", "optional": True},
         ],
         "relationships": [
-            {"name": "others", "peer": "BuiltinCriticality", "optional": True, "cardinality": "many"},
+            {"name": "others", "peer": "TestingCriticality", "optional": True, "cardinality": "many"},
         ],
     }
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
+    await registry.schema.load_node_to_db(
+        node=NodeSchema(**SCHEMA), db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    )
 
-    node = registry.schema.get(name="BuiltinCriticality", branch=default_branch)
+    node = registry.schema.get(name="TestingCriticality", branch=default_branch)
 
     new_node = node.duplicate()
 
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch)
+    await registry.schema.update_node_in_db(
+        node=new_node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    )
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
@@ -2653,7 +2790,7 @@ async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_b
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name, at=Timestamp())
 
     node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
     results = await SchemaManager.query(schema=node_schema, db=db)
@@ -2667,7 +2804,7 @@ async def test_load_schema_to_db_core_models(
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, at=Timestamp())
 
     node_schema = registry.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
@@ -2681,7 +2818,7 @@ async def test_clean_diff_after_reload_from_db(
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, at=Timestamp())
 
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_pre = schema_branch.duplicate()
@@ -2707,6 +2844,211 @@ async def test_load_schema_to_db_simple_01(
         schema=node_schema, filters={"name__value": "Device"}, db=db, branch=default_branch
     )
     assert len(results) == 1
+
+
+async def test_load_schema_to_db_includes_metadata(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_internal_models_schema: SchemaBranch,
+    branch: Branch,
+    schema_criticality_tag: dict,
+) -> None:
+    """Verify that SchemaNode, SchemaAttribute, and SchemaRelationship metadata is properly set."""
+    test_user_id = "test-user-id-12345"
+
+    # Record time window around schema load
+    time_before = Timestamp()
+
+    # Register and load the schema with a specific user_id
+    schema = SchemaRoot(**schema_criticality_tag)
+    new_schema = registry.schema.register_schema(schema=schema, branch=branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=branch, user_id=test_user_id)
+
+    time_after = Timestamp()
+
+    # Query the SchemaNode (TestingCriticality) with metadata
+    node_schema = registry.schema.get(name="SchemaNode")
+    results = await SchemaManager.query(
+        schema=node_schema,
+        filters={"name__value": "Criticality"},
+        db=db,
+        branch=branch,
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+    )
+    assert len(results) == 1
+
+    schema_node = results[0]
+
+    # Verify SchemaNode metadata with time window
+    assert time_before < schema_node._get_created_at() < time_after
+    assert schema_node._get_created_by() == test_user_id
+    assert time_before < schema_node._get_updated_at() < time_after
+    assert schema_node._get_updated_by() == test_user_id
+
+    # Get attribute Relationship edges and peers using query_peers with fetch_peers=True
+    attributes_rel_schema = node_schema.get_relationship(name="attributes")
+    attr_edge_results = await NodeManager.query_peers(
+        db=db,
+        branch=branch,
+        ids=[schema_node.id],
+        source_kind="SchemaNode",
+        schema=attributes_rel_schema,
+        filters={},
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+        fetch_peers=True,
+    )
+    assert len(attr_edge_results) > 0
+
+    # Verify metadata on the first attribute edge (Relationship object)
+    first_attr_edge = attr_edge_results[0]
+    assert time_before < first_attr_edge._get_created_at() < time_after
+    assert first_attr_edge._get_created_by() == test_user_id
+    assert time_before < first_attr_edge._get_updated_at() < time_after
+    assert first_attr_edge._get_updated_by() == test_user_id
+
+    # Verify metadata on the peer (SchemaAttribute node) retrieved from the relationship
+    first_attr = await first_attr_edge.get_peer(db=db)
+    assert time_before < first_attr._get_created_at() < time_after
+    assert first_attr._get_created_by() == test_user_id
+    assert time_before < first_attr._get_updated_at() < time_after
+    assert first_attr._get_updated_by() == test_user_id
+
+    # Verify metadata on an attribute of first_attr (SchemaAttribute.name)
+    first_attr_name = first_attr.get_attribute("name")
+    assert time_before < first_attr_name._get_created_at() < time_after
+    assert first_attr_name._get_created_by() == test_user_id
+    assert time_before < first_attr_name._get_updated_at() < time_after
+    assert first_attr_name._get_updated_by() == test_user_id
+
+    # Get relationship Relationship edges and peers using query_peers with fetch_peers=True
+    relationships_rel_schema = node_schema.get_relationship(name="relationships")
+    rel_edge_results = await NodeManager.query_peers(
+        db=db,
+        branch=branch,
+        ids=[schema_node.id],
+        source_kind="SchemaNode",
+        schema=relationships_rel_schema,
+        filters={},
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+        fetch_peers=True,
+    )
+    assert len(rel_edge_results) > 0
+
+    # Verify metadata on the first relationship edge (Relationship object)
+    first_rel_edge = rel_edge_results[0]
+    assert time_before < first_rel_edge._get_created_at() < time_after
+    assert first_rel_edge._get_created_by() == test_user_id
+    assert time_before < first_rel_edge._get_updated_at() < time_after
+    assert first_rel_edge._get_updated_by() == test_user_id
+
+    # Verify metadata on the peer (SchemaRelationship node) retrieved from the relationship
+    first_rel = await first_rel_edge.get_peer(db=db)
+    assert time_before < first_rel._get_created_at() < time_after
+    assert first_rel._get_created_by() == test_user_id
+    assert time_before < first_rel._get_updated_at() < time_after
+    assert first_rel._get_updated_by() == test_user_id
+
+    # Verify metadata on an attribute of first_rel (SchemaRelationship.name)
+    first_rel_name = first_rel.get_attribute("name")
+    assert time_before < first_rel_name._get_created_at() < time_after
+    assert first_rel_name._get_created_by() == test_user_id
+    assert time_before < first_rel_name._get_updated_at() < time_after
+    assert first_rel_name._get_updated_by() == test_user_id
+
+    time_before_str = time_before.to_string()
+    time_after_str = time_after.to_string()
+
+    query_params = {
+        "branch": branch.name,
+        "time_before": time_before_str,
+        "time_after": time_after_str,
+        "user_id": test_user_id,
+    }
+    find_illegal_schema_edges_query = """
+// ------------
+// Start with all SchemaNode, SchemaAttribute, and SchemaRelationship vertices
+// and check all linked edges
+// ------------
+MATCH (n:SchemaNode|SchemaAttribute|SchemaRelationship)
+CALL (n) {
+    OPTIONAL MATCH (n)-[r]-(peer)
+    WHERE r.status <> "active"
+    OR r.branch <> $branch
+    OR r.from < $time_before
+    OR r.from > $time_after
+    OR r.from_user_id <> $user_id
+    RETURN r, peer
+}
+WITH n, collect(
+    CASE WHEN r IS NOT NULL OR peer IS NOT NULL THEN {
+        edge_type: type(r),
+        edge_from: r.from,
+        edge_from_user_id: r.from_user_id,
+        peer_labels: labels(peer),
+        peer_uuid: peer.uuid
+    }
+    ELSE NULL
+    END
+) AS illegal_node_edges
+// ------------
+// For each SchemaNode, SchemaAttribute, and SchemaRelationship, check all linked Attribute/Relationship vertices
+// and their linked edges
+// ------------
+MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WITH DISTINCT n, illegal_node_edges, field
+CALL (field) {
+    OPTIONAL MATCH (field)-[r]-(prop)
+    WHERE r.status <> "active"
+    OR r.branch <> $branch
+    OR r.from < $time_before
+    OR r.from > $time_after
+    OR r.from_user_id <> $user_id
+    RETURN r, prop
+}
+WITH n, illegal_node_edges, collect (
+    CASE WHEN r IS NOT NULL OR prop IS NOT NULL THEN {
+        edge_type: type(r),
+        edge_from: r.from,
+        edge_from_user_id: r.from_user_id,
+        peer_labels: labels(prop),
+        peer_value: COALESCE(prop.uuid, prop.value)
+    }
+    ELSE NULL
+    END
+) AS illegal_field_edges
+WITH n, illegal_node_edges, illegal_field_edges
+WHERE size(illegal_node_edges) > 0 OR size(illegal_field_edges) > 0
+RETURN n.uuid AS node_uuid, n.kind AS node_kind, illegal_node_edges, illegal_field_edges
+    """
+
+    records = await db.execute_query(query=find_illegal_schema_edges_query, params=query_params)
+
+    # The query only returns records with illegal edges, so any results indicate a failure
+    error_messages = []
+    for record in records:
+        node_uuid = record.get("node_uuid")
+        node_kind = record.get("node_kind")
+
+        illegal_node_edges = [e for e in record.get("illegal_node_edges", []) if e is not None]
+        illegal_field_edges = [e for e in record.get("illegal_field_edges", []) if e is not None]
+
+        for edge in illegal_node_edges:
+            error_messages.append(
+                f"Illegal edge on {node_kind} '{node_uuid}': "
+                f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
+                f"from_user_id={edge.get('edge_from_user_id')}, "
+                f"peer_labels={edge.get('peer_labels')}, peer_uuid={edge.get('peer_uuid')}"
+            )
+
+        for edge in illegal_field_edges:
+            error_messages.append(
+                f"Illegal field edge on {node_kind} '{node_uuid}': "
+                f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
+                f"from_user_id={edge.get('edge_from_user_id')}, "
+                f"peer_labels={edge.get('peer_labels')}, peer_value={edge.get('peer_value')}"
+            )
+
+    assert not error_messages, "Found illegal edges:\n" + "\n".join(error_messages)
 
 
 async def test_load_schema_to_db_w_generics_01(
@@ -2755,14 +3097,14 @@ async def test_load_schema_from_db(
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -2771,7 +3113,7 @@ async def test_load_schema_from_db(
                 ],
             },
             {
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "name": "Tag",
                 "label": "Tag",
                 "include_in_menu": False,
@@ -2808,7 +3150,7 @@ async def test_load_schema_from_db(
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
     assert set(schema2.profiles.keys()) == {
-        "ProfileBuiltinTag",
+        "ProfileTestingTag",
         "ProfileTestCriticality",
         "ProfileTestGenericInterface",
     }
@@ -2818,7 +3160,7 @@ async def test_load_schema_from_db(
     assert profiles_rel_schema.peer == InfrahubKind.PROFILE
     assert start_crit_hash == crit_schema.get_hash()
     assert schema11.get(name="TestCriticality").get_hash() == crit_schema.get_hash()
-    assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name="TestingTag").get_hash() == schema2.get(name="TestingTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
 
     description_schema = crit_schema.get_attribute("description")
@@ -2846,14 +3188,14 @@ async def test_load_schema(
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
                     },
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -2862,7 +3204,7 @@ async def test_load_schema(
                 ],
             },
             {
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "name": "Tag",
                 "label": "Tag",
                 "default_filter": "name__value",
@@ -2895,13 +3237,13 @@ async def test_load_schema(
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
     assert set(schema2.profiles.keys()) == {
-        "ProfileBuiltinTag",
+        "ProfileTestingTag",
         "ProfileTestCriticality",
         "ProfileTestGenericInterface",
     }
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
-    assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
+    assert schema11.get(name="TestingTag").get_hash() == schema2.get(name="TestingTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
 
 
@@ -3147,21 +3489,21 @@ def test_schema_branch_load_schema_update_nested_list(schema_all_in_one) -> None
 
 
 def test_schema_branch_conflicting_required_relationships(schema_all_in_one) -> None:
-    tag_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinTag")
+    tag_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="TestingTag")
     tag_schema["relationships"] = [
         {
             "name": "crits",
-            "peer": "BuiltinCriticality",
+            "peer": "TestingCriticality",
             "label": "Crits",
             "optional": False,
             "cardinality": "many",
         },
     ]
-    crit_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinCriticality")
+    crit_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="TestingCriticality")
     crit_schema["relationships"] = [
         {
             "name": "tags",
-            "peer": InfrahubKind.TAG,
+            "peer": "TestingTag",
             "label": "Tags",
             "optional": False,
             "cardinality": "many",
@@ -3174,8 +3516,8 @@ def test_schema_branch_conflicting_required_relationships(schema_all_in_one) -> 
     with pytest.raises(ValueError) as exc:
         schema.validate_required_relationships()
 
-    assert "BuiltinTag" in exc.value.args[0]
-    assert "BuiltinCriticality" in exc.value.args[0]
+    assert "TestingTag" in exc.value.args[0]
+    assert "TestingCriticality" in exc.value.args[0]
     assert "cannot both have required relationships" in exc.value.args[0]
 
 
