@@ -40,6 +40,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
+from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -81,7 +82,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
+    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp) -> None:
         super().__init__()
         self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
         self._branch: Branch = branch
@@ -96,6 +97,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._owner: Node | None = None
         self._is_protected: bool = None
         self._computed_jinja2_attributes: list[str] = []
+        self._profile_provided_attrs: set[str] = set()
+        self._profile_provided_rels: set[str] = set()
 
         self._display_label: DisplayLabel | None = None
         self._human_friendly_id: HumanFriendlyIdentifier | None = None
@@ -157,6 +160,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if not isinstance(relationship, RelationshipManager):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
+
+    def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
+        for rel_schema in self._schema.relationships:
+            if rel_schema.identifier == identifier:
+                return self.get_relationship(rel_schema.name)
+        raise ValueError(f"Unable to find the relationship with the identifier {identifier} for {self.get_kind()}")
 
     def uses_profiles(self) -> bool:
         for attr_name in self.get_schema().attribute_names:
@@ -399,6 +408,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         schema_node: NodeSchema | GenericSchema,
         schema_attribute: AttributeSchema,
         branch: Branch | None = None,
+        at: Timestamp | None = None,
     ) -> CoreNumberPool:
         """Fetch or create a number pool based on the schema attribute parameters.
 
@@ -447,7 +457,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     end_range=number_pool_parameters.end_range,
                     pool_type=NumberPoolType.SCHEMA.value,
                 )
-                await number_pool.save(db=db)
+                await number_pool.save(db=db, at=at)
 
                 # Do a lookup of the number pool to get the correct mapped type from the registry
                 # without this we don't get access to the .get_resource() method.
@@ -513,6 +523,25 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
+    async def _get_profile_provided_mandatory_fields(
+        self, db: InfrahubDatabase, fields: dict[str, Any]
+    ) -> tuple[set[str], set[str]]:
+        if not isinstance(self._schema, NodeSchema) or "profiles" not in fields:
+            return set(), set()
+
+        mandatory_attrs_to_check = [a for a in self._schema.mandatory_attribute_names if a not in fields.keys()]
+        mandatory_rels_to_check = [r for r in self._schema.mandatory_relationship_names if r not in fields.keys()]
+        if not mandatory_attrs_to_check and not mandatory_rels_to_check:
+            return set(), set()
+
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=self._branch)
+        return await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
+            schema=self._schema,
+            profiles_data=fields.get("profiles"),
+            mandatory_attr_names=mandatory_attrs_to_check,
+            mandatory_rel_names=mandatory_rels_to_check,
+        )
+
     async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
         errors = []
 
@@ -534,10 +563,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Backfill fields with the ones from the template if there's one
         await self.handle_object_template(fields=fields, db=db, errors=errors)
 
-        # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:
+            (
+                self._profile_provided_attrs,
+                self._profile_provided_rels,
+            ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
+
             for mandatory_attr in self._schema.mandatory_attribute_names:
-                if mandatory_attr not in fields.keys():
+                if mandatory_attr not in fields.keys() and mandatory_attr not in self._profile_provided_attrs:
                     if self._schema.is_node_schema:
                         mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
                         if (
@@ -555,7 +588,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     )
 
             for mandatory_rel in self._schema.mandatory_relationship_names:
-                if mandatory_rel not in fields.keys():
+                if mandatory_rel not in fields.keys() and mandatory_rel not in self._profile_provided_rels:
                     errors.append(
                         ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
                     )
@@ -632,6 +665,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
                     await self.handle_pool(db=db, attribute=attribute, errors=errors, allocate_resources=process_pools)
+
+                    if attr_schema.name in self._profile_provided_attrs:
+                        continue
 
                     if process_pools or attribute.from_pool is None:
                         attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
@@ -988,18 +1024,20 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+            if deleted_attribute := await attr.delete(db=db, at=delete_at, user_id=user_id):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._human_friendly_id:
             if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db,
+                user_id=user_id,
+                at=delete_at,
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._display_label:
             if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db, at=delete_at, user_id=user_id
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
@@ -1046,10 +1084,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
-        if fields and isinstance(fields, dict):
-            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
-        else:
-            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+        field_names = (
+            [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+            if fields and isinstance(fields, dict)
+            else self._schema.attribute_names + ["__typename", "display_label"]
+        )
 
         for field_name in field_names:
             if field_name == "__typename":
@@ -1118,6 +1157,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return response
 
+    async def _build_meta_response(self, field_name: str, fields: dict) -> dict:
+        data = {}
+        for meta_field in fields.get(field_name, {}).keys():
+            if meta_field == "created_at":
+                created_at = self._get_created_at()
+                data["created_at"] = created_at.to_datetime() if created_at else None
+
+            if meta_field == "created_by":
+                data["created_by"] = (
+                    {"id": self._get_created_by(), "__kind__": "CoreAccount"} if self._get_created_by() else None
+                )
+
+            if meta_field == "updated_by":
+                data["updated_by"] = (
+                    {"id": self._get_updated_by(), "__kind__": "CoreAccount"} if self._get_updated_by() else None
+                )
+
+            if meta_field == "updated_at":
+                updated_at = self._get_updated_at()
+                data["updated_at"] = updated_at.to_datetime() if updated_at else None
+        return data
+
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""
 
@@ -1130,7 +1191,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
-                changed |= await rel.update(db=db, data=value)
+                changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
 

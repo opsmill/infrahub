@@ -144,6 +144,7 @@ class TestConstraintDeterminer:
             c
             for c in constraints
             if c.constraint_name not in ["node.generate_profile.update", "node.uniqueness_constraints.update"]
+            and c.path.schema_kind in ["TestCar", "TestPerson"]
         ]
         assert len(relevant_constraints) == len(constraint_info_set)
         assert set(relevant_constraints) == constraint_info_set

@@ -3,6 +3,7 @@ title: Configuring SSO (Single sign-on)
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
 
 # How to configure SSO (Single sign-on)
 
@@ -191,6 +192,10 @@ At the end of this step, you should have gathered all the necessary information 
 Now configure Infrahub to connect to your identity provider using either environment variables or the `infrahub.toml` configuration file.
 
 :::info
+The configuration process will require a restart of the Infrahub server and depends on your deployment method.
+
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](./configuration-changes.mdx).
+
 For detailed configuration options, see the [configuration reference](../reference/configuration.mdx).
 
 For multiple identity providers, refer to the [Advanced Configuration Section](#multiple-identity-providers).
@@ -284,9 +289,7 @@ oauth2_providers = ["provider1"]
 </TabItem>
 </Tabs>
 
-:::warning
-After configuring your SSO settings, restart the Infrahub server for the changes to take effect.
-:::
+<ReferenceLink title="How to configure Infrahub" url="./configuration-changes" openInNewTab />
 
 :::success
 After restarting, Infrahub will authenticate users through your configured identity provider.

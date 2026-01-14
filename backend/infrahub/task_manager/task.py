@@ -329,9 +329,9 @@ class PrefectTask:
                                 "related_node": related_node.id if related_node else None,
                                 "related_node_kind": related_node.kind if related_node else None,
                                 "related_nodes": related_nodes_info.get_related_nodes_as_dict(flow_id=flow.id),
-                                "created_at": flow.created.to_iso8601_string(),  # type: ignore
-                                "updated_at": flow.updated.to_iso8601_string(),  # type: ignore
-                                "start_time": flow.start_time.to_iso8601_string() if flow.start_time else None,
+                                "created_at": flow.created.isoformat() if flow.created else None,
+                                "updated_at": flow.updated.isoformat() if flow.updated else None,
+                                "start_time": flow.start_time.isoformat() if flow.start_time else None,
                                 "id": flow.id,
                                 "logs": {"edges": logs, "count": len(logs)},
                             }

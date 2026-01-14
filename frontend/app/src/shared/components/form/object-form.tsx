@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 
-import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
@@ -19,6 +18,7 @@ import {
 } from "@/shared/config/constants";
 
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeObject } from "@/entities/nodes/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
@@ -39,13 +39,7 @@ import {
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
 
-export type ProfileData = {
-  [key: string]: string | Pick<AttributeType, "value" | "__typename">;
-  display_label: string;
-  id: string;
-  __typename: string;
-  profile_priority: NumberAttribute;
-};
+export type { ProfileData };
 
 const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));
 const RepositoryForm = lazy(() => import("@/entities/repository/ui/repository-form"));

@@ -11,6 +11,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m024_missing_hierarchy_backfill import Migration024
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -98,7 +99,7 @@ SET main_e.hierarchy = NULL
         real_schema_manager = registry.schema
         try:
             registry.schema = mock_schema_manager
-            await migration.execute(db=db)
+            await migration.execute(migration_input=MigrationInput(db=db))
         finally:
             registry.schema = real_schema_manager
         mock_load_schema_from_db.assert_awaited_once()

@@ -78,7 +78,6 @@ const RepositoryForm = ({
           relationship={
             { peer: "CorePasswordCredential", name: "credential", cardinality: "one" } as any
           }
-          schema={schema}
         />
       </FormGroup>
 

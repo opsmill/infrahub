@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
-from graphql import GraphQLResolveInfo
 
 from infrahub import lock
 from infrahub.core.account import GlobalPermission
@@ -17,7 +16,6 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import (
@@ -45,6 +43,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreProposedChange
     from infrahub.events.models import InfrahubEvent
 
     from ..initialization import GraphqlContext
@@ -79,7 +78,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
-        override_data = {"created_by": {"id": graphql_context.active_account_session.account_id}}
         state = data.get("state", {}).get("value")
         if state and state != ProposedChangeState.OPEN.value:
             raise ValidationError(input_value="A proposed change has to be in the open state during creation")
@@ -269,13 +267,17 @@ class ProposedChangeReview(Mutation):
         lock_name = build_object_lock_name(pc_id)
         async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-                id=pc_id, kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
+                id=pc_id,
+                kind=InfrahubKind.PROPOSEDCHANGE,
+                db=graphql_context.db,
+                prefetch_relationships=True,
+                include_metadata=MetadataOptions.CREATED_BY,
             )
             state = ProposedChangeState(proposed_change.state.value.value)
             state.validate_reviewable()
 
-            created_by = await proposed_change.created_by.get_peer(db=graphql_context.db)
-            if created_by and created_by.id == graphql_context.active_account_session.account_id:
+            created_by = proposed_change._get_created_by()
+            if created_by and created_by == graphql_context.active_account_session.account_id:
                 raise ValidationError(input_value="You cannot review your own proposed changes")
 
             current_user = await NodeManager.get_one_by_id_or_default_filter(
@@ -292,7 +294,7 @@ class ProposedChangeReview(Mutation):
                     current_user=current_user,
                     context=graphql_context,
                 )
-                await proposed_change.save(db=db)
+                await proposed_change.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
                 if event:
                     event_service = await get_event_service()
@@ -426,7 +428,7 @@ class ProposedChangeMerge(Mutation):
 
         async with graphql_context.db.start_session() as db:
             proposed_change.state.value = ProposedChangeState.MERGING.value
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=graphql_context.assigned_user_id)
 
         if wait_until_completion:
             await graphql_context.service.workflow.execute_workflow(

@@ -9,6 +9,7 @@ import { QSP } from "@/shared/config/qsp";
 
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import type { NodeObject } from "@/entities/nodes/types";
+import type { Permission } from "@/entities/permission/types";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-objects-manager";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -18,10 +19,13 @@ import { TaskItems } from "@/entities/tasks/ui/task-items";
 export interface ObjectDetailsTabContentProps {
   objectSchema: ModelSchema;
   objectDetailsData: NodeObject;
+  permission: Permission;
 }
+
 export function ObjectDetailsTabContent({
   objectSchema,
   objectDetailsData,
+  permission,
 }: ObjectDetailsTabContentProps) {
   const { pathname } = location;
 
@@ -66,8 +70,9 @@ export function ObjectDetailsTabContent({
     return (
       <ObjectRelationshipsManager
         parentNodeSchema={objectSchema}
-        parentNodeId={objectDetailsData.id}
+        parentNodeData={objectDetailsData}
         relationshipName={qspTab}
+        permission={permission}
       />
     );
   }

@@ -54,7 +54,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
+              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
                 {schema.label} available
               </TableCell>
             </>

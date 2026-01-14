@@ -12,9 +12,9 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
-from infrahub.core.constants import MetadataOptions, RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
@@ -105,6 +105,9 @@ class RelationshipPeerData:
     updated_at: Timestamp | None = None
     updated_by: str | None = None
 
+    is_from_profile: bool = False
+    profile_id: UUID | None = None
+
     def rel_ids_per_branch(self) -> dict[str, list[str | int]]:
         response = defaultdict(list)
         for rel in self.rels:
@@ -156,7 +159,7 @@ class RelationshipQuery(Query):
         branch: Branch | None = None,
         at: Timestamp | str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         if not source and not source_id:
             raise ValueError("Either source or source_id must be provided.")
         if not rel and not rel_id:
@@ -265,17 +268,7 @@ class RelationshipQuery(Query):
         self.add_to_query(destination_query_match)
 
 
-class RelationshipWriteQuery(RelationshipQuery):
-    def __init__(
-        self,
-        user_id: str,
-        **kwargs,
-    ):
-        self.user_id = user_id
-        super().__init__(**kwargs)
-
-
-class RelationshipCreateQuery(RelationshipWriteQuery):
+class RelationshipCreateQuery(RelationshipQuery):
     name = "relationship_create"
 
     type: QueryType = QueryType.WRITE
@@ -285,7 +278,7 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
         destination: Node = None,
         destination_id: UUID | None = None,
         **kwargs,
-    ):
+    ) -> None:
         if not destination and not destination_id:
             raise ValueError("Either destination or destination_id must be provided.")
 
@@ -302,7 +295,6 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
         self.params["at"] = self.at.to_string()
 
         self.params["is_protected"] = self.rel.is_protected
-        self.params["is_visible"] = self.rel.is_visible
         self.params["user_id"] = self.user_id
 
         self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
@@ -333,16 +325,19 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
         MERGE (ip:Boolean { value: $is_protected })
-        MERGE (iv:Boolean { value: $is_visible })
         CREATE (rl)-[r3:IS_PROTECTED $rel_prop ]->(ip)
-        CREATE (rl)-[r4:IS_VISIBLE $rel_prop ]->(iv)
         """ % (
             r1,
             r2,
         )
+        if self.branch.is_default or self.branch.is_global:
+            query_create += """
+        SET s.updated_at = $at, s.updated_by = $user_id
+        SET d.updated_at = $at, d.updated_by = $user_id
+            """
 
         self.add_to_query(query_create)
-        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3", "r4"]
+        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3"]
         self.query_add_all_node_property_create()
 
     def query_add_all_node_property_match(self) -> None:
@@ -393,16 +388,18 @@ CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "ac
         self.add_to_query(query)
 
 
-class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
+class RelationshipUpdatePropertyQuery(RelationshipQuery):
     name = "relationship_property_update"
     type = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
 
     def __init__(
         self,
         flag_properties_to_update: dict[str, bool],
         node_properties_to_update: dict[str, str],
         **kwargs,
-    ):
+    ) -> None:
         if not flag_properties_to_update and not node_properties_to_update:
             raise ValueError("Either flag_properties_to_update or node_properties_to_update must be set")
         self.flag_properties_to_update = flag_properties_to_update
@@ -410,7 +407,7 @@ class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.rel_id
+        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
@@ -422,7 +419,7 @@ class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
         if self.branch.is_default or self.branch.is_global:
             rel_query += """
             SET rl.updated_at = $at, rl.updated_by = $user_id
-            WITH *
+            WITH rl
             """
         self.add_to_query(rel_query)
 
@@ -452,6 +449,33 @@ WITH rl
         self.query_add_all_node_property_create(branch_filter=branch_filter)
         self.query_add_all_flag_property_create()
 
+        # Update peer node metadata at the end (only on default/global branch)
+        if self.branch.is_default or self.branch.is_global:
+            peer_metadata_query = """
+WITH rl
+CALL (rl) {
+    MATCH (peer:Node)-[r_rel:IS_RELATED]-(rl)
+    WHERE r_rel.branch_level = 1
+    WITH DISTINCT peer, rl
+    CALL (peer, rl) {
+        MATCH (peer)-[r_rel:IS_RELATED]-(rl)
+        WHERE r_rel.branch_level = 1
+        ORDER BY r_rel.from DESC, r_rel.status ASC
+        LIMIT 1
+        WITH peer, r_rel
+        WHERE r_rel.status = "active" AND r_rel.to IS NULL
+        MATCH (peer)-[r_part:IS_PART_OF]->(:Root)
+        WHERE r_part.branch_level = 1
+        ORDER BY r_part.from DESC, r_part.status ASC
+        LIMIT 1
+        WITH peer, r_part
+        WHERE r_part.status = "active" AND r_part.to IS NULL
+        SET peer.updated_at = $at, peer.updated_by = $user_id
+    }
+}
+            """
+            self.add_to_query(peer_metadata_query)
+
     def query_add_all_flag_property_merge(self) -> None:
         for prop_name, prop_value in self.flag_properties_to_update.items():
             self.query_add_flag_property_merge(name=prop_name, value=prop_value)
@@ -459,7 +483,6 @@ WITH rl
     def query_add_flag_property_merge(self, name: str, value: bool) -> None:
         self.add_to_query("MERGE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
         self.params[f"prop_{name}"] = value
-        self.return_labels.append(f"prop_{name}")
 
     def query_add_all_node_property_merge(self, branch_filter: str) -> None:
         for prop_name, prop_value in self.node_properties_to_update.items():
@@ -484,7 +507,6 @@ WITH rl
             WHERE $prop_%(prop_name)s IS NULL OR r_%(prop_name)s.status = "active"
                 """ % {"branch_filter": branch_filter, "prop_name": prop_name}
             self.add_to_query(node_query)
-            self.return_labels.append(f"prop_{prop_name}")
 
     def query_add_all_flag_property_create(self) -> None:
         for prop_name in self.flag_properties_to_update:
@@ -529,13 +551,13 @@ CALL (rl) {
         self.add_to_query(query)
 
 
-class RelationshipDeleteQuery(RelationshipWriteQuery):
+class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
     type = QueryType.WRITE
     insert_return = False
     raise_error_if_empty = False
 
-    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs):
+    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs) -> None:
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         super().__init__(**kwargs)
@@ -583,7 +605,9 @@ class RelationshipDeleteQuery(RelationshipWriteQuery):
         }
         if self.branch.is_default or self.branch.is_global:
             rel_match_query += """
-            SET rl.updated_at = $at, rl.updated_by = $user_id
+        SET rl.updated_at = $at, rl.updated_by = $user_id
+        SET s.updated_at = $at, s.updated_by = $user_id
+        SET d.updated_at = $at, d.updated_by = $user_id
             """
         self.add_to_query(rel_match_query)
 
@@ -619,7 +643,7 @@ class RelationshipDeleteQuery(RelationshipWriteQuery):
         }
         WITH rl
 
-        OPTIONAL MATCH (rl)-[edge:IS_VISIBLE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(peer)
+        OPTIONAL MATCH (rl)-[edge:IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(peer)
         WHERE %(rel_filter)s
         ORDER BY type(edge), edge.branch_level DESC, edge.from DESC, edge.status ASC
         WITH rl, type(edge) AS edge_type, head(collect(edge)) AS edge, head(collect(peer)) AS peer
@@ -666,7 +690,7 @@ class RelationshipGetPeerQuery(Query):
         at: Timestamp | str | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         **kwargs,
-    ):
+    ) -> None:
         if not source and not source_ids:
             raise ValueError("Either source or source_ids must be provided.")
         if not rel and not rel_type:
@@ -700,21 +724,6 @@ class RelationshipGetPeerQuery(Query):
             self.at = Timestamp(at)
 
         super().__init__(**kwargs)
-
-    def _add_is_visible_query(self, branch_filter: str) -> None:
-        if not (self.include_metadata & MetadataOptions.IS_VISIBLE):
-            return
-        query = """
-CALL (rl) {
-    MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
-    WHERE %(branch_filter)s
-    RETURN r AS rel_is_visible, is_visible
-    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    LIMIT 1
-}
-        """ % {"branch_filter": branch_filter}
-        self.add_to_query(query)
-        self.update_return_labels(["rel_is_visible", "is_visible"])
 
     def _add_is_protected_query(self, branch_filter: str) -> None:
         if not (self.include_metadata & MetadataOptions.IS_PROTECTED):
@@ -932,7 +941,6 @@ RETURN updated_at, updated_by
         # add metadata
         # ----------------------------------------------------------------------------
         self._add_is_protected_query(branch_filter)
-        self._add_is_visible_query(branch_filter)
         self._add_has_owner_query(branch_filter)
         self._add_has_source_query(branch_filter)
         self._add_created_metadata_to_query()
@@ -1010,21 +1018,16 @@ RETURN updated_at, updated_by
                 properties={},
             )
 
-            for prop, metadata_option in [
-                ("is_protected", MetadataOptions.IS_PROTECTED),
-                ("is_visible", MetadataOptions.IS_VISIBLE),
-            ]:
-                if not self.include_metadata & metadata_option:
-                    continue
+            prop, metadata_option = ("is_protected", MetadataOptions.IS_PROTECTED)
+            if self.include_metadata & metadata_option:
                 prop_node = result.get(prop)
-                if not prop_node:
-                    continue
-                data.properties[prop] = FlagPropertyData(
-                    name=prop,
-                    prop_db_id=prop_node.element_id,
-                    rel=RelData.from_db(result.get(f"rel_{prop}")),
-                    value=prop_node.get("value"),
-                )
+                if prop_node:
+                    data.properties[prop] = FlagPropertyData(
+                        name=prop,
+                        prop_db_id=prop_node.element_id,
+                        rel=RelData.from_db(result.get(f"rel_{prop}")),
+                        value=prop_node.get("value"),
+                    )
 
             for prop, metadata_option in [("owner", MetadataOptions.OWNER), ("source", MetadataOptions.SOURCE)]:
                 if not self.include_metadata & metadata_option:
@@ -1038,6 +1041,10 @@ RETURN updated_at, updated_by
                     rel=RelData.from_db(result.get(f"rel_{prop}")),
                     value=prop_node.get("uuid"),
                 )
+
+                if prop == "source" and InfrahubKind.PROFILE in prop_node.labels:
+                    data.is_from_profile = True
+                    data.profile_id = prop_node._properties["uuid"]
 
             yield data
 
@@ -1117,6 +1124,25 @@ class RelationshipGetByIdentifierQuery(Query):
             yield data
 
 
+@dataclass(frozen=True)
+class RelationshipCountPerNodeResult:
+    """Result from RelationshipCountPerNodeQuery containing peer count info."""
+
+    peer_uuid: str
+    """UUID of the peer node."""
+
+    count: int
+    """Number of relationship peers for this node."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> RelationshipCountPerNodeResult:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            peer_uuid=result.get_as_type("peer_node.uuid", str),
+            count=result.get_as_type("nbr_peers", int),
+        )
+
+
 class RelationshipCountPerNodeQuery(Query):
     name = "relationship_count_per_node"
     type: QueryType = QueryType.READ
@@ -1127,7 +1153,7 @@ class RelationshipCountPerNodeQuery(Query):
         identifier: str,
         direction: RelationshipDirection,
         **kwargs,
-    ):
+    ) -> None:
         self.node_ids = node_ids
         self.identifier = identifier
         self.direction = direction
@@ -1165,16 +1191,51 @@ class RelationshipCountPerNodeQuery(Query):
         self.order_by = ["peer_node.uuid"]
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
+    def get_data(self) -> list[RelationshipCountPerNodeResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of RelationshipCountPerNodeResult containing peer count info.
+        """
+        return [RelationshipCountPerNodeResult.from_db(result) for result in self.get_results()]
+
     async def get_count_per_peer(self) -> dict[str, int]:
         data: dict[str, int] = {}
-        for result in self.results:
-            data[result.get("peer_node.uuid")] = result.get("nbr_peers")
+        for item in self.get_data():
+            data[item.peer_uuid] = item.count
 
         for node_id in self.node_ids:
             if node_id not in data:
                 data[node_id] = 0
 
         return data
+
+
+@dataclass(frozen=True)
+class RelationshipDeleteAllQueryResult:
+    """Result from RelationshipDeleteAllQuery containing deleted relationship info."""
+
+    uuid: str
+    """UUID of the peer node whose relationship was deleted."""
+
+    kind: str
+    """Kind/type of the peer node."""
+
+    rel_identifier: str
+    """Relationship schema identifier name."""
+
+    rel_direction: str
+    """Direction of the relationship ("outbound" or "inbound")."""
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> RelationshipDeleteAllQueryResult:
+        """Convert raw QueryResult to typed dataclass."""
+        return cls(
+            uuid=result.get_as_type("uuid", str),
+            kind=result.get_as_type("kind", str),
+            rel_identifier=result.get_as_type("rel_identifier", str),
+            rel_direction=result.get_as_type("rel_direction", str),
+        )
 
 
 class RelationshipDeleteAllQuery(Query):
@@ -1191,9 +1252,8 @@ class RelationshipDeleteAllQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, node_id: str, user_id: str, **kwargs):
+    def __init__(self, node_id: str, **kwargs) -> None:
         self.node_id = node_id
-        self.user_id = user_id
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
@@ -1229,7 +1289,6 @@ class RelationshipDeleteAllQuery(Query):
         self.add_to_query(rel_match_query)
 
         edge_types = [
-            DatabaseEdgeType.IS_VISIBLE.value,
             DatabaseEdgeType.IS_PROTECTED.value,
             DatabaseEdgeType.HAS_OWNER.value,
             DatabaseEdgeType.HAS_SOURCE.value,
@@ -1257,6 +1316,10 @@ class RelationshipDeleteAllQuery(Query):
                 self.add_to_query(sub_query)
 
         # We only want to return uuid/kind of `Node` connected through `IS_RELATED` edges.
+        peer_node_metadata_update = ""
+        if self.branch.is_default or self.branch.is_global:
+            peer_node_metadata_update = "SET n.updated_at = $at, n.updated_by = $user_id"
+
         query = """
         CALL (rl) {
             MATCH (rl)-[active_edge:IS_RELATED]->(n)
@@ -1267,6 +1330,7 @@ class RelationshipDeleteAllQuery(Query):
             WHERE active_edge.status = "active"
             CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
+            %(peer_node_metadata_update)s
             WITH rl, active_edge, n
             WHERE active_edge.branch = $branch AND active_edge.to IS NULL
             SET active_edge.to = $at, active_edge.to_user_id = $user_id
@@ -1286,6 +1350,7 @@ class RelationshipDeleteAllQuery(Query):
             WHERE active_edge.status = "active"
             CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
+            %(peer_node_metadata_update)s
             WITH rl, active_edge, n
             WHERE active_edge.branch = $branch AND active_edge.to IS NULL
             SET active_edge.to = $at, active_edge.to_user_id = $user_id
@@ -1296,53 +1361,60 @@ class RelationshipDeleteAllQuery(Query):
                 "inbound" as rel_direction
         }
         RETURN DISTINCT uuid, kind, rel_identifier, rel_direction
-        """ % {"active_rel_filter": active_rel_filter, "id_func": db.get_id_function_name()}
+        """ % {
+            "active_rel_filter": active_rel_filter,
+            "id_func": db.get_id_function_name(),
+            "peer_node_metadata_update": peer_node_metadata_update,
+        }
         self.add_to_query(query)
+        self.return_labels = ["uuid", "kind", "rel_identifier", "rel_direction"]
+
+    def get_data(self) -> list[RelationshipDeleteAllQueryResult]:
+        """Return results as typed dataclass instances.
+
+        Returns:
+            List of RelationshipDeleteAllQueryResult containing deleted relationship info.
+        """
+        return [RelationshipDeleteAllQueryResult.from_db(result) for result in self.get_results()]
 
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
     ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
-        rel_identifier_to_changelog_mapper = {}
+        rel_identifier_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
 
-        for result in self.get_results():
-            peer_uuid = result.data["uuid"]
-            if peer_uuid == self.node_id:
+        for item in self.get_data():
+            if item.uuid == self.node_id:
                 continue
 
-            rel_identifier = result.data["rel_identifier"]
-            kind = result.data["kind"]
             deleted_rel_schemas = [
-                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == rel_identifier
+                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == item.rel_identifier
             ]
 
             if len(deleted_rel_schemas) == 0:
                 continue  # TODO Unidirectional relationship changelog should be handled, cf IFC-1319.
 
             if len(deleted_rel_schemas) > 2:
-                log.error(f"Duplicated relationship schema with identifier {rel_identifier}")
+                log.error(f"Duplicated relationship schema with identifier {item.rel_identifier}")
                 continue
 
             if len(deleted_rel_schemas) == 2:
                 # Hierarchical schema nodes have 2 relationships with `parent_child` identifiers,
                 # which are differentiated by their direction within the database.
-                # assert rel_identifier != PARENT_CHILD_IDENTIFIER
-
-                rel_direction = result.data["rel_direction"]
                 deleted_rel_schema = (
                     deleted_rel_schemas[0]
-                    if deleted_rel_schemas[0].direction.value == rel_direction
+                    if deleted_rel_schemas[0].direction.value == item.rel_direction
                     else deleted_rel_schemas[1]
                 )
             else:
                 deleted_rel_schema = deleted_rel_schemas[0]
 
             try:
-                changelog_mapper = rel_identifier_to_changelog_mapper[rel_identifier]
+                changelog_mapper = rel_identifier_to_changelog_mapper[item.rel_identifier]
             except KeyError:
                 changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
-                rel_identifier_to_changelog_mapper[rel_identifier] = changelog_mapper
+                rel_identifier_to_changelog_mapper[item.rel_identifier] = changelog_mapper
 
-            changelog_mapper.delete_relationship(peer_id=peer_uuid, peer_kind=kind, rel_schema=deleted_rel_schema)
+            changelog_mapper.delete_relationship(peer_id=item.uuid, peer_kind=item.kind, rel_schema=deleted_rel_schema)
 
         return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
 
@@ -1356,7 +1428,7 @@ class GetAllPeersIds(Query):
     type: QueryType = QueryType.READ
     insert_return = False
 
-    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs):
+    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs) -> None:
         self.node_id = node_id
         self.exclude_identifiers = exclude_identifiers
         super().__init__(**kwargs)

@@ -20,6 +20,7 @@ from infrahub.core.constants import (
     SYSTEM_USER_ID,
     AttributeDBNodeType,
     BranchSupportType,
+    InfrahubKind,
     MetadataOptions,
 )
 from infrahub.core.metadata.interface import MetadataInterface
@@ -78,7 +79,6 @@ class AttributeCreateData(BaseModel):
     content: dict[str, Any]
     is_default: bool
     is_protected: bool
-    is_visible: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
 
@@ -161,9 +161,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         if self.is_protected is None:
             self.is_protected = False
-
-        if self.is_visible is None:
-            self.is_visible = True
 
     @property
     def is_enum(self) -> bool:
@@ -446,19 +443,17 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             await query.execute(db=db)
 
         # ---------- Update the Flags ----------
-        SUPPORTED_FLAGS = ("is_visible", "is_protected")
-
-        for flag_name in SUPPORTED_FLAGS:
-            if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
-                changelog.add_property(
-                    name=flag_name,
-                    value_current=getattr(self, flag_name),
-                    value_previous=current_attr_data.flag_properties[flag_name],
-                )
-                query = await AttributeUpdateFlagQuery.init(
-                    db=db, branch=branch, attr=self, user_id=user_id, at=update_at, flag_name=flag_name
-                )
-                await query.execute(db=db)
+        flag_name = "is_protected"
+        if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
+            changelog.add_property(
+                name=flag_name,
+                value_current=getattr(self, flag_name),
+                value_previous=current_attr_data.flag_properties[flag_name],
+            )
+            query = await AttributeUpdateFlagQuery.init(
+                db=db, branch=branch, attr=self, user_id=user_id, at=update_at, flag_name=flag_name
+            )
+            await query.execute(db=db)
 
         # ---------- Update the Node Properties ----------
         for prop_name in self._node_properties:
@@ -530,7 +525,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         for field_name in field_names:
             if field_name == "updated_at":
                 updated_at = self._get_updated_at()
-                response[field_name] = updated_at.to_graphql() if updated_at else None
+                response[field_name] = await updated_at.to_graphql() if updated_at else None
+                continue
+
+            if field_name == "updated_by":
+                response[field_name] = (
+                    {
+                        "id": self._get_updated_by(),
+                        "__kind__": InfrahubKind.ACCOUNT,
+                    }
+                    if self._get_updated_by()
+                    else None
+                )
                 continue
 
             if field_name == "__typename":
@@ -616,9 +622,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if "is_protected" in data and data["is_protected"] != self.is_protected:
             self.is_protected = data["is_protected"]
             changed = True
-        if "is_visible" in data and data["is_visible"] != self.is_visible:
-            self.is_visible = data["is_visible"]
-            changed = True
 
         if "source" in data and data["source"] != self.source_id:
             self.source = data["source"]
@@ -653,7 +656,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             content=self.to_db(),
             is_default=self.is_default,
             is_protected=self.is_protected,
-            is_visible=self.is_visible,
         )
         if self.source_id:
             data.source_prop.append(NodePropertyData(name="source", peer_id=self.source_id))

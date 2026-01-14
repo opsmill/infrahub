@@ -121,7 +121,7 @@ export const ProposedChangeCreateForm = () => {
 
         <Icon
           icon="mdi:arrow-bottom"
-          className="md:-rotate-90 shrink-0 text-gray-500 text-xl md:mt-8"
+          className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
         />
 
         <FormField

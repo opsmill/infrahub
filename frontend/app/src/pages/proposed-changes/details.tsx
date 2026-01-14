@@ -3,7 +3,6 @@ import { useAtom } from "jotai";
 import { useQueryState } from "nuqs";
 import { Link, useLocation, useParams } from "react-router";
 
-import type { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -23,6 +22,7 @@ import { NodeDiff } from "@/entities/diff/node-diff";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/domain/get-proposed-change-details.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
@@ -35,11 +35,8 @@ export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-interface ProposedChangesDetailsPageProps {
-  proposedChangeData: CoreProposedChange;
-}
-
-const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDetailsPageProps) => {
+const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) => {
+  const { proposedChangeData } = props;
   const { pathname } = useLocation();
   const [qspTab] = useQueryState(QSP.PROPOSED_CHANGES_TAB);
   const [qspTaskId] = useQueryState(QSP.TASK_ID);
@@ -97,7 +94,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
         </div>
       );
     default: {
-      return <ProposedChangeDetails />;
+      return <ProposedChangeDetails {...props} />;
     }
   }
 };
@@ -112,7 +109,7 @@ export function Component() {
     return <LoadingIndicator className="h-full" />;
   }
 
-  const { proposedChangeData, tasksCount } = data ?? {};
+  const { proposedChangeData, tasksCount, metadata } = data ?? {};
 
   const tabs = [
     {
@@ -183,15 +180,10 @@ export function Component() {
         description={
           <div className="inline-flex items-center gap-1 text-xs">
             <Link
-              to={getObjectDetailsUrl(
-                proposedChangeData?.created_by?.node?.__typename,
-                proposedChangeData?.created_by?.node?.id
-              )}
+              to={getObjectDetailsUrl(metadata?.created_by?.__typename, metadata?.created_by?.id)}
               className="font-semibold text-custom-blue-green"
             >
-              {proposedChangeData?.created_by?.node
-                ? getNodeLabel(proposedChangeData.created_by.node)
-                : ""}
+              {metadata?.created_by ? getNodeLabel(metadata.created_by) : ""}
             </Link>
             wants to merge
             <Link to={constructPath(`/branches/${proposedChangeData.source_branch?.value}`)}>
@@ -226,7 +218,7 @@ export function Component() {
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      <ProposedChangeDetailsContent proposedChangeData={proposedChangeData} />
+      <ProposedChangeDetailsContent {...data} />
     </Content.Card>
   );
 }

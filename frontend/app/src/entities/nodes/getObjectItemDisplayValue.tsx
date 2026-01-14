@@ -1,4 +1,4 @@
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, XIcon } from "lucide-react";
 
 import type {
   AnyAttribute,
@@ -13,13 +13,13 @@ import type {
   RelationshipProperty,
   TextAttribute,
 } from "@/shared/api/graphql/generated/graphql";
-import { Badge } from "@/shared/components/display/badge";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
+import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
@@ -56,7 +56,7 @@ export const getDisplayValue = (
   }
 
   if (row[attribute?.name]?.value === false) {
-    return <XMarkIcon className="h-4 w-4" />;
+    return <XIcon className="h-4 w-4" />;
   }
 
   if (row[attribute?.name]?.value === true) {
@@ -174,12 +174,12 @@ export type RelationshipType = RelationshipManyType | RelationshipOneType;
 
 export const ObjectAttributeValue = ({
   attributeSchema,
-  attributeValue,
+  attributeData,
 }: {
   attributeSchema: FieldSchema;
-  attributeValue: AttributeType;
+  attributeData: AttributeType;
 }) => {
-  if (!attributeValue.value && attributeValue.value !== 0 && attributeValue.value !== false) {
+  if (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false) {
     return "-";
   }
 
@@ -194,55 +194,51 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.ANY:
-      return <TextDisplay>{getTextValue(attributeValue).toString()}</TextDisplay>;
+      return <TextDisplay>{getTextValue(attributeData).toString()}</TextDisplay>;
     case ATTRIBUTE_KIND.URL:
       return (
-        <Link to={getTextValue(attributeValue).toString()} target="_blank" rel="noreferrer">
-          {getTextValue(attributeValue).toString()}
+        <Link to={getTextValue(attributeData).toString()} target="_blank" rel="noreferrer">
+          {getTextValue(attributeData).toString()}
         </Link>
       );
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX:
-      return attributeValue.value ? (
-        <CheckIcon className="size-4" />
-      ) : (
-        <XMarkIcon className="size-4" />
-      );
+      return attributeData.value ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />;
     case ATTRIBUTE_KIND.DATETIME:
-      return <DateDisplay date={getTextValue(attributeValue)} />;
+      return <DateDisplay date={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.TEXTAREA:
-      return <MarkdownRender markdownText={getTextValue(attributeValue)} />;
+      return <MarkdownRender markdownText={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.PASSWORD:
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
-      return <PasswordDisplay value={getTextValue(attributeValue)} />;
+      return <PasswordDisplay value={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.DROPDOWN: {
-      const dropdownAttribute = attributeValue as Dropdown;
+      const dropdownAttribute = attributeData as Dropdown;
       return (
         <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
       );
     }
     case ATTRIBUTE_KIND.COLOR:
-      return <ColorDisplay color={attributeValue.value} />;
+      return <ColorDisplay color={attributeData.value} />;
     case ATTRIBUTE_KIND.LIST: {
-      const items = attributeValue.value?.map((value?: string) => value ?? "-").slice(0, 5);
+      const items = attributeData.value?.map((value?: string) => value ?? "-").slice(0, 5);
 
-      const rest = attributeValue.value.slice(5).length;
+      const rest = attributeData.value.slice(5).length;
 
       return (
-        <div className="flex flex-wrap items-center">
+        <div className="flex flex-wrap items-center gap-1">
           {items?.map((item: string, index: number) => (
-            <Badge key={index}>{item}</Badge>
+            <Badge key={index} className="font-normal">
+              {item}
+            </Badge>
           ))}
 
-          {items?.length !== attributeValue.value?.length && <i>{`(${rest} more)`}</i>}
+          {items?.length !== attributeData.value?.length && <i>{`(${rest} more)`}</i>}
         </div>
       );
     }
     case ATTRIBUTE_KIND.JSON:
-      return <CodeViewer>{JSON.stringify(attributeValue.value ?? "", null, 2)}</CodeViewer>;
+      return <CodeViewer>{JSON.stringify(attributeData.value ?? "", null, 2)}</CodeViewer>;
     default:
-      return (
-        <div className="flex min-h-7 min-w-7 items-center">{getTextValue(attributeValue)}</div>
-      );
+      return <div className="flex min-h-7 min-w-7 items-center">{getTextValue(attributeData)}</div>;
   }
 };

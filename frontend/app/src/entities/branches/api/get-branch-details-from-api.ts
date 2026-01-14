@@ -1,17 +1,50 @@
-import type {
-  Get_Branch_DetailsQuery,
-  Get_Branch_DetailsQueryVariables,
-} from "@/shared/api/graphql/generated/graphql";
+import { graphql } from "gql.tada";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-import { GET_BRANCHES } from "@/entities/branches/api/query/get-branches-query";
+const GET_BRANCH_DETAILS = graphql(`
+  query GetBranchDetails($branchName: String!) {
+    InfrahubBranch(name__value: $branchName) {
+      edges {
+        node {
+          id
+          name {
+            value
+          }
+          description {
+            value
+          }
+          origin_branch {
+            value
+          }
+          branched_from {
+            value
+          }
+          status {
+            value
+          }
+          created_at
+          sync_with_git {
+            value
+          }
+          is_default {
+            value
+          }
+          has_schema_changes {
+            value
+          }
+        }
+      }
+    }
+  }
+`);
 
 export interface GetBranchDetailsFromApiParams extends BranchContextParams {}
 
 export function getBranchDetailsFromApi({ branchName }: GetBranchDetailsFromApiParams) {
-  return graphqlClient.query<Get_Branch_DetailsQuery, Get_Branch_DetailsQueryVariables>({
-    query: GET_BRANCHES,
+  return graphqlClient.query({
+    query: GET_BRANCH_DETAILS,
     variables: { branchName },
   });
 }

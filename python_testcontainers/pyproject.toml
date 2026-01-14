@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.6.0"
+version = "1.7.1"
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"
@@ -21,9 +21,9 @@ dependencies = [
     "testcontainers>=4.8,<4.9",
     "psutil",
     "pytest",
-    "httpx<0.28",
+    "httpx>=0.20",
     "pydantic>=2.10.6,<3",
-    "prefect-client==3.5.0",
+    "prefect-client==3.6.7",
 ]
 
 [project.urls]

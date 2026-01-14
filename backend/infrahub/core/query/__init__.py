@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -13,7 +12,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
 
 from infrahub import config
-from infrahub.core.constants import PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -160,7 +159,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]):
+    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]) -> None:
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -336,7 +335,7 @@ class QueryStat:
         return cls(**data)
 
 
-class Query(ABC):
+class Query:
     name: str = "base-query"
     type: QueryType
 
@@ -352,7 +351,8 @@ class Query(ABC):
         offset: int | None = None,
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
-    ):
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         if branch:
             self.branch = branch
 
@@ -367,6 +367,7 @@ class Query(ABC):
         self.limit = limit
         self.offset = offset
         self.order_by = order_by
+        self.user_id = user_id
 
         # Initialize internal variables
         self.params: dict = {}
@@ -403,8 +404,12 @@ class Query(ABC):
 
         return query
 
-    @abstractmethod
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        # Avoid using this method for new queries and look at migrating older queries. The
+        # problem here is that we loose so much information with the `**kwargs` we should instead
+        # populate this information via the constructor and anything done within the existing query_init methods
+        # could either be handled within __init__ or via dedicated methods within each Query class where appropriate,
+        # i.e. things might need to happend in a certain order or we just want to separate the logic better.
         raise NotImplementedError
 
     def get_context(self) -> dict[str, str]:

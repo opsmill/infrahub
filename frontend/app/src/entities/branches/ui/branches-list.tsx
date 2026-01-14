@@ -1,45 +1,57 @@
-import { ListBox } from "react-aria-components";
-
-import ErrorScreen from "@/shared/components/errors/error-screen";
+import { queryClient } from "@/shared/api/rest/client";
+import { Col } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
-import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import { useSearch } from "@/shared/hooks/useSearch";
 import { useTitle } from "@/shared/hooks/useTitle";
-import { sortByName } from "@/shared/utils/common";
 
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
-import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
+import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import { useGetBranchesCount } from "@/entities/branches/domain/get-branches-count.query";
+import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
+import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
+
+function BranchesListHeader() {
+  const [search] = useSearch();
+  const { data: count, isPending, isRefetching, isError } = useGetBranchesCount(search);
+
+  const refetchBranches = async () => {
+    await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+  };
+
+  return (
+    <Content.CardTitle
+      title="Branches"
+      badgeContent={isPending ? "..." : isError ? "-" : count}
+      isReloadLoading={isRefetching}
+      reload={refetchBranches}
+    />
+  );
+}
+
+function BranchesListToolbar() {
+  return (
+    <Col className="gap-0">
+      <BranchesListHeader />
+
+      <div className="max-w-56 p-3">
+        <FilterSearchInput placeholder="Search branches" />
+      </div>
+    </Col>
+  );
+}
+
+function BranchesListContent() {
+  const [search] = useSearch();
+
+  return <BranchesTable search={search} />;
+}
 
 export default function BranchesList() {
   useTitle("Branches list");
-  const { data: storedBranches, refetch, isPending, error, isRefetching } = useGetBranches();
-
-  if (isPending) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
-  }
-
-  if (error) {
-    return <ErrorScreen message={error.message} />;
-  }
-
-  const sortedBranches = sortByName(storedBranches.filter((b) => b.name !== "main"));
-  const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   return (
     <Content.Card>
-      <Content.CardTitle
-        title="Branches"
-        badgeContent={branches.length}
-        isReloadLoading={isRefetching}
-        reload={() => refetch()}
-      />
-
-      <ListBox
-        aria-label="Branches list"
-        items={branches}
-        className="m-2 flex flex-col divide-y rounded-lg border border-gray-200"
-      >
-        {(branch) => <BranchListItem branch={branch} />}
-      </ListBox>
+      <BranchesListToolbar />
+      <BranchesListContent />
     </Content.Card>
   );
 }

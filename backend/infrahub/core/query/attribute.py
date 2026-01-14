@@ -27,15 +27,13 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute,
-        user_id: str,
         attr_id: str | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
-        self.user_id = user_id
 
         if at:
             self.at = Timestamp(at)
@@ -115,7 +113,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         flag_name: str,
         **kwargs: Any,
     ) -> None:
-        SUPPORTED_FLAGS = ["is_visible", "is_protected"]
+        SUPPORTED_FLAGS = ["is_protected"]
 
         if flag_name not in SUPPORTED_FLAGS:
             raise ValueError(f"Only {SUPPORTED_FLAGS} are supported for now.")
@@ -173,7 +171,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         prop_name: str,
         prop_id: str | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.prop_name = prop_name
         self.prop_id = prop_id
 
@@ -248,7 +246,7 @@ class AttributeClearNodePropertyQuery(AttributeQuery):
         self,
         prop_name: str,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.prop_name = prop_name
 
         super().__init__(**kwargs)
@@ -325,7 +323,6 @@ CALL (a) {
 UNWIND [
     ["HAS_ATTRIBUTE", "in"],
     ["HAS_VALUE", "out"],
-    ["IS_VISIBLE", "out"],
     ["IS_PROTECTED", "out"],
     ["HAS_SOURCE", "out"],
     ["HAS_OWNER", "out"]

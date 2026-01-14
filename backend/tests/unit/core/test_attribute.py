@@ -23,6 +23,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import MetadataQueryOptions, NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -313,10 +314,7 @@ async def test_validate_content_dropdown(
     assert "invalid-choice must be one of" in str(exc.value)
 
 
-@pytest.mark.parametrize("params_only", [False, True])
-async def test_validate_content_text_parameters(
-    db: InfrahubDatabase, default_branch: Branch, params_only: bool
-) -> None:
+async def test_validate_content_text_parameters(db: InfrahubDatabase, default_branch: Branch) -> None:
     regex = "^[a-z]*$"
     min_length = 2
     max_length = 5
@@ -324,15 +322,13 @@ async def test_validate_content_text_parameters(
         namespace="Test",
         name="Node",
         attributes=[
-            AttributeSchema(name="text_test", kind="Text", regex=regex, min_length=min_length, max_length=max_length)
+            AttributeSchema(
+                name="text_test",
+                kind="Text",
+                parameters=TextAttributeParameters(regex=regex, min_length=min_length, max_length=max_length),
+            )
         ],
     )
-    attr_schema = node_schema.get_attribute("text_test")
-    assert attr_schema.regex == attr_schema.parameters.regex
-    assert attr_schema.min_length == attr_schema.parameters.min_length
-    assert attr_schema.max_length == attr_schema.parameters.max_length
-    if params_only:
-        attr_schema.regex = attr_schema.min_length = attr_schema.min_length = None
 
     new_node = await Node.init(db=db, branch=default_branch, schema=node_schema)
     with pytest.raises(ValidationError, match=r"must have a minimum length of 2"):
@@ -1291,9 +1287,8 @@ async def test_to_graphql(
 
     expected_data = {
         "id": attr1.id,
-        "is_visible": True,
     }
-    assert await attr1.to_graphql(db=db, fields={"id": None, "is_visible": None}) == expected_data
+    assert await attr1.to_graphql(db=db, fields={"id": None}) == expected_data
 
     attr2 = String(
         id=str(UUIDT()),
@@ -1335,7 +1330,6 @@ async def test_to_graphql_no_fields(
         "__typename": "Text",
         "id": attr1.id,
         "is_protected": False,
-        "is_visible": True,
         "owner": None,
         "source": None,
         "value": "mystring",
@@ -1356,7 +1350,6 @@ async def test_to_graphql_no_fields(
         "__typename": "Text",
         "id": attr2.id,
         "is_protected": False,
-        "is_visible": True,
         "owner": None,
         "source": {
             "__typename": InfrahubKind.ACCOUNT,

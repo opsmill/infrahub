@@ -14,6 +14,7 @@ from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
 from .snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
+from .tag import TAG
 from .thing import THING
 from .ticket import TICKET
 from .tshirt import TSHIRT
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-CAR_SCHEMA = SchemaRoot(nodes=[CAR, MANUFACTURER, PERSON])
+CAR_SCHEMA = SchemaRoot(nodes=[CAR, MANUFACTURER, PERSON, TAG])
 DEVICE_SCHEMA = SchemaRoot(
     generics=[INTERFACE, INTERFACE_HOLDER], nodes=[DEVICE, PHYSICAL_INTERFACE, VIRTUAL_INTERFACE, SFP]
 )
@@ -84,6 +85,7 @@ __all__ = [
     "PHYSICAL_INTERFACE",
     "SFP",
     "SITE",
+    "TAG",
     "THING",
     "TICKET",
     "TSHIRT",

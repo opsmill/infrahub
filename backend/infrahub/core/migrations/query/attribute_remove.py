@@ -53,12 +53,18 @@ class AttributeRemoveQuery(Query):
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
+
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         def render_sub_query_per_rel_type(rel_type: str, rel_def: FieldInfo) -> str:
             subquery = [
@@ -106,9 +112,9 @@ class AttributeRemoveQuery(Query):
         }
         WITH n1 as active_node, r1 as rb, attr1 as active_attr
         WHERE rb.status = "active"
-        WITH active_attr
+        WITH active_node, active_attr
         MATCH (active_attr)-[]-(peer)
-        WITH DISTINCT active_attr, peer
+        WITH DISTINCT active_node, active_attr, peer
         CALL (active_attr, peer) {
             MATCH (active_attr)-[r]-(peer)
             WHERE %(branch_filter)s
@@ -116,15 +122,23 @@ class AttributeRemoveQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH a1 as active_attr, r1 as rb, p1 as peer_node
+        WITH active_node, a1 as active_attr, r1 as rb, p1 as peer_node
         WHERE rb.status = "active"
         CALL (peer_node, rb, active_attr) {
             %(sub_query_all)s
         }
-        WITH p2 as peer_node, rb, active_attr
+        WITH p2 as peer_node, rb, active_node, active_attr
         FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
-            SET rb.to = $current_time
+            SET rb.to = $current_time, rb.to_user_id = $user_id
         )
+        // Set metadata on Attribute and Node vertices if on default/global branch
+        WITH active_attr, active_node
+        CALL (active_attr, active_node) {
+            WITH active_attr, active_node
+            WHERE $set_metadata
+            SET active_attr.updated_at = $current_time, active_attr.updated_by = $user_id
+            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+        }
         RETURN DISTINCT active_attr
         """ % {
             "branch_filter": branch_filter,

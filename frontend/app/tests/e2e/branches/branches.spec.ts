@@ -29,7 +29,6 @@ test.describe("Branches creation and deletion", () => {
 
   test.describe("when logged in as Admin", () => {
     test.describe.configure({ mode: "serial" });
-    test.slow();
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     const BRANCH_NAME_1 = generateRandomBranchName();
@@ -59,8 +58,15 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
-      await page.getByLabel("Branches list").getByText(BRANCH_NAME_1).click();
+      await page.getByRole("link", { name: BRANCH_NAME_1 }).click();
       await expect(page.getByText(`Name${BRANCH_NAME_1}`)).toBeVisible();
+
+      await page.getByRole("button", { name: "View node metadata" }).click();
+      await expect(page.getByText("Created at")).toBeVisible();
+      await expect(page.getByText("Created by")).toBeVisible();
+      await expect(page.getByText("Updated at")).toBeVisible();
+      await expect(page.getByText("Updated by")).toBeVisible();
+
       expect(page.url()).toContain(`/branches/${BRANCH_NAME_1}`);
     });
 
@@ -122,6 +128,20 @@ test.describe("Branches creation and deletion", () => {
       await expect(page.getByText("you have been redirected to the main branch")).toBeVisible();
       await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
       expect(page.url()).not.toContain("/?branch=unknown-branch-for-testing");
+    });
+
+    test("should search for a branch", async ({ page }) => {
+      await page.goto("/branches");
+      await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
+      await page.getByRole("searchbox", { name: "Search" }).fill("main");
+      await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).not.toBeVisible();
+
+      await page.getByRole("searchbox", { name: "Search" }).fill("");
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
     });
   });
 });

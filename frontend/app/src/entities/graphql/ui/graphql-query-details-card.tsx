@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 
 import type { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
+import { queryClient } from "@/shared/api/rest/client";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -15,6 +16,7 @@ import {
   type AttributeType,
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
@@ -23,41 +25,20 @@ import type { ModelSchema } from "@/entities/schema/types";
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
   schema: ModelSchema;
-  refetch: () => Promise<unknown>;
   permission: Permission;
 };
 
-const GraphqlQueryDetailsCard = ({
-  data,
-  schema,
-  refetch,
-  permission,
-}: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryDetailsCard = ({ data, schema, permission }: GraphqlQueryDetailsCardProps) => {
   return (
     <Card className="overflow-x-hidden p-0">
-      <GraphqlQueryDetailsTitle
-        data={data}
-        schema={schema}
-        refetch={refetch}
-        permission={permission}
-      />
+      <GraphqlQueryDetailsTitle data={data} schema={schema} permission={permission} />
 
-      <GraphqlQueryPropertyList
-        data={data}
-        schema={schema}
-        refetch={refetch}
-        permission={permission}
-      />
+      <GraphqlQueryPropertyList data={data} schema={schema} permission={permission} />
     </Card>
   );
 };
 
-const GraphqlQueryDetailsTitle = ({
-  data,
-  schema,
-  refetch,
-  permission,
-}: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryDetailsTitle = ({ data, schema, permission }: GraphqlQueryDetailsCardProps) => {
   return (
     <>
       <CardWithBorder.Title className="flex items-center gap-1 rounded-t">
@@ -70,7 +51,7 @@ const GraphqlQueryDetailsTitle = ({
         <ObjectEditSlideOverTrigger
           data={data}
           schema={schema}
-          onUpdateComplete={refetch}
+          onUpdateComplete={() => queryClient.invalidateQueries({ queryKey: objectQueryKeys.all })}
           permission={permission}
         />
       </CardWithBorder.Title>
@@ -78,12 +59,7 @@ const GraphqlQueryDetailsTitle = ({
   );
 };
 
-const GraphqlQueryPropertyList = ({
-  data,
-  schema,
-  refetch,
-  permission,
-}: GraphqlQueryDetailsCardProps) => {
+const GraphqlQueryPropertyList = ({ data, schema, permission }: GraphqlQueryDetailsCardProps) => {
   const properties: Property[] = [
     {
       name: "ID",
@@ -113,7 +89,7 @@ const GraphqlQueryPropertyList = ({
           <div className="flex items-center justify-between">
             <ObjectAttributeValue
               attributeSchema={attributeSchema}
-              attributeValue={graphqlQueryAttribute}
+              attributeData={graphqlQueryAttribute}
             />
 
             <div className="flex items-center">
@@ -123,7 +99,6 @@ const GraphqlQueryPropertyList = ({
                 type="attribute"
                 attributeSchema={attributeSchema}
                 properties={graphqlQueryAttribute}
-                refetch={refetch}
                 data={data}
                 schema={schema}
                 permission={permission}
@@ -154,7 +129,6 @@ const GraphqlQueryPropertyList = ({
                   hideHeader
                   attributeSchema={relationshipSchema}
                   properties={properties}
-                  refetch={refetch}
                   data={data}
                   schema={schema}
                   permission={permission}
@@ -183,7 +157,6 @@ const GraphqlQueryPropertyList = ({
                   type="relationship"
                   attributeSchema={relationshipSchema}
                   properties={relationshipProperties}
-                  refetch={refetch}
                   data={data}
                   schema={schema}
                   permission={permission}

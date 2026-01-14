@@ -1,13 +1,13 @@
-export const TASK_STATE_COMPLETED = "COMPLETED";
-export const TASK_STATE_RUNNING = "RUNNING";
-export const TASK_STATE_PENDING = "PENDING";
-export const TASK_STATE_FAILED = "FAILED";
+export const TASK_STATE_COMPLETED = "COMPLETED" as const;
+export const TASK_STATE_RUNNING = "RUNNING" as const;
+export const TASK_STATE_PENDING = "PENDING" as const;
+export const TASK_STATE_FAILED = "FAILED" as const;
 
-export const TASK_STATE_SCHEDULED = "SCHEDULED";
-export const TASK_STATE_CANCELING = "CANCELLING";
-export const TASK_STATE_CANCELLED = "CANCELLED";
-export const TASK_STATE_CRASHED = "CRASHED";
-export const TASK_STATE_PAUSED = "PAUSED";
+export const TASK_STATE_SCHEDULED = "SCHEDULED" as const;
+export const TASK_STATE_CANCELING = "CANCELLING" as const;
+export const TASK_STATE_CANCELLED = "CANCELLED" as const;
+export const TASK_STATE_CRASHED = "CRASHED" as const;
+export const TASK_STATE_PAUSED = "PAUSED" as const;
 
 export const TASK_STATES = [
   TASK_STATE_SCHEDULED,

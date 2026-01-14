@@ -7,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import initialization
-from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult, SchemaMigration
+from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput, MigrationResult, SchemaMigration
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
@@ -35,7 +35,7 @@ class Migration031(InternalSchemaMigration):
     minimum_version: int = 30
     migrations: Sequence[SchemaMigration] = []
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         """Retrieve all number attributes that have a min/max/excluded_values
         For any of these attributes, check if corresponding existing nodes are valid."""
 
@@ -43,6 +43,7 @@ class Migration031(InternalSchemaMigration):
             return MigrationResult()
 
         # load schemas from database into registry
+        db = migration_input.db
         initialize_lock()
         await initialization(db=db)
 

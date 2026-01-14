@@ -1,5 +1,6 @@
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m020_duplicate_edges import Migration020
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -41,12 +42,6 @@ class TestDuplicateEdgesDeleted:
         SET duplicate_e = properties(e)
         WITH a
         CALL (a) {
-            MATCH (a)-[ve:IS_VISIBLE]->(v)
-            WITH ve, v
-            LIMIT 1
-            CREATE (a)-[new_ve:IS_VISIBLE]->(v)
-            SET new_ve = properties(ve)
-            WITH a
             MATCH (a)-[pe:IS_PROTECTED]->(p)
             WITH a, pe, p
             LIMIT 1
@@ -71,7 +66,7 @@ class TestDuplicateEdgesDeleted:
 
         # run the migration
         migration = Migration020()
-        await migration.execute(db=db)
+        await migration.execute(migration_input=MigrationInput(db=db))
         await migration.validate_migration(db=db)
 
         # validate no duplicate edges
@@ -92,7 +87,7 @@ class TestDuplicateEdgesDeleted:
 
     async def _validate_no_duplicate_edges(self, db: InfrahubDatabase, node: Node, attribute_name: str) -> None:
         # validate that this node
-        #  - does not have duplicate HAS_VALUE, IS_VISIBLE, or IS_PROTECTED edges
+        #  - does not have duplicate HAS_VALUE or IS_PROTECTED edges
         #  - only connects to one AttributeValue node even though multiple exist
         params = {"node_id": node.get_id(), "attribute_name": attribute_name}
         query = """

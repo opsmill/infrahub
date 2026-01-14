@@ -8,7 +8,7 @@ import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-sm border border-transparent font-medium text-sm disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60",
+  "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm border border-transparent font-medium text-sm disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60",
   {
     variants: {
       variant: {

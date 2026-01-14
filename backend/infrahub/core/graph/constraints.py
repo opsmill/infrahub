@@ -165,7 +165,7 @@ class ConstraintManagerBase:
     constraint_node_class: Optional[type[ConstraintItem]] = ConstraintItem
     constraint_rel_class: Optional[type[ConstraintItem]] = ConstraintItem
 
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
         self.nodes: list[ConstraintItem] = []
@@ -176,12 +176,12 @@ class ConstraintManagerBase:
         return self.nodes + self.rels
 
     @classmethod
-    def from_graph_schema(cls, db: InfrahubDatabase, schema: dict[str, dict[str, BaseModel]]) -> Self:
+    def from_graph_schema(cls, db: InfrahubDatabase, schema: dict[str, dict[str, type[BaseModel]]]) -> Self:
         manager = cls(db=db)
 
         # Process the nodes first
         for schema_item in schema["nodes"].values():
-            properties_class: BaseModel = schema_item.model_fields["properties"].annotation  # type: ignore[assignment]
+            properties_class: type[BaseModel] = schema_item.model_fields["properties"].annotation  # type: ignore[assignment]
             default_label = str(schema_item.model_fields["default_label"].default)
             for field_name, field in properties_class.model_fields.items():
                 clean_field_name = field.alias or field_name

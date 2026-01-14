@@ -94,7 +94,8 @@ def no_search_index_path():
 
 
 async def test_search_docs(client, override_search_index_path) -> None:
-    response = client.get("/api/search/docs?query=guid")
+    with client:
+        response = client.get("/api/search/docs?query=guid")
 
     assert response.status_code == 200
     assert response.json() is not None
@@ -104,7 +105,8 @@ async def test_search_docs(client, override_search_index_path) -> None:
 
 
 async def test_search_docs_limit(client, override_search_index_path) -> None:
-    response = client.get("/api/search/docs?query=a&limit=1")
+    with client:
+        response = client.get("/api/search/docs?query=a&limit=1")
 
     assert response.status_code == 200
     assert response.json() is not None
@@ -114,7 +116,8 @@ async def test_search_docs_limit(client, override_search_index_path) -> None:
 
 
 async def test_no_search_docs(client, no_search_index_path) -> None:
-    response = client.get("/api/search/docs?query=guid")
+    with client:
+        response = client.get("/api/search/docs?query=guid")
 
     assert response.status_code == 404
     assert response.json() is not None

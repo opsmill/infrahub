@@ -1,4 +1,4 @@
-import { PencilLineIcon } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
 import { DialogTrigger } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
@@ -15,7 +15,7 @@ export function ToolbarEditAction({ selectedRows }: ToolbarEditActionProps) {
   return (
     <DialogTrigger>
       <ToolbarButton>
-        <PencilLineIcon className="size-3.5" />
+        <Icon icon="mdi:edit-outline" className="text-sm" />
         Edit
       </ToolbarButton>
 

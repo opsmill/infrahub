@@ -54,7 +54,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, TextAttributeParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -93,7 +93,7 @@ class SchemaBranch:
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
-    ):
+    ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
@@ -236,8 +236,8 @@ class SchemaBranch:
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
-        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
-        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+        reversed_map_local: dict[str | None, str] = {v: k for k, v in local_kind_id_map.items()}
+        reversed_map_other: dict[str | None, str] = {v: k for k, v in other_kind_id_map.items()}
 
         for shared_id in shared_ids:
             local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
@@ -501,11 +501,76 @@ class SchemaBranch:
 
         return fields or None
 
+    def _text_attr_needs_reconciliation(self, attr: AttributeSchema) -> bool:
+        """Check if a Text attribute needs reconciliation between deprecated fields and parameters."""
+        if not isinstance(attr.parameters, TextAttributeParameters):
+            return False
+        return (
+            attr.regex != attr.parameters.regex
+            or attr.min_length != attr.parameters.min_length
+            or attr.max_length != attr.parameters.max_length
+        )
+
+    def _reconcile_text_attr(self, attr: AttributeSchema) -> None:
+        """Reconcile a single Text attribute's deprecated fields with parameters.
+
+        Parameters take precedence over deprecated top-level fields when both are set.
+        """
+        if not isinstance(attr.parameters, TextAttributeParameters):
+            return
+
+        # Sync regex: parameters takes precedence
+        if attr.parameters.regex is not None:
+            attr.regex = attr.parameters.regex
+        elif attr.regex is not None:
+            attr.parameters.regex = attr.regex
+
+        # Sync min_length: parameters takes precedence
+        if attr.parameters.min_length is not None:
+            attr.min_length = attr.parameters.min_length
+        elif attr.min_length is not None:
+            attr.parameters.min_length = attr.min_length
+
+        # Sync max_length: parameters takes precedence
+        if attr.parameters.max_length is not None:
+            attr.max_length = attr.parameters.max_length
+        elif attr.max_length is not None:
+            attr.parameters.max_length = attr.max_length
+
+    def _reconcile_text_attribute_parameters(self, schema: SchemaRoot | None = None) -> None:
+        """Reconcile regex, min_length, max_length between deprecated fields and parameters for Text attributes.
+
+        Args:
+            schema: If provided, reconcile incoming schema data before merging.
+                   If None, reconcile already-loaded schemas (e.g., from database).
+        """
+        if schema:
+            # Incoming schema: modify in place
+            for item in schema.nodes + schema.generics:
+                for attr in item.attributes:
+                    self._reconcile_text_attr(attr)
+            return
+
+        # Loaded schemas: need to duplicate before modifying
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if not any(self._text_attr_needs_reconciliation(attr) for attr in node.attributes):
+                continue
+
+            node = node.duplicate()
+            for attr in node.attributes:
+                self._reconcile_text_attr(attr)
+            self.set(name=name, schema=node)
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
+        # Reconcile deprecated text attribute parameters before merging
+        self._reconcile_text_attribute_parameters(schema)
+
         for item in schema.nodes + schema.generics:
             try:
                 if item.id:
@@ -545,6 +610,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
+        self._reconcile_text_attribute_parameters()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -1646,7 +1712,7 @@ class SchemaBranch:
         for name in self.nodes.keys():
             node = self.get_node(name=name, duplicate=False)
 
-            if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
+            if node.inherit_from or node.namespace == "Builtin" or node.namespace not in RESTRICTED_NAMESPACES:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
@@ -2159,6 +2225,45 @@ class SchemaBranch:
 
             self.set(name=node_name, schema=node)
 
+    def add_relationships_to_profile(self, profile: ProfileSchema, node: NodeSchema | GenericSchema) -> None:
+        # Remove previous relationships to account for new ones
+        profile.relationships = [r for r in profile.relationships if r.kind == RelationshipKind.PROFILE]
+
+        for relationship in node.relationships:
+            if not relationship.support_profiles:
+                continue
+
+            # Ignore relationship if it is part of a uniqueness constraint
+            ignore_relationship = False
+            for constraint in node.uniqueness_constraints or []:
+                if relationship.name in constraint:
+                    ignore_relationship = True
+                    break
+            if ignore_relationship:
+                continue
+
+            identifier = (
+                f"profile_{relationship.identifier}"
+                if relationship.identifier
+                else self._generate_identifier_string(profile.kind, relationship.peer)
+            )
+
+            profile.relationships.append(
+                RelationshipSchema(
+                    name=relationship.name,
+                    peer=relationship.peer,
+                    kind=relationship.kind,
+                    cardinality=relationship.cardinality,
+                    direction=relationship.direction,
+                    branch=relationship.branch,
+                    identifier=identifier,
+                    min_count=relationship.min_count,
+                    max_count=relationship.max_count,
+                    label=relationship.label,
+                    inherited=False,
+                )
+            )
+
     def manage_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
             # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
@@ -2169,7 +2274,7 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             if (
-                node.namespace in RESTRICTED_NAMESPACES
+                (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
                 or node.state == HashableModelState.ABSENT
             ):
@@ -2178,6 +2283,7 @@ class SchemaBranch:
                 continue
 
             profile = self.generate_profile_from_node(node=node)
+            self.add_relationships_to_profile(profile=profile, node=node)
             self.set(name=profile.kind, schema=profile)
             profile_schema_kinds.add(profile.kind)
 
@@ -2214,9 +2320,14 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
-            if node.namespace in RESTRICTED_NAMESPACES and node.kind not in (
-                InfrahubKind.IPRANGEAVAILABLE,
-                InfrahubKind.IPPREFIXAVAILABLE,
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                and node.namespace != "Builtin"
+                and node.kind
+                not in (
+                    InfrahubKind.IPRANGEAVAILABLE,
+                    InfrahubKind.IPPREFIXAVAILABLE,
+                )
             ):
                 continue
 
@@ -2252,13 +2363,13 @@ class SchemaBranch:
         core_name_attr = core_profile_schema.get_attribute(name="profile_name")
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
         profile_name_attr = name_attr_schema_class(
-            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+            **core_name_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_name_attr.branch = node.branch
         core_priority_attr = core_profile_schema.get_attribute(name="profile_priority")
         priority_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_priority_attr.kind)
         profile_priority_attr = priority_attr_schema_class(
-            **core_priority_attr.model_dump(exclude=["id", "inherited"]),
+            **core_priority_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_priority_attr.branch = node.branch
         profile = ProfileSchema(
@@ -2303,7 +2414,7 @@ class SchemaBranch:
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "default_value", "inherited"]),
+                **node_attr.model_dump(exclude={"id", "unique", "optional", "read_only", "default_value", "inherited"}),
             )
             profile.attributes.append(attr)
 
@@ -2447,9 +2558,7 @@ class SchemaBranch:
         )
         core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
-        template_name_attr = name_attr_schema_class(
-            **core_name_attr.model_dump(exclude=["id", "inherited"]),
-        )
+        template_name_attr = name_attr_schema_class(**core_name_attr.model_dump(exclude={"id", "inherited"}))
         template_name_attr.branch = node.branch
 
         template: TemplateSchema | GenericSchema
@@ -2508,7 +2617,7 @@ class SchemaBranch:
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=node_attr.optional if is_autogenerated_subtemplate else True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "order_weight"]),
+                **node_attr.model_dump(exclude={"id", "unique", "optional", "read_only", "order_weight"}),
             )
             template.attributes.append(attr)
 

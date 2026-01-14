@@ -18,19 +18,20 @@ import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/propos
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type ProposedChangesItemProps = {
-  node: ProposedChangeItem;
+  proposedChange: ProposedChangeItem;
 };
 
-export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
+export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps) => {
   const { permission } = useObjectTableContext();
+  const { node, metadata } = proposedChange;
 
   return (
     <ListBoxItem className="flex items-center p-2">
-      <div className="grid flex-grow grid-cols-2 items-center">
+      <div className="grid grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
-          author={node.created_by.node ? getNodeLabel(node.created_by.node) : undefined}
+          author={metadata.created_by ? getNodeLabel(metadata.created_by) : undefined}
           state={node.state?.value}
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
@@ -48,7 +49,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
 
       <ProposedChangesActionCell
         objectId={node.id}
-        objectLabel={getNodeLabel(node)}
+        objectLabel={node.display_label}
         permission={permission}
       />
     </ListBoxItem>
@@ -58,7 +59,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
 type ProposedChangesInfoProps = {
   id: string;
   name: string;
-  author: string;
+  author?: string;
   state: string;
   isDraft: boolean;
   isApproved: boolean;

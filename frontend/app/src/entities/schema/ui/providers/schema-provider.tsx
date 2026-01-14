@@ -1,3 +1,4 @@
+import { keepPreviousData } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -22,7 +23,9 @@ import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.a
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 
 export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => {
-  const { data: schemaHash, error: errorHash } = useGetSchemaHash();
+  const { data: schemaHash, error: errorHash } = useGetSchemaHash({
+    placeholderData: keepPreviousData,
+  });
   const { data: schemaData, error: errorSchema } = useLoadSchema(schemaHash, {
     enabled: !!schemaHash,
     staleTime: Infinity,

@@ -8,13 +8,11 @@ from infrahub.core.schema.node_schema import NodeSchema
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
 from ..query.attribute_add import AttributeAddQuery
-from ..shared import AttributeSchemaMigration, MigrationResult
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.timestamp import Timestamp
-    from infrahub.database import InfrahubDatabase
 
 
 def _get_node_kinds(schema: MainSchemaTypes) -> list[str]:
@@ -33,7 +31,7 @@ class ProfilesAttributeAddMigrationQuery(AttributeMigrationQuery, AttributeAddQu
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         node_kinds = _get_node_kinds(migration.new_schema)
         super().__init__(
             migration=migration,
@@ -53,7 +51,7 @@ class ProfilesAttributeRemoveMigrationQuery(AttributeMigrationQuery, AttributeRe
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         node_kinds = _get_node_kinds(migration.new_schema)
         super().__init__(
             migration=migration,
@@ -69,9 +67,8 @@ class AttributeSupportsProfileUpdateMigration(AttributeSchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,  # noqa: ARG002
     ) -> MigrationResult:
         if (
@@ -87,4 +84,4 @@ class AttributeSupportsProfileUpdateMigration(AttributeSchemaMigration):
         if not self.new_attribute_schema.support_profiles:
             profiles_queries.append(ProfilesAttributeRemoveMigrationQuery)
 
-        return await super().execute(db=db, branch=branch, at=at, queries=profiles_queries)
+        return await super().execute(migration_input=migration_input, branch=branch, queries=profiles_queries)

@@ -5,16 +5,14 @@ import type { InfiniteQueryConfig } from "@/shared/api/types";
 import { OBJECTS_PER_PAGE } from "@/entities/events/api/get-events-from-api";
 import { type GetEventsParams, getEvents } from "@/entities/events/domain/get-events";
 
-interface GetEventsQueryOptions extends GetEventsParams {
-  config?: InfiniteQueryConfig<typeof getEventsQueryOptions>;
-}
+interface GetEventsQueryOptions extends GetEventsParams {}
 
-export function getEventsQueryOptions({ filters }: GetEventsParams) {
+export function getEventsQueryOptions(filters: GetEventsParams) {
   return infiniteQueryOptions({
     queryKey: ["events", filters],
     queryFn: ({ pageParam }) =>
       getEvents({
-        filters,
+        ...filters,
         offset: pageParam,
       }),
     initialPageParam: 0,
@@ -27,9 +25,12 @@ export function getEventsQueryOptions({ filters }: GetEventsParams) {
   });
 }
 
-export function useGetEvents({ filters, config }: GetEventsQueryOptions) {
+export function useGetEvents(
+  filters: GetEventsQueryOptions,
+  config?: InfiniteQueryConfig<typeof getEventsQueryOptions>
+) {
   return useInfiniteQuery({
-    ...getEventsQueryOptions({ filters }),
+    ...getEventsQueryOptions(filters),
     ...config,
   });
 }

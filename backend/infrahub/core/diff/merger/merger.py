@@ -6,6 +6,7 @@ from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.merge import (
+    DiffMergeMetadataQuery,
     DiffMergeMigratedKindsQuery,
     DiffMergePropertiesQuery,
     DiffMergeQuery,
@@ -26,6 +27,8 @@ log = get_logger()
 
 
 class DiffMerger:
+    metadata_batch_size = 500
+
     def __init__(
         self,
         db: InfrahubDatabase,
@@ -33,12 +36,13 @@ class DiffMerger:
         destination_branch: Branch,
         diff_repository: DiffRepository,
         serializer: DiffMergeSerializer,
-    ):
+    ) -> None:
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         self.db = db
         self.diff_repository = diff_repository
         self.serializer = serializer
+        self._affected_node_uuids: list[str] = []
 
     async def merge_graph(self, at: Timestamp) -> EnrichedDiffRoot:
         tracking_id = BranchTrackingId(name=self.source_branch.name)
@@ -69,6 +73,7 @@ class DiffMerger:
                 # make sure that we use the ADDED db_id if it exists
                 # it will not if a node was migrated and then deleted
                 migrated_kinds_id_map[n.uuid] = n.identifier.db_id
+
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             if node_diff_dicts:
                 log.info(f"Merging batch of nodes #{batch_num}")
@@ -105,13 +110,38 @@ class DiffMerger:
             )
             await migrated_merge_query.execute(db=self.db)
 
-        self.source_branch.branched_from = at.to_string()
+        affected_node_uuids = [n.uuid for n in enriched_diff.nodes]
+        self._affected_node_uuids = affected_node_uuids
+        if affected_node_uuids:
+            for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
+                batch_uuids = affected_node_uuids[i : i + self.metadata_batch_size]
+                log.info(f"Updating metadata for batch {i // self.metadata_batch_size + 1} ({len(batch_uuids)} nodes)")
+                metadata_query = await DiffMergeMetadataQuery.init(
+                    db=self.db,
+                    branch=self.source_branch,
+                    at=at,
+                    target_branch=self.destination_branch,
+                    node_uuids=batch_uuids,
+                )
+                await metadata_query.execute(db=self.db)
+
+        # set the branched_from time to the previous microsecond to prevent duplicated
+        # relationships on the branch after the merge
+        branched_from = at.subtract(microseconds=1)
+
+        self.source_branch.branched_from = branched_from.to_string()
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
         return enriched_diff
 
     async def rollback(self, at: Timestamp) -> None:
+        if not self._affected_node_uuids:
+            return
         rollback_query = await DiffMergeRollbackQuery.init(
-            db=self.db, branch=self.source_branch, target_branch=self.destination_branch, at=at
+            db=self.db,
+            branch=self.source_branch,
+            target_branch=self.destination_branch,
+            at=at,
+            node_uuids=self._affected_node_uuids,
         )
         await rollback_query.execute(db=self.db)

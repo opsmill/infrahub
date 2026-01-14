@@ -36,7 +36,7 @@ export const DateDisplay = ({
     return (
       <span className={classNames("flex flex-wrap items-center", containerClassName)}>
         <Tooltip enabled content={getDateDisplay(dateData)}>
-          <span className={classNames("font-normal text-xs", className)}>
+          <span className={classNames("truncate font-normal text-xs", className)}>
             {format(dateData, newDateFormat)}
           </span>
         </Tooltip>
@@ -47,7 +47,7 @@ export const DateDisplay = ({
   return (
     <span className={classNames("flex flex-wrap items-center", containerClassName)}>
       <Tooltip enabled content={getDateDisplay(date)}>
-        <span className={classNames("font-normal text-xs", className)}>
+        <span className={classNames("truncate font-normal text-xs", className)}>
           {formatDistanceToNow(dateData, { addSuffix: true })}
         </span>
       </Tooltip>

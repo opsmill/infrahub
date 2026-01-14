@@ -249,7 +249,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
-        tags = await client.all(kind="BuiltinTag", branch=happy_data_branch)
+        tags = await client.all(kind="TestingTag", branch=happy_data_branch)
         # The Generator defined in the repository is expected to have created this tag during the pipeline
         assert "johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
         assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
@@ -377,7 +377,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         pr_account_events = await client.execute_graphql(
             query=QUERY_EVENT,
-            variables={"account__ids": [proposed_change_user.id]},
+            variables={"account__ids": [proposed_change_user.id], "limit": 50},
         )
         pr_account_events_types = {event["node"]["event"] for event in pr_account_events["InfrahubEvent"]["edges"]}
         assert "infrahub.validator.passed" in pr_account_events_types
@@ -427,6 +427,7 @@ query(
     $account__ids: [String!],
     $related_node__ids: [String!],
     $event_type_filter: EventTypeFilter
+    $limit: Int
 ) {
   InfrahubEvent(
     branches: $branch,
@@ -435,6 +436,7 @@ query(
     event_type_filter: $event_type_filter
     account__ids: $account__ids
     related_node__ids: $related_node__ids
+    limit: $limit
   ) {
     count
     edges {

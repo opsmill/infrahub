@@ -478,6 +478,7 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
     assert True
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_sync_new_branch(
     client: InfrahubClient,
     prefect_test_fixture,
@@ -502,6 +503,7 @@ async def test_sync_new_branch(
         method="POST",
         json=admin_response,
         match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
+        is_reusable=True,
     )
     httpx_mock.add_response(
         method="POST",
@@ -577,6 +579,7 @@ async def test_render_jinja2_template_missing(
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_execute_python_check_valid(
     client: InfrahubClient,
     prefect_test_fixture,
@@ -638,6 +641,7 @@ async def test_execute_python_transform_w_data(
     assert result == expected_data
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_execute_python_transform_w_query(
     client: InfrahubClient,
     prefect_test_fixture,
@@ -660,6 +664,7 @@ async def test_execute_python_transform_w_query(
     assert result == expected_data
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_new(
     client: InfrahubClient,
     prefect_test_fixture,
@@ -695,6 +700,7 @@ async def test_artifact_generate_python_new(
     assert result == expected_data
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_existing_same(
     client: InfrahubClient,
     prefect_test_fixture,
@@ -728,6 +734,7 @@ async def test_artifact_generate_python_existing_same(
     assert result == expected_data
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_existing_different(
     client: InfrahubClient,
     prefect_test_fixture,
@@ -763,6 +770,7 @@ async def test_artifact_generate_python_existing_different(
     assert result == expected_data
 
 
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_jinja2_new(
     client: InfrahubClient,
     prefect_test_fixture,

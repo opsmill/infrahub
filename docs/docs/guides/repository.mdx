@@ -4,6 +4,7 @@ title: How to connect external Git repositories
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
 
 # How to connect external Git repositories
 
@@ -529,27 +530,43 @@ After restarting your environment, Infrahub should now connect through your conf
 
 ### Customizing Git merge behavior
 
-By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit. To maintain consistency or improve auditability, you can configure Infrahub to always create a merge commit.
-
 :::info
 
 This configuration applies only to standard repositories, not read-only repositories.
 
 :::
 
-1. Configure Infrahub to always create a merge commit by setting the following environment variables:
+By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit. To maintain consistency or improve auditability, you can configure Infrahub to always create a merge commit.
 
-    ```shell
-    INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=true
+:::important
 
-    # Optional: set user name and email for Git commits
-    INFRAHUB_GIT_USER_NAME="infrahub-automation"
-    INFRAHUB_GIT_USER_EMAIL="infrahub-automation@example.com"
-    ```
+The configuration process will require a restart of the Infrahub server and depends on your deployment method.
 
-2. Restart the Infrahub stack to apply the changes.
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](./configuration-changes.mdx).
 
-3. Verify the configuration is applied by checking the environment variables in the `task-worker` container.
+Essentially you will need to set the following environment variables to the desired values:
+
+```shell
+INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=<true|false>
+
+# Optional: set user name and email for Git commits
+INFRAHUB_GIT_USER_NAME="<git-user-name>"
+INFRAHUB_GIT_USER_EMAIL="<git-user-email>"
+```
+
+So in our case, we will set:
+
+```shell
+INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=true
+
+# Optional: set user name and email for Git commits
+INFRAHUB_GIT_USER_NAME="infrahub-automation"
+INFRAHUB_GIT_USER_EMAIL="infrahub-automation@example.com"
+```
+
+:::
+
+<ReferenceLink title="How to configure Infrahub" url="./configuration-changes" openInNewTab />
 
 :::success Validation
 

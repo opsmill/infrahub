@@ -1,17 +1,22 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
+from tests.db_snapshot import DbSnapshotter
 from tests.helpers.db_validation import validate_node_relationships, verify_no_duplicate_paths
+from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
@@ -70,24 +75,39 @@ async def test_migration_aware_relationship(
     candidate_schema.set(name="Test2NewCar", schema=car_schema)
     assert car_schema.kind == "Test2NewCar"
 
+    # 1. Snapshot before migration
+    snapshotter = DbSnapshotter(db)
+    before_snapshot = await snapshotter.snapshot()
+
+    # 2. Create explicit timestamp
+    at = Timestamp()
+    at_str = at.to_string()
+
+    # 3. Count nodes and relationships before migration
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 0
-
     count_rels = await count_relationships(db=db)
 
+    # 4. Execute migration
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
     )
-
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
+
+    # 5. Validate nodes and relationships after migration
     assert await count_relationships(db=db) == count_rels + 36
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
 
+    # 6. Validate edge timestamps
+    after_snapshot = await snapshotter.snapshot()
+    assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
+
+    # 7. Validate node relationships
     await validate_node_relationships(node=car_accord_main, db=db, branch=default_branch)
     await validate_node_relationships(node=car_camry_main, db=db, branch=default_branch)
 
@@ -123,7 +143,7 @@ async def test_migration_agnostic_relationship(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label="TestCar") == 1
@@ -165,7 +185,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
         ),
     )
 
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label=TestKind.CONTINENT) == 1
@@ -210,7 +230,7 @@ async def test_inheritance_migration_on_branch_and_main(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
     )
 
-    execution_result = await migration.execute(db=db, branch=branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
 
@@ -222,7 +242,88 @@ async def test_inheritance_migration_on_branch_and_main(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
     )
 
-    execution_result_default = await migration_default.execute(db=db, branch=default_branch)
+    execution_result_default = await migration_default.execute(
+        migration_input=MigrationInput(db=db), branch=default_branch
+    )
     assert not execution_result_default.errors
 
     await verify_no_duplicate_paths(db=db)
+
+
+async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
+    """Test that metadata is set correctly when updating node kind."""
+    car_created_at = car_accord_main._get_created_at()
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get(name="TestCar")
+    candidate_schema.delete(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewCar", schema=car_schema)
+
+    test_user_id = "test-metadata-user"
+    migration_time = Timestamp()
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+    )
+    assert not execution_result.errors
+
+    registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)
+
+    updated_car = await NodeManager.get_one(
+        db=db,
+        branch=branch,
+        id=car_accord_main.id,
+        include_metadata=MetadataQueryOptions(
+            node_level=MetadataOptions.USER_TIMESTAMPS,
+            attribute_level=MetadataOptions.USER_TIMESTAMPS,
+            relationship_level=MetadataOptions.USER_TIMESTAMPS,
+        ),
+        prefetch_relationships=True,
+    )
+    assert updated_car._get_created_at() == car_created_at
+    assert updated_car._get_created_by() == SYSTEM_USER_ID
+    assert updated_car._get_updated_at() == migration_time
+    assert updated_car._get_updated_by() == test_user_id
+    for attr_name in car_schema.attribute_names:
+        attr = updated_car.get_attribute(name=attr_name)
+        assert attr._get_created_at() == car_created_at
+        assert attr._get_created_by() == SYSTEM_USER_ID
+        assert attr._get_updated_at() == attr._get_created_at()
+        assert attr._get_updated_by() == SYSTEM_USER_ID
+    rel_manager = updated_car.get_relationship(name="owner")
+    rel = await rel_manager.get(db=db)
+    assert rel._get_created_at() == car_created_at
+    assert rel._get_created_by() == SYSTEM_USER_ID
+    assert rel._get_updated_at() == rel._get_created_at()
+    assert rel._get_updated_by() == SYSTEM_USER_ID
+
+    # Query for the NEW active node edges and verify metadata
+    query = """
+    MATCH (n:Test2NewCar {uuid: $node_uuid})-[r {branch: $branch, status: "active", from: $migration_time}]-()
+    RETURN DISTINCT r.from_user_id as from_user_id
+    """
+    results = await db.execute_query(
+        query=query,
+        params={"node_uuid": car_accord_main.id, "branch": branch.name, "migration_time": migration_time.to_string()},
+    )
+    assert len(results) == 1, "Expected exactly one active edge on migrated node"
+    assert results[0]["from_user_id"] == test_user_id
+
+    # Query for the OLD deleted node edges and verify metadata
+    query = """
+    MATCH (n:TestCar {uuid: $node_uuid})-[r {branch: $branch, status: "deleted", from: $migration_time}]-()
+    RETURN DISTINCT r.from_user_id as from_user_id
+    """
+    results = await db.execute_query(
+        query=query,
+        params={"node_uuid": car_accord_main.id, "branch": branch.name, "migration_time": migration_time.to_string()},
+    )
+    assert len(results) == 1, "Expected exactly one deleted edge on old node"
+    assert results[0]["from_user_id"] == test_user_id

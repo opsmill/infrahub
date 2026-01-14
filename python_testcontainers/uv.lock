@@ -511,7 +511,7 @@ wheels = [
 
 [[package]]
 name = "infrahub-testcontainers"
-version = "1.6.0"
+version = "1.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -531,8 +531,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = "<0.28" },
-    { name = "prefect-client", specifier = "==3.5.0" },
+    { name = "httpx", specifier = ">=0.20" },
+    { name = "prefect-client", specifier = "==3.6.7" },
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2.10.6,<3" },
     { name = "pytest" },
@@ -806,7 +806,7 @@ wheels = [
 
 [[package]]
 name = "prefect-client"
-version = "3.5.0"
+version = "3.6.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -849,9 +849,9 @@ dependencies = [
     { name = "websockets" },
     { name = "whenever", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/ea/ca532ca405b9127b16161b7c6f6fdf44f436e9dacb8e08056080761beff7/prefect_client-3.5.0.tar.gz", hash = "sha256:10b9c700288ee1d7513fdfdb394eca0807e461f8bd8da9edf2433f276cc23a17", size = 681939, upload-time = "2025-10-31T18:03:09.833Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/b6/03eb2deba88643bf56cc78d85e95825392ce50a0350a627db6261705fb77/prefect_client-3.6.7.tar.gz", hash = "sha256:e83e46376d263172d5c71d6dda544a4d127f44c179840d168270c0170063d88f", size = 698691, upload-time = "2025-12-18T20:31:15.233Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/d3/b9ef344b5cf86dc544914d9260b657a521f6fdc97b85a591c0dfe2903371/prefect_client-3.5.0-py3-none-any.whl", hash = "sha256:70e2ab2d0e44534388e6daa052e0ee52c86b2263e0bdb450cf1101027504c191", size = 843344, upload-time = "2025-10-31T18:03:07.715Z" },
+    { url = "https://files.pythonhosted.org/packages/79/8a/c89a615557e1a4b9a74604c7bdbc9e813cc476f7919bdbb65d3e57a30905/prefect_client-3.6.7-py3-none-any.whl", hash = "sha256:48ed2947ecbd37c05fe03ea6c5dc774bbc2dcbd0097ad81802dfca3574d90626", size = 863669, upload-time = "2025-12-18T20:31:13.011Z" },
 ]
 
 [[package]]
@@ -1742,11 +1742,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.0"
+version = "2.6.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1c/43/554c2569b62f49350597348fc3ac70f786e3c32e7f19d266e19817812dd3/urllib3-2.6.0.tar.gz", hash = "sha256:cb9bcef5a4b345d5da5d145dc3e30834f58e8018828cbc724d30b4cb7d4d49f1", size = 432585, upload-time = "2025-12-05T15:08:47.885Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/1a/9ffe814d317c5224166b23e7c47f606d6e473712a2fad0f704ea9b99f246/urllib3-2.6.0-py3-none-any.whl", hash = "sha256:c90f7a39f716c572c4e3e58509581ebd83f9b59cced005b7db7ad2d22b0db99f", size = 131083, upload-time = "2025-12-05T15:08:45.983Z" },
+    { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
 ]
 
 [[package]]

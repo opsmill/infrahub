@@ -4,7 +4,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import HashableModelState, SchemaPathType
+from infrahub.core.constants import SYSTEM_USER_ID, HashableModelState, MetadataOptions, SchemaPathType
+from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_attribute_add import (
     NodeAttributeAddMigration,
     NodeAttributeAddMigrationQuery01,
@@ -13,11 +15,15 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
     NodeAttributeRemoveMigrationQuery01,
 )
+from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
+from tests.db_snapshot import DbSnapshotter
+from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
 @pytest.fixture
@@ -139,17 +145,82 @@ async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_
 
 async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
     node = schema_aware
+
+    # 1. Snapshot before migration
+    snapshotter = DbSnapshotter(db)
+    before_snapshot = await snapshotter.snapshot()
+
+    #  2. Count nodes and relationships before migration
+    assert await count_nodes(db=db, label="TestCar") == 5
+    assert await count_nodes(db=db, label="Attribute") == 0
+
+    # 3. Create explicit timestamp
+    at = Timestamp()
+    at_str = at.to_string()
+
+    # 4. Execute migration
     migration = NodeAttributeAddMigration(
         new_node_schema=node,
         previous_node_schema=node,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
     )
-
-    assert await count_nodes(db=db, label="TestCar") == 5
-    assert await count_nodes(db=db, label="Attribute") == 0
-
-    execution_result = await migration.execute(db=db, branch=default_branch)
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 5
+
+    # 5. Validate nodes and relationships after migration
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 5
+
+    # 6. Validate edge timestamps
+    after_snapshot = await snapshotter.snapshot()
+    assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
+
+
+async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
+    """Test that vertex metadata is set correctly when adding an attribute"""
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    car_schema = schema.get_node(name="TestCar")
+
+    # Remove the color attribute first so we can re-add it
+    remove_migration = NodeAttributeRemoveMigration(
+        previous_node_schema=car_schema,
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+    await remove_migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+
+    test_user_id = "test-metadata-user"
+    migration_time = Timestamp()
+
+    migration = NodeAttributeAddMigration(
+        new_node_schema=car_schema,
+        previous_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+    )
+    assert not execution_result.errors
+
+    nodes = await NodeManager.get_many(
+        db=db,
+        ids=[car_accord_main.id],
+        branch=branch,
+        include_metadata=MetadataQueryOptions(
+            node_level=MetadataOptions.USER_TIMESTAMPS,
+            attribute_level=MetadataOptions.USER_TIMESTAMPS,
+        ),
+    )
+    node = nodes[car_accord_main.id]
+    assert node._get_created_at() < migration_time
+    assert node._get_created_by() == SYSTEM_USER_ID
+    assert node._get_updated_at() == migration_time
+    assert node._get_updated_by() == test_user_id
+
+    # Verify attribute metadata via the Node object
+    attr = node.color
+    assert attr._get_created_at() == migration_time
+    assert attr._get_created_by() == test_user_id
+    assert attr._get_updated_at() == migration_time
+    assert attr._get_updated_by() == test_user_id

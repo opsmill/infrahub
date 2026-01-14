@@ -80,7 +80,7 @@ async def car_smart_properties_main(db: InfrahubDatabase, default_branch: Branch
         name="smart",
         nbr_seats=2,
         is_electric=True,
-        owner={"id": person_john_main.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": person_john_main.id, "_relation__is_protected": True},
     )
     await car.save(db=db)
 
@@ -106,7 +106,7 @@ async def test_relationship_load_existing(
         branch=branch,
         at=Timestamp(),
         rel=rel,
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 
@@ -120,7 +120,6 @@ async def test_relationship_load_existing(
     assert rel.db_id == peers[0].rel_node_db_id
 
     assert rel.is_protected is True
-    assert rel.is_visible is False
 
 
 async def test_relationship_peer(
@@ -579,8 +578,12 @@ RETURN r1, r2
     assert len(results) == 1
     r1 = results[0].get("r1")
     r2 = results[0].get("r2")
-    assert r1.get("status") == "active" and r1.get("branch") == branch.name and r1.get("to") is not None
-    assert r2.get("status") == "active" and r2.get("branch") == branch.name and r2.get("to") is not None
+    assert r1.get("status") == "active"
+    assert r1.get("branch") == branch.name
+    assert r1.get("to") is not None
+    assert r2.get("status") == "active"
+    assert r2.get("branch") == branch.name
+    assert r2.get("to") is not None
 
 
 async def test_can_create_relationship_with_min_count_only(
