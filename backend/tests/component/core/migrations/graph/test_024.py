@@ -16,7 +16,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-from tests.unit.conftest import _build_hierarchical_location_data
+from tests.component.conftest import _build_hierarchical_location_data
 
 
 class TestHierarchyCorrected:

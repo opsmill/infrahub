@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -9,9 +9,10 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
-from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
+from infrahub.graphql.auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.permissions import PermissionManager
@@ -20,25 +21,25 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
-    from tests.unit.graphql.conftest import PermissionsHelper
+    from tests.component.graphql.conftest import PermissionsHelper
 
 
-class TestSuperAdminPermission:
+class TestMergeBranchPermission:
     async def test_setup(
         self,
         db: InfrahubDatabase,
         default_permission_backend: None,
         register_core_models_schema: None,
         default_branch: Branch,
+        permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-        permissions_helper: PermissionsHelper,
     ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+            db=db, action=GlobalPermissions.MERGE_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -63,23 +64,37 @@ class TestSuperAdminPermission:
             AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
         ],
     )
-    async def test_supports_super_admin_permission_accounts(
+    async def test_supports_merge_branch_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
-        checker = SuperAdminPermissionChecker()
+        checker = MergeBranchPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
             assert is_supported == user.authenticated
 
+    @pytest.mark.parametrize(
+        "operation_name,checker_resolution",
+        [("BranchMerge", CheckerResolution.TERMINATE), ("BuiltinTagCreate", CheckerResolution.NEXT_CHECKER)],
+    )
     async def test_account_with_permission(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self,
+        operation_name: str,
+        checker_resolution: CheckerResolution | None,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
     ) -> None:
-        checker = SuperAdminPermissionChecker()
+        checker = MergeBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         permission_manager = PermissionManager(account_session=session)
         await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+
+        graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.operation_name = "Foo"
+        graphql_query.operations = [MagicMock()]
+        graphql_query.operations[0].name = operation_name
 
         graphql_context = MagicMock(spec=GraphqlContext)
         graphql_context.permissions = permission_manager
@@ -89,21 +104,34 @@ class TestSuperAdminPermission:
         resolution = await checker.check(
             db=db,
             account_session=session,
-            analyzed_query=MagicMock(spec=InfrahubGraphQLQueryAnalyzer),
+            analyzed_query=graphql_query,
             query_parameters=query_parameters,
             branch=permissions_helper.default_branch,
         )
-        assert resolution == CheckerResolution.TERMINATE
+        assert resolution == checker_resolution
 
+    @pytest.mark.parametrize(
+        "operation_name,checker_resolution",
+        [("BranchMerge", None), ("BuiltinTagCreate", CheckerResolution.NEXT_CHECKER)],
+    )
     async def test_account_without_permission(
-        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+        self,
+        operation_name: str,
+        checker_resolution: CheckerResolution | None,
+        db: InfrahubDatabase,
+        permissions_helper: PermissionsHelper,
     ) -> None:
-        checker = SuperAdminPermissionChecker()
+        checker = MergeBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
         permission_manager = PermissionManager(account_session=session)
         await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+
+        graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.operation_name = "Foo"
+        graphql_query.operations = [MagicMock()]
+        graphql_query.operations[0].name = operation_name
 
         graphql_context = GraphqlContext(
             db=MagicMock(),
@@ -117,11 +145,21 @@ class TestSuperAdminPermission:
         )
         query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
 
-        resolution = await checker.check(
-            db=db,
-            account_session=session,
-            analyzed_query=MagicMock(spec=InfrahubGraphQLQueryAnalyzer),
-            query_parameters=query_parameters,
-            branch=permissions_helper.default_branch,
-        )
-        assert resolution == CheckerResolution.NEXT_CHECKER
+        if checker_resolution is None:
+            with pytest.raises(PermissionDeniedError, match=r"You are not allowed to merge a branch"):
+                await checker.check(
+                    db=db,
+                    account_session=session,
+                    analyzed_query=graphql_query,
+                    query_parameters=query_parameters,
+                    branch=permissions_helper.default_branch,
+                )
+        else:
+            resolution = await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=graphql_query,
+                query_parameters=query_parameters,
+                branch=permissions_helper.default_branch,
+            )
+            assert resolution == checker_resolution
