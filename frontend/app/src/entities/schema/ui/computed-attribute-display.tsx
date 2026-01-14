@@ -1,11 +1,11 @@
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+import { EyeIcon } from "lucide-react";
+import { DialogTrigger, Pressable } from "react-aria-components";
 
 import type { components } from "@/shared/api/rest/types.generated";
+import { Modal } from "@/shared/components/aria/modal";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
-import Modal from "@/shared/components/modals/modal";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { ModelDisplay } from "./styled";
@@ -15,8 +15,6 @@ export const ComputedAttributeDisplay = ({
 }: {
   computedAttribute?: components["schemas"]["ComputedAttribute-Output"] | null;
 }) => {
-  const [isOpen, setOpen] = useState(false);
-
   if (!computedAttribute) {
     return "-";
   }
@@ -28,22 +26,21 @@ export const ComputedAttributeDisplay = ({
       <Row>
         <ModelDisplay kinds={["CoreTransformJinja2"]} />
 
-        <Button
-          variant={"active-outline"}
-          size={"icon"}
-          onClick={() => setOpen(true)}
-          data-testid="jinja2-transform-button"
-        >
-          <Icon icon={"mdi:eye-outline"} />
-        </Button>
+        <DialogTrigger>
+          <Pressable>
+            <Button variant="outline" size="icon" data-testid="jinja2-transform-button">
+              <EyeIcon className="size-3.5" />
+            </Button>
+          </Pressable>
 
-        <Modal setOpen={setOpen} open={isOpen}>
-          <DataViewer
-            title="Jinja2 template"
-            fileName="jinja2-template.txt"
-            data={jinja2TemplateData}
-          />
-        </Modal>
+          <Modal>
+            <DataViewer
+              title="Jinja2 Template"
+              fileName="jinja2-template.txt"
+              data={jinja2TemplateData}
+            />
+          </Modal>
+        </DialogTrigger>
       </Row>
     );
   }
