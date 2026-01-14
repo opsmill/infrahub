@@ -18,14 +18,14 @@
     "@docusaurus/core": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
-    "@easyops-cn/docusaurus-search-local": "^0.52.1",
+    "@easyops-cn/docusaurus-search-local": "^0.52.2",
     "@mdx-js/react": "^3.0.1",
     "clsx": "^2.1.1",
     "image-size": "^2.0.2",
     "prism-react-renderer": "^2.4.0",
     "raw-loader": "^4.0.2",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-player": "^3.3.2"
   },
   "devDependencies": {
@@ -35,7 +35,7 @@
     "@docusaurus/types": "^3.9.2",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
-    "baseline-browser-mapping": "^2.9.11",
+    "baseline-browser-mapping": "^2.9.14",
     "eslint": "^8.56.0",
     "markdownlint-cli2": ">=0.17.0",
     "typescript": "^5.9.2"
