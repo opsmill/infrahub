@@ -29,6 +29,7 @@ export function ModalDelete({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className="w-full max-w-lg p-0"
+      data-testid="modal-delete"
     >
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
@@ -45,7 +46,13 @@ export function ModalDelete({
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
           Cancel
         </Button>
-        <Button variant="danger" onClick={onDelete} isLoading={isLoading} disabled={isLoading}>
+        <Button
+          variant="danger"
+          onClick={onDelete}
+          isLoading={isLoading}
+          disabled={isLoading}
+          data-testid="modal-delete-confirm"
+        >
           Delete
         </Button>
       </Row>
