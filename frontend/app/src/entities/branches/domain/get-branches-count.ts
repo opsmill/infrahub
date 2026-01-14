@@ -1,12 +1,10 @@
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { getBranchesCountFromApi } from "@/entities/branches/api/get-branches-count-from-api";
-import type { InfrahubBranchResponse } from "@/entities/branches/domain/branch.mappers";
-
-const getNameFilterValue = (filters?: Filter[]) => {
-  const nameFilter = filters?.find((f) => f.name === "name__value");
-  return nameFilter?.value as string | undefined;
-};
+import {
+  getNameFilterValue,
+  type InfrahubBranchResponse,
+} from "@/entities/branches/domain/branch.mappers";
 
 export const getBranchesCount = async (filters?: Filter[]): Promise<number> => {
   const nameValue = getNameFilterValue(filters);

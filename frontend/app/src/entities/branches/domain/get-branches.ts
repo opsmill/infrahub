@@ -5,6 +5,7 @@ import { store } from "@/shared/stores";
 import { getBranchesFromApi } from "@/entities/branches/api/get-branches-from-api";
 import {
   type BranchListItem,
+  getNameFilterValue,
   type InfrahubBranchResponse,
   mapToBranchListItem,
 } from "@/entities/branches/domain/branch.mappers";
@@ -17,11 +18,6 @@ export type GetBranchesParams = PaginationParams & {
 export type GetBranchesResult = Array<BranchListItem>;
 
 export type GetBranches = (params?: GetBranchesParams) => Promise<GetBranchesResult>;
-
-const getNameFilterValue = (filters?: Filter[]) => {
-  const nameFilter = filters?.find((f) => f.name === "name__value");
-  return nameFilter?.value as string | undefined;
-};
 
 // Paginated fetch for branches list view
 export const getBranches: GetBranches = async (params = {}) => {
