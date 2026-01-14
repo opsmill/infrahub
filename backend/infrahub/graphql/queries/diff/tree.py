@@ -439,6 +439,7 @@ class DiffTreeResolver:
         root_node_uuids: list[str] | None = None,
         limit: int | None = None,
         offset: int | None = None,
+        proposed_change_id: str | None = None,
     ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
@@ -473,6 +474,7 @@ class DiffTreeResolver:
             offset=offset,
             tracking_id=NameTrackingId(name) if name else None,
             include_empty=True,
+            proposed_change_id=proposed_change_id,
         )
         if not enriched_diffs:
             return None
@@ -511,6 +513,7 @@ class DiffTreeResolver:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         filters: dict | None = None,
+        proposed_change_id: str | None = None,
     ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
@@ -535,6 +538,7 @@ class DiffTreeResolver:
             from_time=from_timestamp,
             to_time=to_timestamp,
             filters=filters_dict,
+            proposed_change_id=proposed_change_id,
         )
         if summary is None:
             return None
@@ -588,6 +592,7 @@ DiffTreeQuery = Field(
     filters=DiffTreeQueryFilters(),
     limit=Int(),
     offset=Int(),
+    proposed_change_id=String(),
     resolver=DiffTreeResolver().resolve,
     required=False,
 )
@@ -599,6 +604,7 @@ DiffTreeSummaryQuery = Field(
     from_time=DateTime(),
     to_time=DateTime(),
     filters=DiffTreeQueryFilters(),
+    proposed_change_id=String(),
     resolver=DiffTreeResolver().summary,
     required=False,
 )

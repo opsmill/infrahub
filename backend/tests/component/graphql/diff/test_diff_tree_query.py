@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 
@@ -180,6 +181,33 @@ query GetDiffTreeSummary($branch: String, $filters: DiffTreeQueryFilters){
         num_unchanged
         num_untracked_base_changes
         num_untracked_diff_changes
+    }
+}
+"""
+
+DIFF_TREE_QUERY_BY_PROPOSED_CHANGE = """
+query ($branch: String, $proposed_change_id: String){
+    DiffTree (branch: $branch, proposed_change_id: $proposed_change_id) {
+        nodes {
+            uuid
+            kind
+            label
+            status
+        }
+    }
+}
+"""
+
+DIFF_TREE_SUMMARY_QUERY_BY_PROPOSED_CHANGE = """
+query ($branch: String, $proposed_change_id: String){
+    DiffTreeSummary (branch: $branch, proposed_change_id: $proposed_change_id) {
+        base_branch
+        diff_branch
+        num_added
+        num_removed
+        num_updated
+        num_conflicts
+        num_unchanged
     }
 }
 """
@@ -955,3 +983,152 @@ async def test_diff_get_filters(
 
     assert result.errors is None
     assert {node["label"] for node in result.data["DiffTree"]["nodes"]} == set(labels)
+
+
+async def test_diff_tree_and_summary_filter_by_proposed_change_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
+    diff_repository: DiffRepository,
+) -> None:
+    """Test that DiffTreeQuery and DiffTreeSummaryQuery filter results by proposed_change_id."""
+    # Create a proposed change node
+    proposed_change_id = str(uuid4())
+    await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+    other_proposed_change_id = str(uuid4())
+    await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": other_proposed_change_id})
+
+    # Make a change on the branch
+    branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
+    branch_crit.color.value = "#abcdef"
+    await branch_crit.save(db=db)
+
+    # Create the diff
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(
+        base_branch=default_branch, diff_branch=diff_branch
+    )
+
+    default_branch.update_schema_hash()
+    params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    # -------------------------------------------------------------------------
+    # DiffTree tests
+    # -------------------------------------------------------------------------
+
+    # Query without proposed_change_id filter - should return results
+    result_without_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+    assert result_without_filter.errors is None
+    assert result_without_filter.data["DiffTree"] is not None
+    assert len(result_without_filter.data["DiffTree"]["nodes"]) == 1
+
+    # Query with proposed_change_id filter (not linked yet) - should return None
+    result_with_unlinked_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "proposed_change_id": proposed_change_id},
+    )
+    assert result_with_unlinked_filter.errors is None
+    assert result_with_unlinked_filter.data["DiffTree"] is None
+
+    # -------------------------------------------------------------------------
+    # DiffTreeSummary tests (before linking)
+    # -------------------------------------------------------------------------
+
+    # Query without proposed_change_id filter - should return results
+    summary_without_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_SUMMARY_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+    assert summary_without_filter.errors is None
+    assert summary_without_filter.data["DiffTreeSummary"] is not None
+    assert summary_without_filter.data["DiffTreeSummary"]["num_updated"] == 1
+
+    # Query with proposed_change_id filter (not linked yet) - should return None
+    summary_with_unlinked_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_SUMMARY_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "proposed_change_id": proposed_change_id},
+    )
+    assert summary_with_unlinked_filter.errors is None
+    assert summary_with_unlinked_filter.data["DiffTreeSummary"] is None
+
+    # -------------------------------------------------------------------------
+    # Link the diff to the proposed change
+    # -------------------------------------------------------------------------
+    await diff_repository.link_to_proposed_change(
+        diff_uuids=[enriched_diff_metadata.uuid],
+        proposed_change_id=proposed_change_id,
+    )
+
+    # -------------------------------------------------------------------------
+    # DiffTree tests (after linking)
+    # -------------------------------------------------------------------------
+
+    # Query with proposed_change_id filter (now linked) - should return results
+    result_with_linked_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "proposed_change_id": proposed_change_id},
+    )
+    assert result_with_linked_filter.errors is None
+    assert result_with_linked_filter.data["DiffTree"] is not None
+    assert len(result_with_linked_filter.data["DiffTree"]["nodes"]) == 1
+    assert result_with_linked_filter.data["DiffTree"]["nodes"][0]["uuid"] == criticality_low.id
+
+    # Query with a different proposed_change_id - should return None
+    result_with_other_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "proposed_change_id": other_proposed_change_id},
+    )
+    assert result_with_other_filter.errors is None
+    assert result_with_other_filter.data["DiffTree"] is None
+
+    # -------------------------------------------------------------------------
+    # DiffTreeSummary tests (after linking)
+    # -------------------------------------------------------------------------
+
+    # Query with proposed_change_id filter (now linked) - should return results
+    summary_with_linked_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_SUMMARY_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "proposed_change_id": proposed_change_id},
+    )
+    assert summary_with_linked_filter.errors is None
+    assert summary_with_linked_filter.data["DiffTreeSummary"] is not None
+    assert summary_with_linked_filter.data["DiffTreeSummary"]["num_updated"] == 1
+    assert summary_with_linked_filter.data["DiffTreeSummary"]["base_branch"] == default_branch.name
+    assert summary_with_linked_filter.data["DiffTreeSummary"]["diff_branch"] == diff_branch.name
+
+    # Query with a different proposed_change_id - should return None
+    summary_with_other_filter = await graphql(
+        schema=params.schema,
+        source=DIFF_TREE_SUMMARY_QUERY_BY_PROPOSED_CHANGE,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name, "proposed_change_id": other_proposed_change_id},
+    )
+    assert summary_with_other_filter.errors is None
+    assert summary_with_other_filter.data["DiffTreeSummary"] is None
