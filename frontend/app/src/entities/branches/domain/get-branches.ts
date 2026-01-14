@@ -1,7 +1,6 @@
+import type { PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { store } from "@/shared/stores";
-
-import type { PaginationParams } from "@/shared/api/types";
 
 import { getBranchesFromApi } from "@/entities/branches/api/get-branches-from-api";
 import {
