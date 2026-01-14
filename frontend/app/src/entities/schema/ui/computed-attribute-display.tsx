@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import type { components } from "@/shared/api/rest/types.generated";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { Row } from "@/shared/components/container";
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import Modal from "@/shared/components/modals/modal";
 import { Badge } from "@/shared/components/ui/badge";
@@ -24,7 +25,7 @@ export const ComputedAttributeDisplay = ({
     const jinja2TemplateData = computedAttribute.jinja2_template as string;
 
     return (
-      <div className="flex items-center gap-2">
+      <Row>
         <ModelDisplay kinds={["CoreTransformJinja2"]} />
 
         <Button
@@ -43,17 +44,17 @@ export const ComputedAttributeDisplay = ({
             data={jinja2TemplateData}
           />
         </Modal>
-      </div>
+      </Row>
     );
   }
 
   if (computedAttribute.kind === "TransformPython") {
     return (
-      <div className="flex items-center gap-2">
+      <Row>
         <ModelDisplay kinds={["CoreTransformPython"]} />
 
-        <Badge variant={"gray-outline"}>{computedAttribute.transform}</Badge>
-      </div>
+        <Badge variant="gray-outline">{computedAttribute.transform as string}</Badge>
+      </Row>
     );
   }
 

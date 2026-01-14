@@ -48,7 +48,7 @@ export function DataViewer({
   );
 }
 
-const CONTENT_TYPE_CONFIG: Record<
+export const CONTENT_TYPE_CONFIG: Record<
   ArtifactContentType,
   {
     extension: string;

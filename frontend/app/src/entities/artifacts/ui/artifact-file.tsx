@@ -3,7 +3,7 @@ import { Link } from "react-aria-components";
 import { toast } from "react-toastify";
 
 import { fetchStream } from "@/shared/api/rest/fetch";
-import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
+import { CONTENT_TYPE_CONFIG, DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { dataViewerActionStyle } from "@/shared/components/data-viewer/data-viewer.styles";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -11,24 +11,6 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import type { ArtifactContentType } from "@/entities/artifacts/types";
-
-const CONTENT_TYPE_CONFIG: Record<
-  ArtifactContentType,
-  {
-    extension: string;
-    label: string;
-    language?: string;
-  }
-> = {
-  "application/json": { extension: "json", language: "json", label: "JSON" },
-  "text/markdown": { extension: "md", language: "markdown", label: "Markdown" },
-  "application/yaml": { extension: "yaml", language: "yaml", label: "YAML" },
-  "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
-  "image/svg+xml": { extension: "svg", language: "svg", label: "SVG" },
-  "text/plain": { extension: "txt", language: "text", label: "text" },
-  "application/xml": { extension: "xml", language: "xml", label: "XML" },
-  "text/csv": { extension: "csv", language: "csv", label: "CSV" },
-} as const;
 
 interface ArtifactFileProps {
   artifactId: string;
