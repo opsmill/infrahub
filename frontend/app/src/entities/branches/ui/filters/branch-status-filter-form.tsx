@@ -38,13 +38,10 @@ export function BranchStatusFilterForm({ onSuccess }: BranchStatusFilterFormProp
         value: attribute,
       };
 
-      if (currentFilter) {
-        return setFilters(
-          filters.map((f) => (f.name.startsWith(fieldSchema.name) ? newFilter : f))
-        );
-      } else {
-        return setFilters([...filters, newFilter]);
-      }
+      return setFilters([
+        ...filters.filter((f) => !f.name.startsWith(fieldSchema.name)),
+        newFilter,
+      ]);
     }
 
     if (condition === FILTER_CONDITION.IS_EMPTY) {
