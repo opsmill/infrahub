@@ -128,10 +128,12 @@ else
             aarch64|arm64) ARCH="arm64" ;;
         esac
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-        curl -sLO "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
-            && tar -xzf "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz" \
-            && sudo mv "gh_${GH_VERSION}_${OS}_${ARCH}/bin/gh" /usr/local/bin/ \
-            && rm -rf "gh_${GH_VERSION}_${OS}_${ARCH}" "gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz"
+        GH_TARBALL="gh_${GH_VERSION}_${OS}_${ARCH}.tar.gz"
+        GH_DIR="gh_${GH_VERSION}_${OS}_${ARCH}"
+        trap "rm -rf '$GH_DIR' '$GH_TARBALL'" RETURN
+        curl -sLO "https://github.com/cli/cli/releases/download/v${GH_VERSION}/${GH_TARBALL}" \
+            && tar -xzf "$GH_TARBALL" \
+            && sudo mv "$GH_DIR/bin/gh" /usr/local/bin/
     }
     if install_gh; then
         echo "GitHub CLI installed"

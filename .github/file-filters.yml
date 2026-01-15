@@ -30,6 +30,11 @@ openapi_schema_files: &openapi_schema_files
   - "schema/openapi.json"
   - "frontend/app/src/shared/api/rest/types.generated.ts"
 
+graphql_schema_files: &graphql_schema_files
+  - "schema/schema.graphql"
+  - "frontend/app/src/shared/api/graphql/graphql-env.d.ts"
+  - "frontend/app/src/shared/api/graphql/graphql-cache.d.ts"
+
 e2e_test_files:
   - "frontend/app/tests/e2e/**"
 
@@ -95,6 +100,9 @@ frontend_all:
 
 openapi_schema_all:
   - *openapi_schema_files
+
+graphql_schema_all:
+  - *graphql_schema_files
 
 e2e_all:
   - *backend_files
