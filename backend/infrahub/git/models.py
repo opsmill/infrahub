@@ -109,6 +109,7 @@ class GitRepositoryImportObjects(BaseModel):
 
 
 class GitReadOnlyRepositoryImportCommit(GitRepositoryImportObjects):
+    commit: str | None = Field(default=None, description="Specific commit to pull")
     ref: str = Field(..., description="The ref of the repository")
 
 

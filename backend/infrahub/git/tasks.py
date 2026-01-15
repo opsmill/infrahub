@@ -592,7 +592,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
     name="git-read-only-repository-import-last-commit", flow_run_name="Import last commit from read only git repository"
 )
 async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryImportCommit) -> None:
-    await add_branch_tag(model.infrahub_branch_name)
+    await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     if not model.repository_kind == InfrahubKind.READONLYREPOSITORY:
         raise RepositoryError(identifier=model.repository_name, message="Repository is not a read only repository")

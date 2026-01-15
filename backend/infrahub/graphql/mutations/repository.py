@@ -145,11 +145,23 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             infrahub_branch_name=branch.name,
             infrahub_branch_id=str(branch.get_uuid()),
         )
+        git_read_only_repo_import_commit_model = GitReadOnlyRepositoryImportCommit(
+            repository_id=obj.id,
+            repository_name=str(obj.name.value),
+            repository_kind=obj.get_kind(),
+            infrahub_branch_name=branch.name,
+            ref=str(obj.ref.value),
+        )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_PULL_READ_ONLY,
                 context=graphql_context.get_context(),
                 parameters={"model": model},
+            )
+            await graphql_context.active_service.workflow.submit_workflow(
+                workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+                context=graphql_context.get_context(),
+                parameters={"model": git_read_only_repo_import_commit_model},
             )
         return obj, result
 
