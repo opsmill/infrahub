@@ -6,12 +6,20 @@ import { SchemaViewer } from "@/entities/schema/ui/schema-viewer";
 interface SchemaViewerModalProps {
   schema: ModelSchema;
   defaultTab?: "properties" | "attributes" | "relationships";
+  targetField?: string;
 }
 
-export function SchemaViewerModal({ schema, defaultTab }: SchemaViewerModalProps) {
+export function SchemaViewerModal({ schema, defaultTab, targetField }: SchemaViewerModalProps) {
   return (
     <Modal className="w-[600px] max-w-[90vw]">
-      {({ close }) => <SchemaViewer schema={schema} defaultTab={defaultTab} onClose={close} />}
+      {({ close }) => (
+        <SchemaViewer
+          schema={schema}
+          defaultTab={defaultTab}
+          targetField={targetField}
+          onClose={close}
+        />
+      )}
     </Modal>
   );
 }
