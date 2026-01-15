@@ -21,8 +21,9 @@ from infrahub.core.protocols import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import TransformError
+from infrahub.graphql.execution import execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.utils import extract_data, graphql_impl
+from infrahub.graphql.utils import extract_data
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
 
@@ -68,7 +69,7 @@ async def transform_python(
             db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
         )
 
-        result = await graphql_impl(
+        result = await execute_graphql_query(
             schema=gql_params.schema,
             source=query.query.value,
             context_value=gql_params.context,
@@ -133,7 +134,7 @@ async def transform_jinja2(
             db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
         )
 
-        result = await graphql_impl(
+        result = await execute_graphql_query(
             schema=gql_params.schema,
             source=query.query.value,
             context_value=gql_params.context,
