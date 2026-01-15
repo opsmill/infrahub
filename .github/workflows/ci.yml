@@ -52,6 +52,7 @@ jobs:
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
+      graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -150,6 +151,45 @@ jobs:
             echo "  npm run codegen:openapi"
             echo "  git add src/shared/api/rest/types.generated.ts"
             echo "  git commit -m 'chore: regenerate OpenAPI types'"
+            exit 1
+          fi
+
+  frontend-validate-graphql-types:
+    if: |
+      needs.files-changed.outputs.graphql_schema == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate GraphQL types
+        run: npm run codegen:graphql
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts; then
+            echo "❌ Error: Generated GraphQL types are out of sync"
+            echo ""
+            echo "The gql.tada generated files need to be regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd frontend/app"
+            echo "  npm run codegen:graphql"
+            echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
+            echo "  git commit -m 'chore: regenerate GraphQL types'"
             exit 1
           fi
 
@@ -325,8 +365,44 @@ jobs:
     with:
       directory: "./python_testcontainers"
 
-
   backend-tests-unit:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Unit Tests"
+        run: "uv run invoke backend.test-unit"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-unit
+          parallel: true
+
+  backend-tests-component:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -361,14 +437,14 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Unit Tests"
-        run: "uv run invoke backend.test-unit"
+        run: "uv run invoke backend.test-component"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-unit
+          flag-name: backend-component
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -1223,5 +1299,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
           parallel-finished: true

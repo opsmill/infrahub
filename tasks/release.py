@@ -120,7 +120,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
             print(
                 f"{str(chart_path)} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
             )
-            return
+            continue
 
         # Handle Helm chart version increment
         old_helm_version = Version(chart_yaml.get("version", ""))
@@ -145,11 +145,11 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
             print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
 
         # Convert Version to str before passing to yaml
-        app_version = str(app_version)
+        new_app_version = str(app_version)
         new_helm_version = str(new_helm_version)
 
         # Update the YAML
-        chart_yaml["appVersion"] = app_version
+        chart_yaml["appVersion"] = new_app_version
         chart_yaml["version"] = new_helm_version
 
         if chart == "infrahub":
@@ -171,9 +171,9 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
             ):
                 print(f"prefect-server image tag not found in {str(values_path)}; no updates made.")
             else:
-                values_yaml["prefect-server"]["global"]["prefect"]["image"]["prefectTag"] = app_version
+                values_yaml["prefect-server"]["global"]["prefect"]["image"]["prefectTag"] = new_app_version
                 yaml_values.dump(values_yaml, values_path)
-                print(f"{str(values_path)} updated with `prefectTag`: {app_version}")
+                print(f"{str(values_path)} updated with `prefectTag`: {new_app_version}")
         elif chart == "infrahub-enterprise":
             if "dependencies" in chart_yaml:
                 for dependency in chart_yaml["dependencies"]:
@@ -185,7 +185,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
 
         yaml.dump(chart_yaml, chart_path)
 
-        print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
+        print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {new_app_version}")
 
 
 @task

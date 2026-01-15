@@ -44,6 +44,8 @@ infrahub:
   global:
     infrahubTag: ${local.infrahub_version}
   infrahubServer:
+    podLabels:
+      infrahub/service: server
     replicas: 3
     persistence:
       enabled: false
@@ -80,6 +82,8 @@ infrahub:
                 service: infrahub-server
             topologyKey: kubernetes.io/hostname
   infrahubTaskWorker:
+    podLabels:
+      infrahub/service: task-worker
     replicas: 3
     infrahubTaskWorker:
       env:
@@ -164,6 +168,8 @@ resource "helm_release" "database_ha" {
     <<EOT
 neo4j:
   name: "infrahub"
+  labels:
+    infrahub/service: database
   minimumClusterSize: 3
   resources:
     cpu: "4"
@@ -201,8 +207,11 @@ resource "helm_release" "messagequeue_ha" {
   values = [
     <<EOT
 replicaCount: 3
+podLabels:
+  infrahub/service: message-queue
 image:
   repository: bitnamilegacy/rabbitmq
+  tag: 4.1.3-debian-12-r1
 auth:
   username: infrahub
   password: infrahub
@@ -270,6 +279,8 @@ global:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
       prefectTag: ${local.infrahub_version}
 server:
+  podLabels:
+    infrahub/service: task-manager
   replicaCount: 3
   command:
     - /usr/bin/tini
@@ -423,10 +434,13 @@ resource "helm_release" "cache_ha" {
 nameOverride: cache
 image:
   repository: bitnamilegacy/redis
+  tag: 8.2.1-debian-12-r0
 architecture: replication
 auth:
   enabled: false
 master:
+  podLabels:
+    infrahub/service: cache
   podAntiAffinityPreset: hard
   persistence:
     enabled: true
@@ -440,6 +454,7 @@ sentinel:
   enabled: true
   image:
     repository: bitnamilegacy/redis-sentinel
+    tag: 8.2.1-debian-12-r0
 EOT
   ]
 }
@@ -453,8 +468,13 @@ kind: Cluster
 metadata:
   name: taskmanagerdb
   namespace: ${local.target_namespace}
+  labels:
+    infrahub/service: task-manager-db
 spec:
   instances: 3
+  inheritedMetadata:
+    labels:
+      infrahub/service: task-manager-db
   storage:
     size: 10Gi
   postgresql:
