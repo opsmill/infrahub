@@ -1033,6 +1033,245 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert retrieved_diff == saved_diffs.diff_branch_diff
         await verify_no_orphaned_nodes(db=db)
 
+    async def test_save_and_retrieve_with_proposed_change(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test that saving a diff with proposed_change_id creates the DIFF_FOR_PROPOSED_CHANGE edge."""
+        # Create a node that will act as the proposed change
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="pc-linked-diff"),
+            proposed_change_id=proposed_change_id,
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=NameTrackingId(name="pc-linked-diff"),
+            proposed_change_id=proposed_change_id,
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Verify retrieval via get_roots_metadata
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[self.diff_branch_name, self.base_branch_name],
+            proposed_change_id=proposed_change_id,
+        )
+        assert len(metadata) == 2
+        metadata_uuids = {m.uuid for m in metadata}
+        assert metadata_uuids == {enriched_branch_diff.uuid, enriched_base_diff.uuid}
+        for m in metadata:
+            assert m.proposed_change_id == proposed_change_id
+
+    async def test_update_proposed_change_link(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test that updating a diff's proposed_change_id updates the edge."""
+        # Create two nodes that will act as proposed changes
+        proposed_change_id_1 = str(uuid4())
+        proposed_change_id_2 = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id_1})
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id_2})
+
+        # Save diff with first proposed change
+        tracking_id = NameTrackingId(name="update-pc-diff")
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id_1,
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id_1,
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Update to second proposed change
+        enriched_branch_diff.proposed_change_id = proposed_change_id_2
+        enriched_base_diff.proposed_change_id = proposed_change_id_2
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Verify diffs are linked to proposed change 2 via get_roots_metadata
+        metadatas = await diff_repository.get_roots_metadata(
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id_2,
+        )
+        metadata_uuids = {m.uuid for m in metadatas}
+        assert metadata_uuids == {enriched_branch_diff.uuid, enriched_base_diff.uuid}
+        for m in metadatas:
+            assert m.proposed_change_id == proposed_change_id_2
+
+        # Verify diffs are not linked to proposed change 1 via get_roots_metadata
+        metadatas = await diff_repository.get_roots_metadata(
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id_1,
+        )
+        assert len(metadatas) == 0
+
+    async def test_link_to_proposed_change(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test the link_to_proposed_change method for linking existing diffs."""
+        # Create proposed change node
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        # Save diff without proposed change
+        tracking_id = NameTrackingId(name="link-later-diff")
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=tracking_id,
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=tracking_id,
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Link to proposed change
+        await diff_repository.link_to_proposed_change(
+            diff_uuids=[enriched_branch_diff.uuid],
+            proposed_change_id=proposed_change_id,
+        )
+
+        # Verify diffs are linked to proposed change via get_roots_metadata
+        metadatas = await diff_repository.get_roots_metadata(
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
+        )
+        assert len(metadatas) == 1
+        metadatas = metadatas[0]
+        assert metadatas.uuid == enriched_branch_diff.uuid
+        assert metadatas.proposed_change_id == proposed_change_id
+
+        # Verify retrieval via get_roots_metadata
+        metadatas = await diff_repository.get_roots_metadata(tracking_id=tracking_id)
+        metadata_pc_map = {m.uuid: m.proposed_change_id for m in metadatas}
+        assert metadata_pc_map == {enriched_branch_diff.uuid: proposed_change_id, enriched_base_diff.uuid: None}
+
+    async def test_filter_by_proposed_change_id(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test filtering diffs by proposed_change_id."""
+        # Create two proposed changes
+        proposed_change_id_1 = str(uuid4())
+        proposed_change_id_2 = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id_1})
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id_2})
+
+        # Save first diff linked to first proposed change
+        diff_1 = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="filter-diff-1"),
+            proposed_change_id=proposed_change_id_1,
+        )
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_1, do_summary_counts=False)
+
+        # Save second diff linked to second proposed change
+        diff_2 = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time.add(minutes=30),
+            to_time=self.diff_to_time.add(minutes=30),
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="filter-diff-2"),
+            proposed_change_id=proposed_change_id_2,
+        )
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_2, do_summary_counts=False)
+
+        # Save third diff with no proposed change
+        diff_3 = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time.add(minutes=60),
+            to_time=self.diff_to_time.add(minutes=60),
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="filter-diff-3"),
+        )
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_3, do_summary_counts=False)
+
+        # Filter by first proposed change
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            proposed_change_id=proposed_change_id_1,
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].uuid == diff_1.uuid
+
+        # Filter by second proposed change
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            proposed_change_id=proposed_change_id_2,
+        )
+        assert len(retrieved) == 1
+        assert retrieved[0].uuid == diff_2.uuid
+
+        # No filter should return all 3 diffs
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time.add(hours=1),
+        )
+        assert len(retrieved) == 3
+
 
 async def verify_no_orphaned_nodes(db: InfrahubDatabase) -> None:
     """Verify that no diff elements have been orphaned"""
