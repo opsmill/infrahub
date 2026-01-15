@@ -1048,9 +1048,7 @@ async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNames
         for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
     ],
 )
-async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_from_api(
-    index: int, reserved_name: str
-) -> None:
+async def test_schema_validate_hierarchical_nodes_restricted_words(index: int, reserved_name: str) -> None:
     schema1 = {
         "generics": [
             {
@@ -1167,6 +1165,74 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
         schema.process()
 
     assert str(exc.value) == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
+
+
+@pytest.mark.parametrize(
+    "index,reserved_name",
+    [
+        pytest.param(index, reserved_name, id=reserved_name)
+        for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
+    ],
+)
+async def test_schema_validate_hierarchical_nodes_restricted_words_allows_words_for_schema_with_id(
+    index: int, reserved_name: str
+) -> None:
+    schema1 = {
+        "generics": [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Location",
+                "namespace": "Generic",
+                "hierarchical": True,
+                "attributes": [{"name": f"name_location_{index}", "unique": True, "optional": False, "kind": "Text"}],
+            }
+        ],
+        "nodes": [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["GenericLocation"],
+                "children": "TestingParent",
+                "parent": "",
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Parent",
+                "namespace": "Testing",
+                "inherit_from": ["GenericLocation"],
+                "children": "",
+                "parent": "LocationSite",
+                "relationships": [
+                    {
+                        "name": reserved_name,
+                        "kind": "Generic",
+                        "optional": True,
+                        "peer": "TestingChild",
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Child",
+                "namespace": "Testing",
+                "attributes": [{"name": reserved_name, "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": f"relation_{index}",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "peer": "TestingParent",
+                        "cardinality": "one",
+                    }
+                ],
+            },
+        ],
+    }
+    schema = SchemaBranch(cache={}, name=f"test_{index}")
+    schema.load_schema(schema=SchemaRoot(**schema1))
+    schema.process()
 
 
 async def test_schema_branch_validate_identifiers() -> None:
