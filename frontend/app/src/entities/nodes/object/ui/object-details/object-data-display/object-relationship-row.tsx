@@ -176,6 +176,7 @@ function RelationshipManyRow({
 
   return (
     <ObjectDataRow
+      className="gap-2"
       name={relationshipLabel}
       value={
         <>
@@ -204,6 +205,7 @@ function RelationshipManyRow({
                       <Link
                         to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}
                         onClick={(e) => e.stopPropagation()}
+                        className="mx-2"
                       >
                         {getNodeLabel(relatedNode)}
                       </Link>
