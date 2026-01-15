@@ -211,7 +211,6 @@ async def test_import_read_only_repository_last_commit(
                         repository_id=repo.id,
                         repository_name=str(repo.name.value),
                         repository_kind=repo.get_kind(),
-                        commit=commit_id,
                         infrahub_branch_name=default_branch.name,
                         ref="main",
                     )
