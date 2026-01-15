@@ -379,6 +379,7 @@ jobs:
         python-version:
           - "3.12"
           - "3.13"
+          - "3.14"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -400,7 +401,7 @@ jobs:
       - name: "Unit Tests"
         run: "uv run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
-        if: matrix.python-version == '3.12'
+        if: matrix.python-version == '3.13'
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
