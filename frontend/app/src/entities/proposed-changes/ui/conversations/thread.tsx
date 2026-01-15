@@ -7,8 +7,8 @@ import * as R from "remeda";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
-import { ModalConfirm } from "@/shared/components/aria/modal-confirm";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
+import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";

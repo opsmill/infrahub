@@ -6,12 +6,12 @@ import { Modal } from "@/shared/components/aria/modal";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 
-interface ConfirmModalProps {
+interface ModalConfirmProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
   description?: ReactNode;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   isLoading?: boolean;
 }
 
@@ -22,7 +22,7 @@ export function ModalConfirm({
   description,
   onConfirm,
   isLoading,
-}: ConfirmModalProps) {
+}: ModalConfirmProps) {
   return (
     <Modal
       isDismissable={!isLoading}

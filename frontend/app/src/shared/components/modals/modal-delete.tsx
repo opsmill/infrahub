@@ -6,12 +6,12 @@ import { Modal } from "@/shared/components/aria/modal";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 
-interface DeleteModalProps {
+interface ModalDeleteProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
   description?: ReactNode;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
   isLoading?: boolean;
 }
 
@@ -22,7 +22,7 @@ export function ModalDelete({
   description,
   onDelete,
   isLoading,
-}: DeleteModalProps) {
+}: ModalDeleteProps) {
   return (
     <Modal
       isDismissable={!isLoading}

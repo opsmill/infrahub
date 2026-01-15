@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ModalDelete } from "@/shared/components/aria/modal-delete";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";

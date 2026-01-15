@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/aria/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";

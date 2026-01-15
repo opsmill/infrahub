@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import { ModalDelete } from "@/shared/components/aria/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";

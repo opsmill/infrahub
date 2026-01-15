@@ -1,7 +1,7 @@
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { ModalDelete } from "@/shared/components/aria/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 

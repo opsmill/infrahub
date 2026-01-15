@@ -1,17 +1,15 @@
-import { useState } from "react";
 import { toast } from "react-toastify";
 
-import { ModalDelete } from "@/shared/components/aria/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
-interface iProps {
+interface ModalDeleteObjectProps {
   label?: string | null;
   rowToDelete: any;
-  isLoading?: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete?: () => void;
@@ -23,9 +21,8 @@ export default function ModalDeleteObject({
   isOpen,
   onOpenChange,
   onDelete,
-}: iProps) {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const deleteObject = useDeleteObjectMutation();
+}: ModalDeleteObjectProps) {
+  const { mutateAsync, isPending } = useDeleteObjectMutation();
 
   const objectDisplay =
     (rowToDelete && "__typename" in rowToDelete && "id" in rowToDelete
@@ -41,9 +38,7 @@ export default function ModalDeleteObject({
       return;
     }
 
-    setIsLoading(true);
-
-    await deleteObject.mutateAsync(
+    await mutateAsync(
       {
         objectKind:
           rowToDelete.__typename === "AccountTokenNode"
@@ -64,7 +59,6 @@ export default function ModalDeleteObject({
         },
       }
     );
-    setIsLoading(false);
   };
 
   return (
@@ -89,7 +83,7 @@ export default function ModalDeleteObject({
       onDelete={handleDeleteObject}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      isLoading={isLoading}
+      isLoading={isPending}
     />
   );
 }
