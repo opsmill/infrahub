@@ -42,6 +42,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
 
@@ -56,7 +57,6 @@ from .metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from .middleware import raise_on_mutation_on_branch_needing_rebase
-from .utils import cached_parse, graphql_impl
 
 if TYPE_CHECKING:
     import graphene
@@ -252,7 +252,7 @@ class InfrahubGraphQLApp:
             span.set_attributes(labels)
 
             with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-                result = await graphql_impl(
+                result = await execute_graphql_query(
                     schema=graphql_params.schema,
                     source=query,
                     context_value=graphql_params.context,

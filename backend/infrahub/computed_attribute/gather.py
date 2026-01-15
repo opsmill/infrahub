@@ -14,8 +14,8 @@ from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.utils import cached_parse
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,

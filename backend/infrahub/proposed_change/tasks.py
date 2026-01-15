@@ -61,8 +61,8 @@ from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerReposito
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.utils import cached_parse
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,

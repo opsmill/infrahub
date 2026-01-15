@@ -13,6 +13,7 @@ from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
+from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.metrics import (
     GRAPHQL_DURATION_METRICS,
@@ -24,7 +25,7 @@ from infrahub.graphql.metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from infrahub.graphql.middleware import raise_on_mutation_on_branch_needing_rebase
-from infrahub.graphql.utils import cached_parse, extract_data, graphql_impl
+from infrahub.graphql.utils import extract_data
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
@@ -93,7 +94,7 @@ async def execute_query(
     }
 
     with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-        result = await graphql_impl(
+        result = await execute_graphql_query(
             schema=gql_params.schema,
             source=gql_query.query.value,
             context_value=gql_params.context,
