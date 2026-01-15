@@ -8,6 +8,7 @@ import { Link } from "@/shared/components/ui/link";
 
 import { InlineEdit } from "@/entities/nodes/object/ui/object-details/object-data-display/inline-edit";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { ProfileSourceIcon } from "@/entities/nodes/object/ui/object-details/object-data-display/profile-source-icon";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeRelationshipManyWithMetadata,
@@ -91,6 +92,8 @@ function RelationshipOneRow({
       name={relationshipLabel}
       value={
         <>
+          <ProfileSourceIcon source={relationshipProperties?.source} />
+
           <InlineEdit
             type="relationship"
             fieldSchema={relationshipSchema}
@@ -196,6 +199,8 @@ function RelationshipManyRow({
 
                   return (
                     <Row key={relatedNode.id}>
+                      <ProfileSourceIcon source={edgeProperties?.source} />
+
                       <Link
                         to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}
                         onClick={(e) => e.stopPropagation()}

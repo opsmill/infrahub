@@ -7,6 +7,7 @@ import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltip
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { InlineEdit } from "@/entities/nodes/object/ui/object-details/object-data-display/inline-edit";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { ProfileSourceIcon } from "@/entities/nodes/object/ui/object-details/object-data-display/profile-source-icon";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema } from "@/entities/schema/types";
@@ -35,6 +36,8 @@ export function ObjectAttributeRow({
       name={attributeLabel}
       value={
         <>
+          <ProfileSourceIcon source={attributeData.source} />
+
           <InlineEdit
             type="attribute"
             fieldSchema={attributeSchema}
