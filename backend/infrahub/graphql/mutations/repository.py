@@ -158,7 +158,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 context=graphql_context.get_context(),
                 parameters={"model": model},
             )
-            await graphql_context.active_service.workflow.submit_workflow(
+            await graphql_context.service.workflow.submit_workflow(
                 workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
                 context=graphql_context.get_context(),
                 parameters={"model": git_read_only_repo_import_commit_model},

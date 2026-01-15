@@ -104,13 +104,11 @@ async def test_sync_from_remote_existing_ref(git_repo_01_read_only: InfrahubRead
     mock_client.repository_update_commit.assert_not_awaited()
 
 
-@patch("infrahub.git.tasks.get_initialized_repo")
 @patch("infrahub.git.tasks.get_client")
-@patch("infrahub.git.tasks.add_branch_tag")
+@patch("infrahub.git.tasks.add_tags")
 async def test_import_read_only_repository_last_commit(
-    mock_add_branch_tag: MagicMock,
+    mock_add_tags: MagicMock,
     mock_get_client: MagicMock,
-    mock_get_initialized_repo: MagicMock,
     git_repo_01_read_only: InfrahubReadOnlyRepository,
     git_upstream_repo_01,
 ) -> None:
@@ -129,12 +127,8 @@ async def test_import_read_only_repository_last_commit(
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
 
-    async def return_repo(*args, **kwargs):
-        return repo
-
-    mock_add_branch_tag.return_value = None
+    mock_add_tags.return_value = None
     mock_get_client.return_value = AsyncMock(InfrahubClient)
-    mock_get_initialized_repo.side_effect = return_repo
 
     model = GitReadOnlyRepositoryImportCommit(
         repository_id=str(repo.id),
