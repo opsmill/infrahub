@@ -532,8 +532,8 @@ class HTTPSettings(BaseSettings):
 
         return self
 
-    def get_tls_context(self) -> ssl.SSLContext:
-        if self.tls_insecure:
+    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
+        if self.tls_insecure and not force_verify:
             return ssl._create_unverified_context()
 
         if not self.tls_ca_bundle:

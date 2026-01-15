@@ -56,6 +56,7 @@ from .m051_subtract_branched_from_microsecond import Migration051
 from .m052_fix_global_branch_level import Migration052
 from .m053_fix_branch_level_zero import Migration053
 from .m054_cleanup_orphaned_nodes import Migration054
+from .m055_remove_webhook_validate_certificates_default import Migration055
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -116,6 +117,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration052,
     Migration053,
     Migration054,
+    Migration055,
 ]
 
 
