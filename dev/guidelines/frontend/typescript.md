@@ -1,6 +1,6 @@
 # TypeScript Coding Standards
 
-> Part of: `dev/guidelines/frontend/` | Related: [Frontend Architecture](../../knowledge/frontend/architecture.md)
+> Part of: `dev/guidelines/frontend/`
 
 Coding standards for the TypeScript/React frontend.
 
@@ -24,4 +24,3 @@ Follow React best practices and project conventions. See `frontend/app/AGENTS.md
 ## See Also
 
 - `frontend/app/AGENTS.md` - Frontend-specific patterns and structure
-- [Frontend Architecture](../../knowledge/frontend/architecture.md) - Frontend architecture overview

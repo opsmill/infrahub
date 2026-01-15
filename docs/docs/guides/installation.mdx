@@ -522,27 +522,59 @@ infrahub:
 Be sure to replace the placeholder values with your actual values.
 :::
 
-You can also use the configuration preset values.yaml file. This will automatically configure replica count for each component according to your sizing plan.
-They are available here:
+Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
 
-<ReferenceLink title="Small size config preset (requires 16 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
-<ReferenceLink title="Medium size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
-<ReferenceLink title="Medium (data) size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
-<ReferenceLink title="Large size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
-<ReferenceLink title="Large (data) size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+| Flavor | Chart version example | Required memory |
+| ----------- | --------------------- | --------------- |
+| small       | 4.0.0-small           | 16 GB           |
+| medium      | 4.0.0-medium          | 32 GB           |
+| medium-data | 4.0.0-medium-data     | 32 GB           |
+| large       | 4.0.0-large           | 64 GB           |
+| large-data  | 4.0.0-large-data      | 64 GB           |
+
+You can review the configuration values for each sizing preset here:
+
+<ReferenceLink title="Small size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Medium (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
+<ReferenceLink title="Large size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
+<ReferenceLink title="Large (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+
+##### Migrating from chart versions before 4.0.0
+
+If you are upgrading from a Helm chart version earlier than 4.0.0, update your `values.yml` file:
+
+1. **Remove old configuration preset values:** Delete any environment variables and settings that were previously copied from sizing presets (i.e., `INFRAHUB_CACHE_ADDRESS`, `PREFECT_REDIS_MESSAGING_HOST`, replica counts, resource limits). The flavored charts now handle these automatically.
+
+2. **Add the Redis host configuration:** Add the following to your `values.yml` file:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master" # Use the value previously set in INFRAHUB_CACHE_ADDRESS or PREFECT_REDIS_MESSAGING_HOST
+```
 
 #### Step 2: install the chart
+
+Install using a flavored chart from the OpsMill registry (recommended for production):
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0-medium
+```
+
+Or install the base chart and provide your own sizing configuration:
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0
+```
 
 Install using a local chart:
 
 ```bash
 helm install infrahub -f values.yml path/to/infrahub-enterprise/chart
-```
-
-Or install using the OpsMill registry:
-
-```bash
-helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise
 ```
 
 :::success

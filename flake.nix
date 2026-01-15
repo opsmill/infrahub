@@ -16,6 +16,7 @@
           buildInputs = [
             pkgs.git
             pkgs.gh
+            pkgs.lychee
             pkgs.vale
           ];
 
@@ -24,6 +25,7 @@
             echo "Available tools:"
             echo "  - git: $(git --version)"
             echo "  - gh (GitHub CLI): $(gh --version | head -n1)"
+            echo "  - lychee (link checker): $(lychee --version)"
             echo "  - vale (prose linter): $(vale --version)"
           '';
         };
