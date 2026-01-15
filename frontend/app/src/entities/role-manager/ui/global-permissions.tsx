@@ -182,8 +182,8 @@ function GlobalPermissions() {
       <ModalDeleteObject
         label={schemaKindName[GLOBAL_PERMISSION_OBJECT]}
         rowToDelete={rowToDelete}
-        open={!!rowToDelete}
-        close={() => setRowToDelete(null)}
+        isOpen={!!rowToDelete}
+        onOpenChange={(open) => !open && setRowToDelete(null)}
         onDelete={() => globalRefetch()}
       />
 

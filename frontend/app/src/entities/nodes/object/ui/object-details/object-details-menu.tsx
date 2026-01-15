@@ -229,8 +229,8 @@ export function ObjectDetailsMenu({
       <ModalDeleteObject
         label={objectSchema.label}
         rowToDelete={objectData}
-        open={isDeleteModalOpen}
-        close={() => setIsDeleteModalOpen(false)}
+        isOpen={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
         onDelete={() => {
           if ("parent" in objectData && "node" in objectData.parent && objectData.parent.node) {
             navigate(
