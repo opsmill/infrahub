@@ -20,6 +20,37 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
+## Imports
+
+All imports must be at the top of the file. Never import inside functions, methods, or classes:
+
+```python
+# ✅ Good - imports at module level
+from infrahub.core.query import Query
+from infrahub.exceptions import ValidationError
+
+class NodeManager:
+    def validate(self, node: Node) -> None:
+        if not node.name:
+            raise ValidationError("Node name is required")
+
+# ❌ Bad - import inside function
+class NodeManager:
+    def validate(self, node: Node) -> None:
+        from infrahub.exceptions import ValidationError
+        if not node.name:
+            raise ValidationError("Node name is required")
+```
+
+Use `TYPE_CHECKING` blocks for imports only needed for type hints to avoid circular imports:
+
+```python
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+```
+
 ## Data Structures
 
 Use the appropriate data structure based on context. Do not use Pydantic everywhere.
