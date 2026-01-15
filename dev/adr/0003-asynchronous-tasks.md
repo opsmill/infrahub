@@ -79,10 +79,10 @@ This pattern enables identical code across environments while avoiding Prefect d
 
 Key implementation locations:
 
-- Workflow definitions: [`backend/infrahub/workflows/catalogue.py`](../../../backend/infrahub/workflows/catalogue.py)
-- Workflow models: [`backend/infrahub/workflows/models.py`](../../../backend/infrahub/workflows/models.py)
-- Constants & types: [`backend/infrahub/workflows/constants.py`](../../../backend/infrahub/workflows/constants.py)
-- Initialization: [`backend/infrahub/workflows/initialization.py`](../../../backend/infrahub/workflows/initialization.py)
+- Workflow definitions: [`backend/infrahub/workflows/catalogue.py`](../../backend/infrahub/workflows/catalogue.py)
+- Workflow models: [`backend/infrahub/workflows/models.py`](../../backend/infrahub/workflows/models.py)
+- Constants & types: [`backend/infrahub/workflows/constants.py`](../../backend/infrahub/workflows/constants.py)
+- Initialization: [`backend/infrahub/workflows/initialization.py`](../../backend/infrahub/workflows/initialization.py)
 - Task functions: Various `tasks.py` files across the codebase
 
 See also:
