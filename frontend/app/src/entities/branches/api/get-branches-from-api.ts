@@ -1,11 +1,12 @@
 import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import type { PaginationParams } from "@/shared/api/types";
+
+export const BRANCHES_PER_PAGE = 40;
 
 const GET_BRANCHES = graphql(`
-  query GetBranches($branchSearch: String, $limit: Int, $offset: Int) {
-    InfrahubBranch(name__value: $branchSearch, limit: $limit, offset: $offset, partial_match: true) {
+  query GetBranches($limit: Int, $offset: Int, $nameValue: String, $partialMatch: Boolean) {
+    InfrahubBranch(limit: $limit, offset: $offset, name__value: $nameValue, partial_match: $partialMatch) {
       edges {
         node {
           id
@@ -56,23 +57,16 @@ const GET_BRANCHES = graphql(`
   }
 `);
 
-export const BRANCHES_PER_PAGE = 40;
-
-export interface GetBranchesFromApiParams
-  extends PaginationParams,
-    VariablesOf<typeof GET_BRANCHES> {}
+export type GetBranchesFromApiParams = VariablesOf<typeof GET_BRANCHES>;
 
 export const getBranchesFromApi = async ({
-  branchSearch,
   limit = BRANCHES_PER_PAGE,
   offset,
+  nameValue,
+  partialMatch,
 }: GetBranchesFromApiParams = {}) => {
   return graphqlClient.query({
     query: GET_BRANCHES,
-    variables: {
-      branchSearch,
-      limit,
-      offset,
-    },
+    variables: { limit, offset, nameValue, partialMatch },
   });
 };

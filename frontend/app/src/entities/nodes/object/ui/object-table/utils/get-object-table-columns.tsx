@@ -86,7 +86,7 @@ export function getObjectFieldsColumns(
   return sortedColumns.map((columnSchema) => {
     return columnHelper.accessor(columnSchema.name, {
       header: () => {
-        return <TableColumnHeader columnSchema={columnSchema} schema={schema} {...headerProps} />;
+        return <TableColumnHeader columnSchema={columnSchema} {...headerProps} />;
       },
       cell: ({ cell }) => {
         const value = cell.getValue();
