@@ -245,7 +245,6 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
             repository_id=repository_id,
             repository_name=str(repo.name.value),
             repository_kind=repo.get_kind(),
-            commit=str(repo.commit.value),
             infrahub_branch_name=branch.name,
             ref=str(repo.ref.value),
         )
