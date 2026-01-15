@@ -459,7 +459,7 @@ async def test_schema_load_restricted_names(
     authentication_base,
     helper,
     reserved_name,
-):
+) -> None:
     schema = helper.schema_file("restricted_names_01.json")
     schema["nodes"][1]["relationships"][0]["name"] = reserved_name
     with client:

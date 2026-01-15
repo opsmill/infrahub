@@ -9,7 +9,6 @@ from infrahub.core.schema import (
     NodeSchema,
 )
 from infrahub.core.schema.constants import INTERNAL_SCHEMA_NODE_KINDS
-from infrahub.core.schema.definitions.core import CORE_MODELS_NODE_KINDS
 
 from .interface import SchemaBranchValidator
 
@@ -29,7 +28,11 @@ class HierarchicalNodesRestrictedWords(SchemaBranchValidator):
             isinstance(node, NodeSchema) and node.hierarchy
         )
 
-        if not is_hierarchical_node or node.kind in INTERNAL_SCHEMA_NODE_KINDS or node.kind in CORE_MODELS_NODE_KINDS:
+        if (
+            not is_hierarchical_node
+            or node.kind in INTERNAL_SCHEMA_NODE_KINDS
+            or node.namespace in ("Core", "Builtin", "Lineage", "Internal")
+        ):
             return
 
         for attr in node.attributes:
