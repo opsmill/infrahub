@@ -4,6 +4,8 @@ infrahub:
   global:
     infrahubTag: 1.7.0
   infrahubServer:
+    podLabels:
+      infrahub/service: server
     replicas: 3
     persistence:
       enabled: false
@@ -38,6 +40,8 @@ infrahub:
                 service: infrahub-server
             topologyKey: kubernetes.io/hostname
   infrahubTaskWorker:
+    podLabels:
+      infrahub/service: task-worker
     replicas: 3
     infrahubTaskWorker:
       env:

@@ -13,10 +13,10 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.component.core.migrations.schema.test_node_kind_update import validate_node_relationships
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import load_schema
-from tests.unit.core.migrations.schema.test_node_kind_update import validate_node_relationships
 
 
 async def test_query_out_default_branch(

@@ -20,10 +20,10 @@ from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
-from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
     SchemaDiff,
+    SchemaUpdateConstraintInfo,
     SchemaUpdateValidationResult,
 )
 from infrahub.core.schema import (
@@ -36,6 +36,7 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
+from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -44,12 +45,11 @@ from infrahub.core.validators.models.validate_migration import (
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
-from infrahub.exceptions import MigrationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
+from infrahub.workflows.catalogue import SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -290,6 +290,29 @@ async def get_json_schema_by_kind(
     return json_schema
 
 
+async def _validate_migrations(
+    branch: Branch,
+    candidate_schema: SchemaBranch,
+    constraints: list[SchemaUpdateConstraintInfo],
+    service: InfrahubServices,
+    context: InfrahubContext,
+) -> None:
+    validate_migration_data = SchemaValidateMigrationData(
+        branch=branch,
+        schema_branch=candidate_schema,
+        constraints=constraints,
+    )
+    responses = await service.workflow.execute_workflow(
+        workflow=SCHEMA_VALIDATE_MIGRATION,
+        context=context,
+        expected_return=list[SchemaValidatorPathResponseData],
+        parameters={"message": validate_migration_data},
+    )
+    error_messages = [violation.message for response in responses for violation in response.violations]
+    if error_messages:
+        raise SchemaNotValidError(",\n".join(error_messages))
+
+
 @router.post("/load")
 async def load_schema(
     request: Request,
@@ -339,71 +362,37 @@ async def load_schema(
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
-        validate_migration_data = SchemaValidateMigrationData(
+        await _validate_migrations(
             branch=branch,
-            schema_branch=candidate_schema,
+            candidate_schema=candidate_schema,
             constraints=result.constraints,
-        )
-        responses = await service.workflow.execute_workflow(
-            workflow=SCHEMA_VALIDATE_MIGRATION,
+            service=service,
             context=context,
-            expected_return=list[SchemaValidatorPathResponseData],
-            parameters={"message": validate_migration_data},
         )
-        error_messages = [violation.message for response in responses for violation in response.violations]
-        if error_messages:
-            raise SchemaNotValidError(",\n".join(error_messages))
 
-        schema_load_at = Timestamp()
-
-        # ----------------------------------------------------------
-        # Update the schema
-        # ----------------------------------------------------------
         origin_schema = branch_schema.duplicate()
+
         log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
-        async with db.start_transaction() as dbt:
-            await registry.schema.update_schema_branch(
-                schema=candidate_schema,
-                db=dbt,
-                branch=branch.name,
-                diff=result.diff,
-                limit=result.diff.all,
-                update_db=True,
-                user_id=account_session.account_id,
-                at=schema_load_at,
-            )
-            branch.update_schema_hash()
-            log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
 
-            # NOTE shouldn't be required anymore, will need to cleanup later
-            if not branch.is_isolated and not branch.is_default and branch.has_schema_changes:
-                branch.is_isolated = True
-                log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
-
-            await branch.save(db=dbt, user_id=account_session.account_id)
-            updated_branch = registry.schema.get_schema_branch(name=branch.name)
-            updated_hash = updated_branch.get_hash()
-
-        # ----------------------------------------------------------
-        # Run the migrations
-        # ----------------------------------------------------------
-        apply_migration_data = SchemaApplyMigrationData(
+        coordinator = SchemaUpdateCoordinator(
+            db=db,
             branch=branch,
-            new_schema=candidate_schema,
-            previous_schema=origin_schema,
-            migrations=result.migrations,
-            user_id=account_session.account_id,
-            at=schema_load_at,
-        )
-        migration_error_msgs = await service.workflow.execute_workflow(
-            workflow=SCHEMA_APPLY_MIGRATION,
+            schema_manager=registry.schema,
+            origin_schema=origin_schema,
+            workflow=service.workflow,
             context=context,
-            expected_return=list[str],
-            parameters={"message": apply_migration_data},
+            migration_executor=MigrationExecutor.WORKFLOW,
         )
 
-        if migration_error_msgs:
-            raise MigrationError(message=",\n".join(migration_error_msgs))
+        updated_hash = await coordinator.execute(
+            candidate_schema=candidate_schema,
+            at=Timestamp(),
+            diff=result.diff,
+            migrations=result.migrations,
+            limit=result.diff.all,
+            update_db=True,
+            user_id=account_session.account_id,
+        )
 
     await service.component.refresh_schema_hash(branches=[branch.name])
 
