@@ -15,11 +15,11 @@ High-level overview of the Infrahub backend architecture.
 
 ### Schema-Driven Architecture
 
-Everything in Infrahub is defined by schemas. The schema system defines what nodes exist, their attributes, relationships, and constraints. See [schema.md](schema.md).
+Everything in Infrahub is defined by schemas. The schema system defines what nodes exist, their attributes, relationships, and constraints.
 
 ### Git-Like Branching
 
-Infrahub provides version control for infrastructure data. Multiple branches can exist with different data states, and changes can be diffed and merged. See [branching.md](branching.md).
+Infrahub provides version control for infrastructure data. Multiple branches can exist with different data states, and changes can be diffed and merged.
 
 ### Query Pattern
 
@@ -31,7 +31,7 @@ The Neo4j database uses a temporal graph structure with branch support. All vert
 
 ### Proposed Changes
 
-Similar to pull requests, proposed changes allow reviewing and approving data modifications before merging. See [proposed-change.md](proposed-change.md).
+Similar to pull requests, proposed changes allow reviewing and approving data modifications before merging.
 
 ## Layer Responsibilities
 
