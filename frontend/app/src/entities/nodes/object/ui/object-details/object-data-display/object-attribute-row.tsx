@@ -34,6 +34,8 @@ export function ObjectAttributeRow({
   return (
     <ObjectDataRow
       name={attributeLabel}
+      objectKind={objectKind}
+      fieldSchema={attributeSchema}
       value={
         <>
           <ProfileSourceIcon source={attributeData.source} />

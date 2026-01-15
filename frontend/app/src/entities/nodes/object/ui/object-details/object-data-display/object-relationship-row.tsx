@@ -90,6 +90,8 @@ function RelationshipOneRow({
   return (
     <ObjectDataRow
       name={relationshipLabel}
+      objectKind={objectKind}
+      fieldSchema={relationshipSchema}
       value={
         <>
           <ProfileSourceIcon source={relationshipProperties?.source} />
@@ -178,6 +180,8 @@ function RelationshipManyRow({
     <ObjectDataRow
       className="gap-2"
       name={relationshipLabel}
+      objectKind={objectKind}
+      fieldSchema={relationshipSchema}
       value={
         <>
           <InlineEdit
