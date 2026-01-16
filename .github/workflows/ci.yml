@@ -53,6 +53,7 @@ jobs:
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
+      dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -365,8 +366,51 @@ jobs:
     with:
       directory: "./python_testcontainers"
 
-
   backend-tests-unit:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python ${{ matrix.python-version }}
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Unit Tests"
+        run: "uv run invoke backend.test-unit"
+      - name: "Coveralls : Unit Tests"
+        if: matrix.python-version == '3.13'
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-unit
+          parallel: true
+
+  backend-tests-component:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -401,14 +445,14 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Unit Tests"
-        run: "uv run invoke backend.test-unit"
+        run: "uv run invoke backend.test-component"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-unit
+          flag-name: backend-component
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -814,6 +858,31 @@ jobs:
         run: "uv sync --all-groups"
       - name: "Validate generated documentation"
         run: "uv run invoke docs.validate"
+
+  validate-dev-guideline-links:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      (needs.files-changed.outputs.python == 'true') ||
+      (needs.files-changed.outputs.dev_guidelines == 'true') ||
+      (needs.files-changed.outputs.javascript == 'true')
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: |
+            --no-progress
+            --config dev/lychee.toml
+            --files-from dev/lychee-files.txt
+          fail: true
 
   validate-documentation-style:
     if: |
@@ -1263,5 +1332,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
           parallel-finished: true

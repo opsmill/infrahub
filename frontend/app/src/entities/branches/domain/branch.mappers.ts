@@ -5,6 +5,7 @@ import type {
   InfrahubNodeMetadata,
 } from "@/shared/api/graphql/generated/graphql";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import type { NodeCore } from "@/entities/nodes/types";
 
@@ -91,3 +92,8 @@ export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
     created_at: node.created_at,
   };
 }
+
+export const getNameFilterValue = (filters?: Filter[]) => {
+  const nameFilter = filters?.find((f) => f.name === "name__value");
+  return nameFilter?.value as string | undefined;
+};

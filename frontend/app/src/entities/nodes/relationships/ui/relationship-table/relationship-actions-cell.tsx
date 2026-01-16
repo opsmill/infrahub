@@ -153,8 +153,8 @@ export function RelationshipActionsCell({
           relationshipLabel={relationshipLabel}
           relationshipIds={[relationshipId]}
           relationshipName={relationshipName}
-          open={true}
-          setOpen={() => setShowDissociateModal(false)}
+          isOpen={true}
+          onOpenChange={setShowDissociateModal}
         />
       )}
     </Popover>

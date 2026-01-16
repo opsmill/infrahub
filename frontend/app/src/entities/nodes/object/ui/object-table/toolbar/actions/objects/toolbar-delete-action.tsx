@@ -20,7 +20,7 @@ export function ToolbarDeleteAction({ selectedRows }: ToolbarDeleteActionProps) 
         Delete
       </ToolbarButton>
 
-      <DeleteObjectsModal selectedRows={selectedRows} open={isOpen} setOpen={setIsOpen} />
+      <DeleteObjectsModal selectedRows={selectedRows} isOpen={isOpen} onOpenChange={setIsOpen} />
     </>
   );
 }

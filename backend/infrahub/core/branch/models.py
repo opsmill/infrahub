@@ -395,7 +395,7 @@ class Branch(StandardNode):
         return filter_str, params
 
     async def rebase(
-        self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None, user_id: str = SYSTEM_USER_ID
+        self, db: InfrahubDatabase, at: str | Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None:
         """Rebase the current Branch with its origin branch"""
 
