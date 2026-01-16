@@ -79,12 +79,7 @@ export function RepositoryActionsMenu({
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       } else {
         toast(
-          <Alert
-            type={ALERT_TYPES.ERROR}
-            message={
-              data?.InfrahubRepositoryProcess?.message || "Failed to start import from remote."
-            }
-          />
+          <Alert type={ALERT_TYPES.ERROR} message="Failed to start import from remote." />
         );
       }
     },

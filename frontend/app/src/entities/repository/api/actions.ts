@@ -13,7 +13,6 @@ export const REIMPORT_LAST_COMMIT = graphql(`
   mutation REIMPORT_LAST_COMMIT($repositoryId: String!) {
     InfrahubRepositoryProcess(data: { id: $repositoryId }) {
       ok
-      message
     }
   }
 `);
