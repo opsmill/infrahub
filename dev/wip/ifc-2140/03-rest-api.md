@@ -33,6 +33,11 @@ Add REST API endpoints for uploading and downloading file objects with:
     - [ ] Retrieve file as **binary** via `registry.storage.retrieve_binary()`
     - [ ] Return raw bytes in response body
     - [ ] Set response headers (Content-Type, Content-Length, Content-Disposition)
+    - [ ] Implement `sanitize_filename()` utility to prevent header injection:
+      - [ ] Strip or replace CR/LF, quotes, semicolons, and control characters
+      - [ ] Limit filename length (usually 255 characters)
+      - [ ] Use safe ASCII fallback or RFC5987 percent-encoding for non-ASCII names
+      - [ ] Set both `filename` (ASCII) and `filename*` (encoded) parameters in Content-Disposition
     - [ ] Handle 404 if identifier not found
   - [ ] Implement `POST /{node_kind}/upload` endpoint (binary upload)
     - [ ] Accept file via `UploadFile` (multipart/form-data)
@@ -84,6 +89,13 @@ Add REST API endpoints for uploading and downloading file objects with:
     - [ ] Test download with invalid identifier - returns 404
     - [ ] Test download permission denied - returns 403
     - [ ] Test response headers (Content-Type, Content-Disposition, Content-Length)
+  - [ ] Filename sanitization tests:
+    - [ ] Test `sanitize_filename()` strips CR/LF characters
+    - [ ] Test `sanitize_filename()` strips/escapes quotes and semicolons
+    - [ ] Test `sanitize_filename()` handles control characters
+    - [ ] Test `sanitize_filename()` truncates long filenames
+    - [ ] Test `sanitize_filename()` handles non-ASCII characters (RFC5987 encoding)
+    - [ ] Test Content-Disposition header with malicious filename is safe
 
 ### Verification
 
@@ -128,7 +140,7 @@ GET /api/file-object/{node_kind}/object/{identifier}
 
 Response 200:
 Content-Type: application/pdf
-Content-Disposition: attachment; filename="original-filename.pdf"
+Content-Disposition: attachment; filename="original-filename.pdf"; filename*=UTF-8''original-filename.pdf
 Content-Length: 12345
 <binary content>
 
