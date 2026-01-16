@@ -20,14 +20,14 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 interface RepositoryMenuSectionProps {
   onCheckConnectivity: () => void;
-  onReimportLastCommit: () => void;
-  onImportCurrentCommit?: () => void;
+  onImportLatestCommit: () => void;
+  onReimportCurrentCommit?: () => void;
 }
 
 export function RepositoryMenuSection({
   onCheckConnectivity,
-  onReimportLastCommit,
-  onImportCurrentCommit,
+  onImportLatestCommit,
+  onReimportCurrentCommit,
 }: RepositoryMenuSectionProps) {
   return (
     <MenuSection title="Repository">
@@ -36,15 +36,15 @@ export function RepositoryMenuSection({
         Check connectivity
       </MenuItem>
 
-      <MenuItem onAction={onReimportLastCommit}>
-        <Icon icon="mdi:reload" />
-        Import latest from remote
+      <MenuItem onAction={onImportLatestCommit}>
+        <Icon icon="mdi:source-commit" />
+        Import latest commit
       </MenuItem>
 
-      {onImportCurrentCommit && (
-        <MenuItem onAction={onImportCurrentCommit}>
-          <Icon icon="mdi:source-commit" />
-          Import current commit
+      {onReimportCurrentCommit && (
+        <MenuItem onAction={onReimportCurrentCommit}>
+          <Icon icon="mdi:reload" />
+          Reimport current commit
         </MenuItem>
       )}
     </MenuSection>
@@ -122,8 +122,8 @@ export function RepositoryActionsMenu({
   return (
     <RepositoryMenuSection
       onCheckConnectivity={onCheckConnectivity}
-      onReimportLastCommit={() => reimportLastCommit()}
-      onImportCurrentCommit={isReadOnlyRepository ? () => importCurrentCommit() : undefined}
+      onImportLatestCommit={() => reimportLastCommit()}
+      onReimportCurrentCommit={isReadOnlyRepository ? () => importCurrentCommit() : undefined}
     />
   );
 }
