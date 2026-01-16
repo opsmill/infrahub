@@ -7,21 +7,27 @@ import { queryClient } from "@/shared/api/rest/client";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
+  IMPORT_READONLY_REPOSITORY_LAST_COMMIT,
   REIMPORT_LAST_COMMIT,
 } from "@/entities/repository/api/actions";
+import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 interface RepositoryMenuSectionProps {
   onCheckConnectivity: () => void;
   onReimportLastCommit: () => void;
+  onImportCurrentCommit?: () => void;
 }
 
 export function RepositoryMenuSection({
   onCheckConnectivity,
   onReimportLastCommit,
+  onImportCurrentCommit,
 }: RepositoryMenuSectionProps) {
   return (
     <MenuSection title="Repository">
@@ -32,21 +38,32 @@ export function RepositoryMenuSection({
 
       <MenuItem onAction={onReimportLastCommit}>
         <Icon icon="mdi:reload" />
-        Reimport last commit
+        Import Latest from Remote
       </MenuItem>
+
+      {onImportCurrentCommit && (
+        <MenuItem onAction={onImportCurrentCommit}>
+          <Icon icon="mdi:source-commit" />
+          Import Current Commit
+        </MenuItem>
+      )}
     </MenuSection>
   );
 }
 
 interface RepositoryActionsMenuProps {
   repositoryId: string;
+  objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
 }
 
 export function RepositoryActionsMenu({
   repositoryId,
+  objectSchema,
   onCheckConnectivity,
 }: RepositoryActionsMenuProps) {
+  const isReadOnlyRepository = isOfKind(READONLY_REPOSITORY_KIND, objectSchema);
+
   const [reimportLastCommit] = useMutation(REIMPORT_LAST_COMMIT, {
     variables: {
       repositoryId,
@@ -56,7 +73,7 @@ export function RepositoryActionsMenu({
         toast(
           <Alert
             type={ALERT_TYPES.SUCCESS}
-            message='Reimport of last commit started. You can view its status on the "Tasks" tab.'
+            message='Import from remote started. You can view its status on the "Tasks" tab.'
           />
         );
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
@@ -65,7 +82,7 @@ export function RepositoryActionsMenu({
           <Alert
             type={ALERT_TYPES.ERROR}
             message={
-              data?.InfrahubRepositoryProcess?.message || "Failed to start reimport of last commit."
+              data?.InfrahubRepositoryProcess?.message || "Failed to start import from remote."
             }
           />
         );
@@ -73,9 +90,35 @@ export function RepositoryActionsMenu({
     },
     onError: (error) => {
       toast(
+        <Alert type={ALERT_TYPES.ERROR} message={`Error importing from remote: ${error.message}`} />
+      );
+    },
+  });
+
+  const [importCurrentCommit] = useMutation(IMPORT_READONLY_REPOSITORY_LAST_COMMIT, {
+    variables: {
+      id: repositoryId,
+    },
+    onCompleted: async (data) => {
+      if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
+        toast(
+          <Alert
+            type={ALERT_TYPES.SUCCESS}
+            message='Import of current commit started. You can view its status on the "Tasks" tab.'
+          />
+        );
+        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+      } else {
+        toast(
+          <Alert type={ALERT_TYPES.ERROR} message="Failed to start import of current commit." />
+        );
+      }
+    },
+    onError: (error) => {
+      toast(
         <Alert
           type={ALERT_TYPES.ERROR}
-          message={`Error reimporting last commit: ${error.message}`}
+          message={`Error importing current commit: ${error.message}`}
         />
       );
     },
@@ -85,6 +128,7 @@ export function RepositoryActionsMenu({
     <RepositoryMenuSection
       onCheckConnectivity={onCheckConnectivity}
       onReimportLastCommit={() => reimportLastCommit()}
+      onImportCurrentCommit={isReadOnlyRepository ? () => importCurrentCommit() : undefined}
     />
   );
 }
