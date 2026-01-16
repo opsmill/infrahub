@@ -254,6 +254,21 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.import_objects_from_files(infrahub_branch_name=self.infrahub_branch_name, commit=commit)
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
 
+    async def update_latest_commit(self) -> None:
+        git_repo = self.get_git_repo_main()
+        git_repo.remotes.origin.fetch(tags=True)
+        try:
+            latest_commit = git_repo.git.rev_parse(f"origin/{self.ref}")
+        except GitCommandError:
+            try:
+                latest_commit = git_repo.git.rev_parse(self.ref)
+            except GitCommandError as err:
+                log.error(f"No object found for ref {self.ref} on repository {self.name}")
+                raise ValueError(f"Ref {self.ref} not found.") from err
+        git_repo.commit(latest_commit)
+        await self.sync_from_remote(commit=latest_commit)
+        await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
+
 
 @cached(
     TTLCache(maxsize=100, ttl=30),
@@ -262,7 +277,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     ),
 )
 async def _get_initialized_repo(
-    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
+    client: InfrahubClient,
+    repository_id: str,
+    name: str,
+    repository_kind: str,
+    commit: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
         return await InfrahubRepository.init(id=repository_id, name=name, commit=commit, client=client)
@@ -279,8 +298,16 @@ async def _get_initialized_repo(
     cache_policy=NONE,
 )
 async def get_initialized_repo(
-    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
+    client: InfrahubClient,
+    repository_id: str,
+    name: str,
+    repository_kind: str,
+    commit: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     return await _get_initialized_repo(
-        client=client, repository_id=repository_id, name=name, repository_kind=repository_kind, commit=commit
+        client=client,
+        repository_id=repository_id,
+        name=name,
+        repository_kind=repository_kind,
+        commit=commit,
     )

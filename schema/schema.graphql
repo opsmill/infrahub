@@ -9091,6 +9091,7 @@ type Mutation {
   InfrahubIPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource
   InfrahubIPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource
   InfrahubProfilesRefresh(context: ContextInput, data: ProfilesRefreshInput!): InfrahubProfilesRefresh
+  InfrahubReadOnlyRepositoryImportLastCommit(data: IdentifierInput!): ReadOnlyRepositoryImportLastCommit
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
@@ -24670,6 +24671,11 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+}
+
+type ReadOnlyRepositoryImportLastCommit {
+  ok: Boolean
+  task: TaskInfo
 }
 
 type RecomputeComputedAttribute {
