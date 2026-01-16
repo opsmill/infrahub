@@ -38,13 +38,13 @@ export function RepositoryMenuSection({
 
       <MenuItem onAction={onReimportLastCommit}>
         <Icon icon="mdi:reload" />
-        Import Latest from Remote
+        Import latest from remote
       </MenuItem>
 
       {onImportCurrentCommit && (
         <MenuItem onAction={onImportCurrentCommit}>
           <Icon icon="mdi:source-commit" />
-          Import Current Commit
+          Import current commit
         </MenuItem>
       )}
     </MenuSection>
@@ -107,7 +107,9 @@ export function RepositoryActionsMenu({
             message='Import of current commit started. You can view its status on the "Tasks" tab.'
           />
         );
-        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+        await queryClient.invalidateQueries({
+          queryKey: objectQueryKeys.all,
+        });
       } else {
         toast(
           <Alert type={ALERT_TYPES.ERROR} message="Failed to start import of current commit." />
