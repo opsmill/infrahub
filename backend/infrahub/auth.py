@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -154,15 +155,27 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
             prefetch_relationships=True,
         )
 
+        existing_group_names = {group.name.value for group in infrahub_groups}
+
         if config.SETTINGS.security.sso_generate_groups:
-            existing_group_names = {group.name.value for group in infrahub_groups}
+            filter_pattern = config.SETTINGS.security.sso_generate_groups_filter
+            created_group_names: set[str] = set()
             for group_name in sso_groups:
                 if group_name not in existing_group_names:
-                    new_group = await Node.init(db=db, schema=CoreAccountGroup)
-                    await new_group.new(db=db, name=group_name)
-                    await new_group.save(db=db)
-                    infrahub_groups.append(new_group)
-                    log.info(f"Auto-created SSO group: {group_name}")
+                    effective_name = group_name
+                    if filter_pattern is not None:
+                        match = re.match(filter_pattern, group_name)
+                        if match and match.lastindex:
+                            effective_name = match.group(1)
+                        elif not match:
+                            continue
+                    if effective_name not in existing_group_names and effective_name not in created_group_names:
+                        new_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+                        await new_group.new(db=db, name=effective_name)
+                        await new_group.save(db=db)
+                        infrahub_groups.append(new_group)
+                        created_group_names.add(effective_name)
+
 
         for group in infrahub_groups:
             members = await group.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)

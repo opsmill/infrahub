@@ -87,6 +87,16 @@ Infrahub maps standard profile attributes from identity providers to its interna
 | First Name | `given_name` | `given_name` |
 | Last Name | `family_name` | `family_name` |
 
+## Group management parameters
+
+These settings control how Infrahub handles group assignment and creation for SSO users.
+
+| Parameter | Environment Variable | TOML Path | Description | Required |
+|-----------|---------------------|-----------|-------------|----------|
+| Default Group | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | `security.sso_user_default_group` | Name of the group to assign SSO users when no groups are provided by the identity provider | No |
+| Auto-generate Groups | `INFRAHUB_SECURITY_SSO_GENERATE_GROUPS` | `security.sso_generate_groups` | When enabled, automatically create missing account groups for groups received from identity providers during SSO authentication (default: `false`) | No |
+| Group Filter | `INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER` | `security.sso_generate_groups_filter` | Regex pattern to filter which SSO groups are auto-generated. Only groups matching this pattern will be created. Supports capture groups to extract group names. | No |
+
 ## Examples
 
 ### OIDC configuration example
@@ -117,4 +127,28 @@ icon = "mdi:microsoft"
 
 [security]
 oauth2_providers = ["provider1"]
+```
+
+### Auto-group creation example
+
+```toml
+[security]
+# Enable automatic group creation
+sso_generate_groups = true
+
+# Optional: Only create groups matching a pattern
+# This example only creates groups starting with "team-"
+sso_generate_groups_filter = "^team-.*"
+```
+
+### Group name extraction with capture groups
+
+Use regex capture groups to extract and transform group names from your identity provider:
+
+```toml
+[security]
+sso_generate_groups = true
+# Extract group name from LDAP-style paths like "ldap/groups/network_automation"
+# This creates a group named "network_automation" instead of the full path
+sso_generate_groups_filter = "ldap/groups/(\\w+)"
 ```
