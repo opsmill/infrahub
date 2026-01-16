@@ -16,3 +16,11 @@ export const REIMPORT_LAST_COMMIT = graphql(`
     }
   }
 `);
+
+export const IMPORT_READONLY_REPOSITORY_LAST_COMMIT = graphql(`
+  mutation InfrahubReadOnlyRepositoryImportLastCommit($id: String!) {
+    InfrahubReadOnlyRepositoryImportLastCommit(data: { id: $id }) {
+      ok
+    }
+  }
+`);
