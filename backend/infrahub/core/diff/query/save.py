@@ -87,7 +87,8 @@ WITH
     toString(node_details.node_map.node_properties.uuid) AS node_uuid,
     node_details.node_map.node_properties.db_id AS node_db_id
 CALL (root_uuid, node_map, node_uuid, node_db_id) {
-    MERGE (diff_root:DiffRoot {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+    MERGE (diff_root:DiffRoot {uuid: root_uuid})
+    MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
     WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
     SET
         diff_node.kind = node_map.node_properties.kind,
