@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models
@@ -443,3 +443,49 @@ async def test_schema_read_endpoints_anonymous_account(
         response = client.get("/api/schema/json_schema/TestCar")
 
     assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+@pytest.mark.parametrize(
+    "reserved_name",
+    [pytest.param(reserved_name, id=reserved_name) for reserved_name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES],
+)
+async def test_schema_load_restricted_names(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
+    authentication_base,
+    helper,
+    reserved_name,
+) -> None:
+    schema = helper.schema_file("restricted_names_01.json")
+    schema["nodes"][1]["relationships"][0]["name"] = reserved_name
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [schema]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == f"TestingParent: {reserved_name} isn't allowed as a relationship name on hierarchical nodes."
+    )
+
+    schema = helper.schema_file("restricted_names_02.json")
+    schema["nodes"][1]["attributes"][0]["name"] = reserved_name
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [schema]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
+    )
