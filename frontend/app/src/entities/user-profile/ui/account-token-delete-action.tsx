@@ -36,10 +36,10 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
 
       {tokenToDelete && (
         <ModalDeleteObject
-          open
+          isOpen
           label={token.name}
           rowToDelete={tokenToDelete}
-          close={handleClose}
+          onOpenChange={handleClose}
           onDelete={handleDelete}
         />
       )}

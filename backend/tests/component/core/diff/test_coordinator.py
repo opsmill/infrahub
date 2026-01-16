@@ -409,3 +409,86 @@ class TestDiffCoordinator:
         assert set(nodes_by_id.keys()) == {person_john_main.id}
         john_diff = nodes_by_id[person_john_main.id]
         assert john_diff.action is DiffAction.REMOVED
+
+    async def test_proposed_change_linked_during_update_branch_diff(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        """Test that proposed_change_id is correctly linked to diffs during update_branch_diff."""
+        branch = await create_branch(db=db, branch_name="branch")
+
+        # Create a node that will act as the proposed change
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        # Make a change on the branch
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # Update branch diff with proposed_change_id
+        diff_metadata = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch, proposed_change_id=proposed_change_id
+        )
+
+        # Verify the diff is linked to the proposed change
+        assert diff_metadata.proposed_change_id == proposed_change_id
+
+        # Verify via repository retrieval - need to query both branch names since
+        retrieved_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch.name, default_branch.name],
+            proposed_change_id=proposed_change_id,
+        )
+        assert len(retrieved_metadata) == 2  # base and diff branch roots
+        for metadata in retrieved_metadata:
+            assert metadata.proposed_change_id == proposed_change_id
+
+    async def test_proposed_change_preserved_during_incremental_diff_update(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        """Test that proposed_change_id is preserved when updating an existing diff incrementally."""
+        branch = await create_branch(db=db, branch_name="branch")
+
+        # Create a node that will act as the proposed change
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        # Make initial change on the branch
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # First update with proposed_change_id
+        first_diff_metadata = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch, proposed_change_id=proposed_change_id
+        )
+        assert first_diff_metadata.proposed_change_id == proposed_change_id
+
+        # Make another change on the branch
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        # Update again with the same proposed_change_id
+        second_diff_metadata = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch, proposed_change_id=proposed_change_id
+        )
+
+        # Verify proposed_change_id is still linked
+        assert second_diff_metadata.proposed_change_id == proposed_change_id
+
+        # The diff should have been updated in place (same uuid) or recreated with the link
+        retrieved_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch.name, default_branch.name],
+            proposed_change_id=proposed_change_id,
+        )
+        assert len(retrieved_metadata) == 2
+        for metadata in retrieved_metadata:
+            assert metadata.proposed_change_id == proposed_change_id

@@ -416,6 +416,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
     tracking_id: TrackingId
     partner_uuid: str | None = field(default=None)
     exists_on_database: bool = field(default=False)
+    proposed_change_id: str | None = field(default=None)
 
     def __hash__(self) -> int:
         return hash(self.uuid)
