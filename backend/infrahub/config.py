@@ -763,6 +763,10 @@ class SecuritySettings(BaseSettings):
         default=False,
         description="When enabled, automatically create account groups for SSO users based on groups provided by identity provider",
     )
+    sso_generate_groups_filter: str | None = Field(
+        default=None,
+        description="When sso_generate_groups is enabled, this filter is used to extract the group name from the group identifier provided by the identity provider",
+    )
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
