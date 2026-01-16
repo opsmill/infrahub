@@ -105,22 +105,6 @@ async def search_resolver(
     limit: int = 10,
     partial_match: bool = True,
 ) -> dict[str, Any]:
-    """Search for nodes by attribute value.
-
-    This resolver uses the NodeGetListByAttributeValueQuery which is optimized for search
-    operations by starting from AttributeValueIndexed nodes and using a TEXT index for
-    efficient CONTAINS searches.
-
-    Args:
-        root: GraphQL root (unused)
-        info: GraphQL resolve info
-        q: Search query string
-        limit: Maximum number of results to return
-        partial_match: If True, performs partial/substring matching; if False, exact matching
-
-    Returns:
-        Dictionary with 'edges' (list of matching nodes) and 'count' fields
-    """
     graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
     results: list[dict[str, str]] = []
@@ -138,8 +122,6 @@ async def search_resolver(
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
             q = _collapse_ipv6(q)
 
-        # Use the optimized query that starts from AttributeValueIndexed nodes
-        # and leverages the TEXT index for efficient CONTAINS searches
         query = await NodeGetListByAttributeValueQuery.init(
             db=graphql_context.db,
             branch=graphql_context.branch,
@@ -151,9 +133,8 @@ async def search_resolver(
         )
         await query.execute(db=graphql_context.db)
 
-        # Collect results with their kinds
-        for uuid, kind in query.get_results_with_kind():
-            results.append({"id": uuid, "kind": kind})
+        for result in query.get_data():
+            results.append({"id": result.uuid, "kind": result.kind})
 
     if "edges" in fields:
         response["edges"] = [{"node": result} for result in results]

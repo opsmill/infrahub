@@ -2180,6 +2180,14 @@ WITH %(tracked_vars)s,
         return [str(result.get("n.uuid")) for result in self.get_results()]
 
 
+@dataclass(frozen=True)
+class NodeGetListByAttributeValueQueryResult:
+    """Result from NodeGetListByAttributeValueQuery."""
+
+    uuid: str
+    kind: str
+
+
 class NodeGetListByAttributeValueQuery(Query):
     """Query to find nodes by searching attribute values.
 
@@ -2214,8 +2222,9 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params.update(branch_params)
 
         # Build search values for case-insensitive matching without using toLower/toString
-        # which would disable index lookup. We search for three case variations:
-        # 1. lowercase, 2. UPPERCASE, 3. Title Case (first char upper, rest lower)
+        # which would disable index lookup. We search for four case variations:
+        # 1. Original (as provided), 2. lowercase, 3. UPPERCASE, 4. Title Case (first char upper, rest lower)
+        search_original = self.search_value
         search_lower = self.search_value.lower()
         search_upper = self.search_value.upper()
         search_title = self.search_value.capitalize()
@@ -2224,11 +2233,18 @@ class NodeGetListByAttributeValueQuery(Query):
         # We avoid toLower/toString to allow TEXT index usage
         if self.partial_match:
             # Use CONTAINS with multiple case variations to leverage TEXT index
-            search_predicate = "(av.value CONTAINS $search_lower OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
+            search_predicate = (
+                "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
+                "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
+            )
         else:
             # Exact match with case variations
-            search_predicate = "(av.value = $search_lower OR av.value = $search_upper OR av.value = $search_title)"
+            search_predicate = (
+                "(av.value = $search_original OR av.value = $search_lower "
+                "OR av.value = $search_upper OR av.value = $search_title)"
+            )
 
+        self.params["search_original"] = search_original
         self.params["search_lower"] = search_lower
         self.params["search_upper"] = search_upper
         self.params["search_title"] = search_title
@@ -2283,12 +2299,13 @@ class NodeGetListByAttributeValueQuery(Query):
 
         self.add_to_query(query)
 
-    def get_node_ids(self) -> list[str]:
-        return [str(result.get("uuid")) for result in self.get_results()]
-
-    def get_results_with_kind(self) -> list[tuple[str, str]]:
-        """Return list of (uuid, kind) tuples."""
-        return [(str(result.get("uuid")), str(result.get("kind"))) for result in self.get_results()]
+    def get_data(self) -> Generator[NodeGetListByAttributeValueQueryResult, None, None]:
+        """Yield results as typed dataclass instances."""
+        for result in self.get_results():
+            yield NodeGetListByAttributeValueQueryResult(
+                uuid=result.get_as_str("uuid"),
+                kind=result.get_as_str("kind"),
+            )
 
 
 class NodeGetHierarchyQuery(Query):
