@@ -449,10 +449,16 @@ class DiffTreeResolver:
         branch_start_timestamp = Timestamp(diff_branch.get_branched_from())
         if from_time:
             from_timestamp = Timestamp(from_time.isoformat())
+        # don't set default time if filtering on proposed change
+        elif proposed_change_id:
+            from_timestamp = None
         else:
             from_timestamp = branch_start_timestamp
         if to_time:
             to_timestamp = Timestamp(to_time.isoformat())
+        # don't set default time if filtering on proposed change
+        elif proposed_change_id:
+            to_timestamp = None
         else:
             to_timestamp = graphql_context.at or Timestamp()
 
