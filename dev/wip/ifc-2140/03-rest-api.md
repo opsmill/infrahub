@@ -87,8 +87,8 @@ Add REST API endpoints for uploading and downloading file objects with:
 
 ### Verification
 
-- [ ] Run `uv run invoke lint` to check for issues
-- [ ] Run `uv run invoke backend.test-unit` to run all tests
+- [ ] Run `uv run invoke backend.test-unit` to run all unit tests
+- [ ] Run `uv run invoke backend.test-component` to run all component tests
 - [ ] Manual API testing with curl/httpie
 
 ## Reference Files

@@ -59,8 +59,8 @@ No code changes should be needed - only tests to verify the behavior.
 
 ### Verification
 
-- [ ] Run `uv run invoke lint` to check for issues
-- [ ] Run `uv run invoke backend.test-unit` to run all tests
+- [ ] Run `uv run invoke backend.test-unit` to run all unit tests
+- [ ] Run `uv run invoke backend.test-component` to run all component tests
 - [ ] Manually inspect generated GraphQL schema
 
 ## Reference Files
