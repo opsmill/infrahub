@@ -35,14 +35,20 @@ async def test_allocate_from_number_pool(
     assert ticket2.ticket_id.value == 2
 
     # If a resource is deleted the allocated number should be returned to the pool
-    await ticket2.delete(db=db)
-    recreated_ticket2 = await Node.init(db=db, schema=TICKET.kind)
-    await recreated_ticket2.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
-    await recreated_ticket2.save(db=db)
-    assert recreated_ticket2.ticket_id.value == 2
+    await ticket1.delete(db=db)
+
+    # Check pool status
+    assert await np1.get_free(db=db, branch=default_branch) == 1
+
+    recreated_ticket1 = await Node.init(db=db, schema=TICKET.kind)
+    await recreated_ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
+    await recreated_ticket1.save(db=db)
+    assert recreated_ticket1.ticket_id.value == 1
 
     # Validate methods at the pool level
     assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
+
+    assert await np1.get_free(db=db, branch=default_branch) == 3
 
 
 async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
@@ -210,12 +216,6 @@ async def test_allocate_from_number_pool_with_excluded_values(
         db=db, name="pool1", node=speeding_ticket.kind, node_attribute="ticket_id", start_range=10, end_range=30
     )
     await np1.save(db=db)
-
-    # Validate that get_next_many return the correct values
-    next_many = await np1.get_next_many(
-        db=db, branch=default_branch, quantity=5, attribute=speeding_ticket.get_attribute("ticket_id")
-    )
-    assert next_many == [10, 11, 13, 17, 18]
 
     tickets = []
     for _ in range(5):

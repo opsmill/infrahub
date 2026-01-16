@@ -6,12 +6,10 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.reconciler import IpamReconciler
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.ipam import (
-    IPPrefixSubnetFetch,
-    get_ip_addresses,
-)
+from infrahub.core.query.ipam import IPPrefixSubnetFetch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
@@ -116,7 +114,8 @@ async def test_ipaddress_is_within_ipprefix(
     prefix_ip_network = ipaddress.ip_network(prefix.prefix.value)
     address_ip_address = ipaddress.ip_interface(address.address.value)
 
-    ip_addresses = await get_ip_addresses(db=db, branch=default_branch, ip_prefix=prefix_ip_network)
+    allocator = IPAMResourceAllocator(db=db, branch=default_branch)
+    ip_addresses = list(await allocator.get_ip_addresses(ip_prefix=prefix_ip_network))
     assert len(ip_addresses) == 1
     assert ip_addresses[0].address == address_ip_address
 

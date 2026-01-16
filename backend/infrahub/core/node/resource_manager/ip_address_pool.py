@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING, Any
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.query.ipam import get_ip_addresses
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
     IPAddressPoolGetReserved,
     IPAddressPoolSetReserved,
 )
 from infrahub.exceptions import PoolExhaustedError, ValidationError
-from infrahub.pools.address import get_available
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
@@ -88,6 +87,7 @@ class CoreIPAddressPool(Node):
     async def get_next(self, db: InfrahubDatabase, prefixlen: int | None = None) -> IPAddressType:
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
+        allocator = IPAMResourceAllocator(db=db, namespace=ip_namespace, branch=self._branch, branch_agnostic=True)
 
         try:
             weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
@@ -101,18 +101,12 @@ class CoreIPAddressPool(Node):
             if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
                 raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
-            addresses = await get_ip_addresses(
-                db=db, ip_prefix=ip_prefix, namespace=ip_namespace, branch=self._branch, branch_agnostic=True
-            )
-
-            available = get_available(
-                network=ip_prefix,
-                addresses=[ip.address for ip in addresses],
+            next_address = await allocator.get_next_address(
+                ip_prefix=ip_prefix,
                 is_pool=resource.is_pool.value,  # type: ignore[attr-defined]
             )
 
-            if available:
-                next_address = available.iter_cidrs()[0]
+            if next_address:
                 return ipaddress.ip_interface(f"{next_address.ip}/{prefix_length}")
 
         raise PoolExhaustedError("There are no more addresses available in this pool.")
