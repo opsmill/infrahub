@@ -100,12 +100,10 @@ def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Resul
         return execute_command(context=context, command=f"{exec_cmd}")
 
 
-@task(optional=["database"])
-def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+@task
+def test_unit(context: Context) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
-        if database == "neo4j":
-            exec_cmd += " --neo4j"
+        exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
 

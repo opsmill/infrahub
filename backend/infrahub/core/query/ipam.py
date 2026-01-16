@@ -2,23 +2,19 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
-from infrahub.core.query import QueryResult, QueryType
+from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
-
-from . import Query
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -36,6 +32,58 @@ class IPPrefixData:
 class IPAddressData:
     id: UUID
     address: IPAddressType
+
+
+@dataclass(frozen=True)
+class IPPrefixFreeData:
+    free_start: int
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPPrefixFreeData:
+        return cls(
+            free_start=result.get_as_type("free_start", return_type=int),
+        )
+
+
+@dataclass(frozen=True)
+class IPv6PrefixFreeData:
+    free_start_bin: str
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPv6PrefixFreeData:
+        return cls(
+            free_start_bin=result.get_as_type("free_start_bin", return_type=str),
+        )
+
+
+@dataclass(frozen=True)
+class IPAddressFreeData:
+    free_addr: int
+    is_free: bool
+    is_last: bool
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPAddressFreeData:
+        return cls(
+            free_addr=result.get_as_type("free_addr", return_type=int),
+            is_free=result.get_as_type("is_free", return_type=bool),
+            is_last=result.get_as_type("is_last", return_type=bool),
+        )
+
+
+@dataclass(frozen=True)
+class IPv6AddressFreeData:
+    free_addr_bin: str
+    is_free: bool
+    is_last: bool
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> IPv6AddressFreeData:
+        return cls(
+            free_addr_bin=result.get_as_type("free_addr_bin", return_type=str),
+            is_free=result.get_as_type("is_free", return_type=bool),
+            is_last=result.get_as_type("is_last", return_type=bool),
+        )
 
 
 def _get_namespace_id(
@@ -84,11 +132,11 @@ class IPPrefixSubnetFetch(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns as ns1, r as r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 as r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         // MATCH all prefixes that are IN SCOPE
@@ -137,6 +185,301 @@ class IPPrefixSubnetFetch(Query):
         return subnets
 
 
+class IPPrefixSubnetFetchFree(Query):
+    name = "ipprefix_subnet_fetch_free"
+    type = QueryType.READ
+    raise_error_if_empty = False
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        target_prefixlen: int,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ) -> None:
+        self.obj = obj
+        self.target_prefixlen = target_prefixlen
+        self.namespace_id = _get_namespace_id(namespace)
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+        self.params["parent_start"] = int(self.obj.network_address)
+        self.params["parent_end"] = int(self.obj.broadcast_address)
+        self.params["block_size"] = 1 << (32 - self.target_prefixlen)
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r
+        WHERE r.status = "active"
+        WITH ns
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
+        WHERE ns_rel.name = "ip_namespace__ip_prefix"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen > $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
+        WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        // Convert binary strings to integer ranges for gap detection
+        // - start: Convert binary string to decimal by iterating through each bit
+        //          and accumulating (dec * 2 + bit_value), which is binary-to-decimal conversion
+        // - end: start + (2^host_bits - 1), where host_bits = 32 - prefixlen
+        //        This gives the broadcast address (last IP) of the prefix
+        WITH [r IN ranges_raw |
+                {
+                    start: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)),
+                    end: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)) + toInteger(2 ^ (32 - r.prefixlen)) - 1
+                }
+            ] AS ranges
+        UNWIND CASE WHEN size(ranges) = 0 THEN [{start: null, end: null}] ELSE ranges END AS r
+        WITH r
+        ORDER BY r.start ASC
+        WITH collect(r) AS ranges_sorted_raw
+        WITH [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
+        // Gap detection algorithm using reduce to scan through sorted ranges
+        // acc.cursor: current candidate position for a free block (always block-aligned)
+        // acc.found: set when a gap is found, stops further iteration
+        WITH reduce(acc = {cursor: $parent_start, found: null}, r IN ranges_sorted |
+                CASE
+                    // Already found a gap, preserve result
+                    WHEN acc.found IS NOT NULL THEN acc
+                    // Range ends before cursor, skip (range already passed)
+                    WHEN r.end < acc.cursor THEN acc
+                    // Gap found: cursor + block_size - 1 < range start means there's room before this range
+                    WHEN acc.cursor + $block_size - 1 < r.start THEN {cursor: acc.cursor, found: acc.cursor}
+                    // No gap: advance cursor past this range using ceiling division
+                    // Formula: ceil((r.end + 1) / block_size) * block_size
+                    // This aligns the cursor to the next block boundary after the range
+                    ELSE
+                        {
+                            cursor: CASE
+                                WHEN toInteger((r.end + 1 + $block_size - 1) / $block_size) * $block_size > $parent_end + 1
+                                THEN $parent_end + 1
+                                ELSE toInteger((r.end + 1 + $block_size - 1) / $block_size) * $block_size
+                            END,
+                            found: null
+                        }
+                END
+            ) AS res
+        WITH CASE
+            WHEN res.found IS NOT NULL THEN res.found
+            WHEN res.cursor + $block_size - 1 <= $parent_end THEN res.cursor
+            ELSE NULL
+        END AS free_start
+        WHERE free_start IS NOT NULL
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPPREFIX,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_start"]
+        self.limit = 1
+
+    def get_prefix_data(self) -> IPPrefixFreeData | None:
+        result = self.get_result()
+        if not result:
+            return None
+
+        return IPPrefixFreeData.from_db(result=result)
+
+
+class IPv6PrefixSubnetFetchFree(Query):
+    """Query to find the next free IPv6 prefix within a parent prefix.
+
+    This query uses binary string operations to handle IPv6's 128-bit address space,
+    as the integer values would overflow Neo4j's 64-bit integer type.
+    """
+
+    name = "ipv6prefix_subnet_fetch_free"
+    type = QueryType.READ
+    raise_error_if_empty = False
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        target_prefixlen: int,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ) -> None:
+        self.obj = obj
+        self.target_prefixlen = target_prefixlen
+        self.namespace_id = _get_namespace_id(namespace)
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+        self.params["target_prefixlen"] = self.target_prefixlen
+        # Binary representation of parent network and broadcast addresses
+        self.params["parent_start_bin"] = convert_ip_to_binary_str(self.obj)
+        self.params["parent_end_bin"] = format(int(self.obj.broadcast_address), "0128b")
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r
+        WHERE r.status = "active"
+        WITH ns
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
+        WHERE ns_rel.name = "ip_namespace__ip_prefix"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen > $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
+        WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        // Create ranges with start (block-aligned) and end_block (the block containing the end address)
+        WITH [r IN ranges_raw WHERE r.binary IS NOT NULL |
+                {
+                    // Start block: first target_prefixlen bits of network address
+                    start_block: left(r.binary, $target_prefixlen),
+                    // End block: first target_prefixlen bits of broadcast address
+                    // For a prefix, broadcast = network with all host bits set to 1
+                    end_block: left(left(r.binary, r.prefixlen) + reduce(s = "", i IN range(1, 128 - r.prefixlen) | s + "1"), $target_prefixlen)
+                }
+            ] AS ranges
+        UNWIND CASE WHEN size(ranges) = 0 THEN [{start_block: null, end_block: null}] ELSE ranges END AS r
+        WITH r
+        ORDER BY r.start_block ASC
+        WITH collect(r) AS ranges_sorted_raw
+        WITH [r IN ranges_sorted_raw WHERE r.start_block IS NOT NULL] AS ranges_sorted
+        // Find first available slot using binary string comparison
+        // We track cursor as the current candidate block (target_prefixlen bits)
+        WITH reduce(acc = {cursor: left($parent_start_bin, $target_prefixlen), found: null}, r IN ranges_sorted |
+                CASE
+                    WHEN acc.found IS NOT NULL THEN acc
+                    // Range ends before cursor, skip it
+                    WHEN r.end_block < acc.cursor THEN acc
+                    // Gap found: cursor is before this range starts
+                    WHEN acc.cursor < r.start_block THEN {cursor: acc.cursor, found: acc.cursor}
+                    // Cursor overlaps with range: advance cursor past this range
+                    // Binary string increment: add 1 to end_block to get the next block
+                    // Algorithm: process bits right-to-left with carry propagation
+                    // - Start with carry=1 (we're adding 1)
+                    // - For each bit: if carry=0, keep bit unchanged
+                    //   if carry=1 and bit="1", output "0" and carry remains 1
+                    //   if carry=1 and bit="0", output "1" and carry becomes 0
+                    // Note: if all bits are "1", result will be all "0"s with carry=1 (overflow)
+                    // We track the final carry and set cursor to null if overflow occurred
+                    ELSE
+                        {
+                            cursor: CASE
+                                // Check for overflow: if final carry is 1, return null
+                                WHEN reduce(
+                                    inc = {bits: split(r.end_block, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, $target_prefixlen - 1)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).carry = 1 THEN null
+                                ELSE reduce(s = "", c IN reduce(
+                                    inc = {bits: split(r.end_block, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, $target_prefixlen - 1)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).result | s + c)
+                            END,
+                            found: null
+                        }
+                END
+            ) AS res
+        // Handle overflow case
+        WITH
+            CASE
+                WHEN res.found IS NOT NULL THEN res.found
+                ELSE res.cursor
+            END AS cursor_str,
+            res.found AS found
+        // Check if we found a slot or if there's space after all ranges
+        WITH CASE
+            WHEN found IS NOT NULL THEN found
+            // Check cursor is valid (not overflowed) and within parent range
+            WHEN size(cursor_str) = $target_prefixlen AND cursor_str <= left($parent_end_bin, $target_prefixlen) THEN cursor_str
+            ELSE NULL
+        END AS free_start_partial
+        WHERE free_start_partial IS NOT NULL
+        // Pad the partial binary to full 128 bits
+        WITH free_start_partial + reduce(s = "", i IN range(1, 128 - $target_prefixlen) | s + "0") AS free_start_bin
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPPREFIX,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_start_bin"]
+        self.limit = 1
+
+    def get_prefix_data(self) -> IPv6PrefixFreeData | None:
+        result = self.get_result()
+        if not result:
+            return None
+
+        return IPv6PrefixFreeData.from_db(result=result)
+
+
 class IPPrefixIPAddressFetch(Query):
     name = "ipprefix_ipaddress_fetch"
     type = QueryType.READ
@@ -173,11 +516,11 @@ class IPPrefixIPAddressFetch(Query):
         CALL (ns) {
             MATCH (ns)-[r:IS_PART_OF]-(root:Root)
             WHERE %(branch_filter)s
-            RETURN ns as ns1, r as r1
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH ns, r1 as r
+        WITH ns, r
         WHERE r.status = "active"
         WITH ns
         // MATCH all IPAddress that are IN SCOPE
@@ -210,36 +553,282 @@ class IPPrefixIPAddressFetch(Query):
         return addresses
 
 
-async def get_subnets(
-    db: InfrahubDatabase,
-    ip_prefix: IPNetworkType,
-    namespace: Node | str | None = None,
-    branch: Branch | str | None = None,
-    at: Timestamp | str | None = None,
-    branch_agnostic: bool = False,
-) -> Iterable[IPPrefixData]:
-    branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixSubnetFetch.init(
-        db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
-    )
-    await query.execute(db=db)
-    return query.get_subnets()
+class IPPrefixIPAddressFetchFree(Query):
+    name = "ipprefix_ipaddress_fetch_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        is_pool: bool,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ) -> None:
+        self.obj = obj
+        self.namespace_id = _get_namespace_id(namespace)
+        self.is_pool = is_pool
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["start_range"] = int(self.obj.network_address)
+        self.params["end_range"] = int(self.obj.broadcast_address)
+        if not self.is_pool:
+            self.params["start_range"] += 1
+            self.params["end_range"] -= 1
+
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+        self.limit = 1  # Query only works at returning a single, free entry
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r
+        WHERE r.status = "active"
+        WITH ns
+        // MATCH all IPAddress that are IN SCOPE
+        MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(addr:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "address"})-[:HAS_VALUE]-(av:AttributeIPHost)
+        WHERE ns_rel.name = "ip_namespace__ip_address"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen >= $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
+        ORDER BY av.binary_address
+        // Gap detection algorithm: collect used addresses and find first available slot
+        // Each used_address is a single binary string representing an allocated IP
+        WITH DISTINCT av.binary_address AS used_address
+        // Convert binary string to integer for comparison
+        WITH [x IN split(used_address, "") | toInteger(x)] AS bits
+        // Build array: [start_range - 1] prepended to all used addresses as integers
+        // This creates a baseline for gap detection starting from the range beginning
+        WITH [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
+        UNWIND range(0, size(nums) - 1) AS idx
+        CALL (nums, idx) {
+            // Compare expected sequential address with actual address at this position
+            // If they differ, we found a gap (is_free = true)
+            WITH nums[idx] AS curr, idx - 1 + $start_range AS expected
+            RETURN expected AS addr, expected <> curr AS is_free, idx = size(nums) - 1 AS is_last
+        }
+        WITH addr, is_free, is_last
+        WHERE is_free = true OR is_last = true
+        WITH addr AS free_addr, is_free, is_last
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPADDRESS,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_addr", "is_free", "is_last"]
+        self.order_by = ["free_addr"]
+
+    def get_address_data(self) -> IPAddressFreeData | None:
+        if not self.results:
+            return None
+
+        return IPAddressFreeData.from_db(result=self.results[0])
+
+    def get_address(self) -> IPAddressType | None:
+        """Return the next free address fitting in the prefix."""
+        result_data = self.get_address_data()
+        if result_data is None:
+            return None
+
+        if result_data.is_free:
+            return ipaddress.ip_interface(result_data.free_addr)
+        # When is_last=True and is_free=False, we've reached the end of all allocated addresses
+        # without finding a gap. The next available address is one past the last allocated address,
+        # but only if it doesn't exceed the end of the valid range (end_range).
+        if result_data.is_last and result_data.free_addr < self.params["end_range"]:
+            return ipaddress.ip_interface(result_data.free_addr + 1)
+
+        return None
 
 
-async def get_ip_addresses(
-    db: InfrahubDatabase,
-    ip_prefix: IPNetworkType,
-    namespace: Node | str | None = None,
-    branch: Branch | str | None = None,
-    at: Timestamp | str | None = None,
-    branch_agnostic: bool = False,
-) -> Iterable[IPAddressData]:
-    branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixIPAddressFetch.init(
-        db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
-    )
-    await query.execute(db=db)
-    return query.get_addresses()
+class IPv6PrefixIPAddressFetchFree(Query):
+    """Query to find the next free IPv6 address within a prefix.
+
+    This query uses binary string operations to handle IPv6's 128-bit address space,
+    as the integer values would overflow Neo4j's 64-bit integer type.
+    """
+
+    name = "ipv6prefix_ipaddress_fetch_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        is_pool: bool,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ) -> None:
+        self.obj = obj
+        self.namespace_id = _get_namespace_id(namespace)
+        self.is_pool = is_pool
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+
+        # Binary representation of start and end of valid range
+        start_addr = self.obj.network_address
+        end_addr = self.obj.broadcast_address
+        if not self.is_pool:
+            start_addr += 1
+            end_addr -= 1
+        self.params["start_range_bin"] = format(int(start_addr), "0128b")
+        self.params["end_range_bin"] = format(int(end_addr), "0128b")
+
+        self.limit = 1  # Query only works at returning a single, free entry
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r
+        WHERE r.status = "active"
+        WITH ns
+        // MATCH all IPAddress that are IN SCOPE
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(addr:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "address"})-[:HAS_VALUE]-(av:AttributeIPHost)
+        WHERE ns_rel.name = "ip_namespace__ip_address"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen >= $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
+        WITH DISTINCT av.binary_address AS used_address
+        ORDER BY used_address
+        // Collect used addresses as binary strings, prepend a sentinel value before start_range
+        WITH collect(used_address) AS used_addrs_raw
+        WITH [addr IN used_addrs_raw WHERE addr IS NOT NULL AND addr >= $start_range_bin AND addr <= $end_range_bin] AS used_addrs
+        // Gap detection using binary string comparison
+        // We iterate through used addresses and find the first gap
+        WITH reduce(acc = {cursor: $start_range_bin, found: null, is_last: false}, addr IN used_addrs |
+                CASE
+                    // Already found a gap, preserve result
+                    WHEN acc.found IS NOT NULL THEN acc
+                    // Gap found: cursor is less than this address
+                    WHEN acc.cursor < addr THEN {cursor: acc.cursor, found: acc.cursor, is_last: false}
+                    // No gap: advance cursor past this address using binary increment
+                    ELSE
+                        {
+                            cursor: CASE
+                                // Check for overflow: if final carry is 1, return a marker value
+                                WHEN reduce(
+                                    inc = {bits: split(addr, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, 127)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).carry = 1 THEN null
+                                ELSE reduce(s = "", c IN reduce(
+                                    inc = {bits: split(addr, ""), carry: 1, result: []},
+                                    idx IN reverse(range(0, 127)) |
+                                    {
+                                        bits: inc.bits,
+                                        carry: CASE
+                                            WHEN inc.carry = 0 THEN 0
+                                            WHEN inc.bits[idx] = "1" THEN 1
+                                            ELSE 0
+                                        END,
+                                        result: CASE
+                                            WHEN inc.carry = 0 THEN [inc.bits[idx]] + inc.result
+                                            WHEN inc.bits[idx] = "1" THEN ["0"] + inc.result
+                                            ELSE ["1"] + inc.result
+                                        END
+                                    }
+                                ).result | s + c)
+                            END,
+                            found: null,
+                            is_last: false
+                        }
+                END
+            ) AS res
+        // Determine final result
+        WITH CASE
+            // Gap was found during iteration
+            WHEN res.found IS NOT NULL THEN {addr: res.found, is_free: true, is_last: false}
+            // No gap found, check if cursor is still valid and within range
+            WHEN res.cursor IS NOT NULL AND res.cursor <= $end_range_bin THEN {addr: res.cursor, is_free: true, is_last: true}
+            // No addresses available
+            ELSE {addr: null, is_free: false, is_last: true}
+        END AS result
+        WHERE result.addr IS NOT NULL
+        WITH result.addr AS free_addr_bin, result.is_free AS is_free, result.is_last AS is_last
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPADDRESS,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_addr_bin", "is_free", "is_last"]
+
+    def get_address_data(self) -> IPv6AddressFreeData | None:
+        if not self.results:
+            return None
+
+        return IPv6AddressFreeData.from_db(result=self.results[0])
+
+    def get_address(self) -> IPAddressType | None:
+        """Return the next free IPv6 address fitting in the prefix."""
+        result_data = self.get_address_data()
+        if result_data is None:
+            return None
+
+        if result_data.is_free:
+            # Convert binary string to IPv6 address
+            addr_int = int(result_data.free_addr_bin, 2)
+            return ipaddress.ip_interface(ipaddress.IPv6Address(addr_int))
+
+        return None
 
 
 @dataclass(frozen=True)

@@ -272,15 +272,10 @@ class TestMigration043(TestInfrahubApp):
 
         return NodeDetails(
             node=primary_thing,
-            # a bug in deleting branch-aware nodes with branch-agnostic relationships prevents this from working correctly
-            # https://github.com/opsmill/infrahub/issues/7513
-            # display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing.agnostic_smell.value}",
-            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing.agnostic_smell.value}",
             human_friendly_id=[
                 str(primary_thing.name.value),
-                # https://github.com/opsmill/infrahub/issues/7513 here too
-                # primary_thing.agnostic_smell.value,
-                None,
+                str(primary_thing.agnostic_smell.value),
                 str(new_secondary_in_node.name.value),
                 str(new_secondary_out_node.size.value),
                 str(new_agnostic_secondary_node.agnostic_smell.value),
