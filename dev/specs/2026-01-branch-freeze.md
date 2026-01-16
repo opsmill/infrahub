@@ -180,7 +180,7 @@ if source_branch.status == BranchStatus.MERGED:
 
 ### Handling Existing Proposed Changes
 
-When a branch is merged, any open proposed changes using that branch as source should be automatically closed/canceled:
+When a branch is merged, any open proposed changes using that branch as source should be automatically canceled:
 
 **File:** `backend/infrahub/core/branch/tasks.py`
 
@@ -223,7 +223,7 @@ class BranchMerge(Mutation):
 
 #### Branch Query
 
-The existing `Branch` GraphQL type already exposes `status`. The new `MERGED` status will be automatically available:
+The existing `Branch` and `InfrahubBranch` GraphQL queries already exposes `status`. The new `MERGED` status will be automatically available:
 
 ```graphql
 query {
@@ -256,15 +256,9 @@ Mutations on merged branches should return clear error messages:
 
 ### REST API
 
-The `/api/branch/{branch_name}` endpoint should return the `MERGED` status correctly. Existing serialization should handle this automatically since `status` is already exposed.
-
-### Events
-
-Add event for branch status change to `MERGED`:
-
-Consider adding a `BranchFrozenEvent` or reusing `BranchMergedEvent` which already exists and is fired during merge.
-
-The existing `BranchMergedEvent` in `backend/infrahub/events/branch_action.py` already signals merge completion. No additional events needed.
+1. We should not be able to load new schemas using the schema REST API endpoints when a branch is in merged state
+2. We should not be able to generate artifacts using the REST API endpoint when a branch is in merged state
+3. The `/api/query` endpoints should not perform GraphQL queries that contain mutations within them, when the branch is in merged state. In the future we should consider not accepting GraphQL queries that contain mutations at all.
 
 ### Permission System
 
@@ -284,7 +278,6 @@ This is handled at the validation layer (middleware), which runs before permissi
 
 - Show clear indication that branch is merged and read-only
 - Disable or hide mutation actions (edit, delete data, create objects)
-- Show informational message explaining the read-only state
 
 ### Proposed Change Creation
 
@@ -296,128 +289,49 @@ This is handled at the validation layer (middleware), which runs before permissi
 - Display clear, user-friendly error messages when operations are blocked
 - Provide guidance on what actions are available (e.g., "You can delete this branch or create a new branch from a specific point in time")
 
-## Python SDK
-
-### Branch Status
-
-The SDK should expose the new `MERGED` status through existing branch APIs:
-
-```python
-from infrahub_sdk import InfrahubClientSync
-
-client = InfrahubClientSync()
-
-# Get branch and check status
-branch = client.branch.get(name="feature-branch")
-print(branch.status)  # "MERGED"
-
-# Check if branch is merged
-if branch.status == "MERGED":
-    print("Branch is read-only")
-```
-
-### Error Handling
-
-SDK operations on merged branches should raise clear exceptions:
-
-```python
-from infrahub_sdk.exceptions import BranchMergedError
-
-try:
-    client.create(kind="InfraDevice", data={"name": "device1"}, branch="merged-branch")
-except BranchMergedError as e:
-    print(f"Cannot modify merged branch: {e}")
-```
-
 ## Edge Cases and Considerations
 
-### 1. Concurrent Merge Attempts
-
-**Scenario:** Two users attempt to merge the same branch simultaneously.
-
-**Handling:** Already handled by `DiffLocker` which acquires exclusive locks. Second merge will wait for lock, then fail validation since branch is now `MERGED`.
-
-### 2. Merge Failure After Partial Operations
-
-**Scenario:** Merge fails after `merge_graph()` but before status update.
-
-**Handling:** The `BranchMerger.merge()` method has rollback logic. Status update is the final step, so if anything fails before, branch remains `OPEN`. The atomicity of the graph merge is handled separately.
-
-### 3. Git Repository Merge Failure
-
-**Scenario:** Data merge succeeds but git repo merge fails.
-
-**Handling:** Current behavior: git merge happens after graph merge. If git fails, data is already merged. Branch should still be marked `MERGED` since the data state is final. Git repo state can be reconciled separately.
-
-**Decision needed:** Should git merge failure block `MERGED` status? Recommendation: No, since data integrity is primary concern.
-
-### 4. Branch Created From Merged Branch
-
-**Scenario:** User creates new branch from a point in time when source branch was already merged.
-
-**Handling:** New branch is created with `OPEN` status, independent of source branch state. The branched_from timestamp captures the point in time, not the current state.
-
-### 5. Existing Open Proposed Changes
+### 1. Existing Open Proposed Changes
 
 **Scenario:** Branch has open proposed changes when merged directly (not via PC).
 
-**Handling:** Automatically cancel/close existing PCs for the merged branch. Reuse existing `cancel_proposed_changes_branch()` workflow.
+**Handling:** Automatically cancel existing PCs for the merged branch. Reuse existing `cancel_proposed_changes_branch()` workflow.
 
-### 6. Branch Rebase on Merged Branch
+### 2. Branch Rebase on Merged Branch
 
 **Scenario:** User attempts to rebase a merged branch.
 
 **Handling:** Block with validation error. Rebase makes no sense for merged branches since they're immutable.
 
-### 7. Branch Description Update
-
-**Scenario:** User wants to update description of merged branch.
-
-**Decision needed:** Allow or block?
-
-**Recommendation:** Block. While description is metadata, allowing any updates could be confusing. If needed, admin could change status back (see Migration below).
-
-### 8. Viewing Diffs on Merged Branches
+### 4. Viewing Diffs on Merged Branches
 
 **Scenario:** User wants to view historical diff of merged branch.
 
 **Handling:** Allow. Read operations are not blocked. This is important for audit and history purposes.
 
-### 9. Branch Deletion
+### 5. Branch Deletion
 
 **Scenario:** User wants to delete a merged branch.
 
 **Handling:** Allow. Cleanup of merged branches should be permitted. This is already in `ALLOWED_MUTATIONS_ON_MERGED_BRANCH`.
 
-### 10. Migration of Existing Branches
+### 6. Migration of Existing Branches
 
 **Scenario:** Branches merged before this feature don't have `MERGED` status.
 
-**Options:**
-1. Leave as-is (`OPEN`) - risk of double merge on old branches
-2. Migration script to identify and update historically merged branches
-3. Manual admin update when issues occur
+**Handling:** Leave as-is. Branches that were merged before this feature will stay in the open state. The user will need to delete these branches. We are not going to implement migrations for this scenario.
 
-**Recommendation:** Option 1 for initial release with documentation. Option 2 can be implemented later if needed. The merge tracking (`mark_tracking_ids_merged`) could help identify candidates.
+### Git repository
 
-### 11. Admin Override
+Merging a branch in Infrahub and in the Git repository are not a single transaction today. Also there is no good way to communicate an error back to the user when the merge in the Git repository fails and hence we can't properly "cancel" the transaction at the database level.
 
-**Scenario:** Admin needs to "unfreeze" a branch for exceptional circumstances.
+We opt not to handle that scenario for now.
 
-**Handling:** Provide admin-only capability to change branch status. Could be:
-- Direct database update (operational procedure)
-- New GraphQL mutation `BranchUnfreeze` with admin-only permission
-- CLI command
+If the git repository syncs new commits for a branch that has already been merged in Infrahub, then that synchronization will fail, but it will not affect the synchronization of other branches in Infrahub.
 
-**Recommendation:** Document direct database/CLI approach for initial release. Admin mutation can be added later if needed.
+This is a known behavior that we should document.
 
-### 12. Proposed Change State vs Branch Status
-
-**Note:** `ProposedChange.state = MERGED` is different from `Branch.status = MERGED`. They're related but distinct:
-- PC MERGED means the PC workflow completed
-- Branch MERGED means the branch is now read-only
-
-Both should be set when merging via PC. When merging directly (BranchMerge), only branch status is set.
+When we have a better way to communicate errors, we should revisit handling this in a better way.
 
 ## Testing Strategy
 
@@ -452,33 +366,4 @@ Both should be set when merging via PC. When merging directly (BranchMerge), onl
 
 - Update branch lifecycle documentation
 - Add troubleshooting guide for "branch is read-only" errors
-- Document admin override procedures
 - Update API reference with new status
-
-## Open Questions
-
-1. Allow description updates on merged branches?
-2. Git merge failure - should it block MERGED status?
-3. Migration strategy for existing merged branches?
-4. Admin override mechanism - DB-only or API?
-5. Should we add a `merged_at` timestamp to branch model?
-6. Should `BranchValidate` be allowed on merged branches?
-
-## Uncertainty Map
-
-### Least Confident About
-
-- **Git merge failure handling**: The interaction between graph merge and git repo merge is complex. Unclear if git failure should affect branch status.
-- **Migration of existing branches**: Identifying historically merged branches reliably may be difficult without explicit tracking.
-
-### May Be Oversimplifying
-
-- **Concurrent operations**: While DiffLocker handles merge concurrency, there may be race conditions with in-flight mutations when status transitions.
-- **Registry/cache consistency**: Branch status is cached in registry. Cache invalidation timing relative to status update needs verification.
-
-### Questions That Would Change Opinion
-
-- Are there legitimate use cases for modifying a branch after merge? (e.g., adding metadata, annotations)
-- How important is it to support "unfreezing" branches?
-- Should merged branches be auto-deleted after a certain period?
-- Is there a need to distinguish "merged via PC" vs "merged directly"?
