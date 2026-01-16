@@ -70,6 +70,21 @@ class NumberPoolAllocatedResult:
         )
 
 
+@dataclass(frozen=True)
+class NumberPoolFreeData:
+    value: int
+    is_free: bool
+    is_last: bool
+
+    @classmethod
+    def from_db(cls, result: QueryResult) -> NumberPoolFreeData:
+        return cls(
+            value=result.get_as_type("value", return_type=int),
+            is_free=result.get_as_type("is_free", return_type=bool),
+            is_last=result.get_as_type("is_last", return_type=bool),
+        )
+
+
 class IPAddressPoolGetIdentifiers(Query):
     name = "ipaddresspool_get_identifiers"
     type = QueryType.READ
@@ -393,7 +408,9 @@ class NumberPoolGetUsed(Query):
                 n.uuid = res.identifier AND
                 attr.name = $attribute_name AND
                 all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC, res.from DESC, hv.from DESC, ha.from DESC
+            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
+                res.from DESC, hv.from DESC, ha.from DESC,
+                res.status ASC, hv.status ASC, ha.status ASC
             RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
             LIMIT 1
         }
@@ -417,6 +434,102 @@ class NumberPoolGetUsed(Query):
         """
         for result in self.get_results():
             yield NumberPoolIdentifierData.from_db(result)
+
+
+class NumberPoolGetFree(Query):
+    name = "number_pool_get_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool: CoreNumberPool,
+        min_value: int | None = None,
+        max_value: int | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.pool = pool
+        self.min_value = min_value
+        self.max_value = max_value
+
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["pool_id"] = self.pool.get_id()
+        # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
+        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
+        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
+        self.limit = 1  # Query only works at returning a single, free entry
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+
+        self.params.update(branch_params)
+        self.params["attribute_name"] = self.pool.node_attribute.value
+
+        query = """
+        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
+        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
+        CALL (pool, res, av) {
+            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
+            WHERE
+                n.uuid = res.identifier AND
+                attr.name = $attribute_name AND
+                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
+            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
+                res.from DESC, hv.from DESC, ha.from DESC,
+                res.status ASC, hv.status ASC, ha.status ASC
+            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
+            LIMIT 1
+        }
+        WITH av, res, is_active
+        WHERE is_active = True
+        WITH DISTINCT toInteger(av.value) AS used_value
+        ORDER BY used_value ASC
+        WITH [$start_range - 1] + collect(used_value) AS nums
+        UNWIND range(0, size(nums) - 1) AS idx
+        CALL (nums, idx) {
+            WITH nums[idx] AS curr, idx - 1 + $start_range AS expected
+            RETURN expected AS number, expected <> curr AS is_free, idx = size(nums) - 1 AS is_last
+        }
+        WITH number, is_free, is_last
+        WHERE is_free = true OR is_last = true
+        WITH number AS free_number, is_free, is_last
+        """ % {
+            "branch_filter": branch_filter,
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "node": self.pool.node.value,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_number as value", "is_free", "is_last"]
+        self.order_by = ["value"]
+
+    def get_free_data(self) -> NumberPoolFreeData | None:
+        if not self.results:
+            return None
+
+        return NumberPoolFreeData.from_db(result=self.results[0])
+
+    def get_result_value(self) -> int | None:
+        """Get the free number from query results, handling edge cases.
+
+        Returns:
+            The free number if found, None if pool is exhausted in queried range.
+        """
+        result_data = self.get_free_data()
+        if result_data is None:
+            # No reservations in range - return start_range
+            if self.params["start_range"] <= self.params["end_range"]:
+                return self.params["start_range"]
+            return None
+
+        if result_data.is_free:
+            return result_data.value
+        # is_last=True and is_free=False means all numbers up to value are used
+        if result_data.is_last and result_data.value < self.params["end_range"]:
+            return result_data.value + 1
+        return None
 
 
 class NumberPoolSetReserved(Query):
