@@ -16,7 +16,7 @@ Add `max_file_size` configuration setting to StorageSettings to limit file uploa
   - [ ] Add `max_file_size` field to `StorageSettings` class:
     ```python
     max_file_size: int = Field(
-        default=200,
+        default=50,
         ge=1,
         description="Maximum file size in MB for file object uploads"
     )
@@ -26,7 +26,7 @@ Add `max_file_size` configuration setting to StorageSettings to limit file uploa
 ### Tests
 
 - [ ] Create `backend/tests/unit/test_config_storage.py`
-  - [ ] Test default value is 200 MB
+  - [ ] Test default value is 50 MB
   - [ ] Test minimum value validation (ge=1)
   - [ ] Test loading from TOML configuration file
   - [ ] Test environment variable override (`INFRAHUB_STORAGE_MAX_FILE_SIZE`)
@@ -57,17 +57,17 @@ After this PR, users can configure in `infrahub.toml`:
 ```toml
 [storage]
 driver = "local"
-max_file_size = 200  # in MB
+max_file_size = 50  # in MB
 ```
 
 Or via environment variable:
 
 ```bash
-export INFRAHUB_STORAGE_MAX_FILE_SIZE=200
+export INFRAHUB_STORAGE_MAX_FILE_SIZE=50
 ```
 
 ## Notes
 
-- Default of 200 MB aligns with spec recommendation for "small file objects"
+- Default of 50 MB aligns with spec recommendation for "small file objects"
 - Minimum of 1 MB prevents misconfiguration
 - This setting will be used by the REST API in PR 3 to validate upload size

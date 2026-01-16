@@ -219,7 +219,7 @@ If this configuration setting is not provided, we should provide a default value
 ```toml
 [storage]
 driver = "local"
-max_file_size=200 #in MB
+max_file_size=50 #in MB
 ```
 
 ### GraphQL API
