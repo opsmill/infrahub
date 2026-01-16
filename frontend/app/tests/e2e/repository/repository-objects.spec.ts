@@ -40,9 +40,9 @@ test.describe("Repository - Creation and objects view", () => {
     await expect(page.getByText("No objects found for this")).toBeVisible();
   });
 
-  test("test", async ({ page }) => {
+  test("Check repository actions", async ({ page }) => {
     await test.step("access repository detailed page", async () => {
-      await page.goto("http://localhost:8080/");
+      await page.goto("/");
       await page.getByRole("button", { name: "Integrations" }).click();
       await page.getByRole("menuitem", { name: "Git Repositories" }).click();
       await expect(page.getByRole("heading", { name: "Git Repository" })).toBeVisible();
