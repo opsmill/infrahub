@@ -92,7 +92,7 @@ class TestProposedChangeTotalComments(TestInfrahubApp):
         """
 
         # Create a branch for the proposed change
-        source_branch = await create_branch(branch_name="branch-proposed-change", db=db)
+        source_branch = await create_branch(branch_name="branch-proposed-change-2", db=db)
 
         # Create a proposed change
         proposed_change = await client.create(
