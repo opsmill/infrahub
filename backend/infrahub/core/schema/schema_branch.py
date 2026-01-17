@@ -6,7 +6,7 @@ import hashlib
 import keyword
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from infrahub_sdk.template import Jinja2Template
@@ -58,6 +58,9 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters, Text
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
+    HierarchicalNodesRestrictedWords,
+)
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
 from infrahub.types import ATTRIBUTE_TYPES
@@ -70,6 +73,9 @@ from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
+
+if TYPE_CHECKING:
+    from infrahub.core.validators.schema_branch.interface import SchemaBranchValidator
 
 log = get_logger()
 
@@ -109,6 +115,8 @@ class SchemaBranch:
             self.generics = data.get("generics", {})
             self.profiles = data.get("profiles", {})
             self.templates = data.get("templates", {})
+
+        self.validators: list[SchemaBranchValidator] = [HierarchicalNodesRestrictedWords()]
 
     @classmethod
     def validate(cls, data: Any) -> Self:
@@ -623,6 +631,9 @@ class SchemaBranch:
         self.add_hierarchy_node()
 
     def process_validate(self) -> None:
+        for validator in self.validators:
+            validator.check(schema_branch=self)
+
         self.validate_names()
         self.validate_python_keywords()
         self.validate_kinds()

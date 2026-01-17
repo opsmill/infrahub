@@ -13,6 +13,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    RESERVED_ATTR_REL_HIERARCHICAL_NAMES,
     AllowOverrideType,
     BranchSupportType,
     HashableModelState,
@@ -936,47 +937,302 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one) -> None:
     assert generic.relationships[1].identifier == "infragenericinterface__testingstatus"
 
 
-async def test_schema_branch_validate_names() -> None:
-    SCHEMA1 = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-    }
+@dataclass
+class SchemaBranchValidateNamesTestCaseData:
+    name: str
+    schema: dict[str, Any]
+    expected_error: str
 
+
+SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
+    SchemaBranchValidateNamesTestCaseData(
+        name="attribute-uniqueness-test",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {"name": "name", "kind": "Text", "unique": True},
+                    ],
+                }
+            ]
+        },
+        expected_error="TestCriticality: Names of attributes and relationships must be unique : ['name']",
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="relationship-uniqueness-test",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {"name": "dupname", "kind": "Text"},
+                    ],
+                    "relationships": [
+                        {"name": "dupname", "peer": "Criticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error="TestCriticality: Names of attributes and relationships must be unique : ['dupname']",
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="relationship-reserved-names-test",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                    ],
+                    "relationships": [
+                        {"name": "save", "peer": "Criticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error="TestCriticality: save isn't allowed as a relationship name.",
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="attribute-reserved-names-test",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "save", "kind": "Text", "unique": True},
+                    ],
+                    "relationships": [
+                        {"name": "name", "peer": "Criticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error="TestCriticality: save isn't allowed as an attribute name.",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES],
+)
+async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNamesTestCaseData) -> None:
     schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+    schema.load_schema(schema=SchemaRoot(**test_case.schema))
 
     with pytest.raises(ValueError) as exc:
         schema.validate_names()
 
-    assert str(exc.value) == "TestCriticality: Names of attributes and relationships must be unique : ['name']"
+    assert str(exc.value) == test_case.expected_error
 
-    SCHEMA2 = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "dupname", "kind": "Text"},
+
+@pytest.mark.parametrize(
+    "index,reserved_name",
+    [
+        pytest.param(index, reserved_name, id=reserved_name)
+        for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
+    ],
+)
+async def test_schema_validate_hierarchical_nodes_restricted_words(index: int, reserved_name: str) -> None:
+    schema1 = {
+        "generics": [
+            {
+                "name": "Location",
+                "namespace": "Generic",
+                "hierarchical": True,
+                "attributes": [{"name": f"name_location_{index}", "unique": True, "optional": False, "kind": "Text"}],
+            }
         ],
-        "relationships": [
-            {"name": "dupname", "peer": "Criticality", "cardinality": "one"},
+        "nodes": [
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["GenericLocation"],
+                "children": "TestingParent",
+                "parent": "",
+            },
+            {
+                "name": "Parent",
+                "namespace": "Testing",
+                "inherit_from": ["GenericLocation"],
+                "children": "",
+                "parent": "LocationSite",
+                "relationships": [
+                    {
+                        "name": reserved_name,
+                        "kind": "Generic",
+                        "optional": True,
+                        "peer": "TestingChild",
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "name": "Child",
+                "namespace": "Testing",
+                "attributes": [{"name": f"name_{index}", "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": f"relation_{index}",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "peer": "TestingParent",
+                        "cardinality": "one",
+                    }
+                ],
+            },
         ],
     }
-
-    schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
+    schema = SchemaBranch(cache={}, name=f"test_{index}")
+    schema.load_schema(schema=SchemaRoot(**schema1))
 
     with pytest.raises(ValueError) as exc:
-        schema.validate_names()
+        schema.process()
 
-    assert str(exc.value) == "TestCriticality: Names of attributes and relationships must be unique : ['dupname']"
+    assert (
+        str(exc.value) == f"TestingParent: {reserved_name} isn't allowed as a relationship name on hierarchical nodes."
+    )
+
+    schema2 = {
+        "generics": [
+            {
+                "name": "Location",
+                "namespace": "Generic",
+                "hierarchical": True,
+                "attributes": [{"name": f"name_location_{index}", "unique": True, "optional": False, "kind": "Text"}],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["GenericLocation"],
+                "children": "TestingParent",
+                "parent": "",
+            },
+            {
+                "name": "Parent",
+                "namespace": "Testing",
+                "inherit_from": ["GenericLocation"],
+                "children": "",
+                "parent": "LocationSite",
+                "attributes": [{"name": reserved_name, "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": f"relationship_{index}",
+                        "kind": "Generic",
+                        "optional": True,
+                        "peer": "TestingChild",
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "name": "Child",
+                "namespace": "Testing",
+                "attributes": [{"name": f"sample_{index}", "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": f"child_name_{index}",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "peer": "TestingParent",
+                        "cardinality": "one",
+                    }
+                ],
+            },
+        ],
+    }
+    schema = SchemaBranch(cache={}, name=f"test_{index}")
+    schema.load_schema(schema=SchemaRoot(**schema2))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process()
+
+    assert str(exc.value) == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
+
+
+@pytest.mark.parametrize(
+    "index,reserved_name",
+    [
+        pytest.param(index, reserved_name, id=reserved_name)
+        for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
+    ],
+)
+async def test_schema_validate_hierarchical_nodes_restricted_words_allows_words_for_schema_with_id(
+    index: int, reserved_name: str
+) -> None:
+    schema1 = {
+        "generics": [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Location",
+                "namespace": "Generic",
+                "hierarchical": True,
+                "attributes": [{"name": f"name_location_{index}", "unique": True, "optional": False, "kind": "Text"}],
+            }
+        ],
+        "nodes": [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["GenericLocation"],
+                "children": "TestingParent",
+                "parent": "",
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Parent",
+                "namespace": "Testing",
+                "inherit_from": ["GenericLocation"],
+                "children": "",
+                "parent": "LocationSite",
+                "relationships": [
+                    {
+                        "name": reserved_name,
+                        "kind": "Generic",
+                        "optional": True,
+                        "peer": "TestingChild",
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Child",
+                "namespace": "Testing",
+                "attributes": [{"name": reserved_name, "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": f"relation_{index}",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "peer": "TestingParent",
+                        "cardinality": "one",
+                    }
+                ],
+            },
+        ],
+    }
+    schema = SchemaBranch(cache={}, name=f"test_{index}")
+    schema.load_schema(schema=SchemaRoot(**schema1))
+    schema.process()
 
 
 async def test_schema_branch_validate_identifiers() -> None:

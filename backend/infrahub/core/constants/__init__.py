@@ -40,6 +40,11 @@ RESERVED_ATTR_REL_NAMES = [
     "process_pools",
 ]
 
+RESERVED_ATTR_REL_HIERARCHICAL_NAMES = [
+    "ancestors",
+    "descendants",
+]
+
 RESERVED_ATTR_GEN_NAMES = ["type"]
 
 NULL_VALUE = "NULL"

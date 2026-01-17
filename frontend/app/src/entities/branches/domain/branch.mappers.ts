@@ -94,6 +94,6 @@ export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
 }
 
 export const getNameFilterValue = (filters?: Filter[]) => {
-  const nameFilter = filters?.find((f) => f.name === "name__value");
+  const nameFilter = filters?.find((f) => f.name === "any__value");
   return nameFilter?.value as string | undefined;
 };
