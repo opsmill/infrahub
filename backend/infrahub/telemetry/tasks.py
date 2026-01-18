@@ -12,11 +12,14 @@ from infrahub import __version__, config
 from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.license.loader import get_current_license
+from infrahub.license.models import LicenseTelemetryData
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import TELEMETRY_KIND, TELEMETRY_VERSION
 from .database import gather_database_information
 from .models import TelemetryBranchData, TelemetryData, TelemetrySchemaData, TelemetryWorkerData
+from .storage import cleanup_old_telemetry, save_telemetry_locally
 from .task_manager import gather_prefect_information
 from .utils import determine_infrahub_type
 
@@ -53,6 +56,19 @@ async def gather_feature_information() -> dict[str, int]:
         return data
 
 
+@task(name="telemetry-license-information", task_run_name="Gather License Information", cache_policy=NONE)
+async def gather_license_information() -> LicenseTelemetryData | None:
+    """Gather license information for telemetry.
+
+    Returns:
+        License telemetry data if a valid license is loaded, None otherwise.
+    """
+    license_status = get_current_license()
+    if license_status.valid and license_status.license_data:
+        return LicenseTelemetryData.from_license(license_status.license_data)
+    return None
+
+
 @task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
 async def gather_anonymous_telemetry_data() -> TelemetryData:
     start_time = time.time()
@@ -79,6 +95,7 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
         schema_info=await gather_schema_information(branch=default_branch),
         database=await gather_database_information(db=await get_database()),
         prefect=await gather_prefect_information(),
+        license=await gather_license_information(),
     )
 
     data.execution_time = time.time() - start_time
@@ -113,4 +130,18 @@ async def send_telemetry_push() -> None:
         "checksum": hashlib.sha256(json.dumps(data_dict).encode()).hexdigest(),
     }
 
+    # Always save locally first (for airgapped export and audit)
+    deployment_id = data.deployment_id or "unknown"
+    try:
+        await save_telemetry_locally(payload, deployment_id)
+    except OSError as e:
+        log.warning(f"Failed to save telemetry locally: {e}")
+
+    # Clean up old telemetry files
+    try:
+        await cleanup_old_telemetry()
+    except OSError as e:
+        log.warning(f"Failed to cleanup old telemetry files: {e}")
+
+    # Stream to endpoint
     await post_telemetry_data(url=config.SETTINGS.main.telemetry_endpoint, payload=payload)

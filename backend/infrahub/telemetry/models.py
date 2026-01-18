@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from infrahub.license.models import LicenseTelemetryData
+
 from .constants import InfrahubType
 
 
@@ -63,3 +65,4 @@ class TelemetryData(BaseModel):
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData
     prefect: TelemetryPrefectData
+    license: LicenseTelemetryData | None = None

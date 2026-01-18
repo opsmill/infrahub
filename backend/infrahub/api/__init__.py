@@ -21,6 +21,7 @@ from infrahub.api import (
     query,
     schema,
     storage,
+    telemetry,
     transformation,
 )
 from infrahub.api.dependencies import get_current_user
@@ -42,6 +43,7 @@ router.include_router(oidc.router)
 router.include_router(query.router)
 router.include_router(schema.router)
 router.include_router(storage.router)
+router.include_router(telemetry.router)
 router.include_router(transformation.router)
 
 

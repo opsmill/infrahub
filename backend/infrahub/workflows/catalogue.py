@@ -3,8 +3,28 @@ import random
 from fast_depends import Depends, inject
 from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
+from infrahub import config
+
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
+
+
+def _get_telemetry_cron_schedule() -> str:
+    """Get the cron schedule for telemetry based on configuration.
+
+    In development mode (telemetry_dev_interval_minutes set), uses minute-based
+    intervals for faster testing. Otherwise defaults to daily at 2am with a
+    random minute offset to spread load across deployments.
+
+    Returns:
+        Cron schedule string (e.g., "*/5 * * * *" for 5 min or "23 2 * * *" for daily).
+    """
+    if config.SETTINGS and config.SETTINGS.main.telemetry_dev_interval_minutes:
+        interval = config.SETTINGS.main.telemetry_dev_interval_minutes
+        return f"*/{interval} * * * *"
+    # Default: daily at 2am with random minute offset
+    return f"{random.randint(0, 59)} 2 * * *"
+
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
@@ -752,7 +772,24 @@ WORKFLOWS = [
 
 # Use this dependency injection mechanism to easily add new workflows within infrahub-enterprise
 def build_workflows_definitions() -> list[WorkflowDefinition]:
-    return WORKFLOWS
+    """Build the list of workflow definitions with dynamic configuration.
+
+    This function applies runtime configuration to workflows that need dynamic
+    settings, such as the telemetry cron schedule which can be overridden for
+    development/testing purposes.
+
+    Returns:
+        List of configured workflow definitions.
+    """
+    workflows = []
+    for workflow in WORKFLOWS:
+        if workflow.name == "anonymous_telemetry_send":
+            # Apply dynamic cron schedule for telemetry
+            configured_workflow = workflow.model_copy(update={"cron": _get_telemetry_cron_schedule()})
+            workflows.append(configured_workflow)
+        else:
+            workflows.append(workflow)
+    return workflows
 
 
 @inject
