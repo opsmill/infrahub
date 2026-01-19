@@ -133,9 +133,9 @@ On merge:
 
 ### Storage Layer
 
-- **No changes needed** to `InfrahubObjectStorage`
-- Storage remains a simple key-value store
+- No storage model changes to `InfrahubObjectStorage` - remains a simple key-value store
 - Each upload creates a new entry (no deduplication)
+- **New method required:** Implement `retrieve_binary()` on `InfrahubObjectStorage` to return raw bytes (current `retrieve()` decodes to string, corrupting binary files)
 
 ### REST API Must Handle
 
