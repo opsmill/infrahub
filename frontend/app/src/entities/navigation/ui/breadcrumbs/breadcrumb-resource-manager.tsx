@@ -20,20 +20,20 @@ import { Col, Row } from "@/shared/components/container";
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
 
 export function BreadcrumbResourceManager() {
   const { resourcePoolId, resourceId } = useParams();
-  const { schema } = useSchema(RESOURCE_GENERIC_KIND);
+  const { schema } = useCoreSchema(RESOURCE_GENERIC_KIND);
 
   return (
     <Breadcrumbs data-testid="breadcrumb-resource-manager">
       <BreadcrumbItem href={constructPath("/resource-manager")}>Resource manager</BreadcrumbItem>
-      {schema && resourcePoolId && (
+      {resourcePoolId && (
         <BreadcrumbObjectDetails
           objectSchema={schema}
           objectId={resourcePoolId}
-          autocompleteObjectKind={schema.kind!}
+          autocompleteObjectKind={RESOURCE_GENERIC_KIND}
         />
       )}
       {resourceId && resourcePoolId && (

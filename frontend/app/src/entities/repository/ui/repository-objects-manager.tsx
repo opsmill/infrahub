@@ -5,16 +5,17 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { REPOSITORY_GROUP } from "@/entities/repository/constants";
 import { useGetRepositoryGroup } from "@/entities/repository/domain/get-repository-group.query";
+import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RepositoryObjectsManagerProps {
   parentNodeId: string;
 }
 export function RepositoryObjectsManager({ parentNodeId }: RepositoryObjectsManagerProps) {
-  const { schema } = useSchema(REPOSITORY_GROUP);
+  const { schema } = useCoreSchema(REPOSITORY_GROUP);
   const { isPending, data, error } = useGetRepositoryGroup({ nodeId: parentNodeId });
 
-  const membersRelationship = schema?.relationships?.find((relationship) => {
+  const membersRelationship = schema.relationships?.find((relationship) => {
     return relationship.name === "members";
   });
 

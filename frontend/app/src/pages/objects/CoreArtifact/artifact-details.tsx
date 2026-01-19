@@ -8,15 +8,15 @@ import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
 
 const ArtifactDetailsPage = () => {
   useTitle("Artifact");
   const { artifactId } = useParams();
-  const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT);
+  const { schema: artifactSchema } = useCoreSchema(ARTIFACT_OBJECT);
   const { isPending, error, data: permission } = useGetObjectPermissions(ARTIFACT_OBJECT);
 
-  if (isPending || !artifactSchema) {
+  if (isPending) {
     return <LoadingIndicator className="h-full" />;
   }
 
