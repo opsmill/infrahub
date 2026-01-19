@@ -77,9 +77,7 @@ class LicenseStatus(BaseModel):
     """
 
     valid: bool = Field(description="Whether the license is valid")
-    license_data: LicenseFile | None = Field(
-        default=None, description="Parsed license data if validation succeeded"
-    )
+    license_data: LicenseFile | None = Field(default=None, description="Parsed license data if validation succeeded")
     error: str | None = Field(default=None, description="Error message if validation failed")
     warnings: list[str] = Field(default_factory=list, description="Non-fatal warning messages")
 

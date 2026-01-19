@@ -908,7 +908,7 @@ jobs:
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
-        run: ./vale --config=./.vale.ini $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+        run: ./vale --config=./.vale.ini $(find ./docs/docs -type f \( -name "*.mdx" -o -name "*.md" \))
 
   validate-release-notes-style:
     if: |

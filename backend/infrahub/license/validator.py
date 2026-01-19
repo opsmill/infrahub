@@ -109,9 +109,7 @@ def validate_license(license_file: LicenseFile) -> LicenseStatus:
 
     # Validate date range
     if license_file.is_not_yet_valid():
-        return LicenseStatus.invalid(
-            f"License is not yet valid. Start date: {license_file.start_date.isoformat()}"
-        )
+        return LicenseStatus.invalid(f"License is not yet valid. Start date: {license_file.start_date.isoformat()}")
 
     if license_file.is_expired():
         return LicenseStatus.invalid(f"License has expired. End date: {license_file.end_date.isoformat()}")
