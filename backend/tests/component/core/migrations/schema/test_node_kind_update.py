@@ -382,6 +382,8 @@ async def test_migration_updates_number_pool_node_reference(
     original_pool = pools[0]
     assert original_pool.node.value == "Test2Device"
     pool_id = original_pool.id
+    original_pool_name = original_pool.name.value
+    assert original_pool_name.startswith("Test2Device.asset_id")
 
     # 3. Run NodeKindUpdateMigration to rename Test2Device -> Test2NetworkDevice
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -402,9 +404,12 @@ async def test_migration_updates_number_pool_node_reference(
     # Should have migrated 1 node + 1 pool update
     assert execution_result.nbr_migrations_executed == 2
 
-    # 4. Verify the NumberPool.node attribute was updated to "Test2NetworkDevice"
+    # 4. Verify the NumberPool.node and name attributes were updated
     updated_pool = await NodeManager.get_one(db=db, branch=default_branch, id=pool_id)
     assert updated_pool.node.value == "Test2NetworkDevice"
+    # Pool name should be updated from "Test2Device.asset_id [...]" to "Test2NetworkDevice.asset_id [...]"
+    assert updated_pool.name.value.startswith("Test2NetworkDevice.asset_id")
+    assert updated_pool.name.value == original_pool_name.replace("Test2Device.", "Test2NetworkDevice.")
 
     # 5. Verify pools with new kind name exist
     pools_with_new_name = await registry.manager.query(

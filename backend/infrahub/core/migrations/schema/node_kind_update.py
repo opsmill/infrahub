@@ -83,9 +83,20 @@ class NodeKindUpdateMigration(SchemaMigration):
             )
 
             for pool in pools:
+                fields_to_save = [attr_name]
+
+                # Update the kind reference attribute
                 attr = pool.get_attribute(name=attr_name)
                 attr.value = new_kind
-                await pool.save(db=db, fields=[attr_name], at=migration_input.at)
+
+                # Update the pool name if it follows the auto-generated pattern
+                name_attr = pool.get_attribute(name="name")
+                old_prefix = f"{old_kind}."
+                if name_attr.value.startswith(old_prefix):
+                    name_attr.value = f"{new_kind}.{name_attr.value[len(old_prefix):]}"
+                    fields_to_save.append("name")
+
+                await pool.save(db=db, fields=fields_to_save, at=migration_input.at)
                 result.nbr_migrations_executed += 1
 
         return result
