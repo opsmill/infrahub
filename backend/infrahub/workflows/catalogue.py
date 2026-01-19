@@ -19,7 +19,7 @@ def _get_telemetry_cron_schedule() -> str:
     Returns:
         Cron schedule string (e.g., "*/5 * * * *" for 5 min or "23 2 * * *" for daily).
     """
-    if config.SETTINGS and config.SETTINGS.main.telemetry_dev_interval_minutes:
+    if config.SETTINGS.initialized and config.SETTINGS.main.telemetry_dev_interval_minutes:
         interval = config.SETTINGS.main.telemetry_dev_interval_minutes
         return f"*/{interval} * * * *"
     # Default: daily at 2am with random minute offset

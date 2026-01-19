@@ -1673,6 +1673,156 @@
                 ]
             }
         },
+        "/api/telemetry/status": {
+            "get": {
+                "tags": [
+                    "telemetry"
+                ],
+                "summary": "Get Telemetry Status",
+                "description": "Get telemetry configuration and status.\n\nReturns the current telemetry configuration including whether telemetry\nis enabled, the storage path, and retention settings.",
+                "operationId": "get_telemetry_status_api_telemetry_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelemetryStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ]
+            }
+        },
+        "/api/telemetry/list": {
+            "get": {
+                "tags": [
+                    "telemetry"
+                ],
+                "summary": "List Telemetry Files",
+                "description": "List available local telemetry files.\n\nShows all telemetry files stored locally on the Infrahub instance,\nincluding their dates and sizes.",
+                "operationId": "list_telemetry_files_api_telemetry_list_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelemetryListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ]
+            }
+        },
+        "/api/telemetry/export": {
+            "get": {
+                "tags": [
+                    "telemetry"
+                ],
+                "summary": "Export Telemetry",
+                "description": "Export telemetry data for airgapped transfer.\n\nThis endpoint exports locally stored telemetry data into a format\nsuitable for manual transfer to OpsMill for airgapped environments.\n\nArgs:\n    from_date: Optional start date for export range (YYYY-MM-DD)\n    to_date: Optional end date for export range (YYYY-MM-DD)\n    export_all: If true, export all available data regardless of date range",
+                "operationId": "export_telemetry_api_telemetry_export_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Start date for export range (YYYY-MM-DD)",
+                            "title": "From Date"
+                        },
+                        "description": "Start date for export range (YYYY-MM-DD)"
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "End date for export range (YYYY-MM-DD)",
+                            "title": "To Date"
+                        },
+                        "description": "End date for export range (YYYY-MM-DD)"
+                    },
+                    {
+                        "name": "all",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Export all available telemetry data",
+                            "default": false,
+                            "title": "All"
+                        },
+                        "description": "Export all available telemetry data"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelemetryExportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/transform/python/{transform_id}": {
             "get": {
                 "summary": "Transform Python",
@@ -4588,6 +4738,73 @@
                 ],
                 "title": "JSONSchema"
             },
+            "LicenseInfo": {
+                "properties": {
+                    "license_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "License Id"
+                    },
+                    "customer_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Customer Name"
+                    },
+                    "deployment_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deployment Id"
+                    },
+                    "product_tier": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Product Tier"
+                    },
+                    "support_tier": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Support Tier"
+                    },
+                    "valid": {
+                        "type": "boolean",
+                        "title": "Valid",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "LicenseInfo",
+                "description": "License information for telemetry responses."
+            },
             "LoggingSettings": {
                 "properties": {
                     "remote": {
@@ -4643,6 +4860,60 @@
                         "type": "string",
                         "title": "Telemetry Endpoint",
                         "default": "https://telemetry.opsmill.cloud/infrahub"
+                    },
+                    "telemetry_dev_interval_minutes": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Telemetry Dev Interval Minutes",
+                        "description": "Override telemetry interval for development (minutes). When set, telemetry runs at this interval instead of daily."
+                    },
+                    "telemetry_storage_path": {
+                        "type": "string",
+                        "title": "Telemetry Storage Path",
+                        "description": "Path for local telemetry storage",
+                        "default": "/var/lib/infrahub/telemetry"
+                    },
+                    "telemetry_storage_retention_days": {
+                        "type": "integer",
+                        "title": "Telemetry Storage Retention Days",
+                        "description": "Number of days to retain local telemetry files",
+                        "default": 90
+                    },
+                    "license_file_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "License File Path",
+                        "description": "Path to the license file (JSON)"
+                    },
+                    "license_signing_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "License Signing Key",
+                        "description": "Secret key for license signature verification (PoC only)"
+                    },
+                    "license_skip_signature_validation": {
+                        "type": "boolean",
+                        "title": "License Skip Signature Validation",
+                        "description": "Skip license signature validation (development only)",
+                        "default": false
                     },
                     "permission_backends": {
                         "items": {
@@ -6007,6 +6278,150 @@
                     "schemas"
                 ],
                 "title": "SchemasLoadAPI"
+            },
+            "TelemetryExportResponse": {
+                "properties": {
+                    "export_version": {
+                        "type": "string",
+                        "title": "Export Version",
+                        "default": "1.0"
+                    },
+                    "exported_at": {
+                        "type": "string",
+                        "title": "Exported At"
+                    },
+                    "license": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LicenseInfo"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "snapshots": {
+                        "items": {
+                            "$ref": "#/components/schemas/TelemetrySnapshot"
+                        },
+                        "type": "array",
+                        "title": "Snapshots"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "exported_at"
+                ],
+                "title": "TelemetryExportResponse",
+                "description": "Response for telemetry export endpoint."
+            },
+            "TelemetryFileInfo": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "title": "Filename"
+                    },
+                    "size": {
+                        "type": "string",
+                        "title": "Size"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "filename",
+                    "size"
+                ],
+                "title": "TelemetryFileInfo",
+                "description": "Information about a local telemetry file."
+            },
+            "TelemetryListResponse": {
+                "properties": {
+                    "files": {
+                        "items": {
+                            "$ref": "#/components/schemas/TelemetryFileInfo"
+                        },
+                        "type": "array",
+                        "title": "Files"
+                    }
+                },
+                "type": "object",
+                "title": "TelemetryListResponse",
+                "description": "Response for listing local telemetry files."
+            },
+            "TelemetrySnapshot": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date"
+                    },
+                    "data": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Data"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "data"
+                ],
+                "title": "TelemetrySnapshot",
+                "description": "A single telemetry snapshot in export format."
+            },
+            "TelemetryStatusResponse": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled"
+                    },
+                    "storage_path": {
+                        "type": "string",
+                        "title": "Storage Path"
+                    },
+                    "retention_days": {
+                        "type": "integer",
+                        "title": "Retention Days"
+                    },
+                    "files_count": {
+                        "type": "integer",
+                        "title": "Files Count"
+                    },
+                    "latest_file": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Latest File"
+                    },
+                    "license": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LicenseInfo"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "enabled",
+                    "storage_path",
+                    "retention_days",
+                    "files_count"
+                ],
+                "title": "TelemetryStatusResponse",
+                "description": "Response for telemetry status endpoint."
             },
             "TextAttributeParameters": {
                 "properties": {
