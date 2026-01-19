@@ -62,6 +62,13 @@ class LicenseFile(BaseModel):
         return self.start_date <= today <= self.end_date
 
 
+# Rebuild model to resolve forward references for UUID
+# Import UUID at module level for model_rebuild to find it
+from uuid import UUID as _UUID  # noqa: E402
+
+LicenseFile.model_rebuild(_types_namespace={"UUID": _UUID})
+
+
 class LicenseStatus(BaseModel):
     """Validation result for a license.
 

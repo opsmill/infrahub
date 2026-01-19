@@ -111,10 +111,12 @@ def _get_license_info() -> LicenseInfo | None:
 def _extract_date_from_filename(filepath: Path) -> str:
     """Extract date from telemetry filename."""
     # Format: telemetry-{deployment_id}-{date}.json
+    # Date is YYYY-MM-DD, so we need the last 3 parts after splitting by "-"
     name = filepath.stem
     parts = name.split("-")
     if len(parts) >= 3:
-        return parts[-1]
+        # Join the last 3 parts to reconstruct the date (YYYY-MM-DD)
+        return "-".join(parts[-3:])
     return "unknown"
 
 
