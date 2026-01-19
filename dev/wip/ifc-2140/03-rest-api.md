@@ -1,23 +1,25 @@
-# PR 3: REST API Endpoints for FileObject
+# PR 5: REST API Endpoints for FileObject
 
 **Jira:** IFC-2173, IFC-2176
 **Branch:** `feature/file-object-rest-api`
-**Dependencies:** PR 1 (schema), PR 2 (config)
+**Dependencies:** PR 1 (schema), PR 2 (config), PR 4 (GraphQL upload)
 
 ## Overview
 
-Add REST API endpoints for uploading and downloading file objects with:
+Add REST API endpoint for **downloading** file objects. Upload endpoint is **optional** - GraphQL is the primary upload method.
+
+Features:
 - Permission checks (unlike existing `/api/storage` endpoints)
-- File size validation
-- File metadata extraction (name, size, type, checksum)
+- File size validation (if upload is implemented)
+- Binary file support via `retrieve_binary()` method
+
+**Note:** The upload endpoint may not be implemented if GraphQL upload proves sufficient.
 
 ## Tasks
 
 ### Dependencies
 
-- [ ] Add `puremagic` to backend dependencies in `pyproject.toml`
-  - Pure Python library for MIME type detection via magic bytes
-  - No external dependencies, actively maintained (v1.30, July 2025)
+- `puremagic` already added in PR 4 (GraphQL upload) for MIME type detection
 
 ### Storage Layer - Binary Support
 
@@ -190,15 +192,14 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
 - The `node_kind` must inherit from `CoreFileObject` - validated at runtime
 - File size validation prevents DoS via large file uploads
 - Unlike `/api/storage`, these endpoints enforce permissions
-- The returned metadata (storage_id, checksum, etc.) is used to create the FileObject node
-- **Upload endpoint may be removed** if GraphQL upload (PR 5) proves to be the better approach - download will remain REST-only
+- **Download endpoint is required** - GraphQL cannot return binary data efficiently
+- **Upload endpoint is optional** - GraphQL upload (PR 4) is the primary method; REST upload may be skipped entirely
 
-## FileObject Node Creation Workflow
+## Workflow
 
-The workflow for creating a FileObject node is:
+**Primary workflow (GraphQL upload):**
+1. Create FileObject node via GraphQL mutation with `file` parameter → file uploaded and node created in one step
 
-1. **Upload file** via `POST /{node_kind}/upload` → returns `storage_id` and file metadata
-2. **Create node** via GraphQL mutation, passing `storage_id` to link to the uploaded file
-3. **System populates read-only attributes** (`file_name`, `checksum`, `file_size`, `file_type`) internally based on `storage_id`
-
-The `storage_id` attribute is NOT read-only, allowing it to be set via GraphQL mutations. This enables users to link nodes to uploaded files and update the link when uploading new file versions.
+**Fallback workflow (if REST upload is implemented):**
+1. Upload file via `POST /{node_kind}/upload` → returns `storage_id` and metadata
+2. Create node via GraphQL mutation with `storage_id` to link to the uploaded file

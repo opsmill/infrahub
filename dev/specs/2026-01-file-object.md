@@ -43,18 +43,21 @@ generics:
         optional: false
       - name: storage_id
         kind: Text
+        read_only: true
         optional: false
 ```
 
 The following attributes will have to be defined:
 
-- `file_name` (read-only, required) : the name of the file, as uploaded by the user
+- `file_name` (read-only, required): the name of the file, as uploaded by the user
 - `checksum` (read-only, required): SHA-1 checksum calculated on the uploaded file
 - `file_size` (read-only, required): the size of the file in bytes
-- `file_type` (read-only, required): the type of the file, derived from the uploaded file's file extension, or derived from the mime-type.
-- `storage_id` (required): the id of the uploaded file in Infrahub's storage - this is the only FileObject attribute that can be set via mutations to link the node to an uploaded file
+- `file_type` (read-only, required): the type of the file, detected from file content using magic bytes (via `puremagic`)
+- `storage_id` (read-only, required): the id of the uploaded file in Infrahub's storage - set automatically by the system when a file is uploaded via GraphQL mutation
 
-**Note:** The `storage_id` attribute only needs to remain writable if we keep REST upload as an option. If we use only the GraphQL combined mutation approach (with `file` parameter), `storage_id` could be made read-only since the system would set it automatically.
+All attributes are read-only because they are system-managed. When creating a FileObject via GraphQL mutation with the `file` parameter, the system automatically stores the file and sets all these attributes.
+
+**Fallback note:** If we need to fallback to REST API for file uploads, `storage_id` would need to be changed to writable (`read_only: false`) so users can link nodes to previously uploaded files via the two-step workflow.
 
 #### User-defined file object type
 
@@ -377,31 +380,7 @@ mutation($file: Upload!) {
 }
 ```
 
-##### Create with storage_id (Alternative - Two Steps)
-
-If the file was uploaded separately (via REST or standalone GraphQL mutation):
-
-```graphql
-mutation {
-  NetworkCircuitContractCreate(
-    data: {
-      # Read-only fields (file_name, checksum, file_size, file_type) do not appear in the mutation
-      # storage_id links the node to the previously uploaded file
-      storage_id: {value: "uuid-from-upload-response"},
-      circuit: {id: ""},
-      contract_start: {value: ""},
-      contract_end: {value: ""},
-      signed_by: {id: ""},
-    }
-  ) {
-    ok
-    __typename
-    object {
-      id
-    }
-  }
-}
-```
+**Note:** All FileObject attributes (`file_name`, `checksum`, `file_size`, `file_type`, `storage_id`) are read-only and do not appear in mutation inputs. The system sets them automatically when a file is provided via the `file` parameter.
 
 ##### Update with File Upload
 
@@ -493,7 +472,9 @@ When receiving this HTTP request, Infrahub should look up the CoreFileObject obj
 
 We can then validate that the user has the correct permission to view/download the `CoreFileObject` object.
 
-#### Upload FileObject (REST)
+#### Upload FileObject (REST - Optional Fallback)
+
+**Note:** REST upload is optional. GraphQL is the primary upload method (see below). This endpoint may be removed if GraphQL proves sufficient.
 
 ```text
 POST /api/CoreFileObject/upload
@@ -501,27 +482,11 @@ Body: {"file": "String"} # binary
 Return: {"identifier": {identifier}, "checksum": "String", "file_name": "String", "file_size": Number, "file_type": "String"}
 ```
 
-#### Upload FileObject (GraphQL)
+#### Upload FileObject (GraphQL - Primary Method)
 
-File uploads via GraphQL will be supported using a custom `Upload` scalar, following the [GraphQL Multipart Request Spec](https://github.com/jaydenseric/graphql-multipart-request-spec). The existing multipart parsing in Infrahub's GraphQL app will be leveraged.
+File uploads via GraphQL are the primary upload method. Files are attached directly when creating/updating FileObject nodes using a custom `Upload` scalar, following the [GraphQL Multipart Request Spec](https://github.com/jaydenseric/graphql-multipart-request-spec). The existing multipart parsing in Infrahub's GraphQL app will be leveraged.
 
-```graphql
-mutation FileObjectUpload($file: Upload!) {
-  FileObjectUpload(
-    node_kind: "NetworkCircuitContract"
-    file: $file
-  ) {
-    ok
-    storage_id
-    checksum
-    file_name
-    file_size
-    file_type
-  }
-}
-```
-
-This provides a GraphQL-native alternative to the REST upload endpoint. Both methods will be available.
+See the Mutations section above for examples of Create/Update mutations with the `file` parameter.
 
 **Note:** The `graphene-file-upload` library is unmaintained, so a custom `Upload` scalar implementation will be provided.
 
@@ -654,10 +619,10 @@ contract.save()
 
 - A known issue will occur when there is a merge conflict. For example, a branch was created after which a file object is updated in the main branch and the newly created branch. When opening a proposed change the user will be asked to resolve a conflict. Today conflict resolution works at the attribute or relationship level, not at the object-level. This means it is possible for the user to pick the checksum of the main branch and the storage_id of the other branch, invalidating the file object. For the first implementation this will be a documented limitation, but we should look at object level conflict resolution (new card to be created)
 - ~~What should be default file size limitation that we implement~~ **Decided:** 50 MB default
-- ~~Are we going to implement the file upload feature using the GraphQL API, or do we implement a separate REST API~~ **Decided:** Both will be supported
-  - REST API for simple HTTP clients, streaming, progress tracking
-  - GraphQL with custom `Upload` scalar for GraphQL-native clients (not using unmaintained `graphene-file-upload` library)
-  - New FileObject REST API endpoints enforce permissions (unlike existing `/api/storage`)
+- ~~Are we going to implement the file upload feature using the GraphQL API, or do we implement a separate REST API~~ **Decided:** GraphQL is the primary upload method
+  - GraphQL with custom `Upload` scalar - file attached directly in Create/Update mutations via `file` parameter (single-step workflow)
+  - REST upload endpoint is optional fallback; may be removed if GraphQL proves sufficient
+  - REST download endpoint required (GraphQL not suited for binary responses)
   - Storage layer will support binary files via new `retrieve_binary()` method
 
 ### Future considerations
