@@ -25,6 +25,7 @@ Add REST API endpoints for uploading and downloading file objects with:
 
 - [ ] Create `backend/infrahub/api/file_object.py`
   - [ ] Define router with prefix `/file-object`
+  - [ ] Use async endpoint functions (FastAPI handles sync storage calls via thread pool)
   - [ ] Define Pydantic models:
     - [ ] `FileObjectUploadResponse` (identifier, checksum, file_name, file_size, file_type)
   - [ ] Implement `GET /{node_kind}/object/{identifier}` endpoint (binary download)

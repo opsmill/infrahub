@@ -23,7 +23,7 @@ class InfrahubObjectStorage:
 ```
 
 **Characteristics:**
-- Synchronous methods (called from async FastAPI endpoints)
+- Synchronous methods (current API routes are also sync)
 - No delete method - storage entries are immutable
 - No branch awareness - flat key-value store by UUID
 - No deduplication - each upload gets new UUID
@@ -162,7 +162,8 @@ On merge:
 ### Async/Sync
 
 - Storage methods are synchronous (unchanged)
-- FastAPI handles calling sync code
+- Current API routes are sync, but new file object API routes should be async
+- FastAPI handles calling sync storage code from async endpoints via thread pool
 - Database queries are async
 
 ### Storage Cleanup (Future)
