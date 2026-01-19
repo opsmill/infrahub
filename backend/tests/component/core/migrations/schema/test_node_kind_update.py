@@ -2,16 +2,25 @@ from typing import Any
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipHierarchyDirection,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
@@ -329,3 +338,80 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
     )
     assert len(results) == 1, "Expected exactly one deleted edge on old node"
     assert results[0]["from_user_id"] == test_user_id
+
+
+async def test_migration_updates_number_pool_node_reference(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Test that NumberPool.node is updated when the referenced kind is renamed."""
+    # 1. Create and register a schema with a NumberPool attribute
+    device_schema = NodeSchema(
+        name="Device",
+        namespace="Test2",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(
+                name="asset_id",
+                kind="NumberPool",
+                optional=False,
+                unique=True,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1000, end_range=9999),
+            ),
+        ],
+    )
+    schema = SchemaRoot(nodes=[device_schema])
+    await load_schema(db=db, schema=schema)
+
+    # Register the CoreNumberPool type for pool operations
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+    # Create a device to trigger pool creation
+    device = await Node.init(db=db, schema="Test2Device")
+    await device.new(db=db, name="device-01")
+    await device.save(db=db)
+
+    # 2. Verify the NumberPool was created with node="Test2Device"
+    pools = await registry.manager.query(
+        db=db,
+        branch=default_branch,
+        schema=InfrahubKind.NUMBERPOOL,
+        filters={"node": {"value": "Test2Device"}},
+    )
+    assert len(pools) == 1
+    original_pool = pools[0]
+    assert original_pool.node.value == "Test2Device"
+    pool_id = original_pool.id
+
+    # 3. Run NodeKindUpdateMigration to rename Test2Device -> Test2NetworkDevice
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema_branch.duplicate()
+    old_device_schema = candidate_schema.get(name="Test2Device")
+    candidate_schema.delete(name="Test2Device")
+    old_device_schema.name = "NetworkDevice"
+    candidate_schema.set(name="Test2NetworkDevice", schema=old_device_schema)
+    assert old_device_schema.kind == "Test2NetworkDevice"
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="Test2Device"),
+        new_node_schema=old_device_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NetworkDevice", field_name="name"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+    # Should have migrated 1 node + 1 pool update
+    assert execution_result.nbr_migrations_executed == 2
+
+    # 4. Verify the NumberPool.node attribute was updated to "Test2NetworkDevice"
+    updated_pool = await NodeManager.get_one(db=db, branch=default_branch, id=pool_id)
+    assert updated_pool.node.value == "Test2NetworkDevice"
+
+    # 5. Verify pools with new kind name exist
+    pools_with_new_name = await registry.manager.query(
+        db=db,
+        branch=default_branch,
+        schema=InfrahubKind.NUMBERPOOL,
+        filters={"node": {"value": "Test2NetworkDevice"}},
+    )
+    assert len(pools_with_new_name) == 1
+    assert pools_with_new_name[0].id == pool_id
