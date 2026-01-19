@@ -46,9 +46,9 @@ test.describe("Repository - Creation and objects view", () => {
       await page.getByRole("button", { name: "Integrations" }).click();
       await page.getByRole("menuitem", { name: "Git Repositories" }).click();
       await expect(page.getByRole("heading", { name: "Git Repository" })).toBeVisible();
-      await page.getByRole("link", { name: "test-read-only-repo" }).click();
+      await page.getByRole("link", { name: REPO_NAME }).click();
 
-      await expect(page.getByRole("heading", { name: "test-read-only-repo" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: REPO_NAME })).toBeVisible();
     });
 
     await test.step("trigger connectivity action", async () => {
