@@ -433,6 +433,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/telemetry/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Telemetry Status
+         * @description Get telemetry configuration and status.
+         *
+         *     Returns the current telemetry configuration including whether telemetry
+         *     is enabled, the storage path, and retention settings.
+         */
+        get: operations["get_telemetry_status_api_telemetry_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/telemetry/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Telemetry Files
+         * @description List available local telemetry files.
+         *
+         *     Shows all telemetry files stored locally on the Infrahub instance,
+         *     including their dates and sizes.
+         */
+        get: operations["list_telemetry_files_api_telemetry_list_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/telemetry/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Telemetry
+         * @description Export telemetry data for airgapped transfer.
+         *
+         *     This endpoint exports locally stored telemetry data into a format
+         *     suitable for manual transfer to OpsMill for airgapped environments.
+         *
+         *     Args:
+         *         from_date: Optional start date for export range (YYYY-MM-DD)
+         *         to_date: Optional end date for export range (YYYY-MM-DD)
+         *         export_all: If true, export all available data regardless of date range
+         */
+        get: operations["export_telemetry_api_telemetry_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transform/python/{transform_id}": {
         parameters: {
             query?: never;
@@ -1563,6 +1637,27 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /**
+         * LicenseInfo
+         * @description License information for telemetry responses.
+         */
+        LicenseInfo: {
+            /** License Id */
+            license_id?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Deployment Id */
+            deployment_id?: string | null;
+            /** Product Tier */
+            product_tier?: string | null;
+            /** Support Tier */
+            support_tier?: string | null;
+            /**
+             * Valid
+             * @default false
+             */
+            valid: boolean;
+        };
         /** LoggingSettings */
         LoggingSettings: {
             /**
@@ -1606,6 +1701,39 @@ export interface components {
              * @default https://telemetry.opsmill.cloud/infrahub
              */
             telemetry_endpoint: string;
+            /**
+             * Telemetry Dev Interval Minutes
+             * @description Override telemetry interval for development (minutes). When set, telemetry runs at this interval instead of daily.
+             */
+            telemetry_dev_interval_minutes?: number | null;
+            /**
+             * Telemetry Storage Path
+             * @description Path for local telemetry storage
+             * @default /var/lib/infrahub/telemetry
+             */
+            telemetry_storage_path: string;
+            /**
+             * Telemetry Storage Retention Days
+             * @description Number of days to retain local telemetry files
+             * @default 90
+             */
+            telemetry_storage_retention_days: number;
+            /**
+             * License File Path
+             * @description Path to the license file (JSON)
+             */
+            license_file_path?: string | null;
+            /**
+             * License Signing Key
+             * @description Secret key for license signature verification (PoC only)
+             */
+            license_signing_key?: string | null;
+            /**
+             * License Skip Signature Validation
+             * @description Skip license signature validation (development only)
+             * @default false
+             */
+            license_skip_signature_validation: boolean;
             /**
              * Permission Backends
              * @description List of modules to handle permissions, they will be run in the given order
@@ -2245,6 +2373,71 @@ export interface components {
         SchemasLoadAPI: {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
+        };
+        /**
+         * TelemetryExportResponse
+         * @description Response for telemetry export endpoint.
+         */
+        TelemetryExportResponse: {
+            /**
+             * Export Version
+             * @default 1.0
+             */
+            export_version: string;
+            /** Exported At */
+            exported_at: string;
+            license?: components["schemas"]["LicenseInfo"] | null;
+            /** Snapshots */
+            snapshots?: components["schemas"]["TelemetrySnapshot"][];
+        };
+        /**
+         * TelemetryFileInfo
+         * @description Information about a local telemetry file.
+         */
+        TelemetryFileInfo: {
+            /** Date */
+            date: string;
+            /** Filename */
+            filename: string;
+            /** Size */
+            size: string;
+        };
+        /**
+         * TelemetryListResponse
+         * @description Response for listing local telemetry files.
+         */
+        TelemetryListResponse: {
+            /** Files */
+            files?: components["schemas"]["TelemetryFileInfo"][];
+        };
+        /**
+         * TelemetrySnapshot
+         * @description A single telemetry snapshot in export format.
+         */
+        TelemetrySnapshot: {
+            /** Date */
+            date: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * TelemetryStatusResponse
+         * @description Response for telemetry status endpoint.
+         */
+        TelemetryStatusResponse: {
+            /** Enabled */
+            enabled: boolean;
+            /** Storage Path */
+            storage_path: string;
+            /** Retention Days */
+            retention_days: number;
+            /** Files Count */
+            files_count: number;
+            /** Latest File */
+            latest_file?: string | null;
+            license?: components["schemas"]["LicenseInfo"] | null;
         };
         /** TextAttributeParameters */
         TextAttributeParameters: {
@@ -3178,6 +3371,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_telemetry_status_api_telemetry_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryStatusResponse"];
+                };
+            };
+        };
+    };
+    list_telemetry_files_api_telemetry_list_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryListResponse"];
+                };
+            };
+        };
+    };
+    export_telemetry_api_telemetry_export_get: {
+        parameters: {
+            query?: {
+                /** @description Start date for export range (YYYY-MM-DD) */
+                from_date?: string | null;
+                /** @description End date for export range (YYYY-MM-DD) */
+                to_date?: string | null;
+                /** @description Export all available telemetry data */
+                all?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryExportResponse"];
                 };
             };
             /** @description Validation Error */
