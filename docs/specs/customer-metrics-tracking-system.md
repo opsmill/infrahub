@@ -85,7 +85,7 @@ OpsMill needs a system to collect, store, and analyze telemetry data from paid I
 - `backend/infrahub/license/models.py` - Pydantic models: `LicenseFile`, `LicenseStatus`, `LicenseTelemetryData`
 - `backend/infrahub/license/loader.py` - License loading with caching: `get_current_license()`, `load_license_from_file()`
 - `backend/infrahub/license/validator.py` - Signature and date validation
-- Configuration: `INFRAHUB_LICENSE_FILE`, `INFRAHUB_LICENSE_SIGNING_KEY`, `INFRAHUB_LICENSE_SKIP_SIGNATURE_VALIDATION`
+- Configuration: `INFRAHUB_LICENSE_FILE_PATH`, `INFRAHUB_LICENSE_SIGNING_KEY`, `INFRAHUB_LICENSE_SKIP_SIGNATURE_VALIDATION`
 
 ### Extended Telemetry ✅ Implemented
 

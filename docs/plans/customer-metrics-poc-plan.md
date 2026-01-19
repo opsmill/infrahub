@@ -782,48 +782,48 @@ Added to `backend/infrahub/config.py`:
 
 ```python
 class MainSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     # ... existing fields ...
 
     # Telemetry development mode
     telemetry_dev_interval_minutes: int | None = Field(
         default=None,
         description="Override telemetry interval for development (minutes)",
-        validation_alias=AliasChoices("INFRAHUB_TELEMETRY_DEV_INTERVAL", "telemetry_dev_interval_minutes"),
     )
 
     # Telemetry local storage
     telemetry_storage_path: str = Field(
         default="/var/lib/infrahub/telemetry",
         description="Path for local telemetry storage",
-        validation_alias=AliasChoices("INFRAHUB_TELEMETRY_STORAGE_PATH", "telemetry_storage_path"),
     )
     telemetry_storage_retention_days: int = Field(
         default=90,
         description="Number of days to retain local telemetry files",
-        validation_alias=AliasChoices(
-            "INFRAHUB_TELEMETRY_STORAGE_RETENTION_DAYS", "telemetry_storage_retention_days"
-        ),
     )
 
     # License configuration
     license_file_path: str | None = Field(
         default=None,
         description="Path to the license file (JSON)",
-        validation_alias=AliasChoices("INFRAHUB_LICENSE_FILE", "license_file_path"),
     )
     license_signing_key: str | None = Field(
         default=None,
         description="Secret key for license signature verification (PoC only)",
-        validation_alias=AliasChoices("INFRAHUB_LICENSE_SIGNING_KEY", "license_signing_key"),
     )
     license_skip_signature_validation: bool = Field(
         default=False,
         description="Skip license signature validation (development only)",
-        validation_alias=AliasChoices(
-            "INFRAHUB_LICENSE_SKIP_SIGNATURE_VALIDATION", "license_skip_signature_validation"
-        ),
     )
 ```
+
+**Environment Variables** (automatically generated from field names with `INFRAHUB_` prefix):
+
+- `INFRAHUB_TELEMETRY_DEV_INTERVAL_MINUTES`
+- `INFRAHUB_TELEMETRY_STORAGE_PATH`
+- `INFRAHUB_TELEMETRY_STORAGE_RETENTION_DAYS`
+- `INFRAHUB_LICENSE_FILE_PATH`
+- `INFRAHUB_LICENSE_SIGNING_KEY`
+- `INFRAHUB_LICENSE_SKIP_SIGNATURE_VALIDATION`
 
 #### 5.3.3 Telemetry Local Storage ✅
 
@@ -1313,10 +1313,10 @@ GF_SECURITY_ADMIN_PASSWORD=admin
 
 ```bash
 # Enable 5-minute telemetry for testing
-INFRAHUB_TELEMETRY_DEV_INTERVAL=5
+INFRAHUB_TELEMETRY_DEV_INTERVAL_MINUTES=5
 
 # License file path
-INFRAHUB_LICENSE_FILE=/path/to/license.json
+INFRAHUB_LICENSE_FILE_PATH=/path/to/license.json
 
 # Local telemetry storage
 INFRAHUB_TELEMETRY_STORAGE_PATH=/var/lib/infrahub/telemetry
@@ -1407,10 +1407,10 @@ The following components have been implemented in the `feature/customer-metrics-
 
 **Configuration** (`backend/infrahub/config.py`):
 
-- `INFRAHUB_TELEMETRY_DEV_INTERVAL` - Override telemetry interval for testing
+- `INFRAHUB_TELEMETRY_DEV_INTERVAL_MINUTES` - Override telemetry interval for testing
 - `INFRAHUB_TELEMETRY_STORAGE_PATH` - Local storage path (default: `/var/lib/infrahub/telemetry`)
 - `INFRAHUB_TELEMETRY_STORAGE_RETENTION_DAYS` - Retention period (default: 90 days)
-- `INFRAHUB_LICENSE_FILE` - Path to license JSON file
+- `INFRAHUB_LICENSE_FILE_PATH` - Path to license JSON file
 - `INFRAHUB_LICENSE_SIGNING_KEY` - Secret key for PoC signature validation
 - `INFRAHUB_LICENSE_SKIP_SIGNATURE_VALIDATION` - Skip validation in development
 

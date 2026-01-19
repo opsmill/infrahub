@@ -33,6 +33,12 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_ANONYMOUS_ACCESS_ROLE` | Name of the role defining which permissions anonymous users have | string | Anonymous User |
 | `INFRAHUB_TELEMETRY_OPTOUT` | Disable anonymous usage reporting | boolean | False |
 | `INFRAHUB_TELEMETRY_ENDPOINT` | None | string | https://telemetry.opsmill.cloud/infrahub |
+| `INFRAHUB_TELEMETRY_DEV_INTERVAL_MINUTES` | Override telemetry interval for development (minutes). When set, telemetry runs at this interval instead of daily. | None | None |
+| `INFRAHUB_TELEMETRY_STORAGE_PATH` | Path for local telemetry storage | string | /var/lib/infrahub/telemetry |
+| `INFRAHUB_TELEMETRY_STORAGE_RETENTION_DAYS` | Number of days to retain local telemetry files | integer | 90 |
+| `INFRAHUB_LICENSE_FILE_PATH` | Path to the license file (JSON) | None | None |
+| `INFRAHUB_LICENSE_SIGNING_KEY` | Secret key for license signature verification (PoC only) | None | None |
+| `INFRAHUB_LICENSE_SKIP_SIGNATURE_VALIDATION` | Skip license signature validation (development only) | boolean | False |
 | `INFRAHUB_PERMISSION_BACKENDS` | List of modules to handle permissions, they will be run in the given order | array[string] | ['infrahub.permissions.LocalPermissionBackend'] |
 | `INFRAHUB_PUBLIC_URL` | Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure. | None | None |
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
