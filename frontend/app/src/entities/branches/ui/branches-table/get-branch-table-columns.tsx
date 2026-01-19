@@ -13,8 +13,6 @@ import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 
-import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
-
 const columnHelper = createColumnHelper<BranchListItem>();
 
 export function getBranchIdentifierColumn(): ColumnDef<BranchListItem, string> {
@@ -50,15 +48,7 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
       header: () => (
         <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.proposed_changes} />
       ),
-      cell: ({ row, table }) => {
-        const proposedChangesByBranch = table.options.meta?.proposedChangesByBranch ?? {};
-        const branchName = row.original.name;
-        const proposedChanges = proposedChangesByBranch[branchName] ?? [];
-
-        return (
-          <BranchProposedChangesCell branchName={branchName} proposedChanges={proposedChanges} />
-        );
-      },
+      cell: ({ row }) => <BranchProposedChangesCell branchName={row.original.name} />,
     }),
     columnHelper.accessor("branched_from", {
       id: "branched_from",
@@ -97,10 +87,4 @@ export function getBranchTableColumns(): Array<ColumnDef<BranchListItem>> {
     ...getBranchFieldsColumns(),
     getBranchActionsColumn(),
   ];
-}
-
-declare module "@tanstack/react-table" {
-  interface TableMeta<TData> {
-    proposedChangesByBranch?: Record<string, ProposedChangeItem[]>;
-  }
 }
