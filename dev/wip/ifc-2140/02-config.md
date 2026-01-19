@@ -40,10 +40,6 @@ Add `max_file_size` configuration setting to StorageSettings to limit file uploa
 
 - [ ] Run `uv run invoke backend.test-unit` to run all unit tests including new ones
 - [ ] Run `uv run invoke backend.test-component` to run all component tests
-- [ ] Manually test with environment variable:
-  ```bash
-  INFRAHUB_STORAGE_MAX_FILE_SIZE=50 uv run python -c "from infrahub import config; print(config.SETTINGS.storage.max_file_size)"
-  ```
 
 ## Reference Files
 
