@@ -671,6 +671,8 @@ contract.save()
   - Should be defined in the schema
   - Special type of attribute kind?
   - How do we handle migrations?
+  - **Note:** MIME type detection uses `puremagic` library to detect type from file content (magic bytes), not just extension. This enables reliable filtering based on actual file content.
+- MIME type filtering configuration: Add global config option to allow or block certain MIME types from being uploaded (e.g., `storage.allowed_mime_types` or `storage.blocked_mime_types`)
 
 ## Frontend Scope
 

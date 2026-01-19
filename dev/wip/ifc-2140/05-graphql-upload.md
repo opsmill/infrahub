@@ -52,6 +52,8 @@ Implement a custom `Upload` scalar for Graphene that:
     - [ ] Store file via `registry.storage.store()`
     - [ ] Return upload metadata (storage_id, checksum, file_name, file_size, file_type)
 
+**Note:** MIME type detection uses `puremagic` library (added in PR 3) to detect type from file content magic bytes, not just extension.
+
 - [ ] Modify `backend/infrahub/graphql/mutations/__init__.py`
   - [ ] Register `FileObjectUpload` mutation
 

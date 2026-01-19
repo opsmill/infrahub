@@ -263,3 +263,10 @@ GraphQL returns metadata only; binary download uses REST.
 2. **Deduplication**: Should we add deduplication later to save storage space?
    - Can be added in a future iteration if needed
    - Would require lookup by checksum before storing
+
+## Future Enhancements
+
+1. **MIME type filtering**: Add configuration option to allow or exclude uploads based on MIME type
+   - Could be global setting (e.g., `storage.allowed_mime_types` or `storage.blocked_mime_types`)
+   - Could also be per-FileObject-type setting in schema (e.g., only allow PDFs for `NetworkCircuitContract`)
+   - Would use `puremagic` detection to enforce rules based on actual content, not just extension

@@ -13,6 +13,12 @@ Add REST API endpoints for uploading and downloading file objects with:
 
 ## Tasks
 
+### Dependencies
+
+- [ ] Add `puremagic` to backend dependencies in `pyproject.toml`
+  - Pure Python library for MIME type detection via magic bytes
+  - No external dependencies, actively maintained (v1.30, July 2025)
+
 ### Storage Layer - Binary Support
 
 **Note:** Current `InfrahubObjectStorage.retrieve()` decodes to string, breaking binary files. Need to add binary retrieval.
@@ -49,7 +55,7 @@ Add REST API endpoints for uploading and downloading file objects with:
     - [ ] Generate new identifier (UUID)
     - [ ] Calculate checksum (SHA-1) from bytes
     - [ ] Extract file_name from upload
-    - [ ] Detect file_type (MIME type) from upload or file extension
+    - [ ] Detect file_type (MIME type) using `puremagic` from file content (magic bytes), with fallback to extension
     - [ ] Calculate file_size from bytes length
     - [ ] Store file bytes via `registry.storage.store()`
     - [ ] Return upload response with all metadata
@@ -80,7 +86,8 @@ Add REST API endpoints for uploading and downloading file objects with:
     - [ ] Test upload permission denied - returns 403
     - [ ] Test upload with invalid node_kind (not inheriting CoreFileObject) - returns 400
     - [ ] Test upload extracts correct file_name from upload
-    - [ ] Test upload detects correct file_type (MIME)
+    - [ ] Test upload detects correct file_type (MIME) via magic bytes using puremagic
+    - [ ] Test upload detects MIME type even with wrong/missing file extension
     - [ ] Test upload calculates correct file_size
   - [ ] **Binary download tests:**
     - [ ] Test download binary file - returns exact bytes uploaded
