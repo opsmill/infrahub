@@ -660,6 +660,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             branch = registry.get_global_branch()
+            hierarchy_level = 1
         elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
             branch = registry.get_global_branch()
             hierarchy_level = 0
