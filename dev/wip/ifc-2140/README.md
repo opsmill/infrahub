@@ -70,4 +70,7 @@ uv run invoke backend.generate
 
 # Generate GraphQL schema (after schema changes)
 uv run invoke schema.generate-graphqlschema
+
+# Generate frontend GraphQL types (after GraphQL schema changes)
+cd frontend/app && npm run codegen:graphql
 ```

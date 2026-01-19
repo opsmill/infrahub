@@ -38,6 +38,12 @@ Add the CoreFileObject generic schema definition to the core schema. This is the
 
 - [x] Run `uv run invoke backend.generate` to regenerate backend schema files
 - [x] Run `uv run invoke schema.generate-graphqlschema` to regenerate GraphQL schema
+- [x] Run frontend GraphQL type regeneration (required by CI):
+  ```bash
+  cd frontend/app
+  npm run codegen:graphql
+  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts
+  ```
 - [x] Run `uv run invoke backend.test-unit` to ensure no regressions
 - [x] Run `uv run invoke backend.test-component` to ensure no regressions
 - [x] Manually verify CoreFileObject appears in generated schema
