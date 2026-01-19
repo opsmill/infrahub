@@ -53,19 +53,22 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
 
   return (
     <TableCell className="h-auto min-h-14">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <LinkButton
           variant="outline"
           size="sm"
           to={detailUrl}
-          className="truncate rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
+          className="max-w-40 rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
         >
-          <Icon icon={getSchemaIcon(schema)} className="mr-1 text-custom-blue-800" />
-          {firstPC.node.name.value}
+          <Icon icon={getSchemaIcon(schema)} className="mr-1 shrink-0 text-custom-blue-800" />
+          <span className="truncate">{firstPC.node.name.value}</span>
         </LinkButton>
 
         {remainingCount > 0 && (
-          <Link to={listUrl} className="whitespace-nowrap text-gray-500 text-sm hover:underline">
+          <Link
+            to={listUrl}
+            className="shrink-0 whitespace-nowrap text-gray-500 text-sm hover:underline"
+          >
             +{remainingCount} more
           </Link>
         )}

@@ -45,6 +45,8 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
     }) as ColumnDef<BranchListItem>,
     columnHelper.display({
       id: "proposed_changes",
+      size: 250,
+      minSize: 250,
       header: () => (
         <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.proposed_changes} />
       ),
