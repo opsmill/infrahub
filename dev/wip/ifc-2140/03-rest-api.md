@@ -167,8 +167,8 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
    - Return metadata to client for use when creating FileObject node
 
 2. **Download retrieves from storage**
-   - Call `registry.storage.retrieve(identifier=storage_id)`
-   - Storage layer returns the file content
+   - Call `registry.storage.retrieve_binary(identifier=storage_id)`
+   - Storage layer returns the raw file bytes (not decoded to string)
 
 3. **No deduplication**
    - Each upload creates a new storage entry
@@ -184,3 +184,14 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
 - File size validation prevents DoS via large file uploads
 - Unlike `/api/storage`, these endpoints enforce permissions
 - The returned metadata (storage_id, checksum, etc.) is used to create the FileObject node
+- **Upload endpoint may be removed** if GraphQL upload (PR 5) proves to be the better approach - download will remain REST-only
+
+## FileObject Node Creation Workflow
+
+The workflow for creating a FileObject node is:
+
+1. **Upload file** via `POST /{node_kind}/upload` → returns `storage_id` and file metadata
+2. **Create node** via GraphQL mutation, passing `storage_id` to link to the uploaded file
+3. **System populates read-only attributes** (`file_name`, `checksum`, `file_size`, `file_type`) internally based on `storage_id`
+
+The `storage_id` attribute is NOT read-only, allowing it to be set via GraphQL mutations. This enables users to link nodes to uploaded files and update the link when uploading new file versions.

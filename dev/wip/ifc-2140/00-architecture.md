@@ -87,6 +87,8 @@ Version control is handled by Infrahub's database, not storage.
 7. User creates FileObject node with returned metadata
 ```
 
+**Note:** Step 7 creates the FileObject node via GraphQL mutation, passing `storage_id` to link it to the uploaded file. The `storage_id` attribute is NOT read-only, so it can be set via mutations. The other metadata attributes (`file_name`, `checksum`, `file_size`, `file_type`) are read-only and populated by the system based on the `storage_id`.
+
 ### File Update (New Version)
 
 ```
@@ -142,7 +144,7 @@ On merge:
 - [ ] Extract file metadata (name, size, type)
 - [ ] Enforce file size limits (`config.SETTINGS.storage.max_file_size`)
 - [ ] Store file via `registry.storage.store()`
-- [ ] Retrieve file via `registry.storage.retrieve()`
+- [ ] Retrieve file via `registry.storage.retrieve_binary()`
 - [ ] Check permissions on the node kind
 
 ### Database Handles Version Control
@@ -188,10 +190,11 @@ Future garbage collection would need to:
 | Branch isolation | CoreFileObject nodes | None (automatic) |
 | Time navigation | Infrahub Database | None (automatic) |
 | File size limits | REST API + Config | New (PR 2 + PR 3) |
-| Permissions | REST API | New (PR 3) |
+| Permissions | REST API + GraphQL | New (PR 3 + PR 5) |
 | File metadata | CoreFileObject schema | New (PR 1) |
+| GraphQL upload | Custom Upload scalar | New (PR 5) |
 
-## GraphQL File Upload Consideration
+## GraphQL File Upload
 
 ### Current State
 
@@ -199,46 +202,64 @@ Infrahub's GraphQL app (`backend/infrahub/graphql/app.py`) **already supports mu
 
 However:
 - **No `Upload` scalar defined** - Graphene doesn't have a built-in Upload type
-- **graphene-file-upload library is unmaintained** - No updates in 12+ months
-- Would need to define a custom `Upload` scalar to accept files in mutations
+- **graphene-file-upload library is unmaintained** - Not an option
 
-### Options
+### Decision
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **REST API only** | Simple, well-understood, already planned | Two APIs (REST for upload, GraphQL for CRUD) |
-| **GraphQL with custom Upload scalar** | Single API, consistent with mutations | Extra work, custom scalar needed |
-| **graphene-file-upload library** | Ready-made solution | Unmaintained dependency |
+**Implement a custom `Upload` scalar for Graphene** (PR 5).
 
-### Recommendation
+This provides:
+1. Single API for all operations (upload, CRUD, download metadata)
+2. Consistent with GraphQL-first approach
+3. No unmaintained dependencies
+4. Leverages existing multipart parsing in the GraphQL app
 
-**Use REST API for file upload/download, GraphQL for FileObject CRUD.**
+### Upload Options
 
-Reasons:
-1. REST is natural for file transfers (binary data, streaming, progress)
-2. GraphQL mutations handle the FileObject metadata (storage_id, relationships)
-3. Avoids adding unmaintained dependency
-4. Simpler implementation
+Both REST and GraphQL upload will be implemented initially:
 
-### Workflow with REST + GraphQL
+| Method | Endpoint | Use Case |
+|--------|----------|----------|
+| REST | `POST /api/file-object/{kind}/upload` | Simple HTTP clients, streaming, progress |
+| GraphQL | `mutation FileObjectUpload(file: Upload!)` | GraphQL-native clients, consistent API |
 
+**Note:** If GraphQL upload proves to be the better approach, the REST upload endpoint may be removed by the end of this feature implementation. Download will remain REST-only since GraphQL is not suited for binary responses.
+
+**Note:** The `storage_id` attribute is currently writable (not read-only) to support the two-step REST upload workflow. If REST upload is removed in favor of GraphQL-only, `storage_id` could be made read-only since the system would set it automatically when a file is provided via the `file` parameter.
+
+### Workflow Options
+
+**Option 1: GraphQL Combined Mutation (Primary - Single Step)**
 ```
-1. POST /api/file-object/{kind}/upload → returns {identifier, checksum, ...}
-2. mutation FileObjectCreate(data: {storage_id: "...", ...}) → creates node
-3. GET /api/file-object/{kind}/object/{id} → downloads file
+mutation Create(data: {...}, file: $file) → creates node with file in one operation
+```
+The Create/Update/Upsert mutations for CoreFileObject types accept an optional `file` parameter.
+When provided, the system stores the file and sets all FileObject attributes automatically.
+
+**Option 2: REST Upload + GraphQL Create (Two Steps)**
+```
+1. POST /api/file-object/{kind}/upload → returns {storage_id, checksum, ...}
+2. mutation Create(data: {storage_id: "...", ...}) → creates node
 ```
 
-This is similar to how other systems (S3 + metadata DB, GitHub releases) work.
+**Option 3: GraphQL Standalone Upload + GraphQL Create (Two Steps)**
+```
+1. mutation FileObjectUpload(file: $file) → returns {storage_id, checksum, ...}
+2. mutation Create(data: {storage_id: "...", ...}) → creates node
+```
+
+**Download: REST Only**
+```
+GET /api/file-object/{kind}/object/{id} → downloads file binary
+```
+
+GraphQL returns metadata only; binary download uses REST.
 
 ## Open Questions
 
 1. **Storage cleanup**: When/how to delete unreferenced storage entries?
    - Out of scope for initial implementation
 
-2. **GraphQL file upload**: Should we add a custom Upload scalar for GraphQL mutations?
-   - Recommendation: Not for initial implementation, REST is sufficient
-   - Can be added later if needed
-
-3. **Deduplication**: Should we add deduplication later to save storage space?
+2. **Deduplication**: Should we add deduplication later to save storage space?
    - Can be added in a future iteration if needed
    - Would require lookup by checksum before storing

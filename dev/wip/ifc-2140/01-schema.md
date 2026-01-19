@@ -19,7 +19,7 @@ Add the CoreFileObject generic schema definition to the core schema. This is the
     - [ ] `checksum` attribute (Text, read_only=True, optional=False)
     - [ ] `file_size` attribute (Number, read_only=True, optional=False)
     - [ ] `file_type` attribute (Text, read_only=True, optional=False)
-    - [ ] `storage_id` attribute (Text, read_only=True, optional=False)
+    - [ ] `storage_id` attribute (Text, optional=False) - NOT read_only so users can set it via mutations
   - [ ] Set `allow_override=AllowOverrideType.NONE` for all attributes
   - [ ] Add appropriate description and label
 
@@ -53,6 +53,9 @@ Add the CoreFileObject generic schema definition to the core schema. This is the
 
 ## Notes
 
-- All attributes are marked `read_only=True` because they are system-managed (computed from uploaded file)
+- `file_name`, `checksum`, `file_size`, `file_type` are marked `read_only=True` because they are system-managed (computed from uploaded file)
+- `storage_id` is NOT read_only - users must set it via mutations to link the node to an uploaded file
 - All attributes are marked `optional=False` because they are required for a valid file object
 - `allow_override=AllowOverrideType.NONE` prevents inheriting schemas from overriding these attributes
+
+**Note:** The `storage_id` attribute only needs to remain writable (not read-only) if we keep the REST upload as an option. If we end up using only the GraphQL combined mutation approach (with `file` parameter), `storage_id` could be made read-only since the system would set it automatically.

@@ -40,10 +40,13 @@ No code changes should be needed - only tests to verify the behavior.
     - [ ] Test query returns `file_name`, `checksum`, `file_size`, `file_type`, `storage_id`
   - [ ] Mutation input tests:
     - [ ] Test `TestFileContractCreate` mutation exists
-    - [ ] Test `TestFileContractCreate` input does NOT include read-only fields
+    - [ ] Test `TestFileContractCreate` input does NOT include read-only fields (`file_name`, `checksum`, `file_size`, `file_type`)
+    - [ ] Test `TestFileContractCreate` input DOES include `storage_id` (not read-only)
     - [ ] Test `TestFileContractCreate` input DOES include custom fields
     - [ ] Test `TestFileContractUpdate` input does NOT include read-only fields
+    - [ ] Test `TestFileContractUpdate` input DOES include `storage_id`
     - [ ] Test `TestFileContractUpsert` input does NOT include read-only fields
+    - [ ] Test `TestFileContractUpsert` input DOES include `storage_id`
     - [ ] Test `TestFileContractDelete` mutation exists
   - [ ] Filter tests:
     - [ ] Test `file_name__value` filter exists
@@ -95,13 +98,14 @@ query {
 ### Mutation (for user-defined type)
 
 ```graphql
-# Create - NO read-only fields
+# Create - read-only fields excluded, but storage_id is required
 mutation {
   TestFileContractCreate(data: {
+    storage_id: { value: "uuid-from-upload-response" }  # Required to link to uploaded file
     contract_start: { value: "2026-01-01" }
     contract_end: { value: "2026-12-31" }
     signed_by: { id: "..." }
-    # file_name, checksum, file_size, file_type, storage_id NOT HERE
+    # file_name, checksum, file_size, file_type NOT HERE (read-only)
   }) {
     ok
     object { id }
@@ -129,3 +133,28 @@ query {
 - This PR adds tests to verify existing behavior - no code changes expected
 - If tests fail, it indicates a bug in the GraphQL schema manager that needs fixing
 - The pattern follows existing tests in `backend/tests/unit/graphql/`
+
+## Workflow Clarification
+
+The FileObject workflow has two options:
+
+### Option 1: Combined Mutation with File (Primary - Single Step)
+
+1. **Create FileObject node** via GraphQL mutation with `file` parameter
+2. System stores file and sets all FileObject attributes automatically
+
+```graphql
+mutation($file: Upload!) {
+  TestFileContractCreate(data: {...}, file: $file) {
+    ok
+    object { id, storage_id { value } }
+  }
+}
+```
+
+### Option 2: Separate Upload (Two Steps)
+
+1. **Upload file** via REST or GraphQL → get `storage_id`
+2. **Create FileObject node** via GraphQL mutation, passing `storage_id`
+
+The `storage_id` attribute is NOT read-only, allowing users to set it manually when using the two-step workflow.
