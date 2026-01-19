@@ -54,7 +54,6 @@ Use the checkboxes in each PR file to track implementation progress.
 - [Feature Specification](../../specs/2026-01-file-object.md) - Full feature specification
 - [Backend Guidelines](../../guidelines/backend/python.md) - Coding standards
 - [Backend Testing Guidelines](../../knowledge/backend/testing.md) - Testing standards
-- [Modifying Schema Guide](../../guides/modifying-schema.md) - Schema change workflow and code regeneration
 
 ## Commands
 
