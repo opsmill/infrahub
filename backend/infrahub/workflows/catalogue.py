@@ -75,7 +75,9 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     name="anonymous_telemetry_send",
     type=WorkflowType.INTERNAL,
-    cron=f"{random.randint(0, 59)} 2 * * *",
+    # Cron schedule is set dynamically in build_workflows_definitions() to support
+    # dev interval override and random minute offset for production deployments
+    cron=None,
     module="infrahub.telemetry.tasks",
     function="send_telemetry_push",
 )

@@ -45,4 +45,7 @@ def test_workflows_sorted() -> None:
     ordered_workflows = [
         catalogue_attr for catalogue_attr in catalogue_attrs if isinstance(catalogue_attr, WorkflowDefinition)
     ]
-    assert ordered_workflows == get_workflows(), "The list of workflows isn't sorted alphabetically"
+    # Compare by name only since some workflows have dynamically generated cron schedules
+    ordered_names = [w.name for w in ordered_workflows]
+    workflow_names = [w.name for w in get_workflows()]
+    assert ordered_names == workflow_names, "The list of workflows isn't sorted alphabetically"
