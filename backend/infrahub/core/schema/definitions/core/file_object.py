@@ -46,6 +46,7 @@ core_file_object = GenericSchema(
             name="storage_id",
             kind="Text",
             description="The ID of the uploaded file in Infrahub's storage",
+            read_only=True,
             optional=False,
             allow_override=AllowOverrideType.NONE,
         ),

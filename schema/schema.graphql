@@ -2489,8 +2489,6 @@ input CoreFileObjectUpdateInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  """The ID of the uploaded file in Infrahub's storage"""
-  storage_id: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
