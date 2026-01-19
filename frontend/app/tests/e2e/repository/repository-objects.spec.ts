@@ -64,13 +64,13 @@ test.describe("Repository - Creation and objects view", () => {
 
     await test.step("trigger latest commit action", async () => {
       await page.getByTestId("object-details-menu").click();
-      await page.getByRole("menuitem", { name: "Import latest from remote" }).click();
+      await page.getByRole("menuitem", { name: "Import latest commit" }).click();
       await expect(page.getByText("Import from remote started.")).toBeVisible();
     });
 
     await test.step("trigger current commit from remote action", async () => {
       await page.getByTestId("object-details-menu").click();
-      await page.getByRole("menuitem", { name: "Import current commit" }).click();
+      await page.getByRole("menuitem", { name: "Reimport current commit" }).click();
       await expect(page.getByText("Import of current commit")).toBeVisible();
     });
   });
