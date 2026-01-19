@@ -22,12 +22,9 @@ Guidelines for constructing URLs and paths including:
 
 ## Related Documentation
 
-### Architecture
+### Knowledge (How the system works)
 - `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui)
 
-### Guides
+### Guides (How to do X)
 - `dev/guides/frontend/writing-unit-tests.md` - How to write unit tests for TypeScript functions
 - `dev/guides/frontend/writing-component-tests.md` - How to write React component tests
-
-### Project Files
-- `frontend/app/AGENTS.md` - Frontend project overview and quick reference
