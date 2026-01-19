@@ -1,8 +1,10 @@
 import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router";
 import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { queryClient } from "@/shared/api/rest/client";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -70,12 +72,18 @@ export function RepositoryActionsMenu({
     },
     onCompleted: async (data) => {
       if (data?.InfrahubRepositoryProcess?.ok) {
-        toast(
-          <Alert
-            type={ALERT_TYPES.SUCCESS}
-            message='Import from remote started. You can view its status on the "Tasks" tab.'
-          />
+        const taskId = data.InfrahubRepositoryProcess.task?.id;
+        const message = taskId ? (
+          <>
+            Import from remote started.{" "}
+            <Link to={constructPath(`/tasks/${taskId}`)} className="underline">
+              View task details
+            </Link>
+          </>
+        ) : (
+          'Import from remote started. You can view its status on the "Tasks" tab.'
         );
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       } else {
         toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to start import from remote." />);
@@ -94,12 +102,18 @@ export function RepositoryActionsMenu({
     },
     onCompleted: async (data) => {
       if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
-        toast(
-          <Alert
-            type={ALERT_TYPES.SUCCESS}
-            message='Import of current commit started. You can view its status on the "Tasks" tab.'
-          />
+        const taskId = data.InfrahubReadOnlyRepositoryImportLastCommit.task?.id;
+        const message = taskId ? (
+          <>
+            Import of current commit started.{" "}
+            <Link to={constructPath(`/tasks/${taskId}`)} className="underline">
+              View task details
+            </Link>
+          </>
+        ) : (
+          'Import of current commit started. You can view its status on the "Tasks" tab.'
         );
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
         await queryClient.invalidateQueries({
           queryKey: objectQueryKeys.all,
         });
