@@ -15,7 +15,7 @@ export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElem
 }
 
 const defaultGridTemplateColumns = (columnCount: number) =>
-  `minmax(auto, 400px) repeat(${columnCount - 2}, auto) 2.5rem`;
+  `minmax(auto, 400px) auto minmax(150px, 200px) repeat(${columnCount - 4}, auto) 2.5rem`;
 
 export function BranchesDataTable({
   columns,
