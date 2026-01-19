@@ -50,7 +50,7 @@ generics:
 The following attributes will have to be defined:
 
 - `file_name` (read-only, required) : the name of the file, as uploaded by the user
-- `checksum` (read-only, required): checksum (md5 or sha1) calculated on the uploaded file
+- `checksum` (read-only, required): SHA-1 checksum calculated on the uploaded file
 - `file_size` (read-only, required): the size of the file in bytes
 - `file_type` (read-only, required): the type of the file, derived from the uploaded file’s file extension, or derived from the mime-type.
 - `storage_id` (read-only, required): the id of the uploaded file in Infrahub’s storage

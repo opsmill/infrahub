@@ -80,7 +80,7 @@ Version control is handled by Infrahub's database, not storage.
 ```
 1. User uploads file via REST API
 2. System generates new UUID as storage_id
-3. System calculates checksum (MD5)
+3. System calculates checksum (SHA-1)
 4. System extracts file metadata (name, size, type from upload)
 5. File stored in storage backend
 6. Return: storage_id, checksum, file_name, file_size, file_type
@@ -138,7 +138,7 @@ On merge:
 ### REST API Must Handle
 
 - [ ] Generate UUID for new uploads
-- [ ] Calculate checksum (MD5)
+- [ ] Calculate checksum (SHA-1)
 - [ ] Extract file metadata (name, size, type)
 - [ ] Enforce file size limits (`config.SETTINGS.storage.max_file_size`)
 - [ ] Store file via `registry.storage.store()`

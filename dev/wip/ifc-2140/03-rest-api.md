@@ -46,7 +46,7 @@ Add REST API endpoints for uploading and downloading file objects with:
     - [ ] Validate file size against `config.SETTINGS.storage.max_file_size`
     - [ ] Read file content as **bytes** (not decoded)
     - [ ] Generate new identifier (UUID)
-    - [ ] Calculate checksum (MD5) from bytes
+    - [ ] Calculate checksum (SHA-1) from bytes
     - [ ] Extract file_name from upload
     - [ ] Detect file_type (MIME type) from upload or file extension
     - [ ] Calculate file_size from bytes length
@@ -123,7 +123,7 @@ file: <binary>
 Response 200:
 {
   "identifier": "uuid",
-  "checksum": "md5-hash",
+  "checksum": "sha1-hash",
   "file_name": "original-filename.pdf",
   "file_size": 12345,
   "file_type": "application/pdf"
