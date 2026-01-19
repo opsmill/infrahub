@@ -53,6 +53,7 @@ from .m048_undelete_rel_props import Migration048
 from .m049_remove_is_visible_relationship import Migration049
 from .m050_backfill_vertex_metadata import Migration050
 from .m051_subtract_branched_from_microsecond import Migration051
+from .m052_fix_global_branch_level import Migration052
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -110,6 +111,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration049,
     Migration050,
     Migration051,
+    Migration052,
 ]
 
 
