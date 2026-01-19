@@ -8,7 +8,7 @@ import {
 } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 
 export interface ToolBarRemoveFromGroupActionProps
-  extends Omit<DissociateRelationshipModalProps, "open" | "setOpen"> {}
+  extends Omit<DissociateRelationshipModalProps, "isOpen" | "onOpenChange"> {}
 
 export function ToolbarDissociateAction({
   objectId,
@@ -30,8 +30,8 @@ export function ToolbarDissociateAction({
         relationshipIds={relationshipIds}
         relationshipLabel={relationshipLabel}
         relationshipName={relationshipName}
-        open={isOpen}
-        setOpen={setIsOpen}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
       />
     </>
   );

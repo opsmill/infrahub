@@ -38,6 +38,7 @@ from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
+from ..query.link_proposed_change import EnrichedDiffLinkProposedChangeQuery
 from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
 from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
@@ -70,6 +71,7 @@ class DiffRepository:
         max_depth: int | None = None,
         tracking_id: TrackingId | None = None,
         diff_ids: list[str] | None = None,
+        proposed_change_id: str | None = None,
     ) -> list[EnrichedDiffRoot]:
         self.deserializer.initialize()
         final_row_number = None
@@ -91,6 +93,7 @@ class DiffRepository:
                 offset=offset,
                 tracking_id=tracking_id,
                 diff_ids=diff_ids,
+                proposed_change_id=proposed_change_id,
             )
             log.info(f"Beginning enriched diff get query {batch_size_limit=}, {offset=}")
             await get_query.execute(db=self.db)
@@ -118,6 +121,7 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         diff_ids: list[str] | None = None,
         include_empty: bool = False,
+        proposed_change_id: str | None = None,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
         batch_size_limit = int(config.SETTINGS.database.query_size_limit / 10)
@@ -134,6 +138,7 @@ class DiffRepository:
             offset=offset or 0,
             tracking_id=tracking_id,
             diff_ids=diff_ids,
+            proposed_change_id=proposed_change_id,
         )
         if not include_empty:
             diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
@@ -365,6 +370,7 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         filters: dict | None = None,
+        proposed_change_id: str | None = None,
     ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
@@ -374,6 +380,7 @@ class DiffRepository:
             from_time=from_time,
             to_time=to_time,
             tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
         )
         await query.execute(db=self.db)
         return query.get_summary()
@@ -384,6 +391,14 @@ class DiffRepository:
 
     async def delete_diff_roots(self, diff_root_uuids: list[str]) -> None:
         query = await EnrichedDiffDeleteQuery.init(db=self.db, enriched_diff_root_uuids=diff_root_uuids)
+        await query.execute(db=self.db)
+
+    async def link_to_proposed_change(self, diff_uuids: list[str], proposed_change_id: str) -> None:
+        query = await EnrichedDiffLinkProposedChangeQuery.init(
+            db=self.db,
+            diff_uuids=diff_uuids,
+            proposed_change_id=proposed_change_id,
+        )
         await query.execute(db=self.db)
 
     async def get_time_ranges(
@@ -443,6 +458,7 @@ class DiffRepository:
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
+        proposed_change_id: str | None = None,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
             db=self.db,
@@ -451,11 +467,14 @@ class DiffRepository:
             from_time=from_time,
             to_time=to_time,
             tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
         )
         await query.execute(db=self.db)
         diff_roots = []
-        for neo4j_node in query.get_root_nodes_metadata():
-            diff_roots.append(self.deserializer.build_diff_root_metadata(root_node=neo4j_node))
+        for neo4j_node, pc_id in query.get_root_nodes_metadata():
+            diff_roots.append(
+                self.deserializer.build_diff_root_metadata(root_node=neo4j_node, proposed_change_id=pc_id)
+            )
         return diff_roots
 
     async def diff_has_conflicts(

@@ -10,6 +10,9 @@ development_files: &development_files
   - "development/**"
   - "tasks/**"
 
+dev_guidelines:
+  - "dev/**"
+
 backend_files: &backend_files
   - "backend/**"
 

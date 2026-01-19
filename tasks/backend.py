@@ -91,11 +91,19 @@ def lint(context: Context) -> None:
 
 
 @task(optional=["database"])
-def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
             exec_cmd += " --neo4j"
+        print(f"{exec_cmd}")
+        return execute_command(context=context, command=f"{exec_cmd}")
+
+
+@task
+def test_unit(context: Context) -> Result | None:
+    with context.cd(ESCAPED_REPO_PATH):
+        exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
 
@@ -103,7 +111,7 @@ def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")

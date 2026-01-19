@@ -182,10 +182,8 @@ function Accounts() {
       <ModalDeleteObject
         label={schemaKindName[ACCOUNT_GENERIC_OBJECT]}
         rowToDelete={rowToDelete}
-        open={!!rowToDelete}
-        close={() => {
-          setRowToDelete(null);
-        }}
+        isOpen={!!rowToDelete}
+        onOpenChange={(open) => !open && setRowToDelete(null)}
         onDelete={() => globalRefetch()}
       />
 
