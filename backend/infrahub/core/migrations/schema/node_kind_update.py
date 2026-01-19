@@ -93,7 +93,7 @@ class NodeKindUpdateMigration(SchemaMigration):
                 name_attr = pool.get_attribute(name="name")
                 old_prefix = f"{old_kind}."
                 if name_attr.value.startswith(old_prefix):
-                    name_attr.value = f"{new_kind}.{name_attr.value[len(old_prefix):]}"
+                    name_attr.value = f"{new_kind}.{name_attr.value[len(old_prefix) :]}"
                     fields_to_save.append("name")
 
                 await pool.save(db=db, fields=fields_to_save, at=migration_input.at)
