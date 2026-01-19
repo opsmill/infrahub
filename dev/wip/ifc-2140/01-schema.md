@@ -12,35 +12,35 @@ Add the CoreFileObject generic schema definition to the core schema. This is the
 
 ### Schema Definition
 
-- [ ] Create `backend/infrahub/core/schema/definitions/core/file_object.py`
-  - [ ] Import required modules (`GenericSchema`, `AttributeSchema`, `AllowOverrideType`, `BranchSupportType`)
-  - [ ] Define `core_file_object` GenericSchema with:
-    - [ ] `file_name` attribute (Text, read_only=True, optional=False)
-    - [ ] `checksum` attribute (Text, read_only=True, optional=False)
-    - [ ] `file_size` attribute (Number, read_only=True, optional=False)
-    - [ ] `file_type` attribute (Text, read_only=True, optional=False)
-    - [ ] `storage_id` attribute (Text, optional=False) - NOT read_only so users can set it via mutations
-  - [ ] Set `allow_override=AllowOverrideType.NONE` for all attributes
-  - [ ] Add appropriate description and label
+- [x] Create `backend/infrahub/core/schema/definitions/core/file_object.py`
+  - [x] Import required modules (`GenericSchema`, `AttributeSchema`, `AllowOverrideType`)
+  - [x] Define `core_file_object` GenericSchema with:
+    - [x] `file_name` attribute (Text, read_only=True, optional=False)
+    - [x] `checksum` attribute (Text, read_only=True, optional=False)
+    - [x] `file_size` attribute (Number, read_only=True, optional=False)
+    - [x] `file_type` attribute (Text, read_only=True, optional=False)
+    - [x] `storage_id` attribute (Text, optional=False) - NOT read_only so users can set it via mutations
+  - [x] Set `allow_override=AllowOverrideType.NONE` for all attributes
+  - [x] Add appropriate description and label
 
 ### Registration
 
-- [ ] Modify `backend/infrahub/core/schema/definitions/core/__init__.py`
-  - [ ] Add import: `from .file_object import core_file_object`
-  - [ ] Add `core_file_object` to `core_models_mixed["generics"]` list
+- [x] Modify `backend/infrahub/core/schema/definitions/core/__init__.py`
+  - [x] Add import: `from .file_object import core_file_object`
+  - [x] Add `core_file_object` to `core_models_mixed["generics"]` list
 
 ### Constants
 
-- [ ] Modify `backend/infrahub/core/constants/infrahubkind.py`
-  - [ ] Add `FILEOBJECT = "CoreFileObject"` constant
+- [x] Modify `backend/infrahub/core/constants/infrahubkind.py`
+  - [x] Add `FILEOBJECT = "CoreFileObject"` constant
 
 ### Verification
 
-- [ ] Run `uv run invoke backend.generate` to regenerate backend schema files
-- [ ] Run `uv run invoke schema.generate-graphqlschema` to regenerate GraphQL schema
-- [ ] Run `uv run invoke backend.test-unit` to ensure no regressions
-- [ ] Run `uv run invoke backend.test-component` to ensure no regressions
-- [ ] Manually verify CoreFileObject appears in generated schema
+- [x] Run `uv run invoke backend.generate` to regenerate backend schema files
+- [x] Run `uv run invoke schema.generate-graphqlschema` to regenerate GraphQL schema
+- [x] Run `uv run invoke backend.test-unit` to ensure no regressions
+- [x] Run `uv run invoke backend.test-component` to ensure no regressions
+- [x] Manually verify CoreFileObject appears in generated schema
 
 ## Reference Files
 
