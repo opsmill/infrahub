@@ -10613,10 +10613,6 @@ type NestedPaginatedProfileIpamNamespace {
 }
 
 type Node {
-  """The node display label"""
-  display_label: String
-  """The HFID of the node"""
-  hfid: [String!]
   id: String!
   """The node kind"""
   kind: String!
