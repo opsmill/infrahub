@@ -4,8 +4,8 @@ import { Link } from "react-router";
 import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { queryClient } from "@/shared/api/rest/client";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
