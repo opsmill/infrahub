@@ -32,7 +32,6 @@ import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 
@@ -189,7 +188,7 @@ interface NodeAttributeFieldProps {
 const NodeAttributeField = ({ field }: NodeAttributeFieldProps) => {
   const form = useFormContext();
 
-  const { schema } = useCoreSchema(NODE_TRIGGER_RULE);
+  const { schema } = useSchema(NODE_TRIGGER_RULE, { required: true });
   const selectedTriggerField: FormAttributeValue = form.watch("trigger");
 
   const { data, isPending } = useGetObject({

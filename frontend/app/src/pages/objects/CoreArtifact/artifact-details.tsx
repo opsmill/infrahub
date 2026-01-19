@@ -8,12 +8,12 @@ import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
-import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ArtifactDetailsPage = () => {
   useTitle("Artifact");
   const { artifactId } = useParams();
-  const { schema: artifactSchema } = useCoreSchema(ARTIFACT_OBJECT);
+  const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT, { required: true });
   const { isPending, error, data: permission } = useGetObjectPermissions(ARTIFACT_OBJECT);
 
   if (isPending) {

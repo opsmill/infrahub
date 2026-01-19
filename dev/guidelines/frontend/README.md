@@ -22,8 +22,8 @@ Guidelines for constructing URLs and paths including:
 
 ### [Schema Hooks](./schema-hooks.md)
 
-Guidelines for using schema resolution hooks including:
-- When to use `useSchema` vs `useCoreSchema`
+Guidelines for using the schema resolution hook including:
+- Optional vs required mode (`required: true` parameter)
 - Type narrowing with discriminated unions
 - Common patterns for schema access
 

@@ -2,39 +2,60 @@
 
 > Part of: `dev/guidelines/frontend/` | Index: [Frontend Guidelines](./README.md)
 
-Guidelines for using schema resolution hooks in the React frontend.
+Guidelines for using the schema resolution hook in the React frontend.
 
 ## Overview
 
-Schema hooks provide type-safe access to Infrahub schemas with discriminated union return types for compile-time type narrowing.
+The `useSchema` hook provides type-safe access to Infrahub schemas with discriminated union return types for compile-time type narrowing. It supports both optional (nullable) and required (non-nullable) modes.
 
-## Hooks
+## Hook
 
-### `useSchema(kind)`
+### `useSchema(kind, options?)`
 
 **Location:** `frontend/app/src/entities/schema/ui/hooks/useSchema.ts`
 
-General-purpose hook for retrieving any schema by kind. Returns a discriminated union that handles nullable schemas.
+Hook for retrieving schemas by kind with optional required behavior.
 
-**When to use:**
-- When the schema kind is dynamic or user-provided
-- When the schema may or may not exist
-- When you need to handle all schema types (node, generic, profile, template)
-
-**Signature:**
+**Signatures:**
 ```typescript
-useSchema(kind: string | null | undefined): SchemaResult
+// Optional mode (nullable schema)
+useSchema(kind: string | null | undefined, options?: { required?: false }): SchemaResult
+
+// Required mode (non-nullable schema, throws if not found)
+useSchema(kind: string, options: { required: true }): RequiredSchemaResult
 ```
 
-**Return type:**
+**Return types:**
+
 ```typescript
+// SchemaResult - includes null case
 type SchemaResult =
   | { schema: NodeSchema; isNode: true; isGeneric: false; isProfile: false; isTemplate: false; }
   | { schema: GenericSchema; isGeneric: true; isNode: false; isProfile: false; isTemplate: false; }
   | { schema: ProfileSchema; isProfile: true; isNode: false; isGeneric: false; isTemplate: false; }
   | { schema: TemplateSchema; isTemplate: true; isNode: false; isGeneric: false; isProfile: false; }
   | { schema: null; isNode: false; isGeneric: false; isProfile: false; isTemplate: false; }
+
+// RequiredSchemaResult - no null case, throws if missing
+type RequiredSchemaResult =
+  | { schema: ModelSchema; isNode: true; isGeneric: false; isProfile: false; isTemplate: false; }
+  | { schema: ModelSchema; isGeneric: true; isNode: false; isProfile: false; isTemplate: false; }
+  | { schema: ModelSchema; isProfile: true; isNode: false; isGeneric: false; isTemplate: false; }
+  | { schema: ModelSchema; isTemplate: true; isNode: false; isGeneric: false; isProfile: false; }
 ```
+
+---
+
+## Usage
+
+### Optional Mode (Default)
+
+Use when the schema might not exist and you need to handle the null case.
+
+**When to use:**
+- Schema kind is dynamic or user-provided
+- Schema may not exist
+- Need to display error/fallback UI when schema is missing
 
 **Example:**
 ```typescript
@@ -56,78 +77,57 @@ function MyComponent({ schemaKind }: { schemaKind: string | null }) {
 }
 ```
 
-**Key features:**
-- Accepts `string | null | undefined` for flexibility
-- Returns discriminated union for type-safe narrowing
-- Schema can be `null` if not found or kind is nullish
+### Required Mode
 
----
-
-### `useCoreSchema(kind)`
-
-**Location:** `frontend/app/src/entities/schema/ui/hooks/useCoreSchema.ts`
-
-Specialized hook for Core namespace schemas that are guaranteed to exist in the system.
+Use when the schema is guaranteed to exist and you want to fail fast if missing.
 
 **When to use:**
-- For built-in Core schemas like `CoreProposedChange`, `CoreBranch`, `CoreAccount`, etc.
-- When you know the schema must exist and want to avoid null checks
-- When you want to fail fast if a Core schema is unexpectedly missing
-
-**Signature:**
-```typescript
-useCoreSchema(kind: string): CoreSchemaResult
-```
-
-**Return type:**
-```typescript
-type CoreSchemaResult =
-  | { schema: ModelSchema; isNode: true; isGeneric: false; isProfile: false; isTemplate: false; }
-  | { schema: ModelSchema; isGeneric: true; isNode: false; isProfile: false; isTemplate: false; }
-  | { schema: ModelSchema; isProfile: true; isNode: false; isGeneric: false; isTemplate: false; }
-  | { schema: ModelSchema; isTemplate: true; isNode: false; isGeneric: false; isProfile: false; }
-```
+- Built-in Core schemas (`CoreProposedChange`, `CoreBranch`, `CoreAccount`, etc.)
+- System-level schemas that must exist
+- Want to catch configuration/loading errors early
 
 **Example:**
 ```typescript
-import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 function ProposedChangeDetails() {
   // No need to check for null - throws if schema not found
-  const { schema, isNode } = useCoreSchema("CoreProposedChange");
+  const { schema, isNode } = useSchema("CoreProposedChange", { required: true });
 
   return <div>{schema.name}</div>;
 }
 ```
 
 **Key features:**
-- Throws error if schema not found (Core schemas should always exist)
+- Throws error if schema not found
 - Returns non-nullable schema (no null case in discriminated union)
-- Provides better type safety for Core schema usage
-- Fail-fast behavior catches configuration/loading errors early
+- Better type safety - no need for null checks
+- Fail-fast behavior catches errors early
 
 ---
 
-## Choosing Between Hooks
+## Choosing Between Modes
 
-| Scenario | Hook to use | Reason |
-|----------|-------------|--------|
-| Core namespace schema (`CoreProposedChange`, `CoreBranch`, etc.) | `useCoreSchema` | Guaranteed to exist, no null checks needed |
-| User-defined schema kind from props/state | `useSchema` | May not exist, handle null case |
-| Dynamic schema kind from URL params | `useSchema` | May be invalid, handle null case |
-| Schema from user input/selection | `useSchema` | May not exist, handle null case |
-| Built-in system schema | `useCoreSchema` | Should always exist, fail fast if missing |
+| Scenario | Mode to use | Example |
+|----------|-------------|---------|
+| Core namespace schema (`CoreProposedChange`, `CoreBranch`, etc.) | `required: true` | `useSchema("CoreBranch", { required: true })` |
+| User-defined schema kind from props/state | Optional (default) | `useSchema(userProvidedKind)` |
+| Dynamic schema kind from URL params | Optional (default) | `useSchema(params.kind)` |
+| Schema from user input/selection | Optional (default) | `useSchema(selectedKind)` |
+| Built-in system schema | `required: true` | `useSchema("CoreAccount", { required: true })` |
+
+---
 
 ## Type Narrowing Pattern
 
-Both hooks return discriminated unions with boolean flags for type narrowing:
+Both modes return discriminated unions with boolean flags for type narrowing:
 
 ```typescript
 const { schema, isNode, isGeneric, isProfile, isTemplate } = useSchema(kind);
 
+// Optional mode - check for null first
 if (!schema) {
-  // Handle missing schema
-  return null;
+  return <NotFound />;
 }
 
 if (isNode) {
@@ -143,15 +143,17 @@ if (isGeneric) {
 
 **Best practice:** Check the most specific type first (e.g., `isNode` before falling back to generic checks).
 
+---
+
 ## Common Patterns
 
-### Pattern: Core Schema Access
+### Pattern: Core/System Schema Access
 
 ```typescript
-// ✅ Good: Use useCoreSchema for Core schemas
-const { schema } = useCoreSchema("CoreProposedChange");
+// ✅ Good: Use required mode for Core schemas
+const { schema } = useSchema("CoreProposedChange", { required: true });
 
-// ❌ Bad: Using useSchema requires unnecessary null check
+// ❌ Bad: Using optional mode requires unnecessary null check
 const { schema } = useSchema("CoreProposedChange");
 if (!schema) return null; // This should never happen for Core schemas
 ```
@@ -159,7 +161,7 @@ if (!schema) return null; // This should never happen for Core schemas
 ### Pattern: Dynamic Schema Lookup
 
 ```typescript
-// ✅ Good: Use useSchema for dynamic kinds
+// ✅ Good: Use optional mode for dynamic kinds
 function ObjectCard({ kind }: { kind: string | null }) {
   const { schema } = useSchema(kind);
 
@@ -210,6 +212,43 @@ if (isProfile || isTemplate) {
   return <MetaObjectDetails schema={schema} />;
 }
 ```
+
+### Pattern: Required Mode with Core Schemas
+
+```typescript
+// ✅ Good: Core schemas with required mode
+function BranchList() {
+  const { schema } = useSchema("CoreBranch", { required: true });
+
+  return <ObjectTable schema={schema} />;
+}
+
+// ✅ Good: Multiple Core schemas
+function ProposedChangeWidget() {
+  const { schema: pcSchema } = useSchema("CoreProposedChange", { required: true });
+  const { schema: branchSchema } = useSchema("CoreBranch", { required: true });
+
+  return <Widget schemas={{ pc: pcSchema, branch: branchSchema }} />;
+}
+```
+
+---
+
+## Migration from useCoreSchema
+
+The deprecated `useCoreSchema` hook has been replaced by `useSchema` with `required: true`:
+
+```typescript
+// ❌ Old (deprecated)
+import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
+const { schema } = useCoreSchema("CoreProposedChange");
+
+// ✅ New
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+const { schema } = useSchema("CoreProposedChange", { required: true });
+```
+
+---
 
 ## Related
 

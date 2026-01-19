@@ -8,7 +8,7 @@ import { QSP } from "@/shared/config/qsp";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
-import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 interface BranchProposedChangesCellProps {
@@ -16,8 +16,8 @@ interface BranchProposedChangesCellProps {
 }
 
 export function BranchProposedChangesCell({ branchName }: BranchProposedChangesCellProps) {
-  // Use Core schema hook - guaranteed to exist for Core namespace objects
-  const { schema } = useCoreSchema(PROPOSED_CHANGE_OBJECT);
+  // Use required schema - guaranteed to exist for Core namespace objects
+  const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { required: true });
 
   // Query proposed changes for this specific branch
   const { data: proposedChangesData } = useGetProposedChanges({

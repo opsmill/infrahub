@@ -27,7 +27,7 @@ import { useGetProposedChangeDetails } from "@/entities/proposed-changes/domain/
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
-import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 
@@ -101,7 +101,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
 
 export function Component() {
   const { proposedChangeId } = useParams() as { proposedChangeId: string };
-  const { schema } = useCoreSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { required: true });
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
 

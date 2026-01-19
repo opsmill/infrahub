@@ -7,14 +7,14 @@ import { HomeCard } from "@/entities/homepage/ui/home-card";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { ProposedChangesTableHomepage } from "@/entities/proposed-changes/ui/proposed-changes-table-homepage";
-import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ProposedChangesWidgetProps {
   className?: string;
 }
 
 export const ProposedChangesWidget = ({ className }: ProposedChangesWidgetProps) => {
-  const { schema: proposedChangeSchema } = useCoreSchema(PROPOSED_CHANGE_OBJECT);
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT, { required: true });
 
   return (
     <HomeCard className={className}>
