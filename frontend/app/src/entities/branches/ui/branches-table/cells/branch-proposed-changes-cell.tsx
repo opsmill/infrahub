@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { QSP } from "@/shared/config/qsp";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { useCoreSchema } from "@/entities/schema/ui/hooks/useCoreSchema";
@@ -41,10 +41,10 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
   const remainingCount = proposedChanges.length - 1;
 
   // URL for first proposed change detail
-  const detailUrl = constructPath(`/proposed-changes/${firstPC.id}`);
+  const detailUrl = getObjectDetailsUrl(PROPOSED_CHANGE_OBJECT, firstPC.id);
 
   // URL for filtered list (if more than one)
-  const listUrl = constructPath("/proposed-changes", [
+  const listUrl = getObjectDetailsUrl(PROPOSED_CHANGE_OBJECT, undefined, [
     {
       name: QSP.FILTER,
       value: JSON.stringify([{ name: "source_branch__value", value: branchName }]),
