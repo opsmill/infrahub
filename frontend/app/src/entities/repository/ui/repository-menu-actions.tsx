@@ -38,7 +38,7 @@ export function RepositoryMenuSection({
   const isUpdateAllowed = permission.update.isAllowed;
 
   return (
-    <MenuSection>
+    <MenuSection title="Repository">
       <MenuItem onAction={onCheckConnectivity}>
         <Icon icon="mdi:access-point" />
         Check connectivity
