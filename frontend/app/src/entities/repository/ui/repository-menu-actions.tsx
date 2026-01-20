@@ -1,27 +1,36 @@
 import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
+import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Link } from "@/shared/components/ui/link";
+import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
+  IMPORT_READONLY_REPOSITORY_LAST_COMMIT,
   REIMPORT_LAST_COMMIT,
 } from "@/entities/repository/api/actions";
+import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 interface RepositoryMenuSectionProps {
   onCheckConnectivity: () => void;
-  onReimportLastCommit: () => void;
+  onImportLatestCommit: () => void;
+  onReimportCurrentCommit?: () => void;
 }
 
 export function RepositoryMenuSection({
   onCheckConnectivity,
-  onReimportLastCommit,
+  onImportLatestCommit,
+  onReimportCurrentCommit,
 }: RepositoryMenuSectionProps) {
   return (
     <MenuSection title="Repository">
@@ -30,44 +39,96 @@ export function RepositoryMenuSection({
         Check connectivity
       </MenuItem>
 
-      <MenuItem onAction={onReimportLastCommit}>
-        <Icon icon="mdi:reload" />
-        Reimport last commit
+      <MenuItem onAction={onImportLatestCommit}>
+        <Icon icon="mdi:source-commit" />
+        Import latest commit
       </MenuItem>
+
+      {onReimportCurrentCommit && (
+        <MenuItem onAction={onReimportCurrentCommit}>
+          <Icon icon="mdi:reload" />
+          Reimport current commit
+        </MenuItem>
+      )}
     </MenuSection>
   );
 }
 
 interface RepositoryActionsMenuProps {
   repositoryId: string;
+  objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
 }
 
 export function RepositoryActionsMenu({
   repositoryId,
+  objectSchema,
   onCheckConnectivity,
 }: RepositoryActionsMenuProps) {
+  const isReadOnlyRepository = isOfKind(READONLY_REPOSITORY_KIND, objectSchema);
+
   const [reimportLastCommit] = useMutation(REIMPORT_LAST_COMMIT, {
     variables: {
       repositoryId,
     },
     onCompleted: async (data) => {
       if (data?.InfrahubRepositoryProcess?.ok) {
-        toast(
-          <Alert
-            type={ALERT_TYPES.SUCCESS}
-            message='Reimport of last commit started. You can view its status on the "Tasks" tab.'
-          />
+        const taskId = data.InfrahubRepositoryProcess.task?.id;
+        const message = taskId ? (
+          <>
+            Import from remote started.
+            <br />
+            <Link
+              to={constructPath(`/tasks/${taskId}`)}
+              className="inline-flex items-center gap-1 underline"
+            >
+              View task <ArrowUpRightIcon className="size-3.5" />
+            </Link>
+          </>
+        ) : (
+          'Import from remote started. You can view its status on the "Tasks" tab.'
         );
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       } else {
+        toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to start import from remote." />);
+      }
+    },
+    onError: (error) => {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message={`Error importing from remote: ${error.message}`} />
+      );
+    },
+  });
+
+  const [importCurrentCommit] = useMutation(IMPORT_READONLY_REPOSITORY_LAST_COMMIT, {
+    variables: {
+      id: repositoryId,
+    },
+    onCompleted: async (data) => {
+      if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
+        const taskId = data.InfrahubReadOnlyRepositoryImportLastCommit.task?.id;
+        const message = taskId ? (
+          <>
+            Import of current commit started.
+            <br />
+            <Link
+              to={constructPath(`/tasks/${taskId}`)}
+              className="inline-flex items-center gap-1 underline"
+            >
+              View task <ArrowUpRightIcon className="size-3.5" />
+            </Link>
+          </>
+        ) : (
+          'Import of current commit started. You can view its status on the "Tasks" tab.'
+        );
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
+        await queryClient.invalidateQueries({
+          queryKey: objectQueryKeys.all,
+        });
+      } else {
         toast(
-          <Alert
-            type={ALERT_TYPES.ERROR}
-            message={
-              data?.InfrahubRepositoryProcess?.message || "Failed to start reimport of last commit."
-            }
-          />
+          <Alert type={ALERT_TYPES.ERROR} message="Failed to start import of current commit." />
         );
       }
     },
@@ -75,7 +136,7 @@ export function RepositoryActionsMenu({
       toast(
         <Alert
           type={ALERT_TYPES.ERROR}
-          message={`Error reimporting last commit: ${error.message}`}
+          message={`Error importing current commit: ${error.message}`}
         />
       );
     },
@@ -84,7 +145,8 @@ export function RepositoryActionsMenu({
   return (
     <RepositoryMenuSection
       onCheckConnectivity={onCheckConnectivity}
-      onReimportLastCommit={() => reimportLastCommit()}
+      onImportLatestCommit={() => reimportLastCommit()}
+      onReimportCurrentCommit={isReadOnlyRepository ? () => importCurrentCommit() : undefined}
     />
   );
 }
