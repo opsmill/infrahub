@@ -36,7 +36,6 @@ export function RepositoryMenuSection({
 	onReimportCurrentCommit,
 	permission,
 }: RepositoryMenuSectionProps) {
-	console.log("permission: ", permission);
 	const isUpdateAllowed = permission.update.isAllowed;
 	const tooltipMessage = permission.update.message;
 
