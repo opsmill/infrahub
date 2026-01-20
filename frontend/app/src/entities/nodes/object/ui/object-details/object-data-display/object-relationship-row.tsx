@@ -6,7 +6,9 @@ import { Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 
+import { InlineEdit } from "@/entities/nodes/object/ui/object-details/object-data-display/inline-edit";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { ProfileSourceIcon } from "@/entities/nodes/object/ui/object-details/object-data-display/profile-source-icon";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeRelationshipManyWithMetadata,
@@ -21,6 +23,8 @@ interface ObjectRelationshipRowProps {
   relationshipSchema: RelationshipSchema;
   relationshipData: NodeRelationshipWithMetadata;
   permission: Permission;
+  objectKind: string;
+  objectId: string;
   onClickMetadata?: (relationship: RelationshipSchema) => void;
 }
 
@@ -28,6 +32,8 @@ export function ObjectRelationshipRow({
   relationshipSchema,
   relationshipData,
   permission,
+  objectKind,
+  objectId,
   onClickMetadata,
 }: ObjectRelationshipRowProps) {
   const relationshipLabel = relationshipSchema.label ?? relationshipSchema.name;
@@ -39,6 +45,8 @@ export function ObjectRelationshipRow({
         relationshipData={relationshipData as NodeRelationshipOneWithMetadata}
         relationshipLabel={relationshipLabel}
         permission={permission}
+        objectKind={objectKind}
+        objectId={objectId}
         onClickMetadata={onClickMetadata}
       />
     );
@@ -46,8 +54,13 @@ export function ObjectRelationshipRow({
 
   return (
     <RelationshipManyRow
+      relationshipSchema={relationshipSchema}
       relationshipData={relationshipData as NodeRelationshipManyWithMetadata}
       relationshipLabel={relationshipLabel}
+      permission={permission}
+      objectKind={objectKind}
+      objectId={objectId}
+      onClickMetadata={onClickMetadata}
     />
   );
 }
@@ -57,6 +70,8 @@ interface RelationshipOneRowProps {
   relationshipData: NodeRelationshipOneWithMetadata;
   relationshipLabel: string;
   permission: Permission;
+  objectKind: string;
+  objectId: string;
   onClickMetadata?: (relationship: RelationshipSchema) => void;
 }
 
@@ -65,6 +80,8 @@ function RelationshipOneRow({
   relationshipData,
   relationshipLabel,
   permission,
+  objectKind,
+  objectId,
   onClickMetadata,
 }: RelationshipOneRowProps) {
   const relatedNode = relationshipData.node;
@@ -73,18 +90,38 @@ function RelationshipOneRow({
   return (
     <ObjectDataRow
       name={relationshipLabel}
+      objectKind={objectKind}
+      fieldSchema={relationshipSchema}
       value={
         <>
-          {relatedNode ? (
-            <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
-              {getNodeLabel(relatedNode)}
-            </Link>
-          ) : (
-            "-"
-          )}
+          <ProfileSourceIcon source={relationshipProperties?.source} />
+
+          <InlineEdit
+            type="relationship"
+            fieldSchema={relationshipSchema}
+            fieldData={relationshipData}
+            permission={permission}
+            objectKind={objectKind}
+            objectId={objectId}
+          >
+            {relatedNode ? (
+              <Link
+                to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {getNodeLabel(relatedNode)}
+              </Link>
+            ) : (
+              "-"
+            )}
+          </InlineEdit>
 
           {relationshipProperties && (
             <>
+              {relationshipProperties.is_protected && (
+                <LockIcon className="size-3.5 text-gray-600" />
+              )}
+
               <MetaDetailsTooltip
                 updatedAt={relationshipProperties.updated_at}
                 source={relationshipProperties.source}
@@ -110,9 +147,6 @@ function RelationshipOneRow({
                   )
                 }
               />
-              {relationshipProperties.is_protected && (
-                <LockIcon className="size-3.5 text-gray-600" />
-              )}
             </>
           )}
         </>
@@ -122,49 +156,103 @@ function RelationshipOneRow({
 }
 
 interface RelationshipManyRowProps {
+  relationshipSchema: RelationshipSchema;
   relationshipData: NodeRelationshipManyWithMetadata;
   relationshipLabel: string;
+  permission: Permission;
+  objectKind: string;
+  objectId: string;
+  onClickMetadata?: (relationship: RelationshipSchema) => void;
 }
 
-function RelationshipManyRow({ relationshipData, relationshipLabel }: RelationshipManyRowProps) {
+function RelationshipManyRow({
+  relationshipSchema,
+  relationshipData,
+  relationshipLabel,
+  permission,
+  objectKind,
+  objectId,
+  onClickMetadata,
+}: RelationshipManyRowProps) {
   const relatedNodeEdges = relationshipData.edges;
-
-  if (relatedNodeEdges.length === 0) {
-    return <ObjectDataRow name={relationshipLabel} value="-" />;
-  }
 
   return (
     <ObjectDataRow
+      className="gap-2"
       name={relationshipLabel}
+      objectKind={objectKind}
+      fieldSchema={relationshipSchema}
       value={
-        <dl className="flex flex-col">
-          {relatedNodeEdges.map((edge) => {
-            const relatedNode = edge.node;
-            const edgeProperties = edge.properties;
+        <>
+          <InlineEdit
+            type="relationship"
+            fieldSchema={relationshipSchema}
+            fieldData={relationshipData}
+            permission={permission}
+            objectKind={objectKind}
+            objectId={objectId}
+          >
+            {relatedNodeEdges.length === 0 ? (
+              "-"
+            ) : (
+              <dl className="flex flex-col">
+                {relatedNodeEdges.map((edge) => {
+                  const relatedNode = edge.node;
+                  const edgeProperties = edge.properties;
 
-            if (!relatedNode) return null;
+                  if (!relatedNode) return null;
 
-            return (
-              <Row key={relatedNode.id}>
-                <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
-                  {getNodeLabel(relatedNode)}
-                </Link>
+                  return (
+                    <Row key={relatedNode.id}>
+                      <ProfileSourceIcon source={edgeProperties?.source} />
 
-                {edgeProperties && (
-                  <>
-                    <MetaDetailsTooltip
-                      updatedAt={edgeProperties.updated_at}
-                      source={edgeProperties.source}
-                      owner={edgeProperties.owner}
-                      isProtected={edgeProperties.is_protected}
-                    />
-                    {edgeProperties.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
-                  </>
-                )}
-              </Row>
-            );
-          })}
-        </dl>
+                      <Link
+                        to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mx-2"
+                      >
+                        {getNodeLabel(relatedNode)}
+                      </Link>
+
+                      {edgeProperties && (
+                        <>
+                          <MetaDetailsTooltip
+                            updatedAt={edgeProperties.updated_at}
+                            source={edgeProperties.source}
+                            owner={edgeProperties.owner}
+                            isProtected={edgeProperties.is_protected}
+                            header={
+                              onClickMetadata && (
+                                <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
+                                  <div className="font-semibold">{relationshipLabel}</div>
+
+                                  <ButtonWithTooltip
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={!permission.update.isAllowed}
+                                    tooltipEnabled={!permission.update.isAllowed}
+                                    tooltipContent={permission.update.message ?? undefined}
+                                    onClick={() => onClickMetadata(relationshipSchema)}
+                                    data-testid="edit-metadata-button"
+                                  >
+                                    <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                                  </ButtonWithTooltip>
+                                </div>
+                              )
+                            }
+                          />
+                          {edgeProperties.is_protected && (
+                            <LockIcon className="size-3.5 text-gray-600" />
+                          )}
+                        </>
+                      )}
+                    </Row>
+                  );
+                })}
+              </dl>
+            )}
+          </InlineEdit>
+        </>
       }
     />
   );

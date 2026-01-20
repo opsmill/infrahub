@@ -81,7 +81,7 @@ export function RelationshipManyInput({
         </div>
       </PopoverTrigger>
 
-      <ComboboxContent>
+      <ComboboxContent fitTriggerWidth={false}>
         <RelationshipComboboxList
           peer={peer}
           onSelect={handleSelect}

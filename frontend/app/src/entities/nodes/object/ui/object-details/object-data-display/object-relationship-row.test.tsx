@@ -39,6 +39,9 @@ describe("ObjectRelationshipRow", () => {
     delete: { isAllowed: true },
   };
 
+  const objectKind = "TestObject";
+  const objectId = "object-123";
+
   beforeEach(() => {
     store.set(nodeSchemasAtom, [relatedNodeSchema]);
   });
@@ -83,6 +86,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaOne}
           relationshipData={relationshipDataWithNode}
           permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
         />
       );
 
@@ -100,6 +105,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaOne}
           relationshipData={relationshipDataWithoutNode}
           permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
         />
       );
 
@@ -116,6 +123,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaOne}
           relationshipData={relationshipDataWithNode}
           permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
           onClickMetadata={onClickMetadata}
         />
       );
@@ -137,6 +146,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaOne}
           relationshipData={relationshipDataWithNode}
           permission={deniedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
           onClickMetadata={onClickMetadata}
         />
       );
@@ -164,6 +175,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaOne}
           relationshipData={protectedRelationshipData}
           permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
         />
       );
 
@@ -224,6 +237,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaMany}
           relationshipData={relationshipDataEmpty}
           permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
         />
       );
 
@@ -239,6 +254,8 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaMany}
           relationshipData={relationshipDataWithEdges}
           permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
         />
       );
 
@@ -252,6 +269,46 @@ describe("ObjectRelationshipRow", () => {
       const linkTwo = component.getByRole("link", { name: "Tag Two" });
       await expect.element(linkTwo).toBeVisible();
       await expect.element(linkTwo).toHaveAttribute("href", "/objects/TestPeer/tag-2");
+    });
+
+    it("shows lock icon when edge is protected", async () => {
+      // GIVEN
+      const component = await render(
+        <ObjectRelationshipRow
+          relationshipSchema={relationshipSchemaMany}
+          relationshipData={relationshipDataWithEdges}
+          permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
+        />
+      );
+
+      // THEN - LockClosedIcon renders as an SVG element for protected edge
+      const lockIcon = component.container.querySelector("svg");
+      expect(lockIcon).not.toBeNull();
+    });
+
+    it("shows edit-metadata pencil when onClickMetadata is provided", async () => {
+      // GIVEN
+      const onClickMetadata = vi.fn();
+      const component = await render(
+        <ObjectRelationshipRow
+          relationshipSchema={relationshipSchemaMany}
+          relationshipData={relationshipDataWithEdges}
+          permission={allowedPermission}
+          objectKind={objectKind}
+          objectId={objectId}
+          onClickMetadata={onClickMetadata}
+        />
+      );
+
+      // WHEN
+      await component.getByTestId("view-metadata-button").first().click();
+
+      // THEN
+      const editButton = component.getByTestId("edit-metadata-button");
+      await expect.element(editButton).toBeVisible();
+      await expect.element(editButton).toBeEnabled();
     });
   });
 });

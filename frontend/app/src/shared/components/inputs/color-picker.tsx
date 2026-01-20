@@ -7,7 +7,7 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
 export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, disabled, value, onChange, className } = props;
+  const { id, disabled, value, onChange, portal, className } = props;
 
   const [hsva, setHsva] = useState<string | HsvaColor>(value ?? { h: 0, s: 0, v: 0, a: 0 }); // Used for colorfule
 
@@ -54,7 +54,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
           )}
         />
 
-        <PopoverContent className="p-2">
+        <PopoverContent portal={portal} className="p-2">
           <Colorful color={hsva} onChange={handleChange} disableAlpha />
         </PopoverContent>
       </Popover>
