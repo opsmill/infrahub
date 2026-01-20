@@ -84,7 +84,22 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         if state and state != ProposedChangeState.OPEN.value:
             raise ValidationError(input_value="A proposed change has to be in the open state during creation")
 
+        source_branch_name = data.get("source_branch", {}).get("value")
+
         async with graphql_context.db.start_transaction() as dbt:
+            existing_open_pcs = await NodeManager.query(
+                db=dbt,
+                schema=InfrahubKind.PROPOSEDCHANGE,
+                filters={
+                    "source_branch__value": source_branch_name,
+                    "state__value": ProposedChangeState.OPEN.value,
+                },
+            )
+            if existing_open_pcs:
+                raise ValidationError(
+                    input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
+                )
+
             proposed_change, result = await super().mutate_create(
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )

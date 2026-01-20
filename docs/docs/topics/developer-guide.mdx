@@ -19,17 +19,15 @@ The following features in Infrahub are based on user provided code :
 
 Before you start developing extensions or custom code for Infrahub, you need to initialize a repository. This sets up the directory structure and configuration files required for Infrahub to manage your infrastructure data.
 
-To initialize a new Infrahub repository, run the following command (replace `<directory>` with your desired path):
+To initialize a new Infrahub repository, run the following command (replace `<project-name>` with your desired project name):
 
 ```shell
-uv tool run --from 'infrahub-sdk[ctl]' infrahubctl repository init <directory>
+uv tool run --from 'copier' copier copy https://github.com/opsmill/infrahub-template <project-name>
 ```
 
-This will create a new Infrahub repository in the specified directory, ready for you to add schemas, transforms, and generators.
+This uses [copier](https://copier.readthedocs.io/) to create a new Infrahub repository from the [Infrahub Template Repository](https://github.com/opsmill/infrahub-template). The command will guide you through interactive prompts to customize your repository (such as including example generators, transforms, and scripts). No separate installation is needed as `uv tool run` handles everything automatically.
 
-When you run the command, the CLI will prompt you to specify what you would like included in your repository (such as example generators, transforms, and scripts). This helps you tailor the repository to your needs from the start.
-
-The template being used is the [Infrahub Template Repository](https://github.com/opsmill/infrahub-template).
+Once complete, your new repository will be ready for you to add schemas, transforms, and generators.
 
 <details>
   <summary>Recommended file structure for manually creating an Infrahub repository</summary>
