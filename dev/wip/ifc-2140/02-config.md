@@ -12,25 +12,18 @@ Add `max_file_size` configuration setting to StorageSettings to limit file uploa
 
 ### Configuration Setting
 
-- [ ] Modify `backend/infrahub/config.py`
-  - [ ] Add `max_file_size` field to `StorageSettings` class:
+- [x] Modify `backend/infrahub/config.py`
+  - [x] Add `max_file_size` field to `StorageSettings` class:
     ```python
-    max_file_size: int = Field(
-        default=50,
-        ge=1,
-        description="Maximum file size in MB for file object uploads"
-    )
+    max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
     ```
-  - [ ] Ensure the setting is documented in the class docstring
 
 ### Tests
 
-- [ ] Create `backend/tests/unit/test_config_storage.py`
-  - [ ] Test default value is 50 MB
-  - [ ] Test minimum value validation (ge=1)
-  - [ ] Test loading from TOML configuration file
-  - [ ] Test environment variable override (`INFRAHUB_STORAGE_MAX_FILE_SIZE`)
-  - [ ] Test value is accessible via `config.SETTINGS.storage.max_file_size`
+- [x] Add tests to `backend/tests/unit/test_config.py`:
+  - [x] `test_storage_max_file_size` - default value, custom value, minimum allowed
+  - [x] `test_storage_max_file_size_rejects_invalid_values` - parametrized for 0 and -10
+  - [x] `test_storage_max_file_size_environment_variable` - env var override and global settings access
 
 ### Documentation
 
@@ -38,8 +31,9 @@ Add `max_file_size` configuration setting to StorageSettings to limit file uploa
 
 ### Verification
 
-- [ ] Run `uv run invoke backend.test-unit` to run all unit tests including new ones
-- [ ] Run `uv run invoke backend.test-component` to run all component tests
+- [x] Run `uv run pytest backend/tests/unit/test_config.py -v` - all tests pass
+- [x] Run `uv run invoke backend.test-unit` to run all unit tests including new ones
+- [x] Run `uv run invoke backend.test-component` to run all component tests
 
 ## Reference Files
 
