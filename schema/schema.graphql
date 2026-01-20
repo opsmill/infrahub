@@ -23992,13 +23992,29 @@ type Query {
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
   """Retrieve paginated information about active branches."""
   InfrahubBranch(
+    """Filter branches rebased after this timestamp."""
+    branched_from__after: DateTime
+    """Filter branches rebased before this timestamp."""
+    branched_from__before: DateTime
     ids: [ID]
     limit: Int
     name__value: String
+    """Filter branches created after this timestamp."""
+    node_metadata__created_at__after: DateTime
+    """Filter branches created before this timestamp."""
+    node_metadata__created_at__before: DateTime
+    """Filter branches by creator account UUID."""
+    node_metadata__created_by__id: ID
+    """Filter branches updated after this timestamp."""
+    node_metadata__updated_at__after: DateTime
+    """Filter branches updated before this timestamp."""
+    node_metadata__updated_at__before: DateTime
     offset: Int
     """Define ordering of results for branch queries."""
     order: OrderInput
     partial_match: Boolean = false
+    """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
+    status__value: BranchStatus
   ): InfrahubBranchType!
   InfrahubEvent(
     """Filter the query to specific accounts"""

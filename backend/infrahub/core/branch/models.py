@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
@@ -155,17 +156,27 @@ class Branch(StandardNode):
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: Any,
+        **kwargs: dict[str, Any],
     ) -> list[Self]:
+        # Extract branch-specific params from kwargs, a future refactoring could update the parent signature for
+        # standard nodes instead. Should be considered when additional StandardNode subclasses are introduced
+        branch_filters: BranchListFilters | None = kwargs.pop("branch_filters", None)  # type: ignore[assignment]
+        exclude_global: bool = kwargs.pop("exclude_global", False)  # type: ignore[assignment]
+
+        if branch_filters is None:
+            branch_filters = BranchListFilters(name=name, ids=ids)
+        else:
+            branch_filters.ids = branch_filters.ids or ids
+            branch_filters.name = branch_filters.name or name
+
         node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await BranchNodeGetListQuery.init(
             db=db,
             node_class=cls,
-            ids=ids,
-            node_name=name,
+            branch_filters=branch_filters,
+            exclude_global=exclude_global,
             limit=limit,
             node_ordering=node_ordering,
-            **kwargs,
         )
         await query.execute(db=db)
 
@@ -179,17 +190,25 @@ class Branch(StandardNode):
         ids: list[str] | None = None,
         name: str | None = None,
         partial_match: bool = False,
-        **kwargs: Any,
+        branch_filters: BranchListFilters | None = None,
+        node_ordering: StandardNodeOrdering | None = None,
+        **_kwargs: Any,
     ) -> int:
+        if branch_filters is None:
+            branch_filters = BranchListFilters(name=name, ids=ids, partial_match=partial_match)
+        else:
+            branch_filters.ids = branch_filters.ids or ids
+            branch_filters.name = branch_filters.name or name
+            branch_filters.partial_match = branch_filters.partial_match or partial_match
+
+        node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await BranchNodeGetListQuery.init(
             db=db,
             node_class=cls,
-            ids=ids,
-            node_name=name,
+            branch_filters=branch_filters,
             limit=limit,
             exclude_global=True,
-            partial_match=partial_match,
-            **kwargs,
+            node_ordering=node_ordering,
         )
         return await query.count(db=db)
 

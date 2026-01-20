@@ -1,8 +1,10 @@
 import operator
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.types import BranchType, InfrahubBranch
@@ -765,3 +767,357 @@ class TestBranchQuery(TestInfrahubApp):
         assert result.errors is not None
         assert len(result.errors) > 0
         assert "created_at" in str(result.errors[0]) or "updated_at" in str(result.errors[0])
+
+    async def test_filter_by_status(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test filtering branches by status."""
+        # Create a branch and set it to NEED_REBASE status
+        create_branch_query = """
+        mutation($branch_name: String!) {
+            BranchCreate(data: { name: $branch_name, description: "test" }) {
+                ok
+                object { id name }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(
+            db=db, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=create_branch_query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"branch_name": "status-test-branch"},
+        )
+        assert result.errors is None
+
+        # Update branch status to NEED_REBASE
+        branch = await Branch.get_by_name(name="status-test-branch", db=db)
+        branch.status = BranchStatus.NEED_REBASE
+        await branch.save(db=db)
+
+        # Query for NEED_REBASE branches
+        query = """
+        query($status: BranchStatus) {
+            InfrahubBranch(status__value: $status) {
+                count
+                edges {
+                    node { name { value } status { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"status": "NEED_REBASE"},
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubBranch"]["count"] >= 1
+        assert all(edge["node"]["status"]["value"] == "NEED_REBASE" for edge in result.data["InfrahubBranch"]["edges"])
+
+        # Query for OPEN branches should not include the NEED_REBASE branch
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"status": "OPEN"},
+        )
+
+        assert result.errors is None
+        assert result.data
+        branch_names = [edge["node"]["name"]["value"] for edge in result.data["InfrahubBranch"]["edges"]]
+        assert "status-test-branch" not in branch_names
+
+    async def test_filter_by_created_at_range(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test filtering branches by creation timestamp range."""
+        # Create a branch with a known name
+        create_branch_query = """
+        mutation($branch_name: String!) {
+            BranchCreate(data: { name: $branch_name, description: "test" }) {
+                ok
+                object { id name }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(
+            db=db, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=create_branch_query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"branch_name": "created-at-test-branch"},
+        )
+        assert result.errors is None
+
+        # Query with a future timestamp (should return no branches with valid created_at)
+        future_time = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        query = """
+        query($after: DateTime) {
+            InfrahubBranch(node_metadata__created_at__after: $after) {
+                count
+                edges { node { name { value } } node_metadata { created_at } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"after": future_time},
+        )
+
+        assert result.errors is None
+        assert result.data
+        # No branches should have been created in the future
+        assert result.data["InfrahubBranch"]["count"] == 0
+        assert result.data["InfrahubBranch"]["edges"] == []
+
+        # Query with a past timestamp (should return branches created recently)
+        past_time = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"after": past_time},
+        )
+
+        assert result.errors is None
+        assert result.data
+        # Should find at least the branch we just created
+        branch_names = [edge["node"]["name"]["value"] for edge in result.data["InfrahubBranch"]["edges"]]
+        assert "created-at-test-branch" in branch_names
+
+    async def test_filter_by_created_at_before(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test filtering branches created before a timestamp."""
+        # Create a branch to ensure we have a known branch with valid timestamp
+        create_branch_query = """
+        mutation($branch_name: String!) {
+            BranchCreate(data: { name: $branch_name, description: "test" }) {
+                ok
+                object { id name }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(
+            db=db, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=create_branch_query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"branch_name": "before-test-branch"},
+        )
+        assert result.errors is None
+
+        # Query with a future timestamp (should return branches created before tomorrow)
+        future_time = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        query = """
+        query($before: DateTime) {
+            InfrahubBranch(node_metadata__created_at__before: $before) {
+                count
+                edges { node { name { value } } node_metadata { created_at } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"before": future_time},
+        )
+
+        assert result.errors is None
+        assert result.data
+        # Should find at least the branch we created
+        branch_names = [edge["node"]["name"]["value"] for edge in result.data["InfrahubBranch"]["edges"]]
+        assert "before-test-branch" in branch_names
+
+        # Query with a very old timestamp (should return no branches with recent created_at)
+        old_time = "2000-01-01T00:00:00Z"
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"before": old_time},
+        )
+
+        assert result.errors is None
+        assert result.data
+        # No branches should have been created before 2000
+        # We check edges is empty since count might include branches with NULL created_at
+        assert result.data["InfrahubBranch"]["edges"] == []
+
+    async def test_filter_combined_status_and_timestamp(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test combining multiple filters (status AND timestamp)."""
+        # Create a branch
+        create_branch_query = """
+        mutation($branch_name: String!) {
+            BranchCreate(data: { name: $branch_name, description: "test" }) {
+                ok
+                object { id name }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(
+            db=db, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=create_branch_query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"branch_name": "combined-filter-branch"},
+        )
+        assert result.errors is None
+
+        # Query with combined filters
+        past_time = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        query = """
+        query($status: BranchStatus, $after: DateTime) {
+            InfrahubBranch(status__value: $status, node_metadata__created_at__after: $after) {
+                count
+                edges { node { name { value } status { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"status": "OPEN", "after": past_time},
+        )
+
+        assert result.errors is None
+        assert result.data
+        # All returned branches should be OPEN and created after the past_time
+        for edge in result.data["InfrahubBranch"]["edges"]:
+            assert edge["node"]["status"]["value"] == "OPEN"
+
+    async def test_filter_returns_empty_for_no_matches(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """Test that impossible filter combinations return empty results."""
+        query = """
+        query {
+            InfrahubBranch(node_metadata__created_at__after: "2099-01-01T00:00:00Z") {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubBranch"]["count"] == 0
+        assert result.data["InfrahubBranch"]["edges"] == []
+
+    async def test_filter_with_pagination(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test that filters work correctly with limit/offset pagination."""
+        # Create multiple branches
+        for i in range(5):
+            create_branch_query = """
+            mutation($branch_name: String!) {
+                BranchCreate(data: { name: $branch_name, description: "test" }) {
+                    ok
+                    object { id name }
+                }
+            }
+            """
+            gql_params = await prepare_graphql_params(
+                db=db, branch=default_branch, account_session=session_admin, service=service
+            )
+            result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": f"paginated-branch-{i}"},
+            )
+            assert result.errors is None
+
+        # Query with status filter and pagination
+        past_time = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        query = """
+        query($status: BranchStatus, $after: DateTime, $limit: Int, $offset: Int) {
+            InfrahubBranch(
+                status__value: $status,
+                node_metadata__created_at__after: $after,
+                limit: $limit,
+                offset: $offset
+            ) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"status": "OPEN", "after": past_time, "limit": 2, "offset": 0},
+        )
+
+        assert result.errors is None
+        assert result.data
+        # Count should reflect total matching, edges limited by limit
+        assert len(result.data["InfrahubBranch"]["edges"]) <= 2
