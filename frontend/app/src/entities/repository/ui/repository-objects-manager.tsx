@@ -11,7 +11,7 @@ export interface RepositoryObjectsManagerProps {
   parentNodeId: string;
 }
 export function RepositoryObjectsManager({ parentNodeId }: RepositoryObjectsManagerProps) {
-  const { schema } = useSchema(REPOSITORY_GROUP, { required: true });
+  const { schema } = useSchema(REPOSITORY_GROUP, { throwIfNotFound: true });
   const { isPending, data, error } = useGetRepositoryGroup({ nodeId: parentNodeId });
 
   const membersRelationship = schema.relationships?.find((relationship) => {

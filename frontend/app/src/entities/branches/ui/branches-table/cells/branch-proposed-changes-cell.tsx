@@ -17,7 +17,7 @@ interface BranchProposedChangesCellProps {
 
 export function BranchProposedChangesCell({ branchName }: BranchProposedChangesCellProps) {
   // Use required schema - guaranteed to exist for Core namespace objects
-  const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { required: true });
+  const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { throwIfNotFound: true });
 
   // Query proposed changes for this specific branch
   const { data: proposedChangesData } = useGetProposedChanges({

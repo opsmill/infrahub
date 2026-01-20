@@ -13,7 +13,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 const ArtifactDetailsPage = () => {
   useTitle("Artifact");
   const { artifactId } = useParams();
-  const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT, { required: true });
+  const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT, { throwIfNotFound: true });
   const { isPending, error, data: permission } = useGetObjectPermissions(ARTIFACT_OBJECT);
 
   if (isPending) {

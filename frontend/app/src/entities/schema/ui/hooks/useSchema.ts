@@ -28,15 +28,18 @@ import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolv
 
 export function useSchema(
   kind: string | null | undefined,
-  options: { required: true }
+  options: { throwIfNotFound: true }
 ): Exclude<SchemaResult, { schema: null }>;
 
 export function useSchema(
   kind: string | null | undefined,
-  options?: { required?: false }
+  options?: { throwIfNotFound?: false }
 ): SchemaResult;
 
-export function useSchema(kind: string | null | undefined, options?: { required?: boolean }) {
+export function useSchema(
+  kind: string | null | undefined,
+  options?: { throwIfNotFound?: boolean }
+) {
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
   const profileSchemas = useAtomValue(profileSchemasAtom);
   const genericSchemas = useAtomValue(genericSchemasAtom);
@@ -49,7 +52,7 @@ export function useSchema(kind: string | null | undefined, options?: { required?
     templateSchemas,
   });
 
-  if (options?.required && !result.schema) {
+  if (options?.throwIfNotFound && !result.schema) {
     throw new Error(
       `Required schema "${kind}" not found. This indicates the schema is not loaded or does not exist.`
     );

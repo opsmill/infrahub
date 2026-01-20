@@ -202,7 +202,7 @@ interface NodeRelationshipFieldProps {
 const NodeRelationshipField = ({ schemaFields }: NodeRelationshipFieldProps) => {
   const form = useFormContext();
 
-  const { schema } = useSchema(NODE_TRIGGER_RULE, { required: true });
+  const { schema } = useSchema(NODE_TRIGGER_RULE, { throwIfNotFound: true });
   const selectedTriggerField: FormAttributeValue = form.watch("trigger");
   const selectedRelationshipField: FormAttributeValue = form.watch("relationship_name");
 

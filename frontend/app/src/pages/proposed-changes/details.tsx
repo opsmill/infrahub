@@ -101,7 +101,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
 
 export function Component() {
   const { proposedChangeId } = useParams() as { proposedChangeId: string };
-  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { required: true });
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
 

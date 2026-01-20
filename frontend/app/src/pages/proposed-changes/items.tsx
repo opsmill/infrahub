@@ -8,7 +8,9 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const Component = () => {
   useTitle("Proposed changes");
-  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT, { required: true });
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT, {
+    throwIfNotFound: true,
+  });
 
   return (
     <Content.Card className="flex flex-col">

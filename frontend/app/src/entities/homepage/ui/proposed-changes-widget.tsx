@@ -14,7 +14,9 @@ interface ProposedChangesWidgetProps {
 }
 
 export const ProposedChangesWidget = ({ className }: ProposedChangesWidgetProps) => {
-  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT, { required: true });
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT, {
+    throwIfNotFound: true,
+  });
 
   return (
     <HomeCard className={className}>

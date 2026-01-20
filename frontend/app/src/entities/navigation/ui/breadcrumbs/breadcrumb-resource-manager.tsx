@@ -24,7 +24,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbResourceManager() {
   const { resourcePoolId, resourceId } = useParams();
-  const { schema } = useSchema(RESOURCE_GENERIC_KIND, { required: true });
+  const { schema } = useSchema(RESOURCE_GENERIC_KIND, { throwIfNotFound: true });
 
   return (
     <Breadcrumbs data-testid="breadcrumb-resource-manager">
