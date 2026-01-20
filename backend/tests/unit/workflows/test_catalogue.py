@@ -7,7 +7,7 @@ import pytest
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.workers.dependencies import get_installation_type
 from infrahub.workflows import catalogue
-from infrahub.workflows.catalogue import WORKER_POOLS, get_workflows
+from infrahub.workflows.catalogue import get_workflows
 from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -45,7 +45,4 @@ def test_workflows_sorted() -> None:
     ordered_workflows = [
         catalogue_attr for catalogue_attr in catalogue_attrs if isinstance(catalogue_attr, WorkflowDefinition)
     ]
-    for worker_pool in WORKER_POOLS:
-        if worker_pool in ordered_workflows:
-            ordered_workflows.remove(worker_pool)
     assert ordered_workflows == get_workflows(), "The list of workflows isn't sorted alphabetically"
