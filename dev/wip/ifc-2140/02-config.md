@@ -27,7 +27,7 @@ Add `max_file_size` configuration setting to StorageSettings to limit file uploa
 
 ### Documentation
 
-- [ ] Update configuration documentation if needed (check `docs/` folder)
+- [x] Run `uv run invoke docs.generate` to regenerate configuration documentation
 
 ### Verification
 
