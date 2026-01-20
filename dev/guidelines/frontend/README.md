@@ -20,13 +20,6 @@ Guidelines for constructing URLs and paths including:
 - Object routing patterns (IPAM, Proposed Changes, Resource Manager)
 - Best practices for URL construction
 
-### [Schema Hooks](./schema-hooks.md)
-
-Guidelines for using the schema resolution hook including:
-- Optional vs required mode (`required: true` parameter)
-- Type narrowing with discriminated unions
-- Common patterns for schema access
-
 ## Related Documentation
 
 ### Knowledge (How the system works)

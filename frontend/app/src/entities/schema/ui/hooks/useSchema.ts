@@ -6,45 +6,14 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
 import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolve-schema";
-
-type RequiredSchemaResult =
-  | {
-      schema: ModelSchema;
-      isGeneric: true;
-      isNode: false;
-      isProfile: false;
-      isTemplate: false;
-    }
-  | {
-      schema: ModelSchema;
-      isGeneric: false;
-      isNode: true;
-      isProfile: false;
-      isTemplate: false;
-    }
-  | {
-      schema: ModelSchema;
-      isGeneric: false;
-      isNode: false;
-      isProfile: true;
-      isTemplate: false;
-    }
-  | {
-      schema: ModelSchema;
-      isGeneric: false;
-      isNode: false;
-      isProfile: false;
-      isTemplate: true;
-    };
 
 /**
  * Hook for retrieving schemas with optional required behavior.
  *
  * @param kind - The schema kind to retrieve
  * @param options - Configuration options
- * @param options.required - If true, throws error when schema not found. Use for guaranteed schemas like Core*.
+ * @param options.required - If true, throws error when schema not found.
  * @returns Schema result with type flags. Schema is non-nullable when required: true.
  *
  * @example
@@ -56,15 +25,18 @@ type RequiredSchemaResult =
  * // Required schema (non-nullable, throws if missing)
  * const { schema } = useSchema("CoreProposedChange", { required: true });
  */
-export function useSchema(kind: string, options: { required: true }): RequiredSchemaResult;
+
+export function useSchema(
+  kind: string | null | undefined,
+  options: { required: true }
+): Exclude<SchemaResult, { schema: null }>;
+
 export function useSchema(
   kind: string | null | undefined,
   options?: { required?: false }
 ): SchemaResult;
-export function useSchema(
-  kind: string | null | undefined,
-  options?: { required?: boolean }
-): SchemaResult | RequiredSchemaResult {
+
+export function useSchema(kind: string | null | undefined, options?: { required?: boolean }) {
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
   const profileSchemas = useAtomValue(profileSchemasAtom);
   const genericSchemas = useAtomValue(genericSchemasAtom);
