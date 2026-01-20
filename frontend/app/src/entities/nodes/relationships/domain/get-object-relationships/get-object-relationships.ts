@@ -6,13 +6,6 @@ import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/ap
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/** @deprecated Use DEFAULT_PAGE_SIZE from @/shared/utils/pagination instead */
-export const OBJECT_RELATIONSHIPS_PER_PAGE = DEFAULT_PAGE_SIZE;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export interface GetObjectRelationshipsParams extends ContextParams, PaginationParams {
   parentKind: string;
   parentId: string;
