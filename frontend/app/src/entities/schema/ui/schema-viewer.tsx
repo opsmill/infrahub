@@ -70,11 +70,13 @@ export const SchemaViewer = ({
   schema,
   onClose,
   style,
+  defaultTab = "properties",
 }: {
   className?: string;
   schema: ModelSchema;
   onClose: () => void;
   style?: CSSProperties;
+  defaultTab?: "properties" | "attributes" | "relationships";
 }) => {
   return (
     <section
@@ -95,15 +97,15 @@ export const SchemaViewer = ({
         <div className="flex items-center gap-2 text-gray-600">
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost">
-            <Icon icon="mdi:close" className="text-xl" onClick={onClose} />
+          <Button size="icon" variant="ghost" onClick={onClose}>
+            <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>
       </div>
 
       <SchemaViewerTitle schema={schema} />
 
-      <SchemaViewerDetails schema={schema} />
+      <SchemaViewerDetails schema={schema} defaultTab={defaultTab} />
     </section>
   );
 };
@@ -126,9 +128,15 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
   );
 };
 
-const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
+const SchemaViewerDetails = ({
+  schema,
+  defaultTab,
+}: {
+  schema: ModelSchema;
+  defaultTab: "properties" | "attributes" | "relationships";
+}) => {
   return (
-    <Tabs className="flex flex-col overflow-y-hidden">
+    <Tabs defaultSelectedKey={defaultTab} className="flex flex-col overflow-y-hidden">
       <TabList className="flex">
         <TabStyled id="properties">Properties</TabStyled>
         <TabStyled id="attributes">Attributes</TabStyled>
