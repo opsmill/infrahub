@@ -99,7 +99,7 @@ export const SchemaViewer = ({
         <div className="flex items-center gap-2 text-gray-600">
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost" onClick={onClose}>
+          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>
             <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>

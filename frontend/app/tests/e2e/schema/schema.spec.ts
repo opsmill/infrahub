@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { saveScreenshotForDocs } from "../utils";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/schema - Schema visualizer", () => {
   test("redirect to schema page using object help menu", async ({ page }) => {
