@@ -28,7 +28,7 @@ export const AttributeDisplay = ({
 
   return (
     <AccordionStyled
-      ref={defaultOpen ? ref : undefined}
+      ref={ref}
       title={attribute.label || attribute.name}
       kind={attribute.kind}
       description={attribute.description}

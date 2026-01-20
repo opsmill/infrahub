@@ -34,7 +34,7 @@ export const RelationshipDisplay = ({
 
   return (
     <AccordionStyled
-      ref={defaultOpen ? ref : undefined}
+      ref={ref}
       title={relationship.label || relationship.name}
       kind={
         <>
