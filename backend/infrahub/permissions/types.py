@@ -2,11 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
-from infrahub.core.constants import GlobalPermissions, InfrahubKind
+from infrahub.core.account import ObjectPermission
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    GlobalPermissions,
+    InfrahubKind,
+    PermissionAction,
+    PermissionDecision,
+)
+from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 
 if TYPE_CHECKING:
-    from infrahub.core.account import GlobalPermission, ObjectPermission
+    from infrahub.core.account import GlobalPermission
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.permissions.constants import BranchRelativePermissionDecision
 
@@ -44,3 +52,14 @@ def get_global_permission_for_kind(schema: MainSchemaTypes) -> GlobalPermissions
                 continue
 
     return None
+
+
+def define_object_permission_from_branch(
+    schema: MainSchemaTypes, action: PermissionAction, branch_name: str
+) -> ObjectPermission:
+    if branch_name in (GLOBAL_BRANCH_NAME, registry.default_branch):
+        decision = PermissionDecision.ALLOW_DEFAULT
+    else:
+        decision = PermissionDecision.ALLOW_OTHER
+
+    return ObjectPermission(namespace=schema.namespace, name=schema.name, action=action.value, decision=decision.value)
