@@ -24,16 +24,16 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbResourceManager() {
   const { resourcePoolId, resourceId } = useParams();
-  const { schema } = useSchema(RESOURCE_GENERIC_KIND);
+  const { schema } = useSchema(RESOURCE_GENERIC_KIND, { throwIfNotFound: true });
 
   return (
     <Breadcrumbs data-testid="breadcrumb-resource-manager">
       <BreadcrumbItem href={constructPath("/resource-manager")}>Resource manager</BreadcrumbItem>
-      {schema && resourcePoolId && (
+      {resourcePoolId && (
         <BreadcrumbObjectDetails
           objectSchema={schema}
           objectId={resourcePoolId}
-          autocompleteObjectKind={schema.kind!}
+          autocompleteObjectKind={RESOURCE_GENERIC_KIND}
         />
       )}
       {resourceId && resourcePoolId && (

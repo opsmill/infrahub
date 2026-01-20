@@ -39,7 +39,7 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
   if (isPending) {
-    return <LoadingIndicator className="h-[239px]" />;
+    return <LoadingIndicator className="h-59.75" />;
   }
 
   if (error) {

@@ -188,7 +188,7 @@ interface NodeAttributeFieldProps {
 const NodeAttributeField = ({ field }: NodeAttributeFieldProps) => {
   const form = useFormContext();
 
-  const { schema } = useSchema(NODE_TRIGGER_RULE);
+  const { schema } = useSchema(NODE_TRIGGER_RULE, { throwIfNotFound: true });
   const selectedTriggerField: FormAttributeValue = form.watch("trigger");
 
   const { data, isPending } = useGetObject({
