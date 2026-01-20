@@ -11,13 +11,14 @@ interface SchemaViewerModalProps {
 
 export function SchemaViewerModal({ schema, defaultTab, targetField }: SchemaViewerModalProps) {
   return (
-    <Modal className="w-[600px] max-w-[90vw]">
+    <Modal className="w-150">
       {({ close }) => (
         <SchemaViewer
           schema={schema}
           defaultTab={defaultTab}
           targetField={targetField}
           onClose={close}
+          className="rounded-xl"
         />
       )}
     </Modal>
