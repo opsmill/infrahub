@@ -14,13 +14,13 @@ EnrichedDiffRelationship objects that may have circular node references.
 
 from copy import deepcopy
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality
-
 from tests.component.core.diff.factories import (
     EnrichedNodeFactory,
     EnrichedRelationshipElementFactory,
     EnrichedRelationshipGroupFactory,
 )
+
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 
 
 class TestEnrichedDiffRelationshipDeepCopy:
