@@ -39,7 +39,7 @@ export function Modal({
       <AriaModal
         className={classNames(
           "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-          "no-scrollbar box-border flex max-h-[calc(var(--visual-viewport-height)*.95)] max-w-[90vw] flex-col overflow-hidden rounded-2xl bg-stone-50 p-2",
+          "no-scrollbar box-border flex max-h-[calc(var(--visual-viewport-height)*.95)] max-w-[90vw] flex-col overflow-hidden rounded-2xl bg-white p-2",
           "data-entering:zoom-in-80 data-entering:animate-in data-entering:duration-200 data-entering:ease-out",
           "data-exiting:zoom-out-80 data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in",
           className
