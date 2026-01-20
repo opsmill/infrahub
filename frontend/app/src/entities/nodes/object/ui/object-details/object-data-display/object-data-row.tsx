@@ -35,7 +35,11 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
               <Icon icon="mdi:code-json" className="ml-1 hidden group-hover:inline-block" />
             </Button>
 
-            <SchemaViewerModal schema={schema} defaultTab={defaultTab} />
+            <SchemaViewerModal
+              schema={schema}
+              defaultTab={defaultTab}
+              targetField={fieldSchema.name}
+            />
           </DialogTrigger>
         ) : (
           fieldName
