@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { MenuItemWithTooltip, MenuSection } from "@/shared/components/aria/menu";
+import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
@@ -36,40 +36,24 @@ export function RepositoryMenuSection({
   permission,
 }: RepositoryMenuSectionProps) {
   const isUpdateAllowed = permission.update.isAllowed;
-  const tooltipMessage = permission.update.message;
 
   return (
-    <MenuSection title="Repository">
-      <MenuItemWithTooltip
-        isDisabled={!isUpdateAllowed}
-        tooltipEnabled={!isUpdateAllowed}
-        tooltipContent={tooltipMessage}
-        onAction={onCheckConnectivity}
-      >
+    <MenuSection>
+      <MenuItem isDisabled={!isUpdateAllowed} onAction={onCheckConnectivity}>
         <Icon icon="mdi:access-point" />
         Check connectivity
-      </MenuItemWithTooltip>
+      </MenuItem>
 
-      <MenuItemWithTooltip
-        isDisabled={!isUpdateAllowed}
-        tooltipEnabled={!isUpdateAllowed}
-        tooltipContent={tooltipMessage}
-        onAction={onImportLatestCommit}
-      >
+      <MenuItem isDisabled={!isUpdateAllowed} onAction={onImportLatestCommit}>
         <Icon icon="mdi:source-commit" />
         Import latest commit
-      </MenuItemWithTooltip>
+      </MenuItem>
 
       {onReimportCurrentCommit && (
-        <MenuItemWithTooltip
-          isDisabled={!isUpdateAllowed}
-          tooltipEnabled={!isUpdateAllowed}
-          tooltipContent={tooltipMessage}
-          onAction={onReimportCurrentCommit}
-        >
+        <MenuItem isDisabled={!isUpdateAllowed} onAction={onReimportCurrentCommit}>
           <Icon icon="mdi:reload" />
           Reimport current commit
-        </MenuItemWithTooltip>
+        </MenuItem>
       )}
     </MenuSection>
   );
