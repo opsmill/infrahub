@@ -1,16 +1,18 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
-import type { graphql } from "gql.tada";
 
 import type { PaginationParams } from "@/shared/api/types";
 
-import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
+import {
+  type DiffTreeFilters,
+  getDiffTreeFromApi,
+} from "@/entities/diff/api/get-diff-tree-from-api";
 import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
 
 export const DIFF_TREE_PER_PAGE = 300;
 
 export type GetDiffTreeInfiniteQueryOptionsParams = {
   branchName: string;
-  filters?: ReturnType<typeof graphql.scalar<"DiffTreeQueryFilters">>;
+  filters?: DiffTreeFilters;
   proposedChangeId?: string;
 };
 

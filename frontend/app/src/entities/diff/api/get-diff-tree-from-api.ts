@@ -128,8 +128,10 @@ const DIFF_TREE_QUERY = graphql(`
   }
 `);
 
+export type DiffTreeFilters = VariablesOf<typeof DIFF_TREE_QUERY>["filters"];
+
 export interface GetDiffTreeFromApiParams extends BranchContextParams, PaginationParams {
-  filters?: VariablesOf<typeof DIFF_TREE_QUERY>["filters"];
+  filters?: DiffTreeFilters;
   proposedChangeId?: string;
 }
 

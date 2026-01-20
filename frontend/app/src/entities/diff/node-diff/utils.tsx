@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import Accordion from "@/shared/components/display/accordion";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
+import type { DiffTreeFilters } from "@/entities/diff/api/get-diff-tree-from-api";
 import { DIFF_STATUS, type DiffProperty, type DiffStatus } from "@/entities/diff/node-diff/types";
 import {
   BadgeAdded,
@@ -15,7 +15,6 @@ import {
   BadgeUpdated,
   type DiffBadgeProps,
 } from "@/entities/diff/ui/diff-badge";
-import type { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,
@@ -121,7 +120,7 @@ export const DiffRow = ({ children, iconClassName, ...props }: DiffRowProps) => 
   );
 };
 
-export const formatValue = (value: any) => {
+export const formatValue = (value: string) => {
   if (value === "NULL") return "-";
 
   return value;
@@ -147,7 +146,7 @@ export const formatPropertyName = (name: DiffProperty["property_type"]) => {
 };
 
 // Handle QSP to filter from the status
-export const buildFilters = (filters: DiffFilter, qsp?: string | null): DiffTreeQueryFilters => {
+export const buildFilters = (filters?: DiffTreeFilters, qsp?: string | null): DiffTreeFilters => {
   const statusFilter = {
     ...filters?.status,
     includes: Array.from(
@@ -159,5 +158,5 @@ export const buildFilters = (filters: DiffFilter, qsp?: string | null): DiffTree
   return {
     ...filters,
     status: statusFilter,
-  } as DiffTreeQueryFilters;
+  } as DiffTreeFilters;
 };

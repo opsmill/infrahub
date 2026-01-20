@@ -46,7 +46,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
