@@ -105,8 +105,8 @@ function IpamTreeItem({
   const descendantsCount = node.descendants.count;
   const hasChildren = descendantsCount > 0;
   const treeItemId = parentTreeNodeId + node.id;
-  const [isExpanded, setIsExpanded] = React.useState(
-    defaultExpandedKeys?.some((key) => key === treeItemId)
+  const [isExpanded, setIsExpanded] = React.useState<boolean>(
+    !!defaultExpandedKeys?.some((key) => key === treeItemId)
   );
 
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
