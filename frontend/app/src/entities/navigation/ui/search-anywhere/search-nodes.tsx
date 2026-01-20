@@ -91,7 +91,8 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
     schema,
     forListView: true,
     limit: displayIpNamespace ? 6 : 7,
-  }).filter((column) => !("cardinality" in column && column.cardinality === "many"));
+    forSearchAnywhere: true,
+  });
 
   const url = getObjectDetailsUrl(objectDetailsData.__typename, objectDetailsData.id);
 
