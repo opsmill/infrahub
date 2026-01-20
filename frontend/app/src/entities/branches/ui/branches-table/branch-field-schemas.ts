@@ -33,4 +33,9 @@ export const BRANCH_FIELD_SCHEMAS = {
     label: "Created By",
     peer: "CoreAccount",
   } as RelationshipSchema,
+  proposed_changes: {
+    name: "proposed_changes",
+    label: "Proposed Changes",
+    kind: "Text",
+  } as AttributeSchema,
 } as const;
