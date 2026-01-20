@@ -3,6 +3,7 @@
 import pytest
 from graphql import parse, print_ast
 from graphql.language.ast import (
+    DefinitionNode,
     DocumentNode,
     EnumTypeDefinitionNode,
     InputObjectTypeDefinitionNode,
@@ -11,6 +12,14 @@ from graphql.language.ast import (
 )
 
 from infrahub.graphql.schema_sort import sort_schema_ast
+
+
+def get_definition_name(definition: DefinitionNode) -> str | None:
+    """Safely get the name of a definition node."""
+    name_node = getattr(definition, "name", None)
+    if name_node is not None:
+        return str(getattr(name_node, "value", None))
+    return None
 
 
 @pytest.fixture
@@ -23,31 +32,31 @@ def unsorted_schema_document() -> DocumentNode:
         age: Int
         posts: [Post!]!
     }
-    
+
     type Post {
         title: String!
         content: String
         author: User!
         tags: [String!]
     }
-    
+
     interface Node {
         id: ID!
         createdAt: String!
     }
-    
+
     enum Status {
         ACTIVE
         INACTIVE
         PENDING
     }
-    
+
     input CreateUserInput {
         email: String!
         name: String!
         age: Int
     }
-    
+
     input UpdateUserInput {
         name: String
         age: Int
@@ -65,30 +74,30 @@ def expected_sorted_schema_document() -> DocumentNode:
         email: String!
         name: String!
     }
-    
+
     interface Node {
         createdAt: String!
         id: ID!
     }
-    
+
     type Post {
         author: User!
         content: String
         tags: [String!]
         title: String!
     }
-    
+
     enum Status {
         ACTIVE
         INACTIVE
         PENDING
     }
-    
+
     input UpdateUserInput {
         age: Int
         name: String
     }
-    
+
     type User {
         age: Int
         email: String!
@@ -108,13 +117,13 @@ def complex_schema_document() -> DocumentNode:
         getUsers(filter: UserFilter, orderBy: UserOrderBy, limit: Int, offset: Int): [User!]!
         getPost(id: ID!): Post
     }
-    
+
     type Mutation {
         createUser(input: CreateUserInput!): User!
         updateUser(id: ID!, input: UpdateUserInput!): User!
         deleteUser(id: ID!): Boolean!
     }
-    
+
     type User {
         id: ID!
         name: String!
@@ -122,7 +131,7 @@ def complex_schema_document() -> DocumentNode:
         posts(filter: PostFilter, orderBy: PostOrderBy): [Post!]!
         profile: UserProfile
     }
-    
+
     type Post {
         id: ID!
         title: String!
@@ -130,32 +139,32 @@ def complex_schema_document() -> DocumentNode:
         author: User!
         comments: [Comment!]!
     }
-    
+
     type Comment {
         id: ID!
         content: String!
         author: User!
         post: Post!
     }
-    
+
     input UserFilter {
         name: String
         email: String
         age: Int
     }
-    
+
     input PostFilter {
         title: String
         authorId: ID
     }
-    
+
     enum UserOrderBy {
         NAME_ASC
         NAME_DESC
         EMAIL_ASC
         EMAIL_DESC
     }
-    
+
     enum PostOrderBy {
         TITLE_ASC
         TITLE_DESC
@@ -198,8 +207,9 @@ def test_sort_schema_ast_sorts_definitions_by_name(unsorted_schema_document: Doc
 
     definition_names = []
     for definition in result.definitions:
-        if hasattr(definition, "name") and definition.name:
-            definition_names.append(definition.name.value)
+        name = get_definition_name(definition)
+        if name:
+            definition_names.append(name)
 
     # Check that names are in alphabetical order
     assert definition_names == sorted(definition_names)
@@ -260,8 +270,9 @@ def test_sort_schema_ast_complex_schema(complex_schema_document: DocumentNode) -
     # Check that all definitions are sorted by name
     definition_names = []
     for definition in result.definitions:
-        if hasattr(definition, "name") and definition.name:
-            definition_names.append(definition.name.value)
+        name = get_definition_name(definition)
+        if name:
+            definition_names.append(name)
 
     assert definition_names == sorted(definition_names)
 
@@ -355,21 +366,24 @@ def test_sort_schema_ast_preserves_metadata() -> None:
     # Check that all definitions are sorted by name
     definition_names = []
     for definition in result.definitions:
-        if hasattr(definition, "name") and definition.name:
-            definition_names.append(definition.name.value)
+        name = get_definition_name(definition)
+        if name:
+            definition_names.append(name)
 
     assert definition_names == sorted(definition_names)
 
     # Check that fields within types are sorted
     for definition in result.definitions:
-        if hasattr(definition, "fields") and definition.fields:
-            field_names = [field.name.value for field in definition.fields]
+        fields = getattr(definition, "fields", None)
+        if fields:
+            field_names = [field.name.value for field in fields]
             assert field_names == sorted(field_names)
 
     # Check that enum values are sorted
     for definition in result.definitions:
-        if hasattr(definition, "values") and definition.values:
-            enum_values = [value.name.value for value in definition.values]
+        values = getattr(definition, "values", None)
+        if values:
+            enum_values = [value.name.value for value in values]
             assert enum_values == sorted(enum_values)
 
 
@@ -425,15 +439,16 @@ def test_sort_schema_ast_sorts_interfaces(schema_with_unsorted_interfaces: Docum
     # Find the User type
     user_type = None
     for definition in result.definitions:
-        if hasattr(definition, "name") and definition.name.value == "User":
+        if get_definition_name(definition) == "User":
             user_type = definition
             break
 
     assert user_type is not None
-    assert user_type.interfaces is not None
+    interfaces = getattr(user_type, "interfaces", None)
+    assert interfaces is not None
 
     # Extract interface names
-    interface_names = [intf.name.value for intf in user_type.interfaces]
+    interface_names = [intf.name.value for intf in interfaces]
 
     # Should be sorted: Auditable, Node, Timestamped
     assert interface_names == ["Auditable", "Node", "Timestamped"]
@@ -457,9 +472,11 @@ def test_sort_schema_ast_sorts_all_interfaces_in_schema() -> None:
     result = sort_schema_ast(doc)
 
     for definition in result.definitions:
-        if hasattr(definition, "interfaces") and definition.interfaces:
-            interface_names = [intf.name.value for intf in definition.interfaces]
-            assert interface_names == sorted(interface_names), f"{definition.name.value} interfaces not sorted"
+        interfaces = getattr(definition, "interfaces", None)
+        if interfaces:
+            interface_names = [intf.name.value for intf in interfaces]
+            def_name = get_definition_name(definition)
+            assert interface_names == sorted(interface_names), f"{def_name} interfaces not sorted"
 
 
 def test_sort_schema_ast_preserves_other_definition_types() -> None:
@@ -496,15 +513,16 @@ def test_sort_schema_ast_preserves_other_definition_types() -> None:
     type_names = []
 
     for definition in result.definitions:
-        if hasattr(definition, "name") and definition.name:
+        name = get_definition_name(definition)
+        if name:
             if definition.__class__.__name__ == "ScalarTypeDefinitionNode":
-                scalar_names.append(definition.name.value)
+                scalar_names.append(name)
             elif definition.__class__.__name__ == "UnionTypeDefinitionNode":
-                union_names.append(definition.name.value)
+                union_names.append(name)
             elif definition.__class__.__name__ == "DirectiveDefinitionNode":
-                directive_names.append(definition.name.value)
+                directive_names.append(name)
             elif definition.__class__.__name__ == "ObjectTypeDefinitionNode":
-                type_names.append(definition.name.value)
+                type_names.append(name)
 
     # Verify scalars are preserved
     assert "DateTime" in scalar_names
