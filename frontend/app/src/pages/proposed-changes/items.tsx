@@ -1,4 +1,3 @@
-import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -9,11 +8,9 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const Component = () => {
   useTitle("Proposed changes");
-  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT);
-
-  if (!proposedChangeSchema) {
-    return <ErrorScreen message={`Schema ${PROPOSED_CHANGE_OBJECT} not found.`} />;
-  }
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT, {
+    throwIfNotFound: true,
+  });
 
   return (
     <Content.Card className="flex flex-col">

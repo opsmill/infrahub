@@ -59,7 +59,7 @@ const ProposedChangesInfo = ({ id, name, isDraft, isApproved }: ProposedChangesI
         {name}
       </Link>
 
-      <div className="flex-shrink-0 space-x-2">
+      <div className="shrink-0 space-x-2">
         {isDraft && <Badge variant={"gray-outline"}>draft</Badge>}
         {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
       </div>

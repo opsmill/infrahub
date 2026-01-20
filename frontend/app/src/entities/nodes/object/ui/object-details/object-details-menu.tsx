@@ -145,6 +145,7 @@ export function ObjectDetailsMenu({
             {isRepository && (
               <RepositoryActionsMenu
                 repositoryId={objectData.id}
+                objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
               />
             )}

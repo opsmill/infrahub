@@ -1,6 +1,6 @@
 # TypeScript Coding Standards
 
-> Part of: `dev/guidelines/frontend/`
+> Part of: `dev/guidelines/frontend/` | Index: [Frontend Guidelines](./README.md)
 
 Coding standards for the TypeScript/React frontend.
 
@@ -21,6 +21,3 @@ Follow React best practices and project conventions. See `frontend/app/AGENTS.md
 - Avoid `any` - use `unknown` if type is truly unknown
 - Prefer type inference where possible
 
-## See Also
-
-- `frontend/app/AGENTS.md` - Frontend-specific patterns and structure
