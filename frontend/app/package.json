@@ -53,6 +53,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@uiw/react-color": "^2.4.5",
     "@vitejs/plugin-react": "^5.1.2",
+    "babel-plugin-react-compiler": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "cm6-graphql": "^0.2.1",
