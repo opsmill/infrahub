@@ -53,11 +53,9 @@ The following attributes will have to be defined:
 - `checksum` (read-only, required): SHA-1 checksum calculated on the uploaded file
 - `file_size` (read-only, required): the size of the file in bytes
 - `file_type` (read-only, required): the type of the file, detected from file content using magic bytes (via `puremagic`)
-- `storage_id` (read-only, required): the id of the uploaded file in Infrahub's storage - set automatically by the system when a file is uploaded via GraphQL mutation
+- `storage_id` (read-only, required): the id of the uploaded file in Infrahub's storage - set automatically by the system when a file is uploaded
 
-All attributes are read-only because they are system-managed. When creating a FileObject via GraphQL mutation with the `file` parameter, the system automatically stores the file and sets all these attributes.
-
-**Fallback note:** If we need to fallback to REST API for file uploads, `storage_id` would need to be changed to writable (`read_only: false`) so users can link nodes to previously uploaded files via the two-step workflow.
+All attributes are read-only because they are system-managed. Both GraphQL and REST upload methods are single-step workflows where file + data payload are provided together, and the system creates the node with all attributes in one operation.
 
 #### User-defined file object type
 
@@ -476,11 +474,18 @@ We can then validate that the user has the correct permission to view/download t
 
 **Note:** REST upload is optional. GraphQL is the primary upload method (see below). This endpoint may be removed if GraphQL proves sufficient.
 
+REST upload is also a single-step workflow: file + data payload are provided together, and the system creates the node atomically.
+
 ```text
-POST /api/CoreFileObject/upload
-Body: {"file": "String"} # binary
-Return: {"identifier": {identifier}, "checksum": "String", "file_name": "String", "file_size": Number, "file_type": "String"}
+POST /api/file-object/{node_kind}/
+Content-Type: multipart/form-data
+Body:
+  - file: <binary>
+  - data: {"contract_start": {"value": "..."}, "contract_end": {"value": "..."}, ...}
+Return: {"id": "node-uuid", "storage_id": "...", "checksum": "...", "file_name": "...", "file_size": Number, "file_type": "...", ...}
 ```
+
+The `data` field contains the JSON payload with node attributes, validated against the schema for `node_kind`.
 
 #### Upload FileObject (GraphQL - Primary Method)
 
@@ -493,7 +498,7 @@ See the Mutations section above for examples of Create/Update mutations with the
 #### Open questions
 
 - What is the right order of operation? Do we first create the `CoreFileObject` object and then the object in the storage system, or the other way around?
-  - **Answer:** Storage first, then node creation. The upload returns `storage_id` which is then used to create the node.
+  - **Answer:** Storage first, then node creation - but this happens atomically in a single request. The system stores the file, then creates the node with all attributes in one operation.
 
 ### Python SDK
 

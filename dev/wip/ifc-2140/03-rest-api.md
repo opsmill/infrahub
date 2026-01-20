@@ -48,19 +48,23 @@ Features:
       - [ ] Use safe ASCII fallback or RFC5987 percent-encoding for non-ASCII names
       - [ ] Set both `filename` (ASCII) and `filename*` (encoded) parameters in Content-Disposition
     - [ ] Handle 404 if identifier not found
-  - [ ] Implement `POST /{node_kind}/upload` endpoint (binary upload)
-    - [ ] Accept file via `UploadFile` (multipart/form-data)
+  - [ ] Implement `POST /{node_kind}/` endpoint (create FileObject with file - single step)
+    - [ ] Accept multipart/form-data with:
+      - [ ] `file`: The file to upload via `UploadFile`
+      - [ ] `data`: JSON payload with node attributes (validated against node_kind schema)
     - [ ] Validate `node_kind` inherits from CoreFileObject
+    - [ ] Validate JSON payload against the schema for `node_kind`
     - [ ] Check CREATE permission via `PermissionManager.raise_for_permission()`
     - [ ] Validate file size against `config.SETTINGS.storage.max_file_size`
     - [ ] Read file content as **bytes** (not decoded)
-    - [ ] Generate new identifier (UUID)
+    - [ ] Generate new identifier (UUID) for `storage_id`
     - [ ] Calculate checksum (SHA-1) from bytes
     - [ ] Extract file_name from upload
     - [ ] Detect file_type (MIME type) using `puremagic` from file content (magic bytes), with fallback to extension
     - [ ] Calculate file_size from bytes length
     - [ ] Store file bytes via `registry.storage.store()`
-    - [ ] Return upload response with all metadata
+    - [ ] Create the FileObject node with file metadata + user-provided attributes
+    - [ ] Return created node with all attributes
 
 ### Router Registration
 
@@ -122,26 +126,33 @@ Features:
 
 ## API Endpoints
 
-### Upload File
+### Create FileObject with File (Single Step)
 
 ```
-POST /api/file-object/{node_kind}/upload
+POST /api/file-object/{node_kind}/
 Content-Type: multipart/form-data
 
 file: <binary>
+data: {"contract_start": {"value": "2026-01-01"}, "contract_end": {"value": "2026-12-31"}, ...}
 
 Response 200:
 {
-  "identifier": "uuid",
+  "id": "node-uuid",
+  "storage_id": "storage-uuid",
   "checksum": "sha1-hash",
   "file_name": "original-filename.pdf",
   "file_size": 12345,
-  "file_type": "application/pdf"
+  "file_type": "application/pdf",
+  "contract_start": "2026-01-01",
+  "contract_end": "2026-12-31",
+  ...
 }
 
-Response 400: File too large or invalid node_kind
+Response 400: File too large, invalid node_kind, or invalid data payload
 Response 403: Permission denied
 ```
+
+The `data` field contains the JSON payload with node attributes, validated against the schema for `node_kind`.
 
 ### Download File
 
@@ -170,10 +181,11 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
 
 **Key points for implementation:**
 
-1. **Upload creates new storage entry**
+1. **Upload creates storage entry + node atomically**
    - Each upload gets a new UUID (`storage_id`)
    - Call `registry.storage.store(identifier=storage_id, content=file_bytes)`
-   - Return metadata to client for use when creating FileObject node
+   - Create the FileObject node with file metadata + user-provided attributes
+   - Return created node with all attributes
 
 2. **Download retrieves from storage**
    - Call `registry.storage.retrieve_binary(identifier=storage_id)`
@@ -194,12 +206,14 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
 - Unlike `/api/storage`, these endpoints enforce permissions
 - **Download endpoint is required** - GraphQL cannot return binary data efficiently
 - **Upload endpoint is optional** - GraphQL upload (PR 4) is the primary method; REST upload may be skipped entirely
+- **Both workflows are single-step** - file + data payload in one request, node created atomically
 
 ## Workflow
 
-**Primary workflow (GraphQL upload):**
-1. Create FileObject node via GraphQL mutation with `file` parameter → file uploaded and node created in one step
+**GraphQL (primary):**
+- `mutation Create(data: {...}, file: $file)` → file uploaded and node created in one step
 
-**Fallback workflow (if REST upload is implemented):**
-1. Upload file via `POST /{node_kind}/upload` → returns `storage_id` and metadata
-2. Create node via GraphQL mutation with `storage_id` to link to the uploaded file
+**REST (optional fallback):**
+- `POST /api/file-object/{node_kind}/` with file + JSON data → file uploaded and node created in one step
+
+Both methods validate the data payload against the schema for the expected type.

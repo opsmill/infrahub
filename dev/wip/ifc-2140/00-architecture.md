@@ -216,25 +216,28 @@ This provides:
 
 ### Upload Approach
 
-**GraphQL is the primary upload method.** Files are attached directly when creating/updating FileObject nodes via the `file` parameter.
+**Both GraphQL and REST are single-step workflows.** File + data payload are provided together, and the system creates the node with all attributes in one operation.
 
 | Method | Endpoint | Use Case |
 |--------|----------|----------|
 | GraphQL | Create/Update mutations with `file` parameter | Primary - single-step file + node creation |
-| REST (optional) | `POST /api/file-object/{kind}/upload` | Fallback if needed; may be removed |
+| REST (optional) | `POST /api/file-object/{kind}/` with file + JSON payload | Fallback if needed; may be removed |
 
-**Note:** All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is provided via the `file` parameter.
-
-**Fallback note:** If we need to fallback to REST API for file uploads, `storage_id` would need to be changed to writable so users can link nodes to previously uploaded files.
+**Note:** All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is uploaded.
 
 ### Workflow
 
-**GraphQL Combined Mutation (Single Step)**
+**GraphQL Mutation (Single Step)**
 ```
 mutation Create(data: {...}, file: $file) → creates node with file in one operation
 ```
-The Create/Update/Upsert mutations for CoreFileObject types accept a `file: Upload` parameter.
-When provided, the system stores the file and sets all FileObject attributes automatically.
+
+**REST Upload (Single Step)**
+```
+POST /api/file-object/{kind}/ with multipart: file + JSON data payload → creates node with file in one operation
+```
+
+Both methods validate the data payload against the schema for the expected type.
 
 **Download: REST Only**
 ```

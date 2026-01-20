@@ -59,8 +59,6 @@ Add the CoreFileObject generic schema definition to the core schema. This is the
 
 ## Notes
 
-- All FileObject attributes are `read_only=True` because they are system-managed (set from uploaded file via GraphQL mutation with `file` parameter)
+- All FileObject attributes are `read_only=True` because they are system-managed (set automatically when a file is uploaded via GraphQL or REST)
 - All attributes are marked `optional=False` because they are required for a valid file object
 - `allow_override=AllowOverrideType.NONE` prevents inheriting schemas from overriding these attributes
-
-**Fallback note:** If we need to fallback to using REST API for file uploads (two-step workflow), `storage_id` would need to be changed to `read_only=False` so users can set it via mutations to link nodes to previously uploaded files.
