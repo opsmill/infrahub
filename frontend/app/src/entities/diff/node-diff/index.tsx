@@ -39,6 +39,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     useDiffTreeInfiniteQuery({
       branchName,
       filters: finalFilters,
+      proposedChangeId: proposedChangesDetails?.id,
     });
 
   useEffect(() => {
