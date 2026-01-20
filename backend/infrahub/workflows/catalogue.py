@@ -330,6 +330,14 @@ COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH = WorkflowDefinition(
+    name="computed-attribute-jinja2-update-value-batch",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_jinja2_update_value_batch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
     name="display-label-process-jinja2",
     type=WorkflowType.CORE,
@@ -670,6 +678,7 @@ WORKFLOWS = [
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,

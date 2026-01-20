@@ -75,6 +75,28 @@ class InfrahubComponent:
                 workers[identity].add_value(key=key, value=value)
         return list(workers.values())
 
+    async def get_active_worker_count(self, component_type: ComponentType | None = None) -> int:
+        """Get count of active workers, optionally filtered by component type.
+
+        Args:
+            component_type: Optional filter (API_SERVER or GIT_AGENT)
+
+        Returns:
+            Number of active workers (0 if none found)
+        """
+        keys = await self.cache.list_keys(filter_pattern="workers:active:*")
+
+        if component_type is not None:
+            component_name_map = {
+                ComponentType.API_SERVER: "api_server",
+                ComponentType.GIT_AGENT: "git_agent",
+            }
+            component_name = component_name_map.get(component_type)
+            if component_name:
+                keys = [k for k in keys if f":active:{component_name}:" in k]
+
+        return len(keys)
+
     async def refresh_schema_hash(self, branches: list[str] | None = None) -> None:
         branches = branches or list(registry.branch.keys())
         for branch in branches:

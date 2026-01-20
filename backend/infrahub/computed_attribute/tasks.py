@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING, Any
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
-from prefect import State, flow
+from prefect import State, concurrency, flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
+from infrahub.components import ComponentType
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
@@ -21,9 +22,10 @@ from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
+from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
-    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
@@ -31,7 +33,7 @@ from infrahub.workflows.catalogue import (
 )
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
-from .constants import JINJA2_THRESHOLD_LOCAL_EXECUTION
+from .constants import DEFAULT_BATCH_COUNT, JINJA2_THRESHOLD_LOCAL_EXECUTION
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -41,7 +43,10 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from logging import Logger
     from uuid import UUID
+
+    from infrahub_sdk.client import InfrahubClient
 
     from infrahub.core.schema.computed_attribute import ComputedAttribute
 
@@ -91,6 +96,23 @@ async def wait_until_flow_runs_are_completed(
                 raise TimeoutError(f"Timeout of {timeout} seconds reached while waiting for flow runs to complete")
 
         return failed_flow_run_ids
+
+
+def split_into_batches[T](items: list[T], num_batches: int) -> list[list[T]]:
+    """Split a list into approximately equal-sized batches.
+
+    Args:
+        items: List of items to split
+        num_batches: Number of batches to create
+
+    Returns:
+        List of batches (each batch is a list of items)
+    """
+    if not items or num_batches <= 0:
+        return []
+    num_batches = min(num_batches, len(items))
+    batch_size = (len(items) + num_batches - 1) // num_batches
+    return [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
 
 
 @flow(
@@ -246,6 +268,100 @@ async def computed_attribute_jinja2_update_value(
         )
 
 
+async def _update_single_computed_attribute(
+    client: InfrahubClient,
+    branch_name: str,
+    obj: ComputedAttrJinja2GraphQLResponse,
+    node_kind: str,
+    attribute_name: str,
+    template: Jinja2Template,
+    context: InfrahubContext,
+    log: Logger,
+) -> None:
+    """Update a single computed attribute value (internal helper).
+
+    This is extracted from computed_attribute_jinja2_update_value to be
+    used both by the single-node workflow and the batch workflow.
+    """
+    value = await template.render(variables=obj.variables)
+    if value == obj.computed_attribute_value:
+        log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
+        return
+
+    try:
+        await client.execute_graphql(
+            query=UPDATE_ATTRIBUTE,
+            variables={
+                "id": obj.node_id,
+                "kind": node_kind,
+                "attribute": attribute_name,
+                "value": value,
+                "context_account_id": context.account.account_id,
+            },
+            branch_name=branch_name,
+        )
+        log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
+    except URLNotFoundError:
+        log.warning(
+            f"Update of computed attribute {node_kind}.{attribute_name} failed for branch {branch_name} (not found)"
+        )
+
+
+@flow(
+    name="computed-attribute-jinja2-update-value-batch",
+    flow_run_name="Update batch of {batch_size} computed attributes for {node_kind}:{attribute_name}",
+)
+async def computed_attribute_jinja2_update_value_batch(
+    branch_name: str,
+    nodes: list[ComputedAttrJinja2GraphQLResponse],
+    node_kind: str,
+    attribute_name: str,
+    template: Jinja2Template,
+    context: InfrahubContext,
+    batch_size: int = 0,  # noqa: ARG001  used in flow_run_name
+) -> None:
+    """Process a batch of nodes for computed attribute updates.
+
+    This function processes multiple nodes in a single workflow execution,
+    reducing the overhead of creating individual workflows for each node.
+
+    Uses Prefect's concurrency context manager with worker identity to ensure
+    each batch runs on a different worker (per-worker task concurrency pattern).
+    """
+    log = get_run_logger()
+    client = get_client()
+
+    await add_tags(branches=[branch_name], db_change=True)
+
+    log.info(f"Processing batch of {len(nodes)} nodes for {node_kind}:{attribute_name}")
+
+    # Acquire a concurrency slot for this specific worker
+    # This ensures only one batch runs on each worker at a time
+    # When a worker picks up a batch, it acquires its own concurrency slot
+    # If that worker already has a batch running, the next batch will be picked up by a different worker
+    async with concurrency(f"computed-attr-batch:{WORKER_IDENTITY}", occupy=1):
+        # Create a local batch for processing
+        batch = await client.create_batch()
+
+        for obj in nodes:
+            batch.add(
+                task=_update_single_computed_attribute,
+                client=client,
+                branch_name=branch_name,
+                obj=obj,
+                node_kind=node_kind,
+                attribute_name=attribute_name,
+                template=template,
+                context=context,
+                log=log,
+            )
+
+        # Execute all updates in this batch locally
+        _ = [response async for _, response in batch.execute()]
+
+    log.info(f"Completed batch processing for {node_kind}:{attribute_name}")
+
+
 @flow(
     name="computed_attribute_process_jinja2",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
@@ -301,7 +417,7 @@ async def process_jinja2(
                 log.warning(
                     f"Process computed attributes for {computed_attribute_kind}.{computed_attribute_name} failed for branch {branch_name} (not found)"
                 )
-                return
+                return None
             output = attribute_graphql.parse_response(response=response)
             found.extend(output)
 
@@ -319,24 +435,38 @@ async def process_jinja2(
             f"Found {len(found)} nodes that requires updates for {computed_macro.kind}::{computed_macro.attribute.name}, processing {processing}"
         )
 
-        batch = await client.create_batch()
         if processing == "remotely":
-            for node in found:
+            # Get the number of active workers to determine batch count
+            component = await get_component()
+            worker_count = await component.get_active_worker_count(component_type=ComponentType.GIT_AGENT)
+            # Fallback to DEFAULT_BATCH_COUNT if no workers found
+            batch_count = worker_count if worker_count > 0 else DEFAULT_BATCH_COUNT
+            log.info(f"Distributing {len(found)} nodes across {batch_count} batches")
+
+            # Split nodes into batches
+            node_batches = split_into_batches(items=found, num_batches=batch_count)
+
+            # Submit batch workflows
+            batch = await client.create_batch()
+            for node_batch in node_batches:
                 batch.add(
                     task=get_workflow().submit_workflow,
-                    workflow=COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+                    workflow=COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
                     parameters={
                         "branch_name": branch_name,
-                        "obj": node.model_dump(),  # Not sure why, but without this, the variables are not serialized to the worker
+                        "nodes": node_batch,
                         "node_kind": node_schema.kind,
                         "attribute_name": computed_macro.attribute.name,
                         "template": jinja_template,
+                        "batch_size": len(node_batch),
                     },
                     context=context,
                 )
 
             tasks = [task.id async for _, task in batch.execute()]
         else:
+            # Local processing - process all nodes locally in a single batch
+            batch = await client.create_batch()
             for node in found:
                 batch.add(
                     task=computed_attribute_jinja2_update_value,
@@ -350,8 +480,9 @@ async def process_jinja2(
 
     if tasks:
         # Wait for all tasks to complete and report on the overall success or failure of the task
-        # Calculate a timeout based on the number of nodes to update
-        timeout = len(tasks) * 3 if len(tasks) > 50 else len(tasks) * 10
+        # Calculate a timeout based on the number of nodes to update (accounting for batch processing)
+        batch_count = len(tasks)
+        timeout = max(nbr_nodes_updated * 3 // batch_count, batch_count * 30)
         failed_flow_run_ids = await wait_until_flow_runs_are_completed(tasks, interval=2, timeout=timeout)
 
         if failed_flow_run_ids:
