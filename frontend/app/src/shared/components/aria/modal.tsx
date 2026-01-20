@@ -23,7 +23,7 @@ export function ModalOverlay({ className, ...props }: AriaModalOverlayProps) {
   );
 }
 
-interface ModalProps
+export interface ModalProps
   extends Pick<AriaModalOverlayProps, "isOpen" | "onOpenChange" | "isDismissable">,
     DialogProps {}
 
