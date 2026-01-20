@@ -39,7 +39,7 @@ export function RepositoryMenuSection({
 
   return (
     <MenuSection>
-      <MenuItem isDisabled={!isUpdateAllowed} onAction={onCheckConnectivity}>
+      <MenuItem onAction={onCheckConnectivity}>
         <Icon icon="mdi:access-point" />
         Check connectivity
       </MenuItem>
@@ -50,7 +50,7 @@ export function RepositoryMenuSection({
       </MenuItem>
 
       {onReimportCurrentCommit && (
-        <MenuItem isDisabled={!isUpdateAllowed} onAction={onReimportCurrentCommit}>
+        <MenuItem onAction={onReimportCurrentCommit}>
           <Icon icon="mdi:reload" />
           Reimport current commit
         </MenuItem>
