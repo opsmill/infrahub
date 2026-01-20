@@ -1,12 +1,12 @@
-import type { GetDiffTreeInfiniteQueryOptionsParams } from "@/entities/diff/domain/get-diff-tree";
+type TreeQueryKeyParams = {
+  branchName: string;
+  filters?: unknown;
+  proposedChangeId?: string;
+};
 
 export const treeQueryKeys = {
   all: ["diff-tree"] as const,
-  allWithContext: ({
-    branchName,
-    filters,
-    proposedChangeId,
-  }: GetDiffTreeInfiniteQueryOptionsParams) =>
+  allWithContext: ({ branchName, filters, proposedChangeId }: TreeQueryKeyParams) =>
     [...treeQueryKeys.all, branchName, filters, proposedChangeId] as const,
 };
 
