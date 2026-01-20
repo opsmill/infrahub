@@ -1,6 +1,6 @@
 import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
+import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
@@ -9,6 +9,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Link } from "@/shared/components/ui/link";
 import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
@@ -75,9 +76,13 @@ export function RepositoryActionsMenu({
         const taskId = data.InfrahubRepositoryProcess.task?.id;
         const message = taskId ? (
           <>
-            Import from remote started.{" "}
-            <Link to={constructPath(`/tasks/${taskId}`)} className="underline">
-              View task details
+            Import from remote started.
+            <br />
+            <Link
+              to={constructPath(`/tasks/${taskId}`)}
+              className="inline-flex items-center gap-1 underline"
+            >
+              View task <ArrowUpRightIcon className="size-3.5" />
             </Link>
           </>
         ) : (
@@ -105,9 +110,13 @@ export function RepositoryActionsMenu({
         const taskId = data.InfrahubReadOnlyRepositoryImportLastCommit.task?.id;
         const message = taskId ? (
           <>
-            Import of current commit started.{" "}
-            <Link to={constructPath(`/tasks/${taskId}`)} className="underline">
-              View task details
+            Import of current commit started.
+            <br />
+            <Link
+              to={constructPath(`/tasks/${taskId}`)}
+              className="inline-flex items-center gap-1 underline"
+            >
+              View task <ArrowUpRightIcon className="size-3.5" />
             </Link>
           </>
         ) : (
