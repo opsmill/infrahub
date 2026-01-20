@@ -16,13 +16,6 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/** @deprecated Use DEFAULT_PAGE_SIZE from @/shared/utils/pagination instead */
-export const OBJECTS_PER_PAGE = DEFAULT_PAGE_SIZE;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export interface ProposedChangesFromApiParams extends PaginationParams {
   schema: ModelSchema;
   filters?: Array<Filter>;

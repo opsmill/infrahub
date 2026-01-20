@@ -17,13 +17,6 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import type { NodeObject } from "@/entities/nodes/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/** @deprecated Use DEFAULT_PAGE_SIZE from @/shared/utils/pagination instead */
-export const OBJECTS_PER_PAGE = DEFAULT_PAGE_SIZE;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export type GetObjectsParams = ContextParams &
   PaginationParams & {
     schema: ModelSchema;

@@ -6,13 +6,6 @@ import {
 } from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import type { NodeCore } from "@/entities/nodes/types";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/** @deprecated Use DEFAULT_PAGE_SIZE from @/shared/utils/pagination instead */
-export const RELATIONSHIPS_PER_PAGE = DEFAULT_PAGE_SIZE;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
 export type GetRelationships = (
