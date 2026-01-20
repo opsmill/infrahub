@@ -26,6 +26,7 @@ from .artifact import core_artifact, core_artifact_definition, core_artifact_tar
 from .builtin import builtin_tag
 from .check import core_check_definition
 from .core import core_node, core_task_target
+from .file_object import core_file_object
 from .generator import core_generator_definition, core_generator_instance
 from .graphql_query import core_graphql_query
 from .group import (
@@ -115,6 +116,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_check,
         core_transform,
         core_artifact_target,
+        core_file_object,
         core_task_target,
         core_webhook,
         core_generic_repository,
