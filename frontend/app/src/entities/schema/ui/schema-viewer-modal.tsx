@@ -18,14 +18,14 @@ export function SchemaViewerModal({
   ...props
 }: SchemaViewerModalProps) {
   return (
-    <Modal aria-label="Schema viewer" className={classNames("w-150", className)} {...props}>
+    <Modal aria-label="Schema viewer" className={classNames("w-150 p-0", className)} {...props}>
       {({ close }) => (
         <SchemaViewer
           schema={schema}
           defaultTab={defaultTab}
           targetField={targetField}
           onClose={close}
-          className="rounded-xl"
+          className="rounded-xl p-3"
         />
       )}
     </Modal>
