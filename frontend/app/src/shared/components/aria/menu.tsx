@@ -15,6 +15,7 @@ import {
 
 import { Popover } from "@/shared/components/aria/popover";
 import { disabledStyle } from "@/shared/components/aria/style-rac";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -99,5 +100,22 @@ export function CopyToClipboardMenuItem({
       <CopyIcon className="size-3" />
       {children}
     </MenuItem>
+  );
+}
+
+export interface MenuItemWithTooltipProps extends MenuItemProps {
+  tooltipContent?: React.ReactNode;
+  tooltipEnabled?: boolean;
+}
+
+export function MenuItemWithTooltip({
+  tooltipContent,
+  tooltipEnabled,
+  ...props
+}: MenuItemWithTooltipProps) {
+  return (
+    <Tooltip enabled={tooltipEnabled} content={tooltipContent}>
+      <MenuItem {...props} />
+    </Tooltip>
   );
 }

@@ -147,6 +147,7 @@ export function ObjectDetailsMenu({
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
+                permission={permission}
               />
             )}
 
