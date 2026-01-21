@@ -79,8 +79,8 @@ export function RepositoryActionsMenu({
       repositoryId,
     },
     onCompleted: async (data) => {
-      if (data?.InfrahubRepositoryProcess?.ok) {
-        const taskId = data.InfrahubRepositoryProcess.task?.id;
+      if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
+        const taskId = data.InfrahubReadOnlyRepositoryImportLastCommit.task?.id;
         const message = taskId ? (
           <>
             Import from remote started.
@@ -113,8 +113,8 @@ export function RepositoryActionsMenu({
       repositoryId,
     },
     onCompleted: async (data) => {
-      if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
-        const taskId = data.InfrahubReadOnlyRepositoryImportLastCommit.task?.id;
+      if (data?.InfrahubRepositoryProcess?.ok) {
+        const taskId = data.InfrahubRepositoryProcess.task?.id;
         const message = taskId ? (
           <>
             Import of current commit started.
