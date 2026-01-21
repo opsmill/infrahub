@@ -14,11 +14,9 @@ import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import type { Permission } from "@/entities/permission/types";
-import {
-  CHECK_REPOSITORY_CONNECTIVITY,
-  IMPORT_READONLY_REPOSITORY_LAST_COMMIT,
-  REIMPORT_LAST_COMMIT,
-} from "@/entities/repository/api/actions";
+import { CHECK_REPOSITORY_CONNECTIVITY } from "@/entities/repository/api/actions";
+import { useImportCurrentCommitMutation } from "@/entities/repository/domain/import-current-commit.mutation";
+import { useReimportLastCommitMutation } from "@/entities/repository/domain/reimport-last-commit.mutation";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -74,32 +72,24 @@ export function RepositoryActionsMenu({
 }: RepositoryActionsMenuProps) {
   const isReadOnlyRepository = isOfKind(READONLY_REPOSITORY_KIND, objectSchema);
 
-  const [reimportLastCommit] = useMutation(REIMPORT_LAST_COMMIT, {
-    variables: {
-      repositoryId,
-    },
-    onCompleted: async (data) => {
-      if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
-        const taskId = data.InfrahubReadOnlyRepositoryImportLastCommit.task?.id;
-        const message = taskId ? (
-          <>
-            Import from remote started.
-            <br />
-            <Link
-              to={constructPath(`/tasks/${taskId}`)}
-              className="inline-flex items-center gap-1 underline"
-            >
-              View task <ArrowUpRightIcon className="size-3.5" />
-            </Link>
-          </>
-        ) : (
-          'Import from remote started. You can view its status on the "Tasks" tab.'
-        );
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
-        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-      } else {
-        toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to start import from remote." />);
-      }
+  const { mutate: reimportLastCommit } = useReimportLastCommitMutation({
+    onSuccess: async (result) => {
+      const message = result.taskId ? (
+        <>
+          Import from remote started.
+          <br />
+          <Link
+            to={constructPath(`/tasks/${result.taskId}`)}
+            className="inline-flex items-center gap-1 underline"
+          >
+            View task <ArrowUpRightIcon className="size-3.5" />
+          </Link>
+        </>
+      ) : (
+        'Import from remote started. You can view its status on the "Tasks" tab.'
+      );
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
+      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
     onError: (error) => {
       toast(
@@ -108,36 +98,26 @@ export function RepositoryActionsMenu({
     },
   });
 
-  const [importCurrentCommit] = useMutation(IMPORT_READONLY_REPOSITORY_LAST_COMMIT, {
-    variables: {
-      repositoryId,
-    },
-    onCompleted: async (data) => {
-      if (data?.InfrahubRepositoryProcess?.ok) {
-        const taskId = data.InfrahubRepositoryProcess.task?.id;
-        const message = taskId ? (
-          <>
-            Import of current commit started.
-            <br />
-            <Link
-              to={constructPath(`/tasks/${taskId}`)}
-              className="inline-flex items-center gap-1 underline"
-            >
-              View task <ArrowUpRightIcon className="size-3.5" />
-            </Link>
-          </>
-        ) : (
-          'Import of current commit started. You can view its status on the "Tasks" tab.'
-        );
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
-        await queryClient.invalidateQueries({
-          queryKey: objectQueryKeys.all,
-        });
-      } else {
-        toast(
-          <Alert type={ALERT_TYPES.ERROR} message="Failed to start import of current commit." />
-        );
-      }
+  const { mutate: importCurrentCommit } = useImportCurrentCommitMutation({
+    onSuccess: async (result) => {
+      const message = result.taskId ? (
+        <>
+          Import of current commit started.
+          <br />
+          <Link
+            to={constructPath(`/tasks/${result.taskId}`)}
+            className="inline-flex items-center gap-1 underline"
+          >
+            View task <ArrowUpRightIcon className="size-3.5" />
+          </Link>
+        </>
+      ) : (
+        'Import of current commit started. You can view its status on the "Tasks" tab.'
+      );
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
+      await queryClient.invalidateQueries({
+        queryKey: objectQueryKeys.all,
+      });
     },
     onError: (error) => {
       toast(
@@ -152,8 +132,10 @@ export function RepositoryActionsMenu({
   return (
     <RepositoryMenuSection
       onCheckConnectivity={onCheckConnectivity}
-      onImportLatestCommit={() => reimportLastCommit()}
-      onReimportCurrentCommit={isReadOnlyRepository ? () => importCurrentCommit() : undefined}
+      onImportLatestCommit={() => reimportLastCommit({ repositoryId })}
+      onReimportCurrentCommit={
+        isReadOnlyRepository ? () => importCurrentCommit({ repositoryId }) : undefined
+      }
       permission={permission}
     />
   );
