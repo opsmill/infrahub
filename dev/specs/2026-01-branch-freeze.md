@@ -371,3 +371,17 @@ When we have a better way to communicate errors, we should revisit handling this
 - Update branch lifecycle documentation
 - Add troubleshooting guide for "branch is read-only" errors
 - Update API reference with new status
+
+## How it works
+
+When a user makes modifications to Infrahub's data or schema, the recommended workflow is to perform this through a branch in Infrahub. This branch can then be merged into the main branch using a branch merge or a merging a proposed change.
+
+After a branch has been successfully merged (through a proposed change or branch merge), the status of the branch will be updated to `MERGED`. When there is a failure during the merge process, the branch will stay in `OPEN` status and no changes will have been made to the main branch.
+
+A branch with status `MERGED` will not allow changes to the data or schema any longer, it is effectively in a read-only modus. A user can still consult the data or the schema in the branch but will not be able to make any changes.
+
+When a branch is merged, any open proposed change open for this branch (other than the one that merges the branch) will move to the `cancelled` status.
+
+A branch in the status `MERGED` can still be deleted by the user using the `BranchDelete` mutation, and the provided functionality in the UI to delete a branch.
+
+(pending final UI design to explain the behavior in the UI)
