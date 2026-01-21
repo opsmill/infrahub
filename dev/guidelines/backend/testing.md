@@ -10,7 +10,11 @@ Tests are organized by type:
 
 - **Unit tests** (`tests/unit/`): No external dependencies, only file access
 - **Component tests** (`tests/component/`): Small scope but may require database access
+- **Functional tests** (`tests/functional/`): Multi-component tests running in a single thread/process. Async tasks execute inline without separate workers.
 - **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
+- **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
+
+Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 
