@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING, Any
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
-from prefect import State, concurrency, flow
+from prefect import State, flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType
+from prefect.concurrency.asyncio import concurrency
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
@@ -22,7 +23,6 @@ from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
-from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
@@ -31,6 +31,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from infrahub.workflows.locks import COMPUTED_ATTR_BATCH_GCL
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .constants import DEFAULT_BATCH_COUNT, JINJA2_THRESHOLD_LOCAL_EXECUTION
@@ -339,7 +340,7 @@ async def computed_attribute_jinja2_update_value_batch(
     # This ensures only one batch runs on each worker at a time
     # When a worker picks up a batch, it acquires its own concurrency slot
     # If that worker already has a batch running, the next batch will be picked up by a different worker
-    async with concurrency(f"computed-attr-batch:{WORKER_IDENTITY}", occupy=1):
+    async with concurrency(COMPUTED_ATTR_BATCH_GCL.get_name(), occupy=1):
         # Create a local batch for processing
         batch = await client.create_batch()
 
