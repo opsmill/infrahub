@@ -14,12 +14,14 @@ interface ObjectAttributeRowProps {
   attributeSchema: AttributeSchema;
   attributeData: NodeAttributeWithMetadata;
   permission: Permission;
+  objectKind: string;
   onClickMetadata?: (attribute: AttributeSchema) => void;
 }
 
 export function ObjectAttributeRow({
   attributeSchema,
   attributeData,
+  objectKind,
   onClickMetadata,
   permission,
 }: ObjectAttributeRowProps) {
@@ -27,7 +29,8 @@ export function ObjectAttributeRow({
 
   return (
     <ObjectDataRow
-      name={attributeLabel}
+      fieldSchema={attributeSchema}
+      objectKind={objectKind}
       value={
         <>
           <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />

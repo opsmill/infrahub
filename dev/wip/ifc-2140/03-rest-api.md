@@ -1,23 +1,25 @@
-# PR 3: REST API Endpoints for FileObject
+# PR 5: REST API Endpoints for FileObject
 
 **Jira:** IFC-2173, IFC-2176
 **Branch:** `feature/file-object-rest-api`
-**Dependencies:** PR 1 (schema), PR 2 (config)
+**Dependencies:** PR 1 (schema), PR 2 (config), PR 4 (GraphQL upload)
 
 ## Overview
 
-Add REST API endpoints for uploading and downloading file objects with:
+Add REST API endpoint for **downloading** file objects. Upload endpoint is **optional** - GraphQL is the primary upload method.
+
+Features:
 - Permission checks (unlike existing `/api/storage` endpoints)
-- File size validation
-- File metadata extraction (name, size, type, checksum)
+- File size validation (if upload is implemented)
+- Binary file support via `retrieve_binary()` method
+
+**Note:** The upload endpoint may not be implemented if GraphQL upload proves sufficient.
 
 ## Tasks
 
 ### Dependencies
 
-- [ ] Add `puremagic` to backend dependencies in `pyproject.toml`
-  - Pure Python library for MIME type detection via magic bytes
-  - No external dependencies, actively maintained (v1.30, July 2025)
+- `puremagic` already added in PR 4 (GraphQL upload) for MIME type detection
 
 ### Storage Layer - Binary Support
 
@@ -46,19 +48,23 @@ Add REST API endpoints for uploading and downloading file objects with:
       - [ ] Use safe ASCII fallback or RFC5987 percent-encoding for non-ASCII names
       - [ ] Set both `filename` (ASCII) and `filename*` (encoded) parameters in Content-Disposition
     - [ ] Handle 404 if identifier not found
-  - [ ] Implement `POST /{node_kind}/upload` endpoint (binary upload)
-    - [ ] Accept file via `UploadFile` (multipart/form-data)
+  - [ ] Implement `POST /{node_kind}/` endpoint (create FileObject with file - single step)
+    - [ ] Accept multipart/form-data with:
+      - [ ] `file`: The file to upload via `UploadFile`
+      - [ ] `data`: JSON payload with node attributes (validated against node_kind schema)
     - [ ] Validate `node_kind` inherits from CoreFileObject
+    - [ ] Validate JSON payload against the schema for `node_kind`
     - [ ] Check CREATE permission via `PermissionManager.raise_for_permission()`
     - [ ] Validate file size against `config.SETTINGS.storage.max_file_size`
     - [ ] Read file content as **bytes** (not decoded)
-    - [ ] Generate new identifier (UUID)
+    - [ ] Generate new identifier (UUID) for `storage_id`
     - [ ] Calculate checksum (SHA-1) from bytes
     - [ ] Extract file_name from upload
     - [ ] Detect file_type (MIME type) using `puremagic` from file content (magic bytes), with fallback to extension
     - [ ] Calculate file_size from bytes length
     - [ ] Store file bytes via `registry.storage.store()`
-    - [ ] Return upload response with all metadata
+    - [ ] Create the FileObject node with file metadata + user-provided attributes
+    - [ ] Return created node with all attributes
 
 ### Router Registration
 
@@ -120,26 +126,33 @@ Add REST API endpoints for uploading and downloading file objects with:
 
 ## API Endpoints
 
-### Upload File
+### Create FileObject with File (Single Step)
 
 ```
-POST /api/file-object/{node_kind}/upload
+POST /api/file-object/{node_kind}/
 Content-Type: multipart/form-data
 
 file: <binary>
+data: {"contract_start": {"value": "2026-01-01"}, "contract_end": {"value": "2026-12-31"}, ...}
 
 Response 200:
 {
-  "identifier": "uuid",
+  "id": "node-uuid",
+  "storage_id": "storage-uuid",
   "checksum": "sha1-hash",
   "file_name": "original-filename.pdf",
   "file_size": 12345,
-  "file_type": "application/pdf"
+  "file_type": "application/pdf",
+  "contract_start": "2026-01-01",
+  "contract_end": "2026-12-31",
+  ...
 }
 
-Response 400: File too large or invalid node_kind
+Response 400: File too large, invalid node_kind, or invalid data payload
 Response 403: Permission denied
 ```
+
+The `data` field contains the JSON payload with node attributes, validated against the schema for `node_kind`.
 
 ### Download File
 
@@ -168,10 +181,11 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
 
 **Key points for implementation:**
 
-1. **Upload creates new storage entry**
+1. **Upload creates storage entry + node atomically**
    - Each upload gets a new UUID (`storage_id`)
    - Call `registry.storage.store(identifier=storage_id, content=file_bytes)`
-   - Return metadata to client for use when creating FileObject node
+   - Create the FileObject node with file metadata + user-provided attributes
+   - Return created node with all attributes
 
 2. **Download retrieves from storage**
    - Call `registry.storage.retrieve_binary(identifier=storage_id)`
@@ -190,15 +204,16 @@ See [00-architecture.md](./00-architecture.md) for detailed architecture.
 - The `node_kind` must inherit from `CoreFileObject` - validated at runtime
 - File size validation prevents DoS via large file uploads
 - Unlike `/api/storage`, these endpoints enforce permissions
-- The returned metadata (storage_id, checksum, etc.) is used to create the FileObject node
-- **Upload endpoint may be removed** if GraphQL upload (PR 5) proves to be the better approach - download will remain REST-only
+- **Download endpoint is required** - GraphQL cannot return binary data efficiently
+- **Upload endpoint is optional** - GraphQL upload (PR 4) is the primary method; REST upload may be skipped entirely
+- **Both workflows are single-step** - file + data payload in one request, node created atomically
 
-## FileObject Node Creation Workflow
+## Workflow
 
-The workflow for creating a FileObject node is:
+**GraphQL (primary):**
+- `mutation Create(data: {...}, file: $file)` → file uploaded and node created in one step
 
-1. **Upload file** via `POST /{node_kind}/upload` → returns `storage_id` and file metadata
-2. **Create node** via GraphQL mutation, passing `storage_id` to link to the uploaded file
-3. **System populates read-only attributes** (`file_name`, `checksum`, `file_size`, `file_type`) internally based on `storage_id`
+**REST (optional fallback):**
+- `POST /api/file-object/{node_kind}/` with file + JSON data → file uploaded and node created in one step
 
-The `storage_id` attribute is NOT read-only, allowing it to be set via GraphQL mutations. This enables users to link nodes to uploaded files and update the link when uploading new file versions.
+Both methods validate the data payload against the schema for the expected type.

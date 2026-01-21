@@ -2458,6 +2458,40 @@ input CoreFileCheckUpsertInput {
   validator: RelatedNodeInput
 }
 
+"""A file object for storing and managing file attachments"""
+interface CoreFileObject {
+  """SHA-1 checksum calculated on the uploaded file"""
+  checksum: TextAttribute
+  display_label: String
+  """The name of the file as uploaded by the user"""
+  file_name: TextAttribute
+  """The size of the file in bytes"""
+  file_size: NumberAttribute
+  """The MIME type of the file"""
+  file_type: TextAttribute
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """The ID of the uploaded file in Infrahub's storage"""
+  storage_id: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+}
+
+"""A file object for storing and managing file attachments"""
+type CoreFileObjectUpdate {
+  object: CoreFileObject
+  ok: Boolean
+}
+
+input CoreFileObjectUpdateInput {
+  hfid: [String]
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
 """A thread related to a file on a proposed change"""
 type CoreFileThread implements CoreNode & CoreThread {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
@@ -7419,6 +7453,12 @@ type EdgedCoreFileCheck {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""A file object for storing and managing file attachments"""
+type EdgedCoreFileObject {
+  node: CoreFileObject
+  node_metadata: InfrahubNodeMetadata
+}
+
 """A thread related to a file on a proposed change"""
 type EdgedCoreFileThread {
   node: CoreFileThread
@@ -8699,6 +8739,8 @@ type Mutation {
   CoreFileCheckUpdate(context: ContextInput, data: CoreFileCheckUpdateInput!): CoreFileCheckUpdate
   """A check related to a file in a Git Repository"""
   CoreFileCheckUpsert(context: ContextInput, data: CoreFileCheckUpsertInput!): CoreFileCheckUpsert
+  """A file object for storing and managing file attachments"""
+  CoreFileObjectUpdate(context: ContextInput, data: CoreFileObjectUpdateInput!): CoreFileObjectUpdate
   """A thread related to a file on a proposed change"""
   CoreFileThreadCreate(context: ContextInput, data: CoreFileThreadCreateInput!): CoreFileThreadCreate
   """A thread related to a file on a proposed change"""
@@ -9360,6 +9402,15 @@ type NestedEdgedCoreDataValidator {
 type NestedEdgedCoreFileCheck {
   node: CoreFileCheck
   node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""A file object for storing and managing file attachments"""
+type NestedEdgedCoreFileObject {
+  _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
+  node: CoreFileObject
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
 }
@@ -10095,6 +10146,12 @@ type NestedPaginatedCoreFileCheck {
   count: Int!
   edges: [NestedEdgedCoreFileCheck!]!
   permissions: PaginatedObjectPermission!
+}
+
+"""A file object for storing and managing file attachments"""
+type NestedPaginatedCoreFileObject {
+  count: Int!
+  edges: [NestedEdgedCoreFileObject!]
 }
 
 """A thread related to a file on a proposed change"""
@@ -10852,6 +10909,13 @@ type PaginatedCoreDataValidator {
 type PaginatedCoreFileCheck {
   count: Int!
   edges: [EdgedCoreFileCheck!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A file object for storing and managing file attachments"""
+type PaginatedCoreFileObject {
+  count: Int!
+  edges: [EdgedCoreFileObject!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -15650,6 +15714,94 @@ type Query {
     validator__state__value: String
     validator__state__values: [String]
   ): PaginatedCoreFileCheck!
+  CoreFileObject(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    checksum__is_protected: Boolean
+    checksum__isnull: Boolean
+    checksum__owner__id: ID
+    checksum__source__id: ID
+    checksum__value: String
+    checksum__values: [String]
+    file_name__is_protected: Boolean
+    file_name__isnull: Boolean
+    file_name__owner__id: ID
+    file_name__source__id: ID
+    file_name__value: String
+    file_name__values: [String]
+    file_size__is_protected: Boolean
+    file_size__isnull: Boolean
+    file_size__owner__id: ID
+    file_size__source__id: ID
+    file_size__value: BigInt
+    file_size__values: [BigInt]
+    file_type__is_protected: Boolean
+    file_type__isnull: Boolean
+    file_type__owner__id: ID
+    file_type__source__id: ID
+    file_type__value: String
+    file_type__values: [String]
+    ids: [ID]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    storage_id__is_protected: Boolean
+    storage_id__isnull: Boolean
+    storage_id__owner__id: ID
+    storage_id__source__id: ID
+    storage_id__value: String
+    storage_id__values: [String]
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+  ): PaginatedCoreFileObject!
   CoreFileThread(
     any__is_protected: Boolean
     any__owner__id: ID

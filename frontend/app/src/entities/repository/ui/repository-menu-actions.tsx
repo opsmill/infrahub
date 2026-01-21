@@ -13,6 +13,7 @@ import { Link } from "@/shared/components/ui/link";
 import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import type { Permission } from "@/entities/permission/types";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
   IMPORT_READONLY_REPOSITORY_LAST_COMMIT,
@@ -25,13 +26,17 @@ interface RepositoryMenuSectionProps {
   onCheckConnectivity: () => void;
   onImportLatestCommit: () => void;
   onReimportCurrentCommit?: () => void;
+  permission: Permission;
 }
 
 export function RepositoryMenuSection({
   onCheckConnectivity,
   onImportLatestCommit,
   onReimportCurrentCommit,
+  permission,
 }: RepositoryMenuSectionProps) {
+  const isUpdateAllowed = permission.update.isAllowed;
+
   return (
     <MenuSection title="Repository">
       <MenuItem onAction={onCheckConnectivity}>
@@ -39,7 +44,7 @@ export function RepositoryMenuSection({
         Check connectivity
       </MenuItem>
 
-      <MenuItem onAction={onImportLatestCommit}>
+      <MenuItem isDisabled={!isUpdateAllowed} onAction={onImportLatestCommit}>
         <Icon icon="mdi:source-commit" />
         Import latest commit
       </MenuItem>
@@ -58,12 +63,14 @@ interface RepositoryActionsMenuProps {
   repositoryId: string;
   objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
+  permission: Permission;
 }
 
 export function RepositoryActionsMenu({
   repositoryId,
   objectSchema,
   onCheckConnectivity,
+  permission,
 }: RepositoryActionsMenuProps) {
   const isReadOnlyRepository = isOfKind(READONLY_REPOSITORY_KIND, objectSchema);
 
@@ -147,6 +154,7 @@ export function RepositoryActionsMenu({
       onCheckConnectivity={onCheckConnectivity}
       onImportLatestCommit={() => reimportLastCommit()}
       onReimportCurrentCommit={isReadOnlyRepository ? () => importCurrentCommit() : undefined}
+      permission={permission}
     />
   );
 }
