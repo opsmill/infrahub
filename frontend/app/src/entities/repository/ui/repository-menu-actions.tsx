@@ -3,7 +3,6 @@ import { Icon } from "@iconify-icon/react";
 import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
@@ -14,7 +13,7 @@ import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import type { Permission } from "@/entities/permission/types";
-import { CHECK_REPOSITORY_CONNECTIVITY } from "@/entities/repository/api/actions";
+import { useCheckConnectivityMutation } from "@/entities/repository/domain/check-connectivity.mutation";
 import { useImportCurrentCommitMutation } from "@/entities/repository/domain/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/domain/reimport-last-commit.mutation";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -164,20 +163,22 @@ const CheckConnectivityModal = ({
   setIsOpen: (b: boolean) => void;
   repositoryId: string;
 }) => {
-  const [checkConnectivity, { loading, data, error, called, reset }] = useMutation(
-    CHECK_REPOSITORY_CONNECTIVITY,
-    {
-      variables: { repositoryId },
-    }
-  );
+  const {
+    mutate: checkConnectivity,
+    isPending,
+    data,
+    error,
+    isSuccess,
+    reset,
+  } = useCheckConnectivityMutation();
 
   const handleClose = () => {
     setIsOpen(false);
     reset();
   };
 
-  const isConnectivityOk = data?.InfrahubRepositoryConnectivity?.ok;
-  const showResult = called && !loading;
+  const isConnectivityOk = data?.ok;
+  const showResult = isSuccess || error;
 
   return (
     <Dialog open={isOpen} onClose={handleClose}>
@@ -186,7 +187,7 @@ const CheckConnectivityModal = ({
           {!showResult ? (
             <>
               <Dialog.Title className="font-semibold text-lg">
-                Check{loading && "ing"} repository connectivity
+                Check{isPending && "ing"} repository connectivity
               </Dialog.Title>
 
               <Dialog.Description>
@@ -198,7 +199,11 @@ const CheckConnectivityModal = ({
                 <Button variant="outline" onClick={handleClose}>
                   Cancel
                 </Button>
-                <Button isLoading={loading} disabled={loading} onClick={() => checkConnectivity()}>
+                <Button
+                  isLoading={isPending}
+                  disabled={isPending}
+                  onClick={() => checkConnectivity({ repositoryId })}
+                >
                   Check now
                 </Button>
               </div>
@@ -209,9 +214,7 @@ const CheckConnectivityModal = ({
                 Connection {isConnectivityOk ? "Successful" : "Failed"}
               </Dialog.Title>
 
-              <Dialog.Description>
-                {data?.InfrahubRepositoryConnectivity?.message || error?.message}
-              </Dialog.Description>
+              <Dialog.Description>{data?.message || error?.message}</Dialog.Description>
 
               {isConnectivityOk ? (
                 <div className="text-right">
@@ -225,7 +228,7 @@ const CheckConnectivityModal = ({
                     Cancel
                   </Button>
 
-                  <Button variant="danger" onClick={() => checkConnectivity()}>
+                  <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
                     Retry
                   </Button>
                 </div>
