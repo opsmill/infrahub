@@ -110,7 +110,7 @@ export function RepositoryActionsMenu({
 
   const [importCurrentCommit] = useMutation(IMPORT_READONLY_REPOSITORY_LAST_COMMIT, {
     variables: {
-      id: repositoryId,
+      repositoryId,
     },
     onCompleted: async (data) => {
       if (data?.InfrahubReadOnlyRepositoryImportLastCommit?.ok) {
