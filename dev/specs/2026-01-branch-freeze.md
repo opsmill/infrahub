@@ -303,19 +303,19 @@ This is handled at the validation layer (middleware), which runs before permissi
 
 **Handling:** Block with validation error. Rebase makes no sense for merged branches since they're immutable.
 
-### 4. Viewing Diffs on Merged Branches
+### 3. Viewing Diffs on Merged Branches
 
 **Scenario:** User wants to view historical diff of merged branch.
 
 **Handling:** Allow. Read operations are not blocked. This is important for audit and history purposes.
 
-### 5. Branch Deletion
+### 4. Branch Deletion
 
 **Scenario:** User wants to delete a merged branch.
 
 **Handling:** Allow. Cleanup of merged branches should be permitted. This is already in `ALLOWED_MUTATIONS_ON_MERGED_BRANCH`.
 
-### 6. Migration of Existing Branches
+### 5. Migration of Existing Branches
 
 **Scenario:** Branches merged before this feature don't have `MERGED` status.
 
