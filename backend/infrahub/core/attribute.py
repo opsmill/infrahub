@@ -663,7 +663,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             hierarchy_level = 1
         elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
             branch = registry.get_global_branch()
-            hierarchy_level = 0
+            hierarchy_level = 1
         data = AttributeCreateData(
             uuid=str(UUIDT()),
             name=self.name,
