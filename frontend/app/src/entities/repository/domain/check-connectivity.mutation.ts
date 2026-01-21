@@ -11,9 +11,7 @@ interface CheckConnectivityProps extends MutationConfig<typeof checkConnectivity
 
 export const CHECK_CONNECTIVITY_MUTATION_KEY = ["repository", "check-connectivity"] as const;
 
-export function useCheckConnectivityMutation(
-  config?: Omit<CheckConnectivityProps, "mutationFn">
-) {
+export function useCheckConnectivityMutation(config?: Omit<CheckConnectivityProps, "mutationFn">) {
   return useMutation({
     mutationKey: CHECK_CONNECTIVITY_MUTATION_KEY,
     mutationFn: (params: CheckConnectivityParams) => {

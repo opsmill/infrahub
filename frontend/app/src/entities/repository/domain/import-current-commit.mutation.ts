@@ -9,10 +9,7 @@ import {
 
 interface ImportCurrentCommitProps extends MutationConfig<typeof importCurrentCommit> {}
 
-export const IMPORT_CURRENT_COMMIT_MUTATION_KEY = [
-  "repository",
-  "import-current-commit",
-] as const;
+export const IMPORT_CURRENT_COMMIT_MUTATION_KEY = ["repository", "import-current-commit"] as const;
 
 export function useImportCurrentCommitMutation(
   config?: Omit<ImportCurrentCommitProps, "mutationFn">
