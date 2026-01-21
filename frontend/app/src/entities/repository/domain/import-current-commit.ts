@@ -28,7 +28,7 @@ export const importCurrentCommit: ImportCurrentCommit = async (params) => {
   const result = data.InfrahubRepositoryProcess;
 
   return {
-    ok: result.ok,
-    taskId: result.task?.id,
+    ok: result.ok ?? false,
+    taskId: result.task?.id ?? undefined,
   };
 };

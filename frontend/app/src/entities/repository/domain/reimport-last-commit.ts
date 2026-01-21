@@ -28,7 +28,7 @@ export const reimportLastCommit: ReimportLastCommit = async (params) => {
   const result = data.InfrahubReadOnlyRepositoryImportLastCommit;
 
   return {
-    ok: result.ok,
-    taskId: result.task?.id,
+    ok: result.ok ?? false,
+    taskId: result.task?.id ?? undefined,
   };
 };
