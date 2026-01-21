@@ -71,10 +71,10 @@ declare module 'gql.tada' {
       TadaDocumentNode<{ InfrahubTask: { count: number; __typename: "Tasks"; }; }, { nodeIds?: (string | null)[] | null | undefined; }, void>;
     "\n  mutation CHECK_REPOSITORY_CONNECTIVITY($repositoryId: String!) {\n    InfrahubRepositoryConnectivity(data: { id: $repositoryId }) {\n      ok\n      message\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubRepositoryConnectivity: { ok: boolean; message: string; } | null; }, { repositoryId: string; }, void>;
-    "\n  mutation REIMPORT_LAST_COMMIT($repositoryId: String!) {\n    InfrahubRepositoryProcess(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+    "\n  mutation IMPORT_CURRENT_COMMIT($repositoryId: String!) {\n    InfrahubRepositoryProcess(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubRepositoryProcess: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { repositoryId: string; }, void>;
-    "\n  mutation InfrahubReadOnlyRepositoryImportLastCommit($id: String!) {\n    InfrahubReadOnlyRepositoryImportLastCommit(data: { id: $id }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
-      TadaDocumentNode<{ InfrahubReadOnlyRepositoryImportLastCommit: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { id: string; }, void>;
+    "\n  mutation REIMPORT_LAST_COMMIT($repositoryId: String!) {\n    InfrahubReadOnlyRepositoryImportLastCommit(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubReadOnlyRepositoryImportLastCommit: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { repositoryId: string; }, void>;
     "\n  mutation CoreGeneratorDefinitionRun($generatorId: String!, $waitUntilCompletion: Boolean, $targetNodeIds: [String!]) {\n    CoreGeneratorDefinitionRun(\n      wait_until_completion: $waitUntilCompletion\n      data: { id: $generatorId, nodes: $targetNodeIds }\n    ) {\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreGeneratorDefinitionRun: { task: { id: string | null; } | null; } | null; }, { targetNodeIds?: string[] | null | undefined; waitUntilCompletion?: boolean | null | undefined; generatorId: string; }, void>;
     "\n  mutation ($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {\n    ConvertObjectType(\n      data: { node_id: $nodeId, target_kind: $targetKind, fields_mapping: $fieldsMapping }\n    ) {\n      node\n    }\n  }\n":
