@@ -1,8 +1,18 @@
+from typing import Any
+
 from pydantic import BaseModel, ValidationError, field_validator
+from starlette.responses import JSONResponse
 from ujson import loads
 
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.exceptions import Error
+
+
+def get_response_body(response: JSONResponse) -> dict[str, Any]:
+    """Extract and decode response body as JSON dict."""
+    body = response.body
+    assert isinstance(body, bytes)
+    return loads(body.decode())
 
 
 class ModelForTesting(BaseModel):
@@ -37,20 +47,21 @@ class TestAPIExceptionHandler:
 
         error_response = await generic_api_exception_handler(None, exception)
 
-        error_dict = loads(error_response.body.decode())
+        error_dict = get_response_body(error_response)
         assert error_dict["errors"] == [{"message": self.error_message, "extensions": {"code": 500}}]
 
     async def test_pydantic_validation_error(self) -> None:
         error_message_2 = "Value error, another error message"
-        exception = Error()
+        exception: ValidationError | None = None
         try:
             ModelForTesting(field_1="abc", field_2="def")
         except ValidationError as exc:
             exception = exc
 
+        assert exception is not None
         error_response = await generic_api_exception_handler(None, exception, http_code=400)
 
-        error_dict = loads(error_response.body.decode())
+        error_dict = get_response_body(error_response)
         assert {"message": self.error_message, "extensions": {"code": 400}} in error_dict["errors"]
         assert {"message": error_message_2, "extensions": {"code": 400}} in error_dict["errors"]
         assert len(error_dict) == 2
@@ -60,7 +71,7 @@ class TestAPIExceptionHandler:
 
         error_response = await generic_api_exception_handler(None, exception)
 
-        error_dict = loads(error_response.body.decode())
+        error_dict = get_response_body(error_response)
         assert error_dict["errors"] == [{"message": self.error_message, "extensions": {"code": 418}}]
 
     async def test_infrahub_api_error_default_message(self) -> None:
@@ -68,7 +79,7 @@ class TestAPIExceptionHandler:
 
         error_response = await generic_api_exception_handler(None, exception)
 
-        error_dict = loads(error_response.body.decode())
+        error_dict = get_response_body(error_response)
         assert error_dict["errors"] == [{"message": "the teapot error", "extensions": {"code": 418}}]
 
     async def test_infrahub_api_error_code_override(self) -> None:
@@ -76,5 +87,5 @@ class TestAPIExceptionHandler:
 
         error_response = await generic_api_exception_handler(None, exception, http_code=500)
 
-        error_dict = loads(error_response.body.decode())
+        error_dict = get_response_body(error_response)
         assert error_dict["errors"] == [{"message": "the teapot error", "extensions": {"code": 418}}]

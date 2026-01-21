@@ -243,7 +243,8 @@ def test_diff_simple_object() -> None:
     obj3 = ModelB(name="myobject", value2=123, value3={"b": 321})
 
     diff_12 = obj1.diff(obj2)
-    diff_13 = obj1.diff(obj3)
+    # Testing cross-type diff which works at runtime but violates type hint
+    diff_13 = obj1.diff(obj3)  # type: ignore[arg-type]
 
     assert obj1.diff(obj11).has_diff is False
     assert diff_12.has_diff is True
