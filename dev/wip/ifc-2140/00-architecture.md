@@ -214,39 +214,30 @@ This provides:
 3. No unmaintained dependencies
 4. Leverages existing multipart parsing in the GraphQL app
 
-### Upload Options
+### Upload Approach
 
-Both REST and GraphQL upload will be implemented initially:
+**Both GraphQL and REST are single-step workflows.** File + data payload are provided together, and the system creates the node with all attributes in one operation.
 
 | Method | Endpoint | Use Case |
 |--------|----------|----------|
-| REST | `POST /api/file-object/{kind}/upload` | Simple HTTP clients, streaming, progress |
-| GraphQL | `mutation FileObjectUpload(file: Upload!)` | GraphQL-native clients, consistent API |
+| GraphQL | Create/Update mutations with `file` parameter | Primary - single-step file + node creation |
+| REST (optional) | `POST /api/file-object/{kind}/` with file + JSON payload | Fallback if needed; may be removed |
 
-**Note:** If GraphQL upload proves to be the better approach, the REST upload endpoint may be removed by the end of this feature implementation. Download will remain REST-only since GraphQL is not suited for binary responses.
+**Note:** All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is uploaded.
 
-**Note:** The `storage_id` attribute is currently writable (not read-only) to support the two-step REST upload workflow. If REST upload is removed in favor of GraphQL-only, `storage_id` could be made read-only since the system would set it automatically when a file is provided via the `file` parameter.
+### Workflow
 
-### Workflow Options
-
-**Option 1: GraphQL Combined Mutation (Primary - Single Step)**
+**GraphQL Mutation (Single Step)**
 ```
 mutation Create(data: {...}, file: $file) → creates node with file in one operation
 ```
-The Create/Update/Upsert mutations for CoreFileObject types accept an optional `file` parameter.
-When provided, the system stores the file and sets all FileObject attributes automatically.
 
-**Option 2: REST Upload + GraphQL Create (Two Steps)**
+**REST Upload (Single Step)**
 ```
-1. POST /api/file-object/{kind}/upload → returns {storage_id, checksum, ...}
-2. mutation Create(data: {storage_id: "...", ...}) → creates node
+POST /api/file-object/{kind}/ with multipart: file + JSON data payload → creates node with file in one operation
 ```
 
-**Option 3: GraphQL Standalone Upload + GraphQL Create (Two Steps)**
-```
-1. mutation FileObjectUpload(file: $file) → returns {storage_id, checksum, ...}
-2. mutation Create(data: {storage_id: "...", ...}) → creates node
-```
+Both methods validate the data payload against the schema for the expected type.
 
 **Download: REST Only**
 ```
