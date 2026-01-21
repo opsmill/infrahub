@@ -23,7 +23,7 @@ Users can currently make changes to branches after they've been merged and attem
 
 Introduce a new `MERGED` branch status that:
 - Is set atomically at the end of successful merge operations
-- Blocks all data mutations on the branch
+- Blocks all schema and data mutations on the branch
 - Prevents creating new proposed changes with this branch as source
 - Prevents re-merging the branch
 
@@ -91,7 +91,7 @@ ALLOWED_MUTATIONS_ON_MERGED_BRANCH = [
 **Blocked operations:**
 
 - All data mutations (create, update, delete nodes/attributes/relationships)
-- Schema modifications
+- Schema modifications (loading schema using REST API, mutations to add/delete dropdown enum options)
 - Branch rebase (`BranchRebase`)
 - Branch merge (`BranchMerge`)
 - Creating proposed changes with merged branch as source (`ProposedChangeCreate`)
@@ -116,6 +116,10 @@ def check_merged_status(branch: Branch) -> None:
 ```
 
 **Update middleware:**
+
+Modify the existing `raise_on_mutation_on_branch_needing_rebase` function:
+- add logic in this is to validate allowed mutations on branches with status `MERGED`
+- rename the function to indicate that is not just used for branches with status `NEED_REBASE`
 
 ```python
 # backend/infrahub/graphql/middleware.py
@@ -195,7 +199,7 @@ await get_workflow().submit_workflow(
 )
 ```
 
-The existing `cancel_proposed_changes_branch()` workflow in `proposed_change/tasks.py` already handles this - it's triggered on branch delete. We reuse it for merged branches.
+The existing `cancel_proposed_changes_branch()` workflow in `proposed_change/tasks.py` already handles this - it's triggered on branch delete. We reuse it for merged branches. In the current implementation a this workflow is only triggered when we delete a branch.
 
 ### BranchMerge Mutation Validation
 
@@ -335,7 +339,7 @@ When we have a better way to communicate errors, we should revisit handling this
 
 ## Testing Strategy
 
-### Unit Tests
+### Component Tests
 
 - `check_merged_status()` raises error for MERGED branches
 - `check_merged_status()` allows OPEN branches
