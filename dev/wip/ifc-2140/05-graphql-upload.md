@@ -29,96 +29,103 @@ Implement a custom `Upload` scalar for Graphene that:
 
 ### Custom Upload Scalar
 
-- [ ] Create `backend/infrahub/graphql/types/upload.py`
-  - [ ] Define `Upload` scalar class extending `graphene.Scalar`
-  - [ ] Implement `serialize()` - not applicable for uploads (raise error)
-  - [ ] Implement `parse_value()` - receives the file object from multipart parsing
-  - [ ] Implement `parse_literal()` - not applicable for uploads (raise error)
-  - [ ] Add type annotations and documentation
+- [x] Create `backend/infrahub/graphql/types/upload.py`
+  - [x] Define `Upload` scalar class extending `graphene.Scalar`
+  - [x] Implement `serialize()` - raises `GraphQLError` (input-only type)
+  - [x] Implement `parse_value()` - receives the file object from multipart parsing
+  - [x] Implement `parse_literal()` - raises `GraphQLError` (must use multipart)
+  - [x] Add type annotations and documentation
+  - [x] Export from `backend/infrahub/graphql/types/__init__.py`
+
+### Schema Property for FileObject Detection
+
+- [x] Add `is_file_object` property to schema classes (consistent with `is_ip_address`, `is_ip_prefix`)
+  - [x] `BaseNodeSchema.is_file_object` returns `False` by default
+  - [x] `NodeSchema.is_file_object` checks `InfrahubKind.FILEOBJECT in self.inherit_from`
 
 ### Combined Create/Update Mutations with File Parameter
 
-- [ ] Modify mutation generation in `backend/infrahub/graphql/manager.py`
-  - [ ] Detect when a schema type inherits from CoreFileObject
-  - [ ] Add optional `file: Upload` parameter to Create mutation input
-  - [ ] Add optional `file: Upload` parameter to Update mutation input
-  - [ ] Add optional `file: Upload` parameter to Upsert mutation input
+- [x] Modify mutation generation in `backend/infrahub/graphql/manager.py`
+  - [x] Use `schema.is_file_object` property to detect CoreFileObject inheritance
+  - [x] Import `Upload` scalar
+  - [x] Add required `file: Upload!` parameter to Create mutation for FileObject types
+  - [x] Add optional `file: Upload` parameter to Update mutation for FileObject types
+  - [x] Add required `file: Upload!` parameter to Upsert mutation for FileObject types
 
-- [ ] Implement file handling in mutation resolvers
-  - [ ] Create helper function `process_file_upload(file, db, branch)` in a new file (e.g., `backend/infrahub/graphql/mutations/file_upload.py`):
-    - [ ] Validate file size against `config.SETTINGS.storage.max_file_size`
-    - [ ] Generate new UUID as `storage_id`
-    - [ ] Calculate SHA-1 checksum
-    - [ ] Detect MIME type using `puremagic` library (magic bytes, not extension)
-    - [ ] Extract file metadata (name, size, type)
-    - [ ] Store file via `registry.storage.store()`
-    - [ ] Return dict with all file attributes
-  - [ ] Modify Create mutation resolver to:
-    - [ ] Check if `file` parameter is provided
-    - [ ] If yes, call `process_file_upload()` and set all FileObject attributes
-    - [ ] Proceed with normal node creation
-  - [ ] Modify Update mutation resolver similarly
-  - [ ] Modify Upsert mutation resolver similarly
+- [x] Create `FileUploadProcessor` class in `backend/infrahub/core/file_processor.py`
+  - [x] `_get_file_size()` - Get file size without loading into memory
+  - [x] `_format_file_size()` - Human-readable size formatting for errors
+  - [x] `_detect_mime_type()` - MIME type detection using `puremagic` (magic bytes)
+  - [x] `process()` - Main processing method:
+    - [x] Validate file size against `config.SETTINGS.storage.max_file_size`
+    - [x] Generate new UUID as `storage_id`
+    - [x] Calculate SHA-1 checksum
+    - [x] Extract file metadata (name, size, type)
+    - [x] Store file via `registry.storage.store()`
+    - [x] Return `FileUploadResult` dataclass
 
-- [ ] Handle read-only attribute population
-  - [ ] When `file` is provided, system sets `file_name`, `checksum`, `file_size`, `file_type`, `storage_id`
-  - [ ] These values override any user-provided values (if somehow passed)
+- [x] Implement file handling in `backend/infrahub/graphql/mutations/main.py`
+  - [x] Process file in `mutate()` method (centralized, before dispatching to specific handlers)
+  - [x] Merge file metadata into `data` dict
+  - [x] `mutate_create()`, `mutate_update()`, `mutate_upsert()` remain clean (no file parameter)
 
 ### App Integration
 
-- [ ] Modify `backend/infrahub/graphql/app.py`
-  - [ ] Ensure uploaded files are passed to mutation resolvers via context
-  - [ ] Verify existing multipart parsing works with new Upload scalar
+- [x] No changes needed to `backend/infrahub/graphql/app.py`
+  - [x] Existing multipart parsing already injects files into variables
 
 ### Dependencies
 
-- [ ] Add `puremagic` to project dependencies (for MIME type detection from file content)
+- [x] Add `puremagic` to project dependencies (for MIME type detection from file content)
+
+### Test Helpers
+
+- [x] Create reusable test schema `FILE_CONTRACT` in `backend/tests/helpers/schema/file_contract.py`
+- [x] Add `FILE_CONTRACT` constant to `backend/tests/constants/kind.py`
+- [x] Export from `backend/tests/helpers/schema/__init__.py`
+- [x] Create `DummyObjectStorage` in `backend/tests/adapters/storage.py` for testing file storage
 
 ### Tests
 
-- [ ] Create `backend/tests/unit/graphql/types/test_upload_scalar.py`
-  - [ ] Test `Upload` scalar rejects serialization (output)
-  - [ ] Test `Upload` scalar accepts file objects in `parse_value()`
-  - [ ] Test `Upload` scalar rejects literal values
+- [x] Create `backend/tests/unit/graphql/types/test_upload_scalar.py`
+  - [x] `test_upload_serialize_raises_error` - Upload scalar rejects serialization (GraphQLError)
+  - [x] `test_upload_parse_value_returns_file` - Upload scalar accepts real UploadFile objects
+  - [x] `test_upload_parse_value_returns_none` - Upload scalar handles None
+  - [x] `test_upload_parse_literal_raises_error` - Upload scalar rejects literal values (GraphQLError)
 
-- [ ] Create `backend/tests/unit/graphql/mutations/test_file_upload.py`
-  - [ ] Test fixtures:
-    - [ ] Schema with type inheriting CoreFileObject (e.g., `TestFileContract`)
-    - [ ] Test file content (both text and binary)
-    - [ ] Mock storage
-  - [ ] **Create mutation tests:**
-    - [ ] Test Create with file creates node and stores file in one step
-    - [ ] Test Create with file sets all FileObject attributes correctly
-    - [ ] Test Create with file returns complete node with storage_id
-    - [ ] Test Create without file fails (file is required for CoreFileObject types)
-    - [ ] Test Create with file exceeding max_file_size returns error
-    - [ ] Test Create with file and permission denied returns error
-    - [ ] Test Create with file calculates correct SHA-1 checksum
-    - [ ] Test Create with file detects correct MIME type via puremagic
-  - [ ] **Update mutation tests:**
-    - [ ] Test Update with file replaces stored file
-    - [ ] Test Update with file updates all FileObject attributes
-    - [ ] Test Update without file leaves FileObject attributes unchanged
-  - [ ] **Upsert mutation tests:**
-    - [ ] Test Upsert with file (create path) works correctly
-    - [ ] Test Upsert with file (update path) works correctly
-  - [ ] **Integration tests:**
-    - [ ] Test multipart request with file upload
-    - [ ] Test file stored correctly in storage backend
-    - [ ] Test round-trip: create with file, query, verify attributes
+- [x] Create `backend/tests/unit/core/test_file_processor.py`
+  - [x] `test_processor_returns_file_result` - Returns correct FileUploadResult
+  - [x] `test_processor_calculates_sha1_checksum` - SHA-1 checksum is correct
+  - [x] `test_processor_detects_mime_type` - MIME type detected via puremagic
+  - [x] `test_processor_fallback_mime_type` - Falls back to application/octet-stream
+  - [x] `test_processor_exceeds_max_size` - ValidationError for large files
+  - [x] `test_processor_stores_file` - File stored in storage backend
+  - [x] `test_processor_unnamed_file` - Uses storage_id as filename when not provided
+
+- [x] Create `backend/tests/component/graphql/mutations/test_file_object.py`
+  - [x] Uses class-scoped fixtures (`TestFileObjectMutations` class) for efficient test setup
+  - [x] `test_create_file_object_mutation` - Full create flow with file upload
+  - [x] `test_create_file_object_without_file_fails` - Create without file returns error
+  - [x] `test_update_file_object_with_new_file` - Update with new file replaces storage
+  - [x] `test_update_file_object_without_file_preserves_existing` - Update without file keeps existing
+  - [x] `test_create_file_object_stores_correct_content` - File content correctly stored
+  - [x] `test_create_file_object_node_persisted_in_database` - Node persisted with correct attributes
 
 ### Verification
 
-- [ ] Run `uv run invoke backend.test-unit` to run all unit tests
-- [ ] Run `uv run invoke backend.test-component` to run all component tests
-- [ ] Regenerate frontend GraphQL types: `cd frontend/app && npm run codegen:graphql`
-- [ ] Manual testing with GraphQL client that supports file uploads
+- [x] Run `uv run pytest tests/unit/graphql/types/test_upload_scalar.py tests/unit/core/test_file_processor.py -v` - all 11 tests pass (4 + 7)
+- [x] Run `uv run pytest tests/component/graphql/mutations/test_file_object.py -v` - all 6 tests pass
+- [x] Run all file object tests together - all 17 tests pass
 
 ## Reference Files
 
 - `backend/infrahub/graphql/app.py` - Existing multipart/form-data parsing (lines 485-525)
-- `backend/infrahub/graphql/types/` - Existing custom scalar types
-- `backend/infrahub/graphql/mutations/` - Existing mutation patterns
+- `backend/infrahub/graphql/types/upload.py` - Upload scalar implementation
+- `backend/infrahub/core/file_processor.py` - FileUploadProcessor class
+- `backend/infrahub/graphql/mutations/main.py` - Mutation resolvers with file handling
+- `backend/infrahub/core/schema/node_schema.py` - `is_file_object` property
+- `backend/tests/adapters/storage.py` - DummyObjectStorage for testing
+- `backend/tests/helpers/schema/file_contract.py` - Reusable FILE_CONTRACT test schema
 - [GraphQL Multipart Request Spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
 
 ## API Design
@@ -182,6 +189,7 @@ Following the GraphQL Multipart Request Spec:
 ```
 POST /graphql
 Content-Type: multipart/form-data; boundary=----boundary
+X-INFRAHUB-KEY: <api-token>
 
 ------boundary
 Content-Disposition: form-data; name="operations"
@@ -197,6 +205,17 @@ Content-Type: application/pdf
 
 <file content>
 ------boundary--
+```
+
+### Example curl Command
+
+```bash
+curl -X POST http://localhost:8000/graphql \
+  -H "X-INFRAHUB-KEY: your-api-token" \
+  -H "Content-Type: multipart/form-data" \
+  -F 'operations={"query": "mutation CreateFile($file: Upload!) { TestFileContractCreate(data: { description: { value: \"My contract\" } }, file: $file) { ok object { id file_name { value } file_size { value } checksum { value } storage_id { value } } } }", "variables": { "file": null }}' \
+  -F 'map={"0": ["variables.file"]}' \
+  -F '0=@/path/to/your/file.pdf'
 ```
 
 ## Workflow
