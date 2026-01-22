@@ -17,56 +17,20 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 interface RepositoryMenuSectionProps {
-  onCheckConnectivity: () => void;
-  onImportLatestCommit: () => void;
-  onReimportCurrentCommit?: () => void;
-  permission: Permission;
-}
-
-export function RepositoryMenuSection({
-  onCheckConnectivity,
-  onImportLatestCommit,
-  onReimportCurrentCommit,
-  permission,
-}: RepositoryMenuSectionProps) {
-  const isUpdateAllowed = permission.update.isAllowed;
-
-  return (
-    <MenuSection title="Repository">
-      <MenuItem onAction={onCheckConnectivity}>
-        <Icon icon="mdi:access-point" />
-        Check connectivity
-      </MenuItem>
-
-      <MenuItem isDisabled={!isUpdateAllowed} onAction={onImportLatestCommit}>
-        <Icon icon="mdi:source-commit" />
-        Import latest commit
-      </MenuItem>
-
-      {onReimportCurrentCommit && (
-        <MenuItem onAction={onReimportCurrentCommit}>
-          <Icon icon="mdi:reload" />
-          Reimport current commit
-        </MenuItem>
-      )}
-    </MenuSection>
-  );
-}
-
-interface RepositoryActionsMenuProps {
   repositoryId: string;
   objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
   permission: Permission;
 }
 
-export function RepositoryActionsMenu({
+export function RepositoryMenuSection({
   repositoryId,
   objectSchema,
   onCheckConnectivity,
   permission,
-}: RepositoryActionsMenuProps) {
+}: RepositoryMenuSectionProps) {
   const isReadOnlyRepository = isOfKind(READONLY_REPOSITORY_KIND, objectSchema);
+  const isUpdateAllowed = permission.update.isAllowed;
 
   const { mutate: reimportLastCommit } = useReimportLastCommitMutation({
     onSuccess: async (result) => {
@@ -126,13 +90,23 @@ export function RepositoryActionsMenu({
   });
 
   return (
-    <RepositoryMenuSection
-      onCheckConnectivity={onCheckConnectivity}
-      onImportLatestCommit={() => reimportLastCommit({ repositoryId })}
-      onReimportCurrentCommit={
-        isReadOnlyRepository ? () => importCurrentCommit({ repositoryId }) : undefined
-      }
-      permission={permission}
-    />
+    <MenuSection title="Repository">
+      <MenuItem onAction={onCheckConnectivity}>
+        <Icon icon="mdi:access-point" />
+        Check connectivity
+      </MenuItem>
+
+      <MenuItem isDisabled={!isUpdateAllowed} onAction={() => reimportLastCommit({ repositoryId })}>
+        <Icon icon="mdi:source-commit" />
+        Import latest commit
+      </MenuItem>
+
+      {isReadOnlyRepository && (
+        <MenuItem onAction={() => importCurrentCommit({ repositoryId })}>
+          <Icon icon="mdi:reload" />
+          Reimport current commit
+        </MenuItem>
+      )}
+    </MenuSection>
   );
 }
