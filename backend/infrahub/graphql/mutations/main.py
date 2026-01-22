@@ -352,7 +352,7 @@ class InfrahubMutationMixin:
             # Only the HFID constraint has been violated, it means the node exists and we can update without rerunning constraints
             if len(exc.matching_nodes_ids) > 1:
                 raise RuntimeError(f"Multiple {schema_name} nodes have the same hfid") from exc
-            node_id = list(exc.matching_nodes_ids)[0]
+            node_id = next(iter(exc.matching_nodes_ids))
 
             try:
                 node = await NodeManager.get_one(
