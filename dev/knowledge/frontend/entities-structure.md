@@ -4,14 +4,23 @@ Location: `frontend/app/src/entities/`
 
 ## Pattern Overview
 
-Each entity represents a domain concept (artifacts, branches, tasks, nodes, etc.) and follows a three-layer architecture:
+Each entity represents a domain concept (artifacts, branches, tasks, nodes, etc.). The structure follows a Hexagonal architecture, adapted to frontend constraints:
+
+- **domain/**: is the core and is framework-agnostic
+- **api/**: acts as outbound adapters (infrastructure)
+- **ui/**: acts as inbound adapters (delivery)
+- Dependencies always point inward toward the domain
+
+The goal is to isolate business rules from transport (API) and presentation (UI), while keeping the structure pragmatic for frontend development.
+
+## Folder Structure
 
 ```text
 entities/<entity-name>/
 ├── api/       # Raw API calls (REST or GraphQL)
-├── domain/    # Business logic, transformations, React Query hooks
+├── domain/    # Business logic, transformations
 ├── ui/        # React components
-├── types.ts   # TypeScript types for this entity
+├── types.ts   # Domain types & contracts
 ├── constants.ts
 └── stores.ts  # Jotai atoms (if needed)
 ```
@@ -20,11 +29,13 @@ entities/<entity-name>/
 
 ### api/
 
-Raw data fetching. No business logic.
+Implements ports required by the domain to communicate with the outside world. Responsibilities:
 
-- REST calls using `apiClient` from `@/shared/api/rest/client`
-- GraphQL queries using `gql.tada` for type-safe queries
-- Function naming: `get<Entity>FromApi`, `create<Entity>FromApi`
+- Raw HTTP / GraphQL calls
+- No business logic
+- No UI assumptions
+- No transformations beyond transport-level needs
+- Can be replaced without touching UI or domain
 
 #### REST Example
 
@@ -76,37 +87,46 @@ Key points:
 
 ### domain/
 
-Business logic layer. Transforms API data for UI consumption.
+Business logic layer. Responsibilities:
 
-- Wraps API calls with error handling
+- Business rules
+- Application use cases
+- Data transformation into domain-friendly shapes
+- Orchestration of workflows
 - React Query hooks (`.query.ts`, `.mutation.ts`)
 - Query key factories (`.query-keys.ts`)
-- Data transformations
 
 Example: `domain/generate-artifact.ts`
 
 ```typescript
-export const generateArtifact = async (params) => {
-  const { error } = await generateArtifactFromApi(params);
-  if (error) throw error;
+export const getBranchDetails: GetBranchDetails = async (params) => {
+  const { data, errors } = await getBranchDetailsFromApi(params);
+
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
+
+  const branch = data?.InfrahubBranch?.edges[0]?.node;
+
+  if (!branch) throw new Error(`Branch ${params.branchName} not found`);
+
+  return mapToBranchDetail(branch);
 };
 ```
 
 ### ui/
 
-React components. Presentational and container components.
+This layer adapts user intent into domain interactions. Responsibilities:
 
-- Component naming: `kebab-case.tsx`
-- Tests colocated: `component-name.test.tsx`
-- Subdirectories for related components
+- React components
+- View-specific logic
+- Composition of domain hooks
+- Presentation concerns only
 
-Example: `ui/artifact-status-badge.tsx`
+Rules:
 
-```typescript
-export function ArtifactStatusBadge({ status }) {
-  return <Badge variant={getVariant(status)}>{status}</Badge>;
-}
-```
+- Can import from domain/ and types.ts
+- Must NEVER call api/ directly
 
 ## File Naming Conventions
 
@@ -120,30 +140,6 @@ export function ArtifactStatusBadge({ status }) {
 | Component | `<entity>-<variant>.tsx` | `artifact-status-badge.tsx` |
 | Test | `<filename>.test.ts(x)` | `get-objects.test.ts` |
 
-## Current Entities
-
-| Entity | Purpose |
-|--------|---------|
-| `artifacts` | Generated configuration files |
-| `branches` | Git-like branch management |
-| `nodes` | Core graph objects (largest entity) |
-| `tasks` | Background job tracking |
-| `schema` | Schema definitions |
-| `proposed-changes` | Change request workflow |
-| `diff` | Branch comparison |
-| `groups` | Object grouping |
-| `generators` | Artifact generators |
-| `repository` | Git repository integration |
-| `ipam` | IP address management |
-| `resource-manager` | Resource allocation |
-| `triggers` | Event triggers |
-| `navigation` | App navigation state |
-| `user-profile` | User settings |
-| `config` | App configuration |
-| `graphql` | GraphQL utilities |
-| `homepage` | Dashboard widgets |
-| `role-manager` | RBAC |
-
 ## Import Aliases
 
 Use `@/entities/<entity-name>` for imports:
@@ -153,12 +149,3 @@ import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-bad
 import { generateArtifact } from "@/entities/artifacts/domain/generate-artifact";
 import type { ArtifactObject } from "@/entities/artifacts/types";
 ```
-
-## Adding a New Entity
-
-1. Create directory: `entities/<entity-name>/`
-2. Add `types.ts` with TypeScript interfaces
-3. Add `api/` with raw API calls
-4. Add `domain/` with business logic and React Query hooks
-5. Add `ui/` with React components
-6. Add `constants.ts` if needed
