@@ -1,8 +1,7 @@
 import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-
-export const OBJECTS_PER_PAGE = 40;
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 const EVENTS_QUERY = graphql(`
   query GET_INFRAHUB_EVENTS(
@@ -117,7 +116,7 @@ const EVENTS_QUERY = graphql(`
 export interface GetEventsFromApiParams extends VariablesOf<typeof EVENTS_QUERY> {}
 
 export async function getEventsFromApi({
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   ...filters
 }: GetEventsFromApiParams) {

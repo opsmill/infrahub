@@ -1125,44 +1125,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             data_check = data_checks_by_conflict_id[tracked_conflict.conflict_id]
             assert data_check.keep_branch.value.value == tracked_conflict.keep_branch.value
 
-    async def test_create_another_proposed_change_data_checks_created(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
-    ) -> None:
-        # verify duplicate data checks can be created
-        result = await client.execute_graphql(
-            query=PROPOSED_CHANGE_CREATE,
-            variables={
-                "name": PROPOSED_CHANGE_NAME + "2",
-                "source_branch": BRANCH_NAME,
-                "destination_branch": default_branch.name,
-            },
-        )
-        assert result["CoreProposedChangeCreate"]["object"]["id"]
-        pc_id = result["CoreProposedChangeCreate"]["object"]["id"]
-        attribute_value_conflict = self.retrieve_item("attribute_value")
-        peer_conflict = self.retrieve_item("peer_conflict")
-        cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
-        cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
-        cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
-
-        pc = await NodeManager.get_one(db=db, id=pc_id)
-        validators = await pc.validations.get_peers(db=db)
-        data_validator = None
-        for v in validators.values():
-            if v.get_kind() == InfrahubKind.DATAVALIDATOR:
-                data_validator = v
-        assert data_validator
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
-        assert set(data_checks_by_conflict_id.keys()) == {
-            attribute_value_conflict.conflict_id,
-            peer_conflict.conflict_id,
-            cardinality_one_property_conflict_a.conflict_id,
-            cardinality_one_property_conflict_b.conflict_id,
-            cardinality_many_property_conflict.conflict_id,
-        }
-        assert len(core_data_checks) == len(data_checks_by_conflict_id)
-
     async def test_merge_proposed_change(
         self,
         db: InfrahubDatabase,

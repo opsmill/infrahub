@@ -10,17 +10,12 @@ import {
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
 
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const OBJECTS_PER_PAGE = 40;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export type GetObjectsParams = ContextParams &
   PaginationParams & {
@@ -32,11 +27,11 @@ export type GetObjectsParams = ContextParams &
     relationshipsOptions?: AddAttributesToRequestOptions;
   };
 
-export type GetObjects = (args: GetObjectsParams) => Promise<Array<NodeObject>>;
+export type GetObjects = (args: GetObjectsParams) => Promise<PaginatedResponse<NodeObject>>;
 
 export const getObjects: GetObjects = async ({
   schema,
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   branchName,
   atDate,
@@ -60,6 +55,7 @@ export const getObjects: GetObjects = async ({
           offset,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
+        count: true,
         edges: {
           node: {
             id: true,
@@ -82,5 +78,9 @@ export const getObjects: GetObjects = async ({
     },
   });
 
-  return data[schemaKind]?.edges?.map((edge: any) => edge.node) ?? [];
+  const result = data[schemaKind];
+  return {
+    items: result?.edges?.map((edge: any) => edge.node) ?? [],
+    count: result?.count ?? 0,
+  };
 };

@@ -1008,9 +1008,12 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Rules with violations in unit tests                                                            #
     ##################################################################################################
+    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
     "PERF401",  # Use a list comprehension to create a transformed list
+    "PLC2701",  # Private name import from external module
     "PLR2004",  # Magic value used in comparison
     "PLR6201",  # Use a `set` literal when testing for membership
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]

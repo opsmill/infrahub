@@ -42,7 +42,7 @@ export function ObjectAutocomplete({
 
   if (error) return <ErrorScreen message={error.message} />;
 
-  const flatData = data?.pages.flat() ?? [];
+  const flatData = data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <Autocomplete onInputChange={setSearchDebounced}>

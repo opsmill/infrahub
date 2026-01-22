@@ -58,21 +58,24 @@ describe("getRelationships", () => {
       peer,
       branchName,
       atDate,
-      limit: 20,
+      limit: 40,
       offset,
       search,
       filterQuery: {
         parent__ids: [parentId],
       },
     });
-    expect(result).toEqual([
-      {
-        id: "1",
-        hfid: ["test", "hfid", "1"],
-        display_label: "Test Label",
-        __typename: "TestType",
-      },
-    ]);
+    expect(result).toEqual({
+      count: 0,
+      items: [
+        {
+          id: "1",
+          hfid: ["test", "hfid", "1"],
+          display_label: "Test Label",
+          __typename: "TestType",
+        },
+      ],
+    });
   });
 
   it("should fetch relationships without optional parameters", async () => {
@@ -100,11 +103,11 @@ describe("getRelationships", () => {
       peer,
       branchName,
       atDate,
-      limit: 20,
+      limit: 40,
       offset: undefined,
       search: undefined,
       filterQuery: undefined,
     });
-    expect(result).toEqual([]);
+    expect(result).toEqual({ count: 0, items: [] });
   });
 });

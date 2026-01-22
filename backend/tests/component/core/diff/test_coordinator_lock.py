@@ -246,7 +246,7 @@ class TestDiffCoordinatorLocks:
             db=db2,
             diff_coordinator=diff_coordinator_2,
             diff_merger=DiffMerger(
-                db=db,
+                db=db2,
                 source_branch=diff_branch,
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
