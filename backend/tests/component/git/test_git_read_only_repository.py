@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import anyio
 import pytest
-from git import Repo
+from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
 from infrahub_sdk.client import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
@@ -83,8 +83,9 @@ async def test_sync_from_remote_new_ref(git_repo_01_read_only: InfrahubReadOnlyR
     repo.client = mock_client
 
     # Mock import_objects_from_files since we're testing git sync, not import functionality
-    with patch("infrahub.git.repository.InfrahubReadOnlyRepository.import_objects_from_files", new_callable=AsyncMock):
-        await repo.sync_from_remote()
+    repo.import_objects_from_files = AsyncMock()
+    await repo.sync_from_remote()
+    repo.import_objects_from_files.assert_awaited()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
     assert worktree_commits == {"main", "92700512b5b16c0144f7fd2869669273577f1bd8", branch_02_head_commit}

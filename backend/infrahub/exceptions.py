@@ -118,18 +118,12 @@ class RepositoryInvalidFileSystemError(RepositoryError):
 
 class RepositoryConfigurationError(RepositoryError):
     """Raised when repository configuration file is missing or invalid.
-
-    This exception provides clear error messages when a Git repository
-    lacks a .infrahub.yml/.infrahub.yaml file or when the file cannot
-    be parsed correctly.
     """
 
     def __init__(self, identifier: str, message: str | None = None) -> None:
         super().__init__(
             identifier=identifier,
-            message=message
-            or f"Repository '{identifier}' is missing a configuration file. "
-            f"Please add a '.infrahub.yml' or '.infrahub.yaml' file to the repository root.",
+            message=message or "Repository configuration file error.",
         )
 
 

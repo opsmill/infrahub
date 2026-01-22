@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from git import Repo as GitRepo  # type: ignore[attr-defined]
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
@@ -40,10 +41,11 @@ class TestGetRepositoryConfig:
         self, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
     ) -> InfrahubRepository:
         """Create a repository with an invalid YAML config file."""
-        from git import Repo as GitRepo
+        from pathlib import Path as PathlibPath
 
-        upstream_repo = GitRepo(git_upstream_repo_01["path"])
-        config_file = git_upstream_repo_01["path"] / ".infrahub.yml"
+        repo_path = PathlibPath(git_upstream_repo_01["path"])
+        upstream_repo = GitRepo(repo_path)
+        config_file = repo_path / ".infrahub.yml"
 
         # Write invalid YAML content
         invalid_yaml = """
@@ -69,10 +71,11 @@ schemas:
         self, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
     ) -> InfrahubRepository:
         """Create a repository with a YAML config file that has invalid format."""
-        from git import Repo as GitRepo
+        from pathlib import Path as PathlibPath
 
-        upstream_repo = GitRepo(git_upstream_repo_01["path"])
-        config_file = git_upstream_repo_01["path"] / ".infrahub.yml"
+        repo_path = PathlibPath(git_upstream_repo_01["path"])
+        upstream_repo = GitRepo(repo_path)
+        config_file = repo_path / ".infrahub.yml"
 
         # Write valid YAML but invalid InfrahubRepositoryConfig format
         invalid_format = """
@@ -136,10 +139,11 @@ schemas: "should be a list, not a string"
         self, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
     ) -> InfrahubRepository:
         """Create a repository with a valid .infrahub.yml config file."""
-        from git import Repo as GitRepo
+        from pathlib import Path as PathlibPath
 
-        upstream_repo = GitRepo(git_upstream_repo_01["path"])
-        config_file = git_upstream_repo_01["path"] / ".infrahub.yml"
+        repo_path = PathlibPath(git_upstream_repo_01["path"])
+        upstream_repo = GitRepo(repo_path)
+        config_file = repo_path / ".infrahub.yml"
 
         # Write a valid minimal config file
         valid_config = """
@@ -177,9 +181,8 @@ class TestRepositoryConfigurationErrorException:
         """Test that the default message is correctly set."""
         error = RepositoryConfigurationError(identifier="test-repo")
 
-        assert "test-repo" in str(error)
-        assert "missing a configuration file" in str(error)
-        assert ".infrahub.yml" in str(error)
+        assert "Repository configuration file error" in str(error)
+        assert error.identifier == "test-repo"
 
     def test_custom_message(self) -> None:
         """Test that a custom message is correctly set."""

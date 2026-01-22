@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import anyio
 import pytest
-from git import Repo
+from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
@@ -509,8 +509,9 @@ async def test_sync_new_branch(
 
     repo.client = client
     # Mock import_objects_from_files since we're testing git sync, not import functionality
-    with patch("infrahub.git.repository.InfrahubRepository.import_objects_from_files", new_callable=AsyncMock):
-        await repo.sync()
+    repo.import_objects_from_files = AsyncMock()
+    await repo.sync()
+    repo.import_objects_from_files.assert_awaited()
     worktrees = repo.get_worktrees()
 
     assert repo.get_commit_value(branch_name=branch.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
@@ -527,8 +528,9 @@ async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRe
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
     # Mock import_objects_from_files since we're testing git sync, not import functionality
-    with patch("infrahub.git.repository.InfrahubRepository.import_objects_from_files", new_callable=AsyncMock):
-        await repo.sync()
+    repo.import_objects_from_files = AsyncMock()
+    await repo.sync()
+    repo.import_objects_from_files.assert_awaited()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
@@ -1011,7 +1013,10 @@ async def test_create_python_check_definition(
     module = helper.import_module_in_fixtures(module="checks/check01")
     check_class = module.Check01
 
+    assert repo.client is not None
+    assert repo.client.schema is not None
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
+    assert gql_schema is not None
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
@@ -1042,8 +1047,12 @@ async def test_compare_python_check(
     module = helper.import_module_in_fixtures(module="checks/check01")
     check_class = module.Check01
 
+    assert repo.client is not None
+    assert repo.client.schema is not None
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
     check_schema = await repo.client.schema.get(kind=InfrahubKind.CHECKDEFINITION)
+    assert gql_schema is not None
+    assert check_schema is not None
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
