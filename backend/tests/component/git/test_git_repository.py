@@ -509,9 +509,11 @@ async def test_sync_new_branch(
 
     repo.client = client
     # Mock import_objects_from_files since we're testing git sync, not import functionality
-    repo.import_objects_from_files = AsyncMock()
-    await repo.sync()
-    repo.import_objects_from_files.assert_awaited()
+    with patch(
+        "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
+    ) as mock_import:
+        await repo.sync()
+        mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
     assert repo.get_commit_value(branch_name=branch.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
@@ -528,9 +530,11 @@ async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRe
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
     # Mock import_objects_from_files since we're testing git sync, not import functionality
-    repo.import_objects_from_files = AsyncMock()
-    await repo.sync()
-    repo.import_objects_from_files.assert_awaited()
+    with patch(
+        "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
+    ) as mock_import:
+        await repo.sync()
+        mock_import.assert_awaited()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
