@@ -143,7 +143,6 @@ class InfrahubWorkerAsync(BaseWorker):
         initialize_repositories_directory()
         build_component_registry()
         await self.service.scheduler.start_schedule()
-        await self._create_worker_gcls()
         self._logger.info("Worker initialization completed .. ")
 
     async def run(
@@ -218,20 +217,6 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         self.service = service
-
-    async def _create_worker_gcls(self) -> None:
-        """Create Global Concurrency Limits for this worker."""
-        from prefect.client.orchestration import get_client as get_prefect_client
-
-        from infrahub.workflows.locks import PER_WORKER_GCLS
-
-        try:
-            async with get_prefect_client(sync_client=False) as client:
-                for gcl_def in PER_WORKER_GCLS:
-                    await gcl_def.create(client)
-                    self._logger.info(f"Created global concurrency limit: {gcl_def.get_name()}")
-        except Exception as exc:
-            self._logger.warning(f"Failed to create global concurrency limits: {exc}")
 
     async def set_git_global_config(self) -> None:
         global_config_file = config.SETTINGS.git.global_config_file

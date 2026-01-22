@@ -658,16 +658,6 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
 )
 
-CLEAN_UP_STALE_GCLS = WorkflowDefinition(
-    name="clean-up-stale-gcls",
-    type=WorkflowType.INTERNAL,
-    cron="*/5 * * * *",
-    module="infrahub.locks.tasks",
-    function="clean_up_stale_gcls",
-    concurrency_limit=1,
-    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
-)
-
 
 WORKER_POOLS = [INFRAHUB_WORKER_POOL]
 
@@ -687,7 +677,6 @@ WORKFLOWS = [
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
-    CLEAN_UP_STALE_GCLS,
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
