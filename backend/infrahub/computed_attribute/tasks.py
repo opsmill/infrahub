@@ -11,6 +11,7 @@ from prefect import State, flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType
+from prefect.concurrency.asyncio import concurrency
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
@@ -30,6 +31,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from infrahub.workflows.locks import COMPUTED_ATTR_BATCH_GCL
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .constants import DEFAULT_BATCH_COUNT, JINJA2_THRESHOLD_LOCAL_EXECUTION
@@ -334,29 +336,29 @@ async def computed_attribute_jinja2_update_value_batch(
 
     log.info(f"Processing batch of {len(nodes)} nodes for {node_kind}:{attribute_name}")
 
-    # Note: Per-worker concurrency lock is acquired BEFORE flow submission
-    # in InfrahubWorkerAsync._submit_scheduled_flow_runs and released after
-    # flow execution completes. This ensures other workers can pick up batches
-    # if this worker is busy.
+    # Acquire a concurrency slot for this specific worker
+    # This ensures only one batch runs on each worker at a time
+    # When a worker picks up a batch, it acquires its own concurrency slot
+    # If that worker already has a batch running, the next batch will be picked up by a different worker
+    async with concurrency(COMPUTED_ATTR_BATCH_GCL.get_name(), occupy=1):
+        # Create a local batch for processing
+        batch = await client.create_batch()
 
-    # Create a local batch for processing
-    batch = await client.create_batch()
+        for obj in nodes:
+            batch.add(
+                task=_update_single_computed_attribute,
+                client=client,
+                branch_name=branch_name,
+                obj=obj,
+                node_kind=node_kind,
+                attribute_name=attribute_name,
+                template=template,
+                context=context,
+                log=log,
+            )
 
-    for obj in nodes:
-        batch.add(
-            task=_update_single_computed_attribute,
-            client=client,
-            branch_name=branch_name,
-            obj=obj,
-            node_kind=node_kind,
-            attribute_name=attribute_name,
-            template=template,
-            context=context,
-            log=log,
-        )
-
-    # Execute all updates in this batch locally
-    _ = [response async for _, response in batch.execute()]
+        # Execute all updates in this batch locally
+        _ = [response async for _, response in batch.execute()]
 
     log.info(f"Completed batch processing for {node_kind}:{attribute_name}")
 
