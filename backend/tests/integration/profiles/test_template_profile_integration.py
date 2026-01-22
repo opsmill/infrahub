@@ -56,7 +56,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         await load_schema(db=db, schema=schema_root, branch_name=default_branch.name, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def device_profile(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch) -> Node:
+    async def device_profile(self, db: InfrahubDatabase, schema_root_01: None, default_branch: Branch) -> Node:
         """Create a device profile."""
         profile_schema = registry.schema.get_profile_schema(
             name="ProfileTestingDevice", branch=default_branch, duplicate=False
@@ -73,7 +73,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         return device_profile
 
     @pytest.fixture(scope="class")
-    async def device_template(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch) -> Node:
+    async def device_template(self, db: InfrahubDatabase, schema_root_01: None, default_branch: Branch) -> Node:
         """Create a device template."""
         template_schema = registry.schema.get_template_schema(
             name="TemplateTestingDevice", branch=default_branch, duplicate=False
@@ -91,7 +91,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def device_template_with_profile(
-        self, db: InfrahubDatabase, schema_root_01, default_branch: Branch, device_profile: Node
+        self, db: InfrahubDatabase, schema_root_01: None, default_branch: Branch, device_profile: Node
     ) -> Node:
         """Create a device template with an assigned profile."""
         template_schema = registry.schema.get_template_schema(
@@ -784,7 +784,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         await load_schema(db=db, schema=schema_root, branch_name=default_branch.name, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def interface_profile(self, db: InfrahubDatabase, component_schema_root, default_branch: Branch) -> Node:
+    async def interface_profile(
+        self, db: InfrahubDatabase, component_schema_root: None, default_branch: Branch
+    ) -> Node:
         """Create an interface profile."""
         profile_schema = registry.schema.get_profile_schema(
             name="ProfileTestingInterface", branch=default_branch, duplicate=False
@@ -803,7 +805,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def device_component_profile(
-        self, db: InfrahubDatabase, component_schema_root, default_branch: Branch
+        self, db: InfrahubDatabase, component_schema_root: None, default_branch: Branch
     ) -> Node:
         """Create a device profile."""
         profile_schema = registry.schema.get_profile_schema(

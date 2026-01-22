@@ -4,7 +4,6 @@ from infrahub_sdk.client import InfrahubClient
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
-from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
@@ -95,7 +94,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def initial_schema(
-        self, db: InfrahubDatabase, initialize_registry, default_branch: Branch, location_schema_01: SchemaRoot
+        self, db: InfrahubDatabase, initialize_registry: None, default_branch: Branch, location_schema_01: SchemaRoot
     ) -> None:
         branch_schema = registry.schema.get_schema_branch(name=default_branch.name)
         tmp_schema = branch_schema.duplicate()
@@ -108,9 +107,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
     async def branch_1(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="branch_1")
 
-    async def test_baseline(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_schema: dict[str, Node]
-    ) -> None:
+    async def test_baseline(self, db: InfrahubDatabase, client: InfrahubClient, initial_schema: None) -> None:
         country_schema = await client.schema.get(kind="LocationCountry")
         rels_by_name = {r.name: r for r in country_schema.relationships}
         assert rels_by_name["parent"].peer == "LocationGeneric"

@@ -80,13 +80,13 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_person_mandatory_attr_no_default(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_mandatory_attr_no_default(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         schema_person = copy.deepcopy(schema_person_base)
         schema_person["attributes"].append({"name": "age", "kind": "Number", "optional": False})
         return schema_person
 
     @pytest.fixture(scope="class")
-    def schema_person_mandatory_rel(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_mandatory_rel(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         schema_person = copy.deepcopy(schema_person_base)
         schema_person["relationships"].append(
             {"name": "favorite_cars", "peer": CAR_KIND, "optional": False, "cardinality": "many"}
@@ -94,25 +94,25 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return schema_person
 
     @pytest.fixture(scope="class")
-    def schema_person_mandatory_attr_default(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_mandatory_attr_default(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         schema_person = copy.deepcopy(schema_person_base)
         schema_person["attributes"].append({"name": "age", "kind": "Number", "optional": False, "default_value": 99})
         return schema_person
 
     @pytest.fixture(scope="class")
-    def schema_person_optional_attr(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_optional_attr(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         schema_person = copy.deepcopy(schema_person_base)
         schema_person["attributes"].append({"name": "hair_color", "kind": "Text", "optional": True})
         return schema_person
 
     @pytest.fixture(scope="class")
-    def schema_car_mandatory_attr_no_default(self, schema_car_base) -> dict[str, Any]:
+    def schema_car_mandatory_attr_no_default(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         schema_car = copy.deepcopy(schema_car_base)
         schema_car["attributes"].append({"name": "nbr_wheels", "kind": "Number", "optional": False})
         return schema_car
 
     @pytest.fixture(scope="class")
-    def schema_car_mandatory_attr_default(self, schema_car_base) -> dict[str, Any]:
+    def schema_car_mandatory_attr_default(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         schema_car = copy.deepcopy(schema_car_base)
         schema_car["attributes"].append({"name": "nbr_wheels", "kind": "Number", "optional": False, "default_value": 4})
         return schema_car
@@ -135,7 +135,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return await create_branch(db=db, branch_name="branch_2")
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step_01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step_01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step_01)
 
         starbuck = await Node.init(schema=PERSON_KIND, db=db)
@@ -180,7 +182,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step_01(
-        self, schema_humanoid_base, schema_car_base, schema_person_base, schema_cylon_base
+        self,
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_cylon_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -191,11 +197,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_with_person_mandatory_attr(
         self,
-        schema_person_mandatory_attr_no_default,
-        schema_humanoid_base,
-        schema_car_base,
-        schema_person_base,
-        schema_cylon_base,
+        schema_person_mandatory_attr_no_default: dict[str, Any],
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_cylon_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -206,11 +212,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_with_person_mandatory_rel(
         self,
-        schema_person_mandatory_rel,
-        schema_humanoid_base,
-        schema_car_base,
-        schema_person_base,
-        schema_cylon_base,
+        schema_person_mandatory_rel: dict[str, Any],
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_cylon_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -221,11 +227,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_with_person_default_value(
         self,
-        schema_person_mandatory_attr_default,
-        schema_humanoid_base,
-        schema_car_base,
-        schema_person_base,
-        schema_cylon_base,
+        schema_person_mandatory_attr_default: dict[str, Any],
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_cylon_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -235,7 +241,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_with_car_mandatory(
-        self, schema_person_base, schema_humanoid_base, schema_car_mandatory_attr_no_default, schema_cylon_base
+        self,
+        schema_person_base: dict[str, Any],
+        schema_humanoid_base: dict[str, Any],
+        schema_car_mandatory_attr_no_default: dict[str, Any],
+        schema_cylon_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -243,7 +253,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "nodes": [schema_person_base, schema_car_mandatory_attr_no_default, schema_cylon_base],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
@@ -252,7 +262,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(cars) == 0
 
     async def test_check_mandatory_attribute_failure(
-        self, client: InfrahubClient, initial_dataset, schema_with_person_mandatory_attr
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_with_person_mandatory_attr: dict[str, Any]
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_with_person_mandatory_attr])
 
@@ -264,7 +274,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Node-level 'attribute' constraint violation" in err_msg
 
     async def test_check_mandatory_relationship_failure(
-        self, client: InfrahubClient, initial_dataset, schema_with_person_mandatory_rel
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_with_person_mandatory_rel: dict[str, Any]
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_with_person_mandatory_rel])
 
@@ -276,7 +286,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Node-level 'relationship' constraint violation" in err_msg
 
     async def test_check_mandatory_attribute_after_deleting_nodes(
-        self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_with_person_mandatory_attr
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        initial_dataset: dict[str, str],
+        schema_with_person_mandatory_attr: dict[str, Any],
     ) -> None:
         """Validate that it's possible to add a new mandatory attribute after deleting all the nodes in scope."""
         branch = await client.branch.create(branch_name="add-attr-delete-nodes")
@@ -293,7 +307,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert response.errors == {}
 
     async def test_check_mandatory_rel_after_deleting_nodes(
-        self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_with_person_mandatory_rel
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        initial_dataset: dict[str, str],
+        schema_with_person_mandatory_rel: dict[str, Any],
     ) -> None:
         """Validate that it's possible to add a new mandatory attribute after deleting all the nodes in scope."""
         branch = await client.branch.create(branch_name="add-rel-delete-nodes")
@@ -310,28 +328,32 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert response.errors == {}
 
     async def test_check_mandatory_attribute_success_no_data(
-        self, client: InfrahubClient, initial_dataset, schema_with_car_mandatory
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_with_car_mandatory: dict[str, Any]
     ) -> None:
         """Validate that it's possible to add a new mandatory attribute when there is no data in the database."""
         success, _ = await client.schema.check(schemas=[schema_with_car_mandatory])
         assert success is True
 
     async def test_load_mandatory_attribute_success_no_data(
-        self, client: InfrahubClient, initial_dataset, schema_with_car_mandatory
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_with_car_mandatory: dict[str, Any]
     ) -> None:
         branch = await client.branch.create(branch_name="add-no-prior-data")
         response = await client.schema.load(schemas=[schema_with_car_mandatory], branch=branch.name)
         assert response.errors == {}
 
     async def test_check_mandatory_attribute_success_default_value(
-        self, client: InfrahubClient, initial_dataset, schema_with_person_default_value
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_with_person_default_value: dict[str, Any]
     ) -> None:
         """Validate that it's possible to add a new mandatory attribute with a default value."""
         success, _ = await client.schema.check(schemas=[schema_with_person_default_value])
         assert success is True
 
     async def test_load_mandatory_attribute_success_default_value(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_with_person_default_value
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_with_person_default_value: dict[str, Any],
     ) -> None:
         branch = await client.branch.create(branch_name="add-default-value")
         response = await client.schema.load(schemas=[schema_with_person_default_value], branch=branch.name)

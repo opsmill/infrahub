@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreCheckDefinition, CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
@@ -51,7 +52,7 @@ class TestCreateRepository(TestInfrahubApp):
         initial_dataset: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
-        default_branch,
+        default_branch: Branch,
     ) -> None:
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
         client_repository = await client.create(
@@ -130,7 +131,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        tmp_path_module_scope,
+        tmp_path_module_scope: Path,
         initialize_registry: None,
         git_repos_dir_module_scope: Path,
         git_repos_source_dir_module_scope: Path,
