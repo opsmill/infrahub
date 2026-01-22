@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -29,7 +29,7 @@ class InfrahubResultContext(BaseModel):
 
 class InfrahubActiveMeasurementItem(BaseModel):
     definition: MeasurementDefinition
-    start_time: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     context: dict[str, Any] = Field(default_factory=dict)
 
 
