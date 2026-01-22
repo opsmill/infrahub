@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Scalar
+from graphql import GraphQLError
 
 if TYPE_CHECKING:
     from graphql.language import ast
@@ -12,36 +13,35 @@ if TYPE_CHECKING:
 class Upload(Scalar):
     """GraphQL scalar for file uploads.
 
-    This scalar type handles file uploads in multipart/form-data requests following the GraphQL Multipart Request Spec. It accepts UploadFile objects
-    from Starlette's form parsing.
+    This scalar type handles file uploads in `multipart/form-data requests` following the GraphQL Multipart Request specification.
 
-    The Upload scalar is input-only and cannot be used in query responses.
+    The `Upload` scalar is input-only and cannot be used in query responses.
     """
 
     @staticmethod
     def serialize(_value: object) -> None:
-        """Serialize is not supported for Upload scalar.
+        """Serialize is not supported for `Upload` scalar.
 
         Upload is an input-only type and cannot be returned in query responses.
         """
-        raise ValueError("Upload scalar cannot be serialized. It is input-only.")
+        raise GraphQLError("Upload scalar cannot be serialized. It is input-only.")
 
     @staticmethod
     def parse_value(value: UploadFile | None) -> UploadFile | None:
         """Parse the value from multipart form data.
 
         Args:
-            value: The UploadFile object from Starlette's multipart parsing, or None if no file was provided.
+            value: A `UploadFile` object from Starlette's multipart parsing, or `None` if no file was provided.
 
         Returns:
-            The UploadFile object, or None if no file was provided.
+            A Starlette's `UploadFile` object, or `None` if no file was provided.
         """
         return value
 
     @staticmethod
     def parse_literal(_node: ast.Node, _variables: dict[str, Any] | None = None) -> None:
-        """Parse literal values is not supported for Upload scalar.
+        """Parse literal values is not supported for `Upload` scalar.
 
-        Upload values must be provided via multipart form data, not as literal values in the GraphQL query.
+        `Upload` values must be provided via multipart form data, not as literal values in the GraphQL query.
         """
-        raise ValueError("Upload scalar cannot be used as a literal value. Use multipart form data.")
+        raise GraphQLError("Upload scalar cannot be used as a literal value. Use multipart form data.")
