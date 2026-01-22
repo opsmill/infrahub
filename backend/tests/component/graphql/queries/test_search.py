@@ -22,6 +22,20 @@ query ($search: String!) {
 }
 """
 
+SEARCH_QUERY_WITH_CASE_SENSITIVE = """
+query ($search: String!, $caseSensitive: Boolean) {
+    InfrahubSearchAnywhere(q: $search, case_sensitive: $caseSensitive) {
+        count
+        edges {
+            node {
+                id
+                kind
+            }
+        }
+    }
+}
+"""
+
 
 async def test_search_anywhere_by_uuid(
     db: InfrahubDatabase,
@@ -348,3 +362,112 @@ async def test_search_anywhere_by_string_no_results(
     assert result.data
     assert result.data["InfrahubSearchAnywhere"]["count"] == 0
     assert result.data["InfrahubSearchAnywhere"]["edges"] == []
+
+
+async def test_search_anywhere_case_insensitive_default(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_luffy_main: Node,
+    branch: Branch,
+) -> None:
+    """Default search (case_sensitive=False) should find results regardless of case."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Search with lowercase "john" should find "John" (case-insensitive by default)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "john", "caseSensitive": False},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 1
+    assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id
+
+    # Search with lowercase "luffy" should find "lUffy" (case-insensitive by default)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "luffy", "caseSensitive": False},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 1
+    assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_luffy_main.id
+
+
+async def test_search_anywhere_case_sensitive_enabled(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_luffy_main: Node,
+    branch: Branch,
+) -> None:
+    """Test search with case_sensitive=True uses the optimized query with case variations."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Search with lowercase "john" when case_sensitive=True still finds "John"
+    # because the query uses case variations (lowercase, UPPERCASE, Title Case)
+    result_lowercase = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "john", "caseSensitive": True},
+    )
+
+    assert result_lowercase.errors is None
+    assert result_lowercase.data
+    assert result_lowercase.data["InfrahubSearchAnywhere"]["count"] == 1
+    assert result_lowercase.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id
+
+    # Search with lowercase "luffy" when case_sensitive=True should NOT find "lUffy"
+    # because "lUffy" doesn't match any standard case variation (luffy, LUFFY, Luffy)
+    result_luffy = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "luffy", "caseSensitive": True},
+    )
+
+    assert result_luffy.errors is None
+    assert result_luffy.data
+    assert result_luffy.data["InfrahubSearchAnywhere"]["count"] == 0
+
+    # Search with exact case "lUffy" when case_sensitive=True should find "lUffy"
+    result_exact = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "lUffy", "caseSensitive": True},
+    )
+
+    assert result_exact.errors is None
+    assert result_exact.data
+    assert result_exact.data["InfrahubSearchAnywhere"]["count"] == 1
+    assert result_exact.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_luffy_main.id
+
+    # Search with exact case "John" when case_sensitive=True should also find "John"
+    result_exact = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "John", "caseSensitive": True},
+    )
+
+    assert result_exact.errors is None
+    assert result_exact.data
+    assert result_exact.data["InfrahubSearchAnywhere"]["count"] == 1
+    assert result_exact.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id

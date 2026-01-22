@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
+import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
@@ -10,6 +11,7 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
 import { useGetSearchAnywhere } from "@/entities/navigation/domain/search-anywhere.query";
+import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
@@ -24,9 +26,10 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
+  const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
 
   const { data, isPending, error } = useGetSearchAnywhere(
-    { search: queryDebounced },
+    { search: queryDebounced, caseSensitive },
     {
       enabled: !!queryDebounced,
     }
