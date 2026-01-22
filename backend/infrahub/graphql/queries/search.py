@@ -104,6 +104,7 @@ async def search_resolver(
     q: str,
     limit: int = 10,
     partial_match: bool = True,
+    case_sensitive: bool = False,
 ) -> dict[str, Any]:
     graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
@@ -122,19 +123,34 @@ async def search_resolver(
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
             q = _collapse_ipv6(q)
 
-        query = await NodeGetListByAttributeValueQuery.init(
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            at=graphql_context.at,
-            search_value=q,
-            kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
-            limit=limit,
-            partial_match=partial_match,
-        )
-        await query.execute(db=graphql_context.db)
+        if case_sensitive:
+            # Case-sensitive search using the dedicated query
+            query = await NodeGetListByAttributeValueQuery.init(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                search_value=q,
+                kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
+                limit=limit,
+                partial_match=partial_match,
+            )
+            await query.execute(db=graphql_context.db)
 
-        for result in query.get_data():
-            results.append({"id": result.uuid, "kind": result.kind})
+            for result in query.get_data():
+                results.append({"id": result.uuid, "kind": result.kind})
+        else:
+            # Default: case-insensitive search using NodeManager.query
+            for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
+                objs = await NodeManager.query(
+                    db=graphql_context.db,
+                    branch=graphql_context.branch,
+                    schema=kind,
+                    filters={"any__value": q},
+                    limit=limit,
+                    partial_match=partial_match,
+                )
+                for obj in objs:
+                    results.append({"id": obj.id, "kind": obj.get_kind()})
 
     if "edges" in fields:
         response["edges"] = [{"node": result} for result in results]
@@ -150,6 +166,7 @@ InfrahubSearchAnywhere = Field(
     q=String(required=True),
     limit=Int(required=False),
     partial_match=Boolean(required=False),
+    case_sensitive=Boolean(required=False),
     resolver=search_resolver,
     required=True,
 )

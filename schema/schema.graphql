@@ -23919,7 +23919,7 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
-  InfrahubSearchAnywhere(limit: Int, partial_match: Boolean, q: String!): NodeEdges!
+  InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
   InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!
