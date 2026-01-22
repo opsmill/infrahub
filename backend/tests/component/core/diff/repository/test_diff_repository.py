@@ -1326,6 +1326,32 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert merged_diff.uuid in metadata_uuids
         assert unmerged_diff.uuid in metadata_uuids
 
+        # summary(exclude_merged=True) should exclude merged diff
+        summary = await diff_repository.summary(
+            diff_branch_names=[merged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=merged_tracking_id,
+            exclude_merged=True,
+        )
+        assert summary is None
+
+        summary = await diff_repository.summary(
+            diff_branch_names=[unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=unmerged_tracking_id,
+            exclude_merged=True,
+        )
+        assert summary is not None
+
+        # summary(exclude_merged=False) should include merged diff
+        summary = await diff_repository.summary(
+            diff_branch_names=[merged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=merged_tracking_id,
+            exclude_merged=False,
+        )
+        assert summary is not None
+
 
 async def verify_no_orphaned_nodes(db: InfrahubDatabase) -> None:
     """Verify that no diff elements have been orphaned"""

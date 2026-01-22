@@ -375,6 +375,7 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         filters: dict | None = None,
         proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
@@ -385,6 +386,7 @@ class DiffRepository:
             to_time=to_time,
             tracking_id=tracking_id,
             proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
         return query.get_summary()
