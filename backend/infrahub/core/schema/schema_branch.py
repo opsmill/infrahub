@@ -2040,7 +2040,7 @@ class SchemaBranch:
             for item in template.attributes + template.relationships:
                 if item.order_weight:
                     continue
-                item.order_weight = generic_node_weights[item.name] if item.name in generic_node_weights else None
+                item.order_weight = generic_node_weights.get(item.name)
 
             self.set(name=template.kind, schema=template)
 
