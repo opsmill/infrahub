@@ -27,7 +27,7 @@ export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
   const columns = React.useMemo(() => {
     return [...getIpAddressTableColumns(selectedSchema), getObjectActionsColumn(permission)];
   }, [selectedSchema.hash]);
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flatMap((page) => page.items) ?? [], [data]);
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>

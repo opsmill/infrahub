@@ -1,7 +1,7 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 import { GetTreeNodesByParentFromApi } from "@/entities/nodes/hierarchy/api/get-tree-nodes-by-parent-from-api";
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent.query";
+import { TREE_NODES_PAGE_SIZE } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent.query";
 import type { NodeCoreWithChildrenCount } from "@/entities/nodes/types";
 
 export interface GetTreeNodesByParentParams extends PaginationParams, ContextParams {
@@ -16,7 +16,7 @@ export type GetTreeNodesByParent = (
 export const getTreeNodesByParent: GetTreeNodesByParent = async ({
   objectKind,
   parentObjectId,
-  limit = OBJECTS_PER_PAGE,
+  limit = TREE_NODES_PAGE_SIZE,
   offset,
   branchName,
   atDate,

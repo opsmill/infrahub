@@ -37,7 +37,7 @@ export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
     return [...getIpPrefixTableColumns(selectedSchema), getObjectActionsColumn(permission)];
   }, [selectedSchema.hash, permission]);
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flatMap((page) => page.items) ?? [], [data]);
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
