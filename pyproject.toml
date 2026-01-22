@@ -746,21 +746,12 @@ allow-dunder-method-names = [
     "PLR0915",  # Too many statements
 ]
 
-
 "backend/tests/helpers/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC109", # Async function definition with a `timeout` parameter
-]
-
-"backend/tests/fixtures/**.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "ANN001",   # Missing type annotation for function argument
-    "ANN201",   # Missing return type annotation for public function
 ]
 
 "backend/tests/functional/**.py" = [
