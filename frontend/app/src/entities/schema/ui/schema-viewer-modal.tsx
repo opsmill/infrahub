@@ -25,7 +25,7 @@ export function SchemaViewerModal({
           defaultTab={defaultTab}
           targetField={targetField}
           onClose={close}
-          className="rounded-xl p-3"
+          className="rounded-[inherit] border-0 p-3"
         />
       )}
     </Modal>

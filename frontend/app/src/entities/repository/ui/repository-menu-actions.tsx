@@ -1,4 +1,3 @@
-import { Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
@@ -6,14 +5,12 @@ import { toast } from "react-toastify";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import type { Permission } from "@/entities/permission/types";
-import { useCheckConnectivityMutation } from "@/entities/repository/domain/check-connectivity.mutation";
 import { useImportCurrentCommitMutation } from "@/entities/repository/domain/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/domain/reimport-last-commit.mutation";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -139,104 +136,3 @@ export function RepositoryActionsMenu({
     />
   );
 }
-
-interface RepositoryActionsModalProps {
-  repositoryId: string;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function RepositoryActionsModal({
-  repositoryId,
-  isOpen,
-  onClose,
-}: RepositoryActionsModalProps) {
-  return <CheckConnectivityModal repositoryId={repositoryId} isOpen={isOpen} setIsOpen={onClose} />;
-}
-
-const CheckConnectivityModal = ({
-  isOpen,
-  setIsOpen,
-  repositoryId,
-}: {
-  isOpen: boolean;
-  setIsOpen: (b: boolean) => void;
-  repositoryId: string;
-}) => {
-  const {
-    mutate: checkConnectivity,
-    isPending,
-    data,
-    error,
-    isSuccess,
-    reset,
-  } = useCheckConnectivityMutation();
-
-  const handleClose = () => {
-    setIsOpen(false);
-    reset();
-  };
-
-  const isConnectivityOk = data?.ok;
-  const showResult = isSuccess || error;
-
-  return (
-    <Dialog open={isOpen} onClose={handleClose}>
-      <div className="fixed inset-0 flex w-screen items-center justify-center bg-gray-600/25">
-        <Dialog.Panel className="max-w-lg space-y-4 rounded-lg border border-gray-200 bg-white p-4">
-          {!showResult ? (
-            <>
-              <Dialog.Title className="font-semibold text-lg">
-                Check{isPending && "ing"} repository connectivity
-              </Dialog.Title>
-
-              <Dialog.Description>
-                Check the connectivity to this repository to validate your connection and
-                authentication status.
-              </Dialog.Description>
-
-              <div className="space-x-2 text-right">
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button
-                  isLoading={isPending}
-                  disabled={isPending}
-                  onClick={() => checkConnectivity({ repositoryId })}
-                >
-                  Check now
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <Dialog.Title className="font-semibold text-lg">
-                Connection {isConnectivityOk ? "Successful" : "Failed"}
-              </Dialog.Title>
-
-              <Dialog.Description>{data?.message || error?.message}</Dialog.Description>
-
-              {isConnectivityOk ? (
-                <div className="text-right">
-                  <Button variant="active" onClick={handleClose}>
-                    Done
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-x-2 text-right">
-                  <Button variant="outline" onClick={handleClose}>
-                    Cancel
-                  </Button>
-
-                  <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </Dialog.Panel>
-      </div>
-    </Dialog>
-  );
-};
