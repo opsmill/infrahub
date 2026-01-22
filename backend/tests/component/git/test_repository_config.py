@@ -27,6 +27,13 @@ class TestGetRepositoryConfig:
         """Create a repository without a .infrahub.yml config file.
 
         The test fixture repository doesn't have a config file by default.
+
+        Args:
+            git_upstream_repo_01: Upstream repo metadata containing name and path.
+            git_repos_dir: Temporary directory for test repositories.
+
+        Returns:
+            The initialized Infrahub repository instance without a config file.
         """
         repo = await InfrahubRepository.new(
             id=UUIDT.new(),
@@ -40,7 +47,15 @@ class TestGetRepositoryConfig:
     async def repo_with_invalid_yaml(
         self, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
     ) -> InfrahubRepository:
-        """Create a repository with an invalid YAML config file."""
+        """Create a repository with an invalid YAML config file.
+
+        Args:
+            git_upstream_repo_01: Upstream repo metadata containing name and path.
+            git_repos_dir: Temporary directory for test repositories.
+
+        Returns:
+            The initialized Infrahub repository instance with an invalid YAML config.
+        """
         from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
@@ -73,7 +88,15 @@ schemas:
     async def repo_with_invalid_format(
         self, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
     ) -> InfrahubRepository:
-        """Create a repository with a YAML config file that has invalid format."""
+        """Create a repository with a YAML config file that has invalid format.
+
+        Args:
+            git_upstream_repo_01: Upstream repo metadata containing name and path.
+            git_repos_dir: Temporary directory for test repositories.
+
+        Returns:
+            The initialized Infrahub repository instance with an invalid format config.
+        """
         from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
@@ -104,7 +127,15 @@ schemas: "should be a list, not a string"
     async def repo_with_valid_config(
         self, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
     ) -> InfrahubRepository:
-        """Create a repository with a valid .infrahub.yml config file."""
+        """Create a repository with a valid .infrahub.yml config file.
+
+        Args:
+            git_upstream_repo_01: Upstream repo metadata containing name and path.
+            git_repos_dir: Temporary directory for test repositories.
+
+        Returns:
+            The initialized Infrahub repository instance with a valid config file.
+        """
         from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
