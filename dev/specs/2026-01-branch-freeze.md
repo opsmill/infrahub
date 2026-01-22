@@ -270,6 +270,9 @@ The permission system should respect the `MERGED` status - even users with write
 
 This is handled at the validation layer (middleware), which runs before permission checks. The status check takes precedence.
 
+**OPEN QUESTION**
+- [  ] Do we use the permission system to communicate to the frontend what actions should be disabled when a branch is in the `MERGED` status.
+
 ## Frontend
 
 ### Branch List View
@@ -281,11 +284,12 @@ This is handled at the validation layer (middleware), which runs before permissi
 ### Branch Detail View
 
 - Show clear indication that branch is merged and read-only
-- Disable or hide mutation actions (edit, delete data, create objects)
+- Disable or hide mutation actions (merge, proposed change, rebase, validate, refresh diff, refresh schema diff, rebase on diff view)
+- The delete action should be enabled
 
 ### Proposed Change Creation
 
-- When selecting source branch, filter out or visually indicate merged branches
+- When selecting source branch, filter out merged branches
 - Show validation error if user attempts to create PC with merged source branch
 
 ### Error Handling
