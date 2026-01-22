@@ -6,6 +6,118 @@ import { Col, Row } from "@/shared/components/container";
 
 import { useCheckConnectivityMutation } from "@/entities/repository/domain/check-connectivity.mutation";
 
+interface CheckConnectivityLayoutProps {
+  title: React.ReactNode;
+  description: React.ReactNode;
+  actions: React.ReactNode;
+}
+
+function CheckConnectivityLayout({ title, description, actions }: CheckConnectivityLayoutProps) {
+  return (
+    <Col className="gap-4 p-2">
+      <Heading slot="title" className="font-semibold text-lg">
+        {title}
+      </Heading>
+      <p>{description}</p>
+      <Row className="justify-end">{actions}</Row>
+    </Col>
+  );
+}
+
+interface CheckConnectivityProps {
+  repositoryId: string;
+  onClose: () => void;
+}
+
+function CheckConnectivity({ repositoryId, onClose }: CheckConnectivityProps) {
+  const {
+    mutate: checkConnectivity,
+    isPending,
+    data,
+    error,
+    isSuccess,
+  } = useCheckConnectivityMutation();
+
+  if (isPending) {
+    return (
+      <CheckConnectivityLayout
+        title="Checking repository connectivity"
+        description="Check the connectivity to this repository to validate your connection and authentication status."
+        actions={
+          <>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button isLoading disabled>
+              Check now
+            </Button>
+          </>
+        }
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <CheckConnectivityLayout
+        title="Connection Failed"
+        description={error.message}
+        actions={
+          <>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
+              Retry
+            </Button>
+          </>
+        }
+      />
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <CheckConnectivityLayout
+        title={data.ok ? "Connection Successful" : "Connection Failed"}
+        description={data.message}
+        actions={
+          data.ok ? (
+            <Button variant="active" onClick={onClose}>
+              Done
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
+                Retry
+              </Button>
+            </>
+          )
+        }
+      />
+    );
+  }
+
+  // Default: initial state
+  return (
+    <CheckConnectivityLayout
+      title="Check repository connectivity"
+      description="Check the connectivity to this repository to validate your connection and authentication status."
+      actions={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => checkConnectivity({ repositoryId })}>Check now</Button>
+        </>
+      }
+    />
+  );
+}
+
 interface CheckConnectivityModalProps {
   repositoryId: string;
   isOpen: boolean;
@@ -17,81 +129,9 @@ export function CheckConnectivityModal({
   onOpenChange,
   repositoryId,
 }: CheckConnectivityModalProps) {
-  const {
-    mutate: checkConnectivity,
-    isPending,
-    data,
-    error,
-    isSuccess,
-  } = useCheckConnectivityMutation();
-
-  const handleClose = () => {
-    onOpenChange(false);
-  };
-
-  const isConnectivityOk = data?.ok;
-  const showResult = isSuccess || error;
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      isDismissable={!isPending}
-      className="w-full max-w-lg"
-    >
-      <Col className="gap-4 p-2">
-        {!showResult ? (
-          <>
-            <Heading slot="title" className="font-semibold text-lg">
-              Check{isPending && "ing"} repository connectivity
-            </Heading>
-
-            <p>
-              Check the connectivity to this repository to validate your connection and
-              authentication status.
-            </p>
-
-            <Row className="justify-end">
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                isLoading={isPending}
-                disabled={isPending}
-                onClick={() => checkConnectivity({ repositoryId })}
-              >
-                Check now
-              </Button>
-            </Row>
-          </>
-        ) : (
-          <>
-            <Heading slot="title" className="font-semibold text-lg">
-              Connection {isConnectivityOk ? "Successful" : "Failed"}
-            </Heading>
-
-            <p>{data?.message || error?.message}</p>
-
-            <Row className="justify-end">
-              {isConnectivityOk ? (
-                <Button variant="active" onClick={handleClose}>
-                  Done
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" onClick={handleClose}>
-                    Cancel
-                  </Button>
-
-                  <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
-                    Retry
-                  </Button>
-                </>
-              )}
-            </Row>
-          </>
-        )}
-      </Col>
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} className="w-full max-w-lg">
+      {({ close }) => <CheckConnectivity repositoryId={repositoryId} onClose={close} />}
     </Modal>
   );
 }

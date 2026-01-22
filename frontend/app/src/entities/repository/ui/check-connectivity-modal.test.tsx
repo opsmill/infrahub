@@ -154,7 +154,7 @@ describe("CheckConnectivityModal", () => {
     await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
   });
 
-  test("calls onOpenChange with false when clicking Cancel", async () => {
+  test("calls onOpenChange when clicking Cancel", async () => {
     // GIVEN
     vi.mocked(useCheckConnectivityMutation).mockReturnValue({
       mutate: mockMutate,
@@ -175,7 +175,7 @@ describe("CheckConnectivityModal", () => {
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
   });
 
-  test("calls onOpenChange with false when clicking Done on success", async () => {
+  test("calls onOpenChange when clicking Done on success", async () => {
     // GIVEN
     vi.mocked(useCheckConnectivityMutation).mockReturnValue({
       mutate: mockMutate,
