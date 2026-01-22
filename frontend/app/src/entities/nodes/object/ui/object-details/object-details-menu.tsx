@@ -33,7 +33,7 @@ import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
-import { RepositoryActionsMenu } from "@/entities/repository/ui/repository-menu-actions";
+import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -141,7 +141,7 @@ export function ObjectDetailsMenu({
             </MenuSection>
 
             {isRepository && (
-              <RepositoryActionsMenu
+              <RepositoryMenuSection
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
