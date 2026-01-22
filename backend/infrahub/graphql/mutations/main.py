@@ -11,6 +11,7 @@ from typing_extensions import Self
 from infrahub import config, lock
 from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
+from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import create_node, get_profile_ids
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
@@ -33,6 +34,7 @@ from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
+    from starlette.datastructures import UploadFile
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
@@ -79,6 +81,10 @@ class InfrahubMutationMixin:
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        file: UploadFile | None = kwargs.pop("file", None)
+        if result := await process_file_upload(file=file):
+            data.update(result)
 
         obj = None
         mutation = None
@@ -446,3 +452,18 @@ async def build_graphql_response(info: GraphQLResolveInfo, db: InfrahubDatabase,
     if "object" in fields:
         result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
     return result
+
+
+async def process_file_upload(file: UploadFile | None) -> dict[str, Any]:
+    if not file:
+        return {}
+
+    processor = FileUploadProcessor(file=file)
+    result = await processor.process()
+    return {
+        "file_name": {"value": result.file_name},
+        "checksum": {"value": result.checksum},
+        "file_size": {"value": result.file_size},
+        "file_type": {"value": result.file_type},
+        "storage_id": {"value": result.storage_id},
+    }

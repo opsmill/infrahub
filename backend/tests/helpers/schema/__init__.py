@@ -10,6 +10,7 @@ from .car import CAR
 from .child import CHILD
 from .color import COLOR
 from .device import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, VIRTUAL_INTERFACE
+from .file_contract import FILE_CONTRACT
 from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
@@ -76,6 +77,7 @@ __all__ = [
     "COUNTRY",
     "DEVICE",
     "DEVICE_SCHEMA",
+    "FILE_CONTRACT",
     "INTERFACE",
     "INTERFACE_HOLDER",
     "LOCATION",
