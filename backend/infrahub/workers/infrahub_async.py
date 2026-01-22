@@ -2,15 +2,16 @@ import asyncio
 import contextlib
 import logging
 import os
+import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import typer
 from anyio.abc import TaskStatus
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
 from prefect import settings as prefect_settings
-from prefect.client.schemas.objects import FlowRun
 from prefect.context import AsyncClientContext
 from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
@@ -40,6 +41,10 @@ from infrahub.workers.dependencies import (
 )
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
+
+if TYPE_CHECKING:
+    from prefect.client.schemas.objects import FlowRun
+    from prefect.client.schemas.responses import WorkerFlowRunResponse
 
 WORKER_QUERY_SECONDS = "2"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
@@ -73,6 +78,9 @@ class InfrahubWorkerAsync(BaseWorker):
     _description = "Infrahub worker designed to run the flow in the main async loop."
     service: InfrahubServices  # keep a reference to `service` so we can inject it within flows parameters.
     component_type = ComponentType.GIT_AGENT
+    _flow_run_gcl_locks: dict[
+        str, tuple[str, float]
+    ]  # Track GCL names acquired per flow run (flow_run_id -> list of GCL names)
 
     async def setup(
         self,
@@ -80,6 +88,9 @@ class InfrahubWorkerAsync(BaseWorker):
         metric_port: int | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
+        # Initialize the dict to track GCL locks acquired for flow runs
+        self._flow_run_gcl_locks = {}
+
         logging.getLogger("websockets").setLevel(logging.ERROR)
         logging.getLogger("httpx").setLevel(logging.ERROR)
         logging.getLogger("httpcore").setLevel(logging.ERROR)
@@ -148,7 +159,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
     async def run(
         self,
-        flow_run: FlowRun,
+        flow_run: "FlowRun",
         configuration: BaseJobConfiguration,
         task_status: TaskStatus[int] | None = None,
     ) -> BaseWorkerResult:
@@ -232,6 +243,100 @@ class InfrahubWorkerAsync(BaseWorker):
                     self._logger.info(f"Created global concurrency limit: {gcl_def.get_name()}")
         except Exception as exc:
             self._logger.warning(f"Failed to create global concurrency limits: {exc}")
+
+    async def _submit_scheduled_flow_runs(self, flow_run_response: list["WorkerFlowRunResponse"]) -> list["FlowRun"]:
+        """Override to acquire per-worker GCL locks BEFORE submitting flows.
+
+        Lock is held for the duration of flow execution and released in
+        _submit_run_and_capture_errors finally block. This ensures other workers
+        can pick up batches if this worker is already processing one.
+        """
+        from prefect.concurrency._asyncio import aacquire_concurrency_slots
+
+        from infrahub.workflows.locks import COMPUTED_ATTR_BATCH_GCL
+
+        filtered_response = []
+        for entry in flow_run_response:
+            flow_run = entry.flow_run
+
+            # Check if this flow requires per-worker GCL
+            if self._flow_requires_worker_gcl(flow_run):
+                gcl_name = COMPUTED_ATTR_BATCH_GCL.get_name()
+                try:
+                    # Try to acquire slot
+                    acquired = await aacquire_concurrency_slots(
+                        names=[gcl_name],
+                        slots=1,
+                        mode="concurrency",
+                        strict=True,
+                        timeout_seconds=1,  # short timeout to avoid blocking
+                    )
+                    if not acquired:
+                        self._logger.info(f"Skipping flow {flow_run.id}: GCL {gcl_name} is held")
+                        continue
+                    # Store the GCL name and acquisition time for release after flow execution
+                    self._flow_run_gcl_locks[flow_run.id] = (gcl_name, time.time())
+                    self._logger.info(f"Acquired GCL {gcl_name} for flow {flow_run.id}")
+                except Exception as exc:
+                    self._logger.info(f"Skipping flow {flow_run.id}: GCL acquisition failed: {exc}")
+                    continue
+
+            filtered_response.append(entry)
+
+        return await super()._submit_scheduled_flow_runs(filtered_response)
+
+    def _flow_requires_worker_gcl(self, flow_run: "FlowRun") -> bool:
+        """Check if this flow run requires per-worker GCL check based on tags."""
+        from infrahub.workflows.constants import WorkflowTag
+
+        if flow_run.tags:
+            return WorkflowTag.REQUIRES_WORKER_GCL.render() in flow_run.tags
+        return False
+
+    async def _submit_run_and_capture_errors(
+        self,
+        flow_run: "FlowRun",
+        task_status: TaskStatus[int | Exception] | None = None,
+    ) -> BaseWorkerResult | Exception:
+        """Override to release GCL locks in finally block."""
+        try:
+            return await super()._submit_run_and_capture_errors(flow_run, task_status)
+        finally:
+            # Release any GCL locks acquired for this flow run
+            await self._release_flow_run_gcl_locks(flow_run.id)
+
+    async def _release_flow_run_gcl_locks(self, flow_run_id: UUID) -> None:
+        """Release GCL locks acquired for a flow run."""
+        from prefect.concurrency._asyncio import arelease_concurrency_slots
+
+        if flow_run_id not in self._flow_run_gcl_locks:
+            return
+
+        gcl_name, acquisition_time = self._flow_run_gcl_locks.pop(flow_run_id)
+        try:
+            await arelease_concurrency_slots(
+                names=[gcl_name], slots=1, occupancy_seconds=time.time() - acquisition_time
+            )
+            self._logger.debug(f"Released GCL lock {gcl_name} for flow {flow_run_id}")
+        except Exception as exc:
+            self._logger.warning(f"Failed to release GCL lock for flow {flow_run_id}: {exc}")
+
+    async def teardown(self, *exc_info: Any) -> None:
+        """Override to clean up GCL locks on shutdown."""
+        from prefect.concurrency._asyncio import arelease_concurrency_slots
+
+        # Release any remaining GCL locks
+        for flow_run_id, (gcl_name, acquisition_time) in list(self._flow_run_gcl_locks.items()):
+            try:
+                await arelease_concurrency_slots(
+                    names=[gcl_name], slots=1, occupancy_seconds=time.time() - acquisition_time
+                )
+                self._logger.debug(f"Released GCL lock {gcl_name} for flow {flow_run_id} during teardown")
+            except Exception as exc:
+                self._logger.warning(f"Failed to release GCL lock for flow {flow_run_id}: {exc}")
+        self._flow_run_gcl_locks.clear()
+
+        await super().teardown(*exc_info)
 
     async def set_git_global_config(self) -> None:
         global_config_file = config.SETTINGS.git.global_config_file

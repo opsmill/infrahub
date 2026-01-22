@@ -335,7 +335,7 @@ COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="computed_attribute_jinja2_update_value_batch",
-    tags=[WorkflowTag.DATABASE_CHANGE],
+    tags=[WorkflowTag.DATABASE_CHANGE, WorkflowTag.REQUIRES_WORKER_GCL],
 )
 
 DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(

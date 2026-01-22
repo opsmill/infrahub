@@ -15,7 +15,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 from infrahub.workflows.locks import PER_WORKER_GCLS
 
 if TYPE_CHECKING:
-    from logging import Logger
+    from logging import Logger, LoggerAdapter
 
 
 @flow(
@@ -85,7 +85,7 @@ async def clean_up_stale_gcls(service: InfrahubServices) -> None:
 
 
 async def _delete_stale_gcls(
-    client: PrefectClient, gcls: list, active_worker_ids: set[str], log: Logger
+    client: PrefectClient, gcls: list, active_worker_ids: set[str], log: Logger | LoggerAdapter[Logger]
 ) -> int:
     """Delete GCLs belonging to inactive workers. Returns count of deleted GCLs."""
     deleted_count = 0
