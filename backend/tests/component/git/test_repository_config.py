@@ -43,9 +43,12 @@ class TestGetRepositoryConfig:
         """Create a repository with an invalid YAML config file."""
         from pathlib import Path as PathlibPath
 
-        repo_path = PathlibPath(git_upstream_repo_01["path"])
-        upstream_repo = GitRepo(repo_path)
-        config_file = repo_path / ".infrahub.yml"
+        # Clone the upstream repo to avoid polluting the shared fixture
+        original_path = PathlibPath(git_upstream_repo_01["path"])
+        clone_path = git_repos_dir / f"clone_invalid_yaml_{id(self)}"
+        cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
+
+        config_file = clone_path / ".infrahub.yml"
 
         # Write invalid YAML content
         invalid_yaml = """
@@ -55,13 +58,13 @@ schemas:
     missing: closing bracket
 """
         config_file.write_text(invalid_yaml, encoding="utf-8")
-        upstream_repo.index.add([".infrahub.yml"])
-        upstream_repo.index.commit("Add invalid YAML config file")
+        cloned_repo.index.add([".infrahub.yml"])
+        cloned_repo.index.commit("Add invalid YAML config file")
 
         repo = await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
-            location=str(git_upstream_repo_01["path"]),
+            location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
         return repo
@@ -73,9 +76,12 @@ schemas:
         """Create a repository with a YAML config file that has invalid format."""
         from pathlib import Path as PathlibPath
 
-        repo_path = PathlibPath(git_upstream_repo_01["path"])
-        upstream_repo = GitRepo(repo_path)
-        config_file = repo_path / ".infrahub.yml"
+        # Clone the upstream repo to avoid polluting the shared fixture
+        original_path = PathlibPath(git_upstream_repo_01["path"])
+        clone_path = git_repos_dir / f"clone_invalid_format_{id(self)}"
+        cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
+
+        config_file = clone_path / ".infrahub.yml"
 
         # Write valid YAML but invalid InfrahubRepositoryConfig format
         invalid_format = """
@@ -83,13 +89,13 @@ invalid_key: "this key doesn't exist in the schema"
 schemas: "should be a list, not a string"
 """
         config_file.write_text(invalid_format, encoding="utf-8")
-        upstream_repo.index.add([".infrahub.yml"])
-        upstream_repo.index.commit("Add invalid format config file")
+        cloned_repo.index.add([".infrahub.yml"])
+        cloned_repo.index.commit("Add invalid format config file")
 
         repo = await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
-            location=str(git_upstream_repo_01["path"]),
+            location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
         return repo
@@ -101,9 +107,12 @@ schemas: "should be a list, not a string"
         """Create a repository with a valid .infrahub.yml config file."""
         from pathlib import Path as PathlibPath
 
-        repo_path = PathlibPath(git_upstream_repo_01["path"])
-        upstream_repo = GitRepo(repo_path)
-        config_file = repo_path / ".infrahub.yml"
+        # Clone the upstream repo to avoid polluting the shared fixture
+        original_path = PathlibPath(git_upstream_repo_01["path"])
+        clone_path = git_repos_dir / f"clone_valid_config_{id(self)}"
+        cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
+
+        config_file = clone_path / ".infrahub.yml"
 
         # Write a valid minimal config file
         valid_config = """
@@ -111,13 +120,13 @@ schemas: "should be a list, not a string"
 schemas: []
 """
         config_file.write_text(valid_config, encoding="utf-8")
-        upstream_repo.index.add([".infrahub.yml"])
-        upstream_repo.index.commit("Add valid .infrahub.yml config file")
+        cloned_repo.index.add([".infrahub.yml"])
+        cloned_repo.index.commit("Add valid .infrahub.yml config file")
 
         repo = await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
-            location=str(git_upstream_repo_01["path"]),
+            location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
         return repo
