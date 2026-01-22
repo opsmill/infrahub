@@ -1,18 +1,3 @@
-# Infrahub - Frontend
-
-This is the frontend app for Infrahub. React SPA written in TypeScript with React Router for routing, TanStack Query for server state management and Tailwind CSS for styling.
-
-## Commands in Infrahub UI
-
-```bash
-npm start               # Start dev server
-npm run dev             # Start dev server with devtools
-npm run build           # Production build
-npm run test            # Unit tests (Vitest)
-npm run test:e2e        # E2E tests (Playwright)
-npm run biome:fix       # Format and lint
-```
-
 ## Architecture
 
 Feature-Sliced architecture using DDD/Hexagonal principles, where each feature keeps domain logic, data access, and UI strictly separated:

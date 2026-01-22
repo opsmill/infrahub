@@ -1,6 +1,6 @@
 # URL and Path Construction
 
-> Part of: `dev/guidelines/frontend/` | Index: [Frontend Guidelines](./README.md)
+> Part of: `dev/guidelines/frontend/`
 
 Guidelines for constructing URLs and paths in the React TypeScript frontend.
 
