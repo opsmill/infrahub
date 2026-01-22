@@ -55,7 +55,7 @@ class TestMutationGenerator(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
