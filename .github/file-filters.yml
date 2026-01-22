@@ -114,3 +114,4 @@ e2e_all:
   - *ci_config
   - *development_files
   - *infrahub_uv_files
+  - *sdk_files
