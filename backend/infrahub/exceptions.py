@@ -117,8 +117,7 @@ class RepositoryInvalidFileSystemError(RepositoryError):
 
 
 class RepositoryConfigurationError(RepositoryError):
-    """Raised when repository configuration file is missing or invalid.
-    """
+    """Raised when repository configuration file is missing or invalid."""
 
     def __init__(self, identifier: str, message: str | None = None) -> None:
         super().__init__(
