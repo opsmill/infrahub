@@ -47,6 +47,7 @@ async def test_processor_returns_file_result(upload_file: UploadedFileData, dumm
 
         processor = FileUploadProcessor(file=upload_file.file)
         result = await processor.process()
+        await processor.store_file()
 
         assert isinstance(result, FileUploadResult)
         assert result.file_name == upload_file.filename
@@ -140,6 +141,7 @@ async def test_processor_stores_file(upload_file: UploadedFileData, dummy_storag
 
         processor = FileUploadProcessor(file=upload_file.file)
         result = await processor.process()
+        await processor.store_file()
 
         assert result.storage_id in dummy_storage._files
         assert dummy_storage._files[result.storage_id] == b"%PDF-1.4 test content"
