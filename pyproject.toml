@@ -28,7 +28,7 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click==8.1.7",
-    "prefect==3.6.7",
+    "prefect==3.6.13",
     "prefect-redis==0.2.8",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
