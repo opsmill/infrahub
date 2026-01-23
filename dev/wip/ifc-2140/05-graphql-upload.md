@@ -56,17 +56,21 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `_get_file_size()` - Get file size without loading into memory
   - [x] `_format_file_size()` - Human-readable size formatting for errors
   - [x] `_detect_mime_type()` - MIME type detection using `puremagic` (magic bytes)
-  - [x] `process()` - Main processing method:
+  - [x] `_compute_checksum()` - Calculate SHA-1 checksum in 64KB chunks
+  - [x] `process()` - Validate and extract metadata (does NOT store file):
     - [x] Validate file size against `config.SETTINGS.storage.max_file_size`
-    - [x] Generate new UUID as `storage_id`
+    - [x] Generate new UUID as `storage_id` (stored on instance)
     - [x] Calculate SHA-1 checksum
     - [x] Extract file metadata (name, size, type)
-    - [x] Store file via `registry.storage.store()`
     - [x] Return `FileUploadResult` dataclass
+  - [x] `store_file()` - Store file in storage backend via `registry.storage.store()`
 
 - [x] Implement file handling in `backend/infrahub/graphql/mutations/main.py`
+  - [x] `process_file_upload()` returns tuple of `(file_data_dict, processor)`
   - [x] Process file in `mutate()` method (centralized, before dispatching to specific handlers)
   - [x] Merge file metadata into `data` dict
+  - [x] Call `processor.store_file()` only after mutation succeeds
+  - [x] On mutation failure, `processor.cleanup()` is called via `try/finally` block
   - [x] `mutate_create()`, `mutate_update()`, `mutate_upsert()` remain clean (no file parameter)
   - [x] Ensure file is not persisted in storage on mutation failure
 
@@ -158,11 +162,12 @@ mutation($file: Upload!) {
 ```
 
 When `file` is provided:
-1. System stores the file in storage backend
-2. System generates `storage_id`, calculates `checksum`, extracts `file_name`, `file_size`
-3. System detects `file_type` using `puremagic` (magic bytes)
-4. System sets all FileObject attributes internally
-5. Node is created with all data in a single operation
+1. System validates file size and extracts metadata (`file_name`, `file_size`, `checksum`)
+2. System detects `file_type` using `puremagic` (magic bytes)
+3. System generates `storage_id` and sets all FileObject attributes internally
+4. Node is created in the database
+5. On success, file is stored in storage backend
+6. On failure, no file is stored (no orphaned files)
 
 ### Update Mutation with File
 
@@ -245,7 +250,9 @@ GraphQL returns metadata only; binary download uses REST (implemented in PR 5).
 ## Notes
 
 - The `Upload` scalar is input-only - it cannot be used in query responses
-- File size limits are enforced before storage write
+- File processing is two-phase: `process()` validates and extracts metadata, `store_file()` persists to storage
+- Files are only stored after mutation success - on failure, no orphaned files are left in storage
+- File size limits are enforced during `process()` before any storage write
 - MIME type detection uses `puremagic` to analyze file content (magic bytes), not just extension
 - The existing multipart parsing in `app.py` should work with minimal changes
 - All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is provided
