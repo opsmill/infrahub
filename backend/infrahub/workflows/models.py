@@ -13,7 +13,7 @@ from typing_extensions import Self
 
 from infrahub import __version__
 
-from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
+from .constants import TAG_CONCURRENCY_LIMIT_PER_WORKER, TAG_NAMESPACE, WorkflowTag, WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
@@ -56,6 +56,10 @@ class WorkflowDefinition(BaseModel):
         default=None,
         description="The concurrency options for the deployment.",
     )
+    concurrency_limit_per_worker: bool = Field(
+        default=False,
+        description="Limit to one concurrent execution per worker. Creates a tag 'infrahub.app/concurrency_limit_per_worker_1'.",
+    )
 
     @property
     def entrypoint(self) -> str:
@@ -89,6 +93,8 @@ class WorkflowDefinition(BaseModel):
             tags.append(TAG_NAMESPACE)
         tags.append(WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value))
         tags += [tag.render() for tag in self.tags]
+        if self.concurrency_limit_per_worker:
+            tags.append(TAG_CONCURRENCY_LIMIT_PER_WORKER)
         return tags
 
     async def save(self, client: PrefectClient, work_pool: WorkerPoolDefinition) -> UUID:

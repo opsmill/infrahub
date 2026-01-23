@@ -8,6 +8,7 @@ class WorkflowType(InfrahubStringEnum):
 
 
 TAG_NAMESPACE = "infrahub.app"
+TAG_CONCURRENCY_LIMIT_PER_WORKER = f"{TAG_NAMESPACE}/concurrency_limit_per_worker"
 
 
 class WorkflowTag(InfrahubStringEnum):
