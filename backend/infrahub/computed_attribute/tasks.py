@@ -324,9 +324,6 @@ async def computed_attribute_jinja2_update_value_batch(
 
     This function processes multiple nodes in a single workflow execution,
     reducing the overhead of creating individual workflows for each node.
-
-    Uses Prefect's concurrency context manager with worker identity to ensure
-    each batch runs on a different worker (per-worker task concurrency pattern).
     """
     log = get_run_logger()
     client = get_client()
@@ -335,29 +332,24 @@ async def computed_attribute_jinja2_update_value_batch(
 
     log.info(f"Processing batch of {len(nodes)} nodes for {node_kind}:{attribute_name}")
 
-    # Acquire a concurrency slot for this specific worker
-    # This ensures only one batch runs on each worker at a time
-    # When a worker picks up a batch, it acquires its own concurrency slot
-    # If that worker already has a batch running, the next batch will be picked up by a different worker
-    async with concurrency(f"computed-attr-batch:{WORKER_IDENTITY}", occupy=1):
-        # Create a local batch for processing
-        batch = await client.create_batch()
+    # Create a local batch for processing
+    batch = await client.create_batch()
 
-        for obj in nodes:
-            batch.add(
-                task=_update_single_computed_attribute,
-                client=client,
-                branch_name=branch_name,
-                obj=obj,
-                node_kind=node_kind,
-                attribute_name=attribute_name,
-                template=template,
-                context=context,
-                log=log,
-            )
+    for obj in nodes:
+        batch.add(
+            task=_update_single_computed_attribute,
+            client=client,
+            branch_name=branch_name,
+            obj=obj,
+            node_kind=node_kind,
+            attribute_name=attribute_name,
+            template=template,
+            context=context,
+            log=log,
+        )
 
-        # Execute all updates in this batch locally
-        _ = [response async for _, response in batch.execute()]
+    # Execute all updates in this batch locally
+    _ = [response async for _, response in batch.execute()]
 
     log.info(f"Completed batch processing for {node_kind}:{attribute_name}")
 
