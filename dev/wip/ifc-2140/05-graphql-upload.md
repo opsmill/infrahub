@@ -247,3 +247,4 @@ GraphQL returns metadata only; binary download uses REST (implemented in PR 5).
 - MIME type detection uses `puremagic` to analyze file content (magic bytes), not just extension
 - The existing multipart parsing in `app.py` should work with minimal changes
 - All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is provided
+- For production deployment reverse proxy configuration, see the spec file: `dev/specs/2026-01-file-object.md`

@@ -224,6 +224,35 @@ driver = "local"
 max_file_size=50 #in MB
 ```
 
+#### Production Deployment: Reverse Proxy Limits
+
+For production deployments, configure file size limits at the reverse proxy level to reject oversized uploads before they reach the application. This is more efficient because:
+
+1. The connection is terminated early, saving bandwidth and server resources
+2. The file doesn't need to be buffered before validation
+3. Provides a first line of defense against large payload attacks
+
+**nginx:**
+```nginx
+client_max_body_size 200M;
+```
+
+**Traefik:**
+```yaml
+http:
+  middlewares:
+    limit-body:
+      buffering:
+        maxRequestBodyBytes: 209715200  # 200MB
+```
+
+**HAProxy:**
+```
+tune.bufsize 209715200
+```
+
+The reverse proxy limit should match or slightly exceed `storage.max_file_size` to ensure consistent behavior. The application-level check remains as a safeguard.
+
 ### GraphQL API
 
 New GraphQL queries and mutations should be added to create file objects
