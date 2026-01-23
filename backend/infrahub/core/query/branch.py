@@ -25,7 +25,7 @@ class DeleteBranchRelationshipsQuery(Query):
         query = """
 // --------------
 // for every Node that only exists on this branch (it's about to be deleted),
-// find find any agnostic relationships or attributes connected to the Node and delete them
+// find any agnostic relationships or attributes connected to the Node and delete them
 // --------------
 OPTIONAL MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
 WHERE e.branch = $branch_name
