@@ -22,11 +22,13 @@ from .shared import (
 
 class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    async def branch_1(self, db: InfrahubDatabase):
+    async def branch_1(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="branch1")
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step_01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step_01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step_01)
 
         john = await create_and_save(db=db, schema=PERSON_KIND, name="John", unique_attr="abc", height=175)
@@ -91,7 +93,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_person_02_more_fields(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_02_more_fields(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         """Add a new attribute and a new relationship"""
         updated_schema = {**schema_person_base}
         updated_schema["attributes"].append(
@@ -106,7 +108,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         return updated_schema
 
     @pytest.fixture(scope="class")
-    def schema_person_03_unique_fields(self, schema_person_02_more_fields) -> dict[str, Any]:
+    def schema_person_03_unique_fields(self, schema_person_02_more_fields: dict[str, Any]) -> dict[str, Any]:
         """Make the new attribute unique, use the new relationship in node-level properties"""
         updated_schema = {**schema_person_02_more_fields}
         for attr in updated_schema["attributes"]:
@@ -120,7 +122,9 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         return updated_schema
 
     @pytest.fixture(scope="class")
-    def schema_person_04_rename_original_unique_fields(self, schema_person_03_unique_fields) -> dict[str, Any]:
+    def schema_person_04_rename_original_unique_fields(
+        self, schema_person_03_unique_fields: dict[str, Any]
+    ) -> dict[str, Any]:
         """Rename the name attribute"""
         updated_schema = {**schema_person_03_unique_fields}
         for attr in updated_schema["attributes"]:
@@ -134,7 +138,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_person_05_delete_original_unique_fields(
-        self, schema_person_04_rename_original_unique_fields
+        self, schema_person_04_rename_original_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
         """Delete the name attribute"""
         updated_schema = {**schema_person_04_rename_original_unique_fields}
@@ -149,7 +153,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         return updated_schema
 
     @pytest.fixture(scope="class")
-    def schema_generic_06_delete_unique_field(self, schema_generic_01) -> dict[str, Any]:
+    def schema_generic_06_delete_unique_field(self, schema_generic_01: dict[str, Any]) -> dict[str, Any]:
         """Delete the unique attribute"""
         updated_schema = {**schema_generic_01}
         for attr in updated_schema["attributes"]:
@@ -163,7 +167,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_person_06_delete_unique_generic_field(
-        self, schema_person_05_delete_original_unique_fields
+        self, schema_person_05_delete_original_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
         """Update the human friendly ID to remove the deleted unique_attr field"""
         updated_schema = {**schema_person_05_delete_original_unique_fields}
@@ -174,11 +178,11 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,
-        schema_generic_01,
-        schema_car_base,
-        schema_person_base_with_generic,
-        schema_manufacturer_base,
-        schema_tag_base,
+        schema_generic_01: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base_with_generic: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -187,28 +191,28 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_02(self, schema_person_02_more_fields) -> dict[str, Any]:
+    def schema_step_02(self, schema_person_02_more_fields: dict[str, Any]) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_02_more_fields],
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_03(self, schema_person_03_unique_fields) -> dict[str, Any]:
+    def schema_step_03(self, schema_person_03_unique_fields: dict[str, Any]) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_03_unique_fields],
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_04(self, schema_person_04_rename_original_unique_fields) -> dict[str, Any]:
+    def schema_step_04(self, schema_person_04_rename_original_unique_fields: dict[str, Any]) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_04_rename_original_unique_fields],
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_05(self, schema_person_05_delete_original_unique_fields) -> dict[str, Any]:
+    def schema_step_05(self, schema_person_05_delete_original_unique_fields: dict[str, Any]) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_05_delete_original_unique_fields],
@@ -216,7 +220,9 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step_06(
-        self, schema_person_06_delete_unique_generic_field, schema_generic_06_delete_unique_field
+        self,
+        schema_person_06_delete_unique_generic_field: dict[str, Any],
+        schema_generic_06_delete_unique_field: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -224,7 +230,9 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "generics": [schema_generic_06_delete_unique_field],
         }
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset, branch_1: Branch) -> None:
+    async def test_step01_baseline_backend(
+        self, db: InfrahubDatabase, initial_dataset: dict[str, str], branch_1: Branch
+    ) -> None:
         # Check schema properties
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
         # check that unique attribute is correctly synced to uniqueness constraints
@@ -237,7 +245,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert len(persons) == 2
 
     async def test_step02_check_more_fields(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_02
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_02: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_02], branch=branch_1.name)
         assert success, response.get("errors") if response else None
@@ -278,7 +291,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step02_load_more_fields(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_02
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_02: dict[str, Any],
     ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=branch_1.name)
@@ -307,7 +325,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await jane.save(db=db)
 
     async def test_step03_check_unique_fields(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_03
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_03: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_03], branch=branch_1.name)
         assert success, response.get("errors") if response else None
@@ -364,7 +387,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step03_load_unique_fields(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_03
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_03: dict[str, Any],
     ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_03], branch=branch_1.name)
@@ -396,7 +424,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert updated_person_schema.order_by == ["name__value", "height__value"]
 
     async def test_step04_check_rename_name(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_04
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_04: dict[str, Any],
     ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
         attr = person_schema.get_attribute(name="name")
@@ -446,7 +479,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step04_load_renamed_fields(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_04
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_04: dict[str, Any],
     ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
         attr = person_schema.get_attribute(name="name")
@@ -482,7 +520,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert updated_person_schema.order_by == ["real_name__value", "height__value"]
 
     async def test_step05_check_remove_original_unique(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_05
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_05: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_05], branch=branch_1.name)
         assert success, response.get("errors") if response else None
@@ -521,7 +564,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step05_load_remove_original_unique(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_05
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_05: dict[str, Any],
     ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_05], branch=branch_1.name)
@@ -547,7 +595,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert updated_person_schema.order_by == ["height__value"]
 
     async def test_step06_check_remove_unique_attr_from_generic(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_06
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_06: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_06], branch=branch_1.name)
         assert success, response.get("errors") if response else None
@@ -589,7 +642,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step06_load_remove_unique_attr_from_generic(
-        self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_06
+        self,
+        db: InfrahubDatabase,
+        branch_1: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_06: dict[str, Any],
     ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_06], branch=branch_1.name)
