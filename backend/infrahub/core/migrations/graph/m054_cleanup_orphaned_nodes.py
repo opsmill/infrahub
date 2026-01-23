@@ -26,15 +26,18 @@ class CleanupOrphanedNodesQuery(Query):
 // Delete attributes of orphaned nodes
 MATCH (n:Node)
 WHERE NOT exists((n)-[:IS_PART_OF]->(:Root))
-MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WITH DISTINCT attr
 CALL (attr) {
     DETACH DELETE attr
 } IN TRANSACTIONS
 
+// reduce the results to a single row
+WITH 1 AS one
+LIMIT 1
 
 // Delete relationships that will have < 2 Node peers after orphaned node removal
-MATCH (orphan:Node)-[:IS_RELATED]-(rel:Relationship)
+OPTIONAL MATCH (orphan:Node)-[:IS_RELATED]-(rel:Relationship)
 WHERE NOT exists((orphan)-[:IS_PART_OF]->(:Root))
 WITH DISTINCT rel
 CALL (rel) {
