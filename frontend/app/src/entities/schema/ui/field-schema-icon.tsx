@@ -26,37 +26,30 @@ export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   JSON: "mdi:code-json",
   Any: "mdi:alert-circle-outline",
   ID: "mdi:card-account-details-outline",
+  NodeKind: "mdi:code-json",
 } as const;
 
-interface TableColumnHeaderIconProps {
+interface FieldSchemaIconProps {
   fieldSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function TableColumnHeaderIcon({ fieldSchema }: TableColumnHeaderIconProps) {
+export function FieldSchemaIcon({ fieldSchema }: FieldSchemaIconProps) {
   if ("peer" in fieldSchema) {
-    return <RelationshipTableColumnHeaderIcon relationshipSchema={fieldSchema} />;
+    return <RelationshipFieldIcon relationshipSchema={fieldSchema} />;
   }
 
-  return <AttributeTableColumnHeaderIcon attributeKind={fieldSchema.kind as AttributeKind} />;
+  return <AttributeFieldIcon attributeKind={fieldSchema.kind as AttributeKind} />;
 }
 
-export function AttributeTableColumnHeaderIcon({
-  attributeKind,
-}: {
-  attributeKind: AttributeKind;
-}) {
+function AttributeFieldIcon({ attributeKind }: { attributeKind: AttributeKind }) {
   const icon = ATTRIBUTE_ICONS[attributeKind];
   if (!icon) return null;
 
-  return <Icon icon={icon} className="text-stone-400" />;
+  return <Icon icon={icon} />;
 }
 
-export function RelationshipTableColumnHeaderIcon({
-  relationshipSchema,
-}: {
-  relationshipSchema: RelationshipSchema;
-}) {
+function RelationshipFieldIcon({ relationshipSchema }: { relationshipSchema: RelationshipSchema }) {
   const { schema } = useSchema(relationshipSchema.peer);
 
-  return <Icon icon={getSchemaIcon(schema)} className="text-stone-400" />;
+  return <Icon icon={getSchemaIcon(schema)} />;
 }

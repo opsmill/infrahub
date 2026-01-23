@@ -20,7 +20,7 @@ export function TableIdentifierHeader({ schema, className, ...props }: TableIden
       className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white", className)}
     >
       {isAuthenticated && <Checkbox {...props} data-testid="select-all-rows" />}
-      {schema.icon && <Icon icon={getSchemaIcon(schema)} className="text-stone-400" />}
+      {schema.icon && <Icon icon={getSchemaIcon(schema)} />}
       <span className="truncate">{schema.label}</span>
     </div>
   );
