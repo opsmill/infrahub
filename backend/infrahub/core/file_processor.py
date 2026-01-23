@@ -82,6 +82,22 @@ class FileUploadProcessor:
 
         return "application/octet-stream"
 
+    async def _compute_checksum(self) -> str:
+        """Compute SHA-1 checksum of the file using chunked reading.
+
+        Reads the file in 64KB chunks to avoid loading large files entirely into memory.
+
+        Returns:
+            The checksum as a hex string.
+        """
+        await self.file.seek(0)
+        hasher = hashlib.sha1(usedforsecurity=False)
+
+        while chunk := await self.file.read(65536):
+            hasher.update(chunk)
+
+        return hasher.hexdigest()
+
     async def process(self) -> FileUploadResult:
         """Process the file upload and store it in the storage backend.
 
@@ -100,15 +116,12 @@ class FileUploadProcessor:
 
         magic_bytes = await self.file.read(2048)
         file_type = self._detect_mime_type(content=magic_bytes)
-
-        await self.file.seek(0)
-        content = await self.file.read()
-
+        checksum = await self._compute_checksum()
         storage_id = str(UUIDT())
-        checksum = hashlib.sha1(content, usedforsecurity=False).hexdigest()
         file_name = self.file.filename or storage_id
 
-        registry.storage.store(identifier=storage_id, content=content)
+        await self.file.seek(0)
+        registry.storage.store(identifier=storage_id, content=self.file.file)
 
         return FileUploadResult(
             storage_id=storage_id, file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type

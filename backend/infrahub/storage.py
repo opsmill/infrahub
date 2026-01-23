@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 import io
-import tempfile
-from typing import Any, BinaryIO
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 import botocore.exceptions
 import fastapi_storages
 from typing_extensions import Self
 
-from infrahub.config import StorageSettings
 from infrahub.exceptions import NodeNotFoundError
+
+if TYPE_CHECKING:
+    from infrahub.config import StorageSettings
 
 
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
@@ -44,10 +47,8 @@ class InfrahubObjectStorage:
     async def init(cls, settings: StorageSettings) -> Self:
         return cls(settings)
 
-    def store(self, identifier: str, content: bytes) -> None:
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(content)
-            self._storage.write(f, identifier)
+    def store(self, identifier: str, content: BinaryIO) -> None:
+        self._storage.write(content, identifier)
 
     def retrieve(self, identifier: str) -> str:
         try:
