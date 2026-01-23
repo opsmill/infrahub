@@ -1296,6 +1296,7 @@ jobs:
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:
+      - backend-tests-component
       - backend-tests-integration
       - backend-tests-unit
       - frontend-tests
