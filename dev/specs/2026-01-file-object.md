@@ -246,11 +246,6 @@ http:
         maxRequestBodyBytes: 209715200  # 200MB
 ```
 
-**HAProxy:**
-```
-tune.bufsize 209715200
-```
-
 The reverse proxy limit should match or slightly exceed `storage.max_file_size` to ensure consistent behavior. The application-level check remains as a safeguard.
 
 ### GraphQL API
