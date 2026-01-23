@@ -29,10 +29,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
       <dt className="flex h-8 items-center font-medium text-gray-500">
         {schema ? (
           <DialogTrigger>
-            <Button
-              className="group flex cursor-pointer items-center gap-1.5 outline-hidden hover:text-custom-blue-700"
-              excludeFromTabOrder
-            >
+            <Button className="group flex cursor-pointer items-center gap-1.5 hover:text-custom-blue-700">
               <FieldSchemaIcon fieldSchema={fieldSchema} />
               {fieldName}
               <Icon icon="mdi:code-json" className="hidden group-hover:inline-block" />
