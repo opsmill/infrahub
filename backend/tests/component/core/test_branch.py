@@ -1,15 +1,23 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
+from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.core.relationship import Relationship
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 
 
@@ -313,6 +321,125 @@ async def test_delete_branch(db: InfrahubDatabase, default_branch: Branch, repos
 
     assert pre_delete
     assert not post_delete
+
+
+async def test_delete_branch_with_agnostic_attrs_and_rels(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    repos_in_main,
+    branch_aware_node_with_agnostic_attrs_schema: SchemaBranch,
+) -> None:
+    """Test that branch deletion properly removes branch-aware Nodes with branch-agnostic attributes and relationships.
+
+    When a branch-aware Node is created on a branch:
+    - The Node itself is connected to Root with branch-specific IS_PART_OF edge
+    - Branch-agnostic attributes have HAS_ATTRIBUTE/HAS_VALUE edges with branch="__global__"
+    - Branch-agnostic relationships have IS_RELATED edges with branch="__global__"
+
+    When the branch is deleted, ALL of these should be removed:
+    - The Node vertex
+    - The Attribute vertices and their values
+    - The Relationship vertices
+    """
+    branch_name = "delete-me-agnostic"
+    branch = await create_branch(branch_name=branch_name, db=db)
+
+    # Create a Site on main branch that we'll reference
+    site = await Node.init(schema="TestSite", branch=default_branch, db=db)
+    await site.new(name="SiteA", db=db)
+    await site.save(db=db)
+
+    # Create a Device on the branch with branch-agnostic attribute and relationship
+    device = await Node.init(schema="TestDevice", branch=branch_name, db=db)
+    await device.new(name="Device1", serial_number="SN-12345", site=site, db=db)
+    await device.save(db=db)
+
+    device_uuid = device.id
+    attr_uuid = device.get_attribute("serial_number").id
+    agnostic_rel = await device.get_relationship("site").get_relationship(db=db, peer_id=site.id)
+    rel_uuid = agnostic_rel.id
+
+    # Delete the branch
+    await branch.delete(db=db)
+
+    # Verify the branch is deleted
+    with pytest.raises(BranchNotFoundError):
+        await Branch.get_by_name(name=branch_name, db=db)
+
+    # Verify the Node vertex is deleted using its UUID
+    vertices_exist_query = """
+    MATCH (n:Node|Attribute|Relationship)
+    WHERE n.uuid IN $uuids
+    RETURN count(n) AS count
+    """
+    node_result = await db.execute_query(
+        query=vertices_exist_query, params={"uuids": [device_uuid, attr_uuid, rel_uuid]}
+    )
+    assert node_result[0]["count"] == 0, "Node vertex should be deleted after branch deletion"
+
+
+async def test_delete_branch_after_merge_preserves_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    repos_in_main,
+    branch_aware_node_with_agnostic_attrs_schema: SchemaBranch,
+) -> None:
+    """Test that branch deletion after merge preserves nodes that were merged to the default branch.
+
+    When a branch-aware Node with branch-agnostic attributes/relationships is:
+    1. Created on a branch
+    2. Merged to the default branch
+    3. Then the branch is deleted
+
+    The Node should still be retrievable on the default branch because it now exists there.
+    """
+    branch_name = "merge-then-delete"
+    branch = await create_branch(branch_name=branch_name, db=db)
+
+    # Create a Site on main branch that we'll reference
+    site = await Node.init(schema="TestSite", branch=default_branch, db=db)
+    await site.new(name="SiteB", db=db)
+    await site.save(db=db)
+
+    # Create a Device on the branch with branch-agnostic attribute and relationship
+    device = await Node.init(schema="TestDevice", branch=branch_name, db=db)
+    await device.new(name="Device2", serial_number="SN-67890", site=site, db=db)
+    await device.save(db=db)
+
+    # Merge the branch to default
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    merge_at = Timestamp()
+    await diff_merger.merge_graph(at=merge_at)
+
+    # Verify the device exists on main after merge
+    device_on_main = await NodeManager.get_one(db=db, branch=default_branch, id=device.id)
+    assert device_on_main is not None, "Device should exist on main branch after merge"
+    assert device_on_main.get_attribute("name").value == "Device2"
+    assert device_on_main.get_attribute("serial_number").value == "SN-67890"
+
+    # Delete the branch
+    await branch.delete(db=db)
+
+    # Verify the branch is deleted
+    with pytest.raises(BranchNotFoundError):
+        await Branch.get_by_name(name=branch_name, db=db)
+
+    # Verify the device is STILL retrievable on the default branch
+    device_after_branch_delete = await NodeManager.get_one(db=db, branch=default_branch, id=device.id)
+    assert device_after_branch_delete is not None, "Device should still exist on main branch after branch deletion"
+    assert device_after_branch_delete.get_attribute("name").value == "Device2"
+    assert device_after_branch_delete.get_attribute("serial_number").value == "SN-67890"
+
+    # Verify the relationship is still intact
+    site_rel = await device_after_branch_delete.get_relationship("site").get(db=db)
+    assert site_rel is not None, "Site relationship should still exist after branch deletion"
+    assert isinstance(site_rel, Relationship)
+    assert site_rel.get_peer_id() == site.id
 
 
 async def test_create_branch(db: InfrahubDatabase, empty_database) -> None:
