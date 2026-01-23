@@ -30,6 +30,7 @@ class FileUploadProcessor:
 
     def __init__(self, file: UploadFile) -> None:
         self.file = file
+        self.storage_id: str | None = None
 
     def _get_file_size(self) -> int:
         """Get the size of the uploaded file without loading it into memory.
@@ -99,7 +100,7 @@ class FileUploadProcessor:
         return hasher.hexdigest()
 
     async def process(self) -> FileUploadResult:
-        """Process the file upload and store it in the storage backend.
+        """Process the file upload but do not store it in the storage backend.
 
         Returns:
             FileUploadResult containing all file metadata.
@@ -117,12 +118,17 @@ class FileUploadProcessor:
         magic_bytes = await self.file.read(2048)
         file_type = self._detect_mime_type(content=magic_bytes)
         checksum = await self._compute_checksum()
-        storage_id = str(UUIDT())
-        file_name = self.file.filename or storage_id
-
-        await self.file.seek(0)
-        registry.storage.store(identifier=storage_id, content=self.file.file)
+        self.storage_id = str(UUIDT())
+        file_name = self.file.filename or self.storage_id
 
         return FileUploadResult(
-            storage_id=storage_id, file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type
+            storage_id=self.storage_id, file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type
         )
+
+    async def store_file(self) -> None:
+        """Store the uploaded file in the storage backend."""
+        if not self.storage_id or not self.file:
+            raise RuntimeError("FileUploadProcessor.process() must be called before store_file()")
+
+        await self.file.seek(0)
+        registry.storage.store(identifier=self.storage_id, content=self.file.file)

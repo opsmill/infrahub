@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 from starlette.datastructures import UploadFile
@@ -387,3 +388,42 @@ class TestFileObjectMutations:
         assert node.description.value == "Persisted"
         assert node.checksum.value
         assert node.storage_id.value
+
+    async def test_create_file_object_not_stored_on_mutation_failure(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        file_contract_schema: None,
+        dummy_storage: DummyObjectStorage,
+    ) -> None:
+        """Test that uploaded file is not stored in storage when mutation fails."""
+        file_content = b"file that should not be stored"
+        upload_file = create_upload_file(content=file_content, filename="cleanup.txt")
+        files_before = len(dummy_storage._files)
+
+        query = """
+        mutation CreateFileContract($file: Upload!) {
+            TestingFileContractCreate(
+                data: { description: { value: "Should fail" } }
+                file: $file
+            ) {
+                ok
+                object { id storage_id { value } }
+            }
+        }
+        """
+
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        with patch("infrahub.graphql.mutations.main.create_node", side_effect=Exception("Simulated failure")):
+            result = await graphql(
+                schema=gql_params.schema,
+                source=query,
+                context_value=gql_params.context,
+                variable_values={"file": upload_file},
+            )
+
+        assert result.errors is not None
+        assert "Simulated failure" in str(result.errors[0])
+        assert len(dummy_storage._files) == files_before

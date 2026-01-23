@@ -83,8 +83,9 @@ class InfrahubMutationMixin:
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         file: UploadFile | None = kwargs.pop("file", None)
-        if result := await process_file_upload(file=file):
-            data.update(result)
+        file_data, file_processor = await process_file_upload(file=file)
+        if file_data:
+            data.update(file_data)
 
         obj = None
         mutation = None
@@ -124,6 +125,10 @@ class InfrahubMutationMixin:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
+
+        if file_processor:
+            # The mutation succeeded so we can safely store the file permanently
+            await file_processor.store_file()
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
@@ -454,16 +459,24 @@ async def build_graphql_response(info: GraphQLResolveInfo, db: InfrahubDatabase,
     return result
 
 
-async def process_file_upload(file: UploadFile | None) -> dict[str, Any]:
+async def process_file_upload(file: UploadFile | None) -> tuple[dict[str, Any], FileUploadProcessor | None]:
+    """Process a file upload and return data for the mutation result.
+
+    Returns:
+        A tuple of (file_data_dict, processor). The processor can be used to
+        clean up the stored file if the mutation fails. Both are empty/None
+        if no file was provided.
+    """
     if not file:
-        return {}
+        return {}, None
 
     processor = FileUploadProcessor(file=file)
     result = await processor.process()
-    return {
+    file_data = {
         "file_name": {"value": result.file_name},
         "checksum": {"value": result.checksum},
         "file_size": {"value": result.file_size},
         "file_type": {"value": result.file_type},
         "storage_id": {"value": result.storage_id},
     }
+    return file_data, processor

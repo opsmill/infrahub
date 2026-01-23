@@ -68,6 +68,7 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] Process file in `mutate()` method (centralized, before dispatching to specific handlers)
   - [x] Merge file metadata into `data` dict
   - [x] `mutate_create()`, `mutate_update()`, `mutate_upsert()` remain clean (no file parameter)
+  - [x] Ensure file is not persisted in storage on mutation failure
 
 ### App Integration
 
@@ -110,12 +111,13 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `test_update_file_object_without_file_preserves_existing` - Update without file keeps existing
   - [x] `test_create_file_object_stores_correct_content` - File content correctly stored
   - [x] `test_create_file_object_node_persisted_in_database` - Node persisted with correct attributes
+  - [x] `test_create_file_object_not_stored_on_mutation_failure` - File not stored in storage on mutation error
 
 ### Verification
 
 - [x] Run `uv run pytest tests/unit/graphql/types/test_upload_scalar.py tests/unit/core/test_file_processor.py -v` - all 11 tests pass (4 + 7)
-- [x] Run `uv run pytest tests/component/graphql/mutations/test_file_object.py -v` - all 6 tests pass
-- [x] Run all file object tests together - all 17 tests pass
+- [x] Run `uv run pytest tests/component/graphql/mutations/test_file_object.py -v` - all 7 tests pass
+- [x] Run all file object tests together - all 18 tests pass
 
 ## Reference Files
 
