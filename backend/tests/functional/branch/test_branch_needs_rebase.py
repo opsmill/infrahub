@@ -35,7 +35,7 @@ class TestNeedsRebaseStatus(TestInfrahubApp):
         await load_schema(db, schema=CAR_SCHEMA)
 
     async def test_branch_needs_rebase(
-        self, initial_dataset: str, client: InfrahubClient, db, car_person_schema_unique_owner
+        self, initial_dataset: str, client: InfrahubClient, db: InfrahubDatabase, car_person_schema_unique_owner: dict
     ) -> None:
         branch_name = "branch_to_rebase"
         branch = await client.branch.create(branch_name=branch_name)

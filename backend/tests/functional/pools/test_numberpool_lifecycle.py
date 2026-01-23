@@ -26,6 +26,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
@@ -74,8 +75,8 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture,
-        dependency_provider,
+        prefect_test_fixture: None,
+        dependency_provider: Provider,
         initial_schema: SchemaRoot,
     ) -> None:
         with dependency_provider.scope(build_cache, RedisCache):
@@ -134,7 +135,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             )
 
     async def test_numberpool_assignment_from_generic(
-        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
     ) -> None:
         service = await InfrahubServices.new(database=db)
         context = InfrahubContext.init(
@@ -186,7 +187,12 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             )
 
     async def test_numberpool_existing_nodes(
-        self, db: InfrahubDatabase, client: InfrahubClient, redis, default_branch: Branch, initial_schema: SchemaRoot
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        redis: dict[int, int] | None,
+        default_branch: Branch,
+        initial_schema: SchemaRoot,
     ) -> None:
         schema_load_response = await client.schema.load(
             schemas=[initial_schema.model_dump()], wait_until_converged=True

@@ -378,8 +378,8 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         helper: TestHelper,
         db: InfrahubDatabase,
         default_branch: Branch,
-        load_extension_schema_00,
-        load_extension_schema_01,
+        load_extension_schema_00: None,
+        load_extension_schema_01: None,
         extension_branch: BranchData,
     ) -> None:
         node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
@@ -426,7 +426,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         helper: TestHelper,
         db: InfrahubDatabase,
         default_branch: Branch,
-        load_extension_schema_02,
+        load_extension_schema_02: None,
         extension_branch: BranchData,
     ) -> None:
         node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
@@ -475,7 +475,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         helper: TestHelper,
         db: InfrahubDatabase,
         default_branch: Branch,
-        load_extension_schema_03,
+        load_extension_schema_03: None,
         extension_branch: BranchData,
     ) -> None:
         node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)

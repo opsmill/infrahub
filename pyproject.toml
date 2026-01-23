@@ -758,8 +758,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN001",   # Missing type annotation for function argument
-    "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "ASYNC109", # Async function definition with a `timeout` parameter
     "PLR0915",  # Too many statements

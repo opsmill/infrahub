@@ -29,6 +29,8 @@ from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
@@ -110,7 +112,7 @@ CONVERSION_RESPONSE_COMMON_FIELDS = {
 class TestConvertRepository(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def local_repo(
-        self, db: InfrahubDatabase, git_repos_source_dir_module_scope, git_repos_dir_module_scope
+        self, db: InfrahubDatabase, git_repos_source_dir_module_scope: Path, git_repos_dir_module_scope: Path
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
@@ -127,13 +129,13 @@ class TestConvertRepository(TestInfrahubApp):
     async def test_convert_repo_to_read_only(
         self,
         client: InfrahubClient,
-        schemas_conversion,
+        schemas_conversion: dict,
         db: InfrahubDatabase,
         initialize_registry: None,
-        service,
-        default_branch,
-        git_repos_source_dir_module_scope,
-        local_repo,
+        service: InfrahubServices,
+        default_branch: Branch,
+        git_repos_source_dir_module_scope: Path,
+        local_repo: None,
     ) -> None:
         """
         First build fields mapping required to convert a CoreRepository to a CoreReadOnlyRepository,
@@ -268,13 +270,13 @@ class TestConvertRepository(TestInfrahubApp):
     async def test_convert_read_only_to_read_write(
         self,
         client: InfrahubClient,
-        schemas_conversion,
+        schemas_conversion: dict,
         db: InfrahubDatabase,
         initialize_registry: None,
-        service,
-        default_branch,
-        local_repo,
-        git_repos_source_dir_module_scope,
+        service: InfrahubServices,
+        default_branch: Branch,
+        local_repo: None,
+        git_repos_source_dir_module_scope: Path,
     ) -> None:
         """
         First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,
@@ -418,13 +420,13 @@ class TestConvertRepository(TestInfrahubApp):
     async def test_convert_to_read_write_on_main_create_branch_before(
         self,
         client: InfrahubClient,
-        schemas_conversion,
+        schemas_conversion: dict,
         db: InfrahubDatabase,
         initialize_registry: None,
-        service,
-        default_branch,
-        local_repo,
-        git_repos_source_dir_module_scope,
+        service: InfrahubServices,
+        default_branch: Branch,
+        local_repo: None,
+        git_repos_source_dir_module_scope: Path,
     ) -> None:
         """
         First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,
