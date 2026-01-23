@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
-from prefect import State, concurrency, flow
+from prefect import State, flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType
@@ -22,7 +22,6 @@ from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
-from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
@@ -43,10 +42,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from logging import Logger
     from uuid import UUID
-
-    from infrahub_sdk.client import InfrahubClient
 
     from infrahub.core.schema.computed_attribute import ComputedAttribute
 
@@ -268,45 +264,6 @@ async def computed_attribute_jinja2_update_value(
         )
 
 
-async def _update_single_computed_attribute(
-    client: InfrahubClient,
-    branch_name: str,
-    obj: ComputedAttrJinja2GraphQLResponse,
-    node_kind: str,
-    attribute_name: str,
-    template: Jinja2Template,
-    context: InfrahubContext,
-    log: Logger,
-) -> None:
-    """Update a single computed attribute value (internal helper).
-
-    This is extracted from computed_attribute_jinja2_update_value to be
-    used both by the single-node workflow and the batch workflow.
-    """
-    value = await template.render(variables=obj.variables)
-    if value == obj.computed_attribute_value:
-        log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_ATTRIBUTE,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "attribute": attribute_name,
-                "value": value,
-                "context_account_id": context.account.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Update of computed attribute {node_kind}.{attribute_name} failed for branch {branch_name} (not found)"
-        )
-
-
 @flow(
     name="computed-attribute-jinja2-update-value-batch",
     flow_run_name="Update batch of {batch_size} computed attributes for {node_kind}:{attribute_name}",
@@ -337,15 +294,13 @@ async def computed_attribute_jinja2_update_value_batch(
 
     for obj in nodes:
         batch.add(
-            task=_update_single_computed_attribute,
-            client=client,
+            task=computed_attribute_jinja2_update_value,
             branch_name=branch_name,
             obj=obj,
             node_kind=node_kind,
             attribute_name=attribute_name,
             template=template,
             context=context,
-            log=log,
         )
 
     # Execute all updates in this batch locally
@@ -358,7 +313,7 @@ async def computed_attribute_jinja2_update_value_batch(
     name="computed_attribute_process_jinja2",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
-async def process_jinja2(
+async def process_jinja2(  # noqa: PLR0915
     branch_name: str,
     node_kind: str,
     object_id: str,
