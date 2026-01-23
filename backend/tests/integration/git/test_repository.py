@@ -80,7 +80,7 @@ class TestCreateRepository(TestInfrahubApp):
         await check_repo_correctly_created(repo_id=client_repository.id, db=db, branch_name=default_branch.name)
 
     @pytest.mark.parametrize(
-        "stderr,expected_operational_status",
+        ("stderr", "expected_operational_status"),
         [
             ("Repository not found", RepositoryOperationalStatus.ERROR_CONNECTION),
             ("error: pathspec", RepositoryOperationalStatus.ERROR),
