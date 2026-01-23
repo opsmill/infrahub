@@ -103,7 +103,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return await create_branch(db=db, branch_name="branch_2")
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step_01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step_01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step_01)
 
         starbuck = await Node.init(schema=PERSON_KIND, db=db)
@@ -142,22 +144,22 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_01_cylon_robot(self, schema_cylon_base) -> dict[str, Any]:
+    def schema_01_cylon_robot(self, schema_cylon_base: dict[str, Any]) -> dict[str, Any]:
         schema_cylon_base["inherit_from"] = ["TestingHumanoid", "TestingRobot"]
         return schema_cylon_base
 
     @pytest.fixture(scope="class")
-    def schema_03_cylon_robot(self, schema_cylon_base) -> dict[str, Any]:
+    def schema_03_cylon_robot(self, schema_cylon_base: dict[str, Any]) -> dict[str, Any]:
         schema_cylon_base["inherit_from"] = []
         return schema_cylon_base
 
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,
-        schema_humanoid_base,
-        schema_car_base,
-        schema_person_base,
-        schema_cylon_base,
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_cylon_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -167,7 +169,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step_02_add_generic(
-        self, schema_humanoid_base, schema_car_base, schema_person_base, schema_01_cylon_robot, schema_robot_base
+        self,
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_01_cylon_robot: dict[str, Any],
+        schema_robot_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -177,7 +184,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step_03_remove_generic(
-        self, schema_humanoid_base, schema_car_base, schema_person_base, schema_03_cylon_robot, schema_robot_base
+        self,
+        schema_humanoid_base: dict[str, Any],
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_03_cylon_robot: dict[str, Any],
+        schema_robot_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -185,7 +197,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "nodes": [schema_car_base, schema_person_base, schema_03_cylon_robot],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
@@ -194,7 +206,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(cars) == 1
 
     async def test_step_02_add_generic(
-        self, client: InfrahubClient, initial_dataset, schema_step_02_add_generic
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_step_02_add_generic: dict[str, Any]
     ) -> None:
         success, _ = await client.schema.check(schemas=[schema_step_02_add_generic])
         assert success is True
@@ -203,8 +215,8 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         self,
         client: InfrahubClient,
         db: InfrahubDatabase,
-        initial_dataset,
-        schema_step_03_remove_generic,
+        initial_dataset: dict[str, str],
+        schema_step_03_remove_generic: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_03_remove_generic])
         assert success is False

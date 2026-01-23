@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -19,7 +21,9 @@ from .shared import (
 
 class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         john = await Node.init(schema=PERSON_KIND, db=db)
@@ -83,12 +87,16 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
 
         return objs
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
@@ -134,7 +142,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         }
 
     async def test_step02_load_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
@@ -153,7 +165,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
 
     async def test_step03_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
@@ -216,7 +232,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
@@ -249,7 +269,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert len(honda_cars) == 2
 
     async def test_step04_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step04: dict[str, Any],
     ) -> None:
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
@@ -272,7 +296,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert success
 
     async def test_step04_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step04: dict[str, Any],
     ) -> None:
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
@@ -286,7 +314,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert registry.schema.has(name=TAG_KIND) is False
 
     async def test_step05_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step05: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step05])
 
@@ -315,7 +347,11 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert success
 
     async def test_step05_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step05: dict[str, Any],
     ) -> None:
         response = await client.schema.load(schemas=[schema_step05])
         assert not response.errors

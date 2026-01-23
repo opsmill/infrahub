@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -52,7 +54,9 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         return state.branch
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01, client: InfrahubClient):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any], client: InfrahubClient
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         # Load data in the MAIN branch first
@@ -159,12 +163,16 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         return objs
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
         assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
@@ -210,7 +218,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step02_load_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
         attr = person_schema.get_attribute(name="name")
@@ -245,7 +257,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert john.name.value == "John"  # type: ignore[attr-defined]
 
     async def test_step03_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
 
@@ -308,7 +324,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
@@ -349,7 +369,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         client: InfrahubClient,
         default_branch: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, str],
         admin_account: CoreAccount,
     ) -> None:
         time_before_rebase = Timestamp()
@@ -410,7 +430,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert lastname_attr._get_updated_by() == admin_account.id
 
     async def test_step04_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step04: dict[str, Any],
     ) -> None:
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
 
@@ -433,7 +457,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step04_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step04: dict[str, Any],
     ) -> None:
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
 
@@ -475,7 +503,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert len(tags) == 2
 
     async def test_step05_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step05: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step05], branch=self.branch1.name)
 
@@ -504,7 +536,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step05_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step05: dict[str, Any],
     ) -> None:
         response = await client.schema.load(schemas=[schema_step05], branch=self.branch1.name)
         assert not response.errors
@@ -518,9 +554,9 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
-        schema_step06,
-        schema_interior_base,
+        initial_dataset: dict[str, str],
+        schema_step06: dict[str, Any],
+        schema_interior_base: dict[str, Any],
         admin_account: CoreAccount,
     ) -> None:
         response = await client.schema.load(schemas=[schema_step06], branch=self.branch1.name)

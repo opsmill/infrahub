@@ -23,7 +23,9 @@ from .shared import (
 
 class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         john = await Node.init(schema=PERSON_KIND, db=db)
@@ -92,7 +94,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         return await create_branch(db=db, branch_name="branch_2")
 
     @pytest.fixture(scope="class")
-    def schema_01_person_name_regex(self, schema_person_base) -> dict[str, Any]:
+    def schema_01_person_name_regex(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         """Add regex to TestPerson.name that does not fit existing data"""
         new_schema = {**schema_person_base}
         new_schema["attributes"][0]["regex"] = "^[A-Z][a-z]+$"
@@ -100,7 +102,11 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_01_attr_regex(
-        self, schema_car_base, schema_01_person_name_regex, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_01_person_name_regex: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -108,21 +114,25 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_car_unique(self, schema_car_base) -> dict[str, Any]:
+    def schema_02_car_unique(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         new_schema = {**schema_car_base}
         new_schema["uniqueness_constraints"] = [["owner", "manufacturer"]]
         return new_schema
 
     @pytest.fixture(scope="class")
     def schema_02_node_unique(
-        self, schema_car_base, schema_person_base, schema_02_car_unique, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_02_car_unique: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_02_car_unique, schema_tag_base],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
         tags = await registry.manager.query(db=db, schema=TAG_KIND)
@@ -131,7 +141,12 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         assert len(tags) == 2
 
     async def test_step_01_attr_regex_add_rebase_failure(
-        self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_01_attr_regex, branch_2
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        initial_dataset: dict[str, str],
+        schema_01_attr_regex: dict[str, Any],
+        branch_2: Branch,
     ) -> None:
         response = await client.schema.load(schemas=[schema_01_attr_regex])
         assert not response.errors
@@ -146,7 +161,12 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         assert "Attribute-level 'regex' constraint violation" in exc.value.message
 
     async def test_step_02_node_unique_rebase_failure(
-        self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_02_node_unique, branch_2
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        initial_dataset: dict[str, str],
+        schema_02_node_unique: dict[str, Any],
+        branch_2: Branch,
     ) -> None:
         response = await client.schema.load(schemas=[schema_02_node_unique])
         assert not response.errors

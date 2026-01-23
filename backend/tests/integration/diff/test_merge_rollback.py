@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch.models import Branch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
@@ -37,10 +38,10 @@ class BrokenBranchMerger:
         self.real_merge_graph = self.real_merger.diff_merger.merge_graph
         self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
-    async def merge(self, at=None) -> None:
+    async def merge(self, at: Timestamp | None = None) -> None:
         await self.real_merger.merge(at=at)
 
-    async def merge_graph(self, at) -> Never:
+    async def merge_graph(self, at: Timestamp) -> Never:
         await self.real_merge_graph(at=at)
         raise ValueError("This is broken on purpose")
 
