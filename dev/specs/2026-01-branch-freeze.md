@@ -90,7 +90,7 @@ ALLOWED_MUTATIONS_ON_MERGED_BRANCH = [
 
 **Blocked operations:**
 
-- All data mutations (create, update, delete nodes/attributes/relationships)
+- All data mutations (create, update, delete nodes/attributes/relationships), even for branch agnostic nodes
 - Schema modifications (loading schema using REST API, mutations to add/delete dropdown enum options)
 - Branch rebase (`BranchRebase`)
 - Branch merge (`BranchMerge`)
@@ -270,6 +270,16 @@ The permission system should respect the `MERGED` status - even users with write
 
 This is handled at the validation layer (middleware), which runs before permission checks. The status check takes precedence.
 
+The permission system shall also be used to communicate to the frontend the current permissions for an object, when the branch is in `MERGED` status. 
+
+When the backend receives a query for the permissions for a node type, it will consider the branch argument and consider the status of that branch. If the branch is in `MERGED` status we should return a `DENY` permission for the create, update and delete action of the object. The `VIEW` permission will depend on the actual permissions defined in the system.
+
+The exception to this is the permission for a branch object. The delete permission should still be `ALLOW`, depending on the defined permissions, since a branch in the `MERGED` status can still be deleted.
+
+**OPEN QUESTION**
+- [X] Do we use the permission system to communicate to the frontend what actions should be disabled when a branch is in the `MERGED` status.
+      The decision has been made to use the permission system to communicate which actions are possible between the back- and frontend when a branch is in `MERGED` status.
+
 ## Frontend
 
 ### Branch List View
@@ -281,11 +291,12 @@ This is handled at the validation layer (middleware), which runs before permissi
 ### Branch Detail View
 
 - Show clear indication that branch is merged and read-only
-- Disable or hide mutation actions (edit, delete data, create objects)
+- Disable or hide mutation actions (merge, proposed change, rebase, validate, refresh diff, refresh schema diff, rebase on diff view)
+- The delete action should be enabled
 
 ### Proposed Change Creation
 
-- When selecting source branch, filter out or visually indicate merged branches
+- When selecting source branch, filter out merged branches
 - Show validation error if user attempts to create PC with merged source branch
 
 ### Error Handling
@@ -385,3 +396,4 @@ When a branch is merged, any open proposed change open for this branch (other th
 A branch in the status `MERGED` can still be deleted by the user using the `BranchDelete` mutation, and the provided functionality in the UI to delete a branch.
 
 (pending final UI design to explain the behavior in the UI)
+	
