@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 
 import fastapi_storages
@@ -42,7 +43,7 @@ async def test_store_file(helper, local_storage_dir: Path) -> None:
 
     content_file1 = (files_dir / filenames[0]).read_bytes()
     identifier = str(UUIDT())
-    storage.store(identifier=identifier, content=content_file1)
+    storage.store(identifier=identifier, content=io.BytesIO(content_file1))
 
     file1 = local_storage_dir / identifier
     assert file1.exists()
