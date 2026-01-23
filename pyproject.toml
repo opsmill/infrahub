@@ -592,7 +592,6 @@ allow-dunder-method-names = [
     "RUF005",   # Consider spread operator instead of concatenation
     "RUF010",   # Use explicit conversion flag
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
-    "RUF015",   # Prefer `next(...)` over single element slice
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "RUF052",   # Local dummy variable is accessed
     "S101",     # Use of `assert` detected
