@@ -6,6 +6,7 @@ import pytest
 from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.query.node import NodeGetListQuery
+from infrahub.core.schema import SchemaRoot
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
 from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig
@@ -13,6 +14,7 @@ from tests.helpers.query_benchmark.car_person_generators import (
     CarGenerator,
 )
 from tests.helpers.query_benchmark.data_generator import load_data_and_profile
+from tests.helpers.query_benchmark.db_query_profiler import GraphProfileGenerator
 from tests.query_benchmark.conftest import RESULTS_FOLDER
 from tests.query_benchmark.utils import start_db_and_create_default_branch
 
@@ -38,7 +40,11 @@ log = get_logger()
     ],
 )
 async def test_node_get_list_ordering(
-    benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit, ordering
+    benchmark_config: BenchmarkConfig,
+    car_person_schema_root: SchemaRoot,
+    graph_generator: GraphProfileGenerator,
+    increase_query_size_limit: None,
+    ordering: bool,
 ) -> None:
     # Initialization
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(

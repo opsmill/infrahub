@@ -38,7 +38,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> dict[str, Node]:
@@ -77,7 +77,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    async def diff_branch(self, db: InfrahubDatabase, initial_dataset) -> Branch:
+    async def diff_branch(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> Branch:
         return await create_branch(db=db, branch_name=BRANCH_NAME)
 
     @pytest.fixture(scope="class")
@@ -94,7 +94,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_01_remove_on_main(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
     ) -> None:
@@ -108,10 +108,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_02_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_01_remove_on_main,
+        data_01_remove_on_main: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
@@ -126,10 +126,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_03_new_peer_on_main(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_02_previous_owner_on_branch,
+        data_02_previous_owner_on_branch: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
         biff = initial_dataset["biff"]
@@ -142,10 +142,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_04_update_previous_owner_protected_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_03_new_peer_on_main,
+        data_03_new_peer_on_main: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
@@ -160,10 +160,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_05_remove_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_04_update_previous_owner_protected_on_branch,
+        data_04_update_previous_owner_protected_on_branch: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
 
@@ -175,10 +175,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_06_remove_previous_owner_on_main_again(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_05_remove_previous_owner_on_branch,
+        data_05_remove_previous_owner_on_branch: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
 
@@ -193,7 +193,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_01_remove_on_main,
+        data_01_remove_on_main: None,
     ) -> None:
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -264,8 +264,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        initial_dataset,
-        data_02_previous_owner_on_branch,
+        initial_dataset: dict[str, Node],
+        data_02_previous_owner_on_branch: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -341,12 +341,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_add_new_peer_on_main(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_03_new_peer_on_main,
+        data_03_new_peer_on_main: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -424,12 +424,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_update_previous_owner_protected_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_04_update_previous_owner_protected_on_branch,
+        data_04_update_previous_owner_protected_on_branch: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -502,12 +502,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_remove_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_05_remove_previous_owner_on_branch,
+        data_05_remove_previous_owner_on_branch: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -577,12 +577,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_remove_previous_owner_on_main_again(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_06_remove_previous_owner_on_main_again,
+        data_06_remove_previous_owner_on_main_again: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch

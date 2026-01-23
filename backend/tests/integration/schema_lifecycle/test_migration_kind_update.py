@@ -78,9 +78,9 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,
-        schema_generic_base,
-        schema_specific_one_base,
-        schema_thing,
+        schema_generic_base: dict[str, Any],
+        schema_specific_one_base: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -93,8 +93,8 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initialize_registry,
-        schema_step_01,
+        initialize_registry: None,
+        schema_step_01: dict[str, Any],
     ) -> dict[str, Node]:
         await load_schema(db=db, schema=schema_step_01)
 
@@ -138,9 +138,9 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_02(
         self,
-        schema_generic_base,
-        schema_specific_one_new_kind,
-        schema_thing,
+        schema_generic_base: dict[str, Any],
+        schema_specific_one_new_kind: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -190,7 +190,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         await branch_specific_one.save(db=db)
         return branch_specific_one
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> None:
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 1
 
@@ -202,7 +202,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         default_branch: Branch,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_one: Branch,
         schema_step_02: dict[str, Any],
     ) -> None:
@@ -228,7 +228,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         default_branch: Branch,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_one: Branch,
         schema_step_02: dict[str, Any],
         specific_one_update_01: Node,
@@ -260,7 +260,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         default_branch: Branch,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_one: Branch,
         schema_step_02: dict[str, Any],
         specific_one_update_02: Node,
@@ -303,7 +303,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         default_branch: Branch,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_one: Branch,
         schema_step_02: dict[str, Any],
         schema_specific_one_base: dict[str, Any],
