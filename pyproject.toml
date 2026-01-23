@@ -813,7 +813,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN001",   # Missing type annotation for function argument
     "ANN202",   # Missing return type annotation for private function
     "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
     "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
