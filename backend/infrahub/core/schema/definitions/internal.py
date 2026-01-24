@@ -225,7 +225,6 @@ base_node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    default_filter="name__value",
     display_labels=["label__value"],
     attributes=[
         SchemaAttribute(
@@ -239,7 +238,7 @@ base_node_schema = SchemaNode(
             name="name",
             kind="Text",
             description="Node name, must be unique within a namespace and must start with an uppercase letter.",
-            unique=True,
+            unique=False,
             regex=str(NODE_NAME_REGEX),
             min_length=DEFAULT_NAME_MIN_LENGTH,
             max_length=DEFAULT_NAME_MAX_LENGTH,
@@ -394,8 +393,8 @@ node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    default_filter="name__value",
     display_labels=["label__value"],
+    uniqueness_constraints=[["name__value", "namespace__value"]],
     attributes=base_node_schema.attributes
     + [
         SchemaAttribute(
@@ -898,8 +897,8 @@ generic_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    default_filter="name__value",
     display_labels=["label__value"],
+    uniqueness_constraints=[["name__value", "namespace__value"]],
     attributes=base_node_schema.attributes
     + [
         SchemaAttribute(
