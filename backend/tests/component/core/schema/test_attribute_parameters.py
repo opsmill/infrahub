@@ -12,11 +12,8 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
-<<<<<<< HEAD:backend/tests/component/core/schema/test_attribute_parameters.py
     AttributeParameters,
-=======
     ListAttributeParameters,
->>>>>>> 13a243097 (Use ListAttributeParameters for List):backend/tests/unit/core/schema/test_attribute_parameters.py
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
