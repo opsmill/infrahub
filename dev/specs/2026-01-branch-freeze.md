@@ -299,6 +299,10 @@ The exception to this is the permission for a branch object. The delete permissi
 - When selecting source branch, filter out merged branches
 - Show validation error if user attempts to create PC with merged source branch
 
+### Design
+
+[Figma](https://www.figma.com/design/WycZrpYI9PWlGVfjxg96UM/INFRAHUB%E2%80%A8%7C-Updates?node-id=1969-82400&t=sreLQz0Fp5awXZGS-0)
+
 ### Error Handling
 
 - Display clear, user-friendly error messages when operations are blocked
