@@ -182,6 +182,7 @@ class SchemaNode(BaseModel):
     display_label: str | None = None
     display_labels: list[str]
     uniqueness_constraints: list[list[str]] | None = None
+    human_friendly_id: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -199,6 +200,7 @@ class SchemaNode(BaseModel):
             "display_label": self.display_label,
             "display_labels": self.display_labels,
             "uniqueness_constraints": self.uniqueness_constraints,
+            "human_friendly_id": self.human_friendly_id,
         }
 
     def without_duplicates(self, other: SchemaNode) -> SchemaNode:
@@ -394,7 +396,8 @@ node_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     display_labels=["label__value"],
-    uniqueness_constraints=[["name__value", "namespace__value"]],
+    human_friendly_id=["namespace__value", "name__value"],
+    uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
     + [
         SchemaAttribute(
@@ -898,7 +901,8 @@ generic_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     display_labels=["label__value"],
-    uniqueness_constraints=[["name__value", "namespace__value"]],
+    human_friendly_id=["namespace__value", "name__value"],
+    uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
     + [
         SchemaAttribute(
