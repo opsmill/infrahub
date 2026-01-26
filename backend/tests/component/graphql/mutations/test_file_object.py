@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from io import BytesIO
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -95,7 +96,7 @@ class TestFileObjectMutations:
         assert obj_data["file_name"]["value"] == "contract.pdf"
         assert obj_data["file_size"]["value"] == len(file_content)
         assert obj_data["description"]["value"] == "Test contract"
-        assert obj_data["checksum"]["value"]
+        assert obj_data["checksum"]["value"] == hashlib.sha1(file_content, usedforsecurity=False).hexdigest()
         assert obj_data["storage_id"]["value"]
 
         storage_id = obj_data["storage_id"]["value"]
@@ -134,8 +135,11 @@ class TestFileObjectMutations:
             variable_values={},
         )
 
-        assert result.errors is not None
-        assert "file" in str(result.errors[0])
+        assert result.errors
+        assert (
+            "Field 'TestingFileContractCreate' argument 'file' of type 'Upload!' is required, but it was not provided."
+            in str(result.errors[0])
+        )
         assert len(dummy_storage._files) == files_before
 
     async def test_update_file_object_with_new_file(
@@ -386,7 +390,7 @@ class TestFileObjectMutations:
         assert node.file_name.value == "persist.txt"
         assert node.file_size.value == len(file_content)
         assert node.description.value == "Persisted"
-        assert node.checksum.value
+        assert node.checksum.value == hashlib.sha1(file_content, usedforsecurity=False).hexdigest()
         assert node.storage_id.value
 
     async def test_create_file_object_not_stored_on_mutation_failure(
