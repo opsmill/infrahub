@@ -52,6 +52,7 @@ class DiffSummaryQuery(Query):
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -62,6 +63,7 @@ class DiffSummaryQuery(Query):
         self.to_time = to_time
         self.tracking_id = tracking_id
         self.proposed_change_id = proposed_change_id
+        self.exclude_merged = exclude_merged
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if (
@@ -77,6 +79,7 @@ class DiffSummaryQuery(Query):
             "to_time": self.to_time.to_string() if self.to_time else None,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "proposed_change_id": self.proposed_change_id,
+            "exclude_merged": self.exclude_merged,
             "diff_ids": None,
         }
 
