@@ -380,6 +380,7 @@ def test_attribute_schema_kind_change_with_parameters_object() -> None:
     assert number_attr.kind == "Number"
     assert isinstance(number_attr.parameters, NumberAttributeParameters)
 
+
 def test_list_attribute_with_regex_parameter() -> None:
     node_schema: dict[str, Any] = {
         "name": "Node",
