@@ -8,6 +8,7 @@ export type ArtifactContentType =
   | "application/json"
   | "application/yaml"
   | "application/hcl"
+  | "application/graphql"
   | "image/svg+xml"
   | "text/plain"
   | "text/markdown"
