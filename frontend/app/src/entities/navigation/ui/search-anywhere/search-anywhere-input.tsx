@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { Command, type Command as CommandPrimitive } from "cmdk";
 import { useAtom } from "jotai";
-import { CaseSensitive } from "lucide-react";
+import { CaseSensitiveIcon } from "lucide-react";
 import type * as React from "react";
 
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { inputStyle } from "@/shared/components/ui/style";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
@@ -30,18 +31,18 @@ export function SearchAnywhereInput({
         {...props}
       />
 
-      <Tooltip content="Case sensitive">
-        <button
-          type="button"
+      <Tooltip content="Case sensitive" enabled>
+        <Button
+          variant={caseSensitive ? "primary" : "ghost"}
+          size="icon"
           onClick={() => setCaseSensitive(!caseSensitive)}
           className={classNames(
-            "absolute top-2 right-2 rounded p-1 hover:bg-gray-100",
-            caseSensitive ? "text-custom-blue-700" : "text-gray-400"
+            "absolute top-1 right-1 size-8 rounded",
+            !caseSensitive && "text-gray-400"
           )}
-          data-testid="search-case-sensitive-toggle"
         >
-          <CaseSensitive className="size-5" />
-        </button>
+          <CaseSensitiveIcon className="size-5" />
+        </Button>
       </Tooltip>
     </div>
   );
