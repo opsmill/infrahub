@@ -47,11 +47,7 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
           objectData={objectData}
           permission={permission}
         />
-        <ObjectActivitiesCard
-          objectKind={objectData.__typename}
-          objectId={objectData.id}
-          className="overflow-x-hidden p-0"
-        />
+        <ObjectActivitiesCard objectKind={objectData.__typename} objectId={objectData.id} />
       </Col>
     </div>
   );

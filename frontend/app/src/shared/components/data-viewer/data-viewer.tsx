@@ -60,6 +60,7 @@ export const CONTENT_TYPE_CONFIG: Record<
   "text/markdown": { extension: "md", language: "markdown", label: "Markdown" },
   "application/yaml": { extension: "yaml", language: "yaml", label: "YAML" },
   "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
+  "application/graphql": { extension: "graphql", language: "graphql", label: "GraphQL" },
   "image/svg+xml": { extension: "svg", language: "svg", label: "SVG" },
   "text/plain": { extension: "txt", language: "text", label: "text" },
   "application/xml": { extension: "xml", language: "xml", label: "XML" },
