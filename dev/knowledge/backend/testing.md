@@ -17,7 +17,18 @@ Infrahub uses pytest with TestContainers to provide reproducible, isolated tests
 
 ### Unit Tests (`backend/tests/unit/`)
 
-Despite the name, these are not traditional unit tests. Many tests leverage the database and use TestContainers for external dependencies.
+Fast unittests that require no external services to run. I.e. no database or network access. Tests in this directory can read from local folders and files.
+
+**Characteristics:**
+
+- Fast feedback loop
+- Sanity checks
+
+**When to use:** Testing smaller functions that doesn't require network services.
+
+### Component Tests (`backend/tests/component/`)
+
+Many tests leverage the database and use TestContainers for external dependencies.
 
 **Characteristics:**
 
@@ -253,6 +264,78 @@ Container (session)
 | `empty_database` | function | Clears DB, creates root node |
 | `default_branch` | function | Creates default + global branches |
 | `register_core_models_schema` | function | Registers core schema |
+
+### Schema Fixtures
+
+**Always prefer existing schema fixtures** over creating new ones. The codebase provides several reusable schema fixtures in `backend/tests/conftest.py`:
+
+| Fixture | Description |
+|---------|-------------|
+| `car_person_schema` | Basic registered schema with TestCar and TestPerson nodes |
+| `car_person_schema_unregistered` | Unregistered version for custom modifications |
+| `car_person_schema_branch_local` | Schema with branch-local support |
+| `register_core_models_schema` | Core Infrahub models only |
+
+**When to use existing fixtures:**
+
+```python
+# GOOD: Use existing fixture directly
+async def test_my_feature(db: InfrahubDatabase, car_person_schema: SchemaBranch):
+    # car_person_schema provides TestCar, TestPerson with relationships
+    ...
+```
+
+**When you need additional schema elements:**
+
+1. **Live update within the test** - Use `deepcopy` to modify an unregistered schema fixture:
+
+```python
+from copy import deepcopy
+
+async def test_with_custom_constraint(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_unregistered: SchemaRoot,
+):
+    # Copy and modify the schema
+    custom_schema = deepcopy(car_person_schema_unregistered)
+    custom_schema.nodes[0].uniqueness_constraints = [["name__value", "color__value"]]
+
+    # Register the modified schema
+    registry.schema.register_schema(schema=custom_schema, branch=default_branch.name)
+    ...
+```
+
+2. **Update the base fixture** - If the modification is broadly useful, add it to `backend/tests/conftest.py`:
+
+```python
+# In conftest.py - add a new reusable fixture
+@pytest.fixture
+async def car_person_schema_with_extra_attr(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
+    schema = deepcopy(car_person_schema_unregistered)
+    schema.nodes[0].attributes.append(
+        AttributeSchema(name="year", kind="Number", optional=True)
+    )
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+```
+
+**Avoid:**
+
+- Creating inline schema dictionaries when existing fixtures suffice
+- Duplicating schema definitions across test files
+- Defining schemas in test files that could be shared fixtures
+
+**Schema files in `backend/tests/fixtures/schemas/`:**
+
+For JSON-based schemas, use the helper methods:
+
+```python
+# Load schema from fixtures directory
+schema_dict = helper.schema_file("infra_simple_01.json")
+await client.schema.load(schemas=[schema_dict])
+```
 
 ## Running Tests
 

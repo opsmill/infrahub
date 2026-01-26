@@ -61,6 +61,7 @@ from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerReposito
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
@@ -296,7 +297,9 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
         component_registry = get_component_registry()
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
-        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+        await diff_coordinator.update_branch_diff(
+            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+        )
 
 
 @flow(name="proposed-changed-run-generator", flow_run_name="Run generators")
@@ -685,6 +688,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch=source_branch,
         schema_branch=source_schema_branch,
         schema=graphql_params.schema,
+        document=cached_parse(model.artifact_definition.query_payload),
     )
 
     only_has_unique_targets = query_analyzer.query_report.only_has_unique_targets
@@ -1095,7 +1099,9 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
-        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+        await diff_coordinator.update_branch_diff(
+            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+        )
 
     client = get_client()
 

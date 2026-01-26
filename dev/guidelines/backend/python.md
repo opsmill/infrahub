@@ -20,6 +20,37 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
+## Imports
+
+All imports must be at the top of the file. Never import inside functions, methods, or classes:
+
+```python
+# ✅ Good - imports at module level
+from infrahub.core.query import Query
+from infrahub.exceptions import ValidationError
+
+class NodeManager:
+    def validate(self, node: Node) -> None:
+        if not node.name:
+            raise ValidationError("Node name is required")
+
+# ❌ Bad - import inside function
+class NodeManager:
+    def validate(self, node: Node) -> None:
+        from infrahub.exceptions import ValidationError
+        if not node.name:
+            raise ValidationError("Node name is required")
+```
+
+Use `TYPE_CHECKING` blocks for imports only needed for type hints to avoid circular imports:
+
+```python
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+```
+
 ## Data Structures
 
 Use the appropriate data structure based on context. Do not use Pydantic everywhere.
@@ -228,10 +259,13 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-- Unit tests: no external dependencies except database
+- Unit tests: no external dependencies only file access
+- Component tests: Similar to unit tests with regards to small testing scope but can require database access
 - Integration tests: require Neo4j via testcontainers
 - Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 - Async tests auto-configured via pytest-asyncio
+
+For additional information around testing patterns refer to [./testing.md](./testing.md)
 
 ## See Also
 

@@ -3,13 +3,13 @@ import { useAtomValue } from "jotai";
 
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetIpPrefixListParams,
   getIpPrefixList,
 } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list";
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 type GetIpPrefixListInfiniteQueryParams = Omit<GetIpPrefixListParams, keyof PaginationParams>;
@@ -17,18 +17,26 @@ type GetIpPrefixListInfiniteQueryParams = Omit<GetIpPrefixListParams, keyof Pagi
 export function getIpPrefixListInfiniteQueryOptions(params: GetIpPrefixListInfiniteQueryParams) {
   return infiniteQueryOptions({
     queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
-    queryFn: ({ pageParam }) => {
+    queryFn: ({ pageParam }: { pageParam: { offset: number; limit: number } }) => {
       return getIpPrefixList({
         ...params,
-        offset: pageParam,
+        offset: pageParam.offset,
+        limit: pageParam.limit,
       });
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < OBJECTS_PER_PAGE) {
+    initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      if (lastPage.items.length < lastPageParam.limit) {
         return;
       }
-      return lastPageParam + OBJECTS_PER_PAGE;
+
+      const totalCount = allPages[0]?.count ?? 0;
+      const pageSize = totalCount > 0 ? calculateDynamicPageSize(totalCount) : DEFAULT_PAGE_SIZE;
+
+      return {
+        offset: lastPageParam.offset + lastPageParam.limit,
+        limit: pageSize,
+      };
     },
   });
 }

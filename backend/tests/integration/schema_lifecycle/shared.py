@@ -31,7 +31,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_person_02_first_last(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_02_first_last(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         """Rename the attribute name to firstname and add a new lastname attribute."""
         assert schema_person_base["attributes"][0]["name"] == "name"
         schema_person_base["attributes"][0]["name"] = "firstname"
@@ -39,7 +39,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_person_03_no_height(self, schema_person_02_first_last) -> dict[str, Any]:
+    def schema_person_03_no_height(self, schema_person_02_first_last: dict[str, Any]) -> dict[str, Any]:
         """Remove the attribute height."""
         person = copy.deepcopy(schema_person_02_first_last)
         assert person["attributes"][2]["name"] == "height"
@@ -79,18 +79,20 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_02_carmaker(self, schema_car_base, schema_manufacturer_02_car_maker) -> dict[str, Any]:
+    def schema_car_02_carmaker(
+        self, schema_car_base: dict[str, Any], schema_manufacturer_02_car_maker: dict[str, Any]
+    ) -> dict[str, Any]:
         manufacturer = schema_manufacturer_02_car_maker
         schema_car_base["relationships"][1]["peer"] = f"{manufacturer['namespace']}{manufacturer['name']}"
         return schema_car_base
 
     @pytest.fixture(scope="class")
-    def schema_car_05_no_profile(self, schema_car_base) -> dict[str, Any]:
+    def schema_car_05_no_profile(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         schema_car_base["generate_profile"] = False
         return schema_car_base
 
     @pytest.fixture(scope="class")
-    def schema_car_06_interiors(self, schema_car_05_no_profile) -> dict[str, Any]:
+    def schema_car_06_interiors(self, schema_car_05_no_profile: dict[str, Any]) -> dict[str, Any]:
         schema_car_05_no_profile["relationships"].append(
             {
                 "name": "interiors",
@@ -131,7 +133,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_manufacturer_02_car_maker(self, schema_manufacturer_base) -> dict[str, Any]:
+    def schema_manufacturer_02_car_maker(self, schema_manufacturer_base: dict[str, Any]) -> dict[str, Any]:
         schema_manufacturer_base["name"] = "CarMaker"
         schema_manufacturer_base["label"] = "CarMaker"
         return schema_manufacturer_base
@@ -157,7 +159,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_tag_04_absent(self, schema_tag_base) -> dict[str, Any]:
+    def schema_tag_04_absent(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
         schema_tag_base["state"] = "absent"
         return schema_tag_base
 
@@ -176,7 +178,11 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_step01(
-        self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -185,7 +191,11 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_step02(
-        self, schema_car_base, schema_person_02_first_last, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_02_first_last: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -194,7 +204,11 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_step03(
-        self, schema_car_02_carmaker, schema_person_03_no_height, schema_manufacturer_02_car_maker, schema_tag_base
+        self,
+        schema_car_02_carmaker: dict[str, Any],
+        schema_person_03_no_height: dict[str, Any],
+        schema_manufacturer_02_car_maker: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -208,7 +222,11 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_step04(
-        self, schema_car_02_carmaker, schema_person_03_no_height, schema_manufacturer_02_car_maker, schema_tag_04_absent
+        self,
+        schema_car_02_carmaker: dict[str, Any],
+        schema_person_03_no_height: dict[str, Any],
+        schema_manufacturer_02_car_maker: dict[str, Any],
+        schema_tag_04_absent: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -222,7 +240,10 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_step05(
-        self, schema_car_05_no_profile, schema_person_03_no_height, schema_manufacturer_02_car_maker
+        self,
+        schema_car_05_no_profile: dict[str, Any],
+        schema_person_03_no_height: dict[str, Any],
+        schema_manufacturer_02_car_maker: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -237,10 +258,10 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def schema_step06(
         self,
-        schema_car_06_interiors,
-        schema_person_03_no_height,
-        schema_manufacturer_02_car_maker,
-        schema_interior_base,
+        schema_car_06_interiors: dict[str, Any],
+        schema_person_03_no_height: dict[str, Any],
+        schema_manufacturer_02_car_maker: dict[str, Any],
+        schema_interior_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",

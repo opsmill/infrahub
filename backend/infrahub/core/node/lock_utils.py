@@ -1,6 +1,7 @@
 import hashlib
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -10,6 +11,7 @@ if TYPE_CHECKING:
 
 
 RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
+RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
@@ -55,7 +57,8 @@ def _hash(value: str) -> str:
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """
     Return lock names for object on which we want to avoid concurrent mutation (create/update).
-    Lock names include kind, some generic kinds, resource pool ids, and values of attributes of corresponding uniqueness constraints.
+    Lock names include kind, some generic kinds, resource pool ids, peer ids for cardinality one relationships,
+    and values of attributes of corresponding uniqueness constraints.
     """
 
     lock_names: set[str] = set()
@@ -66,12 +69,30 @@ def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -
         if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
             lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{attribute.from_pool['id']}")
 
-    # Check if relationships allocate resources
+    # Check if relationships allocate resources or have cardinality one constraint
     for rel_name in node._relationships:
         rel_manager: RelationshipManager = getattr(node, rel_name)
         for rel in rel_manager._relationships:
             if rel.from_pool and "id" in rel.from_pool:
                 lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{rel.from_pool['id']}")
+
+            peer_id = rel.peer_id
+            if not peer_id or not rel.schema.identifier:
+                continue
+
+            # Check if this node's relationship has cardinality one or max/min_count constraint
+            # This prevents concurrent updates to the same node's constrained relationship
+            if rel.schema.cardinality == RelationshipCardinality.ONE or rel.schema.max_count or rel.schema.min_count:
+                lock_names.add(f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.{rel.schema.identifier}.{node.id}")
+
+            # Check if the peer has count constraints on the reverse relationship
+            # This includes cardinality one, max_count, and min_count constraints
+            peer_schema = schema_branch.get(name=rel.schema.peer, duplicate=False)
+            peer_rel = peer_schema.get_relationship_by_identifier(id=rel.schema.identifier, raise_on_error=False)
+            if peer_rel and (
+                peer_rel.cardinality == RelationshipCardinality.ONE or peer_rel.max_count or peer_rel.min_count
+            ):
+                lock_names.add(f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.{rel.schema.identifier}.{peer_id}")
 
     lock_kinds = _get_kinds_to_lock_on_object_mutation(node.get_kind(), schema_branch)
     for kind in lock_kinds:

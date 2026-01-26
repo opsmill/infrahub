@@ -4,7 +4,7 @@ from infrahub_sdk.transforms import InfrahubTransform
 class OCInterfaces(InfrahubTransform):
     query = "oc_interfaces"
 
-    async def transform(self, data):
+    async def transform(self, data: dict) -> dict:
         response_payload = {}
         response_payload["openconfig-interfaces:interface"] = []
 
@@ -53,7 +53,7 @@ class OCBGPNeighbors(InfrahubTransform):
     query = "oc_bgp_neighbors"
     url = "openconfig/network-instances/network-instance/protocols/protocol/bgp/neighbors"
 
-    async def transform(self, data):
+    async def transform(self, data: dict) -> dict:
         response_payload = {}
 
         response_payload["openconfig-bgp:neighbors"] = {"neighbor": []}

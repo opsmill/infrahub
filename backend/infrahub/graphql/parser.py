@@ -99,12 +99,9 @@ class GraphQLExtractor:
                         key=attribute.name,
                         node=FieldNode(
                             kind="field",
-                            name=NameNode(
-                                kind="name",
-                                value=key,
-                                directives=[],
-                                arguments=[],
-                            ),
+                            name=NameNode(kind="name", value=key),
+                            directives=[],
+                            arguments=[],
                         ),
                         path=attribute_path,
                         fields={key: None},
@@ -117,7 +114,9 @@ class GraphQLExtractor:
                     FieldNode(
                         kind="field",
                         name=NameNode(kind="name", value=attribute.name),
-                        selection_set=SelectionSetNode(selections=tuple(enrichers)),
+                        selection_set=SelectionSetNode(selections=tuple(e.node for e in enrichers)),
+                        directives=[],
+                        arguments=[],
                     )
                 )
 
@@ -130,6 +129,8 @@ class GraphQLExtractor:
                         kind="field",
                         name=NameNode(kind="name", value="node"),
                         selection_set=SelectionSetNode(selections=tuple(attribute_enrichers)),
+                        directives=[],
+                        arguments=[],
                     ),
                     fields={attribute.name: field_attributes for attribute in self.schema.attributes},
                 )
@@ -166,6 +167,8 @@ class GraphQLExtractor:
                             kind="field",
                             name=NameNode(kind="name", value=sub_node.key),
                             selection_set=SelectionSetNode(selections=(sub_node.node,)),
+                            directives=[],
+                            arguments=[],
                         )
                     )
                     selection_set.selections = tuple(selections)

@@ -103,7 +103,7 @@ class TestDiffRebase(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         main_schema_root: SchemaRoot,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
@@ -198,7 +198,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_1_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_1: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_1: Branch,
     ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_1 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_1)
@@ -215,7 +220,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_2_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_2: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_2: Branch,
     ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_2 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_2)
@@ -232,7 +242,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_3_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_3: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_3: Branch,
     ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
         antarctica_branch_1 = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
@@ -259,9 +274,9 @@ class TestDiffRebase(TestInfrahubApp):
     async def test_no_conflicts_before_merge(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
-        add_branch_1_changes,
-        add_branch_2_changes,
+        initial_dataset: dict[str, Node],
+        add_branch_1_changes: None,
+        add_branch_2_changes: None,
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
@@ -352,8 +367,8 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
-        add_branch_1_changes,
+        initial_dataset: dict[str, Node],
+        add_branch_1_changes: None,
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
@@ -447,7 +462,7 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         branch_2: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
     ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
@@ -465,7 +480,7 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_2: Branch,
         diff_repository: DiffRepository,
     ) -> None:
@@ -539,10 +554,10 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
         branch_3: Branch,
-        add_branch_3_changes,
+        add_branch_3_changes: None,
     ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
 

@@ -222,7 +222,7 @@ services:
       start_period: 10s
 
   task-manager-db:
-    image: "${POSTGRES_DOCKER_IMAGE:-pgautoupgrade/pgautoupgrade:18-alpine}"
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${INFRAHUB_TASKMANAGER_DB_USER:-postgres}

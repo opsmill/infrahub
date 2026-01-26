@@ -5,8 +5,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
 
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import type { NodeCore } from "@/entities/nodes/types";
 
 import { IP_NAMESPACE_GENERIC } from "../../constants";
@@ -22,11 +22,13 @@ export interface IpNamespace extends NodeCore {
   default?: { value: boolean };
 }
 
-export type GetIpNamespaceList = (params: GetIpNamespaceListParams) => Promise<Array<IpNamespace>>;
+export type GetIpNamespaceList = (
+  params: GetIpNamespaceListParams
+) => Promise<PaginatedResponse<IpNamespace>>;
 
 export const getIpNamespaceList: GetIpNamespaceList = async ({
   filters,
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   branchName,
   atDate,
@@ -41,6 +43,7 @@ export const getIpNamespaceList: GetIpNamespaceList = async ({
             offset,
             ...(filters ? addFiltersToRequest(filters) : {}),
           },
+          count: true,
           edges: {
             node: {
               id: true,
@@ -81,5 +84,10 @@ export const getIpNamespaceList: GetIpNamespaceList = async ({
     throw new Error(errors[0].message);
   }
 
-  return data?.[IP_NAMESPACE_GENERIC]?.edges?.map((edge: any) => edge.node) ?? [];
+  const result = data?.[IP_NAMESPACE_GENERIC];
+
+  return {
+    items: result?.edges?.map((edge: any) => edge.node) ?? [],
+    count: result?.count ?? 0,
+  };
 };

@@ -366,6 +366,24 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return await self._update(db=db, user_id=user_id, at=save_at)
 
+    def get_branch_for_delete(self) -> Branch:
+        """Get the appropriate branch for explicit attribute delete operations.
+
+        For branch-agnostic attributes on branch-aware nodes, use the current branch
+        to create branch-scoped deletion edges rather than global deletion.
+
+        Returns:
+            Branch: The branch to use for the delete operation
+        """
+        if (
+            self.schema.branch == BranchSupportType.AGNOSTIC
+            and self.node is not None
+            and self.node._schema.branch == BranchSupportType.AWARE
+        ):
+            return self.branch
+
+        return self.get_branch_based_on_support_type()
+
     async def delete(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> AttributeChangelog | None:
@@ -373,7 +391,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return None
 
         delete_at = Timestamp(at)
-        branch = self.get_branch_based_on_support_type()
+        branch = self.get_branch_for_delete()
 
         query = await AttributeDeleteQuery.init(db=db, branch=branch, attr=self, user_id=user_id, at=delete_at)
         await query.execute(db=db)
@@ -642,9 +660,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             branch = registry.get_global_branch()
+            hierarchy_level = 1
         elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
             branch = registry.get_global_branch()
-            hierarchy_level = 0
+            hierarchy_level = 1
         data = AttributeCreateData(
             uuid=str(UUIDT()),
             name=self.name,

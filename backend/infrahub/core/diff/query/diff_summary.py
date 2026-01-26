@@ -51,6 +51,7 @@ class DiffSummaryQuery(Query):
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
+        proposed_change_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -60,16 +61,22 @@ class DiffSummaryQuery(Query):
         self.from_time = from_time
         self.to_time = to_time
         self.tracking_id = tracking_id
+        self.proposed_change_id = proposed_change_id
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        if (self.from_time is None or self.to_time is None) and self.tracking_id is None:
-            raise ValueError("DiffSummaryQuery requires from_time and to_time or tracking_id ")
+        if (
+            (self.from_time is None or self.to_time is None)
+            and self.tracking_id is None
+            and self.proposed_change_id is None
+        ):
+            raise ValueError("DiffSummaryQuery requires from_time and to_time or tracking_id or proposed_change_id")
         self.params = {
             "base_branch": self.base_branch_name,
             "diff_branches": self.diff_branch_names,
             "from_time": self.from_time.to_string() if self.from_time else None,
             "to_time": self.to_time.to_string() if self.to_time else None,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
+            "proposed_change_id": self.proposed_change_id,
             "diff_ids": None,
         }
 

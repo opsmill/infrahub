@@ -51,8 +51,8 @@ export function ObjectTemplateAutocomplete({
         <>
           <ComboboxEmpty>No template found</ComboboxEmpty>
 
-          {data.pages.map((page) => {
-            return page.map((node) => {
+          {data.pages.map((page, _pageIndex) => {
+            return page.items.map((node) => {
               return (
                 <ComboboxItem key={node.id} value={node.id} onSelect={() => onSelect(node)}>
                   <span className="truncate">{getNodeLabel(node)}</span>

@@ -68,12 +68,15 @@ export function ObjectDataDisplay({
         const fieldData = objectData[fieldName];
         if (!fieldData) return null;
 
+        const objectKind = objectSchema.kind!;
+
         if ("peer" in field) {
           return (
             <ObjectRelationshipRow
               key={fieldName}
               relationshipSchema={field}
               relationshipData={fieldData as NodeRelationshipWithMetadata}
+              objectKind={objectKind}
               permission={permission}
               onClickMetadata={onClickRelationshipMetadata}
             />
@@ -85,6 +88,7 @@ export function ObjectDataDisplay({
             key={fieldName}
             attributeSchema={field}
             attributeData={fieldData as NodeAttributeWithMetadata}
+            objectKind={objectKind}
             permission={permission}
             onClickMetadata={onClickAttributeMetadata}
           />

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -269,6 +270,27 @@ class EnrichedDiffRelationship(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> EnrichedDiffRelationship:
+        """Custom deepcopy to handle circular references with EnrichedDiffNode.
+
+        The default deepcopy can fail because it may call __hash__ on a partially
+        constructed instance (before 'name' is set) when handling circular references
+        through the nodes -> relationships cycle.
+
+        This implementation ensures 'name' is set and the instance is registered
+        in memo before deepcopying other attributes that may have circular references.
+        """
+        new_obj = object.__new__(EnrichedDiffRelationship)
+        # Set the hashable attribute first (required for __hash__)
+        new_obj.name = self.name
+        # Register in memo BEFORE copying other attributes to handle circular refs
+        memo[id(self)] = new_obj
+        # Deepcopy all other attributes
+        for key, value in self.__dict__.items():
+            if key != "name":
+                setattr(new_obj, key, deepcopy(value, memo))
+        return new_obj
+
     @property
     def num_properties(self) -> int:
         return sum(r.num_properties for r in self.relationships)
@@ -326,6 +348,27 @@ class EnrichedDiffNode(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.identifier)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> EnrichedDiffNode:
+        """Custom deepcopy to handle circular references with EnrichedDiffRelationship.
+
+        The default deepcopy can fail because it may call __hash__ on a partially
+        constructed instance (before 'identifier' is set) when handling circular references
+        through the relationships -> nodes cycle.
+
+        This implementation ensures 'identifier' is set and the instance is registered
+        in memo before deepcopying other attributes that may have circular references.
+        """
+        new_obj = object.__new__(EnrichedDiffNode)
+        # Set the hashable attribute first (required for __hash__)
+        new_obj.identifier = deepcopy(self.identifier, memo)
+        # Register in memo BEFORE copying other attributes to handle circular refs
+        memo[id(self)] = new_obj
+        # Deepcopy all other attributes
+        for key, value in self.__dict__.items():
+            if key != "identifier":
+                setattr(new_obj, key, deepcopy(value, memo))
+        return new_obj
 
     @property
     def uuid(self) -> str:
@@ -416,6 +459,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
     tracking_id: TrackingId
     partner_uuid: str | None = field(default=None)
     exists_on_database: bool = field(default=False)
+    proposed_change_id: str | None = field(default=None)
 
     def __hash__(self) -> int:
         return hash(self.uuid)

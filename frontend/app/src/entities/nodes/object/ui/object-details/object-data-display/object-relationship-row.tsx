@@ -21,6 +21,7 @@ interface ObjectRelationshipRowProps {
   relationshipSchema: RelationshipSchema;
   relationshipData: NodeRelationshipWithMetadata;
   permission: Permission;
+  objectKind: string;
   onClickMetadata?: (relationship: RelationshipSchema) => void;
 }
 
@@ -28,17 +29,16 @@ export function ObjectRelationshipRow({
   relationshipSchema,
   relationshipData,
   permission,
+  objectKind,
   onClickMetadata,
 }: ObjectRelationshipRowProps) {
-  const relationshipLabel = relationshipSchema.label ?? relationshipSchema.name;
-
   if (relationshipSchema.cardinality === "one") {
     return (
       <RelationshipOneRow
         relationshipSchema={relationshipSchema}
         relationshipData={relationshipData as NodeRelationshipOneWithMetadata}
-        relationshipLabel={relationshipLabel}
         permission={permission}
+        objectKind={objectKind}
         onClickMetadata={onClickMetadata}
       />
     );
@@ -47,7 +47,8 @@ export function ObjectRelationshipRow({
   return (
     <RelationshipManyRow
       relationshipData={relationshipData as NodeRelationshipManyWithMetadata}
-      relationshipLabel={relationshipLabel}
+      relationshipSchema={relationshipSchema}
+      objectKind={objectKind}
     />
   );
 }
@@ -55,16 +56,16 @@ export function ObjectRelationshipRow({
 interface RelationshipOneRowProps {
   relationshipSchema: RelationshipSchema;
   relationshipData: NodeRelationshipOneWithMetadata;
-  relationshipLabel: string;
   permission: Permission;
+  objectKind: string;
   onClickMetadata?: (relationship: RelationshipSchema) => void;
 }
 
 function RelationshipOneRow({
   relationshipSchema,
   relationshipData,
-  relationshipLabel,
   permission,
+  objectKind,
   onClickMetadata,
 }: RelationshipOneRowProps) {
   const relatedNode = relationshipData.node;
@@ -72,7 +73,8 @@ function RelationshipOneRow({
 
   return (
     <ObjectDataRow
-      name={relationshipLabel}
+      fieldSchema={relationshipSchema}
+      objectKind={objectKind}
       value={
         <>
           {relatedNode ? (
@@ -93,7 +95,7 @@ function RelationshipOneRow({
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                      <div className="font-semibold">{relationshipLabel}</div>
+                      <div className="font-semibold">{relationshipSchema.label}</div>
 
                       <ButtonWithTooltip
                         variant="ghost"
@@ -123,19 +125,25 @@ function RelationshipOneRow({
 
 interface RelationshipManyRowProps {
   relationshipData: NodeRelationshipManyWithMetadata;
-  relationshipLabel: string;
+  relationshipSchema: RelationshipSchema;
+  objectKind: string;
 }
 
-function RelationshipManyRow({ relationshipData, relationshipLabel }: RelationshipManyRowProps) {
+function RelationshipManyRow({
+  relationshipData,
+  relationshipSchema,
+  objectKind,
+}: RelationshipManyRowProps) {
   const relatedNodeEdges = relationshipData.edges;
 
   if (relatedNodeEdges.length === 0) {
-    return <ObjectDataRow name={relationshipLabel} value="-" />;
+    return <ObjectDataRow fieldSchema={relationshipSchema} objectKind={objectKind} value="-" />;
   }
 
   return (
     <ObjectDataRow
-      name={relationshipLabel}
+      fieldSchema={relationshipSchema}
+      objectKind={objectKind}
       value={
         <dl className="flex flex-col">
           {relatedNodeEdges.map((edge) => {

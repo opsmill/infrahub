@@ -10,6 +10,9 @@ development_files: &development_files
   - "development/**"
   - "tasks/**"
 
+dev_guidelines:
+  - "dev/**"
+
 backend_files: &backend_files
   - "backend/**"
 
@@ -111,3 +114,4 @@ e2e_all:
   - *ci_config
   - *development_files
   - *infrahub_uv_files
+  - *sdk_files

@@ -70,11 +70,15 @@ export const SchemaViewer = ({
   schema,
   onClose,
   style,
+  defaultTab = "properties",
+  targetField,
 }: {
   className?: string;
   schema: ModelSchema;
   onClose: () => void;
   style?: CSSProperties;
+  defaultTab?: "properties" | "attributes" | "relationships";
+  targetField?: string;
 }) => {
   return (
     <section
@@ -95,15 +99,15 @@ export const SchemaViewer = ({
         <div className="flex items-center gap-2 text-gray-600">
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost">
-            <Icon icon="mdi:close" className="text-xl" onClick={onClose} />
+          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>
+            <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>
       </div>
 
       <SchemaViewerTitle schema={schema} />
 
-      <SchemaViewerDetails schema={schema} />
+      <SchemaViewerDetails schema={schema} defaultTab={defaultTab} targetField={targetField} />
     </section>
   );
 };
@@ -126,9 +130,17 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
   );
 };
 
-const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
+const SchemaViewerDetails = ({
+  schema,
+  defaultTab,
+  targetField,
+}: {
+  schema: ModelSchema;
+  defaultTab: "properties" | "attributes" | "relationships";
+  targetField?: string;
+}) => {
   return (
-    <Tabs className="flex flex-col overflow-y-hidden">
+    <Tabs defaultSelectedKey={defaultTab} className="flex flex-col overflow-y-hidden">
       <TabList className="flex">
         <TabStyled id="properties">Properties</TabStyled>
         <TabStyled id="attributes">Attributes</TabStyled>
@@ -142,7 +154,11 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
       <TabPanelStyled id="attributes">
         {schema.attributes && schema.attributes.length > 0 ? (
           schema.attributes?.map((attribute) => (
-            <AttributeDisplay key={attribute.id} attribute={attribute} />
+            <AttributeDisplay
+              key={attribute.id}
+              attribute={attribute}
+              defaultOpen={attribute.name === targetField}
+            />
           ))
         ) : (
           <div className="flex h-32 items-center justify-center">No attribute</div>
@@ -152,7 +168,11 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
       <TabPanelStyled id="relationships">
         {schema.relationships && schema.relationships.length > 0
           ? schema.relationships?.map((relationship) => (
-              <RelationshipDisplay key={relationship.id} relationship={relationship} />
+              <RelationshipDisplay
+                key={relationship.id}
+                relationship={relationship}
+                defaultOpen={relationship.name === targetField}
+              />
             ))
           : "No relationship"}
       </TabPanelStyled>
