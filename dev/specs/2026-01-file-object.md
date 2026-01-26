@@ -675,6 +675,10 @@ This give the user the impression of attachments.
 - **Error handling**: File size exceeded, upload failures, permission denied
 - **Loading states**: Upload progress, file preview loading
 
+### Design
+
+[Figma](https://www.figma.com/design/WycZrpYI9PWlGVfjxg96UM/INFRAHUB%E2%80%A8%7C-Updates?node-id=1969-80794&t=yZg7JLeTScEtckxp-4)
+
 ### Open Questions [UI]
 
 - ‘delete’ :  do we allow ‘delete file’ and allow the ‘file object’ to be saved with custom fields but no file' OR do we only allow ‘delete’ file object in which case the user must delete the entire file object and then ‘create/upload’ a new one.  [there might be a use case where they want to replace the file but delete existing and then save/come back to upload a new one]
