@@ -440,7 +440,7 @@ class DiffCombiner:
                     to_time=later.to_time,
                     tracking_id=later.tracking_id,
                     nodes=combined_nodes,
-                    proposed_change_id=later.proposed_change_id,
+                    proposed_change_id=earlier.proposed_change_id,
                 )
             )
         base_branch_diff, diff_branch_diff = combined_diffs
