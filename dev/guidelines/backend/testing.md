@@ -174,6 +174,36 @@ def test_simple_function(input_value: str, expected: bool) -> None:
     assert simple_function(input_value) == expected
 ```
 
+## Caution against mocking
+
+Avoid using `unittest.mock` or `pytest-mock` to patch functions, methods, or modules. Mocking creates a false sense of security: tests pass while the actual integration may be broken. When the real implementation changes, mocked tests continue to pass, hiding regression bugs.
+
+### Prefer adapters and protocols
+
+Instead of mocking, design code with explicit boundaries using adapters, interfaces, or protocols. This allows swapping implementations for testing without patching internals.
+
+**Example:** The message bus uses this pattern:
+
+- Production: [rabbitmq.py](../../../backend/infrahub/services/adapters/message_bus/rabbitmq.py) - Real RabbitMQ implementation
+- Testing: [message_bus.py](../../../backend/tests/adapters/message_bus.py) - `BusRecorder` and `BusSimulator` test implementations
+
+Both implement the same `InfrahubMessageBus` protocol. Tests inject the test adapter—no mocking required, and refactoring the RabbitMQ implementation won't silently break tests.
+
+### When mocking seems necessary
+
+If you find yourself wanting to mock:
+
+1. **Refactor for testability** - Extract the dependency behind an interface
+2. **Move up the test pyramid** - A component test requiring extensive mocking to simulate an end-to-end flow is often better written as an integration or functional test
+3. **Question the test scope** - If testing requires mocking half the system, the unit under test may be too large
+
+### Acceptable exceptions
+
+- External HTTP APIs with no test mode (use `responses` or `httpx_mock` sparingly)
+- Time-dependent behavior (`freezegun`)
+
+Even in these cases, prefer adapter patterns when the dependency is used widely.
+
 ## See Also
 
 - [Python Standards](python.md) - General Python coding standards
