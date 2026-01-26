@@ -469,26 +469,3 @@ async def build_graphql_response(info: GraphQLResolveInfo, db: InfrahubDatabase,
     if "object" in fields:
         result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
     return result
-
-
-async def process_file_upload(file: UploadFile | None) -> tuple[dict[str, Any], FileUploadProcessor | None]:
-    """Process a file upload and return data for the mutation result.
-
-    Returns:
-        A tuple of (file_data_dict, processor). The processor can be used to
-        clean up the stored file if the mutation fails. Both are empty/None
-        if no file was provided.
-    """
-    if not file:
-        return {}, None
-
-    processor = FileUploadProcessor(file=file)
-    result = await processor.process()
-    file_data = {
-        "file_name": {"value": result.file_name},
-        "checksum": {"value": result.checksum},
-        "file_size": {"value": result.file_size},
-        "file_type": {"value": result.file_type},
-        "storage_id": {"value": result.storage_id},
-    }
-    return file_data, processor

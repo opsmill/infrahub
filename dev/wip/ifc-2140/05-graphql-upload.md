@@ -73,7 +73,6 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `DummyObjectStorage.delete()` - Test implementation
 
 - [x] Implement file handling in `backend/infrahub/graphql/mutations/main.py`
-  - [x] `process_file_upload()` returns tuple of `(file_data_dict, processor)`
   - [x] Process and store file in `mutate()` method before mutation runs
   - [x] Merge file metadata into `data` dict
   - [x] Use try/finally to clean up stored file on mutation failure via `processor.delete_file()`
