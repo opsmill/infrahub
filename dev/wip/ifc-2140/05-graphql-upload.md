@@ -70,7 +70,6 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] Process file in `mutate()` method (centralized, before dispatching to specific handlers)
   - [x] Merge file metadata into `data` dict
   - [x] Call `processor.store_file()` only after mutation succeeds
-  - [x] On mutation failure, `processor.cleanup()` is called via `try/finally` block
   - [x] `mutate_create()`, `mutate_update()`, `mutate_upsert()` remain clean (no file parameter)
   - [x] Ensure file is not persisted in storage on mutation failure
 
