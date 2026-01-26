@@ -51,7 +51,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def load_schema_on_branch(
-        self, client: InfrahubClient, load_schema, car_schema_updated: NodeSchema, branch: BranchData
+        self, client: InfrahubClient, load_schema: None, car_schema_updated: NodeSchema, branch: BranchData
     ) -> None:
         schema_root = SchemaRoot(nodes=[car_schema_updated], version="1.0")
         response = await client.schema.load(schemas=[schema_root.model_dump()], branch=branch.name)
@@ -59,7 +59,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def load_schema_on_main(
-        self, client: InfrahubClient, load_schema, car_schema_updated: NodeSchema, default_branch: Branch
+        self, client: InfrahubClient, load_schema: None, car_schema_updated: NodeSchema, default_branch: Branch
     ) -> None:
         schema_root = SchemaRoot(nodes=[car_schema_updated], version="1.0")
         response = await client.schema.load(schemas=[schema_root.model_dump()], branch=default_branch.name)
@@ -104,8 +104,8 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
         self,
         client: InfrahubClient,
         default_branch: Branch,
-        load_schema_on_branch,
-        load_schema_on_main,
+        load_schema_on_branch: None,
+        load_schema_on_main: None,
         branch: BranchData,
     ) -> None:
         car_schema_main = await client.schema.get(kind="TestingCar", branch=default_branch.name, refresh=True)
@@ -183,7 +183,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
         db: InfrahubDatabase,
         client: InfrahubClient,
         bot_client: InfrahubClient,
-        load_schema,
+        load_schema: None,
         admin_account: CoreAccount,
         bot_account: CoreAccount,
     ) -> None:

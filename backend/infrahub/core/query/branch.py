@@ -26,14 +26,30 @@ class DeleteBranchRelationshipsQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // --------------
-// for every Node created on this branch (it's about to be deleted), find any agnostic relationships
-// connected to the Node and delete them
+// for every Node that only exists on this branch (it's about to be deleted),
+// find any agnostic relationships or attributes connected to the Node and delete them
 // --------------
 OPTIONAL MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
 WHERE e.branch = $branch_name
+// does the node only exist on this branch?
 CALL (n) {
+    OPTIONAL MATCH (n)-[ipo:IS_PART_OF {status: "active"}]->(:Root)
+    WHERE ipo.branch <> $branch_name
+    LIMIT 1
+    RETURN ipo IS NOT NULL AS node_exists_on_other_branch
+}
+// if so, delete any linked agnostic relationships or attributes
+CALL (n, node_exists_on_other_branch) {
+    WITH n, node_exists_on_other_branch
+    WHERE node_exists_on_other_branch = FALSE
     OPTIONAL MATCH (n)-[:IS_RELATED {branch: $global_branch_name}]-(rel:Relationship)
     DETACH DELETE rel
+} IN TRANSACTIONS OF 500 ROWS
+CALL (n, node_exists_on_other_branch) {
+    WITH n, node_exists_on_other_branch
+    WHERE node_exists_on_other_branch = FALSE
+    OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE {branch: $global_branch_name}]-(attr:Attribute)
+    DETACH DELETE attr
 } IN TRANSACTIONS OF 500 ROWS
 
 // reduce the results to a single row

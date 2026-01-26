@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import pytest
 
@@ -15,7 +15,26 @@ from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+
+class InitialDatasetType(TypedDict):
+    container: Node
+    prefix: Node
+    prefix2: Node
+    addresses: list[Node]
+    prefix_pool: Node
+    address_pool: Node
+
+
+class Step02DatasetType(TypedDict):
+    container_branch: Node
+    prefix_branch: Node
+    prefix2_branch: Node
+    addresses: list[Node]
+    branch_addresses: list[Node]
+
 
 # mypy: disable-error-code="union-attr"
 
@@ -62,8 +81,8 @@ class TestIpamUtilization(TestIpam):
         self,
         db: InfrahubDatabase,
         initialize_registry: None,
-        register_ipam_schema,
-    ) -> dict[str, Node | list[Node]]:
+        register_ipam_schema: SchemaBranch,
+    ) -> InitialDatasetType:
         await create_ipam_namespace(db=db)
         default_ipnamespace = await get_default_ipnamespace(db=db)
         default_branch = registry.default_branch
@@ -119,7 +138,9 @@ class TestIpamUtilization(TestIpam):
         return await create_branch(db=db, branch_name="branch2")
 
     @pytest.fixture(scope="class")
-    async def step_02_dataset(self, db: InfrahubDatabase, initial_dataset, branch2) -> dict[str, Node | list[Node]]:
+    async def step_02_dataset(
+        self, db: InfrahubDatabase, initial_dataset: InitialDatasetType, branch2: Branch
+    ) -> Step02DatasetType:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch2)
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch2)
         container = initial_dataset["container"]
@@ -171,22 +192,29 @@ class TestIpamUtilization(TestIpam):
         }
 
     @pytest.fixture(scope="class")
-    async def step_03_dataset(self, db: InfrahubDatabase, initial_dataset, step_02_dataset) -> None:
+    async def step_03_dataset(
+        self, db: InfrahubDatabase, initial_dataset: InitialDatasetType, step_02_dataset: Step02DatasetType
+    ) -> None:
         prefix2 = initial_dataset["prefix2"]
         await prefix2.delete(db=db)
 
         main_addresses = initial_dataset["addresses"]
+        assert isinstance(main_addresses, list)
         await main_addresses[0].delete(db=db)
 
         prefix2_branch = step_02_dataset["prefix2_branch"]
         await prefix2_branch.delete(db=db)
 
         step2_addresses = step_02_dataset["addresses"]
+        assert isinstance(step2_addresses, list)
         await step2_addresses[0].delete(db=db)
         step2_branch_addresses = step_02_dataset["branch_addresses"]
+        assert isinstance(step2_branch_addresses, list)
         await step2_branch_addresses[0].delete(db=db)
 
-    async def test_step01_main_utilization(self, db: InfrahubDatabase, default_branch: Branch, initial_dataset) -> None:
+    async def test_step01_main_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: InitialDatasetType
+    ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix2 = initial_dataset["prefix2"]
@@ -197,7 +225,7 @@ class TestIpamUtilization(TestIpam):
         assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
 
     async def test_step01_graphql_prefix_pool_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: InitialDatasetType
     ) -> None:
         container = initial_dataset["container"]
         prefix_pool = initial_dataset["prefix_pool"]
@@ -260,7 +288,7 @@ class TestIpamUtilization(TestIpam):
         }
 
     async def test_step01_graphql_address_pool_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: InitialDatasetType
     ) -> None:
         prefix = initial_dataset["prefix"]
         address_pool = initial_dataset["address_pool"]
@@ -321,7 +349,12 @@ class TestIpamUtilization(TestIpam):
         }
 
     async def test_step02_branch_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        branch2: Branch,
+        initial_dataset: InitialDatasetType,
+        step_02_dataset: Step02DatasetType,
     ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
@@ -343,7 +376,12 @@ class TestIpamUtilization(TestIpam):
         assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == 50.0
 
     async def test_step02_graphql_prefix_pool_branch_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        branch2: Branch,
+        initial_dataset: InitialDatasetType,
+        step_02_dataset: Step02DatasetType,
     ) -> None:
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
@@ -417,7 +455,12 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
 
     async def test_step02_graphql_address_pool_branch_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        branch2: Branch,
+        initial_dataset: InitialDatasetType,
+        step_02_dataset: Step02DatasetType,
     ) -> None:
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
@@ -495,9 +538,9 @@ class TestIpamUtilization(TestIpam):
         db: InfrahubDatabase,
         default_branch: Branch,
         branch2: Branch,
-        initial_dataset,
-        step_02_dataset,
-        step_03_dataset,
+        initial_dataset: InitialDatasetType,
+        step_02_dataset: Step02DatasetType,
+        step_03_dataset: None,
     ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
@@ -523,9 +566,9 @@ class TestIpamUtilization(TestIpam):
         db: InfrahubDatabase,
         default_branch: Branch,
         branch2: Branch,
-        initial_dataset,
-        step_02_dataset,
-        step_03_dataset,
+        initial_dataset: InitialDatasetType,
+        step_02_dataset: Step02DatasetType,
+        step_03_dataset: None,
     ) -> None:
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
@@ -603,9 +646,9 @@ class TestIpamUtilization(TestIpam):
         db: InfrahubDatabase,
         default_branch: Branch,
         branch2: Branch,
-        initial_dataset,
-        step_02_dataset,
-        step_03_dataset,
+        initial_dataset: InitialDatasetType,
+        step_02_dataset: Step02DatasetType,
+        step_03_dataset: None,
     ) -> None:
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]

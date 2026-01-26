@@ -63,7 +63,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         initialize_registry: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
         initial_schema: SchemaRoot,
         default_branch: Branch,
     ) -> None:
