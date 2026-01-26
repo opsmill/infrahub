@@ -68,7 +68,7 @@ nodes:
         label: Primary IP Address
 ```
 
-Loading the above schema we can determine that template should be generated for the device object and we have a relationship to a kind that inherits from BuiltinIPAddress. As such when generating the schema we should ensure to also generate a new attribute where the pool information could be stored. It would look something like this:
+Loading the above schema we can determine that template should be generated for the device object and we have a relationship to a kind that inherits from BuiltinIPAddress. As such when generating the schema we should ensure to also generate a new relationship where the pool information could be stored. It would look something like this:
 
 ```yaml
 nodes:
@@ -86,20 +86,20 @@ nodes:
       - name: name
         kind: Text
         unique: true
-      - name: primary_address_from_resource_pool  <- generated attribute
-        kind: Text (or pool specific kind for frontend visibility)
-        optional: true
     relationships:
       - name: primary_address
         peer: IpamIPAddress
         label: Primary IP Address
+    relationships:
+      - name: primary_address_from_resource_pool
+        peer: CoreIPAddressPool
+        cardinality: one
+
 ```
 
 When creating or modifying a template based on the above schema logic should be in place from preventing users from populating both `primary_address` and `primary_address_from_resource_pool` at the same time.
 
-If the `primary_address_from_resource_pool` is defined a check should validate that the value is `NULL` and the only other allowed data point should be to set or remove an ip address pool.
-
-Then creating objects from the template the backend code should consult both the `primary_address_from_resource_pool` and `primary_address` field to determine which one is set. If the relationship has been created the backend should treat it as any other relationship. If the `primary_address_from_resource_pool` attribute has been defined the backend should assign a resource from the pool when creating the object.
+Then creating objects from the template the backend code should consult both the `primary_address_from_resource_pool` and `primary_address` relationships to determine which one is set. If the relationship has been created the backend should treat it as any other relationship. If the `primary_address_from_resource_pool` relationship has been defined the backend should assign a resource from the pool when creating the object.
 
 ### Requirements
 
@@ -107,11 +107,15 @@ Then creating objects from the template the backend code should consult both the
 * Assigning ip address or ip prefix pools to a template should store the reference to the pool within the template, resource created by the template should be assigned numbers from that pool.
 * If the relationship to "primary_address" is removed generated attribute should also be removed. (note that the relationship name is only in reference to the above schema it should work for any schema)
 
+### Limitations
+
+* Because a relationship is used for the `primary_address_from_resource_pool` example from above the implementation will be easier but it won't work to assign multiple resources on a cardinality=many relationship.
+
 ## Frontend
 
 ### Solution
 
-The frontend will need to keep track of template relationships to IP address and IP prefix pools as well as the attributes with the generated "_from_resource_pool" suffix. The fact that we have a relationship and an attribute that contains the same type of information should be agnostic from a users point of view.
+The frontend will need to keep track of template relationships to IP address and IP prefix pools as well as the relationships with the generated "_from_resource_pool" suffix. The fact that we have two relationships that contains the same type of information should be agnostic from a users point of view.
 
 ### Requirements
 
@@ -121,4 +125,4 @@ The frontend will need to keep track of template relationships to IP address and
 
 ## Open questions
 
-It was suggested that a new "kind" could be introduced so that it would be easier to identify these type of attributes from the frontend point of view.
+It was suggested that a new "kind" could be introduced so that it would be easier to identify these type of attributes from the frontend point of view. As we now use a relationship instead of an attribute an indicator could be to look a the "_from_resource_pool" suffix in combination of the peer type of a pool.
