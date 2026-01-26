@@ -118,7 +118,7 @@ class Webhook(BaseModel):
     name: str = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
-    validate_certificates: bool = Field(...)
+    validate_certificates: bool | None = Field(...)
     _payload: Any = None
     _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
@@ -162,7 +162,9 @@ class Webhook(BaseModel):
         self, data: dict[str, Any], context: EventContext, http_service: InfrahubHTTP, client: InfrahubClient
     ) -> Response:
         await self.prepare(data=data, context=context, client=client)
-        return await http_service.post(url=self.url, json=self.get_payload(), headers=self._headers)
+        return await http_service.post(
+            url=self.url, json=self.get_payload(), headers=self._headers, verify=self.validate_certificates
+        )
 
     def get_payload(self) -> dict[str, Any]:
         return self._payload

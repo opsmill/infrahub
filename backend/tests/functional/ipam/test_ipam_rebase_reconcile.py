@@ -63,7 +63,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
     async def test_step01_add_address(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
     ) -> None:
         branch = await create_branch(db=db, branch_name="new_address")
@@ -84,7 +84,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
     async def test_step02_add_delete_prefix(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
     ) -> None:
         branch = await create_branch(db=db, branch_name="delete_prefix")
@@ -141,7 +141,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
     async def test_step03_interlinked_prefixes_and_addresses(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
     ) -> None:
         branch = await create_branch(db=db, branch_name="interlinked")

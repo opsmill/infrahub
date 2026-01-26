@@ -28,7 +28,7 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click==8.1.7",
-    "prefect==3.6.7",
+    "prefect==3.6.13",
     "prefect-redis==0.2.8",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
@@ -811,8 +811,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN001",   # Missing type annotation for function argument
-    "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "ASYNC109", # Async function definition with a `timeout` parameter
     "ERA001",   # Found commented-out code

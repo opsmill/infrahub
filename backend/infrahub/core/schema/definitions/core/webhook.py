@@ -87,7 +87,6 @@ core_webhook = GenericSchema(
             name="validate_certificates",
             kind="Boolean",
             description="Whether to validate SSL/TLS certificates",
-            default_value=True,
             optional=True,
             order_weight=5000,
         ),

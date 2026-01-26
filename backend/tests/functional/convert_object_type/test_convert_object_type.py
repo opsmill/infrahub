@@ -32,7 +32,7 @@ CONVERT_OBJECT_MUTATION = """
 
 
 class TestGetConversionSchemaMapping(TestInfrahubApp):
-    async def test_get_fields_mapping(self, client: InfrahubClient, schemas_conversion) -> None:
+    async def test_get_fields_mapping(self, client: InfrahubClient, schemas_conversion: dict) -> None:
         response = await client.schema.load(schemas=[schemas_conversion])
         assert len(response.errors) == 0, response.errors
 
@@ -102,7 +102,7 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
 
 
 class TestConvertObjectType(TestInfrahubApp):
-    async def test_convert_object_type(self, client: InfrahubClient, schemas_conversion) -> None:
+    async def test_convert_object_type(self, client: InfrahubClient, schemas_conversion: dict) -> None:
         response = await client.schema.load(schemas=[schemas_conversion])
         assert len(response.errors) == 0, response.errors
 
@@ -155,7 +155,7 @@ class TestConvertObjectType(TestInfrahubApp):
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     @pytest.fixture
-    async def schemas_person(self, node_group_schema, data_schema) -> SchemaRoot:
+    async def schemas_person(self, node_group_schema: None, data_schema: None) -> SchemaRoot:
         person_generic = GenericSchema(
             name="PersonGeneric",
             namespace="Test",
