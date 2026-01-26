@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 from dataclasses import dataclass
@@ -74,12 +75,10 @@ class FileUploadProcessor:
         Returns:
             The detected MIME type string.
         """
-        try:
+        with contextlib.suppress(puremagic.PureError):
             results = puremagic.magic_string(content)
             if results:
                 return results[0].mime_type
-        except puremagic.PureError:
-            pass
 
         return "application/octet-stream"
 
@@ -100,7 +99,7 @@ class FileUploadProcessor:
         return hasher.hexdigest()
 
     async def process(self) -> FileUploadResult:
-        """Process the file upload but do not store it in the storage backend.
+        """Process the file upload and store it in the storage backend.
 
         Returns:
             FileUploadResult containing all file metadata.
@@ -121,14 +120,14 @@ class FileUploadProcessor:
         self.storage_id = str(UUIDT())
         file_name = self.file.filename or self.storage_id
 
+        await self.file.seek(0)
+        registry.storage.store(identifier=self.storage_id, content=self.file.file)
+
         return FileUploadResult(
             storage_id=self.storage_id, file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type
         )
 
-    async def store_file(self) -> None:
-        """Store the uploaded file in the storage backend."""
-        if not self.storage_id or not self.file:
-            raise RuntimeError("FileUploadProcessor.process() must be called before store_file()")
-
-        await self.file.seek(0)
-        registry.storage.store(identifier=self.storage_id, content=self.file.file)
+    def delete_file(self) -> None:
+        """Delete the uploaded file from the storage backend."""
+        if self.storage_id:
+            registry.storage.delete(identifier=self.storage_id)

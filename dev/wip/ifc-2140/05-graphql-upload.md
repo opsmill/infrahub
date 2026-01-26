@@ -57,21 +57,27 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `_format_file_size()` - Human-readable size formatting for errors
   - [x] `_detect_mime_type()` - MIME type detection using `puremagic` (magic bytes)
   - [x] `_compute_checksum()` - Calculate SHA-1 checksum in 64KB chunks
-  - [x] `process()` - Validate and extract metadata (does NOT store file):
+  - [x] `process()` - Validate, extract metadata, and store file:
     - [x] Validate file size against `config.SETTINGS.storage.max_file_size`
     - [x] Generate new UUID as `storage_id` (stored on instance)
     - [x] Calculate SHA-1 checksum
     - [x] Extract file metadata (name, size, type)
+    - [x] Store file in storage backend via `registry.storage.store()`
     - [x] Return `FileUploadResult` dataclass
-  - [x] `store_file()` - Store file in storage backend via `registry.storage.store()`
+  - [x] `delete_file()` - Delete file from storage backend (for cleanup on mutation failure)
+
+- [x] Add `delete()` method to storage layer
+  - [x] `InfrahubObjectStorage.delete()` - Delete file by identifier
+  - [x] `InfrahubS3ObjectStorage.delete()` - S3-specific delete using `bucket.Object(name).delete()`
+  - [x] FileSystemStorage delete uses `Path.unlink(missing_ok=True)`
+  - [x] `DummyObjectStorage.delete()` - Test implementation
 
 - [x] Implement file handling in `backend/infrahub/graphql/mutations/main.py`
   - [x] `process_file_upload()` returns tuple of `(file_data_dict, processor)`
-  - [x] Process file in `mutate()` method (centralized, before dispatching to specific handlers)
+  - [x] Process and store file in `mutate()` method before mutation runs
   - [x] Merge file metadata into `data` dict
-  - [x] Call `processor.store_file()` only after mutation succeeds
+  - [x] Use try/finally to clean up stored file on mutation failure via `processor.delete_file()`
   - [x] `mutate_create()`, `mutate_update()`, `mutate_upsert()` remain clean (no file parameter)
-  - [x] Ensure file is not persisted in storage on mutation failure
 
 ### App Integration
 
@@ -84,9 +90,7 @@ Implement a custom `Upload` scalar for Graphene that:
 
 ### Test Helpers
 
-- [x] Create reusable test schema `FILE_CONTRACT` in `backend/tests/helpers/schema/file_contract.py`
-- [x] Add `FILE_CONTRACT` constant to `backend/tests/constants/kind.py`
-- [x] Export from `backend/tests/helpers/schema/__init__.py`
+- [x] Create reusable test schema `FILE_CONTRACT` in `backend/tests/helpers/schema.py`
 - [x] Create `DummyObjectStorage` in `backend/tests/adapters/storage.py` for testing file storage
 
 ### Tests
@@ -98,6 +102,7 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `test_upload_parse_literal_raises_error` - Upload scalar rejects literal values (GraphQLError)
 
 - [x] Create `backend/tests/unit/core/test_file_processor.py`
+  - [x] Uses fixtures instead of mocking (`dummy_storage`, `max_file_size_50mb`, `max_file_size_1mb`)
   - [x] `test_processor_returns_file_result` - Returns correct FileUploadResult
   - [x] `test_processor_calculates_sha1_checksum` - SHA-1 checksum is correct
   - [x] `test_processor_detects_mime_type` - MIME type detected via puremagic
@@ -108,13 +113,13 @@ Implement a custom `Upload` scalar for Graphene that:
 
 - [x] Create `backend/tests/component/graphql/mutations/test_file_object.py`
   - [x] Uses class-scoped fixtures (`TestFileObjectMutations` class) for efficient test setup
-  - [x] `test_create_file_object_mutation` - Full create flow with file upload
-  - [x] `test_create_file_object_without_file_fails` - Create without file returns error
+  - [x] `test_create_file_object_mutation` - Full create flow with file upload and checksum verification
+  - [x] `test_create_file_object_without_file_fails` - Create without file returns specific error message
   - [x] `test_update_file_object_with_new_file` - Update with new file replaces storage
   - [x] `test_update_file_object_without_file_preserves_existing` - Update without file keeps existing
   - [x] `test_create_file_object_stores_correct_content` - File content correctly stored
-  - [x] `test_create_file_object_node_persisted_in_database` - Node persisted with correct attributes
-  - [x] `test_create_file_object_not_stored_on_mutation_failure` - File not stored in storage on mutation error
+  - [x] `test_create_file_object_node_persisted_in_database` - Node persisted with correct attributes and checksum
+  - [x] `test_create_file_object_not_stored_on_mutation_failure` - File cleaned up from storage on mutation error
 
 ### Verification
 
@@ -128,9 +133,10 @@ Implement a custom `Upload` scalar for Graphene that:
 - `backend/infrahub/graphql/types/upload.py` - Upload scalar implementation
 - `backend/infrahub/core/file_processor.py` - FileUploadProcessor class
 - `backend/infrahub/graphql/mutations/main.py` - Mutation resolvers with file handling
+- `backend/infrahub/storage.py` - Storage layer with delete method
 - `backend/infrahub/core/schema/node_schema.py` - `is_file_object` property
 - `backend/tests/adapters/storage.py` - DummyObjectStorage for testing
-- `backend/tests/helpers/schema/file_contract.py` - Reusable FILE_CONTRACT test schema
+- `backend/tests/helpers/schema.py` - Reusable FILE_CONTRACT test schema
 - [GraphQL Multipart Request Spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
 
 ## API Design
@@ -163,10 +169,10 @@ mutation($file: Upload!) {
 When `file` is provided:
 1. System validates file size and extracts metadata (`file_name`, `file_size`, `checksum`)
 2. System detects `file_type` using `puremagic` (magic bytes)
-3. System generates `storage_id` and sets all FileObject attributes internally
-4. Node is created in the database
-5. On success, file is stored in storage backend
-6. On failure, no file is stored (no orphaned files)
+3. System generates `storage_id` and stores file in storage backend
+4. Mutation runs to create/update node in the database
+5. On success, file remains in storage
+6. On failure, file is deleted from storage (no orphaned files)
 
 ### Update Mutation with File
 
@@ -241,7 +247,7 @@ mutation Create(data: {...}, file: $file) → creates node with file in one oper
 ### Download (REST Only)
 
 ```
-GET /api/file-object/{kind}/object/{id} → downloads file binary
+GET /api/CoreFileObject/{storage_id} → downloads file binary
 ```
 
 GraphQL returns metadata only; binary download uses REST (implemented in PR 5).
@@ -249,10 +255,11 @@ GraphQL returns metadata only; binary download uses REST (implemented in PR 5).
 ## Notes
 
 - The `Upload` scalar is input-only - it cannot be used in query responses
-- File processing is two-phase: `process()` validates and extracts metadata, `store_file()` persists to storage
-- Files are only stored after mutation success - on failure, no orphaned files are left in storage
+- File processing stores the file first, then runs the mutation - on failure, file is cleaned up
+- Files are cleaned up via `processor.delete_file()` in a try/finally block if mutation fails
 - File size limits are enforced during `process()` before any storage write
 - MIME type detection uses `puremagic` to analyze file content (magic bytes), not just extension
-- The existing multipart parsing in `app.py` should work with minimal changes
+- The existing multipart parsing in `app.py` works without changes
 - All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is provided
+- `storage_id` is a UUIDT that changes when a file is updated (enables branch-aware storage)
 - For production deployment reverse proxy configuration, see the spec file: `dev/specs/2026-01-file-object.md`

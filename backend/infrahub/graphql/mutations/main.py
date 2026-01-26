@@ -83,52 +83,64 @@ class InfrahubMutationMixin:
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         file: UploadFile | None = kwargs.pop("file", None)
-        file_data, file_processor = await process_file_upload(file=file)
-        if file_data:
-            data.update(file_data)
+        file_processor: FileUploadProcessor | None = None
+        if file:
+            file_processor = FileUploadProcessor(file=file)
+            result = await file_processor.process()
+            data.update(
+                {
+                    "file_name": {"value": result.file_name},
+                    "checksum": {"value": result.checksum},
+                    "file_size": {"value": result.file_size},
+                    "file_type": {"value": result.file_type},
+                    "storage_id": {"value": result.storage_id},
+                }
+            )
 
         obj = None
         mutation = None
         action = MutationAction.UNDEFINED
         deleted_nodes: list[Node] = []
+        mutation_succeeded = False
 
-        if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
-            action = MutationAction.CREATED
-        elif "Update" in cls.__name__:
-            obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
-            action = MutationAction.UPDATED
-        elif "Upsert" in cls.__name__:
-            node_manager = NodeManager()
-            node_getter_default_filter = MutationNodeGetterByDefaultFilter(
-                db=graphql_context.db, node_manager=node_manager
-            )
-            obj, mutation, created = await cls.mutate_upsert(
-                info=info,
-                branch=graphql_context.branch,
-                data=data,
-                node_getter_default_filter=node_getter_default_filter,
-                **kwargs,
-            )
-            if created:
+        try:
+            if "Create" in cls.__name__:
+                obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
                 action = MutationAction.CREATED
-            else:
+            elif "Update" in cls.__name__:
+                obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
                 action = MutationAction.UPDATED
-        elif "Delete" in cls.__name__:
-            delete_result = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
-            obj = delete_result.node
-            mutation = delete_result.mutation
-            deleted_nodes = delete_result.deleted_nodes
+            elif "Upsert" in cls.__name__:
+                node_manager = NodeManager()
+                node_getter_default_filter = MutationNodeGetterByDefaultFilter(
+                    db=graphql_context.db, node_manager=node_manager
+                )
+                obj, mutation, created = await cls.mutate_upsert(
+                    info=info,
+                    branch=graphql_context.branch,
+                    data=data,
+                    node_getter_default_filter=node_getter_default_filter,
+                    **kwargs,
+                )
+                if created:
+                    action = MutationAction.CREATED
+                else:
+                    action = MutationAction.UPDATED
+            elif "Delete" in cls.__name__:
+                delete_result = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
+                obj = delete_result.node
+                mutation = delete_result.mutation
+                deleted_nodes = delete_result.deleted_nodes
 
-            action = MutationAction.DELETED
-        else:
-            raise ValueError(
-                f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
-            )
-
-        if file_processor:
-            # The mutation succeeded so we can safely store the file permanently
-            await file_processor.store_file()
+                action = MutationAction.DELETED
+            else:
+                raise ValueError(
+                    f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
+                )
+            mutation_succeeded = True
+        finally:
+            if file_processor and not mutation_succeeded:
+                file_processor.delete_file()
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()

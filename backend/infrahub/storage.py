@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import io
 from typing import TYPE_CHECKING, Any, BinaryIO
 
@@ -26,6 +27,9 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         f.flush()
         f.seek(0)
         return f  # type: ignore
+
+    def delete(self, name: str) -> None:
+        self._bucket.Object(name).delete()
 
 
 fastapi_storages.InfrahubS3ObjectStorage = InfrahubS3ObjectStorage
@@ -56,3 +60,18 @@ class InfrahubObjectStorage:
                 return f.read().decode()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+
+    def delete(self, identifier: str) -> None:
+        """Delete a file from storage.
+
+        Args:
+            identifier: The storage identifier of the file to delete.
+
+        Note:
+            Silently ignores if the file does not exist.
+        """
+        if isinstance(self._storage, fastapi_storages.FileSystemStorage):
+            (self._storage._path / identifier).unlink(missing_ok=True)
+        else:
+            with contextlib.suppress(FileNotFoundError, botocore.exceptions.ClientError):
+                self._storage.delete(identifier)

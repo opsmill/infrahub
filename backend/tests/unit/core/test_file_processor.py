@@ -68,7 +68,7 @@ async def test_processor_returns_file_result(
     assert isinstance(result, FileUploadResult)
     assert result.file_name == upload_file.filename
     assert result.file_size == len(upload_file.content)
-    assert result.checksum
+    assert result.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
     assert result.storage_id
     assert result.storage_id in dummy_storage._files
 
@@ -77,12 +77,10 @@ async def test_processor_calculates_sha1_checksum(
     upload_file: UploadedFileData, dummy_storage: DummyObjectStorage, max_file_size_50mb: None
 ) -> None:
     """Test that SHA-1 checksum is calculated correctly."""
-    expected_checksum = hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
-
     processor = FileUploadProcessor(file=upload_file.file)
     result = await processor.process()
 
-    assert result.checksum == expected_checksum
+    assert result.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
 
 
 async def test_processor_detects_mime_type(dummy_storage: DummyObjectStorage, max_file_size_50mb: None) -> None:

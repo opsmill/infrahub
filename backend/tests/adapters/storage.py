@@ -1,5 +1,6 @@
 from typing import BinaryIO
 
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.storage import InfrahubObjectStorage
 
 
@@ -13,4 +14,9 @@ class DummyObjectStorage(InfrahubObjectStorage):
         self._files[identifier] = content.read()
 
     def retrieve(self, identifier: str) -> str:
+        if identifier not in self._files:
+            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier)
         return self._files[identifier].decode()
+
+    def delete(self, identifier: str) -> None:
+        self._files.pop(identifier, None)
