@@ -26,7 +26,7 @@ Infrahub's data is distributed across multiple systems, each serving a specific 
 The core of Infrahub's data model, storing all infrastructure relationships, schemas, and configuration data. This uses Neo4j's transactional graph database engine, which maintains ACID compliance and supports point-in-time recovery through transaction logs.
 
 **Artifact storage**
-Transforms, queries, and other generated artifacts are stored separately from the graph database. This can be either an S3-compatible object store or local filesystem, depending on your deployment configuration. The separation allows for efficient storage of large files without impacting database performance.
+Transformations, queries, and other generated artifacts are stored separately from the graph database. This can be either an S3-compatible object store or local filesystem, depending on your deployment configuration. The separation allows for efficient storage of large files without impacting database performance.
 
 **Task management database**
 Prefect's PostgreSQL database contains task execution history, logs, and workflow state. While not critical for data recovery, this information is valuable for auditing and troubleshooting past operations. The infrahubops tool backs this up using `pg_dump` with the custom format (`-Fc`) for efficient compression and restoration.
