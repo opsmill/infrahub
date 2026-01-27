@@ -1,5 +1,7 @@
 import { format, formatDistance, getYear } from "date-fns";
 
+export const DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss (O)";
+
 export function formatFullDate(date: string | number | Date) {
   return format(date, "dd/MM/yyyy HH:mm");
 }

@@ -8,8 +8,7 @@ import { forwardRef } from "react";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-
-const DEFAULT_DATE_FORMAT = "MM/dd/yyyy HH:mm";
+import { DATE_TIME_FORMAT } from "@/shared/utils/date";
 
 interface CustomInputProps {
   id?: string;
@@ -74,7 +73,7 @@ export const DatePicker = ({
         showTimeSelect
         timeIntervals={1}
         calendarStartDay={1}
-        dateFormat={DEFAULT_DATE_FORMAT}
+        dateFormat={DATE_TIME_FORMAT}
       />
 
       {currentDate && !isDisabled && (
