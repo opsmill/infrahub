@@ -97,6 +97,7 @@ A TransformPython can be rendered with 2 different methods:
 ## Using Transformations with groups
 
 Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](./artifact.mdx) and [Generators](./generator.mdx), which combine a Transformation with a [group](./groups.mdx) of targets.
+Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](./artifact.mdx) and [Generators](./generator.mdx), which combine a transformation with a [group](./groups.mdx) of targets.
 
 This design enables powerful patterns:
 
@@ -105,6 +106,7 @@ This design enables powerful patterns:
 - **Dynamic targeting**: Adding or removing objects from groups automatically changes which objects the Transformation processes
 
 The Transformation logic remains group-agnostic, while artifact definitions and Generators provide the targeting mechanism. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
+The transformation logic remains group-agnostic, while artifact definitions and Generators provide the targeting mechanism. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
 
 ## Unit testing for Transformations
 

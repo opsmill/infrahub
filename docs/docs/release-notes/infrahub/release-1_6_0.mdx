@@ -104,7 +104,7 @@ See which Infrahub edition you're using in the account menu alongside the versio
 
 ⚠ **BREAKING CHANGE**
 
-When using `convert_query_response` with nested relationships in Python transforms and generators, queries must now include `id` and `__typename` fields on all nodes. This fixes a bug where objects were only converted one level deep.
+When using `convert_query_response` with nested relationships in Python transforms and Generators, queries must now include `id` and `__typename` fields on all nodes. This fixes a bug where objects were only converted one level deep.
 
 If you are not using `convert_query_response` or if the queries that you are using with this feature aren't deeply nested, then you don't have to change anything.
 

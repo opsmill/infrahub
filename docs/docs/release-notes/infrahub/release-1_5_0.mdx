@@ -32,9 +32,9 @@ Finally, we've ensured Webhooks are more consistent by aligning custom webhook d
 
 ## Disable generator in Infrahub's CI pipeline and after a branch merge operation
 
-To provide a cleaner experience when setting up event-based generators, we've introduced the capability to selectively disable generators during specific lifecycle events: CI pipeline execution and branch merge operations.
+To provide a cleaner experience when setting up event-based Generators, we've introduced the capability to selectively disable Generators during specific lifecycle events: CI pipeline execution and branch merge operations.
 
-Previously, generators could be triggered multiple times, leading to redundant processing: once by their configured event trigger rules, again during the Proposed Change (CI) phase, and finally after merging into the main branch.
+Previously, Generators could be triggered multiple times, leading to redundant processing: once by their configured event trigger rules, again during the Proposed Change (CI) phase, and finally after merging into the main branch.
 
 You can now prevent this overlap by optionally disabling generator execution on a per-generator basis directly within your repository configuration file, `.infrahub.yml`. This ensures your automation runs only when you explicitly intend it to, giving you finer control over when your generation logic executes.
 
