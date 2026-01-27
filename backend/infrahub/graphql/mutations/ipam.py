@@ -10,6 +10,7 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -234,13 +235,19 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
+        file_processor: FileUploadProcessor | None = None,
     ) -> tuple[Node, Self, bool, bool]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
         prefix, result, created, file_stored = await super().mutate_upsert(
-            info=info, data=data, branch=branch, node_getter_default_filter=node_getter_default_filter, database=db
+            info=info,
+            data=data,
+            branch=branch,
+            node_getter_default_filter=node_getter_default_filter,
+            database=db,
+            file_processor=file_processor,
         )
 
         return prefix, result, created, file_stored
@@ -391,13 +398,19 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
+        file_processor: FileUploadProcessor | None = None,
     ) -> tuple[Node, Self, bool, bool]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
         prefix, result, created, file_stored = await super().mutate_upsert(
-            info=info, data=data, branch=branch, node_getter_default_filter=node_getter_default_filter, database=db
+            info=info,
+            data=data,
+            branch=branch,
+            node_getter_default_filter=node_getter_default_filter,
+            database=db,
+            file_processor=file_processor,
         )
 
         return prefix, result, created, file_stored
