@@ -55,17 +55,21 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
     }),
     columnHelper.accessor("branched_from", {
       id: "branched_from",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.branched_from} />,
+      header: () => <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.branched_from} />,
       cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
     }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("updated_at", {
       id: "updated_at",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.updated_at} />,
+      header: () => (
+        <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__updated_at} />
+      ),
       cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
     }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("created_at", {
       id: "created_at",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.created_at} />,
+      header: () => (
+        <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_at} />
+      ),
       cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
     }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("created_by", {
