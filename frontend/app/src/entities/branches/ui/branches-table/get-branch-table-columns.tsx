@@ -9,6 +9,7 @@ import { BranchIdentifierHeader } from "@/entities/branches/ui/branches-table/ce
 import { BranchNameCell } from "@/entities/branches/ui/branches-table/cells/branch-name-cell";
 import { BranchProposedChangesCell } from "@/entities/branches/ui/branches-table/cells/branch-proposed-changes-cell";
 import { BranchStatusCell } from "@/entities/branches/ui/branches-table/cells/branch-status-cell";
+import { BranchStatusHeader } from "@/entities/branches/ui/branches-table/cells/branch-status-header";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
@@ -40,7 +41,7 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
   return [
     columnHelper.accessor("status", {
       id: "status",
-      header: () => <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.status} />,
+      header: () => <BranchStatusHeader />,
       cell: ({ cell }) => <BranchStatusCell status={cell.getValue()} />,
     }) as ColumnDef<BranchListItem>,
     columnHelper.display({
