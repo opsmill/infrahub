@@ -5,7 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format, isValid } from "date-fns";
 import { forwardRef, useEffect, useState } from "react";
 
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -37,7 +37,8 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       {value && !disabled && (
         <div className="absolute top-0 right-1 bottom-0 flex items-center">
           <Button
-            buttonType={BUTTON_TYPES.INVISIBLE}
+            variant="ghost"
+            size="icon"
             onClick={(e) => {
               e.stopPropagation();
               onClear();
