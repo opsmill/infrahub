@@ -3,7 +3,7 @@ import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 import { format, isValid } from "date-fns";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -11,13 +11,52 @@ import { classNames } from "@/shared/utils/common";
 
 const DEFAULT_DATE_FORMAT = "MM/dd/yyyy HH:mm";
 
-export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
+interface CustomInputProps {
+  id?: string;
+  value: string;
+  disabled?: boolean;
+  className?: string;
+  onClick?: () => void;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+}
+
+const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
+  ({ id, value, disabled, className, onClick, onChange, onClear }, ref) => (
+    <div className="relative flex w-full items-center">
+      <input
+        id={id}
+        onClick={onClick}
+        ref={ref}
+        value={value}
+        onChange={onChange}
+        className={classNames(inputStyle, className)}
+        disabled={disabled}
+      />
+
+      {value && !disabled && (
+        <div className="absolute top-0 right-1 bottom-0 flex items-center">
+          <Button
+            buttonType={BUTTON_TYPES.INVISIBLE}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+          >
+            <Icon icon="mdi:close" className="text-gray-400" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+);
+
+export const DatePicker = forwardRef<HTMLInputElement, any>((props, _ref) => {
   const { id, date, onChange, disabled, isProtected, className } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
   const [text, setText] = useState(currentDate ? format(currentDate, DEFAULT_DATE_FORMAT) : "");
-  const refCustomInput = useRef(ref);
 
   const handleChangeDate = (newDate: Date | null) => {
     if (newDate) {
@@ -52,40 +91,21 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
 
   const isDisabled = disabled || isProtected;
 
-  const CustomInput = forwardRef(({ onClick }: any, ref: any) => (
-    <div className="relative flex w-full items-center">
-      <input
-        id={id}
-        onClick={onClick}
-        ref={ref}
-        value={text}
-        onChange={handleChangeInput}
-        className={classNames(inputStyle, className)}
-        disabled={isDisabled}
-      />
-
-      {text && !isDisabled && (
-        <div className="absolute top-0 right-1 bottom-0 flex items-center">
-          <Button
-            buttonType={BUTTON_TYPES.INVISIBLE}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClear();
-            }}
-          >
-            <Icon icon="mdi:close" className="text-gray-400" />
-          </Button>
-        </div>
-      )}
-    </div>
-  ));
-
   return (
     <div className="w-full" data-testid="date-picker">
       <DateTimePicker
         selected={currentDate}
         onChange={handleChangeDate}
-        customInput={<CustomInput ref={refCustomInput} />}
+        customInput={
+          <CustomInput
+            id={id}
+            value={text}
+            disabled={isDisabled}
+            className={className}
+            onChange={handleChangeInput}
+            onClear={handleClear}
+          />
+        }
         wrapperClassName="w-full"
         showTimeSelect
         timeIntervals={1}
