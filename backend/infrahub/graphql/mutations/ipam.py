@@ -22,7 +22,7 @@ from infrahub.log import get_logger
 
 from ...core.node.create import create_node
 from ...core.node.lock_utils import build_object_lock_name, get_lock_names_on_object_mutation
-from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, UpsertResult, build_graphql_response
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -236,12 +236,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
-    ) -> tuple[Node, Self, bool, bool]:
+    ) -> UpsertResult:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
-        prefix, result, created, file_stored = await super().mutate_upsert(
+        return await super().mutate_upsert(
             info=info,
             data=data,
             branch=branch,
@@ -249,8 +249,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             database=db,
             file_processor=file_processor,
         )
-
-        return prefix, result, created, file_stored
 
     @classmethod
     async def mutate_delete(
@@ -399,12 +397,12 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
-    ) -> tuple[Node, Self, bool, bool]:
+    ) -> UpsertResult:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
-        prefix, result, created, file_stored = await super().mutate_upsert(
+        return await super().mutate_upsert(
             info=info,
             data=data,
             branch=branch,
@@ -412,8 +410,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             database=db,
             file_processor=file_processor,
         )
-
-        return prefix, result, created, file_stored
 
     @classmethod
     async def _reconcile_prefix(

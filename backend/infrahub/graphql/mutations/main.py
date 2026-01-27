@@ -48,6 +48,14 @@ log = get_logger()
 
 
 @dataclass
+class UpsertResult:
+    node: Node
+    mutation: InfrahubMutationMixin
+    created: bool
+    file_stored: bool = False
+
+
+@dataclass
 class DeleteResult:
     node: Node
     mutation: InfrahubMutationMixin
@@ -144,7 +152,7 @@ class InfrahubMutationMixin:
                 node_getter_default_filter = MutationNodeGetterByDefaultFilter(
                     db=graphql_context.db, node_manager=node_manager
                 )
-                obj, mutation, created, file_stored = await cls.mutate_upsert(
+                upsert_result = await cls.mutate_upsert(
                     info=info,
                     branch=graphql_context.branch,
                     data=data,
@@ -152,7 +160,10 @@ class InfrahubMutationMixin:
                     file_processor=file_processor,
                     **kwargs,
                 )
-                if created:
+                obj = upsert_result.node
+                mutation = upsert_result.mutation
+                file_stored = upsert_result.file_stored
+                if upsert_result.created:
                     action = MutationAction.CREATED
                 else:
                     action = MutationAction.UPDATED
@@ -348,16 +359,12 @@ class InfrahubMutationMixin:
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
-    ) -> tuple[Node, Self, bool, bool]:
+    ) -> UpsertResult:
         """
         First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.
-
-        Returns:
-            Tuple of (node, mutation, created, file_stored) where file_stored indicates
-            if a file was stored (for cleanup on failure).
         """
 
         schema = cls._meta.active_schema
@@ -381,7 +388,7 @@ class InfrahubMutationMixin:
                 branch=branch,
                 obj=node,
             )
-            return updated_obj, mutation, False, file_stored
+            return UpsertResult(node=updated_obj, mutation=mutation, created=False, file_stored=file_stored)
 
         if not schema.human_friendly_id and schema.default_filter is not None:
             node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
@@ -399,7 +406,7 @@ class InfrahubMutationMixin:
                 branch=branch,
                 obj=node,
             )
-            return updated_obj, mutation, False, file_stored
+            return UpsertResult(node=updated_obj, mutation=mutation, created=False, file_stored=file_stored)
 
         try:
             # This is a hack to avoid sitatuions where a node has an attribute or relationship called "pop"
@@ -409,7 +416,7 @@ class InfrahubMutationMixin:
             data._pop = dict.pop.__get__(data, dict)
             data._pop("hfid", None)  # `hfid` is invalid for creation.
             created_obj, mutation = await cls.mutate_create(info=info, data=data, branch=branch)
-            return created_obj, mutation, True, file_stored
+            return UpsertResult(node=created_obj, mutation=mutation, created=True, file_stored=file_stored)
         except HFIDViolatedError as exc:
             # Only the HFID constraint has been violated, it means the node exists and we can update without rerunning constraints
             if len(exc.matching_nodes_ids) > 1:
@@ -455,7 +462,7 @@ class InfrahubMutationMixin:
                 obj=node,
                 skip_uniqueness_check=True,
             )
-            return updated_obj, mutation, False, file_stored
+            return UpsertResult(node=updated_obj, mutation=mutation, created=False, file_stored=file_stored)
 
     @classmethod
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:

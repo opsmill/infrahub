@@ -83,7 +83,7 @@ Implement a custom `Upload` scalar for Graphene that:
     - [x] If result is `FileUploadResult`, updates data dict and returns `True`
   - [x] `mutate()` dispatches to Create/Update/Upsert with unified file handling
   - [x] `mutate_upsert()` accepts optional `file_processor` parameter
-  - [x] `mutate_upsert()` returns 4-tuple: (node, mutation, created, file_stored)
+  - [x] `mutate_upsert()` returns `UpsertResult` dataclass with named attributes: `node`, `mutation`, `created`, `file_stored`
   - [x] Use try/finally to clean up stored file on mutation failure via `processor.delete_file()`
 
 ### App Integration
