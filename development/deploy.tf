@@ -503,6 +503,8 @@ resource "kubernetes_secret_v1" "db_secret" {
 }
 
 resource "kubernetes_secret_v1" "neo4j_secret" {
+  depends_on = [helm_release.cache_ha] # wait for namespace creation
+
   metadata {
     name      = "neo4j-user"
     namespace = local.target_namespace
