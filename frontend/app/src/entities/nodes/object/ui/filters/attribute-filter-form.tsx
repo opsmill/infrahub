@@ -149,12 +149,12 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
 
   return (
     <Form
-      className="flex flex-col gap-3 p-3"
+      className="flex flex-col gap-2 p-2"
       onSubmit={(formData) => handleSubmit(formData as Record<string, string | null>)}
       data-testid="date-range-filter-form"
     >
       <div className="flex items-center gap-2">
-        <span className="w-14 text-gray-600 text-sm">After</span>
+        <span className="w-12 shrink-0 text-gray-600 text-sm">After</span>
         <FormField
           name="afterDate"
           defaultValue={afterFilter?.value ?? undefined}
@@ -162,14 +162,13 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
             <DatePicker
               date={field.value ? new Date(field.value as string) : null}
               onChange={field.onChange}
-              showTime={false}
             />
           )}
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="w-14 text-gray-600 text-sm">Before</span>
+        <span className="w-12 shrink-0 text-gray-600 text-sm">Before</span>
         <FormField
           name="beforeDate"
           defaultValue={beforeFilter?.value ?? undefined}
@@ -177,13 +176,11 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
             <DatePicker
               date={field.value ? new Date(field.value as string) : null}
               onChange={field.onChange}
-              showTime={false}
             />
           )}
         />
+        <FormSubmit>Apply</FormSubmit>
       </div>
-
-      <FormSubmit className="self-end">Apply</FormSubmit>
     </Form>
   );
 }
