@@ -1,3 +1,4 @@
+import io
 from unittest.mock import call, patch
 
 import pytest
@@ -71,7 +72,7 @@ class TestArtifact11(TestInfrahubApp):
         )
         await artifact.save(db=db)
 
-        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=b'{"test": true}')
+        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=io.BytesIO(b'{"test": true}'))
 
         return artifact
 

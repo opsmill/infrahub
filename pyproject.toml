@@ -58,6 +58,7 @@ dependencies = [
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
+    "puremagic>=1.30,<2",
     # Dependencies specific to the SDK
     "rich>=13,<14",
     "pyarrow>=14",
