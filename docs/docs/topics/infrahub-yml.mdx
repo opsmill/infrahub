@@ -8,7 +8,7 @@ The `.infrahub.yml` file serves as the central manifest that defines how Infrahu
 
 ## Why `.infrahub.yml` exists
 
-Infrastructure automation requires both structured data (device inventories, network topologies) and executable code (templates, validation scripts, generators). The `.infrahub.yml` file solves the fundamental challenge of bridging these two worlds by:
+Infrastructure automation requires both structured data (device inventories, network topologies) and executable code (templates, validation scripts, Generators). The `.infrahub.yml` file solves the fundamental challenge of bridging these two worlds by:
 
 - **Declaring intent**: Explicitly stating what resources from a Git repository should be imported into Infrahub
 - **Enabling selective integration**: Allowing fine-grained control over which files and resources are processed
@@ -30,7 +30,7 @@ Rather than scanning the entire repository and making assumptions about file pur
 
 The configuration organizes resources into distinct categories based on their purpose and processing requirements:
 
-- **Executable code**: Python transformations, generators, and checks
+- **Executable code**: Python transformations, Generators, and checks
 - **Templates**: Jinja2 templates for configuration generation
 - **Schema definitions**: Data models for infrastructure representation
 - **Data definitions**: Object files for storing infrastructure data
@@ -59,7 +59,7 @@ Infrahub processes configuration sections in a specific order to handle dependen
 1. **Schemas**: Loaded first to establish the data model
 2. **GraphQL queries**: Loaded before resources that depend on them
 3. **Objects**: Loaded to populate initial data
-4. **Python files**: Check definitions, Python transformations, and generators are loaded together
+4. **Python files**: Check definitions, Python transformations, and Generators are loaded together
 5. **Jinja2 transformations**: Loaded after their required queries are available
 6. **Artifact definitions**: Loaded last to reference existing transformations
 
