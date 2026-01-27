@@ -9,6 +9,8 @@ export const FILTER_CONDITION = {
   IS_ANY_OF: "is any of",
   IS_EMPTY: "is empty",
   IS_NOT_EMPTY: "is not empty",
+  BEFORE: "before",
+  AFTER: "after",
 } as const;
 
 export type FilterCondition = (typeof FILTER_CONDITION)[keyof typeof FILTER_CONDITION];
@@ -26,10 +28,28 @@ export const ATTRIBUTE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; l
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
 
+export const DATE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
+  { key: FILTER_CONDITION.BEFORE, label: "before" },
+  { key: FILTER_CONDITION.AFTER, label: "after" },
+  { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
+  { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
+];
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export interface FilterConditionSelectProps extends SelectProps {
-  filterType: "attribute" | "relationship";
+  filterType: "attribute" | "relationship" | "date";
+}
+
+function getFilterConditionOptions(filterType: FilterConditionSelectProps["filterType"]) {
+  switch (filterType) {
+    case "relationship":
+      return RELATIONSHIP_FILTER_CONDITION_OPTIONS;
+    case "date":
+      return DATE_FILTER_CONDITION_OPTIONS;
+    default:
+      return ATTRIBUTE_FILTER_CONDITION_OPTIONS;
+  }
 }
 
 export function FilterConditionSelect({ filterType, ...props }: FilterConditionSelectProps) {
@@ -41,15 +61,9 @@ export function FilterConditionSelect({ filterType, ...props }: FilterConditionS
       isRequired
       {...props}
     >
-      <SelectTrigger className="w-[132px]" />
+      <SelectTrigger className="w-33" />
 
-      <SelectList
-        items={
-          filterType === "relationship"
-            ? RELATIONSHIP_FILTER_CONDITION_OPTIONS
-            : ATTRIBUTE_FILTER_CONDITION_OPTIONS
-        }
-      >
+      <SelectList items={getFilterConditionOptions(filterType)}>
         {(item) => <SelectItem>{item.label}</SelectItem>}
       </SelectList>
     </Select>
