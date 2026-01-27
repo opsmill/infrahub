@@ -27,7 +27,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       ref={ref}
       value={value}
       readOnly
-      className={classNames(inputStyle, "pr-10 cursor-pointer", className)}
+      className={classNames(inputStyle, "cursor-pointer pr-10", className)}
       disabled={disabled}
     />
   )
@@ -50,7 +50,6 @@ export const DatePicker = ({
   isProtected,
   className,
 }: DatePickerProps) => {
-
   const currentDate = date && isValid(date) ? date : null;
 
   const handleChangeDate = (newDate: Date | null) => {
@@ -70,9 +69,7 @@ export const DatePicker = ({
       <DateTimePicker
         selected={currentDate}
         onChange={handleChangeDate}
-        customInput={
-          <CustomInput id={id} disabled={isDisabled} className={className} />
-        }
+        customInput={<CustomInput id={id} disabled={isDisabled} className={className} />}
         wrapperClassName="w-full"
         showTimeSelect
         timeIntervals={1}
