@@ -17,18 +17,17 @@ interface CustomInputProps {
   disabled?: boolean;
   className?: string;
   onClick?: () => void;
-  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
-  ({ id, value, disabled, className, onClick, onChange }, ref) => (
+  ({ id, value, disabled, className, onClick }, ref) => (
     <input
       id={id}
       onClick={onClick}
       ref={ref}
       value={value}
-      onChange={onChange}
-      className={classNames(inputStyle, "pr-10", className)}
+      readOnly
+      className={classNames(inputStyle, "pr-10 cursor-pointer", className)}
       disabled={disabled}
     />
   )
