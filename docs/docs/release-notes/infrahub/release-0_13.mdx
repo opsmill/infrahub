@@ -88,7 +88,7 @@ infrahub db index --help
 A Generator is a generic plugin that can be used apply your own logic to create new nodes and relationships.
 Generator are expected to be idempotent and should be able to run multiple times and always produce the same result.
 
-One use case for the generators is to be able to manage technical objects derived from a higher level definition of a service.
+One use case for the Generators is to be able to manage technical objects derived from a higher level definition of a service.
 
 Generators are associated with some input data identified by a GraphQL query.
 Similar to the Transforms & Artifacts, Generator will be automatically executed as part of the CI Pipeline if the data associated with a given generator has changed.
