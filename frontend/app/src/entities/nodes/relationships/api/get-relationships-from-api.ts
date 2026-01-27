@@ -20,10 +20,11 @@ export const getRelationshipsFromApi = async ({
   atDate,
   filterQuery,
 }: getRelationshipsFromApiParams) => {
-  const query = gql(generateRelationshipListQuery({ peer, limit, offset, search, filterQuery }));
+  const query = gql(generateRelationshipListQuery({ peer, filterQuery }));
 
   return graphqlClient.query({
     query,
+    variables: { limit, offset, search },
     context: {
       branch: branchName,
       date: atDate,

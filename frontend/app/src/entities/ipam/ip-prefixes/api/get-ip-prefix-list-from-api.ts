@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
@@ -42,8 +42,6 @@ export async function getIpPrefixListFromApi({
       ? buildGetIpPrefixListWithoutAvailabilityQuery
       : buildGetIpPrefixListWithAvailabilityQuery
   )({
-    limit,
-    offset,
     filters,
     objectKind,
     attributes,
@@ -53,6 +51,7 @@ export async function getIpPrefixListFromApi({
   const query = gql(queryString);
   return graphqlClient.query({
     query,
+    variables: { limit, offset },
     context: {
       branch: branchName,
       date: atDate,
@@ -81,22 +80,24 @@ export const IP_PREFIX_KIND_DETAILS_FRAGMENT = {
 };
 
 export function buildGetIpPrefixListWithoutAvailabilityQuery({
-  limit,
-  offset,
   filters,
   objectKind,
   attributes,
   relationships,
-}: BuildGetIpPrefixListQueryParams) {
+}: Omit<BuildGetIpPrefixListQueryParams, "limit" | "offset">) {
   const cleanedFilters = dropIncludeAvailableWhenFalse(filters);
 
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [objectKind]: {
         __args: {
-          limit,
-          offset,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
         },
         edges: {
@@ -115,20 +116,22 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
 }
 
 export function buildGetIpPrefixListWithAvailabilityQuery({
-  limit,
-  offset,
   filters,
   objectKind,
   attributes,
   relationships,
-}: BuildGetIpPrefixListQueryParams) {
+}: Omit<BuildGetIpPrefixListQueryParams, "limit" | "offset">) {
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [IP_PREFIX_GENERIC]: {
         __args: {
-          limit,
-          offset,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
           [AVAILABLE_IP_FILTER_NAME]: true,
           ...(objectKind !== IP_PREFIX_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
