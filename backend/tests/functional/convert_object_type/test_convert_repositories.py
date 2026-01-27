@@ -10,10 +10,12 @@ import pytest
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
 from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, ConversionFieldValue
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.query.delete import DeleteAfterTimeQuery
 from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.git import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.constants.kind import PERSON
 from tests.helpers.test_app import TestInfrahubApp
@@ -126,6 +128,13 @@ class TestConvertRepository(TestInfrahubApp):
         await people.new(db=db, name="people", members=[john])
         await people.save(db=db)
 
+    async def reset_to_time(self, db: InfrahubDatabase, default_branch: Branch, reset_time: Timestamp):
+        component_registry = get_component_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        await diff_repository.delete_all_diff_roots()
+        query_delete = await DeleteAfterTimeQuery.init(db=db, timestamp=reset_time)
+        await query_delete.execute(db=db)
+
     async def test_convert_repo_to_read_only(
         self,
         client: InfrahubClient,
@@ -187,12 +196,12 @@ class TestConvertRepository(TestInfrahubApp):
 
         # We want to test unidirectional relationship coming from validators towards a repository,
         # so we create a proposed change that would create validators attached to this repo.
-        branch_2_name = "branch_2"
-        _ = await create_branch(branch_name=branch_2_name, db=db)
+        branch_name = "branch_2"
+        _ = await create_branch(branch_name=branch_name, db=db)
         await self._create_proposed_change_and_wait_for_validators(
             repository_id=repository.id,
             client=client,
-            source_branch=branch_2_name,
+            source_branch=branch_name,
             target_branch=default_branch.name,
             db=db,
         )
@@ -252,20 +261,17 @@ class TestConvertRepository(TestInfrahubApp):
 
         await self._validate_repo_groups(db=db, repository=repository)
 
-        await self._validate_branches_status(
-            db=db, branch_2_name=branch_2_name, default_branch_name=default_branch.name
-        )
+        await self._validate_branches_status(db=db, branch_2_name=branch_name, default_branch_name=default_branch.name)
 
         await self._validate_rebase(
-            branch_name=branch_2_name,
+            branch_name=branch_name,
             client=client,
             db=db,
             new_repo_id=new_repo_id,
             original_commit=repository.commit.value,
         )
 
-        query_delete = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)
-        await query_delete.execute(db=db)
+        await self.reset_to_time(db=db, default_branch=default_branch, reset_time=start_time)
 
     async def test_convert_read_only_to_read_write(
         self,
@@ -333,12 +339,12 @@ class TestConvertRepository(TestInfrahubApp):
 
         # We want to test unidirectional relationship coming from validators towards a repository,
         # so we create a proposed change that would create validators attached to this repo.
-        branch_2_name = "branch_2"
-        _ = await create_branch(branch_name=branch_2_name, db=db)
+        branch_name = "branch_3"
+        _ = await create_branch(branch_name=branch_name, db=db)
         await self._create_proposed_change_and_wait_for_validators(
             repository_id=repository.id,
             client=client,
-            source_branch=branch_2_name,
+            source_branch=branch_name,
             target_branch=default_branch.name,
             db=db,
         )
@@ -389,20 +395,17 @@ class TestConvertRepository(TestInfrahubApp):
 
         await self._validate_repo_groups(db=db, repository=repository)
 
-        await self._validate_branches_status(
-            db=db, branch_2_name=branch_2_name, default_branch_name=default_branch.name
-        )
+        await self._validate_branches_status(db=db, branch_2_name=branch_name, default_branch_name=default_branch.name)
 
         await self._validate_rebase(
-            branch_name=branch_2_name,
+            branch_name=branch_name,
             client=client,
             db=db,
             new_repo_id=new_repo_id,
             original_commit=repository.commit.value,
         )
 
-        query_delete = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)
-        await query_delete.execute(db=db)
+        await self.reset_to_time(db=db, default_branch=default_branch, reset_time=start_time)
 
     async def _validate_rebase(
         self, branch_name: str, client: InfrahubClient, db: InfrahubDatabase, new_repo_id: str, original_commit: str
@@ -465,8 +468,8 @@ class TestConvertRepository(TestInfrahubApp):
             }
         }
 
-        branch_2_name = "branch_test"
-        _ = await create_branch(branch_name=branch_2_name, db=db)
+        branch_name = "branch_4"
+        _ = await create_branch(branch_name=branch_name, db=db)
 
         with patch("infrahub.git.tasks.lock"):
             client_repository = await client.create(
@@ -529,20 +532,17 @@ class TestConvertRepository(TestInfrahubApp):
 
         await self._validate_repo_groups(db=db, repository=repository)
 
-        await self._validate_branches_status(
-            db=db, branch_2_name=branch_2_name, default_branch_name=default_branch.name
-        )
+        await self._validate_branches_status(db=db, branch_2_name=branch_name, default_branch_name=default_branch.name)
 
         await self._validate_rebase(
-            branch_name=branch_2_name,
+            branch_name=branch_name,
             client=client,
             db=db,
             new_repo_id=new_repo_id,
             original_commit=repository.commit.value,
         )
 
-        query_delete = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)
-        await query_delete.execute(db=db)
+        await self.reset_to_time(db=db, default_branch=default_branch, reset_time=start_time)
 
     async def _validate_repo_groups(self, db: InfrahubDatabase, repository: CoreGenericRepository):
         # Make sure old repository groups has been deleted

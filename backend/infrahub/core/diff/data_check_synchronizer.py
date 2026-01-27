@@ -7,8 +7,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import SchemaNotFoundError
-from infrahub.proposed_change.constants import ProposedChangeState
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.diff import DataConflict
@@ -50,60 +48,54 @@ class DiffDataCheckSynchronizer:
     async def synchronize(self, enriched_diff: EnrichedDiffRoot | EnrichedDiffRootMetadata) -> list[Node]:
         self._enriched_conflicts_map = None
         self._data_conflicts = None
-        try:
-            proposed_changes = await NodeManager.query(
-                db=self.db,
-                schema=CoreProposedChange,
-                filters={"source_branch": enriched_diff.diff_branch_name, "state": ProposedChangeState.OPEN},
-            )
-        except SchemaNotFoundError:
-            # if the CoreProposedChange schema does not exist, then there's nothing to do
-            proposed_changes = []
-        if not proposed_changes:
+        if not enriched_diff.proposed_change_id:
             return []
+        pc = await NodeManager.get_one(db=self.db, kind=CoreProposedChange, id=enriched_diff.proposed_change_id)
+        if not pc:
+            return []
+
         all_data_checks = []
         enriched_diff_all_conflicts: EnrichedDiffRoot | None = None
-        for pc in proposed_changes:
-            # if the enriched_diff is EnrichedDiffRootMetadata, then it has no new data in it
-            if not isinstance(enriched_diff, EnrichedDiffRoot):
-                has_validator = bool(await self.conflict_recorder.get_validator(proposed_change=pc))
-                # if this pc has a validator, then the conflicts for this diff have already been synchronized and we can be done
-                if has_validator:
-                    continue
+        # if the enriched_diff is EnrichedDiffRootMetadata, then it has no new data in it
+        if not isinstance(enriched_diff, EnrichedDiffRoot):
+            has_validator = bool(await self.conflict_recorder.get_validator(proposed_change=pc))
+            # if this pc has a validator, then the conflicts for this diff have already been synchronized and we can be done
+            if has_validator:
+                return []
 
-            # we need to get the conflicts for this diff from the database b/c `enriched_diff` might not include all nodes
-            if not enriched_diff_all_conflicts:
-                retrieved_diff_conflicts_only = await self.diff_repository.get_one(
-                    diff_branch_name=enriched_diff.diff_branch_name,
-                    diff_id=enriched_diff.uuid,
-                    filters=EnrichedDiffQueryFilters(only_conflicted=True),
-                )
-                enriched_diff_all_conflicts = retrieved_diff_conflicts_only
-                # if `enriched_diff` is an EnrichedDiffRootsMetadata, then there have been no changes to the diff and
-                # we can use `retrieved_diff_conflicts_only`
-                # otherwise, we need to combine the changes to `enriched_diff` with the conflicts from the database
-                if isinstance(enriched_diff, EnrichedDiffRoot):
-                    self._update_diff_conflicts(updated_diff=enriched_diff, retrieved_diff=enriched_diff_all_conflicts)
-
-            data_conflicts = await self._get_data_conflicts(enriched_diff=enriched_diff_all_conflicts)
-            enriched_conflicts_map = self._get_enriched_conflicts_map(enriched_diff=enriched_diff_all_conflicts)
-            core_data_checks = await self.conflict_recorder.record_conflicts(
-                proposed_change_id=pc.get_id(), conflicts=data_conflicts
+        # we need to get the conflicts for this diff from the database b/c `enriched_diff` might not include all nodes
+        if not enriched_diff_all_conflicts:
+            retrieved_diff_conflicts_only = await self.diff_repository.get_one(
+                diff_branch_name=enriched_diff.diff_branch_name,
+                diff_id=enriched_diff.uuid,
+                filters=EnrichedDiffQueryFilters(only_conflicted=True),
             )
-            all_data_checks.extend(core_data_checks)
-            core_data_checks_by_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks}  # type: ignore[attr-defined]
-            enriched_conflicts_by_id = {ec.uuid: ec for ec in enriched_conflicts_map.values()}
-            for conflict_id, core_data_check in core_data_checks_by_id.items():
-                enriched_conflict = enriched_conflicts_by_id.get(conflict_id)
-                if not enriched_conflict:
-                    continue
-                expected_keep_branch = self._get_keep_branch_for_enriched_conflict(enriched_conflict=enriched_conflict)
-                expected_keep_branch_value = (
-                    expected_keep_branch.value if isinstance(expected_keep_branch, Enum) else expected_keep_branch
-                )
-                if core_data_check.keep_branch.value != expected_keep_branch_value:  # type: ignore[attr-defined]
-                    core_data_check.keep_branch.value = expected_keep_branch_value  # type: ignore[attr-defined]
-                    await core_data_check.save(db=self.db)
+            enriched_diff_all_conflicts = retrieved_diff_conflicts_only
+            # if `enriched_diff` is an EnrichedDiffRootsMetadata, then there have been no changes to the diff and
+            # we can use `retrieved_diff_conflicts_only`
+            # otherwise, we need to combine the changes to `enriched_diff` with the conflicts from the database
+            if isinstance(enriched_diff, EnrichedDiffRoot):
+                self._update_diff_conflicts(updated_diff=enriched_diff, retrieved_diff=enriched_diff_all_conflicts)
+
+        data_conflicts = await self._get_data_conflicts(enriched_diff=enriched_diff_all_conflicts)
+        enriched_conflicts_map = self._get_enriched_conflicts_map(enriched_diff=enriched_diff_all_conflicts)
+        core_data_checks = await self.conflict_recorder.record_conflicts(
+            proposed_change_id=pc.get_id(), conflicts=data_conflicts
+        )
+        all_data_checks.extend(core_data_checks)
+        core_data_checks_by_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks}  # type: ignore[attr-defined]
+        enriched_conflicts_by_id = {ec.uuid: ec for ec in enriched_conflicts_map.values()}
+        for conflict_id, core_data_check in core_data_checks_by_id.items():
+            enriched_conflict = enriched_conflicts_by_id.get(conflict_id)
+            if not enriched_conflict:
+                continue
+            expected_keep_branch = self._get_keep_branch_for_enriched_conflict(enriched_conflict=enriched_conflict)
+            expected_keep_branch_value = (
+                expected_keep_branch.value if isinstance(expected_keep_branch, Enum) else expected_keep_branch
+            )
+            if core_data_check.keep_branch.value != expected_keep_branch_value:  # type: ignore[attr-defined]
+                core_data_check.keep_branch.value = expected_keep_branch_value  # type: ignore[attr-defined]
+                await core_data_check.save(db=self.db)
         return all_data_checks
 
     def _get_keep_branch_for_enriched_conflict(
