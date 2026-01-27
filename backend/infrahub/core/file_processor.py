@@ -46,19 +46,6 @@ class FileUploadProcessor:
         self._metadata: FileMetadata | None = None
         self.storage_id: str | None = None
 
-    def _get_file_size(self) -> int:
-        """Get the size of the uploaded file without loading it into memory.
-
-        Returns:
-            The file size in bytes.
-        """
-        # Access underlying file object which supports seek with whence parameter
-        # Starlette's UploadFile.seek() only accepts offset, not whence
-        self.file.file.seek(0, io.SEEK_END)
-        size = self.file.file.tell()
-        self.file.file.seek(0)
-        return size
-
     @staticmethod
     def _format_file_size(size_bytes: int) -> str:
         """Format a file size in bytes to a human-readable string.
@@ -95,14 +82,33 @@ class FileUploadProcessor:
 
         return "application/octet-stream"
 
-    def _ensure_metadata(self) -> None:
-        """Ensure that file metadata has been extracted.
+    @property
+    def metadata(self) -> FileMetadata:
+        """Get the extracted file metadata. Mostly to make type checkers happy.
+
+        Returns:
+            The extracted file metadata.
 
         Raises:
             RuntimeError: If metadata has not been extracted yet.
         """
         if not self._metadata:
             raise RuntimeError("File metadata has not been extracted yet.")
+
+        return self._metadata
+
+    def _get_file_size(self) -> int:
+        """Get the size of the uploaded file without loading it into memory.
+
+        Returns:
+            The file size in bytes.
+        """
+        # Access underlying file object which supports seek with whence parameter
+        # Starlette's UploadFile.seek() only accepts offset, not whence
+        self.file.file.seek(0, io.SEEK_END)
+        size = self.file.file.tell()
+        self.file.file.seek(0)
+        return size
 
     async def _compute_checksum(self) -> str:
         """Compute SHA-1 checksum of the file using chunked reading.
@@ -155,13 +161,11 @@ class FileUploadProcessor:
         Returns:
             True if the file should be stored, False if storage can be skipped.
         """
-        self._ensure_metadata()
-
         # Skip storage only if node exists, is a FileObject, and checksums match
         return not (
             node
             and InfrahubKind.FILEOBJECT in node.get_schema().inherit_from
-            and node.checksum.value == self._metadata.checksum
+            and node.checksum.value == self.metadata.checksum  # type: ignore
         )
 
     async def _store_file(self) -> FileUploadResult:
@@ -170,16 +174,14 @@ class FileUploadProcessor:
         Returns:
             FileUploadResult containing all file metadata including storage_id.
         """
-        self._ensure_metadata()
-
         self.storage_id = str(UUIDT())
         # Update file_name to use storage_id if original was unnamed
-        self._metadata.file_name = self.file.filename or self.storage_id
+        self.metadata.file_name = self.file.filename or self.storage_id
 
         await self.file.seek(0)
         registry.storage.store(identifier=self.storage_id, content=self.file.file)
 
-        return FileUploadResult(storage_id=self.storage_id, metadata=self._metadata)
+        return FileUploadResult(storage_id=self.storage_id, metadata=self.metadata)
 
     async def process(self, node: Node | None = None) -> FileUploadResult | None:
         """Process the file upload and store it in the storage backend.
