@@ -67,6 +67,11 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         diff_roots_to_refresh = await diff_repository.get_roots_metadata(diff_branch_names=[branch_name])
 
+        log.error(
+            f"DIFF_REFRESH_ALL for branch {branch_name}: found {len(diff_roots_to_refresh)} diff roots: "
+            f"{[(dr.uuid, dr.tracking_id.serialize() if dr.tracking_id else None) for dr in diff_roots_to_refresh]}"
+        )
+
         for diff_root in diff_roots_to_refresh:
             if diff_root.base_branch_name != diff_root.diff_branch_name:
                 await get_workflow().submit_workflow(

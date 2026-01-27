@@ -233,6 +233,12 @@ class DiffCoordinator:
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
         ):
             log.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
+            # Log current diff roots to help debug race conditions
+            current_roots = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
+            log.error(
+                f"DiffCoordinator.recalculate for diff_id={diff_id}: current diff roots for branch {diff_branch.name}: "
+                f"{[(dr.uuid, dr.tracking_id.serialize() if dr.tracking_id else None) for dr in current_roots]}"
+            )
             current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
             current_base_diff = await self.diff_repo.get_one(
                 diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
