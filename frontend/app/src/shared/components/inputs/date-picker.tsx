@@ -9,17 +9,19 @@ import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
+const DEFAULT_DATE_FORMAT = "MM/dd/yyyy HH:mm";
+
 export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
   const { id, date, onChange, disabled, isProtected, className } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
-  const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
+  const [text, setText] = useState(currentDate ? format(currentDate, DEFAULT_DATE_FORMAT) : "");
   const refCustomInput = useRef(ref);
 
   const handleChangeDate = (newDate: Date | null) => {
     if (newDate) {
-      setText(format(newDate, "MM/dd/yyy HH:mm"));
+      setText(format(newDate, DEFAULT_DATE_FORMAT));
       onChange(newDate);
     }
   };
@@ -44,7 +46,7 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
 
   useEffect(() => {
     if (currentDate) {
-      setText(format(currentDate, "MM/dd/yyy HH:mm"));
+      setText(format(currentDate, DEFAULT_DATE_FORMAT));
     }
   }, [currentDate]);
 
