@@ -130,7 +130,7 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `test_upsert_file_object_creates_when_not_exists` - Upsert creates new node when it doesn't exist
   - [x] `test_upsert_file_object_same_file_is_idempotent` - Same file checksum skips storage (idempotent)
   - [x] `test_upsert_file_object_different_file_creates_new_storage` - Different file creates new storage
-  - [x] `test_upsert_file_object_hfid_collision_stores_duplicate` - Documents HFID collision edge case (duplicate file)
+  - [x] `test_upsert_file_object_hfid_collision_is_idempotent` - HFID collision with same checksum is idempotent
 
 ### Verification
 
@@ -274,5 +274,5 @@ GraphQL returns metadata only; binary download uses REST (implemented in PR 5).
 - All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is provided
 - `storage_id` is a UUIDT that changes when a file is updated (enables branch-aware storage)
 - **Upsert is idempotent**: `process(node=existing_node)` compares checksums - if they match, returns `None` and no new storage is created
-- **HFID collision edge case**: When upsert finds a node via `HFIDViolatedError` (HFID computed from data fields), the file has already been stored. This can result in duplicate files for same-content uploads. This is a known limitation accepted for simplicity.
+- **HFID collision is idempotent**: When upsert finds a node via `HFIDViolatedError`, if checksums match, the duplicate file is deleted and the original `storage_id` is preserved
 - For production deployment reverse proxy configuration, see the spec file: `dev/specs/2026-01-file-object.md`

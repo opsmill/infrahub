@@ -663,21 +663,19 @@ class TestFileObjectMutations:
         assert first_storage_id in dummy_storage._files
         assert obj_data["storage_id"]["value"] in dummy_storage._files
 
-    async def test_upsert_file_object_hfid_collision_stores_duplicate(
+    async def test_upsert_file_object_hfid_collision_is_idempotent(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         file_contract_schema: None,
         dummy_storage: DummyObjectStorage,
     ) -> None:
-        """Test that upsert via HFID collision stores a duplicate file.
+        """Test that upsert via HFID collision is idempotent for same file content.
 
-        This documents an edge case: when upsert triggers an HFIDViolatedError
-        (node found via HFID computed from data fields, not from 'id' or 'hfid' key),
-        the file has already been stored because we didn't know the node existed.
-
-        For same content files, this results in a duplicate file in storage.
-        This is accepted as a known edge case for simplicity.
+        When upsert triggers an HFIDViolatedError (node found via HFID computed from
+        data fields, not from 'id' or 'hfid' key), we check if the uploaded file has
+        the same checksum as the existing node. If so, we delete the duplicate and
+        preserve the original storage_id.
         """
         file_content = b"hfid collision content"
 
@@ -712,9 +710,10 @@ class TestFileObjectMutations:
 
         assert create_result.errors is None
         first_storage_id = create_result.data["TestingFileContractCreate"]["object"]["storage_id"]["value"]
+        first_checksum = create_result.data["TestingFileContractCreate"]["object"]["checksum"]["value"]
         files_after_create = len(dummy_storage._files)
 
-        # Second: upsert with same filename (HFID match) but WITHOUT providing 'id'
+        # Second: upsert with same filename (HFID match) and same content, but WITHOUT providing 'id'
         # This triggers the HFIDViolatedError path in mutate_upsert
         second_file = create_upload_file(content=file_content, filename="hfid_collision.txt")
 
@@ -751,14 +750,10 @@ class TestFileObjectMutations:
         # Description should be updated (confirming we updated existing node)
         assert obj_data["description"]["value"] == "Via HFID collision"
 
-        # Edge case: storage_id changed because file was stored before we knew node existed
-        # This is a known limitation - the file was already stored when we called _process_file(node=None)
-        assert obj_data["storage_id"]["value"] != first_storage_id
+        # Same checksum - storage_id should be preserved (idempotent behavior)
+        assert obj_data["storage_id"]["value"] == first_storage_id
+        assert obj_data["checksum"]["value"] == first_checksum
 
-        # Duplicate file exists in storage (same content, different storage_id)
-        assert len(dummy_storage._files) == files_after_create + 1
+        # No duplicate file - storage count unchanged
+        assert len(dummy_storage._files) == files_after_create
         assert first_storage_id in dummy_storage._files
-        assert obj_data["storage_id"]["value"] in dummy_storage._files
-        # Both files have the same content
-        assert dummy_storage._files[first_storage_id] == file_content
-        assert dummy_storage._files[obj_data["storage_id"]["value"]] == file_content

@@ -9,7 +9,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
 from infrahub import config, lock
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
@@ -433,11 +433,20 @@ class InfrahubMutationMixin:
                     ),
                 ) from exc
 
-            # Node was found via HFID violation - need to check file idempotency
-            # Note: file may have been stored above when we thought we were creating,
-            # but if checksums match with this node, we have a duplicate file.
-            # For simplicity, we accept this edge case - the duplicate will be cleaned up
-            # if needed, or we could enhance this later.
+            # Node was found via HFID violation - handle file idempotency
+            # File may have been stored when we thought we were creating a new node.
+            # If checksums match, delete the duplicate and preserve the original.
+            if (
+                file_processor
+                and file_stored
+                and InfrahubKind.FILEOBJECT in node.get_schema().inherit_from
+                and node.checksum.value == file_processor.metadata.checksum  # type: ignore
+            ):
+                file_processor.delete_file()
+                file_stored = False
+                for key in ("file_name", "checksum", "file_size", "file_type", "storage_id"):
+                    data.pop(key, None)
+
             updated_obj, mutation = await cls._call_mutate_update(
                 info=info,
                 data=data,
