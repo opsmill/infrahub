@@ -2,7 +2,7 @@ import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { isInPreviousYear } from "@/shared/utils/date";
+import { DATE_TIME_FORMAT, isInPreviousYear } from "@/shared/utils/date";
 
 type DateDisplayProps = {
   date?: number | string | Date | null;
@@ -13,7 +13,7 @@ type DateDisplayProps = {
 };
 
 export const getDateDisplay = (date?: number | string | Date | null) =>
-  format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
+  format(date ? new Date(date) : new Date(), DATE_TIME_FORMAT);
 
 export const DateDisplay = ({
   date,
