@@ -33,8 +33,23 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
   )
 );
 
-export const DatePicker = forwardRef<HTMLInputElement, any>((props, _ref) => {
-  const { id, date, onChange, disabled, isProtected, className } = props;
+interface DatePickerProps {
+  id?: string;
+  date?: Date;
+  onChange: (date: Date | null) => void;
+  disabled?: boolean;
+  isProtected?: boolean;
+  className?: string;
+}
+
+export const DatePicker = ({
+  id,
+  date,
+  onChange,
+  disabled,
+  isProtected,
+  className,
+}: DatePickerProps) => {
 
   const currentDate = date && isValid(date) ? date : null;
 
@@ -82,4 +97,4 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, _ref) => {
       )}
     </div>
   );
-});
+};
