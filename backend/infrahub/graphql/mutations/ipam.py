@@ -234,16 +234,16 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
-    ) -> tuple[Node, Self, bool]:
+    ) -> tuple[Node, Self, bool, bool]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
-        prefix, result, created = await super().mutate_upsert(
+        prefix, result, created, file_stored = await super().mutate_upsert(
             info=info, data=data, branch=branch, node_getter_default_filter=node_getter_default_filter, database=db
         )
 
-        return prefix, result, created
+        return prefix, result, created, file_stored
 
     @classmethod
     async def mutate_delete(
@@ -391,16 +391,16 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
-    ) -> tuple[Node, Self, bool]:
+    ) -> tuple[Node, Self, bool, bool]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
-        prefix, result, created = await super().mutate_upsert(
+        prefix, result, created, file_stored = await super().mutate_upsert(
             info=info, data=data, branch=branch, node_getter_default_filter=node_getter_default_filter, database=db
         )
 
-        return prefix, result, created
+        return prefix, result, created, file_stored
 
     @classmethod
     async def _reconcile_prefix(
