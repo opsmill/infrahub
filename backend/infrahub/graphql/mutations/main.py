@@ -445,7 +445,7 @@ class InfrahubMutationMixin:
                 file_processor.delete_file()
                 file_stored = False
                 for key in ("file_name", "checksum", "file_size", "file_type", "storage_id"):
-                    data.pop(key, None)
+                    data._pop(key, None)
 
             updated_obj, mutation = await cls._call_mutate_update(
                 info=info,
