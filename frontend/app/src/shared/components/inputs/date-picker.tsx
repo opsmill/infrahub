@@ -1,79 +1,96 @@
+import { Icon } from "@iconify-icon/react";
 import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-import { format, isValid } from "date-fns";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { isValid } from "date-fns";
+import { forwardRef } from "react";
 
-import { Button } from "@/shared/components/buttons/button";
-import { Input } from "@/shared/components/inputs/input";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
+import { DATE_TIME_FORMAT } from "@/shared/utils/date";
 
-export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, date, onChange, disabled, isProtected, className } = props;
+interface CustomInputProps {
+  id?: string;
+  value?: string;
+  disabled?: boolean;
+  className?: string;
+  onClick?: () => void;
+}
 
-  const currentDate = date && isValid(date) ? date : null;
-
-  const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
-  const refCustomInput = useRef(ref);
-
-  const handleChangeDate = (newDate: Date) => {
-    setText(format(newDate, "MM/dd/yyy HH:mm"));
-    onChange(newDate);
-  };
-
-  const handleChangeInput = (value: string) => {
-    setText(value);
-
-    if (!value) {
-      onChange();
-    }
-
-    if (value && isValid(new Date(value))) {
-      onChange(new Date(value));
-    }
-  };
-
-  const handleClickNow = () => {
-    setText("");
-    onChange();
-  };
-
-  useEffect(() => {
-    if (currentDate) {
-      setText(format(currentDate, "MM/dd/yyy HH:mm"));
-    }
-  }, [currentDate]);
-
-  const CustomInput = forwardRef(({ onClick }: any, ref: any) => (
-    <Input
+const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
+  ({ id, value, disabled, className, onClick }, ref) => (
+    <input
       id={id}
       onClick={onClick}
       ref={ref}
-      value={text}
-      onChange={handleChangeInput}
-      className={classNames("rounded-r-none", className)}
-      disabled={disabled || isProtected}
+      value={value}
+      readOnly
+      className={classNames(inputStyle, "cursor-pointer pr-10", className)}
+      disabled={disabled}
     />
-  ));
+  )
+);
+
+interface DatePickerProps {
+  id?: string;
+  date?: Date;
+  onChange: (date: Date | null) => void;
+  disabled?: boolean;
+  isProtected?: boolean;
+  className?: string;
+}
+
+export const DatePicker = ({
+  id,
+  date,
+  onChange,
+  disabled,
+  isProtected,
+  className,
+}: DatePickerProps) => {
+  const currentDate = date && isValid(date) ? date : null;
+
+  const handleChangeDate = (newDate: Date | null) => {
+    if (newDate) {
+      onChange(newDate);
+    }
+  };
+
+  const handleClear = () => {
+    onChange(null);
+  };
+
+  const isDisabled = disabled || isProtected;
 
   return (
-    <div className="flex" data-testid="date-picker">
+    <div className="relative w-full" data-testid="date-picker">
       <DateTimePicker
         selected={currentDate}
         onChange={handleChangeDate}
-        customInput={<CustomInput ref={refCustomInput} />}
+        customInput={<CustomInput id={id} disabled={isDisabled} className={className} />}
+        wrapperClassName="w-full"
         showTimeSelect
         timeIntervals={1}
         calendarStartDay={1}
+        dateFormat={DATE_TIME_FORMAT}
       />
 
-      <Button
-        onClick={handleClickNow}
-        className="rounded-none rounded-r-md border-gray-300 border-t border-r border-b"
-        disabled={disabled || isProtected || (!currentDate && !text)}
-      >
-        Reset
-      </Button>
+      {currentDate && !isDisabled && (
+        <div className="absolute top-0 right-1 bottom-0 flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleClear();
+            }}
+          >
+            <Icon icon="mdi:close" className="text-gray-400" />
+          </Button>
+        </div>
+      )}
     </div>
   );
-});
+};
