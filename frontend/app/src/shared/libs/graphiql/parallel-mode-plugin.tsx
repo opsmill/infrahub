@@ -1,29 +1,42 @@
-import { useEffect, useState } from "react";
+import { SlidersHorizontalIcon } from "lucide-react";
+import React from "react";
 
-import { useParallelQueryMode } from "@/shared/api/graphql/parallelQueryMode";
+import {
+  getParallelQueryConfig,
+  type ParallelQueryConfig,
+  setParallelQueryConfig,
+} from "@/shared/libs/graphiql/parallel-query-mode";
 
-/**
- * Content component for the parallel mode plugin.
- * Uses the context hook directly to avoid re-creating the plugin on config changes.
- */
-function ParallelModePluginContent() {
-  const { config, toggleEnabled, setConfig } = useParallelQueryMode();
+function ParallelModePlugin() {
+  const [config, setConfig] = React.useState<ParallelQueryConfig>(getParallelQueryConfig);
 
   // Local state for input values to allow empty fields during editing
-  const [pageSize, setPageSize] = useState(String(config.pageSize));
-  const [maxConcurrent, setMaxConcurrent] = useState(String(config.maxConcurrent));
-  const [delayMs, setDelayMs] = useState(String(config.delayMs));
+  const [pageSize, setPageSize] = React.useState(config.pageSize);
+  const [maxConcurrent, setMaxConcurrent] = React.useState(config.maxConcurrent);
+  const [delayMs, setDelayMs] = React.useState(config.delayMs);
 
   // Sync local state when config changes externally
-  useEffect(() => {
-    setPageSize(String(config.pageSize));
-    setMaxConcurrent(String(config.maxConcurrent));
-    setDelayMs(String(config.delayMs));
+  React.useEffect(() => {
+    setPageSize(config.pageSize);
+    setMaxConcurrent(config.maxConcurrent);
+    setDelayMs(config.delayMs);
   }, [config.pageSize, config.maxConcurrent, config.delayMs]);
+
+  const updateConfig = (partial: Partial<ParallelQueryConfig>) => {
+    const next = setParallelQueryConfig(partial);
+    setConfig(next);
+  };
+
+  const toggleEnabled = () => {
+    updateConfig({ enabled: !config.enabled });
+  };
 
   return (
     <div className="graphiql-doc-explorer-content p-4">
-      <div className="graphiql-doc-explorer-title mb-4 font-semibold text-lg">
+      <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800 text-xs">
+        Alpha
+      </span>
+      <div className="graphiql-doc-explorer-title mb-4 flex items-center gap-2 font-semibold text-lg">
         Parallel Mode Settings
       </div>
       <p className="mb-4 text-gray-600 text-sm">
@@ -50,17 +63,16 @@ function ParallelModePluginContent() {
                 <input
                   type="number"
                   value={pageSize}
-                  onChange={(e) => setPageSize(e.target.value)}
+                  onChange={(e) => setPageSize(e.target.valueAsNumber)}
                   onBlur={() => {
-                    const value = Number(pageSize);
-                    if (!value || value < 1) {
-                      setConfig({ pageSize: 500 });
-                      setPageSize("500");
-                    } else if (value > 10_000) {
-                      setConfig({ pageSize: 10_000 });
-                      setPageSize("10000");
+                    if (!pageSize || pageSize < 1) {
+                      updateConfig({ pageSize: 500 });
+                      setPageSize(500);
+                    } else if (pageSize > 10_000) {
+                      updateConfig({ pageSize: 10_000 });
+                      setPageSize(10_000);
                     } else {
-                      setConfig({ pageSize: value });
+                      updateConfig({ pageSize });
                     }
                   }}
                   className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -77,17 +89,16 @@ function ParallelModePluginContent() {
                 <input
                   type="number"
                   value={maxConcurrent}
-                  onChange={(e) => setMaxConcurrent(e.target.value)}
+                  onChange={(e) => setMaxConcurrent(e.target.valueAsNumber)}
                   onBlur={() => {
-                    const value = Number(maxConcurrent);
-                    if (!value || value < 1) {
-                      setConfig({ maxConcurrent: 5 });
-                      setMaxConcurrent("5");
-                    } else if (value > 50) {
-                      setConfig({ maxConcurrent: 50 });
-                      setMaxConcurrent("50");
+                    if (!maxConcurrent || maxConcurrent < 1) {
+                      updateConfig({ maxConcurrent: 5 });
+                      setMaxConcurrent(5);
+                    } else if (maxConcurrent > 50) {
+                      updateConfig({ maxConcurrent: 50 });
+                      setMaxConcurrent(50);
                     } else {
-                      setConfig({ maxConcurrent: value });
+                      updateConfig({ maxConcurrent });
                     }
                   }}
                   className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -106,17 +117,16 @@ function ParallelModePluginContent() {
                 <input
                   type="number"
                   value={delayMs}
-                  onChange={(e) => setDelayMs(e.target.value)}
+                  onChange={(e) => setDelayMs(e.target.valueAsNumber)}
                   onBlur={() => {
-                    const value = Number(delayMs);
-                    if (value < 0 || Number.isNaN(value) || delayMs === "") {
-                      setConfig({ delayMs: 0 });
-                      setDelayMs("0");
-                    } else if (value > 5000) {
-                      setConfig({ delayMs: 5000 });
-                      setDelayMs("5000");
+                    if (delayMs < 0 || Number.isNaN(delayMs)) {
+                      updateConfig({ delayMs: 0 });
+                      setDelayMs(0);
+                    } else if (delayMs > 5000) {
+                      updateConfig({ delayMs: 5000 });
+                      setDelayMs(5000);
                     } else {
-                      setConfig({ delayMs: value });
+                      updateConfig({ delayMs });
                     }
                   }}
                   className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -145,32 +155,8 @@ function ParallelModePluginContent() {
   );
 }
 
-/**
- * Creates a GraphiQL plugin for configuring parallel query mode.
- * This appears as a settings icon in the GraphiQL sidebar.
- * The plugin is stable and doesn't need to be recreated when config changes.
- */
 export const parallelModePlugin = {
-  title: "Parallel Mode Settings",
-  icon: () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="graphiql-toolbar-icon"
-    >
-      {/* Parallel lines icon */}
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="18" x2="20" y2="18" />
-      <circle cx="18" cy="6" r="2" fill="currentColor" />
-      <circle cx="10" cy="12" r="2" fill="currentColor" />
-      <circle cx="14" cy="18" r="2" fill="currentColor" />
-    </svg>
-  ),
-  content: ParallelModePluginContent,
+  title: "Parallel Mode",
+  icon: SlidersHorizontalIcon,
+  content: ParallelModePlugin,
 };

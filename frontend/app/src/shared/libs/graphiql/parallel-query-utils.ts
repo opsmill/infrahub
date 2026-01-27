@@ -70,38 +70,6 @@ export function analyzeQuery(query: string): ParsedQueryInfo {
 }
 
 /**
- * Generate a count query for the given root field
- */
-export function generateCountQuery(query: string, rootFieldName: string): string {
-  const ast = parse(query);
-
-  const countAst = visit(ast, {
-    Field: {
-      enter(node: FieldNode) {
-        if (node.name.value === rootFieldName && node.selectionSet) {
-          // Replace selection set with just { count }
-          return {
-            ...node,
-            selectionSet: {
-              kind: Kind.SELECTION_SET,
-              selections: [
-                {
-                  kind: Kind.FIELD,
-                  name: { kind: Kind.NAME, value: "count" },
-                },
-              ],
-            },
-          };
-        }
-        return;
-      },
-    },
-  });
-
-  return print(countAst);
-}
-
-/**
  * Generate paginated queries with offset/limit
  */
 export function generatePaginatedQueries(
