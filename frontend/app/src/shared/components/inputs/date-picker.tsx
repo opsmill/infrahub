@@ -111,6 +111,7 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, _ref) => {
         showTimeSelect
         timeIntervals={1}
         calendarStartDay={1}
+        dateFormat={DEFAULT_DATE_FORMAT}
       />
     </div>
   );
