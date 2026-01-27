@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
@@ -26,10 +26,8 @@ const generateObjectRelationshipsQuery = ({
   parentId,
   relationshipName,
   relationshipSchema,
-  limit = 0,
-  offset = 0,
   filters,
-}: GenerateObjectRelationshipsQueryParams) => {
+}: Omit<GenerateObjectRelationshipsQueryParams, "limit" | "offset">) => {
   const { kind: relationshipKind, attributes = [], relationships = [] } = relationshipSchema;
   const attributesVisible = getAttributesVisibleInListView(attributes);
   const relationshipsVisible = getRelationshipsVisibleInListView(relationships);
@@ -37,6 +35,10 @@ const generateObjectRelationshipsQuery = ({
   const request = {
     query: {
       __name: `Get${parentKind}Relationships${relationshipKind}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [parentKind]: {
         __args: {
           ids: [parentId],
@@ -45,18 +47,14 @@ const generateObjectRelationshipsQuery = ({
           node: {
             [relationshipName]: {
               __args: {
-                limit,
-                offset,
+                limit: new VariableType("limit"),
+                offset: new VariableType("offset"),
                 ...(filters ? addFiltersToRequest(filters) : {}),
               },
               edges: {
                 node: {
                   __on: {
                     __typeName: relationshipKind,
-                    __args: {
-                      limit,
-                      offset,
-                    },
                     id: true,
                     hfid: true,
                     display_label: true,
@@ -81,12 +79,15 @@ export type GetObjectRelationshipsFromApiParams = ContextParams &
 export const getObjectRelationshipsFromApi = ({
   branchName,
   atDate,
+  limit,
+  offset,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
   const query = graphql(generateObjectRelationshipsQuery(params));
 
   return graphqlClient.query({
     query,
+    variables: { limit, offset },
     context: {
       branch: branchName,
       date: atDate,
