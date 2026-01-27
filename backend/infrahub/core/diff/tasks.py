@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from prefect import flow
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
@@ -69,7 +71,7 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
 
         log.error(
             f"DIFF_REFRESH_ALL for branch {branch_name}: found {len(diff_roots_to_refresh)} diff roots: "
-            f"{[(dr.uuid, dr.tracking_id.serialize() if dr.tracking_id else None) for dr in diff_roots_to_refresh]}"
+            f"{[asdict(dr) for dr in diff_roots_to_refresh]}"
         )
 
         for diff_root in diff_roots_to_refresh:
