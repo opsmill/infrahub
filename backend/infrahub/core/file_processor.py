@@ -11,19 +11,31 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from starlette.datastructures import UploadFile
 
+    from infrahub.core.node import Node
+
 
 @dataclass
-class FileUploadResult:
-    storage_id: str
+class FileMetadata:
+    """Metadata extracted from an uploaded file."""
+
     file_name: str
     checksum: str
     file_size: int
     file_type: str
+
+
+@dataclass
+class FileUploadResult:
+    """Result of a file upload including storage identifier."""
+
+    storage_id: str
+    metadata: FileMetadata
 
 
 class FileUploadProcessor:
@@ -31,6 +43,7 @@ class FileUploadProcessor:
 
     def __init__(self, file: UploadFile) -> None:
         self.file = file
+        self._metadata: FileMetadata | None = None
         self.storage_id: str | None = None
 
     def _get_file_size(self) -> int:
@@ -82,6 +95,15 @@ class FileUploadProcessor:
 
         return "application/octet-stream"
 
+    def _ensure_metadata(self) -> None:
+        """Ensure that file metadata has been extracted.
+
+        Raises:
+            RuntimeError: If metadata has not been extracted yet.
+        """
+        if not self._metadata:
+            raise RuntimeError("File metadata has not been extracted yet.")
+
     async def _compute_checksum(self) -> str:
         """Compute SHA-1 checksum of the file using chunked reading.
 
@@ -98,15 +120,15 @@ class FileUploadProcessor:
 
         return hasher.hexdigest()
 
-    async def process(self) -> FileUploadResult:
-        """Process the file upload and store it in the storage backend.
-
-        Returns:
-            FileUploadResult containing all file metadata.
+    async def _extract_metadata(self) -> None:
+        """Extract and validate file metadata without storing the file.
 
         Raises:
             ValidationError: If the file exceeds the maximum allowed size.
         """
+        if self._metadata:
+            return
+
         file_size = self._get_file_size()
         if file_size > config.SETTINGS.storage.max_file_size * 1024 * 1024:
             raise ValidationError(
@@ -117,15 +139,70 @@ class FileUploadProcessor:
         magic_bytes = await self.file.read(2048)
         file_type = self._detect_mime_type(content=magic_bytes)
         checksum = await self._compute_checksum()
+        file_name = self.file.filename or ""
+
+        self._metadata = FileMetadata(file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type)
+
+    def _should_store_file(self, node: Node | None) -> bool:
+        """Determine if the file should be stored based on checksum comparison.
+
+        For idempotent upsert operations, compares the uploaded file's checksum
+        with the existing node's checksum. If they match, storage can be skipped.
+
+        Args:
+            node: The existing node to compare checksums with, or `None` if creating new.
+
+        Returns:
+            True if the file should be stored, False if storage can be skipped.
+        """
+        self._ensure_metadata()
+
+        # Skip storage only if node exists, is a FileObject, and checksums match
+        return not (
+            node
+            and InfrahubKind.FILEOBJECT in node.get_schema().inherit_from
+            and node.checksum.value == self._metadata.checksum
+        )
+
+    async def _store_file(self) -> FileUploadResult:
+        """Store the file in the storage backend.
+
+        Returns:
+            FileUploadResult containing all file metadata including storage_id.
+        """
+        self._ensure_metadata()
+
         self.storage_id = str(UUIDT())
-        file_name = self.file.filename or self.storage_id
+        # Update file_name to use storage_id if original was unnamed
+        self._metadata.file_name = self.file.filename or self.storage_id
 
         await self.file.seek(0)
         registry.storage.store(identifier=self.storage_id, content=self.file.file)
 
-        return FileUploadResult(
-            storage_id=self.storage_id, file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type
-        )
+        return FileUploadResult(storage_id=self.storage_id, metadata=self._metadata)
+
+    async def process(self, node: Node | None = None) -> FileUploadResult | None:
+        """Process the file upload and store it in the storage backend.
+
+        For idempotent operations (upsert), pass the existing node to compare checksums.
+        If the checksums match, storage is skipped and `None` is returned.
+
+        Args:
+            node: Optional existing node to compare checksums with.
+                  If provided and checksums match, storage is skipped.
+
+        Returns:
+            FileUploadResult if the file was stored, `None` if storage was skipped.
+
+        Raises:
+            ValidationError: If the file exceeds the maximum allowed size.
+        """
+        await self._extract_metadata()
+
+        if not self._should_store_file(node=node):
+            return None
+
+        return await self._store_file()
 
     def delete_file(self) -> None:
         """Delete the uploaded file from the storage backend."""

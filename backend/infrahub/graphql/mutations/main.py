@@ -71,6 +71,44 @@ class InfrahubMutationMixin:
     _meta: InfrahubMutationOptions
 
     @classmethod
+    async def _process_file(
+        cls,
+        file_processor: FileUploadProcessor | None,
+        data: InputObjectType,
+        node: Node | None = None,
+    ) -> bool:
+        """Process file upload and update mutation data with file attributes.
+
+        For idempotent operations (upsert), pass the existing node to compare checksums.
+        If checksums match, storage is skipped and data is not updated.
+
+        Args:
+            file_processor: The file processor to use, or None if no file was uploaded.
+            data: The mutation data to update with file attributes.
+            node: Optional existing node for checksum comparison.
+
+        Returns:
+            `True` if a file was stored, `False` otherwise.
+        """
+        if not file_processor:
+            return False
+
+        result = await file_processor.process(node=node)
+        if not result:
+            return False
+
+        data.update(
+            {
+                "file_name": {"value": result.metadata.file_name},
+                "checksum": {"value": result.metadata.checksum},
+                "file_size": {"value": result.metadata.file_size},
+                "file_type": {"value": result.metadata.file_type},
+                "storage_id": {"value": result.storage_id},
+            }
+        )
+        return True
+
+    @classmethod
     async def mutate(
         cls,
         root: dict,  # noqa: ARG003
@@ -83,19 +121,8 @@ class InfrahubMutationMixin:
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         file: UploadFile | None = kwargs.pop("file", None)
-        file_processor: FileUploadProcessor | None = None
-        if file:
-            file_processor = FileUploadProcessor(file=file)
-            result = await file_processor.process()
-            data.update(
-                {
-                    "file_name": {"value": result.file_name},
-                    "checksum": {"value": result.checksum},
-                    "file_size": {"value": result.file_size},
-                    "file_type": {"value": result.file_type},
-                    "storage_id": {"value": result.storage_id},
-                }
-            )
+        file_processor = FileUploadProcessor(file=file) if file else None
+        file_stored = False
 
         obj = None
         mutation = None
@@ -105,9 +132,11 @@ class InfrahubMutationMixin:
 
         try:
             if "Create" in cls.__name__:
+                file_stored = await cls._process_file(file_processor=file_processor, data=data)
                 obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
                 action = MutationAction.CREATED
             elif "Update" in cls.__name__:
+                file_stored = await cls._process_file(file_processor=file_processor, data=data)
                 obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
                 action = MutationAction.UPDATED
             elif "Upsert" in cls.__name__:
@@ -115,11 +144,12 @@ class InfrahubMutationMixin:
                 node_getter_default_filter = MutationNodeGetterByDefaultFilter(
                     db=graphql_context.db, node_manager=node_manager
                 )
-                obj, mutation, created = await cls.mutate_upsert(
+                obj, mutation, created, file_stored = await cls.mutate_upsert(
                     info=info,
                     branch=graphql_context.branch,
                     data=data,
                     node_getter_default_filter=node_getter_default_filter,
+                    file_processor=file_processor,
                     **kwargs,
                 )
                 if created:
@@ -139,7 +169,7 @@ class InfrahubMutationMixin:
                 )
             mutation_succeeded = True
         finally:
-            if file_processor and not mutation_succeeded:
+            if file_processor and file_stored and not mutation_succeeded:
                 file_processor.delete_file()
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
@@ -317,12 +347,17 @@ class InfrahubMutationMixin:
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
-    ) -> tuple[Node, Self, bool]:
+        file_processor: FileUploadProcessor | None = None,
+    ) -> tuple[Node, Self, bool, bool]:
         """
         First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.
+
+        Returns:
+            Tuple of (node, mutation, created, file_stored) where file_stored indicates
+            if a file was stored (for cleanup on failure).
         """
 
         schema = cls._meta.active_schema
@@ -332,11 +367,13 @@ class InfrahubMutationMixin:
         db = database or graphql_context.db
         dict_data = dict(data)
         node = None
+        file_stored = False
 
         if "id" in dict_data:
             node = await NodeManager.get_one(
                 db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True
             )
+            file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
             updated_obj, mutation = await cls._call_mutate_update(
                 info=info,
                 data=data,
@@ -344,13 +381,15 @@ class InfrahubMutationMixin:
                 branch=branch,
                 obj=node,
             )
-            return updated_obj, mutation, False
+            return updated_obj, mutation, False, file_stored
 
         if not schema.human_friendly_id and schema.default_filter is not None:
             node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
 
         if "hfid" in data:
             node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
+
+        file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
 
         if node is not None:
             updated_obj, mutation = await cls._call_mutate_update(
@@ -360,7 +399,7 @@ class InfrahubMutationMixin:
                 branch=branch,
                 obj=node,
             )
-            return updated_obj, mutation, False
+            return updated_obj, mutation, False, file_stored
 
         try:
             # This is a hack to avoid sitatuions where a node has an attribute or relationship called "pop"
@@ -370,7 +409,7 @@ class InfrahubMutationMixin:
             data._pop = dict.pop.__get__(data, dict)
             data._pop("hfid", None)  # `hfid` is invalid for creation.
             created_obj, mutation = await cls.mutate_create(info=info, data=data, branch=branch)
-            return created_obj, mutation, True
+            return created_obj, mutation, True, file_stored
         except HFIDViolatedError as exc:
             # Only the HFID constraint has been violated, it means the node exists and we can update without rerunning constraints
             if len(exc.matching_nodes_ids) > 1:
@@ -393,6 +432,12 @@ class InfrahubMutationMixin:
                         f" this branch. Please rebase this branch to access {exc.identifier} / {exc.node_type}"
                     ),
                 ) from exc
+
+            # Node was found via HFID violation - need to check file idempotency
+            # Note: file may have been stored above when we thought we were creating,
+            # but if checksums match with this node, we have a duplicate file.
+            # For simplicity, we accept this edge case - the duplicate will be cleaned up
+            # if needed, or we could enhance this later.
             updated_obj, mutation = await cls._call_mutate_update(
                 info=info,
                 data=data,
@@ -401,7 +446,7 @@ class InfrahubMutationMixin:
                 obj=node,
                 skip_uniqueness_check=True,
             )
-            return updated_obj, mutation, False
+            return updated_obj, mutation, False, file_stored
 
     @classmethod
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:

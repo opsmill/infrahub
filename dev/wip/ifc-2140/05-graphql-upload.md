@@ -53,18 +53,22 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] Add required `file: Upload!` parameter to Upsert mutation for FileObject types
 
 - [x] Create `FileUploadProcessor` class in `backend/infrahub/core/file_processor.py`
-  - [x] `_get_file_size()` - Get file size without loading into memory
-  - [x] `_format_file_size()` - Human-readable size formatting for errors
-  - [x] `_detect_mime_type()` - MIME type detection using `puremagic` (magic bytes)
-  - [x] `_compute_checksum()` - Calculate SHA-1 checksum in 64KB chunks
-  - [x] `process()` - Validate, extract metadata, and store file:
-    - [x] Validate file size against `config.SETTINGS.storage.max_file_size`
-    - [x] Generate new UUID as `storage_id` (stored on instance)
-    - [x] Calculate SHA-1 checksum
-    - [x] Extract file metadata (name, size, type)
-    - [x] Store file in storage backend via `registry.storage.store()`
-    - [x] Return `FileUploadResult` dataclass
+  - [x] `process(node=None)` - Main public method that handles everything:
+    - [x] Validates file size against `config.SETTINGS.storage.max_file_size`
+    - [x] Calculates SHA-1 checksum and extracts metadata
+    - [x] For idempotent upsert: compares checksum with existing node's checksum
+    - [x] If checksums match, returns `None` (storage skipped)
+    - [x] If checksums differ or no node, stores file and returns `FileUploadResult`
   - [x] `delete_file()` - Delete file from storage backend (for cleanup on mutation failure)
+  - [x] Private helper methods:
+    - [x] `_get_file_size()` - Get file size without loading into memory
+    - [x] `_format_file_size()` - Human-readable size formatting for errors
+    - [x] `_detect_mime_type()` - MIME type detection using `puremagic` (magic bytes)
+    - [x] `_compute_checksum()` - Calculate SHA-1 checksum in 64KB chunks
+    - [x] `_extract_metadata()` - Validate and extract metadata, cache in `_metadata`
+    - [x] `_ensure_metadata()` - Guard that raises if metadata not yet extracted
+    - [x] `_store_file()` - Generate UUID and store via `registry.storage.store()`
+    - [x] `_should_store_file()` - Compare checksums for idempotent behavior
 
 - [x] Add `delete()` method to storage layer
   - [x] `InfrahubObjectStorage.delete()` - Delete file by identifier
@@ -73,10 +77,14 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `DummyObjectStorage.delete()` - Test implementation
 
 - [x] Implement file handling in `backend/infrahub/graphql/mutations/main.py`
-  - [x] Process and store file in `mutate()` method before mutation runs
-  - [x] Merge file metadata into `data` dict
+  - [x] `_process_file(file_processor, data, node=None)` - Single helper method for all mutations:
+    - [x] Calls `file_processor.process(node=node)` which handles idempotent behavior
+    - [x] If result is `None` (same checksum), returns `False` (no file stored)
+    - [x] If result is `FileUploadResult`, updates data dict and returns `True`
+  - [x] `mutate()` dispatches to Create/Update/Upsert with unified file handling
+  - [x] `mutate_upsert()` accepts optional `file_processor` parameter
+  - [x] `mutate_upsert()` returns 4-tuple: (node, mutation, created, file_stored)
   - [x] Use try/finally to clean up stored file on mutation failure via `processor.delete_file()`
-  - [x] `mutate_create()`, `mutate_update()`, `mutate_upsert()` remain clean (no file parameter)
 
 ### App Integration
 
@@ -119,12 +127,16 @@ Implement a custom `Upload` scalar for Graphene that:
   - [x] `test_create_file_object_stores_correct_content` - File content correctly stored
   - [x] `test_create_file_object_node_persisted_in_database` - Node persisted with correct attributes and checksum
   - [x] `test_create_file_object_not_stored_on_mutation_failure` - File cleaned up from storage on mutation error
+  - [x] `test_upsert_file_object_creates_when_not_exists` - Upsert creates new node when it doesn't exist
+  - [x] `test_upsert_file_object_same_file_is_idempotent` - Same file checksum skips storage (idempotent)
+  - [x] `test_upsert_file_object_different_file_creates_new_storage` - Different file creates new storage
+  - [x] `test_upsert_file_object_hfid_collision_stores_duplicate` - Documents HFID collision edge case (duplicate file)
 
 ### Verification
 
 - [x] Run `uv run pytest tests/unit/graphql/types/test_upload_scalar.py tests/unit/core/test_file_processor.py -v` - all 11 tests pass (4 + 7)
-- [x] Run `uv run pytest tests/component/graphql/mutations/test_file_object.py -v` - all 7 tests pass
-- [x] Run all file object tests together - all 18 tests pass
+- [x] Run `uv run pytest tests/component/graphql/mutations/test_file_object.py -v` - all 11 tests pass
+- [x] Run all file object tests together - all 22 tests pass (4 + 7 + 11)
 
 ## Reference Files
 
@@ -256,9 +268,11 @@ GraphQL returns metadata only; binary download uses REST (implemented in PR 5).
 - The `Upload` scalar is input-only - it cannot be used in query responses
 - File processing stores the file first, then runs the mutation - on failure, file is cleaned up
 - Files are cleaned up via `processor.delete_file()` in a try/finally block if mutation fails
-- File size limits are enforced during `process()` before any storage write
+- File size limits are enforced during metadata extraction before any storage write
 - MIME type detection uses `puremagic` to analyze file content (magic bytes), not just extension
 - The existing multipart parsing in `app.py` works without changes
 - All FileObject attributes (including `storage_id`) are read-only - the system sets them automatically when a file is provided
 - `storage_id` is a UUIDT that changes when a file is updated (enables branch-aware storage)
+- **Upsert is idempotent**: `process(node=existing_node)` compares checksums - if they match, returns `None` and no new storage is created
+- **HFID collision edge case**: When upsert finds a node via `HFIDViolatedError` (HFID computed from data fields), the file has already been stored. This can result in duplicate files for same-content uploads. This is a known limitation accepted for simplicity.
 - For production deployment reverse proxy configuration, see the spec file: `dev/specs/2026-01-file-object.md`

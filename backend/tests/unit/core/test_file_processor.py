@@ -8,7 +8,7 @@ from starlette.datastructures import UploadFile
 
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.file_processor import FileUploadProcessor, FileUploadResult
+from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.exceptions import ValidationError
 from tests.adapters.storage import DummyObjectStorage
 
@@ -65,10 +65,10 @@ async def test_processor_returns_file_result(
     processor = FileUploadProcessor(file=upload_file.file)
     result = await processor.process()
 
-    assert isinstance(result, FileUploadResult)
-    assert result.file_name == upload_file.filename
-    assert result.file_size == len(upload_file.content)
-    assert result.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
+    assert result
+    assert result.metadata.file_name == upload_file.filename
+    assert result.metadata.file_size == len(upload_file.content)
+    assert result.metadata.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
     assert result.storage_id
     assert result.storage_id in dummy_storage._files
 
@@ -80,7 +80,8 @@ async def test_processor_calculates_sha1_checksum(
     processor = FileUploadProcessor(file=upload_file.file)
     result = await processor.process()
 
-    assert result.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
+    assert result
+    assert result.metadata.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
 
 
 async def test_processor_detects_mime_type(dummy_storage: DummyObjectStorage, max_file_size_50mb: None) -> None:
@@ -91,7 +92,8 @@ async def test_processor_detects_mime_type(dummy_storage: DummyObjectStorage, ma
     processor = FileUploadProcessor(file=upload_file)
     result = await processor.process()
 
-    assert result.file_type == "image/png"
+    assert result
+    assert result.metadata.file_type == "image/png"
 
 
 async def test_processor_fallback_mime_type(dummy_storage: DummyObjectStorage, max_file_size_50mb: None) -> None:
@@ -101,7 +103,8 @@ async def test_processor_fallback_mime_type(dummy_storage: DummyObjectStorage, m
     processor = FileUploadProcessor(file=upload_file)
     result = await processor.process()
 
-    assert result.file_type == "application/octet-stream"
+    assert result
+    assert result.metadata.file_type == "application/octet-stream"
 
 
 async def test_processor_exceeds_max_size(dummy_storage: DummyObjectStorage, max_file_size_1mb: None) -> None:
@@ -123,6 +126,7 @@ async def test_processor_stores_file(
     processor = FileUploadProcessor(file=upload_file.file)
     result = await processor.process()
 
+    assert result
     assert result.storage_id in dummy_storage._files
     assert dummy_storage._files[result.storage_id] == upload_file.content
 
@@ -134,4 +138,5 @@ async def test_processor_unnamed_file(dummy_storage: DummyObjectStorage, max_fil
     processor = FileUploadProcessor(file=upload_file)
     result = await processor.process()
 
-    assert result.file_name == result.storage_id
+    assert result
+    assert result.metadata.file_name == result.storage_id
