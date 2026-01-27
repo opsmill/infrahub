@@ -212,6 +212,10 @@ class DiffCoordinator:
                 force_branch_refresh=False,
             )
 
+            # should never have a proposed change id for an arbitrary diff
+            enriched_diffs.diff_branch_diff.proposed_change_id = None
+            enriched_diffs.base_branch_diff.proposed_change_id = None
+
             await self.diff_repo.save(
                 enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
             )
