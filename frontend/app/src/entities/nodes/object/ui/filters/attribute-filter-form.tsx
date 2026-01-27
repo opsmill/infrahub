@@ -149,38 +149,43 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
 
   return (
     <Form
-      className="flex flex-col gap-2 p-2"
+      className="flex items-center gap-2 p-2"
       onSubmit={(formData) => handleSubmit(formData as Record<string, string | null>)}
       data-testid="date-range-filter-form"
     >
-      <div className="flex items-center gap-2">
-        <span className="w-12 shrink-0 text-gray-600 text-sm">After</span>
-        <FormField
-          name="afterDate"
-          defaultValue={afterFilter?.value ?? undefined}
-          render={({ field }) => (
-            <DatePicker
-              date={field.value ? new Date(field.value as string) : null}
-              onChange={field.onChange}
-            />
-          )}
-        />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-12 shrink-0 text-gray-600 text-sm">After</span>
+          <FormField
+            name="afterDate"
+            defaultValue={afterFilter?.value ?? undefined}
+            render={({ field }) => (
+              <DatePicker
+                date={field.value ? new Date(field.value as string) : null}
+                onChange={field.onChange}
+                className="w-44"
+              />
+            )}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="w-12 shrink-0 text-gray-600 text-sm">Before</span>
+          <FormField
+            name="beforeDate"
+            defaultValue={beforeFilter?.value ?? undefined}
+            render={({ field }) => (
+              <DatePicker
+                date={field.value ? new Date(field.value as string) : null}
+                onChange={field.onChange}
+                className="w-44"
+              />
+            )}
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="w-12 shrink-0 text-gray-600 text-sm">Before</span>
-        <FormField
-          name="beforeDate"
-          defaultValue={beforeFilter?.value ?? undefined}
-          render={({ field }) => (
-            <DatePicker
-              date={field.value ? new Date(field.value as string) : null}
-              onChange={field.onChange}
-            />
-          )}
-        />
-        <FormSubmit>Apply</FormSubmit>
-      </div>
+      <FormSubmit className="self-end">Apply</FormSubmit>
     </Form>
   );
 }
