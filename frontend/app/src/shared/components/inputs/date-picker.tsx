@@ -70,6 +70,7 @@ export const DatePicker = ({
         onChange={handleChangeDate}
         customInput={<CustomInput id={id} disabled={isDisabled} className={className} />}
         wrapperClassName="w-full"
+        calendarClassName="flex!"
         showTimeSelect
         timeIntervals={1}
         calendarStartDay={1}
