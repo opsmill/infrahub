@@ -18,13 +18,13 @@ export const BRANCH_FIELD_SCHEMAS = {
     label: "Last Rebase",
     kind: "DateTime",
   } as AttributeSchema,
-  updated_at: {
-    name: "updated_at",
+  node_metadata__updated_at: {
+    name: "node_metadata__updated_at",
     label: "Last Update",
     kind: "DateTime",
   } as AttributeSchema,
-  created_at: {
-    name: "created_at",
+  node_metadata__created_at: {
+    name: "node_metadata__created_at",
     label: "Created At",
     kind: "DateTime",
   } as AttributeSchema,

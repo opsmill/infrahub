@@ -111,3 +111,19 @@ export const getCreatedByFilterValue = (filters?: Filter[]) => {
   // Return first ID since backend expects single ID, not array
   return relationships[0]?.id;
 };
+
+export const getDateFilterValue = (filters?: Filter[], fieldName?: string, condition?: string) => {
+  const filter = filters?.find((f) => f.name === `${fieldName}__${condition}`);
+  return filter?.value as string | undefined;
+};
+
+export const getBranchDateFilters = (filters?: Filter[]) => {
+  return {
+    branchedFromAfter: getDateFilterValue(filters, "branched_from", "after"),
+    branchedFromBefore: getDateFilterValue(filters, "branched_from", "before"),
+    createdAtAfter: getDateFilterValue(filters, "node_metadata__created_at", "after"),
+    createdAtBefore: getDateFilterValue(filters, "node_metadata__created_at", "before"),
+    updatedAtAfter: getDateFilterValue(filters, "node_metadata__updated_at", "after"),
+    updatedAtBefore: getDateFilterValue(filters, "node_metadata__updated_at", "before"),
+  };
+};
