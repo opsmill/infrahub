@@ -598,10 +598,13 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "File content with Content-Type matching the file's MIME type",
                         "content": {
-                            "application/json": {
-                                "schema": {}
+                            "*/*": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
                             }
                         }
                     },

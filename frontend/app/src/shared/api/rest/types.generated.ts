@@ -2644,13 +2644,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description File content with Content-Type matching the file's MIME type */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "*/*": string;
                 };
             };
             /** @description Validation Error */

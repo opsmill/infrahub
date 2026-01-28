@@ -68,7 +68,16 @@ def build_content_disposition(filename: str) -> str:
     return f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
 
 
-@router.get("/{storage_id:str}")
+@router.get(
+    "/{storage_id:str}",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "File content with Content-Type matching the file's MIME type",
+            "content": {"*/*": {"schema": {"type": "string", "format": "binary"}}},
+        }
+    },
+)
 async def download_file_object(
     storage_id: str,
     db: InfrahubDatabase = Depends(get_db),
