@@ -93,6 +93,7 @@ type tgetSchemaObjectColumns = {
   forListView?: boolean;
   forQuery?: boolean;
   limit?: number;
+  forSearchAnywhere?: boolean;
 };
 
 // Get attributes and relationships from a schema, optional limit to trim the array
@@ -101,13 +102,16 @@ export const getSchemaObjectColumns = ({
   forListView,
   forQuery,
   limit,
+  forSearchAnywhere,
 }: tgetSchemaObjectColumns) => {
   if (!schema) {
     return [];
   }
 
   const attributes = getObjectAttributes({ schema, forListView, forQuery });
-  const relationships = getObjectRelationships({ schema, forListView });
+  const relationships = getObjectRelationships({ schema, forListView }).filter(
+    (rel) => !forSearchAnywhere || rel.cardinality !== "many"
+  );
 
   const columns = sortByOrderWeight([...attributes, ...relationships]);
 
