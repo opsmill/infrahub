@@ -73,7 +73,8 @@ export function ObjectDataDisplay({
   const relationships = getRelationshipsVisibleInDetailedView(
     objectSchema.relationships ?? []
   ).filter(
-    (rel) => !excludeRelationships.includes(rel.name) && !excludeRelationshipKinds.includes(rel.kind)
+    (rel) =>
+      !excludeRelationships.includes(rel.name) && !excludeRelationshipKinds.includes(rel.kind)
   );
   const fields = sortByOrderWeight([...attributes, ...relationships]);
 
