@@ -63,8 +63,8 @@ async def test_new_invalid_branch(
 
 async def test_get_commit_value(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
     repo = git_repo_01_read_only
-    assert repo.get_commit_value(branch_name="does_not_matter") == "92700512b5b16c0144f7fd2869669273577f1bd8"
-    assert repo.get_commit_value(branch_name="branch02", remote=True) == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name="does_not_matter") == "41bebed15b7f98ace50a0a71114861b7aa9cec0a"
+    assert repo.get_commit_value(branch_name="branch02", remote=True) == "41bebed15b7f98ace50a0a71114861b7aa9cec0a"
 
 
 async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
@@ -78,7 +78,7 @@ async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRe
 async def test_sync_from_remote_new_ref(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
     repo = git_repo_01_read_only
     repo.ref = "branch02"
-    branch_02_head_commit = "49ac5e2a0f00b5eab6aedfdb19a1ef8127507f72"
+    branch_02_head_commit = "aa4cdf398b49934f23c7967b303f8044e5513d6d"
     mock_client = AsyncMock(InfrahubClient)
     repo.client = mock_client
 
@@ -90,7 +90,7 @@ async def test_sync_from_remote_new_ref(git_repo_01_read_only: InfrahubReadOnlyR
         mock_import.assert_awaited()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
-    assert worktree_commits == {"main", "92700512b5b16c0144f7fd2869669273577f1bd8", branch_02_head_commit}
+    assert worktree_commits == {"main", "41bebed15b7f98ace50a0a71114861b7aa9cec0a", branch_02_head_commit}
     mock_client.repository_update_commit.assert_awaited_once_with(
         branch_name="main", repository_id=repo.id, commit=branch_02_head_commit, is_read_only=True
     )
@@ -105,7 +105,7 @@ async def test_sync_from_remote_existing_ref(git_repo_01_read_only: InfrahubRead
     await repo.sync_from_remote()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
-    assert worktree_commits == {"main", "92700512b5b16c0144f7fd2869669273577f1bd8"}
+    assert worktree_commits == {"main", "41bebed15b7f98ace50a0a71114861b7aa9cec0a"}
     mock_client.repository_update_commit.assert_not_awaited()
 
 

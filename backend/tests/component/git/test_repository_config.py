@@ -26,7 +26,7 @@ class TestGetRepositoryConfig:
     ) -> InfrahubRepository:
         """Create a repository without a .infrahub.yml config file.
 
-        The test fixture repository doesn't have a config file by default.
+        Clones the upstream repo and removes the config file to test error handling.
 
         Args:
             git_upstream_repo_01: Upstream repo metadata containing name and path.
@@ -35,10 +35,24 @@ class TestGetRepositoryConfig:
         Returns:
             The initialized Infrahub repository instance without a config file.
         """
+        from pathlib import Path as PathlibPath
+
+        # Clone the upstream repo to avoid polluting the shared fixture
+        original_path = PathlibPath(git_upstream_repo_01["path"])
+        clone_path = git_repos_dir / f"clone_no_config_{id(self)}"
+        cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
+
+        # Remove the config file if it exists
+        config_file = clone_path / ".infrahub.yml"
+        if config_file.exists():
+            config_file.unlink()
+            cloned_repo.index.remove([".infrahub.yml"])
+            cloned_repo.index.commit("Remove .infrahub.yml config file for testing")
+
         repo = await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
-            location=str(git_upstream_repo_01["path"]),
+            location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
         return repo
