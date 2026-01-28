@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
@@ -14,6 +14,7 @@ export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
   data: Record<string, any>;
   profileIds?: Array<string>;
+  file?: File;
 }
 
 export function updateObjectFromApi({
@@ -21,8 +22,12 @@ export function updateObjectFromApi({
   objectKind,
   profileIds = [],
   branchName,
+  file,
 }: UpdateObjectFromApiParams) {
-  const objectData = Object.entries(data).reduce((acc, [key, value]) => {
+  const hasFile = file instanceof File;
+
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic data from form
+  const objectData: Record<string, any> = Object.entries(data).reduce((acc, [key, value]) => {
     if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
       // WHen using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
       return {
@@ -80,6 +85,7 @@ export function updateObjectFromApi({
             ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
             : {}),
         },
+        ...(hasFile && { file: new VariableType("file") }),
       },
       object: {
         id: true,
@@ -88,6 +94,7 @@ export function updateObjectFromApi({
         __typename: true,
       },
     },
+    ...(hasFile && { __variables: { file: "Upload!" } }),
   };
 
   const relationshipAddMutation =
@@ -118,6 +125,7 @@ export function updateObjectFromApi({
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
+    variables: hasFile ? { file } : undefined,
     context: {
       branch: branchName,
     },
