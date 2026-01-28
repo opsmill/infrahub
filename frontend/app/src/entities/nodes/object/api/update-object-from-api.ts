@@ -12,7 +12,7 @@ import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relat
 
 export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   profileIds?: Array<string>;
   file?: File;
 }
@@ -26,9 +26,9 @@ export function updateObjectFromApi({
 }: UpdateObjectFromApiParams) {
   const hasFile = file instanceof File;
 
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic data from form
-  const objectData: Record<string, any> = Object.entries(data).reduce((acc, [key, value]) => {
-    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
+  const objectData: Record<string, unknown> = Object.entries(data).reduce((acc, [key, value]) => {
+    const valueWithProp = value as { value?: unknown };
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && valueWithProp.value === null) {
       // WHen using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
       return {
         ...acc,
@@ -65,7 +65,8 @@ export function updateObjectFromApi({
       return acc;
     }
 
-    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
+    const valueWithProp = value as { value?: unknown };
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && valueWithProp.value === null) {
       // When using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
       return acc;
     }
@@ -100,8 +101,8 @@ export function updateObjectFromApi({
   const relationshipAddMutation =
     objectData?.id && Object.entries(relationshipAddData)?.length
       ? getRelationshipMutation({
-          id: objectData.id,
-          data: relationshipAddData,
+          id: objectData.id as string,
+          data: relationshipAddData as Record<string, Array<{ id: string }>>,
           mutation: "RelationshipAdd",
         })
       : {};
@@ -109,8 +110,8 @@ export function updateObjectFromApi({
   const relationshipRemoveMutation =
     objectData?.id && Object.entries(relationshipRemoveData)?.length
       ? getRelationshipMutation({
-          id: objectData.id,
-          data: relationshipRemoveData,
+          id: objectData.id as string,
+          data: relationshipRemoveData as Record<string, Array<{ id: string }>>,
           mutation: "RelationshipRemove",
         })
       : {};
