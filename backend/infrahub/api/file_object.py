@@ -15,13 +15,13 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
+from infrahub.core.protocols import CoreFileObject
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.permissions import define_object_permission_from_branch
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
-    from infrahub.core.protocols import CoreFileObject
     from infrahub.permissions import PermissionManager
 
 router = APIRouter(prefix=f"/{InfrahubKind.FILEOBJECT}")
@@ -84,7 +84,7 @@ async def download_file_object(
     """
     file_objects = await registry.manager.query(
         db=db,
-        schema=InfrahubKind.FILEOBJECT,
+        schema=CoreFileObject,
         filters={"storage_id__value": storage_id},
         branch=branch_params.branch,
         at=branch_params.at,
@@ -95,7 +95,7 @@ async def download_file_object(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.FILEOBJECT, identifier=storage_id
         )
 
-    file_object: CoreFileObject = file_objects[0]
+    file_object = file_objects[0]
     permission = define_object_permission_from_branch(
         schema=file_object.get_schema(), action=PermissionAction.VIEW, branch_name=branch_params.branch.name
     )
