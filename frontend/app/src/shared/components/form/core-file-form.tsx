@@ -1,7 +1,7 @@
-import { EyeIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 
+import { FileInfoCard } from "@/shared/components/file/file-info-card";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -12,8 +12,7 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames, formatFileSize } from "@/shared/utils/common";
-import { getFileIcon } from "@/shared/utils/file";
+import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -112,12 +111,6 @@ export function CoreFileForm({
     setSelectedFile(file);
   };
 
-  const handleViewFile = () => {
-    if (!selectedFile) return;
-    const url = URL.createObjectURL(selectedFile);
-    window.open(url, "_blank");
-  };
-
   const handleReplaceFile = () => {
     fileInputRef.current?.click();
   };
@@ -130,60 +123,25 @@ export function CoreFileForm({
     event.target.value = "";
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-  };
-
-  const FileIconComponent = selectedFile ? getFileIcon(selectedFile.type) : null;
-
   return (
     <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
       <div className="mb-4">
         <LabelFormField label="File" className="mb-1" />
-        {selectedFile && FileIconComponent ? (
-          <div className="rounded-md border border-gray-200 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <FileIconComponent className="size-4 shrink-0 text-gray-400" />
-              <span className="min-w-0 flex-1 truncate text-gray-700 text-sm">
-                {selectedFile.name}
-              </span>
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={handleViewFile}
-                  className="rounded p-1 text-gray-400 hover:text-gray-600"
-                  title="View file"
-                >
-                  <EyeIcon className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReplaceFile}
-                  className="rounded p-1 text-gray-400 hover:text-gray-600"
-                  title="Replace file"
-                >
-                  <RefreshCwIcon className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  className="rounded p-1 text-gray-400 hover:text-red-500"
-                  title="Remove file"
-                >
-                  <Trash2Icon className="size-3.5" />
-                </button>
-              </div>
-            </div>
-            <p className="mt-1 truncate pl-6 text-gray-400 text-xs">
-              {formatFileSize(selectedFile.size)} • {selectedFile.type || "Unknown type"}
-            </p>
+        {selectedFile ? (
+          <>
+            <FileInfoCard
+              fileName={selectedFile.name}
+              fileSize={selectedFile.size}
+              contentType={selectedFile.type || undefined}
+              onReplace={handleReplaceFile}
+            />
             <input
               ref={fileInputRef}
               type="file"
               className="hidden"
               onChange={handleFileInputChange}
             />
-          </div>
+          </>
         ) : (
           <FileDropzone onFileSelect={handleFileSelect} />
         )}
