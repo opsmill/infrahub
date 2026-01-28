@@ -17,7 +17,6 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.log import get_logger
 from infrahub.permissions import define_object_permission_from_branch
 
 if TYPE_CHECKING:
@@ -25,7 +24,6 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreFileObject
     from infrahub.permissions import PermissionManager
 
-log = get_logger()
 router = APIRouter(prefix=f"/{InfrahubKind.FILEOBJECT}")
 
 
