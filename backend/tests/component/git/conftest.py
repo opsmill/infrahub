@@ -79,7 +79,7 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
     name = "infrahub-test-fixture-01"
     here = Path(__file__).parent.resolve()
     fixtures_dir = here.parent.parent / "fixtures"
-    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-0b341c0.tar.gz"
+    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-800190e.tar.gz"
 
     # Extract the fixture package in the source directory
 

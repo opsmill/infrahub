@@ -26,7 +26,11 @@ if TYPE_CHECKING:
 
 
 async def test_trigger_repository_import(
-    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch, create_test_admin: Node
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
 ) -> None:
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
@@ -164,7 +168,11 @@ def test_cleanup_payload(test_input, expected) -> None:
 
 
 async def test_import_read_only_repository_last_commit(
-    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch, create_test_admin: Node
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
 ) -> None:
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
     recorder = BusRecorder()
