@@ -9,26 +9,18 @@ import pytest
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, ConversionFieldValue
-from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.delete import DeleteAfterTimeQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.dependencies.registry import get_component_registry
 from infrahub.git import InfrahubReadOnlyRepository, InfrahubRepository
 from tests.constants.kind import PERSON
-from tests.helpers.test_app import TestInfrahubApp
-
-if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClient
-
-from typing import TYPE_CHECKING
-
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
-from infrahub.core.manager import NodeManager
+from tests.helpers.db_reset import DatabaseResetter
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -128,12 +120,9 @@ class TestConvertRepository(TestInfrahubApp):
         await people.new(db=db, name="people", members=[john])
         await people.save(db=db)
 
-    async def reset_to_time(self, db: InfrahubDatabase, default_branch: Branch, reset_time: Timestamp):
-        component_registry = get_component_registry()
-        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
-        await diff_repository.delete_all_diff_roots()
-        query_delete = await DeleteAfterTimeQuery.init(db=db, timestamp=reset_time)
-        await query_delete.execute(db=db)
+    async def reset_to_time(self, db: InfrahubDatabase, reset_time: Timestamp):
+        db_resetter = DatabaseResetter(db=db)
+        await db_resetter.reset_to_time(reset_time=reset_time)
 
     async def test_convert_repo_to_read_only(
         self,
@@ -271,7 +260,7 @@ class TestConvertRepository(TestInfrahubApp):
             original_commit=repository.commit.value,
         )
 
-        await self.reset_to_time(db=db, default_branch=default_branch, reset_time=start_time)
+        await self.reset_to_time(db=db, reset_time=start_time)
 
     async def test_convert_read_only_to_read_write(
         self,
@@ -405,7 +394,7 @@ class TestConvertRepository(TestInfrahubApp):
             original_commit=repository.commit.value,
         )
 
-        await self.reset_to_time(db=db, default_branch=default_branch, reset_time=start_time)
+        await self.reset_to_time(db=db, reset_time=start_time)
 
     async def _validate_rebase(
         self, branch_name: str, client: InfrahubClient, db: InfrahubDatabase, new_repo_id: str, original_commit: str
@@ -542,7 +531,7 @@ class TestConvertRepository(TestInfrahubApp):
             original_commit=repository.commit.value,
         )
 
-        await self.reset_to_time(db=db, default_branch=default_branch, reset_time=start_time)
+        await self.reset_to_time(db=db, reset_time=start_time)
 
     async def _validate_repo_groups(self, db: InfrahubDatabase, repository: CoreGenericRepository):
         # Make sure old repository groups has been deleted
