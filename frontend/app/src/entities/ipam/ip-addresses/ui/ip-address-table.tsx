@@ -1,5 +1,4 @@
-import React from "react";
-
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import type { Filter } from "@/shared/hooks/useFilters";
@@ -19,15 +18,18 @@ export interface IpAddressTableProps {
 
 export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
   const { filters, selectedSchema, permission } = useObjectTableContext();
-  const { isPending, isFetchingNextPage, data, fetchNextPage, hasNextPage } = useGetIpAddressList({
-    schema: selectedSchema,
-    filters: [...baseFilters, ...filters],
-  });
+  const { isPending, isFetchingNextPage, data, error, fetchNextPage, hasNextPage } =
+    useGetIpAddressList({
+      schema: selectedSchema,
+      filters: [...baseFilters, ...filters],
+    });
 
-  const columns = React.useMemo(() => {
-    return [...getIpAddressTableColumns(selectedSchema), getObjectActionsColumn(permission)];
-  }, [selectedSchema.hash]);
-  const flatData = React.useMemo(() => data?.pages?.flatMap((page) => page.items) ?? [], [data]);
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
+
+  const columns = [...getIpAddressTableColumns(selectedSchema), getObjectActionsColumn(permission)];
+  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
