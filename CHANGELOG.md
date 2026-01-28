@@ -11,6 +11,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.3) - 2026-01-28
+
+### Security
+
+- Update system dependencies: OpenSSL patch for CVE-2025-15467
+
+### Fixed
+
+- Single line breaks in text fields are now rendered correctly.
+
 ## [Infrahub - v1.7.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.2) - 2026-01-27
 
 ### Added
