@@ -1,12 +1,14 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import { queryClient } from "@/shared/api/rest/client";
+import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { type GetObjectsParams, getObjects } from "@/entities/nodes/object/domain/get-objects";
+import { getObjectsCountQueryOptions } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 type GetObjectsQueryParams = Omit<GetObjectsParams, keyof PaginationParams>;
@@ -22,14 +24,17 @@ export function getObjectsInfiniteQueryOptions(params: GetObjectsQueryParams) {
       });
     },
     initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
-    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+    getNextPageParam: (lastPage, _, lastPageParam) => {
       // If we got fewer items than requested, there are no more pages
-      if (lastPage.items.length < lastPageParam.limit) {
+      if (lastPage.length < lastPageParam.limit) {
         return;
       }
 
       // Get count from the first page and calculate dynamic page size (locked after first page)
-      const totalCount = allPages[0]?.count ?? 0;
+      const totalCount =
+        queryClient.getQueryData(
+          getObjectsCountQueryOptions({ ...params, objectKind: params.schema.kind! }).queryKey
+        ) ?? 0;
       const pageSize = totalCount > 0 ? calculateDynamicPageSize(totalCount) : DEFAULT_PAGE_SIZE;
 
       return {
@@ -40,15 +45,19 @@ export function getObjectsInfiniteQueryOptions(params: GetObjectsQueryParams) {
   });
 }
 
-export function useObjects(params: Omit<GetObjectsQueryParams, keyof ContextParams>) {
+export function useObjects(
+  params: Omit<GetObjectsQueryParams, keyof ContextParams>,
+  config?: InfiniteQueryConfig<typeof getObjectsInfiniteQueryOptions>
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useInfiniteQuery(
-    getObjectsInfiniteQueryOptions({
+  return useInfiniteQuery({
+    ...getObjectsInfiniteQueryOptions({
       ...params,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
-    })
-  );
+    }),
+    ...config,
+  });
 }

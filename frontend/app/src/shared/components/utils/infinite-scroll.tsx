@@ -46,7 +46,7 @@ export const InfiniteScroll = ({
   return (
     <ScrollArea {...props} ref={rootRef}>
       {children}
-      <div ref={loadMoreRef} className="h-px" />
+      <div ref={loadMoreRef} className="h-0" />
     </ScrollArea>
   );
 };
