@@ -7,6 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
+from infrahub.proposed_change.constants import ProposedChangeState
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.diff import DataConflict
@@ -51,7 +52,7 @@ class DiffDataCheckSynchronizer:
         if not enriched_diff.proposed_change_id:
             return []
         pc = await NodeManager.get_one(db=self.db, kind=CoreProposedChange, id=enriched_diff.proposed_change_id)
-        if not pc:
+        if not pc or pc.state.value != ProposedChangeState.OPEN:
             return []
 
         all_data_checks = []
