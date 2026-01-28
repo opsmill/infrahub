@@ -81,6 +81,7 @@ The endpoint uses `storage_id` (not node ID) because:
 - [x] Run `uv run pytest tests/unit/storage/test_retrieve.py -v` - all 7 tests pass
 - [x] Run `uv run pytest tests/unit/api/test_file_object.py -v` - all 13 tests pass
 - [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 7 tests pass
+- [x] Run `uv run invoke schema.generate-jsonschema` - regenerate OpenAPI schema
 
 ## Reference Files
 
@@ -90,6 +91,7 @@ The endpoint uses `storage_id` (not node ID) because:
 - `backend/tests/unit/storage/test_retrieve.py` - Unit tests for storage retrieval methods
 - `backend/tests/unit/api/test_file_object.py` - Unit tests for filename sanitization
 - `backend/tests/component/api/test_file_object.py` - Component tests for download endpoint
+- `schema/openapi.json` - OpenAPI schema (regenerated with `uv run invoke schema.generate-jsonschema`)
 
 ## API Endpoint
 
