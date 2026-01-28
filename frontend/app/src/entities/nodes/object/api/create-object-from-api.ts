@@ -18,7 +18,7 @@ export function createObjectFromApi({
   branchName,
   file,
 }: CreateObjectFromApiApiParams) {
-  const hasFile = file !== undefined;
+  const hasFile = file instanceof File;
 
   const mutationArgs: Record<string, unknown> = {
     data: {
