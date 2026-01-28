@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -14,7 +14,7 @@ import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormField, FormMessage, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -70,15 +70,6 @@ function getExistingFileInfo(
   };
 }
 
-/**
- * Gets the object ID from currentObject for update mutations.
- */
-function getObjectId(
-  currentObject?: Record<string, AttributeType | RelationshipType>
-): string | undefined {
-  return (currentObject?.id as { value?: string })?.value;
-}
-
 export function CoreFileForm({
   className,
   currentObject,
@@ -95,9 +86,9 @@ export function CoreFileForm({
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const existingFile = getExistingFileInfo(currentObject);
-  const objectId = getObjectId(currentObject);
 
   const { data: numberPools, isPending } = useGetNumberPools({
     objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
@@ -119,23 +110,20 @@ export function CoreFileForm({
   });
 
   const formDefaultValues: Record<string, unknown> = {
-    file: null,
     ...Object.fromEntries(fields.map((field) => [field.name, field.defaultValue])),
   };
 
   async function onSubmitCreate(formData: CoreFileFormData) {
-    const { file, ...rest } = formData;
+    const newObject = getCreateMutationFromFormData(fields, formData, objectTemplate?.id);
 
-    const newObject = getCreateMutationFromFormData(fields, rest, objectTemplate?.id);
-    const hasNewFile = file instanceof File;
+    const mutationParams = {
+      objectKind: schema.kind as string,
+      data: newObject,
+      profileIds: profiles?.map((profile) => profile.id),
+    };
 
     await createObject.mutateAsync(
-      {
-        objectKind: schema.kind as string,
-        data: newObject,
-        profileIds: profiles?.map((profile) => profile.id),
-        ...(hasNewFile && { file }),
-      },
+      selectedFile ? { ...mutationParams, file: selectedFile } : mutationParams,
       {
         onSuccess: async (newNode) => {
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
@@ -152,22 +140,20 @@ export function CoreFileForm({
   }
 
   async function onSubmitUpdate(formData: CoreFileFormData) {
-    const { file, ...rest } = formData;
+    const updatedData = getUpdateMutationFromFormData({ fields, formData });
 
-    const updatedData = getUpdateMutationFromFormData({ fields, formData: rest });
-    const hasNewFile = file instanceof File;
-
-    if (objectId) {
-      updatedData.id = objectId;
+    if (currentObject?.id) {
+      updatedData.id = currentObject?.id;
     }
 
+    const mutationParams = {
+      objectKind: schema.kind as string,
+      data: updatedData,
+      profileIds: profiles?.map((profile) => profile.id),
+    };
+
     await updateObject.mutateAsync(
-      {
-        objectKind: schema.kind as string,
-        data: updatedData,
-        profileIds: profiles?.map((profile) => profile.id),
-        ...(hasNewFile && { file }),
-      },
+      selectedFile ? { ...mutationParams, file: selectedFile } : mutationParams,
       {
         onSuccess: async (updatedNode) => {
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
@@ -184,6 +170,11 @@ export function CoreFileForm({
   }
 
   async function onSubmit(formData: CoreFileFormData) {
+    // Validate file is provided for create
+    if (!isUpdate && !selectedFile) {
+      return;
+    }
+
     try {
       if (isUpdate) {
         await onSubmitUpdate(formData);
@@ -204,68 +195,58 @@ export function CoreFileForm({
     }
   }
 
-  // File is required only for create, not for update (existing file is kept if not replaced)
-  const fileValidationRules = isUpdate ? {} : { required: "File is required" };
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+  };
+
+  const handleReplaceFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+    event.target.value = "";
+  };
+
+  const hasSelectedFile = selectedFile !== null;
+  const hasExistingFile = isUpdate && existingFile !== null;
+  const showFileInfo = hasSelectedFile || hasExistingFile;
+  const isFileRequired = !isUpdate && !hasSelectedFile;
+
+  const displayFileName = selectedFile?.name ?? existingFile?.fileName ?? "";
+  const displayFileSize = selectedFile?.size ?? existingFile?.fileSize;
+  const displayContentType = selectedFile?.type || existingFile?.contentType;
 
   return (
     <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
       <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className="space-y-4">
-        <FormField
-          name="file"
-          rules={fileValidationRules}
-          render={({ field, fieldState }) => {
-            const selectedFile = field.value instanceof File ? field.value : null;
-
-            const handleFileSelect = (file: File) => {
-              field.onChange(file);
-            };
-
-            const handleReplaceFile = () => {
-              fileInputRef.current?.click();
-            };
-
-            const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                field.onChange(file);
-              }
-              event.target.value = "";
-            };
-
-            const hasSelectedFile = selectedFile !== null;
-            const hasExistingFile = isUpdate && existingFile !== null;
-            const showFileInfo = hasSelectedFile || hasExistingFile;
-
-            const displayFileName = selectedFile?.name ?? existingFile?.fileName ?? "";
-            const displayFileSize = selectedFile?.size ?? existingFile?.fileSize;
-            const displayContentType = selectedFile?.type || existingFile?.contentType;
-
-            return (
-              <div className="space-y-2">
-                <LabelFormField label="File" required={!isUpdate} />
-                {showFileInfo ? (
-                  <>
-                    <FileInfoCard
-                      fileName={displayFileName}
-                      fileSize={displayFileSize}
-                      contentType={displayContentType}
-                      onReplace={handleReplaceFile}
-                    />
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileInputChange}
-                    />
-                  </>
-                ) : (
-                  <FileDropzone onFileSelect={handleFileSelect} hasError={!!fieldState.error} />
-                )}
-                <FormMessage />
-              </div>
-            );
-          }}
-        />
+        <div className="space-y-2">
+          <LabelFormField label="File" required={!isUpdate} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+          {showFileInfo ? (
+            <FileInfoCard
+              fileName={displayFileName}
+              fileSize={displayFileSize}
+              contentType={displayContentType}
+              onReplace={handleReplaceFile}
+            />
+          ) : (
+            <FileDropzone onFileSelect={handleFileSelect} hasError={isFileRequired} />
+          )}
+          {isFileRequired && (
+            <p className="text-red-600 text-sm" data-cy="field-error-message">
+              File is required
+            </p>
+          )}
+        </div>
 
         {fields.map((field) => (
           <DynamicField key={`${field.type}_${field.name}`} {...field} />
