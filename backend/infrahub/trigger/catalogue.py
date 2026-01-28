@@ -9,6 +9,7 @@ from infrahub.hfid.triggers import TRIGGER_HFID_ALL_SCHEMA
 from infrahub.profiles.triggers import TRIGGER_PROFILE_REFRESH_SETUP
 from infrahub.schema.triggers import TRIGGER_SCHEMA_UPDATED
 from infrahub.trigger.models import TriggerDefinition
+from infrahub.trigger.system import TRIGGER_CRASH_ZOMBIE_FLOWS
 from infrahub.webhook.triggers import TRIGGER_WEBHOOK_DELETE, TRIGGER_WEBHOOK_SETUP_UPDATE
 
 builtin_triggers: list[TriggerDefinition] = [
@@ -16,6 +17,7 @@ builtin_triggers: list[TriggerDefinition] = [
     TRIGGER_BRANCH_MERGED,
     TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA,
     TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT,
+    TRIGGER_CRASH_ZOMBIE_FLOWS,
     TRIGGER_DISPLAY_LABELS_ALL_SCHEMA,
     TRIGGER_HFID_ALL_SCHEMA,
     TRIGGER_PROFILE_REFRESH_SETUP,

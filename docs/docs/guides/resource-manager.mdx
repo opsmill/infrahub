@@ -273,7 +273,7 @@ In the mutation we passed additional data to the allocated resource, in this cas
 
 :::success Idempotent allocation of an IP address
 
-You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator.mdx).
+You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [Generators](../topics/generator.mdx).
 
 Execute this mutation twice, note the identifier. The resulting IP address should be the same, as well as the id. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
@@ -451,7 +451,7 @@ Allocate an IP address directly from the pool:
   }
   ```
 
-  This is essential for [generators](../topics/generator.mdx) and automated workflows.
+  This is essential for [Generators](../topics/generator.mdx) and automated workflows.
 
   :::
 
@@ -793,7 +793,7 @@ This feature is not yet available directly via the Web Interface.
   }
   ```
 
-  This is essential for [generators](../topics/generator.mdx) and automated workflows.
+  This is essential for [Generators](../topics/generator.mdx) and automated workflows.
 
   :::
 
@@ -802,7 +802,7 @@ This feature is not yet available directly via the Web Interface.
 
 :::success
 
-You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator.mdx).
+You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [Generators](../topics/generator.mdx).
 
 Execute this mutation twice, note the identifier. The resulting IP prefix should be the same, as well as the id. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
