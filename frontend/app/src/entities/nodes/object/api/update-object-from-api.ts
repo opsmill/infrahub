@@ -29,7 +29,7 @@ export function updateObjectFromApi({
   const objectData: Record<string, unknown> = Object.entries(data).reduce((acc, [key, value]) => {
     const valueWithProp = value as { value?: unknown };
     if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && valueWithProp.value === null) {
-      // WHen using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
+      // When using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
       return {
         ...acc,
         [key.replace(RELATIONSHIP_BULK_REMOVE_PREFIX, "")]: null,
