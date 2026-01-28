@@ -11,6 +11,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
+      staleTime: 2000,
     },
   },
 });
