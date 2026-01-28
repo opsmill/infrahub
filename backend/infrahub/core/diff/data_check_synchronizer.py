@@ -52,7 +52,8 @@ class DiffDataCheckSynchronizer:
         if not enriched_diff.proposed_change_id:
             return []
         pc = await NodeManager.get_one(db=self.db, kind=CoreProposedChange, id=enriched_diff.proposed_change_id)
-        if not pc or pc.state.value != ProposedChangeState.OPEN:
+
+        if not pc or pc.state.value.value != ProposedChangeState.OPEN.value:
             return []
 
         all_data_checks = []
