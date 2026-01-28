@@ -4,7 +4,8 @@ from datetime import timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from prefect.events.actions import RunDeployment
+from prefect.client.schemas.objects import StateType  # noqa: TC002
+from prefect.events.actions import ChangeFlowRunState, RunDeployment
 from prefect.events.schemas.automations import Automation, Posture
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
 from prefect.events.schemas.events import ResourceSpecification
@@ -146,6 +147,55 @@ class EventTrigger(BaseModel):
         return [ResourceSpecification(related_match) for related_match in self.match_related]
 
 
+class ProactiveEventTrigger(EventTrigger):
+    """A proactive event trigger that fires when expected events do NOT occur within a time window.
+
+    Unlike EventTrigger which uses Reactive posture (fires when events occur),
+    ProactiveEventTrigger uses Proactive posture to detect missing events.
+    """
+
+    after: set[str] = Field(default_factory=set)
+    for_each: set[str] = Field(default_factory=set)
+    threshold: int = 1
+    within: timedelta = Field(default_factory=lambda: timedelta(seconds=90))
+
+    def get_prefect(self) -> PrefectEventTrigger:
+        return PrefectEventTrigger(
+            posture=Posture.Proactive,
+            after=self.after,
+            expect=self.events,
+            match=ResourceSpecification(self.match),
+            for_each=self.for_each,
+            threshold=self.threshold,
+            within=self.within,
+        )
+
+
+class ChangeFlowRunStateAction(BaseModel):
+    """Action to change the state of a flow run.
+
+    Used for system automations that need to modify flow run states,
+    such as crashing zombie flows that have stopped sending heartbeats.
+    """
+
+    state: StateType
+    message: str = ""
+
+    def get_prefect(self, _mapping: dict[str, UUID] | None = None) -> ChangeFlowRunState:
+        """Get the Prefect ChangeFlowRunState action.
+
+        Args:
+            _mapping: Not used for this action type, but included for interface compatibility.
+
+        Returns:
+            A Prefect ChangeFlowRunState action.
+        """
+        return ChangeFlowRunState(  # type: ignore[call-arg]
+            state=self.state,
+            message=self.message,
+        )
+
+
 class ExecuteWorkflow(BaseModel):
     workflow: WorkflowDefinition
     parameters: dict[str, Any] = Field(default_factory=dict)
@@ -186,17 +236,21 @@ class ExecuteWorkflow(BaseModel):
             raise ValueError(f"Workflow {self.workflow.name} doesn't support parameters: {wrong_params}")
 
 
+# Type alias for all trigger action types
+TriggerActionType = ExecuteWorkflow | ChangeFlowRunStateAction
+
+
 class TriggerDefinition(BaseModel):
     name: str
     type: TriggerType
     previous_names: set = Field(default_factory=set)
     description: str = ""
     trigger: EventTrigger
-    actions: list[ExecuteWorkflow]
+    actions: list[TriggerActionType]
 
     def get_deployment_names(self) -> list[str]:
         """Return the name of all deployments used by this trigger"""
-        return [action.name for action in self.actions]
+        return [action.name for action in self.actions if isinstance(action, ExecuteWorkflow)]
 
     def get_description(self) -> str:
         return f"Automation for Trigger {self.name} of type {self.type.value} (v{__version__})"
@@ -206,7 +260,8 @@ class TriggerDefinition(BaseModel):
 
     def validate_actions(self) -> None:
         for action in self.actions:
-            action.validate_parameters()
+            if isinstance(action, ExecuteWorkflow):
+                action.validate_parameters()
 
 
 class TriggerBranchDefinition(TriggerDefinition):
@@ -218,3 +273,17 @@ class TriggerBranchDefinition(TriggerDefinition):
 
 class BuiltinTriggerDefinition(TriggerDefinition):
     type: TriggerType = TriggerType.BUILTIN
+
+
+class SystemTriggerDefinition(BuiltinTriggerDefinition):
+    """A trigger definition for system-level Prefect automations.
+
+    Unlike other TriggerDefinitions which execute Infrahub workflows, SystemTriggerDefinition
+    is designed for Prefect system automations that don't require workflow deployments,
+    such as crashing zombie flows.
+
+    Uses ChangeFlowRunStateAction for actions (not ExecuteWorkflow).
+    """
+
+    def get_description(self) -> str:
+        return f"System Automation for {self.name} (v{__version__})"

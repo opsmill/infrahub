@@ -4,8 +4,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
 const SEARCH = graphql(`
-  query Search($search: String!) {
-    InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true) {
+  query Search($search: String!, $caseSensitive: Boolean) {
+    InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true, case_sensitive: $caseSensitive) {
       count
       edges {
         node {
@@ -19,12 +19,18 @@ const SEARCH = graphql(`
 
 export interface SearchAnywhereFromApiParams extends ContextParams {
   search: string;
+  caseSensitive?: boolean;
 }
 
-export function searchAnywhereFromApi({ search, branchName, atDate }: SearchAnywhereFromApiParams) {
+export function searchAnywhereFromApi({
+  search,
+  branchName,
+  atDate,
+  caseSensitive,
+}: SearchAnywhereFromApiParams) {
   return graphqlClient.query({
     query: SEARCH,
-    variables: { search },
+    variables: { search, caseSensitive },
     context: {
       branch: branchName,
       date: atDate,

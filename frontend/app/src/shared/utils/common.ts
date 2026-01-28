@@ -78,3 +78,4 @@ export function formatFileSize(bytes: number | undefined | null): string {
 
   return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
+export const waitFor = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
