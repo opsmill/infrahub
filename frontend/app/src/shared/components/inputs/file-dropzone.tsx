@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import type { DropEvent, FileDropItem } from "react-aria";
-import { DropZone, FileTrigger, Pressable } from "react-aria-components";
+import type { DropEvent } from "react-aria";
+import { DropZone, FileTrigger, isFileDropItem, Pressable } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -24,9 +24,9 @@ export function FileDropzone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDrop = async (e: DropEvent) => {
-    const fileItems = e.items.filter((item) => item.kind === "file") as FileDropItem[];
-    if (fileItems.length > 0) {
-      const file = await fileItems[0].getFile();
+    const fileItem = e.items.find(isFileDropItem);
+    if (fileItem) {
+      const file = await fileItem.getFile();
       onFileSelect(file);
     }
   };
@@ -64,7 +64,9 @@ export function FileDropzone({
               )}
             />
             <p className="text-gray-600 text-sm">
-              {isDragOver ? "Drop the file here..." : "Drag and drop a file here, or click to select"}
+              {isDragOver
+                ? "Drop the file here..."
+                : "Drag and drop a file here, or click to select"}
             </p>
             <p className={classNames("mt-1 text-xs", isDragOver ? "invisible" : "text-gray-400")}>
               PDF, YAML, JSON, TXT, CSV, images, and more
