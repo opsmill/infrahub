@@ -4,8 +4,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams, PaginationParams } from "@/shared/api/types";
 
 const DIFF_TREE_QUERY = graphql(`
-  query GET_DIFF_TREE($branchName: String, $filters: DiffTreeQueryFilters, $limit: Int, $offset: Int) {
-    DiffTree(branch: $branchName, filters: $filters, include_parents: true, limit: $limit, offset: $offset) {
+  query GET_DIFF_TREE($branchName: String, $filters: DiffTreeQueryFilters, $limit: Int, $offset: Int, $proposedChangeId: String) {
+    DiffTree(branch: $branchName, filters: $filters, include_parents: true, limit: $limit, offset: $offset, proposed_change_id: $proposedChangeId) {
       nodes {
         uuid
         relationships {
@@ -128,8 +128,11 @@ const DIFF_TREE_QUERY = graphql(`
   }
 `);
 
+export type DiffTreeFilters = VariablesOf<typeof DIFF_TREE_QUERY>["filters"];
+
 export interface GetDiffTreeFromApiParams extends BranchContextParams, PaginationParams {
-  filters?: VariablesOf<typeof DIFF_TREE_QUERY>["filters"];
+  filters?: DiffTreeFilters;
+  proposedChangeId?: string;
 }
 
 export const getDiffTreeFromApi = async ({
@@ -137,6 +140,7 @@ export const getDiffTreeFromApi = async ({
   filters,
   limit,
   offset,
+  proposedChangeId,
 }: GetDiffTreeFromApiParams) => {
   return graphqlClient.query({
     query: DIFF_TREE_QUERY,
@@ -145,6 +149,7 @@ export const getDiffTreeFromApi = async ({
       filters,
       limit,
       offset,
+      proposedChangeId,
     },
   });
 };

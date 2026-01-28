@@ -101,7 +101,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
 
 export function Component() {
   const { proposedChangeId } = useParams() as { proposedChangeId: string };
-  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
 
@@ -157,7 +157,7 @@ export function Component() {
           isReloadLoading={isPending}
           end={
             <ObjectHelpButton
-              documentationUrl={schema?.documentation}
+              documentationUrl={schema.documentation}
               kind={PROPOSED_CHANGES_OBJECT}
               className="ml-auto"
             />

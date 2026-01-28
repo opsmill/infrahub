@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import {
@@ -12,7 +13,6 @@ import {
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -21,11 +21,13 @@ export interface GetIpPrefixListParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;
 }
 
-export type GetIpPrefixList = (params: GetIpPrefixListParams) => Promise<Array<IpPrefixNode>>;
+export type GetIpPrefixList = (
+  params: GetIpPrefixListParams
+) => Promise<PaginatedResponse<IpPrefixNode>>;
 
 export const getIpPrefixList: GetIpPrefixList = async ({
   schema,
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   branchName,
   atDate,
@@ -59,9 +61,10 @@ export const getIpPrefixList: GetIpPrefixList = async ({
     },
   });
 
-  return (
-    data[excludeIpAvailability ? schemaKind : IP_PREFIX_GENERIC]?.edges?.map(
-      (edge: any) => edge.node
-    ) ?? []
-  );
+  const result = data[excludeIpAvailability ? schemaKind : IP_PREFIX_GENERIC];
+
+  return {
+    items: result?.edges?.map((edge: any) => edge.node) ?? [],
+    count: result?.count ?? 0,
+  };
 };

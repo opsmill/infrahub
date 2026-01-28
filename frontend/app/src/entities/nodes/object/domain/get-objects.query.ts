@@ -3,13 +3,10 @@ import { useAtomValue } from "jotai";
 
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import {
-  type GetObjectsParams,
-  getObjects,
-  OBJECTS_PER_PAGE,
-} from "@/entities/nodes/object/domain/get-objects";
+import { type GetObjectsParams, getObjects } from "@/entities/nodes/object/domain/get-objects";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 type GetObjectsQueryParams = Omit<GetObjectsParams, keyof PaginationParams>;
@@ -17,18 +14,28 @@ type GetObjectsQueryParams = Omit<GetObjectsParams, keyof PaginationParams>;
 export function getObjectsInfiniteQueryOptions(params: GetObjectsQueryParams) {
   return infiniteQueryOptions({
     queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
-    queryFn: ({ pageParam }) => {
+    queryFn: ({ pageParam }: { pageParam: { offset: number; limit: number } }) => {
       return getObjects({
         ...params,
-        offset: pageParam,
+        offset: pageParam.offset,
+        limit: pageParam.limit,
       });
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < OBJECTS_PER_PAGE) {
+    initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      // If we got fewer items than requested, there are no more pages
+      if (lastPage.items.length < lastPageParam.limit) {
         return;
       }
-      return lastPageParam + OBJECTS_PER_PAGE;
+
+      // Get count from the first page and calculate dynamic page size (locked after first page)
+      const totalCount = allPages[0]?.count ?? 0;
+      const pageSize = totalCount > 0 ? calculateDynamicPageSize(totalCount) : DEFAULT_PAGE_SIZE;
+
+      return {
+        offset: lastPageParam.offset + lastPageParam.limit,
+        limit: pageSize,
+      };
     },
   });
 }

@@ -22,7 +22,7 @@ class EnrichedDiffDeleteQuery(Query):
         query = """
 MATCH (d_root:DiffRoot)
 %(diff_filter)s
-OPTIONAL MATCH (d_root)-[*]->(diff_thing)
+OPTIONAL MATCH (d_root)-[*]->(diff_thing:DiffRoot|DiffNode|DiffAttribute|DiffRelationship|DiffRelationshipElement|DiffProperty|DiffConflict)
 WITH DISTINCT d_root, diff_thing
 ORDER BY elementId(diff_thing)
 CALL (diff_thing) {

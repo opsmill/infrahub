@@ -6,26 +6,35 @@
 
 React TypeScript frontend built with Vite, using Tailwind CSS for styling.
 
-## File Naming
+## Commands
 
-- Components: `kebab-case.tsx`
-- Atoms: `kebab-case.atom.ts`
-- Tests: `*.test.ts` or `*.test.tsx` (colocated)
-- Types: `types.ts` or inline
-
-## Coding Standards
-
-See `dev/guidelines/frontend/typescript.md` for detailed TypeScript coding standards.
-
-## Guides
-
-- `dev/guides/frontend/writing-unit-tests.md` - How to write unit tests for TypeScript functions
-- `dev/guides/frontend/writing-component-tests.md` - How to write React component tests
-
-## Architecture
-
-- `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui)
+```bash
+cd frontend/app && npm install     # Install dependencies
+cd frontend/app && npm run dev     # Start dev server
+cd frontend/app && npm run build   # Production build
+cd frontend/app && npm run test    # Run unit tests
+cd frontend/app && npm run test:e2e # Run E2E tests
+cd frontend/app && npm run biome:fix # Format and lint
+cd frontend/app && npm run codegen # Generate GraphQL types
+```
 
 ## See Also
 
-- `dev/guidelines/frontend/typescript.md` - Detailed TypeScript coding standards
+### Guidelines (How to write code)
+
+- `dev/guidelines/frontend/naming-conventions.md` - File naming patterns
+- `dev/guidelines/frontend/typescript.md` - TypeScript and React patterns
+- `dev/guidelines/frontend/styling.md` - Tailwind CSS and CVA
+- `dev/guidelines/frontend/forms.md` - react-hook-form patterns
+- `dev/guidelines/frontend/url-construction.md` - URL building utilities
+
+### Knowledge (How the system works)
+
+- `dev/knowledge/frontend/react.md` - React 19 and React Compiler patterns
+- `dev/knowledge/frontend/architecture.md` - Project organization
+- `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui)
+
+### Guides (How to do X)
+
+- `dev/guides/frontend/writing-unit-tests.md` - Unit tests for TypeScript functions
+- `dev/guides/frontend/writing-component-tests.md` - React component tests

@@ -5,7 +5,7 @@ class Check02(InfrahubCheck):
     """Non valid Check for testing.
     The query is missing."""
 
-    def validate(self, data) -> None:
+    def validate(self, data: dict) -> None:
         self.log_error("Not Valid")
 
 

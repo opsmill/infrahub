@@ -1272,6 +1272,86 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(retrieved) == 3
 
+    async def test_get_exclude_merged(self, diff_repository: DiffRepository, reset_database) -> None:
+        base_branch_name = "main"
+        # Create two diffs with tracking IDs
+        merged_diff = EnrichedRootFactory.build(base_branch_name=base_branch_name)
+        merged_tracking_id = BranchTrackingId(name=merged_diff.diff_branch_name)
+        merged_diff.tracking_id = merged_tracking_id
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=merged_diff, do_summary_counts=False
+        )
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[merged_tracking_id])
+
+        unmerged_diff = EnrichedRootFactory.build(base_branch_name=base_branch_name)
+        unmerged_tracking_id = BranchTrackingId(name=unmerged_diff.diff_branch_name)
+        unmerged_diff.tracking_id = unmerged_tracking_id
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=unmerged_diff, do_summary_counts=False
+        )
+
+        # get(exclude_merged=True) should exclude merged diff
+        diffs = await diff_repository.get(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            exclude_merged=True,
+        )
+        assert {d.uuid for d in diffs} == {unmerged_diff.uuid}
+
+        # get(exclude_merged=False) should include both diffs
+        diffs = await diff_repository.get(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            exclude_merged=False,
+        )
+        assert {d.uuid for d in diffs} == {merged_diff.uuid, unmerged_diff.uuid}
+
+        # get_roots_metadata(exclude_merged=True) should exclude merged diff
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_names=[base_branch_name],
+            exclude_merged=True,
+        )
+        metadata_uuids = {m.uuid for m in metadata}
+        assert merged_diff.uuid not in metadata_uuids
+        assert unmerged_diff.uuid in metadata_uuids
+
+        # get_roots_metadata(exclude_merged=False) should include both diffs
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_names=[base_branch_name],
+            exclude_merged=False,
+        )
+        metadata_uuids = {m.uuid for m in metadata}
+        assert merged_diff.uuid in metadata_uuids
+        assert unmerged_diff.uuid in metadata_uuids
+
+        # summary(exclude_merged=True) should exclude merged diff
+        summary = await diff_repository.summary(
+            diff_branch_names=[merged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=merged_tracking_id,
+            exclude_merged=True,
+        )
+        assert summary is None
+
+        summary = await diff_repository.summary(
+            diff_branch_names=[unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=unmerged_tracking_id,
+            exclude_merged=True,
+        )
+        assert summary is not None
+
+        # summary(exclude_merged=False) should include merged diff
+        summary = await diff_repository.summary(
+            diff_branch_names=[merged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=merged_tracking_id,
+            exclude_merged=False,
+        )
+        assert summary is not None
+
 
 async def verify_no_orphaned_nodes(db: InfrahubDatabase) -> None:
     """Verify that no diff elements have been orphaned"""

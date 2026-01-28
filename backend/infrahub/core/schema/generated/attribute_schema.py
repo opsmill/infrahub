@@ -10,6 +10,7 @@ from infrahub.core.constants import AllowOverrideType, BranchSupportType, Hashab
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
+    ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
@@ -118,12 +119,16 @@ class GeneratedAttributeSchema(HashableModel):
         description="Type of allowed override for the attribute.",
         json_schema_extra={"update": "allowed"},
     )
-    parameters: AttributeParameters | TextAttributeParameters | NumberAttributeParameters | NumberPoolParameters = (
-        Field(
-            default_factory=AttributeParameters,
-            description="Extra parameters specific to this kind of attribute",
-            json_schema_extra={"update": "validate_constraint"},
-        )
+    parameters: (
+        AttributeParameters
+        | ListAttributeParameters
+        | TextAttributeParameters
+        | NumberAttributeParameters
+        | NumberPoolParameters
+    ) = Field(
+        default_factory=AttributeParameters,
+        description="Extra parameters specific to this kind of attribute",
+        json_schema_extra={"update": "validate_constraint"},
     )
     deprecation: str | None = Field(
         default=None,

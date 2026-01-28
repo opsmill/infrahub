@@ -72,6 +72,7 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         diff_ids: list[str] | None = None,
         proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> list[EnrichedDiffRoot]:
         self.deserializer.initialize()
         final_row_number = None
@@ -94,6 +95,7 @@ class DiffRepository:
                 tracking_id=tracking_id,
                 diff_ids=diff_ids,
                 proposed_change_id=proposed_change_id,
+                exclude_merged=exclude_merged,
             )
             log.info(f"Beginning enriched diff get query {batch_size_limit=}, {offset=}")
             await get_query.execute(db=self.db)
@@ -122,6 +124,7 @@ class DiffRepository:
         diff_ids: list[str] | None = None,
         include_empty: bool = False,
         proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
         batch_size_limit = int(config.SETTINGS.database.query_size_limit / 10)
@@ -139,6 +142,7 @@ class DiffRepository:
             tracking_id=tracking_id,
             diff_ids=diff_ids,
             proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         if not include_empty:
             diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
@@ -370,6 +374,8 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         filters: dict | None = None,
+        proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
@@ -379,6 +385,8 @@ class DiffRepository:
             from_time=from_time,
             to_time=to_time,
             tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
         return query.get_summary()
@@ -457,6 +465,7 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
             db=self.db,
@@ -466,6 +475,7 @@ class DiffRepository:
             to_time=to_time,
             tracking_id=tracking_id,
             proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
         diff_roots = []

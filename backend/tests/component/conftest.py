@@ -36,6 +36,8 @@ from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
     PermissionDecision,
+    RelationshipCardinality,
+    RelationshipDirection,
 )
 from infrahub.core.initialization import (
     create_branch,
@@ -50,6 +52,7 @@ from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
+    RelationshipSchema,
     SchemaRoot,
     core_models,
 )
@@ -1440,6 +1443,15 @@ async def person_john_main(db: InfrahubDatabase, default_branch: Branch, car_per
 async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Jane", height=180)
+    await person.save(db=db)
+
+    return person
+
+
+@pytest.fixture
+async def person_luffy_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="lUffy", height=174)
     await person.save(db=db)
 
     return person
@@ -2962,3 +2974,67 @@ async def generic_car_person_schema(default_branch: Branch, data_schema) -> None
 
     schema_root = SchemaRoot(**schema)
     registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+
+@pytest.fixture
+async def branch_aware_node_with_agnostic_attrs_schema(default_branch: Branch, data_schema: None) -> SchemaBranch:
+    """Schema with a branch-aware Node that has branch-agnostic attributes and relationships."""
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Device",
+                namespace="Test",
+                default_filter="name__value",
+                branch=BranchSupportType.AWARE,
+                uniqueness_constraints=[["name__value"]],
+                attributes=[
+                    AttributeSchema(
+                        name="name",
+                        kind="Text",
+                        unique=True,
+                        branch=BranchSupportType.AWARE,
+                    ),
+                    AttributeSchema(
+                        name="serial_number",
+                        kind="Text",
+                        optional=True,
+                        branch=BranchSupportType.AGNOSTIC,
+                    ),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="site",
+                        peer="TestSite",
+                        optional=True,
+                        cardinality=RelationshipCardinality.ONE,
+                        direction=RelationshipDirection.OUTBOUND,
+                        branch=BranchSupportType.AGNOSTIC,
+                    ),
+                ],
+            ),
+            NodeSchema(
+                name="Site",
+                namespace="Test",
+                default_filter="name__value",
+                branch=BranchSupportType.AWARE,
+                uniqueness_constraints=[["name__value"]],
+                attributes=[
+                    AttributeSchema(
+                        name="name",
+                        kind="Text",
+                        unique=True,
+                    ),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="devices",
+                        peer="TestDevice",
+                        cardinality=RelationshipCardinality.MANY,
+                        direction=RelationshipDirection.INBOUND,
+                        branch=BranchSupportType.AGNOSTIC,
+                    ),
+                ],
+            ),
+        ],
+    )
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)

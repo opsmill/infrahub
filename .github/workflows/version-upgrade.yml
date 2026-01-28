@@ -37,13 +37,13 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - name: From 1.6.0
-            source_version: 1.6.0
-            neo4j_image: "neo4j:2025.03.0-enterprise"
-            redis_image: "redis:7.2.11"
-            rabbitmq_image: "rabbitmq:3.13.7-management"
-            postgres_image: "postgres:16-alpine"
-            postgres_datadir: "/var/lib/postgresql/data"
+          - name: From 1.7.0
+            source_version: 1.7.0
+            neo4j_image: "neo4j:2025.10.1-enterprise"
+            redis_image: "redis:8.4.0"
+            rabbitmq_image: "rabbitmq:4.2.1-management"
+            postgres_image: "pgautoupgrade/pgautoupgrade:18-alpine"
+            postgres_datadir: "/var/lib/postgresql/18/data"
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners

@@ -2,8 +2,10 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas import StateType
+from prefect.client.schemas.objects import WorkPool
 from prefect.deployments import run_deployment
 from pydantic import ValidationError
 
@@ -29,8 +31,8 @@ class TestWorker(TestWorkerInfrahubAsync):
         default_branch: Branch,
         prefect_client: PrefectClient,
         prefect_worker: InfrahubWorkerAsync,
-        dummy_flows_deployment,
-        client,
+        dummy_flows_deployment: None,
+        client: InfrahubClient,
     ) -> None:
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
@@ -60,8 +62,8 @@ class TestWorker(TestWorkerInfrahubAsync):
         default_branch: Branch,
         prefect_client: PrefectClient,
         prefect_worker: InfrahubWorkerAsync,
-        dummy_flows_deployment,
-        client,
+        dummy_flows_deployment: None,
+        client: InfrahubClient,
     ) -> None:
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
@@ -86,8 +88,8 @@ class TestWorker(TestWorkerInfrahubAsync):
         default_branch: Branch,
         prefect_client: PrefectClient,
         prefect_worker: InfrahubWorkerAsync,
-        dummy_flows_deployment,
-        client,
+        dummy_flows_deployment: None,
+        client: InfrahubClient,
     ) -> None:
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
@@ -119,7 +121,9 @@ class TestWorker(TestWorkerInfrahubAsync):
         stdout, _ = await proc.communicate()
         return stdout.decode().strip() if proc.returncode == 0 else None
 
-    async def test_worker_has_set_git_user_config(self, client, work_pool, git_global_config_env_setting) -> None:
+    async def test_worker_has_set_git_user_config(
+        self, client: InfrahubClient, work_pool: WorkPool, git_global_config_env_setting: None
+    ) -> None:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
         await worker.setup(client=client, metric_port=0)
         user_name = await self._run_git_command("config", "--global", "--get", "user.name")

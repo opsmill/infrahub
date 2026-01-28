@@ -26,7 +26,7 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
         config.SETTINGS.broker.enable = True
 
     @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
+    async def prefect_client(self, prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
         async with get_client(sync_client=False) as client:
             yield client
 

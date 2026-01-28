@@ -4,16 +4,15 @@ import { toast } from "react-toastify";
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { CONTENT_TYPE_CONFIG, DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import type { ArtifactContentType } from "@/entities/artifacts/types";
-
 interface ArtifactFileProps {
   artifactId: string;
   url: string;
-  contentType: ArtifactContentType;
+  contentType: DataViewerContentType;
 }
 
 export const ArtifactFile = ({ artifactId, url, contentType }: ArtifactFileProps) => {

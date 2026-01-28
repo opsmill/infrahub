@@ -66,7 +66,7 @@ class TestWebhookTasks(TestInfrahubApp):
         register_core_schema: SchemaBranch,
         client: InfrahubClient,
         git_repos_source_dir_module_scope: Path,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
@@ -101,7 +101,7 @@ class TestWebhookTasks(TestInfrahubApp):
         await client_repository.save()
 
     @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
+    async def prefect_client(self, prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
         async with get_client(sync_client=False) as client:
             yield client
 
@@ -191,7 +191,7 @@ class TestWebhookTasks(TestInfrahubApp):
         return webhook
 
     async def test_configure_one(
-        self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
+        self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment: None
     ) -> None:
         await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
 
@@ -218,7 +218,7 @@ class TestWebhookTasks(TestInfrahubApp):
         assert len(automations) == 0
 
     async def test_configure_one_inactive_webhook_does_not_create_automation(
-        self, db: InfrahubDatabase, prefect_client: PrefectClient, inactive_webhook: Node, webhook_deployment
+        self, db: InfrahubDatabase, prefect_client: PrefectClient, inactive_webhook: Node, webhook_deployment: None
     ) -> None:
         """Test that configuring an inactive webhook does not create a Prefect automation."""
         await configure_webhook_one(webhook_name="InactiveWebhook", event_data={"node_id": inactive_webhook.id})
@@ -228,7 +228,7 @@ class TestWebhookTasks(TestInfrahubApp):
         assert len(automations) == 0
 
     async def test_configure_one_deactivating_webhook_deletes_automation(
-        self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
+        self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment: None
     ) -> None:
         """Test that deactivating a webhook deletes its Prefect automation."""
         # First, ensure the webhook automation exists
@@ -268,7 +268,7 @@ class TestWebhookTasks(TestInfrahubApp):
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
-        webhook_deployment,
+        webhook_deployment: None,
     ) -> None:
         await configure_webhook_all()
 
@@ -336,7 +336,7 @@ class TestWebhookTasks(TestInfrahubApp):
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
-        webhook_deployment,
+        webhook_deployment: None,
         dependency_provider: Provider,
     ) -> None:
         http = MemoryHTTP()
@@ -361,7 +361,7 @@ class TestWebhookTasks(TestInfrahubApp):
         prefect_client: PrefectClient,
         webhook1: Node,
         webhook2: Node,
-        webhook_deployment,
+        webhook_deployment: None,
         dependency_provider: Provider,
     ) -> None:
         http = MemoryHTTP()

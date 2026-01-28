@@ -388,11 +388,12 @@ async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
     assert criticality.get_attribute(name="color").optional is True
 
 
-async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
-    """Test that SchemaBranch.load_schema() syncs top-level and parameters fields for Text attributes."""
+async def test_schema_branch_reconcile_legacy_attribute_parameters() -> None:
+    """Test that SchemaBranch.load_schema() syncs top-level and parameters fields for attributes with legacy parameters."""
     regex = "abc"
     min_length = 3
     max_length = 5
+    list_regex = "^(ssh|telnet|https)$"
 
     # Test reconciliation when parameters are set (new style)
     SCHEMA_WITH_PARAMS: dict[str, Any] = {
@@ -409,6 +410,12 @@ async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
                         "kind": "Text",
                         "parameters": {"regex": regex, "min_length": min_length, "max_length": max_length},
                     },
+                    {
+                        "name": "protocols",
+                        "kind": "List",
+                        "optional": True,
+                        "parameters": {"regex": list_regex},
+                    },
                 ],
             }
         ]
@@ -424,6 +431,9 @@ async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
     assert desc_attr.parameters.regex == desc_attr.regex == regex
     assert desc_attr.parameters.min_length == desc_attr.min_length == min_length
     assert desc_attr.parameters.max_length == desc_attr.max_length == max_length
+
+    protocols_attr = node.get_attribute(name="protocols")
+    assert protocols_attr.parameters.regex == protocols_attr.regex == list_regex
 
     # Test reconciliation when top-level fields are set (deprecated style)
     SCHEMA_WITH_TOP_LEVEL: dict[str, Any] = {
@@ -442,6 +452,12 @@ async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
                         "min_length": min_length,
                         "max_length": max_length,
                     },
+                    {
+                        "name": "protocols",
+                        "kind": "List",
+                        "optional": True,
+                        "regex": list_regex,
+                    },
                 ],
             }
         ]
@@ -457,6 +473,9 @@ async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
     assert hostname_attr.parameters.regex == hostname_attr.regex == regex
     assert hostname_attr.parameters.min_length == hostname_attr.min_length == min_length
     assert hostname_attr.parameters.max_length == hostname_attr.max_length == max_length
+
+    protocols_attr = node.get_attribute(name="protocols")
+    assert protocols_attr.parameters.regex == protocols_attr.regex == list_regex
 
 
 async def test_schema_branch_add_groups(schema_all_in_one) -> None:

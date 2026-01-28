@@ -3409,6 +3409,9 @@
                                 "$ref": "#/components/schemas/AttributeParameters"
                             },
                             {
+                                "$ref": "#/components/schemas/ListAttributeParameters"
+                            },
+                            {
                                 "$ref": "#/components/schemas/TextAttributeParameters"
                             },
                             {
@@ -3664,6 +3667,9 @@
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/AttributeParameters"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ListAttributeParameters"
                             },
                             {
                                 "$ref": "#/components/schemas/TextAttributeParameters"
@@ -4587,6 +4593,42 @@
                     "type"
                 ],
                 "title": "JSONSchema"
+            },
+            "ListAttributeParameters": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/HashableModelState",
+                        "default": "present"
+                    },
+                    "regex": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Regex",
+                        "description": "Regular expression that each list item value must match if defined",
+                        "update": "validate_constraint"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "ListAttributeParameters",
+                "description": "Parameters for List attributes supporting regex validation on list items."
             },
             "LoggingSettings": {
                 "properties": {

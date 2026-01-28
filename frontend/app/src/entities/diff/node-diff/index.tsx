@@ -39,13 +39,14 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     useDiffTreeInfiniteQuery({
       branchName,
       filters: finalFilters,
+      proposedChangeId: proposedChangesDetails?.id,
     });
 
   useEffect(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;

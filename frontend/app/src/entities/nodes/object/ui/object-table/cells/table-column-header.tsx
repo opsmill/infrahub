@@ -9,8 +9,8 @@ import { classNames } from "@/shared/utils/common";
 
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
-import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
   columnSchema: AttributeSchema | RelationshipSchema;
@@ -29,7 +29,7 @@ export function TableColumnHeader({ columnSchema, className, ...props }: TableCo
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
       <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle, className)} {...props}>
-        <TableColumnHeaderIcon fieldSchema={columnSchema} />
+        <FieldSchemaIcon fieldSchema={columnSchema} />
 
         <span className="mr-2 truncate">{columnSchema.label ?? columnSchema.name}</span>
         <Icon

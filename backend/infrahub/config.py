@@ -271,6 +271,7 @@ class StorageSettings(BaseSettings):
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
+    max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
 
 
 class DatabaseSettings(BaseSettings):
@@ -532,8 +533,8 @@ class HTTPSettings(BaseSettings):
 
         return self
 
-    def get_tls_context(self) -> ssl.SSLContext:
-        if self.tls_insecure:
+    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
+        if self.tls_insecure and not force_verify:
             return ssl._create_unverified_context()
 
         if not self.tls_ca_bundle:

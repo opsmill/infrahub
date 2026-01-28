@@ -256,7 +256,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
     async def update_latest_commit(self) -> None:
         git_repo = self.get_git_repo_main()
-        git_repo.remotes.origin.fetch(tags=True)
+        git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
         try:
             latest_commit = git_repo.git.rev_parse(f"origin/{self.ref}")
         except GitCommandError:
