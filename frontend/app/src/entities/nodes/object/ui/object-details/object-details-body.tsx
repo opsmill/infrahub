@@ -1,6 +1,6 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { FILE_ATTACHMENT_KIND } from "@/shared/config/constants";
+import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { FileAttachmentDetails } from "@/entities/nodes/object/ui/object-details/file-attachment-details";
@@ -27,7 +27,7 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
     return <ErrorScreen message={error.message} />;
   }
 
-  const isFileAttachment = isOfKind(FILE_ATTACHMENT_KIND, objectSchema);
+  const isFileAttachment = isOfKind(FILE_OBJECT_KIND, objectSchema);
 
   return (
     <>

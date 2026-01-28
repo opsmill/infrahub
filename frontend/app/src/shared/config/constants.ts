@@ -25,7 +25,7 @@ export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
 export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
 export const FILE_GENERIC_KIND = "CoreFile";
-export const FILE_ATTACHMENT_KIND = "CustomFileAttachment";
+export const FILE_OBJECT_KIND = "CoreFileObject";
 
 export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
 
