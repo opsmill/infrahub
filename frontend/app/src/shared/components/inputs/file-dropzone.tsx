@@ -10,6 +10,7 @@ export interface FileDropzoneProps {
   accept?: string[];
   maxSize?: number;
   disabled?: boolean;
+  hasError?: boolean;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export function FileDropzone({
   onFileSelect,
   accept,
   disabled,
+  hasError,
   className,
 }: FileDropzoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -45,7 +47,8 @@ export function FileDropzone({
       className={classNames(
         "flex w-full flex-col items-center justify-center rounded-md border p-6 transition-colors",
         isDragOver && "border-custom-blue-500 bg-gray-100",
-        !isDragOver && "border-gray-300 hover:border-custom-blue-500",
+        !isDragOver && !hasError && "border-gray-300 hover:border-custom-blue-500",
+        hasError && "border-red-500",
         disabled && "cursor-not-allowed opacity-50",
         className
       )}

@@ -30,11 +30,12 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
   onCancel?: () => void;
   submitLabel?: string;
+  isSubmitDisabled?: boolean;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
 }
 
 const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
-  ({ fields, onCancel, submitLabel, isBulkUpdate, ...props }, ref) => {
+  ({ fields, onCancel, submitLabel, isSubmitDisabled, isBulkUpdate, ...props }, ref) => {
     const formDefaultValues = fields.reduce(
       (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
       {}
@@ -53,7 +54,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
             </Button>
           )}
 
-          <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
+          <FormSubmit disabled={isSubmitDisabled}>{submitLabel ?? "Save"}</FormSubmit>
         </div>
       </Form>
     );
