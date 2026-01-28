@@ -42,7 +42,7 @@ export function FileAttachmentDetails({
   const storageId = objectData.storage_id?.value;
   const fileName = objectData.file_name?.value || objectData.name?.value || "Unnamed file";
   const fileSize = objectData.file_size?.value;
-  const contentType = objectData.content_type?.value;
+  const contentType = objectData.file_type?.value;
 
   return (
     <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
@@ -52,6 +52,7 @@ export function FileAttachmentDetails({
           objectData={objectData}
           permission={permission}
           className="shrink-0 grow overflow-x-hidden p-0"
+          excludeAttributes={["file_name", "file_size", "file_type", "storage_id", "checksum"]}
         />
 
         <FilePreviewCard

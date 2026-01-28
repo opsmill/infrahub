@@ -20,16 +20,28 @@ import type {
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
+const DEFAULT_EXCLUDED_RELATIONSHIPS = ["member_of_groups"];
+const DEFAULT_EXCLUDED_RELATIONSHIP_KINDS = ["Profile"];
+
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
+  /** Attribute names to exclude from display */
+  excludeAttributes?: string[];
+  /** Relationship names to exclude from display */
+  excludeRelationships?: string[];
+  /** Relationship kinds to exclude from display */
+  excludeRelationshipKinds?: string[];
 }
 
 export function ObjectDataDisplay({
   objectSchema,
   objectData,
   permission,
+  excludeAttributes = [],
+  excludeRelationships = DEFAULT_EXCLUDED_RELATIONSHIPS,
+  excludeRelationshipKinds = DEFAULT_EXCLUDED_RELATIONSHIP_KINDS,
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
@@ -55,10 +67,14 @@ export function ObjectDataDisplay({
     setShowMetaEditModal(true);
   };
 
-  const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
+  const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []).filter(
+    (attr) => !excludeAttributes.includes(attr.name)
+  );
   const relationships = getRelationshipsVisibleInDetailedView(
     objectSchema.relationships ?? []
-  ).filter((rel) => rel.name !== "member_of_groups" && rel.kind !== "Profile");
+  ).filter(
+    (rel) => !excludeRelationships.includes(rel.name) && !excludeRelationshipKinds.includes(rel.kind)
+  );
   const fields = sortByOrderWeight([...attributes, ...relationships]);
 
   return (
