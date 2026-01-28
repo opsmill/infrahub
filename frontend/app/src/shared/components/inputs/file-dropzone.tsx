@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import type { DropEvent } from "react-aria";
 import { DropZone, FileTrigger, isFileDropItem, Pressable } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
@@ -23,7 +22,7 @@ export function FileDropzone({
 }: FileDropzoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleDrop = async (e: DropEvent) => {
+  const handleDrop: React.ComponentProps<typeof DropZone>["onDrop"] = async (e) => {
     const fileItem = e.items.find(isFileDropItem);
     if (fileItem) {
       const file = await fileItem.getFile();
