@@ -27,6 +27,13 @@ export type CoreFileFormData = Record<string, FormFieldValue> & {
   file?: File | null;
 };
 
+/** Existing file info extracted from currentObject during edit */
+export interface ExistingFileInfo {
+  fileName: string;
+  fileSize?: number;
+  contentType?: string;
+}
+
 export type CoreFileFormProps = {
   className?: string;
   schema: NodeSchema | ProfileSchema;
@@ -38,6 +45,28 @@ export type CoreFileFormProps = {
   onSuccess?: (newObject: NodeCore) => void;
   onCancel?: () => void;
 };
+
+/**
+ * Extracts existing file information from currentObject attributes.
+ * Used during edit mode to show current file details.
+ */
+function getExistingFileInfo(
+  currentObject?: Record<string, AttributeType | RelationshipType>
+): ExistingFileInfo | null {
+  if (!currentObject) return null;
+
+  const fileName =
+    (currentObject.file_name as { value?: string })?.value ||
+    (currentObject.name as { value?: string })?.value;
+
+  if (!fileName) return null;
+
+  return {
+    fileName,
+    fileSize: (currentObject.file_size as { value?: number })?.value,
+    contentType: (currentObject.file_type as { value?: string })?.value,
+  };
+}
 
 export function CoreFileForm({
   className,
@@ -54,6 +83,8 @@ export function CoreFileForm({
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const existingFile = getExistingFileInfo(currentObject);
 
   const { data: numberPools, isPending } = useGetNumberPools({
     objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
@@ -94,14 +125,20 @@ export function CoreFileForm({
         },
         {
           onSuccess: async (newNode) => {
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-              toastId: `alert-success-${schema?.name}-created`,
-            });
+            toast(
+              <Alert
+                type={ALERT_TYPES.SUCCESS}
+                message={`${schema?.name} ${isUpdate ? "updated" : "created"}`}
+              />,
+              {
+                toastId: `alert-success-${schema?.name}-${isUpdate ? "updated" : "created"}`,
+              }
+            );
 
             if (onSuccess) await onSuccess(newNode);
           },
           onError: (error) => {
-            console.error("An error occurred while creating the file: ", error);
+            console.error("An error occurred while saving the file: ", error);
           },
         }
       );
@@ -113,12 +150,15 @@ export function CoreFileForm({
     }
   }
 
+  // File is required only for create, not for update (existing file is kept if not replaced)
+  const fileValidationRules = isUpdate ? {} : { required: "File is required" };
+
   return (
     <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
       <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className="space-y-4">
         <FormField
           name="file"
-          rules={{ required: "File is required" }}
+          rules={fileValidationRules}
           render={({ field, fieldState }) => {
             const selectedFile = field.value as File | null;
 
@@ -138,15 +178,22 @@ export function CoreFileForm({
               event.target.value = "";
             };
 
+            // Show selected file (new upload) or existing file (during edit)
+            const showFileInfo = selectedFile || (isUpdate && existingFile);
+            const displayFileName = selectedFile?.name || existingFile?.fileName || "";
+            const displayFileSize = selectedFile?.size ?? existingFile?.fileSize;
+            const displayContentType =
+              (selectedFile?.type || undefined) ?? existingFile?.contentType;
+
             return (
               <div className="space-y-2">
-                <LabelFormField label="File" required />
-                {selectedFile ? (
+                <LabelFormField label="File" required={!isUpdate} />
+                {showFileInfo ? (
                   <>
                     <FileInfoCard
-                      fileName={selectedFile.name}
-                      fileSize={selectedFile.size}
-                      contentType={selectedFile.type || undefined}
+                      fileName={displayFileName}
+                      fileSize={displayFileSize}
+                      contentType={displayContentType}
                       onReplace={handleReplaceFile}
                     />
                     <input
