@@ -10,6 +10,7 @@ import type { FormFieldValue } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -19,6 +20,7 @@ import { classNames } from "@/shared/utils/common";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
@@ -68,6 +70,15 @@ function getExistingFileInfo(
   };
 }
 
+/**
+ * Gets the object ID from currentObject for update mutations.
+ */
+function getObjectId(
+  currentObject?: Record<string, AttributeType | RelationshipType>
+): string | undefined {
+  return (currentObject?.id as { value?: string })?.value;
+}
+
 export function CoreFileForm({
   className,
   currentObject,
@@ -82,9 +93,11 @@ export function CoreFileForm({
   const auth = useAuth();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const existingFile = getExistingFileInfo(currentObject);
+  const objectId = getObjectId(currentObject);
 
   const { data: numberPools, isPending } = useGetNumberPools({
     objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
@@ -110,43 +123,84 @@ export function CoreFileForm({
     ...Object.fromEntries(fields.map((field) => [field.name, field.defaultValue])),
   };
 
-  async function onSubmit(formData: CoreFileFormData) {
+  async function onSubmitCreate(formData: CoreFileFormData) {
     const { file, ...rest } = formData;
 
-    try {
-      const newObject = getCreateMutationFromFormData(fields, rest, objectTemplate?.id);
+    const newObject = getCreateMutationFromFormData(fields, rest, objectTemplate?.id);
+    const hasNewFile = file instanceof File;
 
-      await createObject.mutateAsync(
-        {
-          objectKind: schema.kind as string,
-          data: newObject,
-          profileIds: profiles?.map((profile) => profile.id),
-          file: file ?? undefined,
+    await createObject.mutateAsync(
+      {
+        objectKind: schema.kind as string,
+        data: newObject,
+        profileIds: profiles?.map((profile) => profile.id),
+        ...(hasNewFile && { file }),
+      },
+      {
+        onSuccess: async (newNode) => {
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+            toastId: `alert-success-${schema?.name}-created`,
+          });
+
+          if (onSuccess) await onSuccess(newNode);
         },
-        {
-          onSuccess: async (newNode) => {
-            toast(
-              <Alert
-                type={ALERT_TYPES.SUCCESS}
-                message={`${schema?.name} ${isUpdate ? "updated" : "created"}`}
-              />,
-              {
-                toastId: `alert-success-${schema?.name}-${isUpdate ? "updated" : "created"}`,
-              }
-            );
+        onError: (error) => {
+          console.error("An error occurred while creating the file: ", error);
+        },
+      }
+    );
+  }
 
-            if (onSuccess) await onSuccess(newNode);
-          },
-          onError: (error) => {
-            console.error("An error occurred while saving the file: ", error);
-          },
+  async function onSubmitUpdate(formData: CoreFileFormData) {
+    const { file, ...rest } = formData;
+
+    const updatedData = getUpdateMutationFromFormData({ fields, formData: rest });
+    const hasNewFile = file instanceof File;
+
+    if (objectId) {
+      updatedData.id = objectId;
+    }
+
+    await updateObject.mutateAsync(
+      {
+        objectKind: schema.kind as string,
+        data: updatedData,
+        profileIds: profiles?.map((profile) => profile.id),
+        ...(hasNewFile && { file }),
+      },
+      {
+        onSuccess: async (updatedNode) => {
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+            toastId: `alert-success-${schema?.name}-updated`,
+          });
+
+          if (onSuccess) await onSuccess(updatedNode);
+        },
+        onError: (error) => {
+          console.error("An error occurred while updating the file: ", error);
+        },
+      }
+    );
+  }
+
+  async function onSubmit(formData: CoreFileFormData) {
+    try {
+      if (isUpdate) {
+        await onSubmitUpdate(formData);
+      } else {
+        await onSubmitCreate(formData);
+      }
+    } catch (error) {
+      console.error("An error occurred during file operation: ", error);
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={`Failed to ${isUpdate ? "update" : "upload"} file`}
+        />,
+        {
+          toastId: "alert-error-file-operation",
         }
       );
-    } catch (error) {
-      console.error("An error occurred during file upload: ", error);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to upload file" />, {
-        toastId: "alert-error-upload",
-      });
     }
   }
 
@@ -160,7 +214,7 @@ export function CoreFileForm({
           name="file"
           rules={fileValidationRules}
           render={({ field, fieldState }) => {
-            const selectedFile = field.value as File | null;
+            const selectedFile = field.value instanceof File ? field.value : null;
 
             const handleFileSelect = (file: File) => {
               field.onChange(file);
@@ -178,12 +232,13 @@ export function CoreFileForm({
               event.target.value = "";
             };
 
-            // Show selected file (new upload) or existing file (during edit)
-            const showFileInfo = selectedFile || (isUpdate && existingFile);
-            const displayFileName = selectedFile?.name || existingFile?.fileName || "";
+            const hasSelectedFile = selectedFile !== null;
+            const hasExistingFile = isUpdate && existingFile !== null;
+            const showFileInfo = hasSelectedFile || hasExistingFile;
+
+            const displayFileName = selectedFile?.name ?? existingFile?.fileName ?? "";
             const displayFileSize = selectedFile?.size ?? existingFile?.fileSize;
-            const displayContentType =
-              (selectedFile?.type || undefined) ?? existingFile?.contentType;
+            const displayContentType = selectedFile?.type || existingFile?.contentType;
 
             return (
               <div className="space-y-2">
