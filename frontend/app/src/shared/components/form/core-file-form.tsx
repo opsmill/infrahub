@@ -2,7 +2,6 @@ import { EyeIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 
-import { apiClient } from "@/shared/api/rest/client";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -73,50 +72,18 @@ export function CoreFileForm({
     parentData,
   });
 
-  async function uploadFile(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await apiClient.POST("/api/storage/upload/file", {
-      // @ts-expect-error - FormData type mismatch with generated types
-      body: formData,
-    });
-
-    if (response.error) {
-      throw new Error("Failed to upload file");
-    }
-
-    return response.data.identifier;
-  }
-
   async function onSubmitCreate(formData: Record<string, FormFieldValue>) {
     setIsUploading(true);
 
     try {
-      let storageId: string | undefined;
-
-      if (selectedFile) {
-        storageId = await uploadFile(selectedFile);
-      }
-
       const newObject = getCreateMutationFromFormData(fields, formData, objectTemplate?.id);
-
-      // Add file-specific attributes
-      const fileData = {
-        ...newObject,
-        ...(storageId && { storage_id: { value: storageId } }),
-        ...(selectedFile && {
-          file_name: { value: selectedFile.name },
-          file_size: { value: selectedFile.size },
-          content_type: { value: selectedFile.type || "application/octet-stream" },
-        }),
-      };
 
       await createObject.mutateAsync(
         {
           objectKind: schema.kind as string,
-          data: fileData,
+          data: newObject,
           profileIds: profiles?.map((profile) => profile.id),
+          file: selectedFile ?? undefined,
         },
         {
           onSuccess: async (newNode) => {
