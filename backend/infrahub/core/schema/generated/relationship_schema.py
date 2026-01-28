@@ -95,7 +95,7 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     branch: BranchSupportType | None = Field(
         default=None,
-        description="Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
+        description="Type of branch support for the relationship, if not defined it will be determine based both peers.",
         json_schema_extra={"update": "not_supported"},
     )
     inherited: bool = Field(
