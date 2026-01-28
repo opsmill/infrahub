@@ -39,7 +39,7 @@ swap:
   (?<![\.|/|#])[Rr]abbitmq[\.!]?\s: RabbitMQ
   relatioinship: relationship
   Relatioinship: Relationship
-  (?<![\.|/|#])resource manager[\.!]?\s: Resource Manager
+  (?<![\.|/|#])[Rr]esource [Mm]anager[\.!]?\s: Resource Manager
   (?<![\.|/|#])[Rr]esource [Mm]anagers[\.!]?\s: Resource Manager
   (?:[^/]terraform): Terraform
   (?<![\.|/|#])transformation[\.!]?\s: Transformation
