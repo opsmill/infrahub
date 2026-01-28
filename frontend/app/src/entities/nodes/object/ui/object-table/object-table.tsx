@@ -27,6 +27,7 @@ export const ObjectTable = () => {
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columns={columns}
+        count={count}
         data={flatData}
         isLoading={isPending || isFetchingNextPage}
         renderEmpty={() => <ObjectTableEmpty schema={selectedSchema} />}

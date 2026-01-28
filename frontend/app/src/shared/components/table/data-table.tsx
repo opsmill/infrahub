@@ -8,6 +8,10 @@ import {
 } from "@tanstack/react-table";
 import React from "react";
 
+import { Row } from "@/shared/components/container";
+import { cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
+import { classNames } from "@/shared/utils/common";
+
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import {
@@ -19,6 +23,7 @@ import type { NodeCore } from "@/entities/nodes/types";
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
+  count?: number;
   data: Array<T>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
@@ -33,6 +38,7 @@ const defaultGridTemplateColumns = (columnCount: number) =>
 export function DataTable<T extends NodeCore>({
   columnOrder,
   columns,
+  count,
   data,
   isLoading,
   renderEmpty,
@@ -101,6 +107,24 @@ export function DataTable<T extends NodeCore>({
       {!isLoading && allRows.length === 0 && renderEmpty?.()}
 
       {isLoading && <ObjectTableSkeleton headerCount={allHeaders.length} />}
+
+      {!!count &&
+        Array.from({ length: allHeaders.length }).map((_, index) => (
+          <div
+            key={index}
+            className={classNames(cellsStyle, cellFooterStyle, index === 0 && "left-0 z-10")}
+          >
+            {index === 0 && (
+              <>
+                <Row className="gap-1">
+                  <span className="font-medium">{count}</span>
+                  <span className="text-gray-500">count{count && count > 1 && "s"}</span>
+                </Row>
+                <div className="pointer-events-none absolute top-0 -right-4 bottom-0 w-4 bg-gradient-to-r from-gray-500/10" />
+              </>
+            )}
+          </div>
+        ))}
     </div>
   );
 }
