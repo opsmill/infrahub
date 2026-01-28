@@ -8,15 +8,15 @@ import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import {
-    ACCOUNT_GROUP_OBJECT,
-    ACCOUNT_OBJECT,
-    ACCOUNT_ROLE_OBJECT,
-    FILE_OBJECT_KIND,
-    GLOBAL_PERMISSION_OBJECT,
-    NUMBER_POOL_OBJECT,
-    OBJECT_PERMISSION_OBJECT,
-    READONLY_REPOSITORY_KIND,
-    REPOSITORY_KIND,
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+  FILE_OBJECT_KIND,
+  GLOBAL_PERMISSION_OBJECT,
+  NUMBER_POOL_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+  READONLY_REPOSITORY_KIND,
+  REPOSITORY_KIND,
 } from "@/shared/config/constants";
 
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -36,8 +36,8 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import {
-    NODE_TRIGGER_ATTRIBUTE_MATCH,
-    NODE_TRIGGER_RELATIONSHIP_MATCH,
+  NODE_TRIGGER_ATTRIBUTE_MATCH,
+  NODE_TRIGGER_RELATIONSHIP_MATCH,
 } from "@/entities/triggers/constants";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
