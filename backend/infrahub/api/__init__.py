@@ -14,6 +14,7 @@ from infrahub.api import (
     auth,
     diff,
     file,
+    file_object,
     internal,
     menu,
     oauth2,
@@ -35,6 +36,7 @@ router.include_router(artifact.router)
 router.include_router(auth.router)
 router.include_router(diff.router)
 router.include_router(file.router)
+router.include_router(file_object.router)
 router.include_router(internal.router)
 router.include_router(menu.router)
 router.include_router(oauth2.router)
