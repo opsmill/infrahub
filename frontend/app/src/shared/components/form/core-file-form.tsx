@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { toast } from "react-toastify";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FileInfoCard } from "@/shared/components/file/file-info-card";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
@@ -16,11 +15,17 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormField, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+
+export type CoreFileFormData = Record<string, FormFieldValue> & {
+  file?: File | null;
+};
 
 export type CoreFileFormProps = {
   className?: string;
@@ -69,12 +74,12 @@ export function CoreFileForm({
     parentData,
   });
 
-  const formDefaultValues: Record<string, unknown> = { file: null };
-  for (const field of fields) {
-    formDefaultValues[field.name] = field.defaultValue;
-  }
+  const formDefaultValues: Record<string, unknown> = {
+    file: null,
+    ...Object.fromEntries(fields.map((field) => [field.name, field.defaultValue])),
+  };
 
-  async function onSubmit(formData: Record<string, FormFieldValue> & { file: File | null }) {
+  async function onSubmit(formData: CoreFileFormData) {
     const { file, ...rest } = formData;
 
     try {
