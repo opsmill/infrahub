@@ -143,30 +143,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/CoreFileObject/{storage_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download File Object
-         * @description Download a file from storage by its storage_id.
-         *
-         *     Requires `VIEW` permission on the FileObject node.
-         *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
-         *     filename.
-         */
-        get: operations["download_file_object_api_CoreFileObject__storage_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -451,6 +427,30 @@ export interface paths {
         put?: never;
         /** Upload File */
         post: operations["upload_file_api_storage_upload_file_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/CoreFileObject/{storage_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download File Object
+         * @description Download a file from storage by its storage_id.
+         *
+         *     Requires `VIEW` permission on the FileObject node.
+         *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+         *     filename.
+         */
+        get: operations["download_file_object_api_storage_CoreFileObject__storage_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2628,42 +2628,6 @@ export interface operations {
             };
         };
     };
-    download_file_object_api_CoreFileObject__storage_id__get: {
-        parameters: {
-            query?: {
-                /** @description Name of the branch to use for the query */
-                branch?: string | null;
-                /** @description Time to use for the query, in absolute or relative format */
-                at?: string | null;
-            };
-            header?: never;
-            path: {
-                storage_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description File content with Content-Type matching the file's MIME type */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": string;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_config_api_config_get: {
         parameters: {
             query?: never;
@@ -3253,6 +3217,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_object_api_storage_CoreFileObject__storage_id__get: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                storage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content with Content-Type matching the file's MIME type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
             /** @description Validation Error */

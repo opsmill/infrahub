@@ -25,7 +25,7 @@ The endpoint uses `storage_id` (not node ID) because:
 
 ### API Module
 
-- [x] Create `backend/infrahub/api/file_object.py`
+- [x] Create `backend/infrahub/api/storage/file_object.py`
   - [x] Define router with prefix `/CoreFileObject`
   - [x] Implement `GET /{storage_id}` endpoint (binary download)
     - [x] Look up FileObject node by storage_id using `NodeManager.query()`
@@ -43,9 +43,11 @@ The endpoint uses `storage_id` (not node ID) because:
 
 ### Router Registration
 
-- [x] Modify `backend/infrahub/api/__init__.py`
-  - [x] Import `file_object` module
-  - [x] Register `file_object.router`
+- [x] Create `backend/infrahub/api/storage/__init__.py`
+  - [x] Import `file_object` module from `infrahub.api.storage`
+  - [x] Import `router` from `storage.py`
+  - [x] Include `file_object.router` as a sub-router (routes appear under `/storage` namespace)
+
 
 ### Tests
 
@@ -86,7 +88,9 @@ The endpoint uses `storage_id` (not node ID) because:
 
 ## Reference Files
 
-- `backend/infrahub/api/file_object.py` - File object download endpoint with filename sanitization
+- `backend/infrahub/api/storage/file_object.py` - File object download endpoint with filename sanitization
+- `backend/infrahub/api/storage/storage.py` - Legacy storage endpoints
+- `backend/infrahub/api/storage/__init__.py` - Storage module router aggregation
 - `backend/infrahub/storage.py` - Storage layer with `retrieve_binary()` method
 - `backend/tests/adapters/storage.py` - DummyObjectStorage with `retrieve_binary()`
 - `backend/tests/unit/storage/test_retrieve.py` - Unit tests for storage retrieval methods
@@ -100,7 +104,7 @@ The endpoint uses `storage_id` (not node ID) because:
 ### Download File
 
 ```
-GET /api/CoreFileObject/{storage_id}
+GET /api/storage/CoreFileObject/{storage_id}
 
 Response 200:
 Content-Type: <file_type from FileObject node, e.g., application/pdf, image/png>
@@ -146,4 +150,4 @@ The filename from the FileObject node is sanitized before being included in the 
 - Query returns `storage_id`, `file_name`, `file_type`, etc.
 
 **REST (download only):**
-- `GET /api/CoreFileObject/{storage_id}` → downloads file binary (requires VIEW permission)
+- `GET /api/storage/CoreFileObject/{storage_id}` → downloads file binary (requires VIEW permission)

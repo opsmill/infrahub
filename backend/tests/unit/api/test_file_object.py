@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from infrahub.api.file_object import build_content_disposition, sanitize_filename
+from infrahub.api.storage.file_object import build_content_disposition, sanitize_filename
 
 
 def test_sanitize_simple_filename() -> None:
