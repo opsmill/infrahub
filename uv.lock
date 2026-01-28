@@ -1434,6 +1434,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "prefect" },
     { name = "prefect-redis" },
+    { name = "puremagic" },
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -1517,8 +1518,9 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.39.0" },
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.60b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.60b0" },
-    { name = "prefect", specifier = "==3.6.7" },
+    { name = "prefect", specifier = "==3.6.13" },
     { name = "prefect-redis", specifier = "==0.2.8" },
+    { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.12,<2.13" },
     { name = "pydantic-settings", specifier = ">=2.8,<2.9" },
@@ -2370,20 +2372,6 @@ wheels = [
 ]
 
 [[package]]
-name = "opentelemetry-exporter-prometheus"
-version = "0.60b0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-sdk" },
-    { name = "prometheus-client" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/93/da/8b81ff9d045fae7cac1e8bbf7ad59bf113d1008e483fc03e2cd3a0e620a3/opentelemetry_exporter_prometheus-0.60b0.tar.gz", hash = "sha256:c6ae33e52cdd1dbfed1f7436935df94eb03c725b57322026d04e6fbc37108e6e", size = 14975, upload-time = "2025-12-03T13:20:01.826Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8b/18/18b662a6ecb8252db9e7457fd3c836729bf28b055b60505cbd4763ea9300/opentelemetry_exporter_prometheus-0.60b0-py3-none-any.whl", hash = "sha256:4f616397040257fae4c5e5272b57b47c13372e3b7f0f2db2427fd4dbe69c60b5", size = 13017, upload-time = "2025-12-03T13:19:40.866Z" },
-]
-
-[[package]]
 name = "opentelemetry-instrumentation"
 version = "0.60b0"
 source = { registry = "https://pypi.org/simple" }
@@ -2809,7 +2797,7 @@ wheels = [
 
 [[package]]
 name = "prefect"
-version = "3.6.7"
+version = "3.6.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -2857,6 +2845,7 @@ dependencies = [
     { name = "rfc3339-validator" },
     { name = "rich" },
     { name = "ruamel-yaml" },
+    { name = "ruamel-yaml-clib", marker = "platform_python_implementation == 'CPython'" },
     { name = "semver" },
     { name = "sniffio" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -2867,9 +2856,9 @@ dependencies = [
     { name = "websockets" },
     { name = "whenever", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/d4/610f0a5dbe5d5d219e2a6c4272887fa3f54e4c7886b27ddb82721e821d19/prefect-3.6.7.tar.gz", hash = "sha256:e78c39a8fa9d899047b2d888768f52806baec098392eaa982fb66ad00300e1e4", size = 5652431, upload-time = "2025-12-18T20:30:51.877Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/46/139cfabbc729f13d4b6df74b56c01ddcbb1118936b312b2ef82e9826d8bc/prefect-3.6.13.tar.gz", hash = "sha256:ee0b39fa390c204ccb3762be00a729edd45c5aa54e0245951f8682f92bfb016b", size = 10811400, upload-time = "2026-01-23T04:17:29.594Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/3d/68243e3e219d765a3012a1e396b3ea8566c3ea2b60283e27327c0f4415e9/prefect-3.6.7-py3-none-any.whl", hash = "sha256:9953b690b340d8f79eaff776fe8a2b714e1055e54116b00177f906cd76cd760d", size = 6181057, upload-time = "2025-12-18T20:30:49.669Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/8e/06f2e0d795b0ecc97047e4cef9192b192715531a9097ee393ae5d71ca3a8/prefect-3.6.13-py3-none-any.whl", hash = "sha256:a3343d69308f0dc1b73a87e533d424657f44cbff07b67cd53e5881a2564c14ca", size = 11535287, upload-time = "2026-01-23T04:17:27.018Z" },
 ]
 
 [[package]]
@@ -3035,6 +3024,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a578f1783a10da6df098ceaa4a57bbeaa96a6c0352786b/pure_eval-0.2.3.tar.gz", hash = "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42", size = 19752, upload-time = "2024-07-21T12:58:21.801Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0", size = 11842, upload-time = "2024-07-21T12:58:20.04Z" },
+]
+
+[[package]]
+name = "puremagic"
+version = "1.30"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/dd/7f/9998706bc516bdd664ccf929a1da6c6e5ee06e48f723ce45aae7cf3ff36e/puremagic-1.30.tar.gz", hash = "sha256:f9ff7ac157d54e9cf3bff1addfd97233548e75e685282d84ae11e7ffee1614c9", size = 314785, upload-time = "2025-07-04T18:48:36.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/ed/1e347d85d05b37a8b9a039ca832e5747e1e5248d0bd66042783ef48b4a37/puremagic-1.30-py3-none-any.whl", hash = "sha256:5eeeb2dd86f335b9cfe8e205346612197af3500c6872dffebf26929f56e9d3c1", size = 43304, upload-time = "2025-07-04T18:48:34.801Z" },
 ]
 
 [[package]]
@@ -3246,14 +3244,12 @@ wheels = [
 
 [[package]]
 name = "pydocket"
-version = "0.16.0"
+version = "0.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
     { name = "fakeredis", extra = ["lua"] },
     { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-prometheus" },
-    { name = "opentelemetry-instrumentation" },
     { name = "prometheus-client" },
     { name = "py-key-value-aio", extra = ["memory", "redis"] },
     { name = "python-json-logger" },
@@ -3262,9 +3258,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/d3/ff57fb8ba8180c621b17270a272ee8821a64962887c42962c5a342ab82a9/pydocket-0.16.0.tar.gz", hash = "sha256:675e829a7ea6e978fdbbe0ace342f24c8ec7cf8ed5980694215418e59ff86005", size = 286316, upload-time = "2025-12-18T15:14:53.139Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/46/d61842164f7f623c24927dd67b4e19e3b52b6b5127401ab959a0d8273fe4/pydocket-0.17.1.tar.gz", hash = "sha256:de5b39241f728c2c0abbcb419b0cd3a5eab3ed48e228c4c7add15b02e234a68c", size = 323972, upload-time = "2026-01-22T16:59:25.077Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/74/dcf56132e03a24e2591c5f2391902c871e5f1248e0fc175b9f1792e4afaf/pydocket-0.16.0-py3-none-any.whl", hash = "sha256:3d7d0a805bcb68a3a03d96d3c6ba8e607584ed14b0fe3879333a8fff652dda92", size = 61064, upload-time = "2025-12-18T15:14:51.506Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/cc/019dbc2646dc638caead6349f7427a396257c97b7edbf60dedb52b5ed93d/pydocket-0.17.1-py3-none-any.whl", hash = "sha256:0902c08e7879a9ba8ebcdee2503541bf26dc203d94cab1c2e48d18567383f505", size = 87371, upload-time = "2026-01-22T16:59:23.915Z" },
 ]
 
 [[package]]

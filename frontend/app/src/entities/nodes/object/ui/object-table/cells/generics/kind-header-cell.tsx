@@ -17,7 +17,7 @@ export function KindHeaderCell({ schema, className, ...props }: KindHeaderCellPr
       data-testid="kind-header-cell"
       {...props}
     >
-      <Icon icon="mdi:code-json" className="text-stone-400" />
+      <Icon icon="mdi:code-json" />
       <span className="mr-2">Kind</span>
     </div>
   );

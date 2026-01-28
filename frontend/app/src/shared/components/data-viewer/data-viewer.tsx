@@ -8,16 +8,15 @@ import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-vie
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
-import type { ArtifactContentType } from "@/entities/artifacts/types";
-
 import { DataViewerCopyButton } from "./data-viewer-copy-button";
 import { DataViewerDownloadButton } from "./data-viewer-download-button";
+import type { DataViewerContentType } from "./types";
 
 export interface DataViewerProps {
   title: string;
   data: string;
   fileName: string;
-  contentType?: ArtifactContentType;
+  contentType?: DataViewerContentType;
   actions?: ReactNode;
   className?: string;
 }
@@ -49,7 +48,7 @@ export function DataViewer({
 }
 
 export const CONTENT_TYPE_CONFIG: Record<
-  ArtifactContentType,
+  DataViewerContentType,
   {
     extension: string;
     label: string;
@@ -60,6 +59,7 @@ export const CONTENT_TYPE_CONFIG: Record<
   "text/markdown": { extension: "md", language: "markdown", label: "Markdown" },
   "application/yaml": { extension: "yaml", language: "yaml", label: "YAML" },
   "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
+  "application/graphql": { extension: "graphql", language: "graphql", label: "GraphQL" },
   "image/svg+xml": { extension: "svg", language: "svg", label: "SVG" },
   "text/plain": { extension: "txt", language: "text", label: "text" },
   "application/xml": { extension: "xml", language: "xml", label: "XML" },
@@ -70,7 +70,7 @@ function FileContent({
   contentType = "text/plain",
   fileContent,
 }: {
-  contentType?: ArtifactContentType;
+  contentType?: DataViewerContentType;
   fileContent: string;
 }) {
   const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];

@@ -16,6 +16,7 @@ class FixGlobalBranchLevelQuery(Query):
     name = "fix_global_branch_level"
     type: QueryType = QueryType.WRITE
     insert_return = False
+    raise_error_if_empty = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME

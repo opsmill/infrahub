@@ -55,7 +55,10 @@ from .m050_backfill_vertex_metadata import Migration050
 from .m051_subtract_branched_from_microsecond import Migration051
 from .m052_fix_global_branch_level import Migration052
 from .m053_fix_branch_level_zero import Migration053
-from .m054_set_coreproposedchange_created_by_on_node import Migration054
+from .m054_cleanup_orphaned_nodes import Migration054
+from .m055_remove_webhook_validate_certificates_default import Migration055
+from .m056_set_coreproposedchange_created_by_on_node import Migration056
+from .m057_link_proposed_changes_to_diff_roots import Migration057
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -116,6 +119,9 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration052,
     Migration053,
     Migration054,
+    Migration055,
+    Migration056,
+    Migration057,
 ]
 
 
