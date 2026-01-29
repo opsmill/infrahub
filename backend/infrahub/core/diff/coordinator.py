@@ -150,7 +150,7 @@ class DiffCoordinator:
                 await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
 
                 roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
-                log.info(
+                log.error(
                     f"update_branch_diff returning (lock already held): "
                     f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, "
                     f"proposed_change_id={proposed_change_id}, "
@@ -177,7 +177,7 @@ class DiffCoordinator:
                 await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
 
                 roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
-                log.info(
+                log.error(
                     f"update_branch_diff returning (branch merged/rebased): "
                     f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, "
                     f"proposed_change_id={proposed_change_id}, "
@@ -207,7 +207,7 @@ class DiffCoordinator:
             log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
 
             roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
-            log.info(
+            log.error(
                 f"update_branch_diff returning (success): "
                 f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, "
                 f"proposed_change_id={proposed_change_id}, "
@@ -293,7 +293,7 @@ class DiffCoordinator:
             log.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
 
             roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
-            log.info(
+            log.error(
                 f"recalculate returning: "
                 f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, diff_id={diff_id}, "
                 f"roots_metadata={[repr(r) for r in roots_metadata]}"
