@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/proposed-changes checks", () => {
   test.describe.configure({ mode: "serial" });
@@ -38,6 +39,25 @@ test.describe("/proposed-changes checks", () => {
       await expect(checksSummary.getByText("Schema")).toBeVisible();
       await expect(checksSummary.getByText("User")).toBeVisible();
       await expect(page.url()).toContain("pr_tab=checks");
+
+      // Reload until both Data Integrity and Schema Integrity validators are visible in the list
+      while (true) {
+        await expect(page.getByTestId("checks-summary")).toBeVisible();
+
+        const dataIntegrityVisible = await page.getByText("Data Integrity").first().isVisible();
+        const schemaIntegrityVisible = await page.getByText("Schema Integrity").first().isVisible();
+
+        if (dataIntegrityVisible && schemaIntegrityVisible) {
+          break;
+        }
+
+        await page.waitForTimeout(2000);
+        await page.reload();
+      }
+      // Reload page to refresh the animations and wait for them to finish
+      await page.reload();
+      await page.waitForTimeout(3000);
+      await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_checks");
     });
   });
 
