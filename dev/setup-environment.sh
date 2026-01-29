@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Infrahub Development Environment Setup Script
 # This script sets up the development environment for the Infrahub project
 
