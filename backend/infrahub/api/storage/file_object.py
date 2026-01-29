@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.permissions import PermissionManager
 
-router = APIRouter(prefix=f"/{InfrahubKind.FILEOBJECT}")
+router = APIRouter(prefix="/files")
 
 
 def sanitize_filename(filename: str) -> tuple[str, str]:

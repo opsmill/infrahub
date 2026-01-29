@@ -433,7 +433,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/storage/CoreFileObject/{storage_id}": {
+    "/api/storage/files/{storage_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -448,7 +448,7 @@ export interface paths {
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
          */
-        get: operations["download_file_object_api_storage_CoreFileObject__storage_id__get"];
+        get: operations["download_file_object_api_storage_files__storage_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3230,7 +3230,7 @@ export interface operations {
             };
         };
     };
-    download_file_object_api_storage_CoreFileObject__storage_id__get: {
+    download_file_object_api_storage_files__storage_id__get: {
         parameters: {
             query?: {
                 /** @description Name of the branch to use for the query */

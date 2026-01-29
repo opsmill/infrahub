@@ -26,7 +26,7 @@ The endpoint uses `storage_id` (not node ID) because:
 ### API Module
 
 - [x] Create `backend/infrahub/api/storage/file_object.py`
-  - [x] Define router with prefix `/CoreFileObject`
+  - [x] Define router with prefix `/files`
   - [x] Implement `GET /{storage_id}` endpoint (binary download)
     - [x] Look up FileObject node by storage_id using `NodeManager.query()`
     - [x] Check VIEW permission on the FileObject's actual kind using `define_object_permission_from_branch()`
@@ -150,4 +150,4 @@ The filename from the FileObject node is sanitized before being included in the 
 - Query returns `storage_id`, `file_name`, `file_type`, etc.
 
 **REST (download only):**
-- `GET /api/storage/CoreFileObject/{storage_id}` → downloads file binary (requires VIEW permission)
+- `GET /api/storage/files/{storage_id}` → downloads file binary (requires VIEW permission)

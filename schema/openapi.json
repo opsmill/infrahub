@@ -1673,11 +1673,11 @@
                 ]
             }
         },
-        "/api/storage/CoreFileObject/{storage_id}": {
+        "/api/storage/files/{storage_id}": {
             "get": {
                 "summary": "Download File Object",
                 "description": "Download a file from storage by its storage_id.\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.",
-                "operationId": "download_file_object_api_storage_CoreFileObject__storage_id__get",
+                "operationId": "download_file_object_api_storage_files__storage_id__get",
                 "security": [
                     {
                         "HTTPBearer": []

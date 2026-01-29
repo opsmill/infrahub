@@ -29,7 +29,7 @@ class TestFileObjectDownload(TestInfrahubApp):
 
     @staticmethod
     def get_download_url(storage_id: str) -> str:
-        return f"/api/storage/{InfrahubKind.FILEOBJECT}/{storage_id}"
+        return f"/api/storage/files/{storage_id}"
 
     @pytest.fixture(scope="class")
     def admin_headers(self, api_admin_token: str) -> dict[str, str]:
