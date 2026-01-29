@@ -519,7 +519,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         client: InfrahubClient,
         initial_dataset: dict[str, Node],
         schema_step_01_5_rename_unique_generic_attr: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_and_renamed_fields(
             db=db,
             branch=branch,
@@ -823,7 +823,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         branch: Branch,
         full_schema_dict: dict[str, Any],
         rename_map: dict[str, dict[str, str]] | None = None,
-    ):
+    ) -> None:
         current_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
         for schema_dict in full_schema_dict.get("generics", []) + full_schema_dict.get("nodes", []):
             kind = schema_dict["namespace"] + schema_dict["name"]
