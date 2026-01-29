@@ -102,6 +102,17 @@ class NodeSchema(GeneratedNodeSchema):
             if getattr(interface, prop_name) and not getattr(self, prop_name):
                 setattr(self, prop_name, getattr(interface, prop_name))
 
+        # Build a mapping from source_attribute_id to (index, old_name) for existing inherited attributes
+        # This allows us to detect renamed attributes by their source ID
+        existing_inherited_attr_by_source_id: dict[str, tuple[int, str]] = {
+            item.source_attribute_id: (idx, item.name)
+            for idx, item in enumerate(self.attributes)
+            if item.inherited and item.source_attribute_id
+        }
+
+        # Track renamed attributes to update schema properties (uniqueness_constraints, etc.)
+        renamed_attrs: dict[str, str] = {}  # old_name -> new_name
+
         for attribute in interface.attributes:
             if attribute.name in self.valid_local_names:
                 continue
@@ -109,12 +120,25 @@ class NodeSchema(GeneratedNodeSchema):
             new_attribute = attribute.duplicate()
             new_attribute.id = None
             new_attribute.inherited = True
+            # Store the source generic's attribute ID for rename detection
+            new_attribute.source_attribute_id = attribute.id
 
-            if attribute.name not in existing_inherited_fields:
+            # Check if this attribute already exists by source_attribute_id (for rename detection)
+            # or by name (for regular updates)
+            if attribute.id and attribute.id in existing_inherited_attr_by_source_id:
+                # Attribute was renamed in the generic - update the existing one
+                item_idx, old_name = existing_inherited_attr_by_source_id[attribute.id]
+                if old_name != new_attribute.name:
+                    renamed_attrs[old_name] = new_attribute.name
+                self.attributes[item_idx].update_from_generic(other=new_attribute)
+                self.attributes[item_idx].name = new_attribute.name  # Update name explicitly
+                self.attributes[item_idx].source_attribute_id = new_attribute.source_attribute_id
+            elif attribute.name not in existing_inherited_fields:
                 self.attributes.append(new_attribute)
             else:
                 item_idx = existing_inherited_attributes[attribute.name]
                 self.attributes[item_idx].update_from_generic(other=new_attribute)
+                self.attributes[item_idx].source_attribute_id = new_attribute.source_attribute_id
 
         for relationship in interface.relationships:
             if relationship.name in self.valid_local_names:
@@ -129,6 +153,61 @@ class NodeSchema(GeneratedNodeSchema):
             else:
                 item_idx = existing_inherited_relationships[relationship.name]
                 self.relationships[item_idx].update_from_generic(other=new_relationship)
+
+        if renamed_attrs:
+            if self.uniqueness_constraints:
+                self._update_uniqueness_constraints_for_renamed_attributes(renamed_attrs)
+
+            if self.human_friendly_id:
+                self._update_hfid_for_renamed_attributes(renamed_attrs)
+
+            if self.order_by:
+                self._update_order_by_for_renamed_attributes(renamed_attrs)
+
+            if self.default_filter:
+                self._update_default_filters_for_renamed_attributes(renamed_attrs)
+
+    def _update_default_filters_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        for old_name, new_name in renamed_attrs.items():
+            if self.default_filter == old_name or self.default_filter.startswith(f"{old_name}__"):
+                self.default_filter = new_name + self.default_filter[len(old_name) :]
+                break
+
+    def _update_order_by_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        updated_order_by = []
+        for path in self.order_by:
+            updated_path = None
+            for old_name, new_name in renamed_attrs.items():
+                if path == old_name or path.startswith(f"{old_name}__"):
+                    updated_path = new_name + path[len(old_name) :]
+                    break
+            updated_order_by.append(updated_path)
+        self.order_by = updated_order_by
+
+    def _update_hfid_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        updated_hfid = []
+        for path in self.human_friendly_id:
+            updated_path = None
+            for old_name, new_name in renamed_attrs.items():
+                if path == old_name or path.startswith(f"{old_name}__"):
+                    updated_path = new_name + path[len(old_name) :]
+                    break
+            updated_hfid.append(updated_path)
+        self.human_friendly_id = updated_hfid
+
+    def _update_uniqueness_constraints_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        updated_constraints = []
+        for constraint_paths in self.uniqueness_constraints:
+            updated_paths = []
+            for path in constraint_paths:
+                updated_path = None
+                for old_name, new_name in renamed_attrs.items():
+                    if path == old_name or path.startswith(f"{old_name}__"):
+                        updated_path = new_name + path[len(old_name) :]
+                        break
+                updated_paths.append(updated_path)
+            updated_constraints.append(updated_paths)
+        self.uniqueness_constraints = updated_constraints
 
     def get_hierarchy_schema(
         self, db: InfrahubDatabase, branch: Branch | str | None = None, duplicate: bool = False
