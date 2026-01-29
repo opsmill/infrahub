@@ -118,6 +118,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
+        diff_coordinator.set_logger(log)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
         initial_from_time = Timestamp(obj.get_branched_from())
         merger = BranchMerger(
