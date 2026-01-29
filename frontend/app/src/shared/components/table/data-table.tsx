@@ -109,7 +109,7 @@ export function DataTable<T extends NodeCore>({
 
       {isLoading && <ObjectTableSkeleton headerCount={allHeaders.length} />}
 
-      {!!count &&
+      {count !== undefined &&
         Array.from({ length: allHeaders.length }).map((_, index) => (
           <div
             key={index}
@@ -119,7 +119,7 @@ export function DataTable<T extends NodeCore>({
               <>
                 <Row className="gap-1">
                   <span className="font-medium">{formatNumberDisplay(count)}</span>
-                  <span className="text-gray-500">count{count && count > 1 && "s"}</span>
+                  <span className="text-gray-500">count{count > 1 && "s"}</span>
                 </Row>
                 <div className="pointer-events-none absolute top-0 -right-4 bottom-0 w-4 bg-linear-to-r from-gray-500/10" />
               </>
