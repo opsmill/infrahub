@@ -249,3 +249,17 @@ class TestFileObjectDownload(TestInfrahubApp):
 
         assert response.status_code == 200
         assert response.content == dummy_storage._files[storage_id]
+
+    async def test_storage_endpoint_rejects_file_object_access(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_object_node: Node,
+    ) -> None:
+        """Test that the legacy storage endpoint rejects access to FileObject files."""
+        storage_id = file_object_node.storage_id.value
+        response = await test_client.get(f"/api/storage/object/{storage_id}", headers=admin_headers)
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == f"Use /api/storage/files/{storage_id} instead."

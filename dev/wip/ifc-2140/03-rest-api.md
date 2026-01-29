@@ -48,6 +48,13 @@ The endpoint uses `storage_id` (not node ID) because:
   - [x] Import `router` from `storage.py`
   - [x] Include `file_object.router` as a sub-router (routes appear under `/storage` namespace)
 
+### Legacy Storage Endpoint Protection
+
+- [x] Modify `backend/infrahub/api/storage/storage.py`
+  - [x] Update `GET /api/storage/object/{identifier}` to reject FileObject files
+  - [x] Check if identifier belongs to a FileObject using `NodeManager.query()`
+  - [x] Return 403 with message directing users to the proper endpoint
+  - [x] Convert endpoint to async to support database queries
 
 ### Tests
 
@@ -68,6 +75,7 @@ The endpoint uses `storage_id` (not node ID) because:
   - [x] Test download nonexistent file returns 404
   - [x] Test download without VIEW permission returns 403
   - [x] Test download with VIEW permission succeeds
+  - [x] Test legacy storage endpoint rejects FileObject access
 
 - [x] Create `backend/tests/unit/api/test_file_object.py`
   - [x] Test simple filename passes through unchanged
@@ -82,7 +90,7 @@ The endpoint uses `storage_id` (not node ID) because:
 
 - [x] Run `uv run pytest tests/unit/storage/test_retrieve.py -v` - all 7 tests pass
 - [x] Run `uv run pytest tests/unit/api/test_file_object.py -v` - all 13 tests pass
-- [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 7 tests pass
+- [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 8 tests pass
 - [x] Run `uv run invoke schema.generate-jsonschema` - regenerate OpenAPI schema
 - [x] Run `cd frontend/app && npm run codegen:openapi` - regenerate frontend REST types
 
@@ -104,7 +112,7 @@ The endpoint uses `storage_id` (not node ID) because:
 ### Download File
 
 ```
-GET /api/storage/CoreFileObject/{storage_id}
+GET /api/storage/files/{storage_id}
 
 Response 200:
 Content-Type: <file_type from FileObject node, e.g., application/pdf, image/png>
@@ -142,6 +150,13 @@ The filename from the FileObject node is sanitized before being included in the 
 2. Quotes and semicolons are replaced to prevent header parsing manipulation
 3. Long filenames are truncated to 255 characters while preserving the extension
 4. Unicode filenames are supported via RFC5987 encoding (`filename*=UTF-8''...`)
+
+### Why block the legacy storage endpoint for FileObject files?
+
+The legacy `/api/storage/object/{identifier}` endpoint allows downloading files by their storage identifier without permission checks beyond authentication. To ensure FileObject permission checks cannot be bypassed, this endpoint now:
+1. Checks if the requested identifier belongs to a FileObject
+2. Returns 403 with a message directing users to the proper endpoint (`/api/storage/files/{storage_id}`)
+3. Only allows access to non-FileObject files (e.g., artifacts)
 
 ## Workflow
 
