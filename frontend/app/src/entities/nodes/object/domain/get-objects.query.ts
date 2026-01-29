@@ -1,48 +1,36 @@
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import { queryClient } from "@/shared/api/rest/client";
 import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
+import {
+  infiniteQueryOptionsWithOptimizedPageSize,
+  type OptimizedPageSizeConfig,
+} from "@/shared/libs/react-query/infinite-query-options-with-optimized-page-size";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { type GetObjectsParams, getObjects } from "@/entities/nodes/object/domain/get-objects";
-import { getObjectsCountQueryOptions } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 type GetObjectsQueryParams = Omit<GetObjectsParams, keyof PaginationParams>;
 
-export function getObjectsInfiniteQueryOptions(params: GetObjectsQueryParams) {
-  return infiniteQueryOptions({
-    queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
-    queryFn: ({ pageParam }: { pageParam: { offset: number; limit: number } }) => {
-      return getObjects({
-        ...params,
-        offset: pageParam.offset,
-        limit: pageParam.limit,
-      });
+export function getObjectsInfiniteQueryOptions(
+  params: GetObjectsQueryParams,
+  config?: OptimizedPageSizeConfig
+) {
+  return infiniteQueryOptionsWithOptimizedPageSize(
+    {
+      queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
+      queryFn: ({ pageParam }) =>
+        getObjects({
+          ...params,
+          offset: pageParam.offset,
+          limit: pageParam.limit,
+        }),
     },
-    initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
-    getNextPageParam: (lastPage, _, lastPageParam) => {
-      // If we got fewer items than requested, there are no more pages
-      if (lastPage.length < lastPageParam.limit) {
-        return;
-      }
-
-      // Get count from the first page and calculate dynamic page size (locked after first page)
-      const totalCount =
-        queryClient.getQueryData(
-          getObjectsCountQueryOptions({ ...params, objectKind: params.schema.kind! }).queryKey
-        ) ?? 0;
-      const pageSize = totalCount > 0 ? calculateDynamicPageSize(totalCount) : DEFAULT_PAGE_SIZE;
-
-      return {
-        offset: lastPageParam.offset + lastPageParam.limit,
-        limit: pageSize,
-      };
-    },
-  });
+    config
+  );
 }
 
 export function useObjects(
@@ -52,12 +40,21 @@ export function useObjects(
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
+  const { data: totalCount } = useObjectsCount({
+    objectKind: params.schema.kind!,
+    filters: params.filters,
+  });
+
   return useInfiniteQuery({
-    ...getObjectsInfiniteQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    }),
+    ...getObjectsInfiniteQueryOptions(
+      {
+        ...params,
+        branchName: currentBranch.name,
+        atDate: timeMachineDate,
+      },
+      { totalCount }
+    ),
     ...config,
+    enabled: totalCount !== undefined && config?.enabled,
   });
 }
