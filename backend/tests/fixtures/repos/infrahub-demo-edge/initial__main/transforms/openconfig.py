@@ -5,7 +5,7 @@ class OCInterfaces(InfrahubTransform):
     query = "oc_interfaces"
     timeout: int = 60
 
-    async def transform(self, data):
+    async def transform(self, data: dict) -> dict:
         response_payload = {}
         response_payload["openconfig-interfaces:interface"] = []
 
@@ -55,7 +55,7 @@ class OCBGPNeighbors(InfrahubTransform):
     url = "openconfig/network-instances/network-instance/protocols/protocol/bgp/neighbors"
     timeout: int = 60
 
-    async def transform(self, data):
+    async def transform(self, data: dict) -> dict:
         response_payload = {}
 
         response_payload["openconfig-bgp:neighbors"] = {"neighbor": []}

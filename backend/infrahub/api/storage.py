@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
@@ -38,27 +39,23 @@ def upload_content(
     item: UploadContentPayload,
     _: str = Depends(get_current_user),
 ) -> UploadResponse:
-    # TODO need to optimized how we read the content of the file, especially if the file is really large
-    # Check this discussion for more details
-    # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
-
     file_content = bytes(item.content, encoding="utf-8")
     identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
-    registry.storage.store(identifier=identifier, content=file_content)
+    registry.storage.store(identifier=identifier, content=io.BytesIO(file_content))
     return UploadResponse(identifier=identifier, checksum=checksum)
 
 
 @router.post("/upload/file")
 def upload_file(file: UploadFile = File(...), _: AccountSession = Depends(get_current_user)) -> UploadResponse:
-    # TODO need to optimized how we read the content of the file, especially if the file is really large
-    # Check this discussion for more details
-    # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
-
-    file_content = file.file.read()
     identifier = str(UUIDT())
 
-    checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
-    registry.storage.store(identifier=identifier, content=file_content)
+    hasher = hashlib.md5(usedforsecurity=False)
+    while chunk := file.file.read(65536):
+        hasher.update(chunk)
+    checksum = hasher.hexdigest()
+
+    file.file.seek(0)
+    registry.storage.store(identifier=identifier, content=file.file)
     return UploadResponse(identifier=identifier, checksum=checksum)

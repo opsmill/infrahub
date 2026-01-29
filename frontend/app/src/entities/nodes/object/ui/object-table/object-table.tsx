@@ -1,5 +1,4 @@
-import React from "react";
-
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
@@ -12,24 +11,24 @@ import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/u
 export const ObjectTable = () => {
   const { filters, selectedSchema, permission } = useObjectTableContext();
 
-  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
+  const { data, fetchNextPage, error, hasNextPage, isPending, isFetchingNextPage } = useObjects({
     schema: selectedSchema,
     filters,
   });
 
-  const columns = React.useMemo(() => {
-    return [...getObjectTableColumns(selectedSchema), getObjectActionsColumn(permission)];
-  }, [selectedSchema.hash]);
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
 
-  const isLoading = isPending || isFetchingNextPage;
+  const columns = [...getObjectTableColumns(selectedSchema), getObjectActionsColumn(permission)];
+  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columns={columns}
         data={flatData}
-        isLoading={isLoading}
+        isLoading={isPending || isFetchingNextPage}
         renderEmpty={() => <ObjectTableEmpty schema={selectedSchema} />}
         data-testid="object-items"
       />

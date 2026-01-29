@@ -3,12 +3,12 @@ import { useAtomValue } from "jotai";
 
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetRelationshipsParams,
   getRelationships,
-  RELATIONSHIPS_PER_PAGE,
 } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 
 export type GetRelationshipsQueryParams = Omit<GetRelationshipsParams, keyof PaginationParams>;
@@ -22,15 +22,30 @@ export function getRelationshipsInfiniteQueryOptions({
 }: GetRelationshipsQueryParams) {
   return infiniteQueryOptions({
     queryKey: [branchName, atDate, "relationships", peer, search, filterQuery],
-    queryFn: ({ pageParam }) => {
-      return getRelationships({ peer, offset: pageParam, search, filterQuery, branchName, atDate });
+    queryFn: ({ pageParam }: { pageParam: { offset: number; limit: number } }) => {
+      return getRelationships({
+        peer,
+        offset: pageParam.offset,
+        limit: pageParam.limit,
+        search,
+        filterQuery,
+        branchName,
+        atDate,
+      });
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < RELATIONSHIPS_PER_PAGE) {
+    initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      if (lastPage.items.length < lastPageParam.limit) {
         return;
       }
-      return lastPageParam + RELATIONSHIPS_PER_PAGE;
+
+      const totalCount = allPages[0]?.count ?? 0;
+      const pageSize = totalCount > 0 ? calculateDynamicPageSize(totalCount) : DEFAULT_PAGE_SIZE;
+
+      return {
+        offset: lastPageParam.offset + lastPageParam.limit,
+        limit: pageSize,
+      };
     },
   });
 }

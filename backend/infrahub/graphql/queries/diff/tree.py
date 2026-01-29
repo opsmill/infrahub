@@ -498,6 +498,8 @@ class DiffTreeResolver:
             tracking_id=NameTrackingId(name) if name else None,
             include_empty=True,
             proposed_change_id=proposed_change_id,
+            # include merged diffs if filtering on proposed change
+            exclude_merged=not proposed_change_id,
         )
         if not enriched_diffs:
             return None
@@ -561,6 +563,8 @@ class DiffTreeResolver:
             to_time=to_timestamp,
             filters=filters_dict,
             proposed_change_id=proposed_change_id,
+            # include merged diffs if filtering on proposed change
+            exclude_merged=not proposed_change_id,
         )
         if summary is None:
             return None

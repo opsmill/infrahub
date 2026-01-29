@@ -39,6 +39,11 @@ class NodeSchema(GeneratedNodeSchema):
         """Return whether a node is a derivative of built-in IP addreses."""
         return InfrahubKind.IPADDRESS in self.inherit_from
 
+    @property
+    def is_file_object(self) -> bool:
+        """Return whether a node is a derivative of built-in file objects."""
+        return InfrahubKind.FILEOBJECT in self.inherit_from
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Perform checks specific to inheritance from Generics.
 

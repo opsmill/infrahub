@@ -101,11 +101,11 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,
-        schema_generic_base,
-        schema_specific_one_base,
-        schema_specific_two_base,
-        schema_specific_three_base,
-        schema_thing,
+        schema_generic_base: dict[str, Any],
+        schema_specific_one_base: dict[str, Any],
+        schema_specific_two_base: dict[str, Any],
+        schema_specific_three_base: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -123,8 +123,8 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initialize_registry,
-        schema_step_01,
+        initialize_registry: None,
+        schema_step_01: dict[str, Any],
     ) -> dict[str, Node]:
         await load_schema(db=db, schema=schema_step_01)
 
@@ -230,7 +230,9 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         return initial_objects
 
     @pytest.fixture(params=[True, False])
-    async def branch(self, request, db: InfrahubDatabase, default_branch: Branch, branch_name: str) -> Branch:
+    async def branch(
+        self, request: pytest.FixtureRequest, db: InfrahubDatabase, default_branch: Branch, branch_name: str
+    ) -> Branch:
         if request.param:
             return default_branch
         return await registry.get_branch(db=db, branch=branch_name)
@@ -329,11 +331,11 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_02(
         self,
-        schema_generic_with_new_fields,
-        schema_specific_one_with_overrides,
-        schema_specific_two_with_new_fields,
-        schema_specific_three_with_overrides,
-        schema_thing,
+        schema_generic_with_new_fields: dict[str, Any],
+        schema_specific_one_with_overrides: dict[str, Any],
+        schema_specific_two_with_new_fields: dict[str, Any],
+        schema_specific_three_with_overrides: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -357,10 +359,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_03(
         self,
-        schema_specific_one_with_overrides,
-        schema_specific_two_with_new_fields,
-        schema_specific_three_with_deleted_override,
-        schema_thing,
+        schema_specific_one_with_overrides: dict[str, Any],
+        schema_specific_two_with_new_fields: dict[str, Any],
+        schema_specific_three_with_deleted_override: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -388,10 +390,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_04(
         self,
-        schema_generic_with_weight_updates,
-        schema_specific_one_with_overrides,
-        schema_specific_two_with_new_fields,
-        schema_thing,
+        schema_generic_with_weight_updates: dict[str, Any],
+        schema_specific_one_with_overrides: dict[str, Any],
+        schema_specific_two_with_new_fields: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -419,10 +421,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_05(
         self,
-        schema_generic_with_deletes,
-        schema_specific_one_with_overrides,
-        schema_specific_two_with_new_fields,
-        schema_thing,
+        schema_generic_with_deletes: dict[str, Any],
+        schema_specific_one_with_overrides: dict[str, Any],
+        schema_specific_two_with_new_fields: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -457,10 +459,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_06(
         self,
-        schema_generic_without_deleted_fields,
-        schema_specific_one_with_deleted_overrides,
-        schema_specific_two_with_new_fields,
-        schema_thing,
+        schema_generic_without_deleted_fields: dict[str, Any],
+        schema_specific_one_with_deleted_overrides: dict[str, Any],
+        schema_specific_two_with_new_fields: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -478,7 +480,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         return []
 
     async def test_step01_baseline_backend(
-        self, db: InfrahubDatabase, branch: Branch, client: InfrahubClient, initial_dataset
+        self, db: InfrahubDatabase, branch: Branch, client: InfrahubClient, initial_dataset: dict[str, Node]
     ) -> None:
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 3
@@ -559,7 +561,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     async def test_step02_check_add_specific_overrides(
         self,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_02: dict[str, Any],
     ) -> None:
@@ -684,7 +686,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_02: dict[str, Any],
     ) -> None:
@@ -844,7 +846,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_03: dict[str, Any],
     ) -> None:
@@ -888,7 +890,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_03: dict[str, Any],
     ) -> None:
@@ -990,7 +992,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_04: dict[str, Any],
     ) -> None:
@@ -1053,7 +1055,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_04: dict[str, Any],
     ) -> None:
@@ -1188,7 +1190,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_05: dict[str, Any],
     ) -> None:
@@ -1289,7 +1291,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_05: dict[str, Any],
     ) -> None:
@@ -1421,7 +1423,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_06: dict[str, Any],
     ) -> None:
@@ -1458,7 +1460,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch: Branch,
         schema_step_06: dict[str, Any],
     ) -> None:

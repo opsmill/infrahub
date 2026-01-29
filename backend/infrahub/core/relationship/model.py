@@ -652,7 +652,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             destination_id=peer.id,
             status="active",
             direction=self.schema.direction.value,
-            branch_level=self.branch.hierarchy_level,
+            branch_level=branch.hierarchy_level,
             branch_support=self.schema.branch.value if self.schema.branch else None,
             hierarchical=self.schema.hierarchical,
             is_protected=self.is_protected,

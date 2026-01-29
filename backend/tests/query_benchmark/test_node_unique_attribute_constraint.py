@@ -5,6 +5,7 @@ import pytest
 
 from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
     QueryAttributePath,
@@ -27,8 +28,8 @@ log = get_logger()
 
 
 async def benchmark_uniqueness_query(
-    query_request,
-    car_person_schema_root,
+    query_request: NodeUniquenessQueryRequest,
+    car_person_schema_root: SchemaRoot,
     graph_generator: GraphProfileGenerator,
     benchmark_config: BenchmarkConfig,
     test_params_label: str,
@@ -105,7 +106,11 @@ async def benchmark_uniqueness_query(
         ),
     ],
 )
-async def test_multiple_constraints(query_request, car_person_schema_root, graph_generator) -> None:
+async def test_multiple_constraints(
+    query_request: NodeUniquenessQueryRequest,
+    car_person_schema_root: SchemaRoot,
+    graph_generator: GraphProfileGenerator,
+) -> None:
     benchmark_config = BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE)
     await benchmark_uniqueness_query(
         query_request=query_request,
@@ -129,7 +134,9 @@ async def test_multiple_constraints(query_request, car_person_schema_root, graph
         BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=True),
     ],
 )
-async def test_single_constraint_multiple_runtimes(benchmark_config, car_person_schema_root, graph_generator) -> None:
+async def test_single_constraint_multiple_runtimes(
+    benchmark_config: BenchmarkConfig, car_person_schema_root: SchemaRoot, graph_generator: GraphProfileGenerator
+) -> None:
     query_request = NodeUniquenessQueryRequest(
         kind="TestCar",
         unique_attribute_paths={

@@ -99,6 +99,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return False
 
     @property
+    def is_file_object(self) -> bool:
+        return False
+
+    @property
     def kind(self) -> str:
         if self.namespace == "Attribute":
             return self.name

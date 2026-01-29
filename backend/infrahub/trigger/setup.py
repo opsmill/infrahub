@@ -119,7 +119,7 @@ async def setup_triggers(
             description=trigger.get_description(),
             enabled=True,
             trigger=trigger.trigger.get_prefect(),
-            actions=[action.get_prefect(mapping=deployments_mapping) for action in trigger.actions],
+            actions=[action.get_prefect(deployments_mapping) for action in trigger.actions],
         )
 
         existing_automation = existing_automations.get(trigger.generate_name())

@@ -1,13 +1,17 @@
+from __future__ import annotations
+
+import contextlib
 import io
-import tempfile
-from typing import Any, BinaryIO
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 import botocore.exceptions
 import fastapi_storages
 from typing_extensions import Self
 
-from infrahub.config import StorageSettings
 from infrahub.exceptions import NodeNotFoundError
+
+if TYPE_CHECKING:
+    from infrahub.config import StorageSettings
 
 
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
@@ -23,6 +27,9 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         f.flush()
         f.seek(0)
         return f  # type: ignore
+
+    def delete(self, name: str) -> None:
+        self._bucket.Object(name).delete()
 
 
 fastapi_storages.InfrahubS3ObjectStorage = InfrahubS3ObjectStorage
@@ -44,10 +51,8 @@ class InfrahubObjectStorage:
     async def init(cls, settings: StorageSettings) -> Self:
         return cls(settings)
 
-    def store(self, identifier: str, content: bytes) -> None:
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(content)
-            self._storage.write(f, identifier)
+    def store(self, identifier: str, content: BinaryIO) -> None:
+        self._storage.write(content, identifier)
 
     def retrieve(self, identifier: str) -> str:
         try:
@@ -55,3 +60,18 @@ class InfrahubObjectStorage:
                 return f.read().decode()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+
+    def delete(self, identifier: str) -> None:
+        """Delete a file from storage.
+
+        Args:
+            identifier: The storage identifier of the file to delete.
+
+        Note:
+            Silently ignores if the file does not exist.
+        """
+        if isinstance(self._storage, fastapi_storages.FileSystemStorage):
+            (self._storage._path / identifier).unlink(missing_ok=True)
+        else:
+            with contextlib.suppress(FileNotFoundError, botocore.exceptions.ClientError):
+                self._storage.delete(identifier)

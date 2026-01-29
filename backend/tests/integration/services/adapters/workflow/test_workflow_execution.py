@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.objects import WorkPool
 from pydantic import ValidationError
@@ -22,9 +23,9 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
         default_branch: Branch,
         prefect_client: PrefectClient,
         prefect_worker: InfrahubWorkerAsync,
-        dummy_flows_deployment,
+        dummy_flows_deployment: None,
         work_pool: WorkPool,
-        client,
+        client: InfrahubClient,
     ) -> None:
         service = WorkflowWorkerExecution()
 
@@ -51,9 +52,9 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
         default_branch: Branch,
         prefect_client: PrefectClient,
         prefect_worker: InfrahubWorkerAsync,
-        dummy_flows_deployment,
+        dummy_flows_deployment: None,
         work_pool: WorkPool,
-        client,
+        client: InfrahubClient,
     ) -> None:
         service = WorkflowWorkerExecution()
 

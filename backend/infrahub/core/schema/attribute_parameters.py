@@ -16,6 +16,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
         "NumberPool": NumberPoolParameters,
         "Text": TextAttributeParameters,
         "TextArea": TextAttributeParameters,
+        "List": ListAttributeParameters,
         "Number": NumberAttributeParameters,
     }
     return param_classes.get(kind, AttributeParameters)
@@ -50,6 +51,16 @@ class AttributeParameters(HashableModel):
         target_fields = set(cls.model_fields.keys())
         filtered_data = {k: v for k, v in source_data.items() if k in target_fields}
         return cls(**filtered_data)
+
+
+class ListAttributeParameters(AttributeParameters):
+    """Parameters for List attributes supporting regex validation on list items."""
+
+    regex: str | None = Field(
+        default=None,
+        description="Regular expression that each list item value must match if defined",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
 
 
 class TextAttributeParameters(AttributeParameters):

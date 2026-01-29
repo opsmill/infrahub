@@ -27,7 +27,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
 
   // Get all proposed changes from all pages
   const proposedChanges = proposedChangesData?.pages?.flat() ?? [];
-  const firstPC = proposedChanges[0];
+  const firstPC = proposedChanges[0]?.items?.[0];
 
   // Show empty state if no proposed changes
   if (!firstPC) {

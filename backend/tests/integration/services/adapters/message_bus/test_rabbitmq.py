@@ -137,7 +137,7 @@ class RabbitMQManager:
 
 
 @pytest.fixture
-async def rabbitmq_api(rabbitmq) -> RabbitMQManager:
+async def rabbitmq_api(rabbitmq: None) -> RabbitMQManager:
     settings = deepcopy(config.SETTINGS.broker)
     settings.virtualhost = "integration-tests"
     manager = RabbitMQManager(settings=settings)

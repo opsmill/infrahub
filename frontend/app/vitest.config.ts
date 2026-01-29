@@ -22,6 +22,7 @@ export default mergeConfig(
         },
       },
       coverage: {
+        provider: "v8",
         reporter: ["text", "lcovonly"],
         include: ["src/**/*.{ts,tsx}"],
         exclude: [

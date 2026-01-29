@@ -22,9 +22,9 @@ export function formatAttributeFilterValue({
     case ATTRIBUTE_KIND.BOOLEAN:
       return String(value);
     case ATTRIBUTE_KIND.DATETIME:
-      return formatFullDate(value);
+      return formatFullDate(value as string | number | Date);
     default:
-      return value;
+      return value as React.ReactNode;
   }
 }
 
@@ -158,6 +158,21 @@ export function ActiveFilterTags({
                     id={filter.name}
                     label={fieldSchema.label ?? fieldSchema.name}
                     value={filter.value ? "empty" : "not empty"}
+                  />
+                );
+              }
+
+              if (fieldKey === "before" || fieldKey === "after") {
+                if (isRelationshipSchema(fieldSchema)) {
+                  return null;
+                }
+
+                return (
+                  <FilterTag
+                    key={filter.name}
+                    id={filter.name}
+                    label={fieldSchema.label ?? fieldSchema.name}
+                    value={`${fieldKey} ${formatFullDate(filter.value as string | number | Date)}`}
                   />
                 );
               }

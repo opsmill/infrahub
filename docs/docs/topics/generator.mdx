@@ -26,7 +26,7 @@ Running a generator definition will create new nodes as defined by the generator
 
 The targets point to a [group](./groups.mdx) that will consist of objects that are impacted by the generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger generator execution, while the actual tracking of generated objects is handled by individual generator instances.
 
-The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query [group](./groups.mdx) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which generators need to be executed as part of a proposed change during the pipeline run.
+The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query [group](./groups.mdx) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [transforms](transformation) and [checks](check), the Generators are user defined.
 
@@ -43,13 +43,13 @@ Generators can be executed in several ways, depending on your workflow and where
    When you open a Proposed Change that affects the generator’s targets, the generator runs as part of Infrahub’s CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per generator in the repository configuration file.
 4. Automatically via Events and Actions
 
-   You can configure Infrahub Event rules and Actions to trigger generators automatically based on changes in your data. This enables fully automated execution aligned with your workflows.
+   You can configure Infrahub Event rules and Actions to trigger Generators automatically based on changes in your data. This enables fully automated execution aligned with your workflows.
 
 ## Video guides
 
-In this video series we’re diving into the concept of generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you’re a developer or just curious about automation in IT, this guide will provide you with a comprehensive understanding of generators and their applications.
+In this video series we're diving into the concept of Generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you’re a developer or just curious about automation in IT, this guide will provide you with a comprehensive understanding of generators and their applications.
 
-The first video will highlight what generators are and how they can be used to deliver services.
+The first video will highlight what Generators are and how they can be used to deliver services.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=TSqY0caGb0A' light />

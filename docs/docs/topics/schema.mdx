@@ -721,7 +721,7 @@ generics:
     description: "Generic Device object."
     label: "Device"
     icon: "mdi:server"
-    default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_label: "{{ name__value }}"
@@ -775,7 +775,7 @@ generics:
   - name: GenericDevice
     namespace: Infra
     icon: "mdi:router"
-    default_filter: "name__value"
+    human_friendly_id: ["name__value"]
     attributes:
       - name: name
         kind: Text
@@ -804,9 +804,8 @@ nodes:
 
 #### List of inheritable properties
 
-- **human_friendly_id**: A user-friendly identifier for the entity.
+- **human_friendly_id**: A user-friendly identifier for the entity (also known as HFID).
 - **display_label**: Label used for display purposes.
-- **default_filter**: The default filter applied to the entity.
 - **menu_placement**: Defines where the entity appears in menus.
 - **uniqueness_constraints**: Constraints ensuring unique values for certain attributes.
 - **icon**: The icon representing the entity.
@@ -1163,7 +1162,7 @@ The default value is `state: present` and doesn't have to be provided on all ele
 
 ### Remove existing text fields values
 
-Removing an existing value for a text field of a schema node, like `description` or `default_filter`, can be performed by specifying
+Removing an existing value for a text field of a schema node, like `description` or `label`, can be performed by specifying
 an empty string value for this field and re-loading the schema.
 
 ### Rename existing elements

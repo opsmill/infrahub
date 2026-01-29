@@ -2,17 +2,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Argument, Boolean, Field, Int, List, NonNull, String
+from graphene import ID, Argument, Boolean, DateTime, Field, Int, List, NonNull, String
 
 from infrahub.constants.enums import OrderByField, OrderDirection
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.node.standard import StandardNodeOrdering, StandardNodeQueryFields
 from infrahub.core.registry import registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
+from infrahub.graphql.types.enums import InfrahubBranchStatus
 from infrahub.graphql.types.metadata import OrderInput
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from graphql import GraphQLResolveInfo
 
 
@@ -76,6 +81,14 @@ async def infrahub_branch_resolver(
     ids: list[str] | None = None,
     partial_match: bool = False,
     order: OrderInput | None = None,
+    status__value: str | None = None,
+    node_metadata__created_by__id: str | None = None,
+    branched_from__after: datetime | None = None,
+    branched_from__before: datetime | None = None,
+    node_metadata__created_at__after: datetime | None = None,
+    node_metadata__created_at__before: datetime | None = None,
+    node_metadata__updated_at__after: datetime | None = None,
+    node_metadata__updated_at__before: datetime | None = None,
 ) -> dict[str, Any]:
     if isinstance(limit, int) and limit < 1:
         raise ValidationError("limit must be >= 1")
@@ -83,6 +96,21 @@ async def infrahub_branch_resolver(
         raise ValidationError("offset must be >= 0")
 
     node_ordering = standard_node_ordering_from_order_input(order)
+
+    # Construct the filter dataclass from GraphQL arguments
+    branch_filters = BranchListFilters(
+        name=name__value,
+        ids=ids,
+        partial_match=partial_match,
+        status=BranchStatus(status__value) if status__value else None,
+        created_by_id=node_metadata__created_by__id,
+        branched_from_after=branched_from__after,
+        branched_from_before=branched_from__before,
+        created_at_after=node_metadata__created_at__after,
+        created_at_before=node_metadata__created_at__before,
+        updated_at_after=node_metadata__updated_at__after,
+        updated_at_before=node_metadata__updated_at__before,
+    )
 
     fields = extract_graphql_fields(info)
     result: dict[str, Any] = {}
@@ -96,19 +124,15 @@ async def infrahub_branch_resolver(
             fields=query_fields,
             limit=limit,
             offset=offset,
-            name=name__value,
-            ids=ids,
+            branch_filters=branch_filters,
             exclude_global=True,
-            partial_match=partial_match,
             node_ordering=node_ordering,
         )
         result["edges"] = branches
     if "count" in fields:
         result["count"] = await InfrahubBranchType.get_list_count(
             graphql_context=info.context,
-            name=name__value,
-            ids=ids,
-            partial_match=partial_match,
+            branch_filters=branch_filters,
             node_ordering=node_ordering,
         )
 
@@ -134,6 +158,39 @@ InfrahubBranchQueryList = Field(
         OrderInput,
         required=False,
         description="Define ordering of results for branch queries.",
+    ),
+    status__value=Argument(
+        InfrahubBranchStatus,
+        required=False,
+        description="Filter branches by status (e.g., OPEN, NEED_REBASE).",
+    ),
+    node_metadata__created_by__id=ID(
+        required=False,
+        description="Filter branches by creator account UUID.",
+    ),
+    branched_from__after=DateTime(
+        required=False,
+        description="Filter branches rebased after this timestamp.",
+    ),
+    branched_from__before=DateTime(
+        required=False,
+        description="Filter branches rebased before this timestamp.",
+    ),
+    node_metadata__created_at__after=DateTime(
+        required=False,
+        description="Filter branches created after this timestamp.",
+    ),
+    node_metadata__created_at__before=DateTime(
+        required=False,
+        description="Filter branches created before this timestamp.",
+    ),
+    node_metadata__updated_at__after=DateTime(
+        required=False,
+        description="Filter branches updated after this timestamp.",
+    ),
+    node_metadata__updated_at__before=DateTime(
+        required=False,
+        description="Filter branches updated before this timestamp.",
     ),
     description="Retrieve paginated information about active branches.",
     resolver=infrahub_branch_resolver,

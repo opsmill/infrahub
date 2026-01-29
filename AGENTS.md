@@ -60,7 +60,7 @@ cd docs && npm run build              # Build documentation
 ## Coding Standards
 
 - Backend: `dev/guidelines/backend/python.md`
-- Frontend: `dev/guidelines/frontend/README.md` (index for all frontend guidelines)
+- Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown: `dev/guidelines/markdown.md`
 

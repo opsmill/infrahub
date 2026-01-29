@@ -246,7 +246,7 @@ class TestDiffCoordinatorLocks:
             db=db2,
             diff_coordinator=diff_coordinator_2,
             diff_merger=DiffMerger(
-                db=db,
+                db=db2,
                 source_branch=diff_branch,
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
@@ -266,3 +266,42 @@ class TestDiffCoordinatorLocks:
         assert results[0].uuid == results[1].uuid
         assert results[0].partner_uuid == results[1].partner_uuid
         assert results[0].tracking_id == results[1].tracking_id
+
+    async def test_proposed_change_linked_when_waiting_for_lock(
+        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
+    ) -> None:
+        """Test that when a diff update with proposed_change_id waits for an in-progress update,
+        the proposed change still gets linked to the diff.
+
+        This tests the race condition scenario:
+        1. Request A starts diff update (acquires lock)
+        2. Request B starts diff update with proposed_change_id, detects lock is held, waits
+        3. Request A completes and releases lock
+        4. Request B should link the proposed_change to the cached diff
+        """
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+
+        # Create a mock proposed change node in the database
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        # Run two concurrent updates - one without proposed_change_id, one with
+        results = await asyncio.gather(
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            diff_coordinator.update_branch_diff(
+                base_branch=default_branch, diff_branch=diff_branch, proposed_change_id=proposed_change_id
+            ),
+        )
+
+        # Both should return the same diff
+        assert len(results) == 2
+        assert results[0].uuid == results[1].uuid
+        assert results[1].proposed_change_id == proposed_change_id
+
+        # Verify via diff_repository.get_roots_metadata that the diff is linked to the proposed change
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[diff_branch.name], proposed_change_id=proposed_change_id
+        )
+        diff_uuids = {m.uuid for m in metadata}
+        assert results[0].uuid in diff_uuids, "Diff should be retrievable by proposed_change_id"

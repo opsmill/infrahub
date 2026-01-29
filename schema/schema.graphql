@@ -23992,13 +23992,29 @@ type Query {
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
   """Retrieve paginated information about active branches."""
   InfrahubBranch(
+    """Filter branches rebased after this timestamp."""
+    branched_from__after: DateTime
+    """Filter branches rebased before this timestamp."""
+    branched_from__before: DateTime
     ids: [ID]
     limit: Int
     name__value: String
+    """Filter branches created after this timestamp."""
+    node_metadata__created_at__after: DateTime
+    """Filter branches created before this timestamp."""
+    node_metadata__created_at__before: DateTime
+    """Filter branches by creator account UUID."""
+    node_metadata__created_by__id: ID
+    """Filter branches updated after this timestamp."""
+    node_metadata__updated_at__after: DateTime
+    """Filter branches updated before this timestamp."""
+    node_metadata__updated_at__before: DateTime
     offset: Int
     """Define ordering of results for branch queries."""
     order: OrderInput
     partial_match: Boolean = false
+    """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
+    status__value: BranchStatus
   ): InfrahubBranchType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
@@ -24036,7 +24052,7 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
-  InfrahubSearchAnywhere(limit: Int, partial_match: Boolean, q: String!): NodeEdges!
+  InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
   InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!

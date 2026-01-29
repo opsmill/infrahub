@@ -32,10 +32,8 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
-import {
-  RepositoryActionsMenu,
-  RepositoryActionsModal,
-} from "@/entities/repository/ui/repository-menu-actions";
+import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
+import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -143,7 +141,7 @@ export function ObjectDetailsMenu({
             </MenuSection>
 
             {isRepository && (
-              <RepositoryActionsMenu
+              <RepositoryMenuSection
                 repositoryId={objectData.id}
                 objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
@@ -244,11 +242,11 @@ export function ObjectDetailsMenu({
         }}
       />
 
-      {isRepository && (
-        <RepositoryActionsModal
+      {isRepository && isCheckConnectivityOpen && (
+        <CheckConnectivityModal
           repositoryId={objectData.id}
-          isOpen={isCheckConnectivityOpen}
-          onClose={() => setIsCheckConnectivityOpen(false)}
+          isOpen
+          onOpenChange={() => setIsCheckConnectivityOpen(false)}
         />
       )}
     </>
