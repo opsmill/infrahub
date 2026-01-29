@@ -71,8 +71,12 @@ class NameTrackingId(TrackingId):
     prefix = "name"
 
 
+class FrozenTrackingId(TrackingId):
+    prefix = "frozen"
+
+
 def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
-    for tracking_id_class in (BranchTrackingId, NameTrackingId):
+    for tracking_id_class in (BranchTrackingId, NameTrackingId, FrozenTrackingId):
         try:
             return tracking_id_class.deserialize(id_string=tracking_id_str)
         except ValueError:
@@ -460,6 +464,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
     partner_uuid: str | None = field(default=None)
     exists_on_database: bool = field(default=False)
     proposed_change_id: str | None = field(default=None)
+    is_frozen: bool = field(default=False, kw_only=True)
 
     def __hash__(self) -> int:
         return hash(self.uuid)

@@ -15,9 +15,11 @@ from infrahub.core.constants import (
     MetadataOptions,
     PermissionDecision,
 )
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import (
     EventMeta,
     ProposedChangeApprovalRevokedEvent,
@@ -180,6 +182,13 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         proposed_change, result = await super().mutate_update(
             info=info, data=data, branch=branch, database=graphql_context.db, node=obj
         )
+
+        if updated_state == ProposedChangeState.CLOSED:
+            component_registry = get_component_registry()
+            diff_repository = await component_registry.get_component(
+                DiffRepository, db=graphql_context.db, branch=branch
+            )
+            await diff_repository.freeze_diffs_for_proposed_change(proposed_change_id=proposed_change.id)
 
         if updated_state == ProposedChangeState.MERGED:
             await graphql_context.service.workflow.execute_workflow(

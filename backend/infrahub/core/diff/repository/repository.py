@@ -36,6 +36,7 @@ from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
+from ..query.freeze_by_proposed_change import EnrichedDiffFreezeByProposedChangeQuery
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
 from ..query.link_proposed_change import EnrichedDiffLinkProposedChangeQuery
@@ -392,17 +393,27 @@ class DiffRepository:
         return query.get_summary()
 
     async def delete_all_diff_roots(self) -> None:
-        query = await EnrichedDiffDeleteQuery.init(db=self.db)
+        query = await EnrichedDiffDeleteQuery.init(db=self.db, include_frozen=True)
         await query.execute(db=self.db)
 
-    async def delete_diff_roots(self, diff_root_uuids: list[str]) -> None:
-        query = await EnrichedDiffDeleteQuery.init(db=self.db, enriched_diff_root_uuids=diff_root_uuids)
+    async def delete_diff_roots(self, diff_root_uuids: list[str], include_frozen: bool = False) -> None:
+        query = await EnrichedDiffDeleteQuery.init(
+            db=self.db, enriched_diff_root_uuids=diff_root_uuids, include_frozen=include_frozen
+        )
         await query.execute(db=self.db)
 
     async def link_to_proposed_change(self, diff_uuids: list[str], proposed_change_id: str) -> None:
         query = await EnrichedDiffLinkProposedChangeQuery.init(
             db=self.db,
             diff_uuids=diff_uuids,
+            proposed_change_id=proposed_change_id,
+        )
+        await query.execute(db=self.db)
+
+    async def freeze_diffs_for_proposed_change(self, proposed_change_id: str) -> None:
+        """Freeze diffs linked to a PC by setting is_frozen and updating tracking_id to FrozenTrackingId."""
+        query = await EnrichedDiffFreezeByProposedChangeQuery.init(
+            db=self.db,
             proposed_change_id=proposed_change_id,
         )
         await query.execute(db=self.db)
