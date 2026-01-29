@@ -1,6 +1,6 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
-import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import {
@@ -21,7 +21,7 @@ export interface GetIpAddressListParams extends ContextParams, PaginationParams 
 
 export type GetIpAddressList = (
   params: GetIpAddressListParams
-) => Promise<PaginatedResponse<NodeObject | IpAddressAvailableNode>>;
+) => Promise<(NodeObject | IpAddressAvailableNode)[]>;
 
 export const getIpAddressList: GetIpAddressList = async ({
   schema,
@@ -60,9 +60,7 @@ export const getIpAddressList: GetIpAddressList = async ({
 
   const result = data[excludeIpAvailability ? schemaKind : IP_ADDRESS_GENERIC];
 
-  return {
-    items:
-      result?.edges?.map((edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node) ?? [],
-    count: result?.count ?? 0,
-  };
+  return (
+    result?.edges?.map((edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node) ?? []
+  );
 };

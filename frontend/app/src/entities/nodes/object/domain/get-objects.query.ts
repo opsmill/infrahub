@@ -40,7 +40,11 @@ export function useObjects(
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  const { data: totalCount } = useObjectsCount({
+  const {
+    data: totalCount,
+    isSuccess: isCountSuccess,
+    isError: isCountError,
+  } = useObjectsCount({
     objectKind: params.schema.kind!,
     filters: params.filters,
   });
@@ -55,6 +59,6 @@ export function useObjects(
       { totalCount }
     ),
     ...config,
-    enabled: totalCount !== undefined && config?.enabled,
+    enabled: (isCountSuccess || isCountError) && config?.enabled,
   });
 }
