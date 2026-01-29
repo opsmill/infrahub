@@ -165,25 +165,22 @@ class NodeSchema(GeneratedNodeSchema):
                 self.relationships[item_idx].update_from_generic(other=new_relationship)
 
         if renamed_attrs:
-            if self.uniqueness_constraints:
-                self._update_uniqueness_constraints_for_renamed_attributes(renamed_attrs)
-
-            if self.human_friendly_id:
-                self._update_hfid_for_renamed_attributes(renamed_attrs)
-
-            if self.order_by:
-                self._update_order_by_for_renamed_attributes(renamed_attrs)
-
-            if self.default_filter:
-                self._update_default_filters_for_renamed_attributes(renamed_attrs)
+            self._update_uniqueness_constraints_for_renamed_attributes(renamed_attrs)
+            self._update_hfid_for_renamed_attributes(renamed_attrs)
+            self._update_order_by_for_renamed_attributes(renamed_attrs)
+            self._update_default_filters_for_renamed_attributes(renamed_attrs)
 
     def _update_default_filters_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        if not self.default_filter:
+            return
         for old_name, new_name in renamed_attrs.items():
             if self.default_filter == old_name or self.default_filter.startswith(f"{old_name}__"):
                 self.default_filter = new_name + self.default_filter[len(old_name) :]
                 break
 
     def _update_order_by_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        if not self.order_by:
+            return
         updated_order_by = []
         for path in self.order_by:
             updated_path = path
@@ -195,6 +192,8 @@ class NodeSchema(GeneratedNodeSchema):
         self.order_by = updated_order_by
 
     def _update_hfid_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        if not self.human_friendly_id:
+            return
         updated_hfid = []
         for path in self.human_friendly_id:
             updated_path = path
@@ -206,6 +205,8 @@ class NodeSchema(GeneratedNodeSchema):
         self.human_friendly_id = updated_hfid
 
     def _update_uniqueness_constraints_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
+        if not self.uniqueness_constraints:
+            return
         updated_constraints = []
         for constraint_paths in self.uniqueness_constraints:
             updated_paths = []
