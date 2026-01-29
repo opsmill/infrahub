@@ -248,8 +248,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step_01_5_rename_unique_generic_attr(
-        self,
-        schema_generic_rename_unique_attr,
+        self, schema_generic_rename_unique_attr: dict[str, Any]
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -518,7 +517,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         branch: Branch,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         schema_step_01_5_rename_unique_generic_attr: dict[str, Any],
     ):
         await self._finalize_deleted_and_renamed_fields(

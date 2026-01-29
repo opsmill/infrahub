@@ -135,6 +135,11 @@ class NodeSchema(GeneratedNodeSchema):
                 item_idx, old_name = existing_inherited_attr_by_source_id[attribute.id]
                 if old_name != new_attribute.name:
                     renamed_attrs[old_name] = new_attribute.name
+                    # Update tracking structures to prevent stale lookups
+                    existing_inherited_attributes.pop(old_name, None)
+                    existing_inherited_attributes[new_attribute.name] = item_idx
+                    existing_inherited_fields.remove(old_name)
+                    existing_inherited_fields.append(new_attribute.name)
                 self.attributes[item_idx].update_from_generic(other=new_attribute)
                 self.attributes[item_idx].name = new_attribute.name  # Update name explicitly
                 self.attributes[item_idx].source_attribute_id = new_attribute.source_attribute_id
@@ -181,7 +186,7 @@ class NodeSchema(GeneratedNodeSchema):
     def _update_order_by_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
         updated_order_by = []
         for path in self.order_by:
-            updated_path = None
+            updated_path = path
             for old_name, new_name in renamed_attrs.items():
                 if path == old_name or path.startswith(f"{old_name}__"):
                     updated_path = new_name + path[len(old_name) :]
@@ -192,7 +197,7 @@ class NodeSchema(GeneratedNodeSchema):
     def _update_hfid_for_renamed_attributes(self, renamed_attrs: dict[str, str]) -> None:
         updated_hfid = []
         for path in self.human_friendly_id:
-            updated_path = None
+            updated_path = path
             for old_name, new_name in renamed_attrs.items():
                 if path == old_name or path.startswith(f"{old_name}__"):
                     updated_path = new_name + path[len(old_name) :]
@@ -205,7 +210,7 @@ class NodeSchema(GeneratedNodeSchema):
         for constraint_paths in self.uniqueness_constraints:
             updated_paths = []
             for path in constraint_paths:
-                updated_path = None
+                updated_path = path
                 for old_name, new_name in renamed_attrs.items():
                     if path == old_name or path.startswith(f"{old_name}__"):
                         updated_path = new_name + path[len(old_name) :]
