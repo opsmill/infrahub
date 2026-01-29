@@ -17,6 +17,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
 
 GrapheneDiffActionEnum = GrapheneEnum.from_enum(DiffAction)
 GrapheneCardinalityEnum = GrapheneEnum.from_enum(RelationshipCardinality)
+log = get_logger()
 
 
 @dataclass
@@ -486,6 +488,9 @@ class DiffTreeResolver:
         elif root_node_uuids:
             filters_dict["ids"] = root_node_uuids
 
+        t = Timestamp()
+        log.error(f"Retrieving diffs for {branch} at {t.to_string()}")
+
         enriched_diffs = await diff_repo.get(
             base_branch_name=base_branch.name,
             diff_branch_names=[diff_branch.name],
@@ -501,6 +506,10 @@ class DiffTreeResolver:
             # include merged diffs if filtering on proposed change
             exclude_merged=not proposed_change_id,
         )
+
+        t = Timestamp()
+        log.error(f"Diffs retrieved for {branch} at {t.to_string()}")
+
         if not enriched_diffs:
             return None
         if len(enriched_diffs) > 0:

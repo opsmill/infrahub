@@ -211,6 +211,11 @@ class DiffCoordinator:
             await self.diff_repo.save(
                 enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
             )
+
+            self.logger.error(
+                f"Saved diff roots {[enriched_diffs.base_branch_diff.uuid, enriched_diffs.diff_branch_diff.uuid]}"
+            )
+
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
             self.logger.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
 
@@ -430,6 +435,8 @@ class DiffCoordinator:
 
         if diff_uuids_to_delete:
             await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
+
+            self.logger.error(f"Deleted diff roots {diff_uuids_to_delete}")
 
         # this is an EnrichedDiffsMetadata, so there are no nodes to enrich
         if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
