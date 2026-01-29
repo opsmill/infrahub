@@ -76,7 +76,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
     queryClient.clear();
     store.set(genericSchemasAtom, [hierarchyGenericSchema]);
     store.set(nodeSchemasAtom, [rootSchema, parentSchema, childSchema]);
-    vi.mocked(getRelationships).mockResolvedValue({ items: [], count: 0 });
+    vi.mocked(getRelationships).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -100,7 +100,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
 
   it("displays message when no relationships are found", async () => {
     // GIVEN
-    vi.mocked(getRelationships).mockResolvedValue({ items: [], count: 0 });
+    vi.mocked(getRelationships).mockResolvedValue([]);
 
     // WHEN
     const component = await render(
@@ -113,10 +113,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
 
   it("displays relationships of root schema", async () => {
     // GIVEN
-    vi.mocked(getRelationships).mockResolvedValue({
-      items: relationships,
-      count: relationships.length,
-    });
+    vi.mocked(getRelationships).mockResolvedValue(relationships);
 
     // WHEN
     const component = await render(
@@ -135,10 +132,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
 
   it("calls onSelect when a relationship is selected", async () => {
     // GIVEN
-    vi.mocked(getRelationships).mockResolvedValue({
-      items: relationships,
-      count: relationships.length,
-    });
+    vi.mocked(getRelationships).mockResolvedValue(relationships);
     const onSelect = vi.fn();
     const component = await render(
       <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={onSelect} />
@@ -155,8 +149,8 @@ describe("RelationshipHierarchicalComboboxList", () => {
   it("navigates from parent to direct child relationships and selects child", async () => {
     // GIVEN
     vi.mocked(getRelationships)
-      .mockResolvedValueOnce({ items: parentRelationships, count: parentRelationships.length })
-      .mockResolvedValueOnce({ items: childRelationships, count: childRelationships.length });
+      .mockResolvedValueOnce(parentRelationships)
+      .mockResolvedValueOnce(childRelationships);
     const onSelect = vi.fn();
     const component = await render(
       <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
@@ -175,9 +169,9 @@ describe("RelationshipHierarchicalComboboxList", () => {
   it("navigates through multiple levels of nested relationships", async () => {
     // GIVEN
     vi.mocked(getRelationships)
-      .mockResolvedValueOnce({ items: relationships, count: relationships.length })
-      .mockResolvedValueOnce({ items: parentRelationships, count: parentRelationships.length })
-      .mockResolvedValueOnce({ items: childRelationships, count: childRelationships.length });
+      .mockResolvedValueOnce(relationships)
+      .mockResolvedValueOnce(parentRelationships)
+      .mockResolvedValueOnce(childRelationships);
     const onSelect = vi.fn();
     const component = await render(
       <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
@@ -206,10 +200,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
       __typename: rootSchema.kind,
     }));
     // Total count is higher than returned items
-    vi.mocked(getRelationships).mockResolvedValue({
-      items: manyRelationships,
-      count: 100,
-    });
+    vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
 
     // WHEN
     const component = await render(
@@ -230,10 +221,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
       display_label: `Test Relationship ${i}`,
       __typename: rootSchema.kind,
     }));
-    vi.mocked(getRelationships).mockResolvedValue({
-      items: manyRelationships,
-      count: manyRelationships.length,
-    });
+    vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
 
     // WHEN
     const component = await render(

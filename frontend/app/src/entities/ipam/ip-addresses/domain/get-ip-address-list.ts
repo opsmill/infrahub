@@ -58,9 +58,9 @@ export const getIpAddressList: GetIpAddressList = async ({
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const result = data[excludeIpAvailability ? schemaKind : IP_ADDRESS_GENERIC];
-
   return (
-    result?.edges?.map((edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node) ?? []
+    data[excludeIpAvailability ? schemaKind : IP_ADDRESS_GENERIC]?.edges?.map(
+      (edge: { node: NodeObject | IpAddressAvailableNode }) => edge.node
+    ) ?? []
   );
 };

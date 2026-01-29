@@ -154,7 +154,7 @@ const HierarchicalExplorer = ({
             <ComboboxEmpty>No results found</ComboboxEmpty>
 
             {data.pages.map((page) => {
-              const filteredNodes = filterItem ? page.items.filter(filterItem) : page.items;
+              const filteredNodes = filterItem ? page.filter(filterItem) : page;
 
               return filteredNodes.map((node) => {
                 const schema = nodeSchemas.find((schema) => schema.kind === node.__typename);

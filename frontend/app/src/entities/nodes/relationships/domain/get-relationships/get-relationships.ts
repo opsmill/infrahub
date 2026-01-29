@@ -1,4 +1,4 @@
-import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import {
   getRelationshipsFromApi,
@@ -8,9 +8,7 @@ import type { NodeCore } from "@/entities/nodes/types";
 
 export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
-export type GetRelationships = (
-  params: GetRelationshipsParams
-) => Promise<PaginatedResponse<NodeCore>>;
+export type GetRelationships = (params: GetRelationshipsParams) => Promise<NodeCore[]>;
 
 export const getRelationships: GetRelationships = async ({
   branchName,
@@ -33,8 +31,5 @@ export const getRelationships: GetRelationships = async ({
 
   const relationshipsData = data[peer];
 
-  return {
-    items: relationshipsData.edges.map(({ node }: { node: NodeCore }) => node),
-    count: relationshipsData.count ?? 0,
-  };
+  return relationshipsData.edges.map(({ node }: { node: NodeCore }) => node);
 };
