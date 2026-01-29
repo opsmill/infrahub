@@ -148,6 +148,15 @@ class DiffCoordinator:
                 log.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
                 diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
                 await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+
+                roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
+                log.info(
+                    f"update_branch_diff returning (lock already held): "
+                    f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, "
+                    f"proposed_change_id={proposed_change_id}, "
+                    f"roots_metadata={[repr(r) for r in roots_metadata]}"
+                )
+
                 return diff_root
         from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
@@ -166,6 +175,15 @@ class DiffCoordinator:
                 )
                 diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
                 await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+
+                roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
+                log.info(
+                    f"update_branch_diff returning (branch merged/rebased): "
+                    f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, "
+                    f"proposed_change_id={proposed_change_id}, "
+                    f"roots_metadata={[repr(r) for r in roots_metadata]}"
+                )
+
                 return diff_root
             log.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
@@ -187,6 +205,15 @@ class DiffCoordinator:
             )
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
             log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
+
+            roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
+            log.info(
+                f"update_branch_diff returning (success): "
+                f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, "
+                f"proposed_change_id={proposed_change_id}, "
+                f"roots_metadata={[repr(r) for r in roots_metadata]}"
+            )
+
         return enriched_diffs.diff_branch_diff
 
     async def create_or_update_arbitrary_timeframe_diff(
@@ -264,6 +291,14 @@ class DiffCoordinator:
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
             log.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
+
+            roots_metadata = await self.diff_repo.get_roots_metadata(diff_branch_names=[diff_branch.name])
+            log.info(
+                f"recalculate returning: "
+                f"base_branch={base_branch.name}, diff_branch={diff_branch.name}, diff_id={diff_id}, "
+                f"roots_metadata={[repr(r) for r in roots_metadata]}"
+            )
+
         return enriched_diffs.diff_branch_diff
 
     def _get_ordered_diff_pairs(
