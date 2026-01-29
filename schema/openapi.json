@@ -1673,6 +1673,91 @@
                 ]
             }
         },
+        "/api/storage/files/{storage_id}": {
+            "get": {
+                "summary": "Download File Object",
+                "description": "Download a file from storage by its storage_id.\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.",
+                "operationId": "download_file_object_api_storage_files__storage_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "storage_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Storage Id"
+                        }
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File content with Content-Type matching the file's MIME type",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/transform/python/{transform_id}": {
             "get": {
                 "summary": "Transform Python",
