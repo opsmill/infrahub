@@ -2028,7 +2028,7 @@ export interface components {
              * @default true
              */
             optional: boolean;
-            /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
+            /** @description Type of branch support for the relationship. If not defined, it will be determined based on both peers. */
             branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Inherited

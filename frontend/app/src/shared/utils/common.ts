@@ -67,3 +67,5 @@ export const getTextColor = (background?: string) => {
 export function warnUnexpectedType(x: never) {
   console.warn(`unexpected type ${x}`);
 }
+
+export const waitFor = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

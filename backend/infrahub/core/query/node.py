@@ -2180,6 +2180,134 @@ WITH %(tracked_vars)s,
         return [str(result.get("n.uuid")) for result in self.get_results()]
 
 
+@dataclass(frozen=True)
+class NodeGetListByAttributeValueQueryResult:
+    """Result from NodeGetListByAttributeValueQuery."""
+
+    uuid: str
+    kind: str
+
+
+class NodeGetListByAttributeValueQuery(Query):
+    """Query to find nodes by searching attribute values.
+
+    This query is optimized for search operations by starting from the AttributeValueIndexed
+    nodes and using a TEXT index for efficient CONTAINS searches. This approach is more
+    efficient than the standard NodeGetListQuery when searching for values across all nodes.
+    """
+
+    name = "node_get_list_by_attribute_value"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        search_value: str,
+        kinds: list[str] | None = None,
+        partial_match: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        self.search_value = search_value
+        self.kinds = kinds
+        self.partial_match = partial_match
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.order_by = ["n.uuid"]
+        self.return_labels = ["DISTINCT n.uuid as uuid", "n.kind as kind"]
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # Build search values for case-insensitive matching without using toLower/toString
+        # which would disable index lookup. We search for four case variations:
+        # 1. Original (as provided), 2. lowercase, 3. UPPERCASE, 4. Title Case (first char upper, rest lower)
+        search_original = self.search_value
+        search_lower = self.search_value.lower()
+        search_upper = self.search_value.upper()
+        search_title = self.search_value.capitalize()
+
+        # Build the search predicate based on partial_match
+        # We avoid toLower/toString to allow TEXT index usage
+        if self.partial_match:
+            # Use CONTAINS with multiple case variations to leverage TEXT index
+            search_predicate = (
+                "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
+                "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
+            )
+        else:
+            # Exact match with case variations
+            search_predicate = (
+                "(av.value = $search_original OR av.value = $search_lower "
+                "OR av.value = $search_upper OR av.value = $search_title)"
+            )
+
+        self.params["search_original"] = search_original
+        self.params["search_lower"] = search_lower
+        self.params["search_upper"] = search_upper
+        self.params["search_title"] = search_title
+
+        # Build kind filter if specified
+        kind_filter = ""
+        if self.kinds:
+            kind_filter = "AND any(l IN labels(n) WHERE l in $kinds)"
+            self.params["kinds"] = self.kinds
+
+        # The query starts from AttributeValueIndexed nodes to leverage the TEXT index
+        # This approach is more efficient for search operations as it:
+        # 1. Starts from AttributeValueIndexed nodes (smaller set when filtered)
+        # 2. Traverses from matching values back to their owning nodes
+        # 3. Filters nodes by branch and status
+        query = """
+        // --------------------------
+        // start with all possible Node-Attribute-AttributeValue combinations
+        // --------------------------
+        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
+        WHERE %(search_predicate)s %(kind_filter)s
+        WITH DISTINCT n, attr, av
+        // --------------------------
+        // filter HAS_VALUE edges
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr
+        WHERE r.status = "active"
+        // --------------------------
+        // filter HAS_ATTRIBUTE edges
+        // --------------------------
+        CALL (n, attr) {
+            MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, r
+        WHERE r.status = "active"
+        """ % {
+            "search_predicate": search_predicate,
+            "kind_filter": kind_filter,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+
+    def get_data(self) -> Generator[NodeGetListByAttributeValueQueryResult, None, None]:
+        """Yield results as typed dataclass instances."""
+        for result in self.get_results():
+            yield NodeGetListByAttributeValueQueryResult(
+                uuid=result.get_as_str("uuid"),
+                kind=result.get_as_str("kind"),
+            )
+
+
 class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
     type = QueryType.READ

@@ -182,6 +182,7 @@ class SchemaNode(BaseModel):
     display_label: str | None = None
     display_labels: list[str]
     uniqueness_constraints: list[list[str]] | None = None
+    human_friendly_id: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -199,6 +200,7 @@ class SchemaNode(BaseModel):
             "display_label": self.display_label,
             "display_labels": self.display_labels,
             "uniqueness_constraints": self.uniqueness_constraints,
+            "human_friendly_id": self.human_friendly_id,
         }
 
     def without_duplicates(self, other: SchemaNode) -> SchemaNode:
@@ -225,7 +227,6 @@ base_node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    default_filter="name__value",
     display_labels=["label__value"],
     attributes=[
         SchemaAttribute(
@@ -239,7 +240,7 @@ base_node_schema = SchemaNode(
             name="name",
             kind="Text",
             description="Node name, must be unique within a namespace and must start with an uppercase letter.",
-            unique=True,
+            unique=False,
             regex=str(NODE_NAME_REGEX),
             min_length=DEFAULT_NAME_MIN_LENGTH,
             max_length=DEFAULT_NAME_MAX_LENGTH,
@@ -394,8 +395,9 @@ node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    default_filter="name__value",
     display_labels=["label__value"],
+    human_friendly_id=["namespace__value", "name__value"],
+    uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
     + [
         SchemaAttribute(
@@ -802,7 +804,7 @@ relationship_schema = SchemaNode(
             name="branch",
             kind="Text",
             internal_kind=BranchSupportType,
-            description="Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
+            description="Type of branch support for the relationship. If not defined, it will be determined based on both peers.",
             enum=BranchSupportType.available_types(),
             optional=True,
             extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2476
@@ -898,8 +900,9 @@ generic_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    default_filter="name__value",
     display_labels=["label__value"],
+    human_friendly_id=["namespace__value", "name__value"],
+    uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
     + [
         SchemaAttribute(

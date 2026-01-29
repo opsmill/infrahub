@@ -19,7 +19,6 @@ The current supported metadata are:
 - **Source**: Where is the data coming from. (By default, it can be an `Account` or a `Repository`)
 - **Owner**: Who is the owner of this data (By default, it be a `Group`, an `Account` or a `Repository`)
 - **Is Protected**: Flag to indicate if a value should be protected or not
-- **Is Visible**: An attribute that is not visible, won't show up in the frontend but it will remain available via GraphQL
 
 :::info
 
@@ -41,7 +40,7 @@ Note that accounts defined with the role of `admin` can always update protected 
 
 In addition to attribute and relationship metadata, Infrahub automatically tracks **object-level metadata** for every node in your infrastructure data. This provides complete audit trails and accountability, enabling you to determine who created or modified an object and when.
 
-Object-level metadata is distinct from the attribute-level metadata described above (Source, Owner, Is Protected, Is Visible). While attribute metadata tracks lineage for individual data points, object-level metadata tracks the lifecycle of the entire object.
+Object-level metadata is distinct from the attribute-level metadata described above (Source, Owner, Is Protected). While attribute metadata tracks lineage for individual data points, object-level metadata tracks the lifecycle of the entire object.
 
 The following fields are available on every object:
 
