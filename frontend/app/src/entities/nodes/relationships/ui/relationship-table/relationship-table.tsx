@@ -40,7 +40,7 @@ export function RelationshipTable({
     return <ErrorScreen message={error.message} />;
   }
 
-  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
+  const flatData = data?.pages?.flat() ?? [];
   const columns = [
     ...getObjectTableColumns(relationshipSchema, { disabled: true }),
     getRelationshipActionsColumn({

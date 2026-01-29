@@ -28,7 +28,7 @@ describe("RelationshipMany - Field", () => {
       { id: "2", display_label: "Node 2", __typename: "TestNode" },
       { id: "3", display_label: "Node 3", __typename: "TestNode" },
     ];
-    vi.mocked(getRelationships).mockResolvedValue({ items: mockNodes, count: mockNodes.length });
+    vi.mocked(getRelationships).mockResolvedValue(mockNodes);
   });
 
   afterEach(() => {

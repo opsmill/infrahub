@@ -31,7 +31,6 @@ export const generateRelationshipListQuery = ({
           ...args,
           ...filterQuery,
         },
-        count: true,
         edges: {
           node: {
             id: true,
