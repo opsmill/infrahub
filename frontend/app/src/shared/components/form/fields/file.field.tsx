@@ -41,12 +41,7 @@ export function FileField({
   return (
     <div className="space-y-2">
       <LabelFormField label={label} required={required} />
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        onChange={handleFileInputChange}
-      />
+      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileInputChange} />
       {showFileCard ? (
         <FileInfoCard
           fileName={selectedFile?.name ?? existingFile?.fileName ?? ""}
