@@ -1,17 +1,15 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { FileInfoCard } from "@/shared/components/file/file-info-card";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { FileField } from "@/shared/components/form/fields/file.field";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
-import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
@@ -29,13 +27,6 @@ export type CoreFileFormData = Record<string, FormFieldValue> & {
   file?: File | null;
 };
 
-/** Existing file info extracted from currentObject during edit */
-export interface ExistingFileInfo {
-  fileName: string;
-  fileSize?: number;
-  contentType?: string;
-}
-
 export type CoreFileFormProps = {
   className?: string;
   schema: NodeSchema | ProfileSchema;
@@ -48,13 +39,7 @@ export type CoreFileFormProps = {
   onCancel?: () => void;
 };
 
-/**
- * Extracts existing file information from currentObject attributes.
- * Used during edit mode to show current file details.
- */
-function getExistingFileInfo(
-  currentObject?: Record<string, AttributeType | RelationshipType>
-): ExistingFileInfo | null {
+function getExistingFileInfo(currentObject?: Record<string, AttributeType | RelationshipType>) {
   if (!currentObject) return null;
 
   const fileName =
@@ -79,13 +64,12 @@ export function CoreFileForm({
   onSuccess,
   onCancel,
   isFilterForm,
-  isUpdate,
+  isUpdate = false,
 }: CoreFileFormProps) {
   const auth = useAuth();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const existingFile = getExistingFileInfo(currentObject);
@@ -109,77 +93,55 @@ export function CoreFileForm({
     parentData,
   });
 
-  const formDefaultValues: Record<string, unknown> = {
-    ...Object.fromEntries(fields.map((field) => [field.name, field.defaultValue])),
-  };
-
-  async function onSubmitCreate(formData: CoreFileFormData) {
-    const newObject = getCreateMutationFromFormData(fields, formData, objectTemplate?.id);
-
-    const mutationParams = {
-      objectKind: schema.kind as string,
-      data: newObject,
-      profileIds: profiles?.map((profile) => profile.id),
-    };
-
-    await createObject.mutateAsync(
-      selectedFile ? { ...mutationParams, file: selectedFile } : mutationParams,
-      {
-        onSuccess: async (newNode) => {
-          toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-            toastId: `alert-success-${schema?.name}-created`,
-          });
-
-          if (onSuccess) await onSuccess(newNode);
-        },
-        onError: (error) => {
-          console.error("An error occurred while creating the file: ", error);
-        },
-      }
-    );
-  }
-
-  async function onSubmitUpdate(formData: CoreFileFormData) {
-    const updatedData = getUpdateMutationFromFormData({ fields, formData });
-
-    if (currentObject?.id) {
-      updatedData.id = currentObject?.id;
-    }
-
-    const mutationParams = {
-      objectKind: schema.kind as string,
-      data: updatedData,
-      profileIds: profiles?.map((profile) => profile.id),
-    };
-
-    await updateObject.mutateAsync(
-      selectedFile ? { ...mutationParams, file: selectedFile } : mutationParams,
-      {
-        onSuccess: async (updatedNode) => {
-          toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
-            toastId: `alert-success-${schema?.name}-updated`,
-          });
-
-          if (onSuccess) await onSuccess(updatedNode);
-        },
-        onError: (error) => {
-          console.error("An error occurred while updating the file: ", error);
-        },
-      }
-    );
-  }
+  const formDefaultValues: Record<string, unknown> = Object.fromEntries(
+    fields.map((field) => [field.name, field.defaultValue])
+  );
 
   async function onSubmit(formData: CoreFileFormData) {
-    // Validate file is provided for create
-    if (!isUpdate && !selectedFile) {
-      return;
-    }
+    if (!isUpdate && !selectedFile) return;
+
+    const mutationParams = {
+      objectKind: schema.kind as string,
+      profileIds: profiles?.map((profile) => profile.id),
+    };
 
     try {
       if (isUpdate) {
-        await onSubmitUpdate(formData);
+        const updatedData: Record<string, unknown> = getUpdateMutationFromFormData({
+          fields,
+          formData,
+        });
+        if (currentObject?.id) updatedData.id = currentObject.id;
+
+        await updateObject.mutateAsync(
+          selectedFile
+            ? { ...mutationParams, data: updatedData, file: selectedFile }
+            : { ...mutationParams, data: updatedData },
+          {
+            onSuccess: async (updatedNode) => {
+              toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+                toastId: `alert-success-${schema?.name}-updated`,
+              });
+              if (onSuccess) await onSuccess(updatedNode);
+            },
+          }
+        );
       } else {
-        await onSubmitCreate(formData);
+        const newObject = getCreateMutationFromFormData(fields, formData, objectTemplate?.id);
+
+        await createObject.mutateAsync(
+          selectedFile
+            ? { ...mutationParams, data: newObject, file: selectedFile }
+            : { ...mutationParams, data: newObject },
+          {
+            onSuccess: async (newNode) => {
+              toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+                toastId: `alert-success-${schema?.name}-created`,
+              });
+              if (onSuccess) await onSuccess(newNode);
+            },
+          }
+        );
       }
     } catch (error) {
       console.error("An error occurred during file operation: ", error);
@@ -188,65 +150,20 @@ export function CoreFileForm({
           type={ALERT_TYPES.ERROR}
           message={`Failed to ${isUpdate ? "update" : "upload"} file`}
         />,
-        {
-          toastId: "alert-error-file-operation",
-        }
+        { toastId: "alert-error-file-operation" }
       );
     }
   }
 
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-  };
-
-  const handleReplaceFile = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-    event.target.value = "";
-  };
-
-  const hasSelectedFile = selectedFile !== null;
-  const hasExistingFile = isUpdate && existingFile !== null;
-  const showFileInfo = hasSelectedFile || hasExistingFile;
-  const isFileRequired = !isUpdate && !hasSelectedFile;
-
-  const displayFileName = selectedFile?.name ?? existingFile?.fileName ?? "";
-  const displayFileSize = selectedFile?.size ?? existingFile?.fileSize;
-  const displayContentType = selectedFile?.type || existingFile?.contentType;
-
   return (
     <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
       <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className="space-y-4">
-        <div className="space-y-2">
-          <LabelFormField label="File" required={!isUpdate} />
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileInputChange}
-          />
-          {showFileInfo ? (
-            <FileInfoCard
-              fileName={displayFileName}
-              fileSize={displayFileSize}
-              contentType={displayContentType}
-              onReplace={handleReplaceFile}
-            />
-          ) : (
-            <FileDropzone onFileSelect={handleFileSelect} hasError={isFileRequired} />
-          )}
-          {isFileRequired && (
-            <p className="text-red-600 text-sm" data-cy="field-error-message">
-              File is required
-            </p>
-          )}
-        </div>
+        <FileField
+          required={!isUpdate}
+          selectedFile={selectedFile}
+          existingFile={existingFile}
+          onFileSelect={setSelectedFile}
+        />
 
         {fields.map((field) => (
           <DynamicField key={`${field.type}_${field.name}`} {...field} />
