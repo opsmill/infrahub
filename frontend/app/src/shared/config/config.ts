@@ -24,6 +24,8 @@ export const CONFIG = {
     `${INFRAHUB_API_SERVER_URL}/api/diff/artifacts?branch=${branch}`,
   ARTIFACTS_CONTENT_URL: (storageId: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`,
+  FILE_DOWNLOAD_URL: (storageId: string) =>
+    `${INFRAHUB_API_SERVER_URL}/api/storage/files/${storageId}`,
   FILES_CONTENT_URL: (repositoryId: string, location: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/file/${repositoryId}/${encodeURIComponent(location)}`,
 };
