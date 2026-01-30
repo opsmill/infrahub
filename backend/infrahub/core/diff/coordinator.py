@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
 from uuid import uuid4
 
+from opentelemetry import trace
 from prefect import flow
 
 from infrahub.core.branch import Branch
@@ -208,9 +209,18 @@ class DiffCoordinator:
                 enriched_diffs.diff_branch_diff.proposed_change_id = proposed_change_id
                 enriched_diffs.base_branch_diff.proposed_change_id = proposed_change_id
 
-            await self.diff_repo.save(
-                enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
-            )
+            with trace.get_tracer(__name__).start_as_current_span("diff_update_save") as span:
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch.name)
+                span.set_attribute("from_time", from_time.to_string())
+                span.set_attribute("to_time", to_time.to_string())
+                span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                diff_uuids = [enriched_diffs.base_branch_diff.uuid, enriched_diffs.diff_branch_diff.uuid]
+                span.set_attribute("diff_uuids", str(diff_uuids))
+
+                await self.diff_repo.save(
+                    enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
+                )
 
             self.logger.error(
                 f"Saved diff roots {[enriched_diffs.base_branch_diff.uuid, enriched_diffs.diff_branch_diff.uuid]}"
@@ -434,7 +444,14 @@ class DiffCoordinator:
                 diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
 
         if diff_uuids_to_delete:
-            await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
+            with trace.get_tracer(__name__).start_as_current_span("diff_update_delete") as span:
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch.name)
+                span.set_attribute("from_time", from_time.to_string())
+                span.set_attribute("to_time", to_time.to_string())
+                span.set_attribute("uuids_to_delete", str(diff_uuids_to_delete))
+
+                await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
 
             self.logger.error(f"Deleted diff roots {diff_uuids_to_delete}")
 

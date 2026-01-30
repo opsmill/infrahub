@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
+from opentelemetry import trace
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
@@ -488,27 +489,28 @@ class DiffTreeResolver:
         elif root_node_uuids:
             filters_dict["ids"] = root_node_uuids
 
-        t = Timestamp()
-        log.error(f"Retrieving diffs for {branch} at {t.to_string()}")
+        with trace.get_tracer(__name__).start_as_current_span("diff_tree_request") as span:
+            span.set_attribute("base_branch_name", base_branch.name)
+            span.set_attribute("diff_branch_name", diff_branch.name)
+            span.set_attribute("from_time", from_timestamp.to_string() if from_timestamp else "null")
+            span.set_attribute("to_time", to_timestamp.to_string() if to_timestamp else "null")
+            span.set_attribute("proposed_change_id", proposed_change_id or "null")
 
-        enriched_diffs = await diff_repo.get(
-            base_branch_name=base_branch.name,
-            diff_branch_names=[diff_branch.name],
-            from_time=from_timestamp,
-            to_time=to_timestamp,
-            filters=EnrichedDiffQueryFilters(**filters_dict),
-            include_parents=include_parents,
-            limit=limit,
-            offset=offset,
-            tracking_id=NameTrackingId(name) if name else None,
-            include_empty=True,
-            proposed_change_id=proposed_change_id,
-            # include merged diffs if filtering on proposed change
-            exclude_merged=not proposed_change_id,
-        )
-
-        t = Timestamp()
-        log.error(f"Diffs retrieved for {branch} at {t.to_string()}")
+            enriched_diffs = await diff_repo.get(
+                base_branch_name=base_branch.name,
+                diff_branch_names=[diff_branch.name],
+                from_time=from_timestamp,
+                to_time=to_timestamp,
+                filters=EnrichedDiffQueryFilters(**filters_dict),
+                include_parents=include_parents,
+                limit=limit,
+                offset=offset,
+                tracking_id=NameTrackingId(name) if name else None,
+                include_empty=True,
+                proposed_change_id=proposed_change_id,
+                # include merged diffs if filtering on proposed change
+                exclude_merged=not proposed_change_id,
+            )
 
         if not enriched_diffs:
             return None
