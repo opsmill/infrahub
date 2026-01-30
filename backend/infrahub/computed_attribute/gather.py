@@ -166,7 +166,9 @@ async def gather_trigger_computed_attribute_python(
             branches_with_diff_from_main = list(branches.keys())
 
         branches_to_process: list[tuple[str, list[str]]] = [(branch, []) for branch in branches_with_diff_from_main]
-        branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
+
+        if registry.default_branch in branches.keys():
+            branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
 
         for branch_scope, branches_out_of_scope in branches_to_process:
             trigger_python = ComputedAttrPythonTriggerDefinition.from_object(
