@@ -7,7 +7,6 @@ import { classNames } from "@/shared/utils/common";
 export interface FileDropzoneProps {
   onFileSelect: (file: File) => void;
   accept?: string[];
-  maxSize?: number;
   disabled?: boolean;
   hasError?: boolean;
   className?: string;
