@@ -1574,6 +1574,18 @@
                         "description": "HFID component values in order"
                     },
                     {
+                        "name": "preview",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Return file for inline display rather than as an attachment",
+                            "default": false,
+                            "title": "Preview"
+                        },
+                        "description": "Return file for inline display rather than as an attachment"
+                    },
+                    {
                         "name": "branch",
                         "in": "query",
                         "required": false,
@@ -1659,6 +1671,18 @@
                         }
                     },
                     {
+                        "name": "preview",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Return file for inline display rather than as an attachment",
+                            "default": false,
+                            "title": "Preview"
+                        },
+                        "description": "Return file for inline display rather than as an attachment"
+                    },
+                    {
                         "name": "branch",
                         "in": "query",
                         "required": false,
@@ -1742,6 +1766,18 @@
                             "type": "string",
                             "title": "Node Id"
                         }
+                    },
+                    {
+                        "name": "preview",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Return file for inline display rather than as an attachment",
+                            "default": false,
+                            "title": "Preview"
+                        },
+                        "description": "Return file for inline display rather than as an attachment"
                     },
                     {
                         "name": "branch",

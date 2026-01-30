@@ -88,6 +88,7 @@ Upload endpoint is **not implemented** - GraphQL is the primary upload method.
   - [x] Test download binary file (PNG)
   - [x] Test download returns correct content type from node
   - [x] Test download returns Content-Disposition header with filename
+  - [x] Test download with preview=true returns Content-Disposition: inline
   - [x] Test download nonexistent file returns 404
   - [x] Test download without VIEW permission returns 403
   - [x] Test download with VIEW permission succeeds
@@ -101,6 +102,7 @@ Upload endpoint is **not implemented** - GraphQL is the primary upload method.
   - [x] Test download by HFID with invalid kind returns 404
   - [x] Test download by HFID with non-FileObject kind returns 400
   - [x] Test download by HFID without VIEW permission returns 403
+  - [x] Test download by HFID with multi-value human_friendly_id
 
 - [x] Create `backend/tests/unit/api/test_file_object.py`
   - [x] Test simple filename passes through unchanged
@@ -137,14 +139,15 @@ Upload endpoint is **not implemented** - GraphQL is the primary upload method.
 ### Download File by Node ID (Main Endpoint)
 
 ```
-GET /api/storage/files/{node_id}?branch={branch_name}
+GET /api/storage/files/{node_id}?branch={branch_name}&preview={true|false}
 
 Query Parameters:
 - branch (optional): Branch name, defaults to current branch
+- preview (optional): If true, return file for inline display (Content-Disposition: inline) rather than as an attachment. Useful for previewing text, images, or videos in the browser. Defaults to false.
 
 Response 200:
 Content-Type: <file_type from FileObject node>
-Content-Disposition: attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+Content-Disposition: inline|attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
 <binary content>
 
 Response 404: Node ID not found
@@ -155,7 +158,7 @@ Response 403: Permission denied (user lacks VIEW permission on the FileObject)
 ### Download File by HFID
 
 ```
-GET /api/storage/files/by-hfid/{kind}?hfid={value1}&hfid={value2}&branch={branch_name}
+GET /api/storage/files/by-hfid/{kind}?hfid={value1}&hfid={value2}&branch={branch_name}&preview={true|false}
 
 Path Parameters:
 - kind: The FileObject kind (e.g., NetworkCircuitContract)
@@ -163,10 +166,11 @@ Path Parameters:
 Query Parameters:
 - hfid (required, repeatable): HFID component values in order
 - branch (optional): Branch name, defaults to current branch
+- preview (optional): If true, return file for inline display rather than as an attachment. Defaults to false.
 
 Response 200:
 Content-Type: <file_type from FileObject node>
-Content-Disposition: attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+Content-Disposition: inline|attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
 <binary content>
 
 Response 404: HFID not found or kind doesn't exist/inherit from CoreFileObject
@@ -177,14 +181,15 @@ Response 403: Permission denied (user lacks VIEW permission on the FileObject)
 ### Download File by Storage ID
 
 ```
-GET /api/storage/files/by-storage-id/{storage_id}?branch={branch_name}
+GET /api/storage/files/by-storage-id/{storage_id}?branch={branch_name}&preview={true|false}
 
 Query Parameters:
 - branch (optional): Branch name, defaults to current branch
+- preview (optional): If true, return file for inline display rather than as an attachment. Defaults to false.
 
 Response 200:
 Content-Type: <file_type from FileObject node, e.g., application/pdf, image/png>
-Content-Disposition: attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+Content-Disposition: inline|attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
 <binary content>
 
 Response 404: Storage ID not found
@@ -212,6 +217,12 @@ Response 403: Permission denied (user lacks VIEW permission on the FileObject)
 ### Why return the actual file_type?
 
 The endpoint returns the actual Content-Type from the node's `file_type` attribute (e.g., `application/pdf`, `image/png`) rather than a generic `application/octet-stream`. This allows browsers to handle files appropriately (e.g., displaying images inline).
+
+### What does the preview parameter do?
+
+The `preview` query parameter controls the `Content-Disposition` header:
+- `preview=false` (default): Returns `Content-Disposition: attachment`, which forces browsers to download the file.
+- `preview=true`: Returns `Content-Disposition: inline`, which allows browsers to display supported file types (images, PDFs, text, videos) directly in the browser window instead of downloading them.
 
 ### How is the filename handled securely?
 

@@ -3186,6 +3186,8 @@ export interface operations {
             query: {
                 /** @description HFID component values in order */
                 hfid: string[];
+                /** @description Return file for inline display rather than as an attachment */
+                preview?: boolean;
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
                 /** @description Time to use for the query, in absolute or relative format */
@@ -3222,6 +3224,8 @@ export interface operations {
     download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get: {
         parameters: {
             query?: {
+                /** @description Return file for inline display rather than as an attachment */
+                preview?: boolean;
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
                 /** @description Time to use for the query, in absolute or relative format */
@@ -3258,6 +3262,8 @@ export interface operations {
     download_file_object_api_storage_files__node_id__get: {
         parameters: {
             query?: {
+                /** @description Return file for inline display rather than as an attachment */
+                preview?: boolean;
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
                 /** @description Time to use for the query, in absolute or relative format */
