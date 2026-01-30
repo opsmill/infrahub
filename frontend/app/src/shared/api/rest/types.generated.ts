@@ -433,6 +433,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/storage/files/{storage_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download File Object
+         * @description Download a file from storage by its storage_id.
+         *
+         *     Requires `VIEW` permission on the FileObject node.
+         *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+         *     filename.
+         */
+        get: operations["download_file_object_api_storage_files__storage_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transform/python/{transform_id}": {
         parameters: {
             query?: never;
@@ -2043,7 +2067,7 @@ export interface components {
              * @default true
              */
             optional: boolean;
-            /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
+            /** @description Type of branch support for the relationship. If not defined, it will be determined based on both peers. */
             branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Inherited
@@ -3193,6 +3217,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_object_api_storage_files__storage_id__get: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                storage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content with Content-Type matching the file's MIME type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
             /** @description Validation Error */

@@ -50,7 +50,6 @@ const generateObjectRelationshipsQuery = ({
                 offset,
                 ...(filters ? addFiltersToRequest(filters) : {}),
               },
-              count: true,
               edges: {
                 node: {
                   __on: {

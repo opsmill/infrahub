@@ -446,6 +446,24 @@ class TestDiffCoordinator:
         for metadata in retrieved_metadata:
             assert metadata.proposed_change_id == proposed_change_id
 
+        # make another change on the branch
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        # update the diff w/ no proposed_change_id
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # make sure the proposed_change_id sticks
+        assert diff_metadata.proposed_change_id == proposed_change_id
+        retrieved_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch.name, default_branch.name],
+            proposed_change_id=proposed_change_id,
+        )
+        assert len(retrieved_metadata) == 2  # base and diff branch roots
+        for metadata in retrieved_metadata:
+            assert metadata.proposed_change_id == proposed_change_id
+
     async def test_proposed_change_preserved_during_incremental_diff_update(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
     ) -> None:

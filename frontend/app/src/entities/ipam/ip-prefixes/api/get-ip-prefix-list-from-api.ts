@@ -55,7 +55,6 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
           offset,
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
         },
-        count: true,
         edges: {
           node: {
             id: true,
@@ -90,7 +89,6 @@ export function buildGetIpPrefixListWithAvailabilityQuery({
           ...(objectKind !== IP_PREFIX_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
-        count: true,
         edges: {
           node: {
             id: true,

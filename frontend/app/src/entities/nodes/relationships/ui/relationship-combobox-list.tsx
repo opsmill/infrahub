@@ -49,7 +49,7 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
             {data.pages.map((page) => {
-              const filteredNodes = filterItem ? page.items.filter(filterItem) : page.items;
+              const filteredNodes = filterItem ? page.filter(filterItem) : page;
 
               return filteredNodes.map((node) => (
                 <ComboboxItem

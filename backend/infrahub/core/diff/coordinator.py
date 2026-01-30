@@ -116,6 +116,22 @@ class DiffCoordinator:
             name=name,
         )
 
+    async def _link_diff_to_proposed_change(
+        self, diff_root: EnrichedDiffRootMetadata, proposed_change_id: str | None
+    ) -> None:
+        """Link a diff root to a proposed change if needed.
+
+        Updates the database link and the in-memory object's proposed_change_id.
+        """
+        if not proposed_change_id:
+            return
+        if diff_root.proposed_change_id != proposed_change_id:
+            diff_uuids = [diff_root.uuid]
+            if diff_root.partner_uuid:
+                diff_uuids.append(diff_root.partner_uuid)
+            await self.diff_repo.link_to_proposed_change(diff_uuids=diff_uuids, proposed_change_id=proposed_change_id)
+        diff_root.proposed_change_id = proposed_change_id
+
     async def update_branch_diff(
         self, base_branch: Branch, diff_branch: Branch, proposed_change_id: str | None = None
     ) -> EnrichedDiffRootMetadata:
@@ -130,7 +146,9 @@ class DiffCoordinator:
                 target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
             ):
                 log.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
-                return await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+                return diff_root
         from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
         async with (
@@ -146,7 +164,9 @@ class DiffCoordinator:
                 log.info(
                     f"Branch {diff_branch.name} was merged or rebased while waiting for lock, returning latest diff"
                 )
-                return await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+                return diff_root
             log.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
                 base_branch=base_branch,
@@ -190,6 +210,10 @@ class DiffCoordinator:
                 tracking_id=tracking_id,
                 force_branch_refresh=False,
             )
+
+            # should never have a proposed change id for an arbitrary diff
+            enriched_diffs.diff_branch_diff.proposed_change_id = None
+            enriched_diffs.base_branch_diff.proposed_change_id = None
 
             await self.diff_repo.save(
                 enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)

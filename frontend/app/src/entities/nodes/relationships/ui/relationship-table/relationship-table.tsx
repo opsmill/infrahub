@@ -9,6 +9,7 @@ import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
+import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
@@ -26,6 +27,12 @@ export function RelationshipTable({
 }: RelationshipTableProps) {
   const { schema: parentSchema } = useSchema(parentKind);
   const [filters] = useFilters();
+  const { data: count } = useGetRelationshipCount({
+    objectKind: parentKind,
+    objectId: parentId,
+    relationshipName,
+  });
+
   const { data, fetchNextPage, error, hasNextPage, isPending, isFetchingNextPage } =
     useObjectRelationships({
       relationshipSchema,
@@ -40,7 +47,7 @@ export function RelationshipTable({
     return <ErrorScreen message={error.message} />;
   }
 
-  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
+  const flatData = data?.pages?.flat() ?? [];
   const columns = [
     ...getObjectTableColumns(relationshipSchema, { disabled: true }),
     getRelationshipActionsColumn({
@@ -65,6 +72,7 @@ export function RelationshipTable({
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columns={columns}
+        count={count}
         data={flatData}
         isLoading={isLoading}
         renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
