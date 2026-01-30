@@ -28,7 +28,7 @@ test.describe("/proposed-changes checks", () => {
         // checks are async, we must wait for them
         await page.reload();
         await expect(page.getByLabel("Tabs").getByText("Checks")).toBeVisible();
-        await expect(page.getByText("loading...").first()).not.toBeVisible();
+        await expect(page.getByTestId("checks-summary")).toBeVisible();
       }
       const checksSummary = page.getByTestId("checks-summary");
       await expect(checksSummary.getByText("Retry")).toBeVisible();
