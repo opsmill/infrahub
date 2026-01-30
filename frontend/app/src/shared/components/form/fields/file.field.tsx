@@ -28,7 +28,7 @@ export function FileField({
   const { formState } = useFormContext();
 
   const hasFile = selectedFile !== null;
-  const hasExistingFile = existingFile !== null;
+  const hasExistingFile = !!existingFile?.fileName;
   const showFileCard = hasFile || hasExistingFile;
   const showError = formState.submitCount > 0 && required && !hasFile;
 
