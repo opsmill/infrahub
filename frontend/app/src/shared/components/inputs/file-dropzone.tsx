@@ -22,6 +22,7 @@ export function FileDropzone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDrop: React.ComponentProps<typeof DropZone>["onDrop"] = async (e) => {
+    if (disabled) return;
     const fileItem = e.items.find(isFileDropItem);
     if (fileItem) {
       const file = await fileItem.getFile();
@@ -30,17 +31,26 @@ export function FileDropzone({
   };
 
   const handleSelect = (files: FileList | null) => {
+    if (disabled) return;
     const file = files?.[0];
     if (file) {
       onFileSelect(file);
     }
   };
 
+  const handleDropEnter = () => {
+    if (!disabled) setIsDragOver(true);
+  };
+
+  const handleDropExit = () => {
+    if (!disabled) setIsDragOver(false);
+  };
+
   return (
     <DropZone
       onDrop={handleDrop}
-      onDropEnter={() => setIsDragOver(true)}
-      onDropExit={() => setIsDragOver(false)}
+      onDropEnter={handleDropEnter}
+      onDropExit={handleDropExit}
       isDisabled={disabled}
       className={classNames(
         "flex w-full flex-col items-center justify-center rounded-md border p-6 transition-colors",
@@ -52,7 +62,7 @@ export function FileDropzone({
       )}
     >
       <FileTrigger onSelect={handleSelect} acceptedFileTypes={accept}>
-        <Pressable>
+        <Pressable isDisabled={disabled}>
           <div className="flex w-full cursor-pointer flex-col items-center justify-center">
             <Icon
               icon={isDragOver ? "mdi:file-upload" : "mdi:cloud-upload-outline"}
