@@ -204,7 +204,6 @@ class DiffCoordinator:
                 force_branch_refresh=False,
             )
 
-            # set proposed change IDs
             if proposed_change_id:
                 enriched_diffs.diff_branch_diff.proposed_change_id = proposed_change_id
                 enriched_diffs.base_branch_diff.proposed_change_id = proposed_change_id
@@ -214,7 +213,8 @@ class DiffCoordinator:
                 span.set_attribute("diff_branch_name", diff_branch.name)
                 span.set_attribute("from_time", from_time.to_string())
                 span.set_attribute("to_time", to_time.to_string())
-                span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                current_proposed_change_id = enriched_diffs.diff_branch_diff.proposed_change_id
+                span.set_attribute("proposed_change_id", current_proposed_change_id or "null")
                 diff_uuids = [enriched_diffs.base_branch_diff.uuid, enriched_diffs.diff_branch_diff.uuid]
                 span.set_attribute("diff_uuids", str(diff_uuids))
 
