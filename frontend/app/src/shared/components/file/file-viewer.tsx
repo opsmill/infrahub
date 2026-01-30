@@ -75,7 +75,7 @@ function TextFileViewer({ url, fileName, contentType }: TextFileViewerProps) {
     return <LoadingIndicator className="p-4" />;
   }
 
-  if (!fileContent) {
+  if (!fileContent || fileContent === "No file content") {
     return <NoDataFound message="No file found." />;
   }
 
@@ -227,6 +227,7 @@ function mapToDataViewerContentType(contentType?: string): DataViewerContentType
     "application/json",
     "application/yaml",
     "application/hcl",
+    "application/graphql",
     "image/svg+xml",
     "text/plain",
     "text/markdown",
