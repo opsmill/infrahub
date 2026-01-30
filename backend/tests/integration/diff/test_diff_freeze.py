@@ -218,3 +218,129 @@ class TestDiffFreeze(TestInfrahubApp):
             diff_branch_name=BRANCH_NAME,
         )
         assert frozen_diff_after_delete.uuid == frozen_diff.uuid
+
+    async def test_branch_diff_update_using_frozen_diff(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        client: InfrahubClient,
+    ) -> None:
+        """Test a branch-tracking diff using a previous frozen diff
+
+        This validates the scenario where:
+        1. Create a branch
+        2. Make changes
+        3. Create a proposed change and link the diff
+        4. Close the proposed change, freezing the diff
+        5. Make more changes on the branch
+        6. Refresh the diff for the branch (without creating a new PC)
+        7. Frozen diff still exists and is linked to the closed PC
+        8. New BranchTrackingId diff has latest data and is NOT linked to any PC
+        """
+        branch_name = "freeze-persist-test-branch"
+
+        # Step 1: Create branch
+        branch = await create_branch(db=db, branch_name=branch_name)
+
+        # Step 2: Make initial changes on branch
+        carol = await Node.init(schema=TestKind.PERSON, db=db, branch=branch.name)
+        await carol.new(db=db, name="Carol", height=170, description="First person on persist test")
+        await carol.save(db=db)
+
+        # Step 3: Run DiffUpdate to create initial diff
+        result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_name})
+        assert result["DiffUpdate"]["ok"]
+
+        # Create proposed change
+        pc_result = await client.execute_graphql(
+            query=PROPOSED_CHANGE_CREATE,
+            variables={
+                "name": "PC-persist-test",
+                "source_branch": branch_name,
+                "destination_branch": default_branch.name,
+            },
+        )
+        pc_id = pc_result["CoreProposedChangeCreate"]["object"]["id"]
+
+        # Verify diff is linked to the PC and has BranchTrackingId
+        component_registry = get_component_registry()
+        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_before_close = await diff_repo.get_one(
+            tracking_id=BranchTrackingId(name=branch_name),
+            diff_branch_name=branch_name,
+        )
+        assert diff_before_close.proposed_change_id == pc_id
+        assert diff_before_close.is_frozen is False
+        assert isinstance(diff_before_close.tracking_id, BranchTrackingId)
+        assert len(diff_before_close.nodes) == 1
+        assert any(n.label == "Carol" for n in diff_before_close.nodes)
+        diff_before_close_to_time = diff_before_close.to_time
+
+        # Step 4: Close the proposed change (this freezes the diff)
+        await client.execute_graphql(
+            query=PROPOSED_CHANGE_UPDATE,
+            variables={"proposed_change_id": pc_id, "state": ProposedChangeState.CLOSED.value},
+        )
+
+        # Verify diff is now frozen and linked to closed PC
+        frozen_diff_metadata_list = await diff_repo.get_roots_metadata(proposed_change_id=pc_id)
+        assert len(frozen_diff_metadata_list) == 2  # branch diff + base diff
+        for frozen_diff_metadata in frozen_diff_metadata_list:
+            assert frozen_diff_metadata.is_frozen is True
+            assert isinstance(frozen_diff_metadata.tracking_id, FrozenTrackingId)
+            assert frozen_diff_metadata.tracking_id.name == pc_id
+            assert frozen_diff_metadata.proposed_change_id == pc_id
+
+        # Step 5: Make more changes on the branch
+        diff_branch = registry.get_branch_from_registry(branch=branch_name)
+        dave = await Node.init(schema=TestKind.PERSON, db=db, branch=diff_branch.name)
+        await dave.new(db=db, name="Dave", height=185, description="Second person on persist test")
+        await dave.save(db=db)
+        second_change_time = Timestamp()
+
+        # Step 6: Refresh the diff for the branch (no new PC created)
+        result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_name})
+        assert result["DiffUpdate"]["ok"]
+
+        # Step 7: Validate frozen diff still exists and is linked to closed PC
+        frozen_diff = await diff_repo.get_one(
+            tracking_id=FrozenTrackingId(name=pc_id),
+            diff_branch_name=branch_name,
+        )
+        assert frozen_diff.uuid == next(m.uuid for m in frozen_diff_metadata_list if m.diff_branch_name == branch_name)
+        assert frozen_diff.is_frozen is True
+        assert isinstance(frozen_diff.tracking_id, FrozenTrackingId)
+        assert frozen_diff.tracking_id.name == pc_id
+        assert frozen_diff.proposed_change_id == pc_id
+        # Frozen diff should have same time range as before it was closed
+        assert frozen_diff.to_time == diff_before_close_to_time
+        assert frozen_diff.to_time < second_change_time
+        # Frozen diff should only have original changes (Carol, not Dave)
+        assert len(frozen_diff.nodes) == 1
+        frozen_nodes_by_label = {n.label: n for n in frozen_diff.nodes}
+        assert "Carol" in frozen_nodes_by_label
+        assert "Dave" not in frozen_nodes_by_label
+
+        # Step 8: Validate the new BranchTrackingId diff has latest data and is NOT linked to any PC
+        current_diff = await diff_repo.get_one(
+            tracking_id=BranchTrackingId(name=branch_name),
+            diff_branch_name=branch_name,
+        )
+        # Current diff should be different from frozen diff
+        assert current_diff.uuid != frozen_diff.uuid
+        # Current diff should NOT be frozen
+        assert current_diff.is_frozen is False
+        # Current diff should have BranchTrackingId
+        assert isinstance(current_diff.tracking_id, BranchTrackingId)
+        assert current_diff.tracking_id.name == branch_name
+        # Current diff should NOT be linked to any proposed change
+        assert current_diff.proposed_change_id is None
+        # Current diff should have latest data (both Carol and Dave)
+        assert len(current_diff.nodes) == 2
+        current_nodes_by_label = {n.label: n for n in current_diff.nodes}
+        assert "Carol" in current_nodes_by_label
+        assert "Dave" in current_nodes_by_label
+        # Current diff should have updated time range
+        assert current_diff.from_time == frozen_diff.from_time  # Same branch creation time
+        assert current_diff.to_time >= second_change_time
