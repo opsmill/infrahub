@@ -61,17 +61,26 @@ describe("objectQueryKeys", () => {
 
   it("returns query key for count", () => {
     // GIVEN
+    const filters: Filter[] = [{ name: "include_available", value: "true" }];
     const params = {
       branchName: "branchName",
       atDate: new Date("2024-01-01"),
       objectKind: "RandomKind",
+      filters,
     };
 
     // WHEN
     const result = objectQueryKeys.count(params);
 
     // THEN
-    expect(result).toEqual(["objects", "branchName", params.atDate, "RandomKind", "count"]);
+    expect(result).toEqual([
+      "objects",
+      "branchName",
+      params.atDate,
+      "RandomKind",
+      "count",
+      filters,
+    ]);
   });
 
   it("returns query key for detail", () => {

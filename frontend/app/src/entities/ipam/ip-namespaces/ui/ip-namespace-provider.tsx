@@ -36,7 +36,7 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
     return <ErrorScreen message={error.message} />;
   }
 
-  const namespaceList = data.pages.flatMap((page) => page.items) ?? [];
+  const namespaceList = data.pages.flat() ?? [];
 
   const selectedNamespace = namespaceList.find((namespace) => {
     if (namespaceQSP) return namespace.id === namespaceQSP;

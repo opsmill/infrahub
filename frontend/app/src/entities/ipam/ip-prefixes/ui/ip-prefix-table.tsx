@@ -6,6 +6,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { useGetIpPrefixList } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list.query";
 import { getIpPrefixTableColumns } from "@/entities/ipam/ip-prefixes/utils/get-ip-prefix-table-columns";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
@@ -26,11 +27,17 @@ export interface IpPrefixTableProps {
 
 export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
   const { filters, selectedSchema, permission } = useObjectTableContext();
+  const allFilters = [...baseFilters, ...filters];
+
+  const { data: count } = useObjectsCount({
+    objectKind: selectedSchema.kind!,
+    filters: allFilters,
+  });
 
   const { data, fetchNextPage, error, hasNextPage, isPending, isFetchingNextPage } =
     useGetIpPrefixList({
       schema: selectedSchema,
-      filters: [...baseFilters, ...filters],
+      filters: allFilters,
     });
 
   if (error) {
@@ -38,13 +45,14 @@ export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
   }
 
   const columns = [...getIpPrefixTableColumns(selectedSchema), getObjectActionsColumn(permission)];
-  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
+  const flatData = data?.pages?.flat() ?? [];
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columnOrder={IP_PREFIX_TABLE_COLUMN_ORDER}
         columns={columns}
+        count={count}
         data={flatData}
         enableRowSelection={(row) => row.original.__typename !== IP_PREFIX_AVAILABLE_KIND}
         isLoading={isPending || isFetchingNextPage}
