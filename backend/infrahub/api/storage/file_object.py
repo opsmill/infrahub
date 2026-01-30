@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 import urllib.parse
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from infrahub.api.dependencies import (
     BranchParams,
@@ -68,8 +68,17 @@ def build_content_disposition(filename: str) -> str:
     return f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
 
 
+def _build_file_response(file_object: CoreFileObject) -> Response:
+    """Build a `Response` for downloading a FileObject's content."""
+    return Response(
+        content=registry.storage.retrieve_binary(identifier=file_object.storage_id.value),
+        media_type=file_object.file_type.value,
+        headers={"Content-Disposition": build_content_disposition(filename=file_object.file_name.value)},
+    )
+
+
 @router.get(
-    "/{storage_id:str}",
+    "/by-hfid/{kind:str}",
     response_class=Response,
     responses={
         200: {
@@ -78,7 +87,48 @@ def build_content_disposition(filename: str) -> str:
         }
     },
 )
-async def download_file_object(
+async def download_file_object_by_hfid(
+    kind: str,
+    hfid: list[str] = Query(..., description="HFID component values in order"),
+    db: InfrahubDatabase = Depends(get_db),
+    branch_params: BranchParams = Depends(get_branch_params),
+    permission_manager: PermissionManager = Depends(get_permission_manager),
+    _: AccountSession = Depends(get_current_user),
+) -> Response:
+    """Download a file by the FileObject node's Human-Friendly ID (HFID).
+
+    Requires `VIEW` permission on the FileObject node.
+    Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+    filename.
+    """
+    schema = registry.schema.get_node_schema(name=kind, branch=branch_params.branch, duplicate=False)
+
+    if InfrahubKind.FILEOBJECT not in schema.inherit_from:
+        raise HTTPException(status_code=400, detail=f"'{kind}' is not a file object")
+
+    permission = define_object_permission_from_branch(
+        schema=schema, action=PermissionAction.VIEW, branch_name=branch_params.branch.name
+    )
+    permission_manager.raise_for_permission(permission=permission)
+
+    node = await registry.manager.get_one_by_hfid(
+        db=db, hfid=hfid, kind=kind, branch=branch_params.branch, at=branch_params.at, raise_on_error=True
+    )
+
+    return _build_file_response(file_object=cast("CoreFileObject", node))
+
+
+@router.get(
+    "/by-storage-id/{storage_id:str}",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "File content with Content-Type matching the file's MIME type",
+            "content": {"*/*": {"schema": {"type": "string", "format": "binary"}}},
+        }
+    },
+)
+async def download_file_object_by_storage_id(
     storage_id: str,
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
@@ -104,14 +154,45 @@ async def download_file_object(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.FILEOBJECT, identifier=storage_id
         )
 
-    file_object = file_objects[0]
+    node = file_objects[0]
     permission = define_object_permission_from_branch(
-        schema=file_object.get_schema(), action=PermissionAction.VIEW, branch_name=branch_params.branch.name
+        schema=node.get_schema(), action=PermissionAction.VIEW, branch_name=branch_params.branch.name
     )
     permission_manager.raise_for_permission(permission=permission)
 
-    return Response(
-        content=registry.storage.retrieve_binary(identifier=storage_id),
-        media_type=file_object.file_type.value,
-        headers={"Content-Disposition": build_content_disposition(file_object.file_name.value)},
+    return _build_file_response(file_object=cast("CoreFileObject", node))
+
+
+@router.get(
+    "/{node_id:str}",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "File content with Content-Type matching the file's MIME type",
+            "content": {"*/*": {"schema": {"type": "string", "format": "binary"}}},
+        }
+    },
+)
+async def download_file_object(
+    node_id: str,
+    db: InfrahubDatabase = Depends(get_db),
+    branch_params: BranchParams = Depends(get_branch_params),
+    permission_manager: PermissionManager = Depends(get_permission_manager),
+    _: AccountSession = Depends(get_current_user),
+) -> Response:
+    """Download a file by the FileObject node's UUID.
+
+    Requires `VIEW` permission on the FileObject node.
+    Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+    filename.
+    """
+    node = await registry.manager.get_one(
+        db=db, id=node_id, kind=CoreFileObject, branch=branch_params.branch, at=branch_params.at, raise_on_error=True
     )
+
+    permission = define_object_permission_from_branch(
+        schema=node.get_schema(), action=PermissionAction.VIEW, branch_name=branch_params.branch.name
+    )
+    permission_manager.raise_for_permission(permission=permission)
+
+    return _build_file_response(file_object=node)

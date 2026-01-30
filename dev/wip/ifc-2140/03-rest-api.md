@@ -6,12 +6,12 @@
 
 ## Overview
 
-Add REST API endpoint for **downloading** file objects by storage_id. Upload endpoint is **not implemented** - GraphQL is the primary upload method.
+Add REST API endpoints for **downloading** file objects. Three download methods are supported:
+1. **By storage_id** - Direct download using the file's storage identifier
+2. **By node ID** - Download using the FileObject node's UUID
+3. **By HFID** - Download using the Human-Friendly ID
 
-The endpoint uses `storage_id` (not node ID) because:
-- `storage_id` is a UUIDT that changes when a file is updated
-- Different branches have different `storage_id` values for modified files
-- This makes the endpoint inherently branch-aware
+Upload endpoint is **not implemented** - GraphQL is the primary upload method.
 
 **Note:** REST upload endpoint not implemented since GraphQL upload (PR 4) is sufficient.
 
@@ -40,6 +40,22 @@ The endpoint uses `storage_id` (not node ID) because:
     - [x] Replace quotes and semicolons to prevent header parsing issues
     - [x] Truncate long filenames (max 255 chars) while preserving extension
     - [x] Support Unicode filenames with RFC5987 encoding
+  - [x] Implement `GET /id/{node_id}` endpoint (download by node UUID)
+    - [x] Look up FileObject node by ID using `NodeManager.get_one()`
+    - [x] Check VIEW permission on the FileObject's actual kind
+    - [x] Retrieve file using the node's `storage_id` attribute
+    - [x] Return raw bytes with Content-Type and Content-Disposition headers
+    - [x] Handle 404 if node_id not found
+    - [x] Handle 403 if permission denied
+  - [x] Implement `GET /hfid/{kind}` endpoint (download by HFID)
+    - [x] Accept `hfid` query parameters (repeatable for multi-component HFIDs)
+    - [x] Look up FileObject node by HFID using `NodeManager.get_one_by_hfid()`
+    - [x] Validate that the kind inherits from `CoreFileObject`
+    - [x] Check VIEW permission on the FileObject's actual kind
+    - [x] Retrieve file using the node's `storage_id` attribute
+    - [x] Return raw bytes with Content-Type and Content-Disposition headers
+    - [x] Handle 404 if HFID not found or kind doesn't exist
+    - [x] Handle 403 if permission denied
 
 ### Router Registration
 
@@ -76,6 +92,15 @@ The endpoint uses `storage_id` (not node ID) because:
   - [x] Test download without VIEW permission returns 403
   - [x] Test download with VIEW permission succeeds
   - [x] Test legacy storage endpoint rejects FileObject access
+  - [x] Test download by node ID returns correct content
+  - [x] Test download by node ID with nonexistent ID returns 404
+  - [x] Test download by node ID without VIEW permission returns 403
+  - [x] Test download by HFID returns correct content
+  - [x] Test download by HFID returns correct headers
+  - [x] Test download by HFID with nonexistent HFID returns 404
+  - [x] Test download by HFID with invalid kind returns 404
+  - [x] Test download by HFID with non-FileObject kind returns 400
+  - [x] Test download by HFID without VIEW permission returns 403
 
 - [x] Create `backend/tests/unit/api/test_file_object.py`
   - [x] Test simple filename passes through unchanged
@@ -90,7 +115,7 @@ The endpoint uses `storage_id` (not node ID) because:
 
 - [x] Run `uv run pytest tests/unit/storage/test_retrieve.py -v` - all 7 tests pass
 - [x] Run `uv run pytest tests/unit/api/test_file_object.py -v` - all 13 tests pass
-- [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 8 tests pass
+- [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 18 tests pass
 - [x] Run `uv run invoke schema.generate-jsonschema` - regenerate OpenAPI schema
 - [x] Run `cd frontend/app && npm run codegen:openapi` - regenerate frontend REST types
 
@@ -107,12 +132,55 @@ The endpoint uses `storage_id` (not node ID) because:
 - `schema/openapi.json` - OpenAPI schema (regenerated with `uv run invoke schema.generate-jsonschema`)
 - `frontend/app/src/shared/api/rest/types.generated.ts` - Frontend REST types (regenerated with `npm run codegen:openapi`)
 
-## API Endpoint
+## API Endpoints
 
-### Download File
+### Download File by Node ID (Main Endpoint)
 
 ```
-GET /api/storage/files/{storage_id}
+GET /api/storage/files/{node_id}?branch={branch_name}
+
+Query Parameters:
+- branch (optional): Branch name, defaults to current branch
+
+Response 200:
+Content-Type: <file_type from FileObject node>
+Content-Disposition: attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+<binary content>
+
+Response 404: Node ID not found
+Response 401: Unauthorized (when anonymous access disabled)
+Response 403: Permission denied (user lacks VIEW permission on the FileObject)
+```
+
+### Download File by HFID
+
+```
+GET /api/storage/files/by-hfid/{kind}?hfid={value1}&hfid={value2}&branch={branch_name}
+
+Path Parameters:
+- kind: The FileObject kind (e.g., NetworkCircuitContract)
+
+Query Parameters:
+- hfid (required, repeatable): HFID component values in order
+- branch (optional): Branch name, defaults to current branch
+
+Response 200:
+Content-Type: <file_type from FileObject node>
+Content-Disposition: attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+<binary content>
+
+Response 404: HFID not found or kind doesn't exist/inherit from CoreFileObject
+Response 401: Unauthorized (when anonymous access disabled)
+Response 403: Permission denied (user lacks VIEW permission on the FileObject)
+```
+
+### Download File by Storage ID
+
+```
+GET /api/storage/files/by-storage-id/{storage_id}?branch={branch_name}
+
+Query Parameters:
+- branch (optional): Branch name, defaults to current branch
 
 Response 200:
 Content-Type: <file_type from FileObject node, e.g., application/pdf, image/png>
@@ -126,11 +194,13 @@ Response 403: Permission denied (user lacks VIEW permission on the FileObject)
 
 ## Design Rationale
 
-### Why storage_id instead of node ID?
+### Why multiple download endpoints?
 
-1. **Branch awareness**: The `storage_id` is a UUIDT that changes when a file is updated or modified in a branch. By using `storage_id` for downloads, the endpoint is inherently branch-aware without needing branch parameters.
+1. **By node ID** (main endpoint): The primary way to download files. Use when you have a reference to the FileObject node. Resolves the storage_id for the specified branch.
 
-2. **Immutability**: Each file version has a unique `storage_id`, enabling time travel to historical versions.
+2. **By HFID**: Useful for human-readable access when you know the node's human-friendly identifier. Supports multi-component HFIDs via repeated query parameters.
+
+3. **By storage_id**: Best for direct file access when you have the storage identifier. Inherently branch-aware since `storage_id` changes when a file is updated.
 
 ### How does permission checking work?
 
@@ -166,3 +236,108 @@ The legacy `/api/storage/object/{identifier}` endpoint allows downloading files 
 
 **REST (download only):**
 - `GET /api/storage/files/{storage_id}` → downloads file binary (requires VIEW permission)
+
+## Future Considerations
+
+### Unified Download Endpoint for FileObjects and Artifacts
+
+The current implementation hardcodes `CoreFileObject` in the URL. A future enhancement could unify FileObject and artifact downloads under a single dynamic endpoint with consistent permission checking.
+
+#### Proposed URL Pattern
+
+```
+GET /api/storage/{kind}/{storage_id}
+```
+
+Examples:
+- `GET /api/storage/files/{storage_id}` - Generic FileObject
+- `GET /api/storage/ContractDocument/{storage_id}` - Specific FileObject subtype
+- `GET /api/storage/CoreArtifact/{storage_id}` - Artifact
+
+#### Implementation Sketch
+
+```python
+@router.get("/{kind}/{storage_id}")
+async def download_file(
+    kind: str,
+    storage_id: str,
+    db: InfrahubDatabase = Depends(get_db),
+    branch_params: BranchParams = Depends(get_branch_params),
+    permission_manager: PermissionManager = Depends(get_permission_manager),
+    _: AccountSession = Depends(get_current_user),
+) -> Response:
+    # 1. Validate kind exists in schema registry
+    schema = registry.schema.get(name=kind, branch=branch_params.branch, raise_on_error=False)
+    if not schema:
+        raise NodeNotFoundError(...)
+
+    # 2. Determine base protocol and query
+    if schema.inherit_from_contains(InfrahubKind.FILEOBJECT):
+        base_schema = CoreFileObject
+    elif schema.inherit_from_contains(InfrahubKind.ARTIFACT):
+        base_schema = CoreArtifact
+    else:
+        raise HTTPException(400, f"{kind} is not a downloadable type")
+
+    # 3. Query node by storage_id
+    nodes = await registry.manager.query(
+        db=db, schema=base_schema,
+        filters={"storage_id__value": storage_id},
+        branch=branch_params.branch, at=branch_params.at, limit=1,
+    )
+    if not nodes:
+        raise NodeNotFoundError(...)
+
+    node = nodes[0]
+    actual_schema = node.get_schema()
+
+    # 4. Validate URL kind is compatible with actual kind
+    #    (allows CoreFileObject URL to return ContractDocument node)
+    if not is_kind_or_ancestor(url_kind=kind, actual_kind=actual_schema.kind):
+        raise NodeNotFoundError(...)  # Don't reveal the actual kind
+
+    # 5. Check permission on ACTUAL kind (security)
+    permission = define_object_permission_from_branch(
+        schema=actual_schema,
+        action=PermissionAction.VIEW,
+        branch_name=branch_params.branch.name
+    )
+    permission_manager.raise_for_permission(permission=permission)
+
+    # 6. Return file with appropriate headers
+    return Response(
+        content=registry.storage.retrieve_binary(identifier=storage_id),
+        media_type=get_content_type(node),
+        headers={"Content-Disposition": build_content_disposition(get_filename(node))},
+    )
+```
+
+#### Key Design Decisions
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| URL kind validation | Must be ancestor or exact match of actual kind | Prevents info leakage; `CoreFileObject` URL can return `ContractDocument`, but `ContractA` URL can't return `ContractB` |
+| Permission check | Always uses actual node kind | Security - URL can't bypass permissions |
+| Downloadable types | Whitelist via schema inheritance | Only `CoreFileObject` and `CoreArtifact` descendants |
+| Content-Type | From node attribute | FileObjects have `file_type`, artifacts may need default |
+
+#### Benefits
+
+1. **Single endpoint** for all downloadable content
+2. **Consistent permission model** across FileObjects and artifacts
+3. **Schema-aware** - validates kinds exist
+4. **Flexible** - URL can use generic (`CoreFileObject`) or specific (`ContractDocument`) kinds
+5. **Secure** - permission always checked against actual node kind
+
+#### Migration Path
+
+1. Add unified endpoint alongside current ones
+2. Deprecate `/api/storage/object/{identifier}` for artifacts
+3. Eventually remove legacy endpoint
+
+#### Why Not Implemented Now
+
+The current design with hardcoded `CoreFileObject` is sufficient for the immediate use case. The unified endpoint would be valuable when:
+- Artifacts need the same permission model as FileObjects
+- There's a need for a single, consistent download API
+- A schema could be both a FileObject and an artifact target

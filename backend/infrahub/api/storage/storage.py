@@ -4,7 +4,7 @@ import hashlib
 import io
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
@@ -30,10 +30,14 @@ class UploadContentPayload(BaseModel):
 
 @router.get("/object/{identifier:str}")
 async def get_file(
-    identifier: str, db: InfrahubDatabase = Depends(get_db), _: AccountSession = Depends(get_current_user)
+    identifier: str,
+    request: Request,
+    db: InfrahubDatabase = Depends(get_db),
+    _: AccountSession = Depends(get_current_user),
 ) -> Response:
     if await registry.manager.query(db=db, schema=CoreFileObject, filters={"storage_id__value": identifier}, limit=1):
-        raise HTTPException(status_code=403, detail=f"Use /api/storage/files/{identifier} instead.")
+        file_url = request.url_for("download_file_object_by_storage_id", storage_id=identifier)
+        raise HTTPException(status_code=403, detail=f"Use {file_url.path} instead.")
 
     content = registry.storage.retrieve(identifier=identifier)
     return Response(content=content)

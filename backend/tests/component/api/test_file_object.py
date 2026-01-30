@@ -25,11 +25,7 @@ if TYPE_CHECKING:
 
 
 class TestFileObjectDownload(TestInfrahubApp):
-    """Tests for FileObject REST API download endpoint."""
-
-    @staticmethod
-    def get_download_url(storage_id: str) -> str:
-        return f"/api/storage/files/{storage_id}"
+    """Tests for FileObject REST API download endpoints."""
 
     @pytest.fixture(scope="class")
     def admin_headers(self, api_admin_token: str) -> dict[str, str]:
@@ -146,7 +142,7 @@ class TestFileObjectDownload(TestInfrahubApp):
         await node.save(db=db)
         return node
 
-    async def test_download_file_returns_correct_content(
+    async def test_download_returns_correct_content(
         self,
         db: InfrahubDatabase,
         test_client: InfrahubTestClient,
@@ -155,8 +151,9 @@ class TestFileObjectDownload(TestInfrahubApp):
         dummy_storage: DummyObjectStorage,
     ) -> None:
         """Test that download endpoint returns the exact file content."""
+        node_id = file_object_node.id
         storage_id = file_object_node.storage_id.value
-        response = await test_client.get(self.get_download_url(storage_id=storage_id), headers=admin_headers)
+        response = await test_client.get(f"/api/storage/files/{node_id}", headers=admin_headers)
 
         assert response.status_code == 200
         assert response.content == dummy_storage._files[storage_id]
@@ -170,8 +167,9 @@ class TestFileObjectDownload(TestInfrahubApp):
         dummy_storage: DummyObjectStorage,
     ) -> None:
         """Test that binary files are returned correctly without encoding issues."""
+        node_id = binary_file_object_node.id
         storage_id = binary_file_object_node.storage_id.value
-        response = await test_client.get(self.get_download_url(storage_id=storage_id), headers=admin_headers)
+        response = await test_client.get(f"/api/storage/files/{node_id}", headers=admin_headers)
 
         assert response.status_code == 200
         assert response.content == dummy_storage._files[storage_id]
@@ -185,8 +183,8 @@ class TestFileObjectDownload(TestInfrahubApp):
         file_object_node: Node,
     ) -> None:
         """Test that response has the correct Content-Type from the FileObject node."""
-        storage_id = file_object_node.storage_id.value
-        response = await test_client.get(self.get_download_url(storage_id=storage_id), headers=admin_headers)
+        node_id = file_object_node.id
+        response = await test_client.get(f"/api/storage/files/{node_id}", headers=admin_headers)
 
         assert response.status_code == 200
         assert response.headers["content-type"] == f"{file_object_node.file_type.value}; charset=utf-8"
@@ -199,8 +197,8 @@ class TestFileObjectDownload(TestInfrahubApp):
         file_object_node: Node,
     ) -> None:
         """Test that response has Content-Disposition header with the filename."""
-        storage_id = file_object_node.storage_id.value
-        response = await test_client.get(self.get_download_url(storage_id=storage_id), headers=admin_headers)
+        node_id = file_object_node.id
+        response = await test_client.get(f"/api/storage/files/{node_id}", headers=admin_headers)
 
         assert response.status_code == 200
         assert "content-disposition" in response.headers
@@ -208,17 +206,15 @@ class TestFileObjectDownload(TestInfrahubApp):
         assert "test-document.txt" in content_disposition
         assert content_disposition.startswith("attachment;")
 
-    async def test_download_nonexistent_file_returns_404(
+    async def test_download_nonexistent_node_returns_404(
         self,
         db: InfrahubDatabase,
         test_client: InfrahubTestClient,
         admin_headers: dict[str, str],
         file_contract_schema: None,
     ) -> None:
-        """Test that downloading a nonexistent file returns 404."""
-        response = await test_client.get(
-            self.get_download_url(storage_id="nonexistent-storage-id"), headers=admin_headers
-        )
+        """Test that downloading a nonexistent node returns 404."""
+        response = await test_client.get("/api/storage/files/nonexistent-node-id", headers=admin_headers)
 
         assert response.status_code == 404
 
@@ -230,8 +226,8 @@ class TestFileObjectDownload(TestInfrahubApp):
         file_object_node: Node,
     ) -> None:
         """Test that users without VIEW permission cannot download files."""
-        storage_id = file_object_node.storage_id.value
-        response = await test_client.get(self.get_download_url(storage_id=storage_id), headers=no_permission_headers)
+        node_id = file_object_node.id
+        response = await test_client.get(f"/api/storage/files/{node_id}", headers=no_permission_headers)
 
         assert response.status_code == 403
 
@@ -244,13 +240,169 @@ class TestFileObjectDownload(TestInfrahubApp):
         dummy_storage: DummyObjectStorage,
     ) -> None:
         """Test that users with VIEW permission can download files."""
+        node_id = file_object_node.id
         storage_id = file_object_node.storage_id.value
-        response = await test_client.get(self.get_download_url(storage_id=storage_id), headers=view_permission_headers)
+        response = await test_client.get(f"/api/storage/files/{node_id}", headers=view_permission_headers)
 
         assert response.status_code == 200
         assert response.content == dummy_storage._files[storage_id]
 
-    async def test_storage_endpoint_rejects_file_object_access(
+    async def test_download_by_hfid_returns_correct_content(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_object_node: Node,
+        dummy_storage: DummyObjectStorage,
+    ) -> None:
+        """Test that download by HFID returns the correct file content."""
+        file_name = file_object_node.file_name.value
+        storage_id = file_object_node.storage_id.value
+        response = await test_client.get(
+            f"/api/storage/files/by-hfid/TestingFileContract?hfid={file_name}", headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        assert response.content == dummy_storage._files[storage_id]
+
+    async def test_download_by_hfid_returns_correct_headers(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_object_node: Node,
+    ) -> None:
+        """Test that download by HFID returns correct Content-Type and Content-Disposition headers."""
+        file_name = file_object_node.file_name.value
+        response = await test_client.get(
+            f"/api/storage/files/by-hfid/TestingFileContract?hfid={file_name}", headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == f"{file_object_node.file_type.value}; charset=utf-8"
+        assert "content-disposition" in response.headers
+        assert file_name in response.headers["content-disposition"]
+
+    async def test_download_by_hfid_nonexistent_hfid_returns_404(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_contract_schema: None,
+    ) -> None:
+        """Test that downloading with nonexistent HFID returns 404."""
+        response = await test_client.get(
+            "/api/storage/files/by-hfid/TestingFileContract?hfid=nonexistent", headers=admin_headers
+        )
+
+        assert response.status_code == 404
+
+    async def test_download_by_hfid_invalid_kind_returns_422(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_contract_schema: None,
+    ) -> None:
+        """Test that downloading with nonexistent kind returns 422."""
+        response = await test_client.get(
+            "/api/storage/files/by-hfid/NonexistentKind?hfid=value1", headers=admin_headers
+        )
+
+        assert response.status_code == 422, response.json()
+        assert "NonexistentKind" in response.json()["errors"][0]["message"]
+
+    async def test_download_by_hfid_non_fileobject_kind_returns_400(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_contract_schema: None,
+    ) -> None:
+        """Test that downloading with a kind that doesn't inherit from CoreFileObject returns 400."""
+        response = await test_client.get(
+            f"/api/storage/files/by-hfid/{InfrahubKind.ACCOUNT}?hfid=admin", headers=admin_headers
+        )
+
+        assert response.status_code == 400
+        assert "is not a file object" in response.json()["detail"]
+
+    async def test_download_by_hfid_without_permission_returns_403(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        no_permission_headers: dict[str, str],
+        file_object_node: Node,
+    ) -> None:
+        """Test that users without VIEW permission cannot download by HFID."""
+        file_name = file_object_node.file_name.value
+        response = await test_client.get(
+            f"/api/storage/files/by-hfid/TestingFileContract?hfid={file_name}", headers=no_permission_headers
+        )
+
+        assert response.status_code == 403
+
+    async def test_download_by_storage_id_returns_correct_content(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_object_node: Node,
+        dummy_storage: DummyObjectStorage,
+    ) -> None:
+        """Test that download by storage ID returns the exact file content."""
+        storage_id = file_object_node.storage_id.value
+        response = await test_client.get(f"/api/storage/files/by-storage-id/{storage_id}", headers=admin_headers)
+
+        assert response.status_code == 200
+        assert response.content == dummy_storage._files[storage_id]
+
+    async def test_download_by_storage_id_returns_correct_headers(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_object_node: Node,
+    ) -> None:
+        """Test that download by storage ID returns correct Content-Type and Content-Disposition headers."""
+        storage_id = file_object_node.storage_id.value
+        response = await test_client.get(f"/api/storage/files/by-storage-id/{storage_id}", headers=admin_headers)
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == f"{file_object_node.file_type.value}; charset=utf-8"
+        assert "content-disposition" in response.headers
+        assert "test-document.txt" in response.headers["content-disposition"]
+
+    async def test_download_by_storage_id_nonexistent_returns_404(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        admin_headers: dict[str, str],
+        file_contract_schema: None,
+    ) -> None:
+        """Test that downloading a nonexistent storage ID returns 404."""
+        response = await test_client.get(
+            "/api/storage/files/by-storage-id/nonexistent-storage-id", headers=admin_headers
+        )
+
+        assert response.status_code == 404
+
+    async def test_download_by_storage_id_without_permission_returns_403(
+        self,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        no_permission_headers: dict[str, str],
+        file_object_node: Node,
+    ) -> None:
+        """Test that users without VIEW permission cannot download by storage ID."""
+        storage_id = file_object_node.storage_id.value
+        response = await test_client.get(
+            f"/api/storage/files/by-storage-id/{storage_id}", headers=no_permission_headers
+        )
+
+        assert response.status_code == 403
+
+    async def test_legacy_storage_endpoint_rejects_file_object_access(
         self,
         db: InfrahubDatabase,
         test_client: InfrahubTestClient,
@@ -262,4 +414,4 @@ class TestFileObjectDownload(TestInfrahubApp):
         response = await test_client.get(f"/api/storage/object/{storage_id}", headers=admin_headers)
 
         assert response.status_code == 403
-        assert response.json()["detail"] == f"Use /api/storage/files/{storage_id} instead."
+        assert response.json()["detail"] == f"Use /api/storage/files/by-storage-id/{storage_id} instead."
