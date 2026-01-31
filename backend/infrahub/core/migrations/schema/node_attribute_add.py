@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
-from infrahub.core.node import Node
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.log import get_logger
+from infrahub.pools.tasks import SchemaNumberPoolValidator
 from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -13,12 +14,15 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
+    from infrahub.core.node import Node
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
+
+log = get_logger()
 
 
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuery):
@@ -83,12 +87,20 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db = migration_input.db
         at = migration_input.at
 
-        number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(
+        # Use SchemaNumberPoolValidator to create/find the number pool
+        validator = SchemaNumberPoolValidator(
             db=db,
-            branch=branch,
-            schema_node=self.new_schema,  # type: ignore
-            schema_attribute=self.new_attribute_schema,
-            at=at,
+            log=log,
+            schema_manager=registry.schema,
+        )
+        pool_id = await validator.ensure_pool_for_attribute(
+            schema_node=self.new_schema,
+            attribute=self.new_attribute_schema,
+        )
+
+        # Fetch the pool object to allocate numbers
+        number_pool: CoreNumberPool = await registry.manager.get_one_by_id_or_default_filter(
+            db=db, id=pool_id, kind="CoreNumberPool"
         )
 
         await update_branch_registry(db=db, branch=branch)
