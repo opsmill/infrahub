@@ -4,11 +4,12 @@ import hashlib
 import io
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user, get_db
+from infrahub.api.storage import file_object
 from infrahub.core import registry
 from infrahub.core.protocols import CoreFileObject
 from infrahub.database import InfrahubDatabase  # noqa: TC001
@@ -16,7 +17,9 @@ from infrahub.database import InfrahubDatabase  # noqa: TC001
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
 
+
 router = APIRouter(prefix="/storage")
+router.include_router(file_object.router)
 
 
 class UploadResponse(BaseModel):
@@ -30,10 +33,14 @@ class UploadContentPayload(BaseModel):
 
 @router.get("/object/{identifier:str}")
 async def get_file(
-    identifier: str, db: InfrahubDatabase = Depends(get_db), _: AccountSession = Depends(get_current_user)
+    identifier: str,
+    request: Request,
+    db: InfrahubDatabase = Depends(get_db),
+    _: AccountSession = Depends(get_current_user),
 ) -> Response:
     if await registry.manager.query(db=db, schema=CoreFileObject, filters={"storage_id__value": identifier}, limit=1):
-        raise HTTPException(status_code=403, detail=f"Use /api/storage/files/{identifier} instead.")
+        file_url = request.url_for("download_file_object_by_storage_id", storage_id=identifier)
+        raise HTTPException(status_code=403, detail=f"Use {file_url.path} instead.")
 
     content = registry.storage.retrieve(identifier=identifier)
     return Response(content=content)
