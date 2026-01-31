@@ -31,6 +31,13 @@ chmod +x infrahub-backup
 ```
 
 </TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated backup guide:
+
+[Kubernetes Backup Guide](https://docs.infrahub.app/backup/guides/kubernetes-backup)
+
+</TabItem>
 <TabItem value="manual" label="Docker Compose">
 
 If you prefer manual control, proceed to backup each component individually as described in the following steps.
@@ -65,6 +72,13 @@ The tool automatically:
 :::note
 Artifact storage backup is planned for future versions and must currently be handled separately.
 :::
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated backup guide:
+
+[Kubernetes Backup Guide](https://docs.infrahub.app/backup/guides/kubernetes-backup)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -163,6 +177,13 @@ The tool automatically:
 - Restarts all services in correct order
 
 </TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
+
+</TabItem>
 <TabItem value="manual" label="Manual Process">
 
 If restoring manually, follow the steps below for each component.
@@ -176,6 +197,13 @@ If restoring manually, follow the steps below for each component.
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 This is automatically handled by infrahub-backup.
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -257,10 +285,17 @@ cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
 
 ### Step 4: Restart Infrahub services
 
-<Tabs groupId="restore-restart-services">
+<Tabs groupId="restore-method">
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 This is automatically handled by infrahub-backup.
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
