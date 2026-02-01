@@ -111,7 +111,9 @@ async def test_sync_from_remote_existing_ref(git_repo_01_read_only: InfrahubRead
 
 @patch("infrahub.git.tasks.get_client")
 @patch("infrahub.git.tasks.add_tags")
+@patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock)
 async def test_import_read_only_repository_last_commit(
+    mock_import_objects: AsyncMock,
     mock_add_tags: MagicMock,
     mock_get_client: MagicMock,
     git_repo_01_read_only: InfrahubReadOnlyRepository,
