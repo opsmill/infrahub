@@ -835,13 +835,13 @@ async def test_find_files(git_repo_jinja: InfrahubRepository) -> None:
         await repo.find_files(extension="yml")
 
     yaml_files = await repo.find_files(extension="yml", branch_name="main")
-    assert len(yaml_files) == 3  # 2 in test_files/ + .infrahub.yml in root
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml"], branch_name="main")
-    assert len(yaml_files) == 3  # 2 in test_files/ + .infrahub.yml in root
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
-    assert len(yaml_files) == 5  # 3 yml + 2 j2
+    assert len(yaml_files) == 6  # 4 yml + 2 j2
 
     yaml_files = await repo.find_files(extension="yml", directory=Path("test_files"), branch_name="main")
     assert len(yaml_files) == 2
@@ -856,13 +856,13 @@ async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository) -> None:
     commit = repo.get_commit_value(branch_name="main")
 
     yaml_files = await repo.find_files(extension="yml", commit=commit)
-    assert len(yaml_files) == 3  # 2 in test_files/ + .infrahub.yml in root
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml"], branch_name=commit)
-    assert len(yaml_files) == 3  # 2 in test_files/ + .infrahub.yml in root
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name=commit)
-    assert len(yaml_files) == 5  # 3 yml + 2 j2
+    assert len(yaml_files) == 6  # 4 yml + 2 j2
 
 
 async def test_calculate_diff_between_commits(
