@@ -41,7 +41,8 @@ export const objectQueryKeys = {
       "fields-mapping-type-conversion",
       params.targetKind,
     ] as const,
-  count: (params: ObjectKeysBaseParams) => [...objectQueryKeys.lists(params), "count"] as const,
+  count: (params: ObjectListKeysParams) =>
+    [...objectQueryKeys.lists(params), "count", params.filters] as const,
   list: (params: ObjectListKeysParams) =>
     [...objectQueryKeys.lists(params), params.filters] as const,
   profiles: (params: ObjectKeysBaseParams) =>

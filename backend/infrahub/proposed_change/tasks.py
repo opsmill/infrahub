@@ -297,6 +297,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
         component_registry = get_component_registry()
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.update_branch_diff(
             base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
         )
@@ -1099,6 +1100,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.update_branch_diff(
             base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
         )
