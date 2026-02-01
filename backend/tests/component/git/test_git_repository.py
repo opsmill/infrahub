@@ -299,9 +299,9 @@ async def test_get_branches_from_graph(
 
 async def test_get_commit_value(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
-    assert repo.get_commit_value(branch_name="main", remote=True) == "800190ecb8328ff075cf751b7d3088b35b06bb57"
-    assert repo.get_commit_value(branch_name="branch01", remote=True) == "41bebed15b7f98ace50a0a71114861b7aa9cec0a"
-    assert repo.get_commit_value(branch_name="branch02", remote=True) == "aa4cdf398b49934f23c7967b303f8044e5513d6d"
+    assert repo.get_commit_value(branch_name="main", remote=True) == "f165752c1047beb50f610c01bf40d45f211607e1"
+    assert repo.get_commit_value(branch_name="branch01", remote=True) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    assert repo.get_commit_value(branch_name="branch02", remote=True) == "4e2fd98a5fd1fb61dc53150c778e22ee35f26191"
 
     with pytest.raises(ValueError):
         repo.get_commit_value(branch_name="branch01", remote=False)
@@ -328,7 +328,7 @@ async def test_create_branch_in_git_present_remote(git_repo_01: InfrahubReposito
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch01.name) == "41bebed15b7f98ace50a0a71114861b7aa9cec0a"
+    assert repo.get_commit_value(branch_name=branch01.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
     assert len(worktrees) == 4
 
 
@@ -337,7 +337,7 @@ async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepositor
     await repo.create_branch_in_git(branch_name=branch99.name, branch_id=branch99.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch99.name) == "800190ecb8328ff075cf751b7d3088b35b06bb57"
+    assert repo.get_commit_value(branch_name=branch99.name) == "f165752c1047beb50f610c01bf40d45f211607e1"
     assert len(worktrees) == 3
 
 
@@ -516,7 +516,7 @@ async def test_sync_new_branch(
         mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch.name) == "41bebed15b7f98ace50a0a71114861b7aa9cec0a"
+    assert repo.get_commit_value(branch_name=branch.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
     assert len(worktrees) == 4
 
 
