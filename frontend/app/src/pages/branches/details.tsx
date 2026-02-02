@@ -104,7 +104,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
       return <FilesDiff />;
     }
     case DIFF_TABS.ARTIFACTS: {
-      return <ArtifactsDiff />;
+      return <ArtifactsDiff branchName={branchName} />;
     }
     case DIFF_TABS.SCHEMA: {
       return (

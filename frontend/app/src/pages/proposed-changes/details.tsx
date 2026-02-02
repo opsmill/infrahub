@@ -51,7 +51,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
     case DIFF_TABS.FILES:
       return <FilesDiff />;
     case DIFF_TABS.ARTIFACTS:
-      return <ArtifactsDiff />;
+      return <ArtifactsDiff branchName={proposedChangeData.source_branch?.value!} />;
     case DIFF_TABS.SCHEMA:
       return (
         <NodeDiff
