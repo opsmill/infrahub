@@ -101,12 +101,20 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
-  const { data: previousFile = "", isPending: isPreviousPending } = useGetArtifactFile(
+  const {
+    data: previousFile = "",
+    isPending: isPreviousPending,
+    error: previousFileError,
+  } = useGetArtifactFile(
     { storageId: itemPrevious?.storage_id ?? "" },
     { enabled: !!itemPrevious?.storage_id }
   );
 
-  const { data: newFile = "", isPending: isNewPending } = useGetArtifactFile(
+  const {
+    data: newFile = "",
+    isPending: isNewPending,
+    error: newFileError,
+  } = useGetArtifactFile(
     { storageId: itemNew?.storage_id ?? "" },
     { enabled: !!itemNew?.storage_id }
   );
@@ -121,21 +129,15 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
         })
       : ""; // Empty query to make the gql parsing work
 
-  const query = queryString
-    ? gql`
-        ${queryString}
-      `
-    : "";
-
-  const { loading, error, data, refetch } = query
-    ? useQuery(query, { skip: !schemaData })
-    : { loading: false, error: null, data: null, refetch: null };
+  const { loading, error, data, refetch } = useQuery(gql(queryString), {
+    skip: !schemaData || !proposedChangeId,
+  });
 
   if (loading || isPreviousPending || isNewPending) {
     return <LoadingIndicator className="p-4" />;
   }
 
-  if (error) {
+  if (error || previousFileError || newFileError) {
     return <ErrorScreen message="Something went wrong when fetching the artifact content." />;
   }
 
