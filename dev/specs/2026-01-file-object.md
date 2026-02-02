@@ -481,18 +481,48 @@ Endpoint for nodes implementing the `FileObject` generic should be exposed via t
 
 #### Download FileObject
 
+Multiple download endpoints are provided to support different use cases:
+
+##### Download by Node ID (Main Endpoint)
+
 ```text
-GET /api/CoreFileObject/object/{identifier}
+GET /api/storage/files/{node_id}?branch={branch_name}
 Return headers:
 - Content-Length
-- Content-Type > derrived from the FileObject
-- Content-Disposition > contains the file name derrived from the FileObject
+- Content-Type > derived from the FileObject
+- Content-Disposition > contains the file name derived from the FileObject
 Return: {content}
 ```
 
-When receiving this HTTP request, Infrahub should look up the CoreFileObject object using the `storage_id__value` filter.
+This is the primary endpoint for downloading files. It looks up the FileObject by its node UUID. This is useful when you have a reference to the node. The endpoint resolves the current `storage_id` for the given branch and returns the file content.
 
-We can then validate that the user has the correct permission to view/download the `CoreFileObject` object.
+##### Download by HFID (Human-Friendly ID)
+
+```text
+GET /api/storage/files/by-hfid/{kind}?hfid={value1}&hfid={value2}&branch={branch_name}
+Return headers:
+- Content-Length
+- Content-Type > derived from the FileObject
+- Content-Disposition > contains the file name derived from the FileObject
+Return: {content}
+```
+
+This endpoint looks up the FileObject by its HFID components. The `kind` parameter specifies the FileObject type (e.g., `NetworkCircuitContract`), and the `hfid` query parameters provide the HFID values in order. This is useful when you know the human-friendly identifier but not the node UUID or storage_id.
+
+##### Download by Storage ID
+
+```text
+GET /api/storage/files/by-storage-id/{storage_id}?branch={branch_name}
+Return headers:
+- Content-Length
+- Content-Type > derived from the FileObject
+- Content-Disposition > contains the file name derived from the FileObject
+Return: {content}
+```
+
+When receiving this HTTP request, Infrahub should look up the CoreFileObject object using the `storage_id__value` filter. The `storage_id` is a UUIDT that changes when a file is updated, making this endpoint inherently branch-aware.
+
+For all download endpoints, we validate that the user has the correct permission to view/download the `CoreFileObject` object.
 
 #### Upload FileObject (REST - Optional Fallback)
 
@@ -530,7 +560,7 @@ We need to add the ability to create `CoreFileObjects` and relate them to other 
 
 #### Adding a new FileObject
 
-This method, would allow the user to upload and attach a new attachment to an object.
+This method would allow the user to upload and attach a new attachment to an object.
 This method should work for cardinality one or many attachment relationships.
 
 Mainly a convenience method to avoid the user having to upload and create the CoreFileAttachment object in a separate step.

@@ -6,6 +6,9 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -71,3 +74,46 @@ async def test_gather_trigger_computed_attribute_python(
 
     trigger = triggers[0]
     assert trigger.name == "TestCar_computed_desc_python"
+
+
+async def test_gather_trigger_computed_attribute_python_only_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    transform01: Node,
+) -> None:
+    """Test that gather_trigger_computed_attribute_python handles the case where
+    a computed attribute only exists on a branch (not on main).
+    """
+    # Create a branch
+    branch = await create_branch(branch_name="branch_with_computed_attr", db=db)
+
+    # Add computed attribute to the schema ONLY on the branch
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    car_schema = schema_branch.get_node("TestCar")
+    car_schema.attributes.append(
+        AttributeSchema(
+            name="computed_desc",
+            kind="Text",
+            read_only=True,
+            optional=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                transform="transform01",
+            ),
+        )
+    )
+    schema_branch.set(name="TestCar", schema=car_schema)
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    branch.update_schema_hash()
+    schema_branch.process()
+    await branch.save(db=db)
+
+    # This should not raise a KeyError
+    triggers, _ = await gather_trigger_computed_attribute_python(db=db)
+
+    # Verify we got triggers for the branch only
+    assert len(triggers) == 1
+    trigger = triggers[0]
+    assert trigger.name == "TestCar_computed_desc"
+    assert trigger.branch == "branch_with_computed_attr"

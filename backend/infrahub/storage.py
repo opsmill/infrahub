@@ -61,6 +61,13 @@ class InfrahubObjectStorage:
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
 
+    def retrieve_binary(self, identifier: str) -> bytes:
+        try:
+            with self._storage.open(identifier) as f:
+                return f.read()
+        except (FileNotFoundError, botocore.exceptions.ClientError) as err:
+            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+
     def delete(self, identifier: str) -> None:
         """Delete a file from storage.
 
