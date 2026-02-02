@@ -1,8 +1,7 @@
+import { EmbedViewer } from "./embed-viewer";
 import { FileViewerFallback } from "./file-viewer-fallback";
-import { ImageViewer } from "./image-viewer";
-import { PdfViewer } from "./pdf-viewer";
 import { TextFileViewer } from "./text-file-viewer";
-import { mapToDataViewerContentType } from "./utils";
+import { getViewerType } from "./utils";
 
 export interface FileViewerProps {
   url: string;
@@ -12,37 +11,47 @@ export interface FileViewerProps {
 }
 
 export function FileViewer({ url, downloadUrl, fileName, contentType }: FileViewerProps) {
-  const dataViewerContentType = mapToDataViewerContentType(contentType);
+  const viewerType = getViewerType(contentType);
 
-  // For text-based content, we need to fetch and display with DataViewer
-  if (dataViewerContentType) {
-    return (
-      <TextFileViewer
-        url={url}
-        downloadUrl={downloadUrl}
-        fileName={fileName}
-        contentType={dataViewerContentType}
-      />
-    );
+  switch (viewerType.type) {
+    case "text":
+      return (
+        <TextFileViewer
+          url={url}
+          downloadUrl={downloadUrl}
+          fileName={fileName}
+          contentType={viewerType.dataViewerContentType}
+        />
+      );
+
+    case "image":
+      return (
+        <EmbedViewer title="Image" url={url} downloadUrl={downloadUrl} fileName={fileName}>
+          <div className="flex justify-center rounded-lg border border-neutral-700 bg-white p-4">
+            <img src={url} alt={fileName} className="max-h-150 max-w-full rounded" />
+          </div>
+        </EmbedViewer>
+      );
+
+    case "pdf":
+      return (
+        <EmbedViewer title="PDF" url={url} downloadUrl={downloadUrl} fileName={fileName}>
+          <iframe
+            src={url}
+            title={fileName}
+            className="h-150 w-full rounded-lg border border-neutral-700"
+          />
+        </EmbedViewer>
+      );
+
+    case "unsupported":
+      return (
+        <FileViewerFallback
+          url={url}
+          downloadUrl={downloadUrl}
+          fileName={fileName}
+          contentType={contentType}
+        />
+      );
   }
-
-  // For images (except SVG which is handled above)
-  if (contentType?.startsWith("image/")) {
-    return <ImageViewer url={url} downloadUrl={downloadUrl} fileName={fileName} />;
-  }
-
-  // For PDFs
-  if (contentType === "application/pdf") {
-    return <PdfViewer url={url} downloadUrl={downloadUrl} fileName={fileName} />;
-  }
-
-  // Fallback for unsupported types
-  return (
-    <FileViewerFallback
-      url={url}
-      downloadUrl={downloadUrl}
-      fileName={fileName}
-      contentType={contentType}
-    />
-  );
 }

@@ -1,28 +1,61 @@
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 
-export function mapToDataViewerContentType(contentType?: string): DataViewerContentType | null {
-  if (!contentType) return null;
+type TextViewerType = {
+  type: "text";
+  dataViewerContentType: DataViewerContentType;
+};
 
-  const supportedTypes: DataViewerContentType[] = [
-    "application/json",
-    "application/yaml",
-    "application/hcl",
-    "application/graphql",
-    "image/svg+xml",
-    "text/plain",
-    "text/markdown",
-    "application/xml",
-    "text/csv",
-  ];
+type EmbedViewerType = {
+  type: "image" | "pdf";
+};
 
-  // Check for exact match
-  if (supportedTypes.includes(contentType as DataViewerContentType)) {
-    return contentType as DataViewerContentType;
+type UnsupportedViewerType = {
+  type: "unsupported";
+};
+
+export type ViewerType = TextViewerType | EmbedViewerType | UnsupportedViewerType;
+
+const TEXT_CONTENT_TYPES: DataViewerContentType[] = [
+  "application/json",
+  "application/yaml",
+  "application/hcl",
+  "application/graphql",
+  "image/svg+xml",
+  "text/plain",
+  "text/markdown",
+  "application/xml",
+  "text/csv",
+];
+
+export function getViewerType(contentType?: string): ViewerType {
+  if (!contentType) {
+    return { type: "unsupported" };
   }
 
-  // Map common variations
-  if (contentType === "application/x-yaml") return "application/yaml";
-  if (contentType.startsWith("text/")) return "text/plain";
+  // Text-based content (including SVG which is text-based XML)
+  if (TEXT_CONTENT_TYPES.includes(contentType as DataViewerContentType)) {
+    return { type: "text", dataViewerContentType: contentType as DataViewerContentType };
+  }
 
-  return null;
+  // Common YAML variation
+  if (contentType === "application/x-yaml") {
+    return { type: "text", dataViewerContentType: "application/yaml" };
+  }
+
+  // Other text/* types fallback to plain text
+  if (contentType.startsWith("text/")) {
+    return { type: "text", dataViewerContentType: "text/plain" };
+  }
+
+  // Images (except SVG which is handled above as text)
+  if (contentType.startsWith("image/")) {
+    return { type: "image" };
+  }
+
+  // PDF
+  if (contentType === "application/pdf") {
+    return { type: "pdf" };
+  }
+
+  return { type: "unsupported" };
 }
