@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub.core.constants import (
     BranchSupportType,
@@ -41,7 +41,7 @@ class TrackingId:
         return f"{self.prefix}{self.delimiter}{self.name}"
 
     @classmethod
-    def deserialize(cls, id_string: str) -> TrackingId:
+    def deserialize(cls, id_string: str) -> Self:
         if not id_string.startswith(cls.prefix):
             raise ValueError(
                 f"Cannot deserialize TrackingId with incorrect prefix '{id_string}', expected prefix '{cls.prefix}{cls.delimiter}'"
