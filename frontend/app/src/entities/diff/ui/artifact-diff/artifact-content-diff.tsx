@@ -3,13 +3,13 @@ import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
+import { Button } from "react-aria-components";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 
-import { Button } from "@/shared/components/buttons/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -93,9 +93,7 @@ interface ArtifactContentDiffProps {
   itemNew?: { storage_id?: string } | null;
 }
 
-export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
-  const { itemPrevious, itemNew, id } = props;
-
+export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
@@ -112,12 +110,6 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
     { storageId: itemNew?.storage_id ?? "" },
     { enabled: !!itemNew?.storage_id }
   );
-
-  const isLoadingContent = isPreviousPending || isNewPending;
-
-  if (!id) {
-    return <ErrorScreen message="Missing artifact ID for thread context." />;
-  }
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
@@ -138,6 +130,18 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
   const { loading, error, data, refetch } = query
     ? useQuery(query, { skip: !schemaData })
     : { loading: false, error: null, data: null, refetch: null };
+
+  if (loading || isPreviousPending || isNewPending) {
+    return <LoadingIndicator className="p-4" />;
+  }
+
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching the artifact content." />;
+  }
+
+  if (!previousFile && !newFile) {
+    return null;
+  }
 
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
@@ -308,27 +312,15 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
+            className="absolute top-1/2 left-1/2 z-10 inline-flex w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-gray-200 p-1"
             onClick={handleClick}
           >
-            <PencilLineIcon className="h-3 w-3" />
+            <PencilLineIcon className="size-3.5" />
           </Button>
         )}
       </>
     );
   };
-
-  if (loading || isLoadingContent) {
-    return <LoadingIndicator className="p-4" />;
-  }
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching the artifact content." />;
-  }
-
-  if (!previousFile && !newFile) {
-    return null;
-  }
 
   const diff = formatLines(diffLines(previousFile, newFile), {
     context: 3,
