@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { FileInfoCard } from "@/shared/components/file/file-info-card";
+import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 

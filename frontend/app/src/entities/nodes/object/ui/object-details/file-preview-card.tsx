@@ -1,5 +1,6 @@
-import { FileInfoCard } from "@/shared/components/file/file-info-card";
-import { FileViewer, FileViewerFallback } from "@/shared/components/file/file-viewer";
+import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
+import { FileViewer } from "@/shared/components/file/ui/file-viewer";
+import { FileViewerFallback } from "@/shared/components/file/ui/file-viewer-fallback";
 import { CONFIG } from "@/shared/config/config";
 
 interface FilePreviewCardProps {
