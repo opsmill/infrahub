@@ -15,39 +15,55 @@ import { getFileIcon } from "@/shared/utils/file";
 
 export interface FileViewerProps {
   url: string;
+  downloadUrl?: string;
   fileName: string;
   contentType?: string;
 }
 
-export function FileViewer({ url, fileName, contentType }: FileViewerProps) {
+export function FileViewer({ url, downloadUrl, fileName, contentType }: FileViewerProps) {
   const dataViewerContentType = mapToDataViewerContentType(contentType);
 
   // For text-based content, we need to fetch and display with DataViewer
   if (dataViewerContentType) {
-    return <TextFileViewer url={url} fileName={fileName} contentType={dataViewerContentType} />;
+    return (
+      <TextFileViewer
+        url={url}
+        downloadUrl={downloadUrl}
+        fileName={fileName}
+        contentType={dataViewerContentType}
+      />
+    );
   }
 
   // For images (except SVG which is handled above)
   if (contentType?.startsWith("image/")) {
-    return <ImageViewer url={url} fileName={fileName} />;
+    return <ImageViewer url={url} downloadUrl={downloadUrl} fileName={fileName} />;
   }
 
   // For PDFs
   if (contentType === "application/pdf") {
-    return <PdfViewer url={url} fileName={fileName} />;
+    return <PdfViewer url={url} downloadUrl={downloadUrl} fileName={fileName} />;
   }
 
   // Fallback for unsupported types
-  return <FileViewerFallback url={url} fileName={fileName} contentType={contentType} />;
+  return (
+    <FileViewerFallback
+      url={url}
+      downloadUrl={downloadUrl}
+      fileName={fileName}
+      contentType={contentType}
+    />
+  );
 }
 
 interface TextFileViewerProps {
   url: string;
+  downloadUrl?: string;
   fileName: string;
   contentType: DataViewerContentType;
 }
 
-function TextFileViewer({ url, fileName, contentType }: TextFileViewerProps) {
+function TextFileViewer({ url, downloadUrl, fileName, contentType }: TextFileViewerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fileContent, setFileContent] = useState<string>();
 
@@ -88,9 +104,16 @@ function TextFileViewer({ url, fileName, contentType }: TextFileViewerProps) {
       fileName={fileName}
       contentType={contentType}
       actions={
-        <DataViewerLinkButton href={url} target="_blank" rel="noopener noreferrer">
-          Raw
-        </DataViewerLinkButton>
+        <>
+          {downloadUrl && (
+            <DataViewerLinkButton href={downloadUrl} download={fileName}>
+              Download
+            </DataViewerLinkButton>
+          )}
+          <DataViewerLinkButton href={url} target="_blank" rel="noopener noreferrer">
+            Raw
+          </DataViewerLinkButton>
+        </>
       }
     />
   );
@@ -98,17 +121,18 @@ function TextFileViewer({ url, fileName, contentType }: TextFileViewerProps) {
 
 interface ImageViewerProps {
   url: string;
+  downloadUrl?: string;
   fileName: string;
 }
 
-function ImageViewer({ url, fileName }: ImageViewerProps) {
+function ImageViewer({ url, downloadUrl, fileName }: ImageViewerProps) {
   return (
     <Col className="grow rounded-lg bg-neutral-800 p-2 text-neutral-200">
       <Row>
         <span className="grow px-1 font-medium">Image</span>
         <Tooltip message="Download">
           <a
-            href={url}
+            href={downloadUrl ?? url}
             download={fileName}
             className="rounded-lg border border-transparent p-1 text-sm hover:bg-neutral-600"
           >
@@ -136,17 +160,18 @@ function ImageViewer({ url, fileName }: ImageViewerProps) {
 
 interface PdfViewerProps {
   url: string;
+  downloadUrl?: string;
   fileName: string;
 }
 
-function PdfViewer({ url, fileName }: PdfViewerProps) {
+function PdfViewer({ url, downloadUrl, fileName }: PdfViewerProps) {
   return (
     <Col className="grow rounded-lg bg-neutral-800 p-2 text-neutral-200">
       <Row>
         <span className="grow px-1 font-medium">PDF</span>
         <Tooltip message="Download">
           <a
-            href={url}
+            href={downloadUrl ?? url}
             download={fileName}
             className="rounded-lg border border-transparent p-1 text-sm hover:bg-neutral-600"
           >
@@ -176,38 +201,46 @@ function PdfViewer({ url, fileName }: PdfViewerProps) {
 
 interface FileViewerFallbackProps {
   url?: string;
+  downloadUrl?: string;
   fileName: string;
   contentType?: string;
 }
 
-export function FileViewerFallback({ url, fileName, contentType }: FileViewerFallbackProps) {
+export function FileViewerFallback({
+  url,
+  downloadUrl,
+  fileName,
+  contentType,
+}: FileViewerFallbackProps) {
   const FileIconComponent = getFileIcon(contentType);
 
   return (
     <Col className="grow rounded-lg bg-neutral-800 p-2 text-neutral-200">
       <Row>
         <span className="grow px-1 font-medium">Preview</span>
-        {url && (
+        {(url || downloadUrl) && (
           <>
             <Tooltip message="Download">
               <a
-                href={url}
+                href={downloadUrl ?? url}
                 download={fileName}
                 className="rounded-lg border border-transparent p-1 text-sm hover:bg-neutral-600"
               >
                 <DownloadIcon className="size-4" />
               </a>
             </Tooltip>
-            <Tooltip message="Open in new tab">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg border border-transparent p-1 text-sm hover:bg-neutral-600"
-              >
-                <ExternalLinkIcon className="size-4" />
-              </a>
-            </Tooltip>
+            {url && (
+              <Tooltip message="Open in new tab">
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-transparent p-1 text-sm hover:bg-neutral-600"
+                >
+                  <ExternalLinkIcon className="size-4" />
+                </a>
+              </Tooltip>
+            )}
           </>
         )}
       </Row>

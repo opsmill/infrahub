@@ -3,26 +3,27 @@ import { FileViewer, FileViewerFallback } from "@/shared/components/file/file-vi
 import { CONFIG } from "@/shared/config/config";
 
 interface FilePreviewCardProps {
-  storageId?: string;
+  nodeId?: string;
   fileName: string;
   fileSize?: number;
   contentType?: string;
 }
 
-export function FilePreviewCard({
-  storageId,
-  fileName,
-  fileSize,
-  contentType,
-}: FilePreviewCardProps) {
-  const fileUrl = storageId ? CONFIG.ARTIFACTS_CONTENT_URL(storageId) : undefined;
+export function FilePreviewCard({ nodeId, fileName, fileSize, contentType }: FilePreviewCardProps) {
+  const previewUrl = nodeId ? CONFIG.FILE_BY_NODE_ID_URL(nodeId, true) : undefined;
+  const downloadUrl = nodeId ? CONFIG.FILE_BY_NODE_ID_URL(nodeId, false) : undefined;
 
   return (
     <div className="flex flex-col gap-2">
       <FileInfoCard fileName={fileName} fileSize={fileSize} contentType={contentType} />
 
-      {fileUrl ? (
-        <FileViewer url={fileUrl} fileName={fileName} contentType={contentType} />
+      {previewUrl ? (
+        <FileViewer
+          url={previewUrl}
+          downloadUrl={downloadUrl}
+          fileName={fileName}
+          contentType={contentType}
+        />
       ) : (
         <FileViewerFallback fileName={fileName} contentType={contentType} />
       )}

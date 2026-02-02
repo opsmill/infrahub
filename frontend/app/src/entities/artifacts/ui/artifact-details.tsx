@@ -58,6 +58,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
         <div className="flex grow overflow-hidden p-1">
           <FileViewer
             url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
+            downloadUrl={CONFIG.FILE_BY_STORAGE_ID_URL(artifact.storage_id.value, false)}
             fileName={`${artifactId}.${CONTENT_TYPE_CONFIG[artifact.content_type.value]?.extension ?? "txt"}`}
             contentType={artifact.content_type.value}
           />

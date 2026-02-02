@@ -39,7 +39,6 @@ export function FileAttachmentDetails({
   }
 
   // Extract file-related attributes
-  const storageId = objectData.storage_id?.value;
   const fileName = objectData.file_name?.value || objectData.name?.value || "Unnamed file";
   const fileSize = objectData.file_size?.value;
   const contentType = objectData.file_type?.value;
@@ -56,7 +55,7 @@ export function FileAttachmentDetails({
         />
 
         <FilePreviewCard
-          storageId={storageId}
+          nodeId={objectData.id}
           fileName={fileName}
           fileSize={fileSize}
           contentType={contentType}
