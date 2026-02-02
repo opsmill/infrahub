@@ -186,6 +186,7 @@ class EnrichedDiffDeserializer:
         partner_uuid = cls._get_str_or_none_property_value(node=root_node, property_name="partner_uuid")
         tracking_id_str = str(root_node.get("tracking_id"))
         tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
+        is_frozen = str(root_node.get("is_frozen", False)).lower() == "true"
         return EnrichedDiffRootMetadata(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
@@ -201,6 +202,7 @@ class EnrichedDiffDeserializer:
             contains_conflict=str(root_node.get("contains_conflict")).lower() == "true",
             exists_on_database=True,
             proposed_change_id=proposed_change_id,
+            is_frozen=is_frozen,
         )
 
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:

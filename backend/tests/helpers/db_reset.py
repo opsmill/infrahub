@@ -21,7 +21,7 @@ class DatabaseResetter:
         diff_repository = await self.get_diff_repository()
         all_diff_metadatas = await diff_repository.get_roots_metadata(exclude_merged=False)
         diff_uuids_to_delete = [d.uuid for d in all_diff_metadatas if d.to_time > reset_time]
-        await diff_repository.delete_diff_roots(diff_uuids_to_delete)
+        await diff_repository.delete_diff_roots(diff_uuids_to_delete, include_frozen=True)
 
         # remove any changes from the database after the to_time
         query_delete = await DeleteAfterTimeQuery.init(db=self.db, timestamp=reset_time)

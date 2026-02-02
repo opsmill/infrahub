@@ -37,6 +37,7 @@ CALL (diff_root_map) {
     SET diff_root.from_time = diff_root_map.from_time
     SET diff_root.to_time = diff_root_map.to_time
     SET diff_root.tracking_id = diff_root_map.tracking_id
+    SET diff_root.is_frozen = diff_root_map.is_frozen
     RETURN diff_root
 }
 // -------------------------
@@ -82,6 +83,7 @@ CALL (diff_roots) {
                     "uuid": enriched_diff.uuid,
                     "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
                     "proposed_change_id": enriched_diff.proposed_change_id,
+                    "is_frozen": enriched_diff.is_frozen,
                 }
             )
         return {"diff_root_list": diff_root_list}
