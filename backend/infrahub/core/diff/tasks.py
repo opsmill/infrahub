@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from prefect import flow
+from prefect import flow, get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
@@ -33,6 +33,7 @@ async def update_diff(model: RequestDiffUpdate) -> None:
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 
+        diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.run_update(
             base_branch=base_branch,
             diff_branch=diff_branch,

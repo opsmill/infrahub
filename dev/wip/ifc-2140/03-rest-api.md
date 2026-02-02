@@ -6,12 +6,12 @@
 
 ## Overview
 
-Add REST API endpoint for **downloading** file objects by storage_id. Upload endpoint is **not implemented** - GraphQL is the primary upload method.
+Add REST API endpoints for **downloading** file objects. Three download methods are supported:
+1. **By storage_id** - Direct download using the file's storage identifier
+2. **By node ID** - Download using the FileObject node's UUID
+3. **By HFID** - Download using the Human-Friendly ID
 
-The endpoint uses `storage_id` (not node ID) because:
-- `storage_id` is a UUIDT that changes when a file is updated
-- Different branches have different `storage_id` values for modified files
-- This makes the endpoint inherently branch-aware
+Upload endpoint is **not implemented** - GraphQL is the primary upload method.
 
 **Note:** REST upload endpoint not implemented since GraphQL upload (PR 4) is sufficient.
 
@@ -40,6 +40,22 @@ The endpoint uses `storage_id` (not node ID) because:
     - [x] Replace quotes and semicolons to prevent header parsing issues
     - [x] Truncate long filenames (max 255 chars) while preserving extension
     - [x] Support Unicode filenames with RFC5987 encoding
+  - [x] Implement `GET /id/{node_id}` endpoint (download by node UUID)
+    - [x] Look up FileObject node by ID using `NodeManager.get_one()`
+    - [x] Check VIEW permission on the FileObject's actual kind
+    - [x] Retrieve file using the node's `storage_id` attribute
+    - [x] Return raw bytes with Content-Type and Content-Disposition headers
+    - [x] Handle 404 if node_id not found
+    - [x] Handle 403 if permission denied
+  - [x] Implement `GET /hfid/{kind}` endpoint (download by HFID)
+    - [x] Accept `hfid` query parameters (repeatable for multi-component HFIDs)
+    - [x] Look up FileObject node by HFID using `NodeManager.get_one_by_hfid()`
+    - [x] Validate that the kind inherits from `CoreFileObject`
+    - [x] Check VIEW permission on the FileObject's actual kind
+    - [x] Retrieve file using the node's `storage_id` attribute
+    - [x] Return raw bytes with Content-Type and Content-Disposition headers
+    - [x] Handle 404 if HFID not found or kind doesn't exist
+    - [x] Handle 403 if permission denied
 
 ### Router Registration
 
@@ -72,10 +88,21 @@ The endpoint uses `storage_id` (not node ID) because:
   - [x] Test download binary file (PNG)
   - [x] Test download returns correct content type from node
   - [x] Test download returns Content-Disposition header with filename
+  - [x] Test download with preview=true returns Content-Disposition: inline
   - [x] Test download nonexistent file returns 404
   - [x] Test download without VIEW permission returns 403
   - [x] Test download with VIEW permission succeeds
   - [x] Test legacy storage endpoint rejects FileObject access
+  - [x] Test download by node ID returns correct content
+  - [x] Test download by node ID with nonexistent ID returns 404
+  - [x] Test download by node ID without VIEW permission returns 403
+  - [x] Test download by HFID returns correct content
+  - [x] Test download by HFID returns correct headers
+  - [x] Test download by HFID with nonexistent HFID returns 404
+  - [x] Test download by HFID with invalid kind returns 404
+  - [x] Test download by HFID with non-FileObject kind returns 400
+  - [x] Test download by HFID without VIEW permission returns 403
+  - [x] Test download by HFID with multi-value human_friendly_id
 
 - [x] Create `backend/tests/unit/api/test_file_object.py`
   - [x] Test simple filename passes through unchanged
@@ -90,7 +117,7 @@ The endpoint uses `storage_id` (not node ID) because:
 
 - [x] Run `uv run pytest tests/unit/storage/test_retrieve.py -v` - all 7 tests pass
 - [x] Run `uv run pytest tests/unit/api/test_file_object.py -v` - all 13 tests pass
-- [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 8 tests pass
+- [x] Run `uv run pytest tests/component/api/test_file_object.py -v` - all 18 tests pass
 - [x] Run `uv run invoke schema.generate-jsonschema` - regenerate OpenAPI schema
 - [x] Run `cd frontend/app && npm run codegen:openapi` - regenerate frontend REST types
 
@@ -107,16 +134,62 @@ The endpoint uses `storage_id` (not node ID) because:
 - `schema/openapi.json` - OpenAPI schema (regenerated with `uv run invoke schema.generate-jsonschema`)
 - `frontend/app/src/shared/api/rest/types.generated.ts` - Frontend REST types (regenerated with `npm run codegen:openapi`)
 
-## API Endpoint
+## API Endpoints
 
-### Download File
+### Download File by Node ID (Main Endpoint)
 
 ```
-GET /api/storage/files/{storage_id}
+GET /api/storage/files/{node_id}?branch={branch_name}&preview={true|false}
+
+Query Parameters:
+- branch (optional): Branch name, defaults to current branch
+- preview (optional): If true, return file for inline display (Content-Disposition: inline) rather than as an attachment. Useful for previewing text, images, or videos in the browser. Defaults to false.
+
+Response 200:
+Content-Type: <file_type from FileObject node>
+Content-Disposition: inline|attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+<binary content>
+
+Response 404: Node ID not found
+Response 401: Unauthorized (when anonymous access disabled)
+Response 403: Permission denied (user lacks VIEW permission on the FileObject)
+```
+
+### Download File by HFID
+
+```
+GET /api/storage/files/by-hfid/{kind}?hfid={value1}&hfid={value2}&branch={branch_name}&preview={true|false}
+
+Path Parameters:
+- kind: The FileObject kind (e.g., NetworkCircuitContract)
+
+Query Parameters:
+- hfid (required, repeatable): HFID component values in order
+- branch (optional): Branch name, defaults to current branch
+- preview (optional): If true, return file for inline display rather than as an attachment. Defaults to false.
+
+Response 200:
+Content-Type: <file_type from FileObject node>
+Content-Disposition: inline|attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+<binary content>
+
+Response 404: HFID not found or kind doesn't exist/inherit from CoreFileObject
+Response 401: Unauthorized (when anonymous access disabled)
+Response 403: Permission denied (user lacks VIEW permission on the FileObject)
+```
+
+### Download File by Storage ID
+
+```
+GET /api/storage/files/by-storage-id/{storage_id}?branch={branch_name}&preview={true|false}
+
+Query Parameters:
+- branch (optional): Branch name, defaults to current branch
+- preview (optional): If true, return file for inline display rather than as an attachment. Defaults to false.
 
 Response 200:
 Content-Type: <file_type from FileObject node, e.g., application/pdf, image/png>
-Content-Disposition: attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
+Content-Disposition: inline|attachment; filename="<sanitized_filename>"; filename*=UTF-8''<encoded_filename>
 <binary content>
 
 Response 404: Storage ID not found
@@ -126,11 +199,13 @@ Response 403: Permission denied (user lacks VIEW permission on the FileObject)
 
 ## Design Rationale
 
-### Why storage_id instead of node ID?
+### Why multiple download endpoints?
 
-1. **Branch awareness**: The `storage_id` is a UUIDT that changes when a file is updated or modified in a branch. By using `storage_id` for downloads, the endpoint is inherently branch-aware without needing branch parameters.
+1. **By node ID** (main endpoint): The primary way to download files. Use when you have a reference to the FileObject node. Resolves the storage_id for the specified branch.
 
-2. **Immutability**: Each file version has a unique `storage_id`, enabling time travel to historical versions.
+2. **By HFID**: Useful for human-readable access when you know the node's human-friendly identifier. Supports multi-component HFIDs via repeated query parameters.
+
+3. **By storage_id**: Best for direct file access when you have the storage identifier. Inherently branch-aware since `storage_id` changes when a file is updated.
 
 ### How does permission checking work?
 
@@ -142,6 +217,12 @@ Response 403: Permission denied (user lacks VIEW permission on the FileObject)
 ### Why return the actual file_type?
 
 The endpoint returns the actual Content-Type from the node's `file_type` attribute (e.g., `application/pdf`, `image/png`) rather than a generic `application/octet-stream`. This allows browsers to handle files appropriately (e.g., displaying images inline).
+
+### What does the preview parameter do?
+
+The `preview` query parameter controls the `Content-Disposition` header:
+- `preview=false` (default): Returns `Content-Disposition: attachment`, which forces browsers to download the file.
+- `preview=true`: Returns `Content-Disposition: inline`, which allows browsers to display supported file types (images, PDFs, text, videos) directly in the browser window instead of downloading them.
 
 ### How is the filename handled securely?
 
