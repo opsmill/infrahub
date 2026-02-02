@@ -5,11 +5,7 @@ export type GetArtifactsDiffFromApiParams = {
 };
 
 export async function getArtifactsDiffFromApi({ branch }: GetArtifactsDiffFromApiParams) {
-  const { data, error } = await apiClient.GET("/api/diff/artifacts", {
+  return apiClient.GET("/api/diff/artifacts", {
     params: { query: { branch } },
   });
-
-  if (error) throw error;
-
-  return data;
 }

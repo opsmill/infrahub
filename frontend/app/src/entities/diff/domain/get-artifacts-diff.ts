@@ -21,7 +21,11 @@ const ACTION_PRIORITY: Record<string, number> = {
 export async function getArtifactsDiff({
   branch,
 }: GetArtifactsDiffParams): Promise<ArtifactDiff[]> {
-  const data = await getArtifactsDiffFromApi({ branch });
+  const { data, error } = await getArtifactsDiffFromApi({ branch });
+
+  if (error) {
+    throw error;
+  }
 
   const artifacts = Object.values(data ?? {});
 

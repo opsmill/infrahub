@@ -15,11 +15,9 @@ export function getArtifactsDiffQueryOptions({ branch }: GetArtifactsDiffParams)
   });
 }
 
-export type UseGetArtifactsDiffConfig = QueryConfig<typeof getArtifactsDiffQueryOptions>;
-
 export function useGetArtifactsDiff(
   params: GetArtifactsDiffParams,
-  config?: UseGetArtifactsDiffConfig
+  config?: QueryConfig<typeof getArtifactsDiffQueryOptions>
 ) {
   return useQuery({ ...getArtifactsDiffQueryOptions(params), ...config });
 }

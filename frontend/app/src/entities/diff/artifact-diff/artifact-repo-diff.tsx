@@ -60,7 +60,7 @@ export const ArtifactRepoDiff = (props: any) => {
   );
 
   return (
-    <div className={"m-4 rounded-lg bg-white p-2 shadow-sm"} id={diff.id}>
+    <div className="rounded-lg bg-white p-2 text-sm shadow-sm" id={diff.id}>
       <Accordion title={title}>
         <ArtifactContentDiff
           id={diff.id}

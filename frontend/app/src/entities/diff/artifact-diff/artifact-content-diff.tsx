@@ -4,10 +4,15 @@ import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+import { useParams } from "react-router";
+import { toast } from "react-toastify";
+import sha from "sha1";
+import { diffLines, formatLines } from "unidiff";
 
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
 import {
@@ -17,21 +22,14 @@ import {
 } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import "react-diff-view/style/index.css";
-
-import { useParams } from "react-router";
-import { toast } from "react-toastify";
-import sha from "sha1";
-import { diffLines, formatLines } from "unidiff";
-
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100_000).slice(0, 9);
