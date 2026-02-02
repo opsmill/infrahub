@@ -268,8 +268,6 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             // find the correct relationship peer if the peer had its kind/inheritance migrated
             // and there are multiple Nodes with the same UUID
             // ------------------------------
-            // Include $global_branch to support AGNOSTIC peer nodes (e.g., CoreIPAddressPool)
-            // which have their IS_PART_OF edge on the global branch, not source/target branches
             CALL (rel_peer_id, rel_peer_db_id) {
                 MATCH (rel_peer:Node {uuid: rel_peer_id})-[target_is_part_of:IS_PART_OF]->(:Root)
                 WHERE (rel_peer_db_id IS NULL OR elementId(rel_peer) = rel_peer_db_id)
