@@ -2,25 +2,24 @@ import { gql, useQuery } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 
-import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { CONFIG } from "@/shared/config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
+import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
@@ -100,12 +99,21 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
-  const [isLoading, setIsLoading] = useState(false);
-  const [previousFile, setPreviousFile] = useState("");
-  const [newFile, setNewFile] = useState("");
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
+
+  const { data: previousFile = "", isPending: isPreviousPending } = useGetArtifactFile(
+    { storageId: itemPrevious?.storage_id ?? "" },
+    { enabled: !!itemPrevious?.storage_id }
+  );
+
+  const { data: newFile = "", isPending: isNewPending } = useGetArtifactFile(
+    { storageId: itemNew?.storage_id ?? "" },
+    { enabled: !!itemNew?.storage_id }
+  );
+
+  const isLoadingContent = isPreviousPending || isNewPending;
 
   if (!id) {
     return <ErrorScreen message="Missing artifact ID for thread context." />;
@@ -134,34 +142,6 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
-
-  const fetchFileDetails = useCallback(async (storageId: string, setState: Function) => {
-    if (!storageId) return;
-
-    setIsLoading(true);
-
-    try {
-      const url = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
-
-      const fileResult = await fetchStream(url);
-
-      setState(fileResult || "");
-    } catch (err) {
-      console.error("Error while loading files diff: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
-    }
-
-    setIsLoading(false);
-  }, []);
-
-  const setFileDetailsInState = useCallback(async () => {
-    await fetchFileDetails(itemPrevious?.storage_id, setPreviousFile);
-    await fetchFileDetails(itemNew?.storage_id, setNewFile);
-  }, []);
-
-  useEffect(() => {
-    setFileDetailsInState();
-  }, []);
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
@@ -236,7 +216,6 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
             {
               onSuccess: async () => {
                 if (refetch) refetch();
-                setIsLoading(false);
                 handleCloseComment();
               },
               onError: async (error) => {
@@ -254,8 +233,6 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
                     details={error.message}
                   />
                 );
-
-                setIsLoading(false);
               },
             }
           );
@@ -341,7 +318,7 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
     );
   };
 
-  if (loading || isLoading) {
+  if (loading || isLoadingContent) {
     return <LoadingIndicator className="p-4" />;
   }
 

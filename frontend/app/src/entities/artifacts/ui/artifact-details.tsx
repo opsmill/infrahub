@@ -54,15 +54,15 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           </Row>
         </Col>
 
-        <div className="flex grow overflow-hidden p-1">
-          <ArtifactFile
-            artifactId={artifactId}
-            url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
-            contentType={artifact.content_type.value}
-          />
-        </div>
+        <ArtifactFile
+          artifactId={artifactId}
+          storageId={artifact.storage_id.value}
+          url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
+          contentType={artifact.content_type.value}
+          className="m-1 grow overflow-hidden"
+        />
       </Content.Card>
-      <Card className="min-w-[350px] p-0">
+      <Card className="min-w-90 overflow-auto p-0">
         <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
         <NodeEvents objectId={artifactId} objectKind={artifactKind} />
       </Card>
