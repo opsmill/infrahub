@@ -1,7 +1,7 @@
 import Accordion from "@/shared/components/display/accordion";
 
-import { ArtifactContentDiff } from "@/entities/diff/artifact-diff/artifact-content-diff";
 import type { ArtifactDiff } from "@/entities/diff/domain/get-artifacts-diff";
+import { ArtifactContentDiff } from "@/entities/diff/ui/artifact-diff/artifact-content-diff";
 
 interface ArtifactRepoDiffProps {
   diff: ArtifactDiff;

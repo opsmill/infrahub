@@ -3,8 +3,8 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { ArtifactRepoDiff } from "@/entities/diff/artifact-diff/artifact-repo-diff";
 import { useGetArtifactsDiff } from "@/entities/diff/domain/get-artifacts-diff.query";
+import { ArtifactRepoDiff } from "@/entities/diff/ui/artifact-diff/artifact-repo-diff";
 
 interface ArtifactsDiffProps {
   branchName: string;
