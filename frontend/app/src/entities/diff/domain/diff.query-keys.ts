@@ -24,3 +24,8 @@ export const proposedChangeValidatorsKeys = {
   allWithinProposedChange: (proposedChangeId: string) =>
     [...proposedChangeValidatorsKeys.all, proposedChangeId] as const,
 };
+
+export const artifactsDiffKeys = {
+  all: ["artifacts-diff"] as const,
+  list: (branch: string) => [...artifactsDiffKeys.all, branch] as const,
+};
