@@ -70,6 +70,28 @@ mutation UpdateProposedChange(
 }
 """
 
+BRANCH_DELETE = """
+mutation BranchDelete($branch_name: String!) {
+  BranchDelete(data: {name: $branch_name}, wait_until_completion: true) {
+    ok
+  }
+}
+"""
+
+DIFF_TREE_QUERY = """
+query DiffTree($branch_name: String!, $proposed_change_id: String!) {
+  DiffTree(
+    branch: $branch_name
+    proposed_change_id: $proposed_change_id
+  ) {
+    num_added
+    num_updated
+    num_removed
+    num_conflicts
+  }
+}
+"""
+
 
 class TestDiffFreeze(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -218,6 +240,91 @@ class TestDiffFreeze(TestInfrahubApp):
             diff_branch_name=BRANCH_NAME,
         )
         assert frozen_diff_after_delete.uuid == frozen_diff.uuid
+
+    async def test_freeze_diff_on_branch_delete(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        client: InfrahubClient,
+    ) -> None:
+        """Test that deleting a branch freezes diffs for open proposed changes associated with that branch."""
+        branch_name = "branch-delete-freeze-test"
+
+        # Step 1: Create branch
+        branch = await create_branch(db=db, branch_name=branch_name)
+
+        # Step 2: Make changes on branch
+        eve = await Node.init(schema=TestKind.PERSON, db=db, branch=branch.name)
+        await eve.new(db=db, name="Eve", height=160, description="Person for branch delete test")
+        await eve.save(db=db)
+
+        # Step 3: Run DiffUpdate to create diff
+        result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_name})
+        assert result["DiffUpdate"]["ok"]
+
+        # Step 4: Create proposed change linked to the branch
+        pc_result = await client.execute_graphql(
+            query=PROPOSED_CHANGE_CREATE,
+            variables={
+                "name": "PC-branch-delete-freeze-test",
+                "source_branch": branch_name,
+                "destination_branch": default_branch.name,
+            },
+        )
+        pc_id = pc_result["CoreProposedChangeCreate"]["object"]["id"]
+
+        # Verify diff is linked to PC and not frozen
+        component_registry = get_component_registry()
+        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_before_delete = await diff_repo.get_one(
+            tracking_id=BranchTrackingId(name=branch_name),
+            diff_branch_name=branch_name,
+        )
+        assert diff_before_delete.proposed_change_id == pc_id
+        assert diff_before_delete.is_frozen is False
+        assert isinstance(diff_before_delete.tracking_id, BranchTrackingId)
+        assert len(diff_before_delete.nodes) == 1
+        assert any(n.label == "Eve" for n in diff_before_delete.nodes)
+
+        # Step 5: Delete the branch
+        result = await client.execute_graphql(query=BRANCH_DELETE, variables={"branch_name": branch_name})
+        assert result["BranchDelete"]["ok"]
+
+        # Step 6: Verify diffs are now frozen with FrozenTrackingId
+        frozen_diff_metadata = await diff_repo.get_roots_metadata(proposed_change_id=pc_id)
+        assert len(frozen_diff_metadata) == 2  # branch diff + base diff
+        for metadata in frozen_diff_metadata:
+            assert metadata.is_frozen is True
+            assert isinstance(metadata.tracking_id, FrozenTrackingId)
+            assert metadata.tracking_id.name == pc_id
+            assert metadata.proposed_change_id == pc_id
+
+        # Verify the frozen diff still has the original data
+        frozen_branch_metadata = next(m for m in frozen_diff_metadata if m.diff_branch_name == branch_name)
+        frozen_diff = await diff_repo.get_one(
+            tracking_id=FrozenTrackingId(name=pc_id),
+            diff_branch_name=branch_name,
+        )
+        assert frozen_diff.uuid == frozen_branch_metadata.uuid
+        assert frozen_diff.is_frozen is True
+        assert len(frozen_diff.nodes) == 1
+        frozen_nodes_by_label = {n.label: n for n in frozen_diff.nodes}
+        assert "Eve" in frozen_nodes_by_label
+
+        # Step 7: Verify frozen diff can be retrieved via DiffTree GraphQL query
+        # even after the branch is deleted
+        diff_tree_result = await client.execute_graphql(
+            query=DIFF_TREE_QUERY,
+            variables={"branch_name": branch_name, "proposed_change_id": pc_id},
+        )
+        assert "DiffTree" in diff_tree_result
+        assert diff_tree_result["DiffTree"] is not None
+        # Verify it shows the added node
+        assert diff_tree_result["DiffTree"]["num_added"] == 1
+        assert diff_tree_result["DiffTree"]["num_updated"] == 0
+        assert diff_tree_result["DiffTree"]["num_removed"] == 0
+        assert diff_tree_result["DiffTree"]["num_conflicts"] == 0
 
     async def test_branch_diff_update_using_frozen_diff(
         self,
