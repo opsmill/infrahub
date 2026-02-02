@@ -4,7 +4,6 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
-import { CONFIG } from "@/shared/config/config";
 
 import { assertArtifactObject } from "@/entities/artifacts/types";
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
@@ -57,7 +56,6 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
         <ArtifactFile
           artifactId={artifactId}
           storageId={artifact.storage_id.value}
-          url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
           contentType={artifact.content_type.value}
           className="m-1 grow overflow-hidden"
         />

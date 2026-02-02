@@ -3,24 +3,18 @@ import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewe
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { CONFIG } from "@/shared/config/config";
 
 import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
 
 interface ArtifactFileProps {
   artifactId: string;
   storageId: string;
-  url: string;
   contentType: DataViewerContentType;
   className?: string;
 }
 
-export function ArtifactFile({
-  artifactId,
-  storageId,
-  url,
-  contentType,
-  className,
-}: ArtifactFileProps) {
+export function ArtifactFile({ artifactId, storageId, contentType, className }: ArtifactFileProps) {
   const { data: fileContent, isPending, error } = useGetArtifactFile({ storageId });
 
   if (isPending) {
@@ -32,6 +26,7 @@ export function ArtifactFile({
   }
 
   const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
+  const rawUrl = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
 
   return (
     <DataViewer
@@ -40,7 +35,7 @@ export function ArtifactFile({
       fileName={`${artifactId}.${config.extension}`}
       contentType={contentType}
       actions={
-        <DataViewerLinkButton href={url} target="_blank" rel="noopener noreferrer">
+        <DataViewerLinkButton href={rawUrl} target="_blank" rel="noopener noreferrer">
           Raw
         </DataViewerLinkButton>
       }
