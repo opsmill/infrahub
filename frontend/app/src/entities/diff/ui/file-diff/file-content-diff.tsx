@@ -28,8 +28,10 @@ import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 
+import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
+import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
@@ -358,7 +360,14 @@ export function FileContentDiff({
 
   return (
     <div className={"m-4 rounded-lg bg-white p-2 shadow-sm"}>
-      <Accordion title={file.location}>
+      <Accordion
+        title={
+          <Row>
+            <DiffBadge status={file.action.toUpperCase()} />
+            {file.location}
+          </Row>
+        }
+      >
         <div className="flex">
           <div className="flex-1">
             {commitFrom && <span className="font-normal italic">Commit: {commitFrom}</span>}
