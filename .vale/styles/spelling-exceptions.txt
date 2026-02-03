@@ -21,6 +21,7 @@ backends
 backfilled
 bcrypt
 Biome
+Bitnami
 bool
 boolean
 booleans
@@ -57,6 +58,8 @@ Diataxis
 direnv
 display_label
 display_labels
+Docker
+Docker's
 Dockerfile
 Docusaurus
 dropdown
@@ -151,6 +154,7 @@ overridable
 parameterized
 partial_match
 passthrough
+Patroni
 performant
 pluggable
 pre
@@ -175,6 +179,7 @@ Redoc
 refactored
 regex
 reimported
+repmgr
 repo
 requesters
 resizable

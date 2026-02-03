@@ -687,6 +687,112 @@ These examples are for reference purposes and may require customization for your
 
 </details>
 
+### Using Ansible
+
+<details>
+  <summary>Example HA deployment using Ansible on a 3-node cluster</summary>
+
+  The `opsmill.infrahub.install` Ansible role supports cluster deployments with `install_infrahub_mode: cluster`. This mode deploys Infrahub components across multiple nodes with automatic failover capabilities.
+
+  #### Inventory
+
+  Define your cluster nodes with a primary and secondary group. The primary node hosts the initial leader for databases, while secondary nodes provide redundancy.
+
+  ```ini
+  [infrahub:children]
+  infrahub_primary
+  infrahub_secondary
+
+  [infrahub_primary]
+  cluster-test-01 ansible_host=10.10.10.10
+
+  [infrahub_secondary]
+  cluster-test-02 ansible_host=10.20.20.20
+  cluster-test-03 ansible_host=10.30.30.30
+  ```
+
+  #### Playbook
+
+  ```yaml
+  ---
+  - hosts: all
+    roles:
+      - role: opsmill.infrahub.install
+        vars:
+          install_infrahub_url: https://infrahub.opsmill.io/enterprise?size=small
+          install_infrahub_mode: cluster
+          install_infrahub_cluster_db_address: neo4j-cluster-alias.infrahub.app
+          install_infrahub_config:
+            AWS_ACCESS_KEY_ID: admin
+            AWS_SECRET_ACCESS_KEY: password
+            AWS_S3_BUCKET_NAME: infrahub-data
+            AWS_S3_ENDPOINT_URL: objectstore-minio:9000
+            AWS_S3_USE_SSL: "false"
+  ```
+
+  #### Architecture Notes
+
+  :::info DNS Configuration for Neo4j
+
+  Infrahub components connect to Neo4j using the address specified in `install_infrahub_cluster_db_address`. This requires a DNS alias with round-robin A records pointing to all cluster nodes. Neo4j's client-side routing handles connection distribution and failover.
+
+  Example DNS configuration using the inventory IPs above:
+
+  ```
+  neo4j-cluster-alias.infrahub.app.  IN  A  10.10.10.10
+  neo4j-cluster-alias.infrahub.app.  IN  A  10.20.20.20
+  neo4j-cluster-alias.infrahub.app.  IN  A  10.30.30.30
+  ```
+
+  :::
+
+  :::warning Bitnami repmgr Image
+
+  The cluster deployment uses the `bitnami/postgresql-repmgr` image for the task manager database due to its ease of use. However, be aware that Bitnami images follow their own release and support policies. For production environments, we recommend using a managed PostgreSQL service (such as AWS RDS, Google Cloud SQL, or Azure Database for PostgreSQL). Alternatively, you can implement the same high-availability behavior using [Patroni](https://github.com/patroni/patroni) or any other PostgreSQL HA solution that fits your organization's requirements.
+
+  :::
+
+  :::info Task Manager Database Configuration
+
+  To avoid requiring an internal load balancer for PostgreSQL, the task manager uses `target_session_attrs=primary` in its connection string. This ensures that database writes are directed to the current PostgreSQL primary node, with automatic redirection during failover events.
+
+  :::
+
+  :::info Local Service Connectivity
+
+  Infrahub's API server, task workers, and task manager connect to the local cache (Redis) and message queue (RabbitMQ) instances running on the same node. Additionally, task workers connect to the local API server. This design eliminates the need for an internal load balancer for these services and reduces network latency.
+
+  :::
+
+  :::warning Docker Network Mode
+
+  To avoid issues with Docker's NAT and ensure proper cluster communication between nodes, the dependency services (Neo4j, PostgreSQL, Redis, RabbitMQ) run with `network_mode: host`. This allows services to bind directly to the host's network interfaces and communicate using their actual IP addresses.
+
+  :::
+
+  :::info External Load Balancer
+
+  An external load balancer is required to distribute user traffic across the Infrahub API servers. Configure the load balancer to forward requests to port 8000 on each cluster node. See the [Load balancer configuration](#load-balancer-configuration) section below for HAProxy and NGINX examples.
+
+  :::
+
+  :::warning Failover Testing
+
+  Before deploying to production, test the failover behavior by shutting down the primary node and verifying that:
+  - Secondary nodes promote correctly
+  - Infrahub services reconnect automatically
+  - Data integrity is maintained
+
+  Monitor logs during failover to identify any issues with service recovery.
+
+  :::
+
+  #### Architecture Diagram
+
+  ![Ansible HA Architecture](../media/ansible-ha-architecture.excalidraw.svg)
+
+</details>
+
 ### Load balancer configuration
 
 For high availability deployments, a load balancer is useful to distribute traffic across multiple Infrahub API server instances. The load balancer must be configured to properly handle both HTTP/HTTPS and WebSocket connections.
