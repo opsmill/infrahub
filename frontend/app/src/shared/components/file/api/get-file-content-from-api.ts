@@ -17,17 +17,27 @@ export interface GetFileContentFromApiParams {
 export async function getFileContentFromApi({
   url,
 }: GetFileContentFromApiParams): Promise<string | null> {
-  const response = await fetch(url);
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
-  if (!response.ok) {
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const stream = response.body;
+    if (!stream) {
+      return null;
+    }
+
+    reader = stream.getReader();
+    return await read(reader);
+  } catch {
     return null;
+  } finally {
+    if (reader) {
+      reader.releaseLock();
+    }
   }
-
-  const stream = response.body;
-  if (!stream) {
-    return null;
-  }
-
-  const reader = stream.getReader();
-  return read(reader);
 }
