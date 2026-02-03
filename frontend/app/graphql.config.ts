@@ -1,18 +1,21 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
 const config: CodegenConfig = {
-  schema: "http://localhost:8000/graphql",
-  documents: ["src/**/*.tsx", "src/**/*.ts"],
+  overwrite: true,
+  schema: "../../schema/schema.graphql",
+  documents: ["src/**/*.{ts,tsx}"],
   ignoreNoDocuments: true, // for better experience with the watcher
   generates: {
-    "src/shared/api/graphql/generated/": {
+    "src/shared/api/graphql/generated/types.ts": {
+      plugins: ["typescript", "typescript-operations"],
       config: {
+        avoidOptionals: {
+          field: true, // Use `null` for nullable fields instead of optionals
+          inputValue: false, // Allow nullable input fields to remain unspecified
+        },
         enumsAsTypes: true,
-      },
-      plugins: ["typescript"],
-      preset: "client",
-      presetConfig: {
-        gqlTagName: "gql",
+        nonOptionalTypename: true,
+        skipTypeNameForRoot: true,
       },
     },
   },

@@ -106,6 +106,7 @@
     "@biomejs/biome": "^2.3.11",
     "@graphql-codegen/cli": "^6.1.1",
     "@graphql-codegen/typescript": "^5.0.7",
+    "@graphql-codegen/typescript-operations": "^5.0.7",
     "@playwright/test": "^1.56.1",
     "@types/node": "^25.0.9",
     "@types/prismjs": "^1.26.5",
