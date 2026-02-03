@@ -168,6 +168,8 @@ RabbitMQ
 rebase
 Rebase
 rebased
+Rebased
+rebasing
 Rebasing
 redis
 Redis
