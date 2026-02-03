@@ -440,6 +440,50 @@ def test_dropdown_choice_sort() -> None:
     assert active < passive
 
 
+def test_dropdown_validation_error_with_invalid_choice_name() -> None:
+    """Test that validation errors for dropdown choices include attribute name and nested path.
+
+    This simulates the issue from IFC-2089 where YAML parsing converts 'off' to boolean False,
+    and the error message should clearly indicate which attribute and which choice field has the problem.
+    """
+    SCHEMA_WITH_INVALID_CHOICE: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "SDP",
+                "namespace": "Infra",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "SDP ID", "optional": False},
+                    {
+                        "name": "signaling",
+                        "kind": "Dropdown",
+                        "label": "Signaling",
+                        "optional": False,
+                        "choices": [
+                            {"name": "tldp", "label": "TLDP"},
+                            {"name": False, "label": "Off"},  # Boolean instead of string - simulates YAML 'off'
+                            {"name": "bgp", "label": "BGP"},
+                        ],
+                        "default_value": "tldp",
+                    },
+                ],
+            }
+        ]
+    }
+
+    with pytest.raises(ValidationError) as exc:
+        SchemaRoot(**SCHEMA_WITH_INVALID_CHOICE)
+
+    # The error should have the attribute name and nested path in the input field
+    errors = exc.value.errors()
+    assert len(errors) == 1, "Should have exactly one validation error"
+    error = errors[0]
+    input_value = str(error.get("input", ""))
+    assert "signaling" in input_value, f"Input should contain attribute name 'signaling': {input_value}"
+    assert "choices" in input_value, f"Input should contain 'choices': {input_value}"
+    assert "name" in input_value, f"Input should contain 'name': {input_value}"
+    assert "[signaling.choices.1.name]" in input_value, f"Input should show nested path: {input_value}"
+
+
 def test_validate_python_keywords_with_attribute_and_relationship() -> None:
     """Test that validate_python_keywords rejects Python keywords in attribute and relationship names."""
     # Test schema with 'from' keyword as attribute name
