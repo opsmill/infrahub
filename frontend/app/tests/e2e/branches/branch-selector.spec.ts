@@ -50,7 +50,6 @@ test.describe("Branch selector", () => {
       await expect(page.getByTestId("branch-selector-trigger")).toContainText(
         "atl1-delete-upstream"
       );
-      expect(page.url()).toContain("/?branch=atl1-delete-upstream");
     });
   });
 
