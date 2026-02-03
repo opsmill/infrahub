@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub.core.constants import (
     BranchSupportType,
@@ -41,7 +41,7 @@ class TrackingId:
         return f"{self.prefix}{self.delimiter}{self.name}"
 
     @classmethod
-    def deserialize(cls, id_string: str) -> TrackingId:
+    def deserialize(cls, id_string: str) -> Self:
         if not id_string.startswith(cls.prefix):
             raise ValueError(
                 f"Cannot deserialize TrackingId with incorrect prefix '{id_string}', expected prefix '{cls.prefix}{cls.delimiter}'"
@@ -71,8 +71,12 @@ class NameTrackingId(TrackingId):
     prefix = "name"
 
 
+class FrozenTrackingId(TrackingId):
+    prefix = "frozen"
+
+
 def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
-    for tracking_id_class in (BranchTrackingId, NameTrackingId):
+    for tracking_id_class in (BranchTrackingId, NameTrackingId, FrozenTrackingId):
         try:
             return tracking_id_class.deserialize(id_string=tracking_id_str)
         except ValueError:
@@ -460,6 +464,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
     partner_uuid: str | None = field(default=None)
     exists_on_database: bool = field(default=False)
     proposed_change_id: str | None = field(default=None)
+    is_frozen: bool = field(default=False, kw_only=True)
 
     def __hash__(self) -> int:
         return hash(self.uuid)

@@ -1,12 +1,8 @@
-import { useEffect } from "react";
-import { toast } from "react-toastify";
-
 import { CONTENT_TYPE_CONFIG, DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useGetFileContent } from "../domain/get-file-content.query";
 import type { FileViewerBaseProps } from "./types";
@@ -16,20 +12,14 @@ interface TextFileViewerProps extends FileViewerBaseProps {
 }
 
 export function TextFileViewer({ url, downloadUrl, fileName, contentType }: TextFileViewerProps) {
-  const { data: fileContent, isPending, isError } = useGetFileContent({ url });
-
-  useEffect(() => {
-    if (isError) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading file content" />);
-    }
-  }, [isError]);
+  const { data: fileContent, isPending, error } = useGetFileContent({ url });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
   }
 
-  if (!fileContent) {
-    return <NoDataFound message="No file found." />;
+  if (error) {
+    return <NoDataFound message={error.message} />;
   }
 
   const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];

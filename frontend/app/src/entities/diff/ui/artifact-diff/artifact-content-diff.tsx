@@ -2,36 +2,33 @@ import { gql, useQuery } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { Button } from "react-aria-components";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+import { useParams } from "react-router";
+import { toast } from "react-toastify";
+import sha from "sha1";
+import { diffLines, formatLines } from "unidiff";
 
-import { fetchStream } from "@/shared/api/rest/fetch";
-import { Button } from "@/shared/components/buttons/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { CONFIG } from "@/shared/config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
+import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import "react-diff-view/style/index.css";
-
-import { useParams } from "react-router";
-import { toast } from "react-toastify";
-import sha from "sha1";
-import { diffLines, formatLines } from "unidiff";
-
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100_000).slice(0, 9);
@@ -96,22 +93,31 @@ interface ArtifactContentDiffProps {
   itemNew?: { storage_id?: string } | null;
 }
 
-export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
-  const { itemPrevious, itemNew, id } = props;
-
+export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
-  const [isLoading, setIsLoading] = useState(false);
-  const [previousFile, setPreviousFile] = useState("");
-  const [newFile, setNewFile] = useState("");
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
-  if (!id) {
-    return <ErrorScreen message="Missing artifact ID for thread context." />;
-  }
+  const {
+    data: previousFile = "",
+    isPending: isPreviousPending,
+    error: previousFileError,
+  } = useGetArtifactFile(
+    { storageId: itemPrevious?.storage_id ?? "" },
+    { enabled: !!itemPrevious?.storage_id }
+  );
+
+  const {
+    data: newFile = "",
+    isPending: isNewPending,
+    error: newFileError,
+  } = useGetArtifactFile(
+    { storageId: itemNew?.storage_id ?? "" },
+    { enabled: !!itemNew?.storage_id }
+  );
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
@@ -123,47 +129,25 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
         })
       : ""; // Empty query to make the gql parsing work
 
-  const query = queryString
-    ? gql`
-        ${queryString}
-      `
-    : "";
+  const { loading, error, data, refetch } = useQuery(gql(queryString), {
+    skip: !schemaData || !proposedChangeId,
+  });
 
-  const { loading, error, data, refetch } = query
-    ? useQuery(query, { skip: !schemaData })
-    : { loading: false, error: null, data: null, refetch: null };
+  if (loading || isPreviousPending || isNewPending) {
+    return <LoadingIndicator className="p-4" />;
+  }
+
+  if (error || previousFileError || newFileError) {
+    return <ErrorScreen message="Something went wrong when fetching the artifact content." />;
+  }
+
+  if (!previousFile && !newFile) {
+    return null;
+  }
 
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
-
-  const fetchFileDetails = useCallback(async (storageId: string, setState: Function) => {
-    if (!storageId) return;
-
-    setIsLoading(true);
-
-    try {
-      const url = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
-
-      const fileResult = await fetchStream(url);
-
-      setState(fileResult || "");
-    } catch (err) {
-      console.error("Error while loading files diff: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
-    }
-
-    setIsLoading(false);
-  }, []);
-
-  const setFileDetailsInState = useCallback(async () => {
-    await fetchFileDetails(itemPrevious?.storage_id, setPreviousFile);
-    await fetchFileDetails(itemNew?.storage_id, setNewFile);
-  }, []);
-
-  useEffect(() => {
-    setFileDetailsInState();
-  }, []);
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
@@ -238,7 +222,6 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
             {
               onSuccess: async () => {
                 if (refetch) refetch();
-                setIsLoading(false);
                 handleCloseComment();
               },
               onError: async (error) => {
@@ -256,8 +239,6 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
                     details={error.message}
                   />
                 );
-
-                setIsLoading(false);
               },
             }
           );
@@ -333,27 +314,15 @@ export const ArtifactContentDiff = (props: ArtifactContentDiffProps) => {
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
+            className="absolute top-1/2 left-1/2 z-10 inline-flex w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-gray-200 p-1"
             onClick={handleClick}
           >
-            <PencilLineIcon className="h-3 w-3" />
+            <PencilLineIcon className="size-3.5" />
           </Button>
         )}
       </>
     );
   };
-
-  if (loading || isLoading) {
-    return <LoadingIndicator className="p-4" />;
-  }
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching the artifact content." />;
-  }
-
-  if (!previousFile && !newFile) {
-    return null;
-  }
 
   const diff = formatLines(diffLines(previousFile, newFile), {
     context: 3,
