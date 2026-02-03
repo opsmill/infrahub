@@ -18,7 +18,6 @@ export function FileViewer({ url, downloadUrl, fileName, contentType }: FileView
       return (
         <TextFileViewer
           url={url}
-          downloadUrl={downloadUrl}
           fileName={fileName}
           contentType={viewerType.dataViewerContentType}
         />
