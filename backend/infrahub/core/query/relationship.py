@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,too-many-lines
 
 log = get_logger()
 
