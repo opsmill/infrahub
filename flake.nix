@@ -13,11 +13,12 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.git
-            pkgs.gh
-            pkgs.lychee
-            pkgs.vale
+          buildInputs = with pkgs; [
+            git
+            gh
+            lychee
+            vale
+            stdenv.cc.cc.lib
           ];
 
           shellHook = ''
@@ -28,6 +29,9 @@
             echo "  - lychee (link checker): $(lychee --version)"
             echo "  - vale (prose linter): $(vale --version)"
           '';
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+            pkgs.stdenv.cc.cc.lib
+          ];
         };
       }
     );
