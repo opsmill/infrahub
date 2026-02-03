@@ -1,15 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-async function fetchFileContent(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return null;
-    }
-    return await response.text();
-  } catch {
-    return null;
+async function fetchFileContent(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
   }
+  return response.text();
 }
 
 export function useGetFileContent(url: string | null) {
