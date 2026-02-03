@@ -1,8 +1,7 @@
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
-import { CONTENT_TYPE_CONFIG } from "@/shared/components/data-viewer/data-viewer";
+import { CONTENT_TYPE_CONFIG, DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { FileViewer } from "@/shared/components/file/ui/file-viewer";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
@@ -56,7 +55,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
         </Col>
 
         <div className="flex grow overflow-hidden p-1">
-          <FileViewer
+          <DataViewer
             url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
             fileName={`${artifactId}.${CONTENT_TYPE_CONFIG[artifact.content_type.value]?.extension ?? "txt"}`}
             contentType={artifact.content_type.value}
