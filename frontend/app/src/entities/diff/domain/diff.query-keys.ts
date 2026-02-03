@@ -29,3 +29,8 @@ export const artifactsDiffKeys = {
   all: ["artifacts-diff"] as const,
   list: (branch: string) => [...artifactsDiffKeys.all, branch] as const,
 };
+
+export const filesDiffKeys = {
+  all: ["files-diff"] as const,
+  list: (branch: string) => [...filesDiffKeys.all, branch] as const,
+};

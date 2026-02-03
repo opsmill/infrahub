@@ -18,6 +18,7 @@ import {
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
@@ -34,6 +35,14 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+
+interface FileContentDiffProps {
+  repositoryId: string;
+  repositoryDisplayName?: string | null;
+  file: FileDiffFile;
+  commitFrom: string;
+  commitTo: string;
+}
 
 const fakeIndex = () => {
   return sha(Math.random() * 100_000).slice(0, 9);
@@ -97,9 +106,13 @@ const findThreadByChange = (
   });
 };
 
-export const FileContentDiff = (props: any) => {
-  const { repositoryId, repositoryDisplayName, file, commitFrom, commitTo } = props;
-
+export function FileContentDiff({
+  repositoryId,
+  repositoryDisplayName,
+  file,
+  commitFrom,
+  commitTo,
+}: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
   const [branchOnly] = useQueryState(QSP.BRANCH_FILTER_BRANCH_ONLY);
   const [timeFrom] = useQueryState(QSP.BRANCH_FILTER_TIME_FROM);
@@ -401,4 +414,4 @@ export const FileContentDiff = (props: any) => {
       </Accordion>
     </div>
   );
-};
+}
