@@ -2,22 +2,20 @@ import { gql, useQuery } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 
-import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { CONFIG } from "@/shared/config/config";
 import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
-import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useGetFile } from "@/entities/diff/domain/get-file.query";
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
@@ -25,7 +23,6 @@ import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
-import { useQueryState } from "nuqs";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
@@ -114,17 +111,31 @@ export function FileContentDiff({
   commitTo,
 }: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
-  const [branchOnly] = useQueryState(QSP.BRANCH_FILTER_BRANCH_ONLY);
-  const [timeFrom] = useQueryState(QSP.BRANCH_FILTER_TIME_FROM);
-  const [timeTo] = useQueryState(QSP.BRANCH_FILTER_TIME_TO);
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
-  const [isLoading, setIsLoading] = useState(false);
-  const [previousFile, setPreviousFile] = useState(false);
-  const [newFile, setNewFile] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
+
+  const {
+    data: previousFile,
+    isPending: isPendingPreviousFile,
+    error: previousFileError,
+  } = useGetFile({
+    repositoryId,
+    filePath: file.location,
+    commit: commitFrom,
+  });
+
+  const {
+    data: newFile,
+    isPending: isPendingNewFile,
+    error: newFileError,
+  } = useGetFile({
+    repositoryId,
+    filePath: file.location,
+    commit: commitTo,
+  });
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_FILE_THREAD_OBJECT);
 
@@ -149,43 +160,6 @@ export function FileContentDiff({
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
-
-  const fetchFileDetails = useCallback(async (commit: string, setState: Function) => {
-    setIsLoading(true);
-
-    try {
-      const url = CONFIG.FILES_CONTENT_URL(repositoryId, file.location);
-
-      const options: string[][] = [
-        ["branch_only", branchOnly ?? ""],
-        ["time_from", timeFrom ?? ""],
-        ["time_to", timeTo ?? ""],
-        ["commit", commit ?? ""],
-      ].filter(([, v]) => v !== undefined && v !== "");
-
-      const qsp = new URLSearchParams(options);
-
-      const urlWithQsp = `${url}?${options.length ? `&${qsp.toString()}` : ""}`;
-
-      const fileResult = await fetchStream(urlWithQsp);
-
-      setState(fileResult);
-    } catch (err) {
-      console.error("Error while loading files diff: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
-    }
-
-    setIsLoading(false);
-  }, []);
-
-  const setFileDetailsInState = useCallback(async () => {
-    await fetchFileDetails(commitFrom, setPreviousFile);
-    await fetchFileDetails(commitTo, setNewFile);
-  }, []);
-
-  useEffect(() => {
-    setFileDetailsInState();
-  }, []);
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
@@ -268,7 +242,6 @@ export function FileContentDiff({
             {
               onSuccess: async () => {
                 if (refetch) refetch();
-                setIsLoading(false);
                 handleCloseComment();
               },
               onError: async (error) => {
@@ -286,8 +259,6 @@ export function FileContentDiff({
                     details={error.message}
                   />
                 );
-
-                setIsLoading(false);
               },
             }
           );
@@ -363,11 +334,11 @@ export function FileContentDiff({
     );
   };
 
-  if (loading || isLoading) {
+  if (loading || isPendingPreviousFile || isPendingNewFile) {
     return <LoadingIndicator className="p-4" />;
   }
 
-  if (error) {
+  if (error || previousFileError || newFileError) {
     return <ErrorScreen message="Something went wrong when fetching the file differences." />;
   }
 
@@ -375,7 +346,7 @@ export function FileContentDiff({
     return null;
   }
 
-  const diff = formatLines(diffLines(previousFile, newFile), {
+  const diff = formatLines(diffLines(previousFile ?? "", newFile ?? ""), {
     context: 3,
     aname: commitFrom,
     bname: commitTo,
@@ -400,7 +371,7 @@ export function FileContentDiff({
 
         <div className="ml-2 bg-gray-50">
           <Diff
-            key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}`}
+            key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}${newFile ? sha(newFile) : ""}`}
             hunks={fileContent.hunks}
             viewType="split"
             diffType={fileContent.type}

@@ -34,3 +34,15 @@ export const filesDiffKeys = {
   all: ["files-diff"] as const,
   list: (branch: string) => [...filesDiffKeys.all, branch] as const,
 };
+
+type FileKeyParams = {
+  repositoryId: string;
+  filePath: string;
+  commit?: string;
+};
+
+export const fileKeys = {
+  all: ["file"] as const,
+  detail: ({ repositoryId, filePath, commit }: FileKeyParams) =>
+    [...fileKeys.all, repositoryId, filePath, commit] as const,
+};

@@ -21,6 +21,4 @@ export const CONFIG = {
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
   ARTIFACTS_CONTENT_URL: (storageId: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`,
-  FILES_CONTENT_URL: (repositoryId: string, location: string) =>
-    `${INFRAHUB_API_SERVER_URL}/api/file/${repositoryId}/${encodeURIComponent(location)}`,
 };
