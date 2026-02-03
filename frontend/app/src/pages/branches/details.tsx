@@ -63,7 +63,7 @@ function BranchDetailsPage() {
         {branch.description && <p className="text-sm">{branch.description}</p>}
       </header>
 
-      <BranchTab />
+      {!branch.is_default && <BranchTab />}
 
       <div className="p-2">
         <BranchContent branchName={branchName} />
@@ -86,7 +86,10 @@ const BranchTab = () => {
       label: "Files",
       name: DIFF_TABS.FILES,
     },
-
+    {
+      label: "Artifacts",
+      name: DIFF_TABS.ARTIFACTS,
+    },
     {
       label: "Schema",
       name: DIFF_TABS.SCHEMA,
