@@ -115,6 +115,8 @@ jobs:
         run: npm ci
       - name: Run Biome
         run: npx biome ci .
+      - name: Run Knip
+        run: npm run knip
 
   frontend-validate-openapi-types:
     if: |
