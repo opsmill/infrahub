@@ -22,6 +22,10 @@ export function TextFileViewer({ url, downloadUrl, fileName, contentType }: Text
     return <NoDataFound message={error.message} />;
   }
 
+  if (fileContent === null) {
+    return <NoDataFound message="File content is empty" />;
+  }
+
   const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
 
   return (
