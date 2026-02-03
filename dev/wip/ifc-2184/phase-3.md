@@ -39,64 +39,28 @@ await get_workflow().submit_workflow(
 
 ## Tests
 
-**New file:** `backend/tests/functional/branch/test_branch_merged.py`
+**File:** `backend/tests/functional/branch/test_branch_merged.py`
 
 Pattern: `backend/tests/functional/branch/test_branch_needs_rebase.py`
 
-```python
-import pytest
-from infrahub.core.branch.enums import BranchStatus
+### TestMergedBranchStatus class
 
+- `test_merged_branch_blocks_mutations` - mutations are blocked on MERGED branches
+- `test_merged_branch_allows_delete` - BranchDelete is allowed on MERGED branches
+- `test_merged_branch_blocks_rebase` - BranchRebase is blocked on MERGED branches
+- `test_branch_merge_rejects_already_merged_branch` - BranchMerge rejects already merged branches
+- `test_proposed_change_create_rejects_merged_source_branch` - ProposedChangeCreate rejects merged source branches
 
-async def test_merge_branch_sets_merged_status(db, default_branch):
-    """Test that merging a branch sets its status to MERGED."""
-    branch = await create_branch(db=db, name="feature-branch")
+### TestNeedRebaseBranchStatus class
 
-    # Make some changes on the branch
-    # ...
-
-    # Merge the branch
-    await merge_branch(branch=branch.name, context=context)
-
-    # Reload and verify status
-    merged_branch = await Branch.get_by_name(db=db, name="feature-branch")
-    assert merged_branch.status == BranchStatus.MERGED
-
-
-async def test_merge_failure_does_not_set_merged_status(db, default_branch):
-    """Test that failed merge does NOT set MERGED status."""
-    branch = await create_branch(db=db, name="feature-branch")
-
-    # Setup conditions that will cause merge to fail
-    # ...
-
-    with pytest.raises(Exception):
-        await merge_branch(branch=branch.name, context=context)
-
-    # Verify status is still OPEN
-    branch = await Branch.get_by_name(db=db, name="feature-branch")
-    assert branch.status == BranchStatus.OPEN
-
-
-async def test_merge_cancels_open_proposed_changes(db, default_branch):
-    """Test that merging a branch cancels open proposed changes for that branch."""
-    branch = await create_branch(db=db, name="feature-branch")
-
-    # Create a proposed change for this branch
-    pc = await create_proposed_change(source_branch=branch.name, ...)
-
-    # Merge the branch directly (not via PC)
-    await merge_branch(branch=branch.name, context=context)
-
-    # Verify PC is cancelled
-    pc = await get_proposed_change(id=pc.id)
-    assert pc.state == "cancelled"
-```
+- `test_need_rebase_branch_blocks_mutations` - mutations are blocked on NEED_REBASE branches
+- `test_need_rebase_branch_allows_rebase` - BranchRebase is allowed on NEED_REBASE branches (key difference from MERGED)
+- `test_need_rebase_branch_allows_delete` - BranchDelete is allowed on NEED_REBASE branches
 
 ---
 
 ## Verification
 
 ```bash
-uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge_branch_sets or merge_failure or merge_cancels"
+uv run pytest backend/tests/functional/branch/test_branch_merged.py -v
 ```

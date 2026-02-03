@@ -31,7 +31,7 @@ def get_permission_report(  # noqa: PLR0911
 
     # Block mutations on merged branches
     # Note: Branch delete is allowed via middleware, this covers node permissions
-    if branch.status == BranchStatus.MERGED and action != "view":
+    if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
         return BranchRelativePermissionDecision.DENY
 
     if action != "view":

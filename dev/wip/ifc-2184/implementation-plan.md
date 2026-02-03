@@ -12,25 +12,26 @@ Implement a `MERGED` status for branches that makes them read-only after success
 
 ## Implementation Progress
 
-| Phase | Description | Status | Tests |
-|-------|-------------|--------|-------|
-| 1 | Core Enum + Status Check | ✅ Complete | 6 unit tests |
-| 2 | GraphQL Middleware | ✅ Complete | 7 unit tests |
-| 3 | Merge Flow | ✅ Complete | 5 functional tests |
-| 4 | Mutation Validations | ✅ Complete | (included in Phase 3) |
-| 5 | REST API Validation | ✅ Complete | (included in Phase 3) |
-| 6 | Permission System | ✅ Complete | 4 unit tests |
+| Phase | Description                                       | Status      | Tests                                            |
+| ----- | ------------------------------------------------- | ----------- | ------------------------------------------------ |
+| 1     | Core Enum + Status Check                          | ✅ Complete | 2 unit tests                                     |
+| 2     | GraphQL Middleware                                | ✅ Complete | 7 unit tests                                     |
+| 3     | Merge Flow                                        | ✅ Complete | 8 functional tests (MERGED and NEED_REBASE)      |
+| 4     | Mutation Validations                              | ✅ Complete | (included in Phase 3)                            |
+| 5     | REST API Validation + CheckBranchStatus Validator | ✅ Complete | 4 component tests                                |
+| 6     | Permission System (MERGED + NEED_REBASE)          | ✅ Complete | 4 unit tests                                     |
 
-**Total Tests:** 22 tests (17 unit + 5 functional)
+**Total Tests:** 25 tests (13 unit + 4 component + 8 functional)
 
 ---
 
 ## Phase 1: Core Enum and Status Check ✅
 
 ### Checklist
+
 - [x] Add MERGED status to BranchStatus enum
 - [x] Create merged status check module
-- [x] Create unit tests (6 tests)
+- [x] Create unit tests (2 tests using actual Branch objects)
 
 ### Implementation
 
@@ -64,11 +65,13 @@ def check_merged_status(branch: Branch) -> None:
 
 **New file:** `backend/tests/unit/core/branch/test_merged_status.py`
 
-- Test `raise_merged_error` raises ValueError with correct message
-- Test `check_merged_status` raises for MERGED branches
-- Test `check_merged_status` passes for OPEN branches
+Tests use actual `Branch` objects (not mocks) for realistic validation:
+
+- Test `check_merged_status` raises ValueError for MERGED branches
+- Test `check_merged_status` passes for OPEN, NEED_REBASE, NEED_UPGRADE_REBASE branches (parametrized)
 
 **Verification:**
+
 ```bash
 uv run pytest backend/tests/unit/core/branch/test_merged_status.py -v
 ```
@@ -78,6 +81,7 @@ uv run pytest backend/tests/unit/core/branch/test_merged_status.py -v
 ## Phase 2: GraphQL Middleware ✅
 
 ### Checklist
+
 - [x] Import `check_merged_status` in middleware.py
 - [x] Add `ALLOWED_MUTATIONS_ON_MERGED_BRANCH` constant
 - [x] Add merged status check in middleware function
@@ -119,6 +123,7 @@ def raise_on_mutation_on_branch_needing_rebase(next, root, info, **kwargs):
 - Test middleware allows BranchDelete on MERGED branch
 
 **Verification:**
+
 ```bash
 uv run pytest backend/tests/unit/graphql/test_middleware.py -v -k merged
 ```
@@ -128,6 +133,7 @@ uv run pytest backend/tests/unit/graphql/test_middleware.py -v -k merged
 ## Phase 3: Merge Flow ✅
 
 ### Checklist
+
 - [x] Set `BranchStatus.MERGED` after successful merge in `tasks.py`
 - [x] Update registry with merged branch
 - [x] Submit workflow to cancel open proposed changes
@@ -159,13 +165,22 @@ await get_workflow().submit_workflow(
 
 Pattern: `backend/tests/functional/branch/test_branch_needs_rebase.py`
 
+**TestMergedBranchStatus class:**
+
 - Test merge sets branch status to MERGED
 - Test merge failure does NOT set MERGED status
 - Test merge cancels open proposed changes for the branch
 
+**TestNeedRebaseBranchStatus class:**
+
+- Test mutations blocked on branches needing rebase
+- Test BranchRebase allowed on branches needing rebase (key difference from MERGED)
+- Test BranchDelete allowed on branches needing rebase
+
 **Verification:**
+
 ```bash
-uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge_sets or merge_failure or merge_cancels"
+uv run pytest backend/tests/functional/branch/test_branch_merged.py -v
 ```
 
 ---
@@ -173,6 +188,7 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge
 ## Phase 4: Mutation Validations ✅
 
 ### Checklist
+
 - [x] Block BranchMerge on already-merged branches
 - [x] Block ProposedChangeCreate for merged source branches
 - [x] Block BranchRebase on merged branches (via middleware + direct check in mutation)
@@ -213,6 +229,7 @@ if source_branch_obj.status == BranchStatus.MERGED:
 - Test ProposedChangeCreate rejects merged source branch
 
 **Verification:**
+
 ```bash
 uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge_rejects or proposed_change_create"
 ```
@@ -222,46 +239,80 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge
 ## Phase 5: REST API Validation ✅
 
 ### Checklist
+
+- [x] Create reusable `CheckBranchStatus` validator class
 - [x] Block schema loading on merged branches (`schema.py`)
 - [x] Block artifact generation on merged branches (`artifact.py`)
 - [x] Extend functional tests
 
 ### Implementation
 
-#### 5.1 Block schema loading on merged branches
+#### 5.1 Create reusable validator class
 
-**File:** `backend/infrahub/api/schema.py:326`
+**New file:** `backend/infrahub/api/validators.py`
 
 ```python
 from infrahub.core.branch.merged_status import check_merged_status
+from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
+from infrahub.core.branch import Branch
 
-# In load_schema function:
-check_need_rebase_status(branch)
-check_merged_status(branch)  # Add this
+
+class CheckBranchStatus:
+    def __init__(self, branch: Branch):
+        self.branch = branch
+
+    def check(self):
+        check_need_rebase_status(branch=self.branch)
+        check_merged_status(branch=self.branch)
 ```
 
-#### 5.2 Block artifact generation on merged branches
+#### 5.2 Block schema loading on merged branches
 
-**File:** `backend/infrahub/api/artifact.py:80`
+**File:** `backend/infrahub/api/schema.py:323`
 
 ```python
-from infrahub.core.branch.merged_status import check_merged_status
+from infrahub.api.validators import CheckBranchStatus
+
+# In load_schema function:
+try:
+    CheckBranchStatus(branch=branch).check()
+except ValueError as err:
+    raise SchemaNotValidError(message=str(err)) from err
+```
+
+#### 5.3 Block artifact generation on merged branches
+
+**File:** `backend/infrahub/api/artifact.py:77`
+
+```python
+from infrahub.api.validators import CheckBranchStatus
 
 # In generate_artifact function:
-check_need_rebase_status(branch_params.branch)
-check_merged_status(branch_params.branch)  # Add this
+try:
+    CheckBranchStatus(branch=branch_params.branch).check()
+except ValueError as err:
+    raise ValidationError(input_value=str(err)) from err
 ```
 
 ### Tests
 
 **Extend:** `backend/tests/functional/branch/test_branch_merged.py`
 
-- Test schema load blocked on merged branch (returns 400)
-- Test artifact generation blocked on merged branch (returns 400)
+- Test schema load blocked on merged branch (returns 422)
+- Test artifact generation blocked on merged branch (returns 422)
+
+**Component tests:** `backend/tests/component/api/test_40_schema.py` and `backend/tests/component/api/test_11_artifact.py`
+
+- `test_schema_load_blocked_on_merged_branch` - verifies 422 status code
+- `test_schema_load_blocked_on_need_rebase_branch` - verifies 422 status code
+- `test_artifact_generate_blocked_on_merged_branch` - verifies 422 status code
+- `test_artifact_generate_blocked_on_need_rebase_branch` - verifies 422 status code
 
 **Verification:**
+
 ```bash
-uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "schema_load or artifact"
+uv run pytest backend/tests/component/api/test_40_schema.py -v -k "merged or rebase"
+uv run pytest backend/tests/component/api/test_11_artifact.py -v -k "merged or rebase"
 ```
 
 ---
@@ -269,22 +320,22 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "schem
 ## Phase 6: Permission System Integration ✅
 
 ### Checklist
-- [x] Update `get_permission_report()` to return DENY for non-view actions on merged branches
+
+- [x] Update `get_permission_report()` to return DENY for non-view actions on merged branches AND branches needing rebase
 - [x] Super admin bypass preserved
 - [x] Branch delete handled via middleware allowlist
 - [x] Create unit tests (4 tests)
 
-**Note:** Implementation simplified - Branch delete handled via GraphQL middleware `ALLOWED_MUTATIONS_ON_MERGED_BRANCH` rather than permission system check for `InfrahubKind.BRANCH`.
+**Note:** Implementation simplified - Branch delete handled via GraphQL middleware `ALLOWED_MUTATIONS_ON_MERGED_BRANCH` rather than permission system check for `InfrahubKind.BRANCH`. The permission check now covers both `MERGED` and `NEED_REBASE` statuses for consistent behavior.
 
 ### Implementation
 
-**File:** `backend/infrahub/permissions/report.py:21`
+**File:** `backend/infrahub/permissions/report.py:34`
 
-In `get_permission_report()`, add early return for merged branches:
+In `get_permission_report()`, add early return for merged/need_rebase branches:
 
 ```python
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import InfrahubKind
 
 def get_permission_report(
     permission_manager: PermissionManager,
@@ -293,11 +344,10 @@ def get_permission_report(
     action: str,
     global_permission_report: dict[GlobalPermissions, bool],
 ) -> BranchRelativePermissionDecision:
-    # NEW: Block mutations on merged branches (except Branch delete)
-    if branch.status == BranchStatus.MERGED and action != "view":
-        # Allow delete for Branch kind only
-        if not (node.kind == InfrahubKind.BRANCH and action == "delete"):
-            return BranchRelativePermissionDecision.DENY
+    # Block mutations on merged branches or branches needing rebase
+    # Note: Branch delete is allowed via middleware, this covers node permissions
+    if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE,) and action != "view":
+        return BranchRelativePermissionDecision.DENY
 
     # ... existing logic ...
 ```
@@ -310,9 +360,10 @@ def get_permission_report(
 - Test permission denies update on merged branch
 - Test permission denies delete on merged branch (non-Branch kinds)
 - Test permission allows view on merged branch
-- Test permission allows Branch delete on merged branch
+- Test permission denies mutations on need_rebase branch
 
 **Verification:**
+
 ```bash
 uv run pytest backend/tests/unit/permissions/test_merged_branch_permissions.py -v
 ```
@@ -327,7 +378,8 @@ After all phases are complete:
 # Run all new tests
 uv run pytest backend/tests/unit/core/branch/test_merged_status.py \
     backend/tests/functional/branch/test_branch_merged.py \
-    backend/tests/unit/permissions/test_merged_branch_permissions.py -v
+    backend/tests/unit/permissions/test_merged_branch_permissions.py \
+    backend/tests/unit/api/test_validators.py -v
 
 # Run full test suite
 uv run invoke backend.test-unit
@@ -349,14 +401,26 @@ uv run invoke format && uv run invoke lint
 
 ## Critical Files Summary
 
-| Component | File |
-|-----------|------|
-| BranchStatus enum | `backend/infrahub/core/branch/enums.py` |
-| Merged status check | `backend/infrahub/core/branch/merged_status.py` (new) |
-| GraphQL middleware | `backend/infrahub/graphql/middleware.py` |
-| Merge flow | `backend/infrahub/core/branch/tasks.py` |
-| BranchMerge mutation | `backend/infrahub/graphql/mutations/branch.py` |
-| ProposedChangeCreate | `backend/infrahub/graphql/mutations/proposed_change.py` |
-| Permission report | `backend/infrahub/permissions/report.py` |
-| REST schema API | `backend/infrahub/api/schema.py` |
-| REST artifact API | `backend/infrahub/api/artifact.py` |
+| Component               | File                                                    |
+| ----------------------- | ------------------------------------------------------- |
+| BranchStatus enum       | `backend/infrahub/core/branch/enums.py`                 |
+| Merged status check     | `backend/infrahub/core/branch/merged_status.py` (new)   |
+| Branch status validator | `backend/infrahub/api/validators.py` (new)              |
+| GraphQL middleware      | `backend/infrahub/graphql/middleware.py`                |
+| Merge flow              | `backend/infrahub/core/branch/tasks.py`                 |
+| BranchMerge mutation    | `backend/infrahub/graphql/mutations/branch.py`          |
+| ProposedChangeCreate    | `backend/infrahub/graphql/mutations/proposed_change.py` |
+| Permission report       | `backend/infrahub/permissions/report.py`                |
+| REST schema API         | `backend/infrahub/api/schema.py`                        |
+| REST artifact API       | `backend/infrahub/api/artifact.py`                      |
+
+### Test Files
+
+| Test                                             | File                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| Merged status unit tests                         | `backend/tests/unit/core/branch/test_merged_status.py`             |
+| Permission unit tests (MERGED + NEED_REBASE)     | `backend/tests/unit/permissions/test_merged_branch_permissions.py` |
+| Validator unit tests                             | `backend/tests/unit/api/test_validators.py`                        |
+| Schema API component tests (MERGED + NEED_REBASE)| `backend/tests/component/api/test_40_schema.py`                    |
+| Artifact API component tests (MERGED + NEED_REBASE)| `backend/tests/component/api/test_11_artifact.py`                |
+| Functional tests (MERGED + NEED_REBASE)          | `backend/tests/functional/branch/test_branch_merged.py`            |

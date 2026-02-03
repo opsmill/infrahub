@@ -1,18 +1,15 @@
-from unittest.mock import MagicMock
-
 import pytest
 
+from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.merged_status import check_merged_status
 
 
 def test_check_merged_status_raises_for_merged_branch() -> None:
-    mock_branch = MagicMock()
-    mock_branch.status = BranchStatus.MERGED
-    mock_branch.name = "merged-branch"
+    branch = Branch(name="merged-branch", status=BranchStatus.MERGED)
 
     with pytest.raises(ValueError, match=r"merged-branch.*has been merged and is read-only"):
-        check_merged_status(mock_branch)
+        check_merged_status(branch)
 
 
 @pytest.mark.parametrize(
@@ -25,8 +22,5 @@ def test_check_merged_status_raises_for_merged_branch() -> None:
     ],
 )
 def test_check_merged_status_passes_for_non_merged_branch(status: BranchStatus) -> None:
-    mock_branch = MagicMock()
-    mock_branch.status = status
-    mock_branch.name = "test-branch"
-
-    check_merged_status(mock_branch)
+    branch = Branch(name="test-branch", status=status)
+    check_merged_status(branch)

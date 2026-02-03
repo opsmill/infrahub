@@ -10,7 +10,7 @@
 
 - [x] Add MERGED status to BranchStatus enum (`backend/infrahub/core/branch/enums.py`)
 - [x] Create merged status check module (`backend/infrahub/core/branch/merged_status.py`)
-- [x] Create unit tests (`backend/tests/unit/core/branch/test_merged_status.py`) - 5 tests
+- [x] Create unit tests (`backend/tests/unit/core/branch/test_merged_status.py`) - 2 tests
 
 ---
 
@@ -55,27 +55,33 @@ def check_merged_status(branch: Branch) -> None:
 
 **New file:** `backend/tests/unit/core/branch/test_merged_status.py`
 
+Tests use actual `Branch` objects (not mocks) for realistic validation:
+
 ```python
 import pytest
+from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.branch.merged_status import check_merged_status, raise_merged_error
+from infrahub.core.branch.merged_status import check_merged_status
 
 
-def test_raise_merged_error():
-    with pytest.raises(ValueError, match="has been merged and is read-only"):
-        raise_merged_error("test-branch")
+def test_check_merged_status_raises_for_merged_branch() -> None:
+    branch = Branch(name="merged-branch", status=BranchStatus.MERGED)
+
+    with pytest.raises(ValueError, match=r"merged-branch.*has been merged and is read-only"):
+        check_merged_status(branch)
 
 
-def test_check_merged_status_raises_for_merged_branch(mock_branch):
-    mock_branch.status = BranchStatus.MERGED
-    mock_branch.name = "test-branch"
-    with pytest.raises(ValueError):
-        check_merged_status(mock_branch)
-
-
-def test_check_merged_status_passes_for_open_branch(mock_branch):
-    mock_branch.status = BranchStatus.OPEN
-    check_merged_status(mock_branch)  # Should not raise
+@pytest.mark.parametrize(
+    "status",
+    [
+        BranchStatus.OPEN,
+        BranchStatus.NEED_REBASE,
+        BranchStatus.NEED_UPGRADE_REBASE,
+    ],
+)
+def test_check_merged_status_passes_for_non_merged_branch(status: BranchStatus) -> None:
+    branch = Branch(name="test-branch", status=status)
+    check_merged_status(branch)
 ```
 
 ---

@@ -148,3 +148,83 @@ class TestMergedBranchStatus(TestInfrahubApp):
             await client.execute_graphql(query=query.render())
 
         assert "has been merged" in exc.value.message
+
+
+class TestNeedRebaseBranchStatus(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        git_repos_source_dir_module_scope: Path,
+        client: InfrahubClient,
+        bus_simulator: BusSimulator,
+        prefect_test_fixture: None,
+    ) -> None:
+        await load_schema(db, schema=CAR_SCHEMA)
+
+    async def test_need_rebase_branch_blocks_mutations(
+        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
+    ) -> None:
+        """Test that mutations are blocked on branches needing rebase."""
+        branch_name = "need_rebase_branch_test"
+        branch = await client.branch.create(branch_name=branch_name)
+
+        # Set status to NEED_REBASE
+        backend_branch = registry.branch[branch.name]
+        backend_branch.status = BranchStatus.NEED_REBASE
+        await backend_branch.save(db=db)
+
+        # Try any mutation on this branch - should fail
+        node = await client.create(kind="TestingPerson", name="Jane Doe", branch=branch_name)
+        with pytest.raises(GraphQLError) as exc:
+            await node.save()
+
+        assert "must be rebased" in exc.value.message
+
+    async def test_need_rebase_branch_allows_rebase(
+        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
+    ) -> None:
+        """Test that BranchRebase is allowed on branches needing rebase.
+
+        This is the KEY DIFFERENCE from MERGED branches - rebase should work!
+        """
+        branch_name = "need_rebase_allows_rebase_test"
+        branch = await client.branch.create(branch_name=branch_name)
+
+        # Set status to NEED_REBASE
+        backend_branch = registry.branch[branch.name]
+        backend_branch.status = BranchStatus.NEED_REBASE
+        await backend_branch.save(db=db)
+
+        # BranchRebase should be allowed on branches needing rebase
+        query = Mutation(
+            mutation="BranchRebase",
+            input_data={"data": {"name": branch.name}, "wait_until_completion": False},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchRebase"]["ok"] is True
+        assert result["BranchRebase"]["task"]["id"]
+
+    async def test_need_rebase_branch_allows_delete(
+        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
+    ) -> None:
+        """Test that BranchDelete is allowed on branches needing rebase."""
+        branch_name = "need_rebase_delete_test"
+        branch = await client.branch.create(branch_name=branch_name)
+
+        # Set status to NEED_REBASE
+        backend_branch = registry.branch[branch.name]
+        backend_branch.status = BranchStatus.NEED_REBASE
+        await backend_branch.save(db=db)
+
+        # We should still be able to delete the branch
+        query = Mutation(
+            mutation="BranchDelete",
+            input_data={"data": {"name": branch.name}, "wait_until_completion": False},
+            query={"ok": None, "task": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchDelete"]["ok"] is True
+        assert result["BranchDelete"]["task"]["id"]

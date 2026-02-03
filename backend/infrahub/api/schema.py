@@ -15,11 +15,10 @@ from starlette.responses import JSONResponse
 from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
+from infrahub.api.validators import CheckBranchStatus
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
-from infrahub.core.branch.merged_status import check_merged_status
-from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
@@ -324,8 +323,10 @@ async def load_schema(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
-    check_need_rebase_status(branch)
-    check_merged_status(branch)
+    try:
+        CheckBranchStatus(branch=branch).check()
+    except ValueError as err:
+        raise SchemaNotValidError(message=str(err)) from err
 
     permission_manager.raise_for_permission(
         permission=define_global_permission_from_branch(

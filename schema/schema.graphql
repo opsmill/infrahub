@@ -325,6 +325,7 @@ enum BranchRelativePermissionDecision {
 """An enumeration."""
 enum BranchStatus {
   DELETING
+  MERGED
   NEED_REBASE
   NEED_UPGRADE_REBASE
   OPEN

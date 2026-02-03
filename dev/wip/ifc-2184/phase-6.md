@@ -8,24 +8,23 @@
 
 ## Checklist
 
-- [x] Update `get_permission_report()` to return DENY for non-view actions on merged branches (`backend/infrahub/permissions/report.py`)
+- [x] Update `get_permission_report()` to return DENY for non-view actions on merged branches AND branches needing rebase (`backend/infrahub/permissions/report.py`)
 - [x] Super admin bypass preserved (checked before merged status)
 - [x] Branch delete handled via middleware `ALLOWED_MUTATIONS_ON_MERGED_BRANCH`
 - [x] Create unit tests (`backend/tests/unit/permissions/test_merged_branch_permissions.py`) - 4 tests
 
-**Note:** Implementation simplified from original plan - Branch delete is handled via GraphQL middleware allowlist rather than permission system check for `InfrahubKind.BRANCH`, since branches are deleted via GraphQL mutation not REST API.
+**Note:** Implementation simplified from original plan - Branch delete is handled via GraphQL middleware allowlist rather than permission system check for `InfrahubKind.BRANCH`, since branches are deleted via GraphQL mutation not REST API. The permission check now covers both `MERGED` and `NEED_REBASE` statuses for consistent behavior.
 
 ---
 
 ## Implementation
 
-**File:** `backend/infrahub/permissions/report.py:21`
+**File:** `backend/infrahub/permissions/report.py:34`
 
-In `get_permission_report()`, add early return for merged branches:
+In `get_permission_report()`, add early return for merged/need_rebase branches:
 
 ```python
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import InfrahubKind
 
 def get_permission_report(
     permission_manager: PermissionManager,
@@ -34,11 +33,10 @@ def get_permission_report(
     action: str,
     global_permission_report: dict[GlobalPermissions, bool],
 ) -> BranchRelativePermissionDecision:
-    # NEW: Block mutations on merged branches (except Branch delete)
-    if branch.status == BranchStatus.MERGED and action != "view":
-        # Allow delete for Branch kind only
-        if not (node.kind == InfrahubKind.BRANCH and action == "delete"):
-            return BranchRelativePermissionDecision.DENY
+    # Block mutations on merged branches or branches needing rebase
+    # Note: Branch delete is allowed via middleware, this covers node permissions
+    if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE,) and action != "view":
+        return BranchRelativePermissionDecision.DENY
 
     # ... existing logic ...
 ```
@@ -112,20 +110,18 @@ def test_permission_allows_view_on_merged_branch(permission_manager, mock_branch
     assert result != BranchRelativePermissionDecision.DENY
 
 
-def test_permission_allows_branch_delete_on_merged_branch(permission_manager, mock_branch, branch_node):
-    """Test that Branch delete permission is allowed on merged branch."""
-    mock_branch.status = BranchStatus.MERGED
-    branch_node.kind = InfrahubKind.BRANCH
+def test_permission_denies_mutations_on_need_rebase_branch(permission_manager, mock_branch, mock_node):
+    """Test that mutations are denied on branches needing rebase."""
+    mock_branch.status = BranchStatus.NEED_REBASE
 
     result = get_permission_report(
         permission_manager=permission_manager,
         branch=mock_branch,
-        node=branch_node,
-        action="delete",
+        node=mock_node,
+        action="create",
         global_permission_report={...}
     )
-    # Should proceed to normal permission logic, not auto-DENY
-    assert result != BranchRelativePermissionDecision.DENY
+    assert result == BranchRelativePermissionDecision.DENY
 ```
 
 ---
@@ -144,7 +140,10 @@ After all phases are complete:
 
 ```bash
 # Run all new tests
-uv run pytest backend/tests/unit/core/branch/test_merged_status.py backend/tests/functional/branch/test_branch_merged.py backend/tests/unit/permissions/test_merged_branch_permissions.py -v
+uv run pytest backend/tests/unit/core/branch/test_merged_status.py \
+    backend/tests/functional/branch/test_branch_merged.py \
+    backend/tests/unit/permissions/test_merged_branch_permissions.py \
+    backend/tests/unit/api/test_validators.py -v
 
 # Run full test suite
 uv run invoke backend.test-unit
