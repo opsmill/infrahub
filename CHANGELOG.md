@@ -11,6 +11,19 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.4) - 2026-02-03
+
+### Removed
+
+- Removed references to the deprecated `is_visible` metadata property from documentation.
+
+### Fixed
+
+- Fix bug in computed attribute calculation that prevented having a computed attribute on a branch if there were no computed attributes on the default branch ([#8270](https://github.com/opsmill/infrahub/issues/8270))
+- Add migration to allow rebasing branches created before #8221 was fixed so that the uniqueness constraint on SchemaNode.name and SchemaGeneric.name is removed
+- Fixed branch merge failing to include relationships to AGNOSTIC nodes (e.g., CoreIPAddressPool) by including the global branch in the peer node lookup query.
+- Fixed confusing issue when "off" was converted to boolean 'false' due to issues with Yaml. The bug was that if "off" or something that Yaml parses as a boolean was used as the name of a Dropdown the incorrect attribute was highlighted in the schema error. When this happened troubleshooting was harder due to misleading errors pointing to another attribute.
+
 ## [Infrahub - v1.7.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.3) - 2026-01-28
 
 ### Security
