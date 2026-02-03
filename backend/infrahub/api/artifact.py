@@ -15,6 +15,7 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
+from infrahub.core.branch.merged_status import check_merged_status
 from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
@@ -78,6 +79,7 @@ async def generate_artifact(
     context: InfrahubContext = Depends(get_context),
 ) -> None:
     check_need_rebase_status(branch_params.branch)
+    check_merged_status(branch_params.branch)
 
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT

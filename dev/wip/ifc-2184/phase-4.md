@@ -2,6 +2,18 @@
 
 **Reference:** [dev/specs/2026-01-branch-freeze.md](../../specs/2026-01-branch-freeze.md)
 
+**Status:** ✅ Complete
+
+---
+
+## Checklist
+
+- [x] Block BranchMerge on already-merged branches (`backend/infrahub/graphql/mutations/branch.py`)
+- [x] Block ProposedChangeCreate for merged source branches (`backend/infrahub/graphql/mutations/proposed_change.py`)
+- [x] Block BranchRebase on merged branches (via middleware - not in `ALLOWED_MUTATIONS_ON_MERGED_BRANCH`)
+- [x] Block BranchRebase on merged branches (direct check in `BranchRebase.mutate()` for target branch validation)
+- [x] Extend functional tests (`backend/tests/functional/branch/test_branch_merged.py`)
+
 ---
 
 ## Implementation
@@ -52,7 +64,6 @@ async def test_branch_merge_rejects_already_merged_branch(db, default_branch, cl
         variables={"name": "already-merged"}
     )
     assert "has already been merged" in str(result.errors)
-
 
 async def test_proposed_change_create_rejects_merged_source_branch(db, default_branch, client):
     """Test that ProposedChangeCreate fails for merged source branch."""

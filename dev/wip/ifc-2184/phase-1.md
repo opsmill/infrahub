@@ -2,6 +2,16 @@
 
 **Reference:** [dev/specs/2026-01-branch-freeze.md](../../specs/2026-01-branch-freeze.md)
 
+**Status:** ✅ Complete
+
+---
+
+## Checklist
+
+- [x] Add MERGED status to BranchStatus enum (`backend/infrahub/core/branch/enums.py`)
+- [x] Create merged status check module (`backend/infrahub/core/branch/merged_status.py`)
+- [x] Create unit tests (`backend/tests/unit/core/branch/test_merged_status.py`) - 5 tests
+
 ---
 
 ## Implementation

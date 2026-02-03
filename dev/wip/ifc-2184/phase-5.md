@@ -2,13 +2,23 @@
 
 **Reference:** [dev/specs/2026-01-branch-freeze.md](../../specs/2026-01-branch-freeze.md)
 
+**Status:** ✅ Complete
+
+---
+
+## Checklist
+
+- [x] Block schema loading on merged branches (`backend/infrahub/api/schema.py`)
+- [x] Block artifact generation on merged branches (`backend/infrahub/api/artifact.py`)
+- [x] Extend functional tests (`backend/tests/functional/branch/test_branch_merged.py`)
+
 ---
 
 ## Implementation
 
 ### 5.1 Block schema loading on merged branches
 
-**File:** `backend/infrahub/api/schema.py:326`
+**File:** `backend/infrahub/api/schema.py:328`
 
 ```python
 from infrahub.core.branch.merged_status import check_merged_status
@@ -20,7 +30,7 @@ check_merged_status(branch)  # Add this
 
 ### 5.2 Block artifact generation on merged branches
 
-**File:** `backend/infrahub/api/artifact.py:80`
+**File:** `backend/infrahub/api/artifact.py:82`
 
 ```python
 from infrahub.core.branch.merged_status import check_merged_status

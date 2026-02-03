@@ -2,6 +2,17 @@
 
 **Reference:** [dev/specs/2026-01-branch-freeze.md](../../specs/2026-01-branch-freeze.md)
 
+**Status:** ✅ Complete
+
+---
+
+## Checklist
+
+- [x] Import `check_merged_status` in middleware.py
+- [x] Add `ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]` constant
+- [x] Add merged status check in `raise_on_mutation_on_branch_needing_rebase` function
+- [x] Create unit tests (`backend/tests/unit/graphql/test_middleware.py`) - 7 tests
+
 ---
 
 ## Implementation

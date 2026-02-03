@@ -2,6 +2,17 @@
 
 **Reference:** [dev/specs/2026-01-branch-freeze.md](../../specs/2026-01-branch-freeze.md)
 
+**Status:** ✅ Complete
+
+---
+
+## Checklist
+
+- [x] Update `merge_branch()` in `tasks.py` to set `BranchStatus.MERGED` after successful merge
+- [x] Update registry with merged branch status
+- [x] Add workflow call to cancel remaining open proposed changes
+- [x] Create functional tests (`backend/tests/functional/branch/test_branch_merged.py`)
+
 ---
 
 ## Implementation

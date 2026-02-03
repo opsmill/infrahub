@@ -100,6 +100,12 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
                 )
 
+            source_branch_obj = await Branch.get_by_name(db=dbt, name=source_branch_name)
+            if source_branch_obj.status == BranchStatus.MERGED:
+                raise ValidationError(
+                    input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
+                )
+
             proposed_change, result = await super().mutate_create(
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )

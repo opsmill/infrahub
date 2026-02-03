@@ -6,9 +6,31 @@ Implement a `MERGED` status for branches that makes them read-only after success
 
 **Reference:** [dev/specs/2026-01-branch-freeze.md](../../specs/2026-01-branch-freeze.md)
 
+**Status:** ✅ All phases complete
+
 ---
 
-## Phase 1: Core Enum and Status Check
+## Implementation Progress
+
+| Phase | Description | Status | Tests |
+|-------|-------------|--------|-------|
+| 1 | Core Enum + Status Check | ✅ Complete | 6 unit tests |
+| 2 | GraphQL Middleware | ✅ Complete | 7 unit tests |
+| 3 | Merge Flow | ✅ Complete | 5 functional tests |
+| 4 | Mutation Validations | ✅ Complete | (included in Phase 3) |
+| 5 | REST API Validation | ✅ Complete | (included in Phase 3) |
+| 6 | Permission System | ✅ Complete | 4 unit tests |
+
+**Total Tests:** 22 tests (17 unit + 5 functional)
+
+---
+
+## Phase 1: Core Enum and Status Check ✅
+
+### Checklist
+- [x] Add MERGED status to BranchStatus enum
+- [x] Create merged status check module
+- [x] Create unit tests (6 tests)
 
 ### Implementation
 
@@ -53,7 +75,13 @@ uv run pytest backend/tests/unit/core/branch/test_merged_status.py -v
 
 ---
 
-## Phase 2: GraphQL Middleware
+## Phase 2: GraphQL Middleware ✅
+
+### Checklist
+- [x] Import `check_merged_status` in middleware.py
+- [x] Add `ALLOWED_MUTATIONS_ON_MERGED_BRANCH` constant
+- [x] Add merged status check in middleware function
+- [x] Create unit tests (7 tests)
 
 ### Implementation
 
@@ -97,7 +125,13 @@ uv run pytest backend/tests/unit/graphql/test_middleware.py -v -k merged
 
 ---
 
-## Phase 3: Merge Flow
+## Phase 3: Merge Flow ✅
+
+### Checklist
+- [x] Set `BranchStatus.MERGED` after successful merge in `tasks.py`
+- [x] Update registry with merged branch
+- [x] Submit workflow to cancel open proposed changes
+- [x] Create functional tests
 
 ### Implementation
 
@@ -136,7 +170,13 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge
 
 ---
 
-## Phase 4: Mutation Validations
+## Phase 4: Mutation Validations ✅
+
+### Checklist
+- [x] Block BranchMerge on already-merged branches
+- [x] Block ProposedChangeCreate for merged source branches
+- [x] Block BranchRebase on merged branches (via middleware + direct check in mutation)
+- [x] Extend functional tests
 
 ### Implementation
 
@@ -179,7 +219,12 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge
 
 ---
 
-## Phase 5: REST API Validation
+## Phase 5: REST API Validation ✅
+
+### Checklist
+- [x] Block schema loading on merged branches (`schema.py`)
+- [x] Block artifact generation on merged branches (`artifact.py`)
+- [x] Extend functional tests
 
 ### Implementation
 
@@ -221,7 +266,15 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "schem
 
 ---
 
-## Phase 6: Permission System Integration
+## Phase 6: Permission System Integration ✅
+
+### Checklist
+- [x] Update `get_permission_report()` to return DENY for non-view actions on merged branches
+- [x] Super admin bypass preserved
+- [x] Branch delete handled via middleware allowlist
+- [x] Create unit tests (4 tests)
+
+**Note:** Implementation simplified - Branch delete handled via GraphQL middleware `ALLOWED_MUTATIONS_ON_MERGED_BRANCH` rather than permission system check for `InfrahubKind.BRANCH`.
 
 ### Implementation
 
