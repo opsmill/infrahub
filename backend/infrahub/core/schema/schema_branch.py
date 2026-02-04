@@ -650,6 +650,7 @@ class SchemaBranch:
             validator.check(schema_branch=self)
 
         self.validate_names()
+        self.validate_restricted_namespaces_from_generic()
         self.validate_python_keywords()
         self.validate_kinds()
         self.validate_computed_attributes()
@@ -1159,6 +1160,24 @@ class SchemaBranch:
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+
+    def validate_restricted_namespaces_from_generic(self) -> None:
+        """Ensure that every node which inherit from a generic node containing restricted namespaces are following on
+        the rules"""
+        for name in self.nodes:
+            node: MainSchemaTypes = self.get(name=name, duplicate=False)
+
+            for generic_name in node.inherit_from:
+                generic_name_node: MainSchemaTypes = self.get(name=generic_name, duplicate=False)
+                if (
+                    generic_name_node.restricted_namespaces is not None
+                    and node.namespace not in generic_name_node.restricted_namespaces
+                ):
+                    raise ValueError(
+                        f"Generic node '{generic_name}' on branch '{self.name}' has restricted namespaces: "
+                        f"{generic_name_node.restricted_namespaces}. The node '{name}' does not comply "
+                        f"with this restriction as its namespace is '{node.namespace}'."
+                    )
 
     def validate_python_keywords(self) -> None:
         """Validate that attribute and relationship names don't use Python keywords."""

@@ -37,6 +37,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.definitions.core import core_models_mixed
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -4662,3 +4663,63 @@ async def test_manage_object_templates_component_relationship_to_excluded_kind()
     template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
     pool_rel = template.get_relationship(name="number_pools")
     assert pool_rel.peer == InfrahubKind.NUMBERPOOL
+
+
+async def test_generic_schema_with_restricted_namespace_fails_if_required(
+    incorrect_schema_generic_with_namespace_restriction,
+):
+    # Arrange
+    test_schema: SchemaRoot = copy.deepcopy(incorrect_schema_generic_with_namespace_restriction)
+
+    schema: SchemaBranch = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=test_schema)
+
+    # Act
+    with pytest.raises(ValueError) as error:
+        schema.validate_restricted_namespaces_from_generic()
+
+    # Assert
+    assert error.type is ValueError
+    assert "does not comply with this restriction as its namespace" in str(error.value)
+
+
+async def test_generic_schema_with_empty_restricted_namespace_is_failing(
+    incorrect_schema_generic_with_empty_namespace_restriction,
+):
+    # Arrange
+    test_schema: SchemaRoot = copy.deepcopy(incorrect_schema_generic_with_empty_namespace_restriction)
+
+    schema: SchemaBranch = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=test_schema)
+
+    # Act
+    with pytest.raises(ValueError) as error:
+        schema.validate_restricted_namespaces_from_generic()
+
+    # Assert
+    assert error.type is ValueError
+    assert "does not comply with this restriction as its namespace" in str(error.value)
+
+
+async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
+    correct_schema_generic_with_namespace_restriction,
+):
+    # Arrange
+    test_schema: SchemaRoot = copy.deepcopy(correct_schema_generic_with_namespace_restriction)
+
+    schema: SchemaBranch = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=test_schema)
+
+    # Act
+    try:
+        schema.validate_restricted_namespaces_from_generic()
+
+    # Assert - no ValueError
+    except ValueError:
+        pytest.fail(
+            "A ValueError has been raised during process_restricted_namespaces check, however, the schema is correct"
+        )
+    # Assert - schema is correctly loaded
+    assert len(schema.all_names) == 2
+    assert schema.all_names[0] == "AnimalDog"
+    assert schema.all_names[1] == "AnimalGeneric"

@@ -23,3 +23,8 @@ class GeneratedGenericSchema(BaseNodeSchema):
         description="List of Nodes that are referencing this Generic",
         json_schema_extra={"update": "not_applicable"},
     )
+    restricted_namespaces: list[str] | None = Field(
+        default=None,
+        description="Namespaces that Nodes inheriting from this Generic are restricted to",
+        json_schema_extra={"update": "allowed"},
+    )

@@ -959,6 +959,14 @@ generic_schema = SchemaNode(
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
+        SchemaAttribute(
+            name="restricted_namespaces",
+            kind="List",
+            internal_kind=str,
+            description="Namespaces that Nodes inheriting from this Generic are restricted to",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(

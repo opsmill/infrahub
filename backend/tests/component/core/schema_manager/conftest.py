@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.schema import SchemaRoot
 
 
 def _get_schema_by_kind(full_schema: dict[str, Any], kind: str) -> dict[str, Any]:
@@ -388,3 +389,86 @@ def schema_diff_attr_inheritance_types() -> dict[str, Any]:
         ],
     }
     return FULL_SCHEMA
+
+
+@pytest.fixture
+def incorrect_schema_generic_with_namespace_restriction() -> SchemaRoot:
+    """One generic with namespace restriction and one inherited node, which does not follow the namespace restriction
+    rule"""
+    schema = {
+        "generics": [
+            {
+                "name": "Animal",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "restricted_namespaces": ["Animal"],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Dog",
+                "namespace": "Dog",
+                "description": "A dog which is not following animal namespace restriction rule",
+                "attributes": [{"name": "dog", "kind": "Text"}],
+                "inherit_from": ["TestAnimal"],
+            }
+        ],
+    }
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+def correct_schema_generic_with_namespace_restriction() -> SchemaRoot:
+    """One generic with namespace restriction and one inherited node, which does follow the namespace restriction rule"""
+    schema = {
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Animal",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "restricted_namespaces": ["Animal"],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Dog",
+                "namespace": "Animal",
+                "description": "A dog which follows the animal namespace restriction rule",
+                "attributes": [{"name": "dog", "kind": "Text"}],
+                "inherit_from": ["AnimalGeneric"],
+            }
+        ],
+    }
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+def incorrect_schema_generic_with_empty_namespace_restriction() -> SchemaRoot:
+    """One generic with empty namespace restriction and one inherited node. Empty list namespace means there is no
+    namespace authorized"""
+    schema = {
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Animal",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "restricted_namespaces": [],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Dog",
+                "namespace": "Animal",
+                "description": "A dog which is not following animal namespace restriction rule",
+                "attributes": [{"name": "dog", "kind": "Text"}],
+                "inherit_from": ["AnimalGeneric"],
+            }
+        ],
+    }
+    return SchemaRoot(**schema)

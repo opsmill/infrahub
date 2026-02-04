@@ -2474,6 +2474,22 @@
                         "description": "List of Nodes that are referencing this Generic",
                         "update": "not_applicable"
                     },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Namespaces that Nodes inheriting from this Generic are restricted to",
+                        "update": "allowed"
+                    },
                     "kind": {
                         "anyOf": [
                             {
@@ -4684,6 +4700,22 @@
                         "title": "Used By",
                         "description": "List of Nodes that are referencing this Generic",
                         "update": "not_applicable"
+                    },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Namespaces that Nodes inheriting from this Generic are restricted to",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
