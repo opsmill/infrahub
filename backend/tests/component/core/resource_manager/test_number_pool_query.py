@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from infrahub.core import registry
@@ -10,6 +12,7 @@ from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPo
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.tasks import SchemaNumberPoolValidator
 
 REQUEST = NodeSchema(
     name="Request",
@@ -46,6 +49,16 @@ async def register_test_schema(default_branch: Branch, register_core_models_sche
     return schema_branch
 
 
+@pytest.fixture
+async def run_number_pool_validation(db: InfrahubDatabase) -> None:
+    snpv = SchemaNumberPoolValidator(
+        db=db,
+        log=MagicMock(),
+        schema_manager=registry.schema,
+    )
+    await snpv.run()
+
+
 async def create_objects(db: InfrahubDatabase, schema: NodeSchema, branch: str, start: int, end: int) -> list[Node]:
     """Helper function to create incidents."""
     nodes = []
@@ -71,7 +84,7 @@ async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPool, branch: B
 
 
 async def test_NumberPoolGetUsed(
-    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
+    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch, run_number_pool_validation: None
 ) -> None:
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)
@@ -116,7 +129,7 @@ async def test_NumberPoolGetUsed(
 
 
 async def test_PoolChangeReserved(
-    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
+    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch, run_number_pool_validation: None
 ) -> None:
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)

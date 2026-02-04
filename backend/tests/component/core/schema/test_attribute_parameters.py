@@ -1,6 +1,7 @@
 import sys
 from copy import deepcopy
 from typing import Any
+from unittest.mock import MagicMock
 
 import pydantic
 import pytest
@@ -22,6 +23,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.pools.tasks import SchemaNumberPoolValidator
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 
@@ -214,6 +216,10 @@ async def test_create_nodes_from_generic_numberpools(
 ) -> None:
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
     schema_branch = registry.schema.register_schema(schema=schema)
+
+    snpv = SchemaNumberPoolValidator(db=db, log=MagicMock(), schema_manager=registry.schema)
+    await snpv.run()
+
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
     incident_attribute = snow_incident.get_attribute(name="number")
     assert isinstance(incident_attribute.parameters, NumberPoolParameters)

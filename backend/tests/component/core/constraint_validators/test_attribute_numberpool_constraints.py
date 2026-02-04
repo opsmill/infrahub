@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from infrahub.core import registry
@@ -16,6 +18,7 @@ from infrahub.core.validators.attribute.number_pool import (
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.tasks import SchemaNumberPoolValidator
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 
@@ -24,6 +27,9 @@ async def snow_incident_01(db: InfrahubDatabase, default_branch: Branch, registe
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+    snpv = SchemaNumberPoolValidator(db=db, log=MagicMock(), schema_manager=registry.schema)
+    await snpv.run()
 
     incident_1 = await Node.init(db=db, schema="SnowIncident", branch=default_branch)
     await incident_1.new(db=db, title="The first issue")
