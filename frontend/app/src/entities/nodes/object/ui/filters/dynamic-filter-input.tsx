@@ -1,7 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { JsonEditor } from "@/shared/components/editor/json/json-editor";
 import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
@@ -9,6 +8,7 @@ import { Dropdown, type DropdownOption } from "@/shared/components/inputs/dropdo
 import { Enum } from "@/shared/components/inputs/enum";
 import { List } from "@/shared/components/inputs/list";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { Input } from "@/shared/components/ui/input";
 import { PopoverTrigger } from "@/shared/components/ui/popover";

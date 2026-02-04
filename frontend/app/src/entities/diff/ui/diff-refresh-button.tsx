@@ -4,8 +4,8 @@ import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { treeQueryKeys, updateDiffMutationKeys } from "@/entities/diff/domain/diff.query-keys";

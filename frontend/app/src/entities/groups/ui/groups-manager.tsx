@@ -3,10 +3,10 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Button } from "@/shared/components/ui/button";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { classNames } from "@/shared/utils/common";
 

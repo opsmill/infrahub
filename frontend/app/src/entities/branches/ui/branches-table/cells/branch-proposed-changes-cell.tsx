@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { TableCell } from "@/shared/components/table/table-cell";
+import { LinkButton } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";

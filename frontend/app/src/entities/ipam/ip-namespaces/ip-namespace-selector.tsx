@@ -4,9 +4,9 @@ import { Button as AriaButton } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LinkButton } from "@/shared/components/ui/button";
 import {
   ComboboxEmpty,
   ComboboxItem,

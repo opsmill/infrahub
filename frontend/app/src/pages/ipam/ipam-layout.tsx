@@ -5,10 +5,10 @@ import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
 import { Separator } from "@/shared/components/aria/separator";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
+import { Button } from "@/shared/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,

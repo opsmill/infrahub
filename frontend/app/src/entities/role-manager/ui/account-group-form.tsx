@@ -4,7 +4,6 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
@@ -16,6 +15,7 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { isRequired } from "@/shared/components/form/utils/validation";
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import {
   ACCOUNT_GROUP_OBJECT,

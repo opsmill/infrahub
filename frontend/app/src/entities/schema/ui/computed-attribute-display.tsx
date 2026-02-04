@@ -3,10 +3,10 @@ import { DialogTrigger, Pressable } from "react-aria-components";
 
 import type { components } from "@/shared/api/rest/types.generated";
 import { Modal } from "@/shared/components/aria/modal";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 
 import { ModelDisplay } from "./styled";
 
