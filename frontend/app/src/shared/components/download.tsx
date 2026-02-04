@@ -1,5 +1,16 @@
 import { Link, type LinkProps } from "react-aria-components";
 
+const ALLOWED_URL_SCHEMES = new Set(["http:", "https:", "blob:"]);
+
+function isUrlSafe(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ALLOWED_URL_SCHEMES.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 export interface DownloadProps extends Omit<LinkProps, "download" | "href" | "target" | "rel"> {
   contentType?: string;
   fileName: string;
@@ -10,14 +21,21 @@ export interface DownloadProps extends Omit<LinkProps, "download" | "href" | "ta
 }
 
 export function Download({
-  contentType = "plain/text",
+  contentType = "text/plain",
   value,
   fileName,
   downloadUrl,
   ...props
 }: DownloadProps) {
-  // When a download URL is provided, use it directly
+  // When a download URL is provided, validate and use it directly
   if (downloadUrl) {
+    if (!isUrlSafe(downloadUrl)) {
+      console.error(`Download: unsafe URL scheme rejected: ${downloadUrl}`);
+      return (
+        <Link isDisabled aria-label={`Download ${fileName} (unavailable)`} {...props} />
+      );
+    }
+
     return (
       <Link
         href={downloadUrl}
