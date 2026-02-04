@@ -30,7 +30,9 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   const [qspStatus] = useQueryState(QSP.STATUS);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const branchName: string = proposedChangesDetails?.source_branch?.value || branch; // Used in proposed changes view and branch view
+  // When branch prop is provided, we're in branch diff view - use only the branch prop
+  // When no branch prop, we're in proposed change view - use source_branch from proposedChangesDetails
+  const branchName: string = branch || proposedChangesDetails?.source_branch?.value;
 
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
@@ -39,7 +41,8 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     useDiffTreeInfiniteQuery({
       branchName,
       filters: finalFilters,
-      proposedChangeId: proposedChangesDetails?.id,
+      // Only include proposedChangeId when in proposed change view (no branch prop passed)
+      proposedChangeId: branch ? undefined : proposedChangesDetails?.id,
     });
 
   useEffect(() => {

@@ -15,60 +15,70 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Card } from "@/shared/components/ui/card";
 
 export interface ArtifactsDetailsProps {
-  artifactSchema: ModelSchema;
-  artifactId: string;
+	artifactSchema: ModelSchema;
+	artifactId: string;
 }
 
-export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetailsProps) {
-  const artifactKind = artifactSchema.kind;
-  const { isPending, error, data } = useGetObject({
-    objectSchema: artifactSchema,
-    objectId: artifactId,
-  });
+export function ArtifactsDetails({
+	artifactId,
+	artifactSchema,
+}: ArtifactsDetailsProps) {
+	const artifactKind = artifactSchema.kind;
+	const { isPending, error, data } = useGetObject({
+		objectSchema: artifactSchema,
+		objectId: artifactId,
+	});
 
-  if (isPending) {
-    return <LoadingIndicator className="h-full" />;
-  }
+	if (isPending) {
+		return <LoadingIndicator className="h-full" />;
+	}
 
-  if (error) {
-    return <ErrorScreen message={error.message} />;
-  }
+	if (error) {
+		return <ErrorScreen message={error.message} />;
+	}
 
-  const artifact = assertArtifactObject(data);
-  if (!artifact) {
-    return <ErrorScreen message="Artifact data is incomplete" />;
-  }
+	const artifact = assertArtifactObject(data);
+	if (!artifact) {
+		return <ErrorScreen message="Artifact data is incomplete" />;
+	}
 
-  const contentType = artifact.content_type.value;
-  const extension = TEXT_CONTENT_TYPE_CONFIG[contentType as TextContentType]?.extension ?? "txt";
+	const contentType = artifact.content_type.value;
+	const extension =
+		TEXT_CONTENT_TYPE_CONFIG[contentType as TextContentType]?.extension ??
+		"txt";
 
-  return (
-    <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
-      <Content.Card className="flex grow flex-col">
-        <Col className="gap-3 p-4 pb-2">
-          <ArtifactHeader artifact={artifact} />
+	return (
+		<div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
+			<Content.Card className="flex grow flex-col">
+				<Col className="gap-3 p-4 pb-2">
+					<ArtifactHeader artifact={artifact} />
 
-          <Separator />
+					<Separator />
 
-          <Row className="gap-4">
-            <NodeDescription node={artifact.definition.node} className="p-2" />
-            <Separator orientation="vertical" />
-            <NodeDescription node={artifact.object.node} className="p-2" />
-          </Row>
-        </Col>
+					<Row className="gap-4">
+						<NodeDescription node={artifact.definition.node} className="p-2" />
+						<Separator orientation="vertical" />
+						<NodeDescription node={artifact.object.node} className="p-2" />
+					</Row>
+				</Col>
 
-        <div className="flex grow overflow-hidden p-1">
-          <ArtifactFile
-            storageId={artifact.storage_id.value}
-            fileName={`${artifactId}.${extension}`}
-            contentType={contentType}
-          />
-        </div>
-      </Content.Card>
-      <Card className="min-w-90 overflow-auto p-0">
-        <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
-        <NodeEvents objectId={artifactId} objectKind={artifactKind ?? undefined} />
-      </Card>
-    </div>
-  );
+				<div className="flex grow overflow-hidden p-1">
+					<ArtifactFile
+						storageId={artifact.storage_id.value}
+						fileName={`${artifactId}.${extension}`}
+						contentType={contentType}
+					/>
+				</div>
+			</Content.Card>
+			<Card className="min-w-90 overflow-auto p-0">
+				<div className="border-gray-200 border-b p-2 font-semibold">
+					Activities
+				</div>
+				<NodeEvents
+					objectId={artifactId}
+					objectKind={artifactKind ?? undefined}
+				/>
+			</Card>
+		</div>
+	);
 }

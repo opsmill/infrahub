@@ -121,13 +121,10 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
-  const queryString =
-    schemaData && proposedChangeId
-      ? getProposedChangesArtifactsThreads({
-          id: proposedChangeId,
-          kind: schemaData?.kind,
-        })
-      : ""; // Empty query to make the gql parsing work
+  const queryString = getProposedChangesArtifactsThreads({
+    id: proposedChangeId,
+    kind: schemaData?.kind,
+  });
 
   const { loading, error, data, refetch } = useQuery(gql(queryString), {
     skip: !schemaData || !proposedChangeId,

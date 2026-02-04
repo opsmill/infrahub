@@ -1,10 +1,10 @@
-from infrahub.core.migrations.graph.m056_set_coreproposedchange_created_by_on_node import Migration056
+from infrahub.core.migrations.graph.m057_set_coreproposedchange_created_by_on_node import Migration057
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_056(db: InfrahubDatabase, default_branch) -> None:
+async def test_migration_057(db: InfrahubDatabase, default_branch) -> None:
     account1_uuid = "account-uuid-1"
     account2_uuid = "account-uuid-2"
     pc1_uuid = "pc-uuid-1"
@@ -34,7 +34,7 @@ async def test_migration_056(db: InfrahubDatabase, default_branch) -> None:
         },
     )
 
-    migration = Migration056()
+    migration = Migration057()
     await migration.execute(MigrationInput(db=db))
     result = await migration.validate_migration(db=db)
     assert result.success

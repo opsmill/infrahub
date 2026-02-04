@@ -19,7 +19,6 @@ export const CONFIG = {
   },
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
-  FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
   ARTIFACTS_CONTENT_URL: (storageId: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`,
   // File endpoints - for CoreObjectFile nodes
