@@ -8,7 +8,7 @@ import { ObjectConvert } from "@/entities/nodes/convert/ui/object-convert";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export function ObjectConvertPage() {
+function ObjectConvertPage() {
   const { objectKind, objectId } = useParams();
   const { isAuthenticated } = useAuth();
   const { schema } = useSchema(objectKind);

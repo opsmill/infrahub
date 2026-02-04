@@ -1,12 +1,5 @@
 import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
-
-import useFilters from "./useFilters";
-
-export type Filter = {
-  name: `${string}__${string}`;
-  value: any;
-  display_label?: string;
-};
+import useFilters from "@/shared/hooks/useFilters";
 
 export const useSearch = (): [string, (newSearch: string) => void] => {
   const [filters, setFilters] = useFilters();

@@ -183,7 +183,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             info=info, data=data, branch=branch, database=graphql_context.db, node=obj
         )
 
-        if updated_state == ProposedChangeState.CLOSED:
+        if updated_state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED):
             component_registry = get_component_registry()
             diff_repository = await component_registry.get_component(
                 DiffRepository, db=graphql_context.db, branch=branch
