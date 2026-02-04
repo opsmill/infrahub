@@ -1,7 +1,6 @@
 import sys
 from copy import deepcopy
 from typing import Any
-from unittest.mock import MagicMock
 
 import pydantic
 import pytest
@@ -217,8 +216,8 @@ async def test_create_nodes_from_generic_numberpools(
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
     schema_branch = registry.schema.register_schema(schema=schema)
 
-    snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
-    await snpv.run()
+    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+    await snps.run()
 
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
     incident_attribute = snow_incident.get_attribute(name="number")

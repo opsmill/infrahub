@@ -11,6 +11,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.log import get_logger
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+
+default_log = get_logger()
 
 
 class SchemaNumberPoolSynchronizer:
@@ -42,11 +45,11 @@ class SchemaNumberPoolSynchronizer:
     def __init__(
         self,
         db: InfrahubDatabase,
-        log: Logger | LoggerAdapter | BoundLogger,
         schema_manager: SchemaManager,
+        log: Logger | LoggerAdapter | BoundLogger | None = None,
     ) -> None:
         self.db = db
-        self.log = log
+        self.log = log or default_log
         self.schema_manager = schema_manager
         self.existing_pool_ids: set[str] = set()
         self._schema_number_pools: list[CoreNumberPool] = []

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
 
 import pytest
 from infrahub_sdk.graphql import Query
@@ -57,8 +56,8 @@ number_pool_allocation_query = Query(
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
-        await snpv.run()
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+        await snps.run()
 
     @pytest.fixture(scope="class")
     def initial_schema(self) -> SchemaRoot:

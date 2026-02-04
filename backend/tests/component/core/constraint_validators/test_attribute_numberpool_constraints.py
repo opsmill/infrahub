@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from infrahub.core import registry
@@ -28,8 +26,8 @@ async def snow_incident_01(db: InfrahubDatabase, default_branch: Branch, registe
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
-    snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
-    await snpv.run()
+    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+    await snps.run()
 
     incident_1 = await Node.init(db=db, schema="SnowIncident", branch=default_branch)
     await incident_1.new(db=db, title="The first issue")

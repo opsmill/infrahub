@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
 
 import pytest
 from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
@@ -158,8 +157,8 @@ class TestConvertObjectType(TestInfrahubApp):
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
-        await snpv.run()
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+        await snps.run()
 
     @pytest.fixture
     async def schemas_person(self, node_group_schema: None, data_schema: None) -> SchemaRoot:

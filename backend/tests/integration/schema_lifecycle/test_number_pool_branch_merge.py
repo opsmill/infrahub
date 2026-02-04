@@ -88,6 +88,7 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def schemas_loaded(
         self,
+        setup_branch: Branch,
         load_schema_on_default: None,
         load_schema_on_branch: None,
     ) -> None:
@@ -156,12 +157,12 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
     ) -> None:
         """Validate that SchemaNumberPoolSynchronizer creates exactly one CoreNumberPool after schemas are loaded."""
         # Run the validator
-        validator = SchemaNumberPoolSynchronizer(
+        synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             log=log,
             schema_manager=registry.schema,
         )
-        await validator.run()
+        await synchronizer.run()
 
         # Query for all schema-type number pools
         pools = await NodeManager.query(

@@ -355,6 +355,7 @@ async def test_migration_numberpool_attribute(
             branch_agnostic=True,
         )
     )
+    assert initial_pool_count == 0
 
     # Verify the new schema has parameters
     new_attr = server_schema_with_numberpool.get_attribute(name="rack_unit")
@@ -386,7 +387,7 @@ async def test_migration_numberpool_attribute(
         },
         branch_agnostic=True,
     )
-    assert len(pools) == initial_pool_count + 1
+    assert len(pools) == 1
     number_pool = pools[0]
 
     # Verify pool parameters

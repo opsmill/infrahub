@@ -11,7 +11,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 
 @flow(
     name="validate-schema-number-pools",
-    flow_run_name="Validate schema number pools on {branch_name}",
+    flow_run_name="Validate schema number pools",
 )
 async def validate_schema_number_pools(
     branch_name: str,  # noqa: ARG001

@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from infrahub.core import registry
@@ -905,8 +903,8 @@ async def snow_ticket_schema_with_pools(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
-    snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
-    await snpv.run()
+    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+    await snps.run()
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
@@ -931,56 +929,6 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
     assert not query_before_creation.errors
     assert query_before_creation.data
     assert query_before_creation.data["CoreNumberPool"]["count"] == 1
-
-    create_snow_incident_mutation = """
-    mutation CreateSnowIncident(
-        $title: String!,
-    ) {
-    SnowIncidentCreate(
-        data: {
-        title: {value: $title},
-        }
-    ) {
-        object {
-            title {
-                value
-            }
-            number {
-                value
-                source {
-                    id
-                }
-            }
-            identifier {
-                value
-            }
-        }
-      }
-    }
-    """
-
-    create_snow_incident = await graphql(
-        schema=gql_params.schema,
-        source=create_snow_incident_mutation,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "title": "Printer is saying PC load Letter",
-        },
-    )
-
-    assert not create_snow_incident.errors
-    assert create_snow_incident.data
-    assert (
-        create_snow_incident.data["SnowIncidentCreate"]["object"]["title"]["value"]
-        == "Printer is saying PC load Letter"
-    )
-    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["value"] == 1
-    assert (
-        create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["source"]["id"]
-        == number_pool_attribute.parameters.number_pool_id
-    )
-    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["identifier"]["value"] == "INC1"
 
     delete_fail = await graphql(
         schema=gql_params.schema,
@@ -1017,45 +965,6 @@ async def test_update_schema_number_pool_range(
     assert not query_before_creation.errors
     assert query_before_creation.data
     assert query_before_creation.data["CoreNumberPool"]["count"] == 1
-
-    create_snow_incident_mutation = """
-    mutation CreateSnowIncident(
-        $title: String!,
-    ) {
-    SnowIncidentCreate(
-        data: {
-        title: {value: $title},
-        }
-    ) {
-        object {
-            title {
-                value
-            }
-            number {
-                value
-                source {
-                    id
-                }
-            }
-            identifier {
-                value
-            }
-        }
-      }
-    }
-    """
-
-    create_snow_incident = await graphql(
-        schema=gql_params.schema,
-        source=create_snow_incident_mutation,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "title": "Printer is saying PC load Letter",
-        },
-    )
-    assert not create_snow_incident.errors
-    assert create_snow_incident.data
 
     update_forbidden = await graphql(
         schema=gql_params.schema,

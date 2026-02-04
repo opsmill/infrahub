@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from infrahub.core import registry
@@ -51,12 +49,11 @@ async def register_test_schema(default_branch: Branch, register_core_models_sche
 
 @pytest.fixture
 async def run_number_pool_validation(db: InfrahubDatabase) -> None:
-    snpv = SchemaNumberPoolSynchronizer(
+    snps = SchemaNumberPoolSynchronizer(
         db=db,
-        log=MagicMock(),
         schema_manager=registry.schema,
     )
-    await snpv.run()
+    await snps.run()
 
 
 async def create_objects(db: InfrahubDatabase, schema: NodeSchema, branch: str, start: int, end: int) -> list[Node]:
