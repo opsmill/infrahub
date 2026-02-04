@@ -77,9 +77,9 @@ declare module 'gql.tada' {
       TadaDocumentNode<{ InfrahubReadOnlyRepositoryImportLastCommit: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { repositoryId: string; }, void>;
     "\n  mutation CoreGeneratorDefinitionRun($generatorId: String!, $waitUntilCompletion: Boolean, $targetNodeIds: [String!]) {\n    CoreGeneratorDefinitionRun(\n      wait_until_completion: $waitUntilCompletion\n      data: { id: $generatorId, nodes: $targetNodeIds }\n    ) {\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreGeneratorDefinitionRun: { task: { id: string | null; } | null; } | null; }, { targetNodeIds?: string[] | null | undefined; waitUntilCompletion?: boolean | null | undefined; generatorId: string; }, void>;
-    "\n  mutation ($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {\n    ConvertObjectType(\n      data: { node_id: $nodeId, target_kind: $targetKind, fields_mapping: $fieldsMapping }\n    ) {\n      node\n    }\n  }\n":
+    "\n  mutation CONVERT_OBJECT_MUTATION($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {\n    ConvertObjectType(\n      data: { node_id: $nodeId, target_kind: $targetKind, fields_mapping: $fieldsMapping }\n    ) {\n      node\n    }\n  }\n":
       TadaDocumentNode<{ ConvertObjectType: { node: unknown; } | null; }, { fieldsMapping: unknown; targetKind: string; nodeId: string; }, void>;
-    "\n  query ($sourceKind: String, $targetKind: String) {\n    FieldsMappingTypeConversion(source_kind: $sourceKind, target_kind: $targetKind) {\n      mapping\n    }\n  }\n":
+    "\n  query GET_FIELDS_MAPPING($sourceKind: String, $targetKind: String) {\n    FieldsMappingTypeConversion(source_kind: $sourceKind, target_kind: $targetKind) {\n      mapping\n    }\n  }\n":
       TadaDocumentNode<{ FieldsMappingTypeConversion: { mapping: unknown; }; }, { targetKind?: string | null | undefined; sourceKind?: string | null | undefined; }, void>;
     "\n  query InfrahubAccountToken {\n    InfrahubAccountToken {\n      count\n      edges {\n        node {\n          id\n          name\n          expiration\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubAccountToken: { count: number; edges: { node: { id: string; name: string | null; expiration: string | null; }; }[]; }; }, {}, void>;
