@@ -75,18 +75,17 @@ async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRe
     assert set(local_branches.keys()) == {"main", "branch01"}
 
 
-async def test_sync_from_remote_new_ref(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
+@patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock)
+async def test_sync_from_remote_new_ref(
+    mock_import_objects: AsyncMock, git_repo_01_read_only: InfrahubReadOnlyRepository
+) -> None:
     repo = git_repo_01_read_only
     repo.ref = "branch02"
     branch_02_head_commit = "4e2fd98a5fd1fb61dc53150c778e22ee35f26191"
     mock_client = AsyncMock(InfrahubClient)
     repo.client = mock_client
 
-    # Mock import_objects_from_files since we're testing git sync, not import functionality
-    with patch(
-        "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
-    ):
-        await repo.sync_from_remote()
+    await repo.sync_from_remote()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
     assert worktree_commits == {"main", "30e911e25ef9e4fad9f9d00fe05395031f90d460", branch_02_head_commit}

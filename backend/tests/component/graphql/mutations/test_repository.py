@@ -26,11 +26,7 @@ if TYPE_CHECKING:
 
 
 async def test_trigger_repository_import(
-    db: InfrahubDatabase,
-    register_core_models_schema: None,
-    default_branch: Branch,
-    create_test_admin: Node,
-    default_permission_backend: None,
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch, create_test_admin: Node
 ) -> None:
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()

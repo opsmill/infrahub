@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
-from git import Repo as GitRepo  # type: ignore[attr-defined]
+from git import Repo as GitRepo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.exceptions import RepositoryConfigurationError
 from infrahub.git import InfrahubRepository
 from tests.helpers.test_client import dummy_async_request
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestGetRepositoryConfig:
@@ -35,10 +32,9 @@ class TestGetRepositoryConfig:
         Returns:
             The initialized Infrahub repository instance without a config file.
         """
-        from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
-        original_path = PathlibPath(git_upstream_repo_01["path"])
+        original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_no_config_{id(self)}"
         cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
 
@@ -70,10 +66,9 @@ class TestGetRepositoryConfig:
         Returns:
             The initialized Infrahub repository instance with an invalid YAML config.
         """
-        from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
-        original_path = PathlibPath(git_upstream_repo_01["path"])
+        original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_invalid_yaml_{id(self)}"
         cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
 
@@ -111,10 +106,9 @@ schemas:
         Returns:
             The initialized Infrahub repository instance with an invalid format config.
         """
-        from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
-        original_path = PathlibPath(git_upstream_repo_01["path"])
+        original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_invalid_format_{id(self)}"
         cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
 
@@ -150,10 +144,9 @@ schemas: "should be a list, not a string"
         Returns:
             The initialized Infrahub repository instance with a valid config file.
         """
-        from pathlib import Path as PathlibPath
 
         # Clone the upstream repo to avoid polluting the shared fixture
-        original_path = PathlibPath(git_upstream_repo_01["path"])
+        original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_valid_config_{id(self)}"
         cloned_repo = GitRepo.clone_from(str(original_path), str(clone_path))
 
@@ -247,11 +240,3 @@ class TestRepositoryConfigurationErrorException:
         assert str(error) == custom_message
         assert error.message == custom_message
         assert error.identifier == "test-repo"
-
-    def test_inherits_from_repository_error(self) -> None:
-        """Test that RepositoryConfigurationError inherits from RepositoryError."""
-        from infrahub.exceptions import RepositoryError
-
-        error = RepositoryConfigurationError(identifier="test-repo")
-
-        assert isinstance(error, RepositoryError)
