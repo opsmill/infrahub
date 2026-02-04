@@ -21,7 +21,7 @@ export interface DownloadProps extends Omit<LinkProps, "download" | "href" | "ta
 }
 
 export function Download({
-  contentType = "plain/text",
+  contentType = "text/plain",
   value,
   fileName,
   downloadUrl,
