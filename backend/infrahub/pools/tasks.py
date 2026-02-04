@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.core.schema.manager import SchemaManager
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -65,12 +66,14 @@ class SchemaNumberPoolValidator:
         self,
         schema_node: MainSchemaTypes,
         attribute: AttributeSchema,
+        at: Timestamp | None = None,
     ) -> str:
         """Create or find a number pool for a specific schema attribute.
 
         Args:
             schema_node: The schema containing the NumberPool attribute.
             attribute: The NumberPool SchemaAttribute.
+            at: Optional timestamp for pool creation (used for consistency in migrations).
 
         Returns:
             The pool ID for the created/found pool.
@@ -96,6 +99,7 @@ class SchemaNumberPoolValidator:
             pool_attribute=attribute.name,
             start_range=attribute.parameters.start_range,
             end_range=attribute.parameters.end_range,
+            at=at,
         )
 
         self.existing_pool_ids.add(pool_id)
@@ -211,8 +215,12 @@ class SchemaNumberPoolValidator:
         pool_attribute: str,
         start_range: int,
         end_range: int,
+        at: Timestamp | None = None,
     ) -> str:
         """Create or find an existing number pool.
+
+        Args:
+            at: Optional timestamp for pool creation (used for consistency in migrations).
 
         Returns the actual pool ID, which may be different from number_pool_id if an existing pool was found.
         """
@@ -220,45 +228,44 @@ class SchemaNumberPoolValidator:
         async with lock.registry.get(
             name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
         ):
-            async with self.db.start_session() as dbs:
-                if number_pool_id:
-                    try:
-                        await registry.manager.get_one_by_id_or_default_filter(
-                            db=dbs, id=str(number_pool_id), kind=CoreNumberPool
-                        )
-                        return number_pool_id
-                    except NodeNotFoundError:
-                        pass
+            if number_pool_id:
+                try:
+                    await registry.manager.get_one_by_id_or_default_filter(
+                        db=self.db, id=str(number_pool_id), kind=CoreNumberPool
+                    )
+                    return number_pool_id
+                except NodeNotFoundError:
+                    pass
 
-                else:
-                    number_pool_id = str(uuid4())
+            else:
+                number_pool_id = str(uuid4())
 
-                existing_pools = await NodeManager.query(
-                    db=dbs,
-                    schema=CoreNumberPool,
-                    filters={
-                        "node__value": pool_node,
-                        "node_attribute__value": pool_attribute,
-                        "pool_type__value": NumberPoolType.SCHEMA.value,
-                    },
-                    branch_agnostic=True,
-                )
-                if existing_pools:
-                    return existing_pools[0].id
+            existing_pools = await NodeManager.query(
+                db=self.db,
+                schema=CoreNumberPool,
+                filters={
+                    "node__value": pool_node,
+                    "node_attribute__value": pool_attribute,
+                    "pool_type__value": NumberPoolType.SCHEMA.value,
+                },
+                branch_agnostic=True,
+            )
+            if existing_pools:
+                return existing_pools[0].id
 
-                number_pool = await Node.init(db=dbs, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
-                await number_pool.new(
-                    db=dbs,
-                    id=number_pool_id,
-                    name=f"{pool_node}.{pool_attribute} [{number_pool_id}]",
-                    node=pool_node,
-                    node_attribute=pool_attribute,
-                    start_range=start_range,
-                    end_range=end_range,
-                    pool_type=NumberPoolType.SCHEMA.value,
-                )
-                await number_pool.save(db=dbs)
-                return number_pool_id
+            number_pool = await Node.init(db=self.db, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
+            await number_pool.new(
+                db=self.db,
+                id=number_pool_id,
+                name=f"{pool_node}.{pool_attribute} [{number_pool_id}]",
+                node=pool_node,
+                node_attribute=pool_attribute,
+                start_range=start_range,
+                end_range=end_range,
+                pool_type=NumberPoolType.SCHEMA.value,
+            )
+            await number_pool.save(db=self.db, at=at)
+            return number_pool_id
 
 
 @flow(

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
+from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
@@ -15,7 +16,6 @@ from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
-    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
@@ -96,12 +96,11 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         pool_id = await validator.ensure_pool_for_attribute(
             schema_node=self.new_schema,
             attribute=self.new_attribute_schema,
+            at=at,
         )
 
         # Fetch the pool object to allocate numbers
-        number_pool: CoreNumberPool = await registry.manager.get_one_by_id_or_default_filter(
-            db=db, id=pool_id, kind="CoreNumberPool"
-        )
+        number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
 
         await update_branch_registry(db=db, branch=branch)
 
@@ -111,12 +110,12 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             for node in nodes:
-                number = await number_pool.get_resource(
+                number = await number_pool.get_resource(  # type: ignore[attr-defined]
                     db=db, branch=branch, node=node, attribute=self.new_attribute_schema, at=at
                 )
                 attr = node.get_attribute(name=self.new_attribute_schema.name)
                 attr.value = number
-                attr.set_source(number_pool)
+                attr.set_source(number_pool.get_id())
 
                 await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
 
