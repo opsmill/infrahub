@@ -2,8 +2,8 @@ import { ArrowLeftIcon } from "lucide-react";
 import React from "react";
 
 import { Tree } from "@/shared/components/aria/tree";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Button } from "@/shared/components/ui/button";
 
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import {

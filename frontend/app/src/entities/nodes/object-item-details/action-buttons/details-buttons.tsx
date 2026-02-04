@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ButtonWithTooltip, LinkButton } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";

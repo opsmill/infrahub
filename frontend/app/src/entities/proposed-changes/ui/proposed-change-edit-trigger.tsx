@@ -5,8 +5,8 @@ import { useState } from "react";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
+import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import {
   PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,

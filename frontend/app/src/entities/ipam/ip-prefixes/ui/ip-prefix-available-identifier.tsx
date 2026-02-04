@@ -2,10 +2,10 @@ import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
