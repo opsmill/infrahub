@@ -91,6 +91,9 @@ This can be accomplished by using the `self.root_directory` that points to the r
 A TransformPython can be rendered with 2 different methods:
 
 - On demand via the REST API
+- As part of an [artifact](./artifact.mdx)
+- Via the CLI for development and troubleshooting: [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform)
+
 ## Using Transformations with groups
 
 Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](./artifact.mdx) and [Generators](./generator.mdx), which combine a Transformation with a [group](./groups.mdx) of targets.
