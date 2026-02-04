@@ -12,7 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
-from infrahub.pools.tasks import SchemaNumberPoolValidator
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -154,9 +154,9 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
         db: InfrahubDatabase,
         schemas_loaded: None,
     ) -> None:
-        """Validate that SchemaNumberPoolValidator creates exactly one CoreNumberPool after schemas are loaded."""
+        """Validate that SchemaNumberPoolSynchronizer creates exactly one CoreNumberPool after schemas are loaded."""
         # Run the validator
-        validator = SchemaNumberPoolValidator(
+        validator = SchemaNumberPoolSynchronizer(
             db=db,
             log=log,
             schema_manager=registry.schema,

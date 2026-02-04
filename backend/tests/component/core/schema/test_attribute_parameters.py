@@ -23,7 +23,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub.pools.tasks import SchemaNumberPoolValidator
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 
@@ -217,7 +217,7 @@ async def test_create_nodes_from_generic_numberpools(
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
     schema_branch = registry.schema.register_schema(schema=schema)
 
-    snpv = SchemaNumberPoolValidator(db=db, log=MagicMock(), schema_manager=registry.schema)
+    snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
     await snpv.run()
 
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)

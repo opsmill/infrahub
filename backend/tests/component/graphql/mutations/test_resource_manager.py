@@ -14,7 +14,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.pools.tasks import SchemaNumberPoolValidator
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import SNOW_TICKET_SCHEMA, TICKET, load_schema
 
@@ -905,7 +905,7 @@ async def snow_ticket_schema_with_pools(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
-    snpv = SchemaNumberPoolValidator(db=db, log=MagicMock(), schema_manager=registry.schema)
+    snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
     await snpv.run()
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 

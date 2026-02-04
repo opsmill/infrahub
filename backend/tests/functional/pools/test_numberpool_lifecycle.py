@@ -15,7 +15,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.pools.registration import get_branches_with_schema_number_pool
-from infrahub.pools.tasks import SchemaNumberPoolValidator
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.workers.dependencies import build_cache
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
@@ -57,7 +57,7 @@ number_pool_allocation_query = Query(
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        snpv = SchemaNumberPoolValidator(db=db, log=MagicMock(), schema_manager=registry.schema)
+        snpv = SchemaNumberPoolSynchronizer(db=db, log=MagicMock(), schema_manager=registry.schema)
         await snpv.run()
 
     @pytest.fixture(scope="class")

@@ -7,7 +7,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
-from infrahub.pools.tasks import SchemaNumberPoolValidator
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -87,13 +87,13 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db = migration_input.db
         at = migration_input.at
 
-        # Use SchemaNumberPoolValidator to create/find the number pool
-        validator = SchemaNumberPoolValidator(
+        # Use SchemaNumberPoolSynchronizer to create/find the number pool
+        synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             log=log,
             schema_manager=registry.schema,
         )
-        pool_id = await validator.ensure_pool_for_attribute(
+        pool_id = await synchronizer.ensure_pool_for_attribute(
             schema_node=self.new_schema,
             attribute=self.new_attribute_schema,
             at=at,

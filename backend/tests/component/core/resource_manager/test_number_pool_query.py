@@ -12,7 +12,7 @@ from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPo
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.pools.tasks import SchemaNumberPoolValidator
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 
 REQUEST = NodeSchema(
     name="Request",
@@ -51,7 +51,7 @@ async def register_test_schema(default_branch: Branch, register_core_models_sche
 
 @pytest.fixture
 async def run_number_pool_validation(db: InfrahubDatabase) -> None:
-    snpv = SchemaNumberPoolValidator(
+    snpv = SchemaNumberPoolSynchronizer(
         db=db,
         log=MagicMock(),
         schema_manager=registry.schema,
