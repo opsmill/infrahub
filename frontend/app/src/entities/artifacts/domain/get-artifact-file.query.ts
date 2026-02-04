@@ -10,7 +10,7 @@ import {
 
 export function getArtifactFileQueryOptions({ storageId, contentType }: GetArtifactFileParams) {
   return queryOptions({
-    queryKey: artifactsQueryKeys.file(storageId),
+    queryKey: artifactsQueryKeys.file(storageId, contentType),
     queryFn: () => getArtifactFile({ storageId, contentType }),
   });
 }
