@@ -8,10 +8,10 @@ import {
 } from "@/entities/object-file/domain/get-object-file";
 import { objectFileQueryKeys } from "@/entities/object-file/domain/object-file.query-keys";
 
-export function getObjectFileQueryOptions({ nodeId }: GetObjectFileParams) {
+export function getObjectFileQueryOptions({ nodeId, contentType }: GetObjectFileParams) {
   return queryOptions({
     queryKey: objectFileQueryKeys.file(nodeId),
-    queryFn: () => getObjectFile({ nodeId }),
+    queryFn: () => getObjectFile({ nodeId, contentType }),
     enabled: !!nodeId,
   });
 }

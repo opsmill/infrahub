@@ -2,9 +2,10 @@ import { apiClient } from "@/shared/api/rest/client";
 
 export interface GetObjectFileFromApiParams {
   nodeId: string;
+  parseAs?: "text" | "arrayBuffer";
 }
 
-export function getObjectFileFromApi({ nodeId }: GetObjectFileFromApiParams) {
+export function getObjectFileFromApi({ nodeId, parseAs = "text" }: GetObjectFileFromApiParams) {
   return apiClient.GET("/api/storage/files/{node_id}", {
     params: {
       path: {
@@ -14,6 +15,6 @@ export function getObjectFileFromApi({ nodeId }: GetObjectFileFromApiParams) {
         preview: true,
       },
     },
-    parseAs: "text",
+    parseAs,
   });
 }
