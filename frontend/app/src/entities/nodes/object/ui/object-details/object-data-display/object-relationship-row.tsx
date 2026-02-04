@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { LockIcon } from "lucide-react";
 
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
 
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";

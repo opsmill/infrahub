@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
+import { LinkButton } from "@/shared/components/ui/button";
 import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 

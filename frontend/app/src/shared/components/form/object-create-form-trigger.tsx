@@ -8,7 +8,7 @@ import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-import { Button, type ButtonProps } from "../buttons/button-primitive";
+import { Button, type ButtonProps } from "../ui/button";
 import { Tooltip } from "../ui/tooltip";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {

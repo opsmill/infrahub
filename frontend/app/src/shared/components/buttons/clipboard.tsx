@@ -1,11 +1,10 @@
 import { ClipboardCheckIcon, ClipboardIcon } from "lucide-react";
+import { Button } from "react-aria-components";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-
-import { BUTTON_TYPES, Button } from "./button";
 
 type tClipboard = {
   value: any;
@@ -26,7 +25,7 @@ export const Clipboard = (props: tClipboard) => {
 
   return (
     <Tooltip enabled content={tooltip}>
-      <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={handleCopy} className={className}>
+      <Button onClick={handleCopy} className={className}>
         {!isCopied && <ClipboardIcon className="h-4 w-4" />}
 
         {isCopied && <ClipboardCheckIcon className="h-4 w-4" />}

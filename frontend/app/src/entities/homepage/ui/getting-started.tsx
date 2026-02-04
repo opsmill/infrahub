@@ -3,7 +3,7 @@ import { BookOpen, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Separator } from "@/shared/components/aria/separator";
-import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
+import { LinkButton, type LinkButtonProps } from "@/shared/components/ui/button";
 
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 

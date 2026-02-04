@@ -2,7 +2,7 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import type React from "react";
 import { Pressable } from "react-aria-components";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 
 interface BreadcrumbItemTriggerProps {
   children: React.ReactNode;
