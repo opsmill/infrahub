@@ -1,10 +1,10 @@
-import { CONFIG } from "@/shared/config/config";
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
 import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
 import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { CONFIG } from "@/shared/config/config";
 
 import { getArtifactFileDownloadUrl } from "@/entities/artifacts/domain/get-artifact-file";
 import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
