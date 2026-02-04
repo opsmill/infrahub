@@ -18,18 +18,18 @@ When creating a new object instance, users can optionally select a template. If 
 
 See the [object-template guide](../guides/object-template.mdx) for more information.
 
-## Integration with profiles
+## Integration with Profiles
 
-When both `generate_template` and `generate_profile` are configured on a schema node, profiles can be assigned to templates. This integration enables powerful configuration management workflows:
+When both `generate_template` and `generate_profile` are configured on a schema node, Profiles can be assigned to templates. This integration enables powerful configuration management workflows:
 
-- **Bulk configuration**: Assign profiles to templates to define common configuration that applies to all objects created from that template
-- **Automatic inheritance**: Objects created from a template automatically inherit the profiles assigned to that template
-- **Value precedence**: Template values (when explicitly configured) take precedence over profile values, while profiles provide values for attributes not set on the template
-- **Multiple profiles**: Templates support multiple profile assignments with proper priority handling
+- **Bulk configuration**: Assign Profiles to templates to define common configuration that applies to all objects created from that template
+- **Automatic inheritance**: Objects created from a template automatically inherit the Profiles assigned to that template
+- **Value precedence**: Template values (when explicitly configured) take precedence over Profile values, while Profiles provide values for attributes not set on the template
+- **Multiple Profiles**: Templates support multiple Profile assignments with proper priority handling
 
-This combination allows you to use templates for structural definition (which ports exist) while profiles handle configuration values (port settings), enabling updates to values in bulk by modifying the profile rather than individual objects. Templates can still override specific profile values when needed.
+This combination allows you to use templates for structural definition (which ports exist) while Profiles handle configuration values (port settings), enabling updates to values in bulk by modifying the Profile rather than individual objects. Templates can still override specific Profile values when needed.
 
-For more details, see the [Creating and assigning profiles guide](../guides/profiles.mdx).
+For more details, see the [Creating and assigning Profiles guide](../guides/profiles.mdx).
 
 ## Component relationship
 
