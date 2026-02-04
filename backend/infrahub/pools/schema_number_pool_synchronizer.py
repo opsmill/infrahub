@@ -107,7 +107,10 @@ class SchemaNumberPoolSynchronizer:
         """Load all existing schema-type number pools."""
         async with self.db.start_session() as dbs:
             schema_number_pools = await NodeManager.query(
-                db=dbs, schema=CoreNumberPool, filters={"pool_type__value": NumberPoolType.SCHEMA.value}
+                db=dbs,
+                schema=CoreNumberPool,
+                filters={"pool_type__value": NumberPoolType.SCHEMA.value},
+                branch_agnostic=True,
             )
         self.existing_pool_ids = {pool.id for pool in schema_number_pools}
         self._schema_number_pools = list(schema_number_pools)
