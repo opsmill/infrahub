@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 from infrahub_sdk.graphql import Query
 
+from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.pools.tasks import SchemaNumberPoolValidator
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -48,6 +51,10 @@ BRANCH2 = "branch2"
 
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
+    async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
+        snpv = SchemaNumberPoolValidator(db=db, log=MagicMock(), schema_manager=registry.schema)
+        await snpv.run()
+
     @pytest.fixture(scope="class")
     def initial_schema(self) -> SchemaRoot:
         schema = SchemaRoot(
@@ -71,6 +78,8 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             schemas=[initial_schema.model_dump()], wait_until_converged=True
         )
         assert not schema_load_response.errors
+
+        await self._run_number_pool_validator(db)
 
         # Create incidents/requests to ensure there are some data into the database
         for idx in range(1, 4):
