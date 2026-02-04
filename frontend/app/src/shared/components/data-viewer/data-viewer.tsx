@@ -9,36 +9,40 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 import { getFileIcon } from "@/shared/utils/file";
 
-import { DataViewerCopyButton } from "./data-viewer-copy-button";
-import { DataViewerDownloadButton } from "./data-viewer-download-button";
 import { getViewerType, type TextContentType, type ViewerType } from "./types";
 
 export interface DataViewerProps {
   /** The content string to display */
   data: string;
   /** File name used for download operations */
-  fileName: string;
+  fileName?: string;
   /** MIME content type - determines rendering mode */
   contentType?: string;
+  /** Custom title to display in header (overrides auto-detected title) */
+  title?: string;
   /** Custom action buttons to display in header */
   actions?: ReactNode;
   /** Additional CSS classes */
   className?: string;
 }
 
-export function DataViewer({ data, fileName, contentType, actions, className }: DataViewerProps) {
+export function DataViewer({
+  data,
+  contentType,
+  title: customTitle,
+  actions,
+  className,
+}: DataViewerProps) {
   const viewerType = getViewerType(contentType);
   const config =
     viewerType.type === "text" ? TEXT_CONTENT_TYPE_CONFIG[viewerType.textContentType] : null;
-  const title = config?.label ?? "Preview";
+  const title = customTitle ?? config?.label ?? "Preview";
 
   return (
     <Col className={classNames("grow rounded-lg bg-neutral-800 p-2 text-neutral-200", className)}>
       <Row>
         <span className="grow px-1 font-medium">{title}</span>
         {actions}
-        <DataViewerDownloadButton value={data} fileName={fileName} contentType={contentType} />
-        <DataViewerCopyButton value={data} />
       </Row>
 
       <DataViewerContent viewerType={viewerType} content={data} contentType={contentType} />
