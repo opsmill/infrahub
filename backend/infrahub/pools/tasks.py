@@ -5,7 +5,7 @@ from prefect.logging import get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
-from infrahub.pools.synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
 
