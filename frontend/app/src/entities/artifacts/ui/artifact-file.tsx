@@ -6,6 +6,7 @@ import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-v
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
+import { getArtifactFileDownloadUrl } from "@/entities/artifacts/domain/get-artifact-file";
 import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
 
 export interface ArtifactFileProps {
@@ -16,7 +17,7 @@ export interface ArtifactFileProps {
 }
 
 export function ArtifactFile({ storageId, fileName, contentType, className }: ArtifactFileProps) {
-  const { data: content, isPending, error } = useGetArtifactFile({ storageId });
+  const { data: content, isPending, error } = useGetArtifactFile({ storageId, contentType });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
@@ -36,6 +37,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
     <DataViewer
       data={content}
       contentType={contentType}
+      downloadUrl={getArtifactFileDownloadUrl(storageId)}
       className={className}
       actions={
         <>
