@@ -403,7 +403,8 @@ const sidebars: SidebarsConfig = {
             'development/frontend/testing-guidelines',
           ],
         },
-        'development/docs'
+        'development/docs',
+        'development/style-guide'
       ],
     },
     {
