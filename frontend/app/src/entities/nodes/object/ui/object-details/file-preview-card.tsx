@@ -1,5 +1,6 @@
-import { ObjectFile } from "@/entities/object-file/ui/object-file";
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
+
+import { ObjectFile } from "@/entities/object-file/ui/object-file";
 
 interface FilePreviewCardProps {
   nodeId: string;
