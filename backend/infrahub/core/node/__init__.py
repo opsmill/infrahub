@@ -19,9 +19,6 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants import (
-    NumberPoolType as NumberPoolType,
-)
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
@@ -34,9 +31,6 @@ from infrahub.core.schema import (
     ProfileSchema,
     RelationshipSchema,
     TemplateSchema,
-)
-from infrahub.core.schema import (
-    GenericSchema as GenericSchema,
 )
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
