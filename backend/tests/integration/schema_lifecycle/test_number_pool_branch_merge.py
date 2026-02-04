@@ -125,34 +125,29 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
         schemas_loaded: None,
     ) -> None:
         """Validate that creating instances fails when the NumberPool doesn't exist yet."""
-        # Get the number_pool_id from the schema to verify it's in the error message
-        schema = registry.schema.get_node_schema(name=SERVER_KIND, branch=default_branch.name)
-        rack_unit_attr = schema.get_attribute(name="rack_unit")
-        assert isinstance(rack_unit_attr.parameters, NumberPoolParameters)
-        number_pool_id = rack_unit_attr.parameters.number_pool_id
-        assert number_pool_id is not None, "Schema should have a number_pool_id assigned"
+        branches = [
+            (default_branch, "default"),
+            (setup_branch, "branch"),
+        ]
 
-        # Try to create on default branch - should fail
-        with pytest.raises(ValidationError) as exc_info:
-            server = await Node.init(schema=SERVER_KIND, db=db, branch=default_branch)
-            await server.new(db=db, name="server-should-fail-default")
-            await server.save(db=db)
+        for branch, branch_label in branches:
+            # Get the number_pool_id from the branch schema
+            schema = registry.schema.get_node_schema(name=SERVER_KIND, branch=branch.name)
+            rack_unit_attr = schema.get_attribute(name="rack_unit")
+            assert isinstance(rack_unit_attr.parameters, NumberPoolParameters)
+            number_pool_id = rack_unit_attr.parameters.number_pool_id
+            assert number_pool_id is not None, f"{branch_label} branch schema should have a number_pool_id assigned"
 
-        error_message = str(exc_info.value)
-        assert "rack_unit.from_pool" in error_message, f"Expected 'rack_unit.from_pool' in error: {error_message}"
-        assert "was not found" in error_message, f"Expected 'was not found' in error: {error_message}"
-        assert number_pool_id in error_message, f"Expected pool ID {number_pool_id} in error: {error_message}"
+            # Try to create on this branch - should fail
+            with pytest.raises(ValidationError) as exc_info:
+                server = await Node.init(schema=SERVER_KIND, db=db, branch=branch)
+                await server.new(db=db, name=f"server-should-fail-{branch_label}")
+                await server.save(db=db)
 
-        # Try to create on user branch - should also fail
-        with pytest.raises(ValidationError) as exc_info:
-            server = await Node.init(schema=SERVER_KIND, db=db, branch=setup_branch)
-            await server.new(db=db, name="server-should-fail-branch")
-            await server.save(db=db)
-
-        error_message = str(exc_info.value)
-        assert "rack_unit.from_pool" in error_message, f"Expected 'rack_unit.from_pool' in error: {error_message}"
-        assert "was not found" in error_message, f"Expected 'was not found' in error: {error_message}"
-        assert number_pool_id in error_message, f"Expected pool ID {number_pool_id} in error: {error_message}"
+            error_message = str(exc_info.value)
+            assert "rack_unit.from_pool" in error_message, f"Expected 'rack_unit.from_pool' in error: {error_message}"
+            assert "was not found" in error_message, f"Expected 'was not found' in error: {error_message}"
+            assert number_pool_id in error_message, f"Expected pool ID {number_pool_id} in error: {error_message}"
 
     async def test_validator_creates_single_pool(
         self,
