@@ -401,20 +401,26 @@ async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
     assert response is True
 
 
-async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
+async def test_pull_branch_diverged(git_repo_06: InfrahubRepository) -> None:
+    """Test that pull succeeds when local and remote have diverged.
+    When branches diverge (e.g., due to force-push), the local should be
+    reset to match the remote
+    """
     repo = git_repo_06
     await repo.fetch()
 
     branch_name = "branch01"
 
-    commit1 = repo.get_commit_value(branch_name=branch_name, remote=False)
-    commit2 = repo.get_commit_value(branch_name=branch_name, remote=True)
-    assert str(commit1) != str(commit2)
+    result = await repo.pull(branch_name=branch_name)
 
-    with pytest.raises(RepositoryError) as exc:
-        await repo.pull(branch_name=branch_name)
+    commit_remote = repo.get_commit_value(branch_name=branch_name, remote=True)
+    commit_local = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert str(commit_local) == str(commit_remote)
+    assert result == str(commit_remote)
+
+
 async def test_pull_branch_after_force_push(git_repo_force_push: InfrahubRepository) -> None:
-    """Test that pull succeeds after a force-push (divergent history, not merge conflict).
+    """Test that pull succeeds after a force-push.
 
     This tests the scenario where:
     - A user rebases their branch to resolve conflicts
@@ -427,16 +433,33 @@ async def test_pull_branch_after_force_push(git_repo_force_push: InfrahubReposit
 
     branch_name = "branch01"
 
-    commit_local_before = repo.get_commit_value(branch_name=branch_name, remote=False)
-    commit_remote = repo.get_commit_value(branch_name=branch_name, remote=True)
-
-    assert str(commit_local_before) != str(commit_remote)
-
     result = await repo.pull(branch_name=branch_name)
 
-    commit_local_after = repo.get_commit_value(branch_name=branch_name, remote=False)
-    assert str(commit_local_after) == str(commit_remote)
+    commit_remote = repo.get_commit_value(branch_name=branch_name, remote=True)
+    commit_local = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert str(commit_local) == str(commit_remote)
     assert result == str(commit_remote)
+
+
+async def test_pull_main_diverged_should_fail(git_repo_main_diverged: InfrahubRepository) -> None:
+    """Test that pull fails when the default branch (main) has diverged.
+
+    Unlike non-default branches where we reset to remote on divergence,
+    the default branch should NOT be auto-reset because:
+    - It may have local commits from merged branches not yet pushed
+    - Resetting would lose these merge commits
+
+    This tests the scenario where someone directly committed to the remote
+    default branch (main) while Infrahub had local commits pending push.
+    """
+    repo = git_repo_main_diverged
+
+    branch_name = "main"
+
+    with pytest.raises(RepositoryError) as exc:
+        await repo.pull(branch_name=branch_name)
+
+    assert "conflicts that must be resolved" in str(exc.value)
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository) -> None:

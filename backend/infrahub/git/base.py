@@ -863,11 +863,31 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}") from exc
 
         if repo:
+            commit_before = str(repo.head.commit)
+
             try:
-                commit_before = str(repo.head.commit)
                 repo.remotes.origin.pull(branch_name)
             except GitCommandError as exc:
-                await self._raise_enriched_error(error=exc, branch_name=branch_name)
+                # Check if this is a divergent branches error that happens after history has been rewritten
+                # on the remote branch
+                # For non-default branches, reset the local branch to the remote branch
+                # For the default branch, raise an error since it may have local commits not yet pushed
+                is_default_branch = branch_name == self.default_branch
+
+                if (
+                    not is_default_branch
+                    and exc.status == 1
+                    and "fatal: Need to specify how to reconcile divergent branches." in exc.stderr
+                ):
+                    log.info(
+                        "Divergent branches detected, resetting local branch to remote branch",
+                        repository=self.name,
+                        branch=branch_name,
+                    )
+                    repo.git.reset("--hard", f"origin/{branch_name}")
+                if is_default_branch:
+                    # Don't reset the default branch - it may have local commits
+                    await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
             commit_after = str(repo.head.commit)
 

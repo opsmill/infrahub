@@ -358,6 +358,45 @@ async def git_repo_force_push(
 
 
 @pytest.fixture
+async def git_repo_main_diverged(
+    client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
+) -> InfrahubRepository:
+    """Git Repository where the main branch has diverged between local and remote.
+
+    Simulates the scenario where:
+    1. Infrahub has merged a branch locally (creating a commit on main)
+    2. Before pushing, someone directly committed to main on the remote
+    3. Local and remote main branches have diverged
+    """
+
+    repo = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    main_wt = repo.get_worktree(identifier="main")
+    local_repo = Repo(main_wt.directory)
+    first_file = find_first_file_in_directory(main_wt.directory)
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("local commit from Infrahub merge\n")
+    local_repo.index.add([first_file])
+    local_repo.index.commit("Local commit from merged branch (not yet pushed)")
+
+    upstream = Repo(git_upstream_repo_01["path"])
+    upstream_first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    async with await anyio.open_file(upstream_first_file, mode="a", encoding="utf-8") as file:
+        await file.write("direct commit on remote main\n")
+    upstream.index.add([upstream_first_file])
+    upstream.index.commit("Direct commit on remote main")
+
+    await repo.fetch()
+
+    return repo
+
+
+@pytest.fixture
 async def git_repo_jinja(
     client: InfrahubClient, git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
