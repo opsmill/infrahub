@@ -58,13 +58,11 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           </Row>
         </Col>
 
-        <div className="flex grow overflow-hidden p-1">
-          <ArtifactFile
-            storageId={artifact.storage_id.value}
-            fileName={`${artifactId}.${extension}`}
-            contentType={contentType}
-          />
-        </div>
+        <ArtifactFile
+          storageId={artifact.storage_id.value}
+          fileName={`${artifactId}.${extension}`}
+          contentType={contentType}
+        />
       </Content.Card>
       <Card className="min-w-90 overflow-auto p-0">
         <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
