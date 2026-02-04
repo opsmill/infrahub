@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,

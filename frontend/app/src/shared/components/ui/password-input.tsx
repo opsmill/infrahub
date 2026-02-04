@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { Input, type InputProps } from "./input";

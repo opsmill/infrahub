@@ -17,8 +17,8 @@ import {
   useFormContext,
 } from "react-hook-form";
 
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { SlideOverContext } from "@/shared/components/display/slide-over";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";

@@ -1,5 +1,5 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
+import { Button } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 

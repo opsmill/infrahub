@@ -4,7 +4,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
 const CONVERT_OBJECT_MUTATION = graphql(`
-  mutation ($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {
+  mutation CONVERT_OBJECT_MUTATION($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {
     ConvertObjectType(
       data: { node_id: $nodeId, target_kind: $targetKind, fields_mapping: $fieldsMapping }
     ) {

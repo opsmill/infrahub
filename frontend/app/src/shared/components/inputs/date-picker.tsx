@@ -5,7 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { isValid } from "date-fns";
 import { forwardRef } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";

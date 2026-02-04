@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { debounce } from "@/shared/utils/common";
 

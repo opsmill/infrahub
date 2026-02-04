@@ -5,11 +5,7 @@ import { useState } from "react";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  Button,
-  ButtonWithTooltip,
-  LinkButton,
-} from "@/shared/components/buttons/button-primitive";
+import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
   Command,

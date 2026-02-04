@@ -15,9 +15,9 @@ import { branchesState } from "@/entities/branches/stores";
 import { BranchDetails } from "@/entities/branches/ui/branch-details";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
-import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
 import { ArtifactsDiff } from "@/entities/diff/ui/artifact-diff/artifacts-diff";
+import { FilesDiff } from "@/entities/diff/ui/file-diff/files-diff";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 
 const BRANCH_TABS = {
@@ -104,7 +104,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
 
   switch (currentTab) {
     case DIFF_TABS.FILES: {
-      return <FilesDiff />;
+      return <FilesDiff branchName={branchName} />;
     }
     case DIFF_TABS.ARTIFACTS: {
       return <ArtifactsDiff branchName={branchName} />;

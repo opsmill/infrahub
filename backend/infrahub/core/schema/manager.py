@@ -378,7 +378,8 @@ class SchemaManager(NodeManager):
 
         schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
-            getattr(obj, key).value = value
+            if obj_attr := getattr(obj, key, None):
+                obj_attr.value = value
 
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)

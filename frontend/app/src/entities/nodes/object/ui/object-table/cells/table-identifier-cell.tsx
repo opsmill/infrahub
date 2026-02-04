@@ -1,7 +1,7 @@
 import type { PressEvent } from "react-aria-components";
 
 import { Checkbox } from "@/shared/components/aria/checkbox";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
+import { LinkButton } from "@/shared/components/ui/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";

@@ -1,8 +1,8 @@
 import { Heading } from "react-aria-components";
 
 import { Modal } from "@/shared/components/aria/modal";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
+import { Button } from "@/shared/components/ui/button";
 
 import { useCheckConnectivityMutation } from "@/entities/repository/domain/check-connectivity.mutation";
 

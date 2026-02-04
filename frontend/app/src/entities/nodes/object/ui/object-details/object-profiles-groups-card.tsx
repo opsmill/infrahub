@@ -4,11 +4,11 @@ import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";

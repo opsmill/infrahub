@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";

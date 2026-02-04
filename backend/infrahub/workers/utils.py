@@ -20,7 +20,7 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
     """
 
     # avoid circular imports
-    from infrahub.services import InfrahubServices  # pylint: disable=C0415
+    from infrahub.services import InfrahubServices
 
     if service_parameter_name := get_parameter_name(func=func, types=[InfrahubServices.__name__, InfrahubServices]):
         if any(isinstance(param_value, InfrahubServices) for param_value in parameters):

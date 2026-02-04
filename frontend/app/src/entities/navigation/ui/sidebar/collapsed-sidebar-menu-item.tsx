@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 export interface CollapsedSidebarMenuItemProps extends ButtonProps {
