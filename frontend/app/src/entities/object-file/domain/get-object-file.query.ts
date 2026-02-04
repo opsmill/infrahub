@@ -1,11 +1,12 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { objectFileQueryKeys } from "@/entities/object-file/domain/object-file.query-keys";
+import type { QueryConfig } from "@/shared/api/types";
+
 import {
   type GetObjectFileParams,
   getObjectFile,
 } from "@/entities/object-file/domain/get-object-file";
-import type { QueryConfig } from "@/shared/api/types";
+import { objectFileQueryKeys } from "@/entities/object-file/domain/object-file.query-keys";
 
 export function getObjectFileQueryOptions({ nodeId }: GetObjectFileParams) {
   return queryOptions({
