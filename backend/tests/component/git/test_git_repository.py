@@ -413,8 +413,30 @@ async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
 
     with pytest.raises(RepositoryError) as exc:
         await repo.pull(branch_name=branch_name)
+async def test_pull_branch_after_force_push(git_repo_force_push: InfrahubRepository) -> None:
+    """Test that pull succeeds after a force-push (divergent history, not merge conflict).
 
-    assert "there are conflicts that must be resolved" in str(exc.value)
+    This tests the scenario where:
+    - A user rebases their branch to resolve conflicts
+    - Force-pushes the rebased branch to the remote
+    - Infrahub should detect the new commits and update its local copy
+
+    The branches have diverged due to history rewrite (rebase + force-push)
+    """
+    repo = git_repo_force_push
+
+    branch_name = "branch01"
+
+    commit_local_before = repo.get_commit_value(branch_name=branch_name, remote=False)
+    commit_remote = repo.get_commit_value(branch_name=branch_name, remote=True)
+
+    assert str(commit_local_before) != str(commit_remote)
+
+    result = await repo.pull(branch_name=branch_name)
+
+    commit_local_after = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert str(commit_local_after) == str(commit_remote)
+    assert result == str(commit_remote)
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository) -> None:

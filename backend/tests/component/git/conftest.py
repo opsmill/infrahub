@@ -312,6 +312,52 @@ async def git_repo_06(
 
 
 @pytest.fixture
+async def git_repo_force_push(
+    client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
+) -> InfrahubRepository:
+    """Git Repository where branch01 has been force-pushed on the remote.
+
+    Simulates the scenario where:
+    1. User creates a branch, Infrahub syncs it
+    2. User rebases the branch and force-pushes
+    3. Local and remote have divergent history (not a merge conflict, but history rewrite)
+
+    This is different from git_repo_06 which creates a merge conflict (same file modified differently).
+    Here the history itself has diverged - the remote commit is NOT a descendant of the local commit.
+    """
+
+    repo = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+
+    # Simulate force-push on remote: reset branch01 to main and create a new commit
+    # This mimics what happens when a user rebases their branch and force-pushes
+    upstream = Repo(git_upstream_repo_01["path"])
+    upstream.git.checkout(branch01.name)
+
+    # Reset to main (simulating a rebase that changes the branch's base)
+    upstream.git.reset("--hard", "main")
+
+    # Create a new commit (this will have different history than the local branch)
+    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("rebased content after force push\n")
+    upstream.index.add([first_file])
+    upstream.index.commit("New commit after rebase (force-pushed)")
+
+    upstream.git.checkout("main")
+
+    await repo.fetch()
+
+    return repo
+
+
+@pytest.fixture
 async def git_repo_jinja(
     client: InfrahubClient, git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
