@@ -65,9 +65,6 @@ export const TEXT_CONTENT_TYPE_CONFIG: Record<
   "text/csv": { extension: "csv", language: "csv", label: "CSV" },
 } as const;
 
-/** @deprecated Use TEXT_CONTENT_TYPE_CONFIG instead */
-export const CONTENT_TYPE_CONFIG = TEXT_CONTENT_TYPE_CONFIG;
-
 interface DataViewerContentProps {
   viewerType: ViewerType;
   content: string;

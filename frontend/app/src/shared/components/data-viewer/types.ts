@@ -13,9 +13,6 @@ export type TextContentType =
   | "application/xml"
   | "text/csv";
 
-/** @deprecated Use TextContentType instead */
-export type DataViewerContentType = TextContentType;
-
 /**
  * Viewer type determined from content type.
  * - text: Renderable text content (code, markdown, csv, svg)
