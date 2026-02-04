@@ -20,13 +20,22 @@ export interface DataViewerProps {
   fileName: string;
   /** MIME content type - determines rendering mode */
   contentType?: string;
+  /** Direct URL for downloading the file (used for binary files) */
+  downloadUrl?: string;
   /** Custom action buttons to display in header */
   actions?: ReactNode;
   /** Additional CSS classes */
   className?: string;
 }
 
-export function DataViewer({ data, fileName, contentType, actions, className }: DataViewerProps) {
+export function DataViewer({
+  data,
+  fileName,
+  contentType,
+  downloadUrl,
+  actions,
+  className,
+}: DataViewerProps) {
   const viewerType = getViewerType(contentType);
   const config =
     viewerType.type === "text" ? TEXT_CONTENT_TYPE_CONFIG[viewerType.textContentType] : null;
@@ -37,7 +46,12 @@ export function DataViewer({ data, fileName, contentType, actions, className }: 
       <Row>
         <span className="grow px-1 font-medium">{title}</span>
         {actions}
-        <DataViewerDownloadButton value={data} fileName={fileName} contentType={contentType} />
+        <DataViewerDownloadButton
+          value={data}
+          fileName={fileName}
+          contentType={contentType}
+          downloadUrl={downloadUrl}
+        />
         <DataViewerCopyButton value={data} />
       </Row>
 
