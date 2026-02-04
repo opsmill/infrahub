@@ -1,10 +1,9 @@
 from unittest.mock import MagicMock, patch
 
-from infrahub_sdk.schema.main import GenericSchema
-
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GlobalPermissions
+from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.report import get_permission_report
 
@@ -14,7 +13,7 @@ def _create_branch(status: BranchStatus, name: str = "test-branch") -> Branch:
 
 
 def _create_node(kind: str = "TestingNode") -> GenericSchema:
-    return GenericSchema(kind=kind, namespace="Testing", name="TestNode", inherit_from=[])
+    return GenericSchema(namespace="Testing", name="TestNode")
 
 
 def _create_global_permission_report(super_admin: bool = False) -> dict[GlobalPermissions, bool]:
