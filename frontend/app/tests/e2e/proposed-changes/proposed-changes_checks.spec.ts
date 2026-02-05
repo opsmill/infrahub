@@ -21,6 +21,7 @@ test.describe("/proposed-changes checks", () => {
 
     await test.step("go to Checks tab and see summary for all checks", async () => {
       await page.getByLabel("Tabs").getByText("Checks").click();
+      await expect(page.getByTestId("checks-summary")).toBeVisible();
       while (
         (await page.getByText("Data Integrity").isHidden()) ||
         (await page.getByText("Schema Integrity").isHidden())
