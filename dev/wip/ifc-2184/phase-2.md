@@ -10,7 +10,7 @@
 
 - [x] Import `check_merged_status` in middleware.py
 - [x] Add `ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]` constant
-- [x] Add merged status check in `raise_on_mutation_on_branch_needing_rebase` function
+- [x] Add merged status check in `raise_on_mutation_for_branch_status` function
 - [x] Create unit tests (`backend/tests/unit/graphql/test_middleware.py`) - 7 tests
 
 ---
@@ -30,7 +30,7 @@ ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH = ["BranchRebase", "BranchDelete", "Bran
 ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]  # Add this
 
 
-def raise_on_mutation_on_branch_needing_rebase(next, root, info, **kwargs):
+def raise_on_mutation_for_branch_status(next, root, info, **kwargs):
     if info.operation.operation.value == "mutation":
         mutation_name = info.operation.selection_set.selections[0].name.value
 

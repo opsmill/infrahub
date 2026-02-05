@@ -12,14 +12,14 @@ Implement a `MERGED` status for branches that makes them read-only after success
 
 ## Implementation Progress
 
-| Phase | Description                                       | Status      | Tests                                            |
-| ----- | ------------------------------------------------- | ----------- | ------------------------------------------------ |
-| 1     | Core Enum + Status Check                          | ✅ Complete | 2 unit tests                                     |
-| 2     | GraphQL Middleware                                | ✅ Complete | 7 unit tests                                     |
-| 3     | Merge Flow                                        | ✅ Complete | 8 functional tests (MERGED and NEED_REBASE)      |
-| 4     | Mutation Validations                              | ✅ Complete | (included in Phase 3)                            |
-| 5     | REST API Validation + CheckBranchStatus Validator | ✅ Complete | 4 component tests                                |
-| 6     | Permission System (MERGED + NEED_REBASE)          | ✅ Complete | 4 unit tests                                     |
+| Phase | Description                               | Status      | Tests                                       |
+| ----- | ----------------------------------------- | ----------- | ------------------------------------------- |
+| 1     | Core Enum + Status Check                  | ✅ Complete | 2 unit tests                                |
+| 2     | GraphQL Middleware                        | ✅ Complete | 7 unit tests                                |
+| 3     | Merge Flow                                | ✅ Complete | 8 functional tests (MERGED and NEED_REBASE) |
+| 4     | Mutation Validations                      | ✅ Complete | (included in Phase 3)                       |
+| 5     | REST API Validation + BranchStatusChecker | ✅ Complete | 4 component tests                           |
+| 6     | Permission System (MERGED + NEED_REBASE)  | ✅ Complete | 4 unit tests                                |
 
 **Total Tests:** 25 tests (13 unit + 4 component + 8 functional)
 
@@ -93,14 +93,14 @@ uv run pytest backend/tests/unit/core/branch/test_merged_status.py -v
 
 1. Import `check_merged_status`
 2. Add constant: `ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]`
-3. Add merged status check in the existing `raise_on_mutation_on_branch_needing_rebase` function
+3. Add merged status check in the existing `raise_on_mutation_for_branch_status` function
 
 ```python
 from infrahub.core.branch.merged_status import check_merged_status
 
 ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]
 
-def raise_on_mutation_on_branch_needing_rebase(next, root, info, **kwargs):
+def raise_on_mutation_for_branch_status(next, root, info, **kwargs):
     if info.operation.operation.value == "mutation":
         mutation_name = info.operation.selection_set.selections[0].name.value
 
@@ -240,30 +240,30 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge
 
 ### Checklist
 
-- [x] Create reusable `CheckBranchStatus` validator class
+- [x] Create reusable `BranchStatusChecker` class
 - [x] Block schema loading on merged branches (`schema.py`)
 - [x] Block artifact generation on merged branches (`artifact.py`)
 - [x] Extend functional tests
 
 ### Implementation
 
-#### 5.1 Create reusable validator class
+#### 5.1 Create reusable BranchStatusChecker class
 
-**New file:** `backend/infrahub/api/validators.py`
+**New file:** `backend/infrahub/branch/status_checker.py`
 
 ```python
-from infrahub.core.branch.merged_status import check_merged_status
-from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError
 
 
-class CheckBranchStatus:
-    def __init__(self, branch: Branch):
-        self.branch = branch
-
-    def check(self):
-        check_need_rebase_status(branch=self.branch)
-        check_merged_status(branch=self.branch)
+class BranchStatusChecker:
+    @staticmethod
+    def check(branch: Branch) -> None:
+        if branch.status == BranchStatus.NEED_REBASE:
+            raise BranchNeedsRebaseError(identifier=branch.name, message=f"Branch {branch.name} must be rebased before any updates can be made")
+        if branch.status == BranchStatus.MERGED:
+            raise BranchAlreadyMergedError(identifier=branch.name, message=f"Branch '{branch.name}' has been merged and is read-only. No modifications are allowed.")
 ```
 
 #### 5.2 Block schema loading on merged branches
@@ -271,11 +271,11 @@ class CheckBranchStatus:
 **File:** `backend/infrahub/api/schema.py:323`
 
 ```python
-from infrahub.api.validators import CheckBranchStatus
+from infrahub.branch.status_checker import BranchStatusChecker
 
 # In load_schema function:
 try:
-    CheckBranchStatus(branch=branch).check()
+    BranchStatusChecker.check(branch=branch)
 except ValueError as err:
     raise SchemaNotValidError(message=str(err)) from err
 ```
@@ -285,11 +285,11 @@ except ValueError as err:
 **File:** `backend/infrahub/api/artifact.py:77`
 
 ```python
-from infrahub.api.validators import CheckBranchStatus
+from infrahub.branch.status_checker import BranchStatusChecker
 
 # In generate_artifact function:
 try:
-    CheckBranchStatus(branch=branch_params.branch).check()
+    BranchStatusChecker.check(branch=branch_params.branch)
 except ValueError as err:
     raise ValidationError(input_value=str(err)) from err
 ```
@@ -379,7 +379,7 @@ After all phases are complete:
 uv run pytest backend/tests/unit/core/branch/test_merged_status.py \
     backend/tests/functional/branch/test_branch_merged.py \
     backend/tests/unit/permissions/test_merged_branch_permissions.py \
-    backend/tests/unit/api/test_validators.py -v
+    backend/tests/unit/branch/test_status_checker.py -v
 
 # Run full test suite
 uv run invoke backend.test-unit
@@ -401,26 +401,26 @@ uv run invoke format && uv run invoke lint
 
 ## Critical Files Summary
 
-| Component               | File                                                    |
-| ----------------------- | ------------------------------------------------------- |
-| BranchStatus enum       | `backend/infrahub/core/branch/enums.py`                 |
-| Merged status check     | `backend/infrahub/core/branch/merged_status.py` (new)   |
-| Branch status validator | `backend/infrahub/api/validators.py` (new)              |
-| GraphQL middleware      | `backend/infrahub/graphql/middleware.py`                |
-| Merge flow              | `backend/infrahub/core/branch/tasks.py`                 |
-| BranchMerge mutation    | `backend/infrahub/graphql/mutations/branch.py`          |
-| ProposedChangeCreate    | `backend/infrahub/graphql/mutations/proposed_change.py` |
-| Permission report       | `backend/infrahub/permissions/report.py`                |
-| REST schema API         | `backend/infrahub/api/schema.py`                        |
-| REST artifact API       | `backend/infrahub/api/artifact.py`                      |
+| Component             | File                                                    |
+| --------------------- | ------------------------------------------------------- |
+| BranchStatus enum     | `backend/infrahub/core/branch/enums.py`                 |
+| Merged status check   | `backend/infrahub/core/branch/merged_status.py` (new)   |
+| Branch status checker | `backend/infrahub/branch/status_checker.py` (new)       |
+| GraphQL middleware    | `backend/infrahub/graphql/middleware.py`                |
+| Merge flow            | `backend/infrahub/core/branch/tasks.py`                 |
+| BranchMerge mutation  | `backend/infrahub/graphql/mutations/branch.py`          |
+| ProposedChangeCreate  | `backend/infrahub/graphql/mutations/proposed_change.py` |
+| Permission report     | `backend/infrahub/permissions/report.py`                |
+| REST schema API       | `backend/infrahub/api/schema.py`                        |
+| REST artifact API     | `backend/infrahub/api/artifact.py`                      |
 
 ### Test Files
 
-| Test                                             | File                                                               |
-| ------------------------------------------------ | ------------------------------------------------------------------ |
-| Merged status unit tests                         | `backend/tests/unit/core/branch/test_merged_status.py`             |
-| Permission unit tests (MERGED + NEED_REBASE)     | `backend/tests/unit/permissions/test_merged_branch_permissions.py` |
-| Validator unit tests                             | `backend/tests/unit/api/test_validators.py`                        |
-| Schema API component tests (MERGED + NEED_REBASE)| `backend/tests/component/api/test_40_schema.py`                    |
-| Artifact API component tests (MERGED + NEED_REBASE)| `backend/tests/component/api/test_11_artifact.py`                |
-| Functional tests (MERGED + NEED_REBASE)          | `backend/tests/functional/branch/test_branch_merged.py`            |
+| Test                                                | File                                                               |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| Merged status unit tests                            | `backend/tests/unit/core/branch/test_merged_status.py`             |
+| Permission unit tests (MERGED + NEED_REBASE)        | `backend/tests/unit/permissions/test_merged_branch_permissions.py` |
+| Branch status checker unit tests                    | `backend/tests/unit/branch/test_status_checker.py`                 |
+| Schema API component tests (MERGED + NEED_REBASE)   | `backend/tests/component/api/test_40_schema.py`                    |
+| Artifact API component tests (MERGED + NEED_REBASE) | `backend/tests/component/api/test_11_artifact.py`                  |
+| Functional tests (MERGED + NEED_REBASE)             | `backend/tests/functional/branch/test_branch_merged.py`            |

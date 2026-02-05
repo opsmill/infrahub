@@ -8,7 +8,7 @@
 
 ## Checklist
 
-- [x] Create reusable `CheckBranchStatus` validator class (`backend/infrahub/api/validators.py`)
+- [x] Create reusable `BranchStatusChecker` class (`backend/infrahub/branch/status_checker.py`)
 - [x] Block schema loading on merged branches (`backend/infrahub/api/schema.py`)
 - [x] Block artifact generation on merged branches (`backend/infrahub/api/artifact.py`)
 - [x] Extend functional tests (`backend/tests/functional/branch/test_branch_merged.py`)
@@ -17,25 +17,25 @@
 
 ## Implementation
 
-### 5.1 Create reusable validator class
+### 5.1 Create reusable branch status checker class
 
-**New file:** `backend/infrahub/api/validators.py`
+**New file:** `backend/infrahub/branch/status_checker.py`
 
-A reusable validator class that combines both `need_rebase` and `merged` status checks:
+A reusable branch status class that combines both `need_rebase` and `merged` status checks:
 
 ```python
-from infrahub.core.branch.merged_status import check_merged_status
-from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError
 
 
-class CheckBranchStatus:
-    def __init__(self, branch: Branch):
-        self.branch = branch
-
-    def check(self):
-        check_need_rebase_status(branch=self.branch)
-        check_merged_status(branch=self.branch)
+class BranchStatusChecker:
+    @staticmethod
+    def check(branch: Branch) -> None:
+        if branch.status == BranchStatus.NEED_REBASE:
+            raise BranchNeedsRebaseError(identifier=branch.name, message=f"Branch {branch.name} must be rebased before any updates can be made")
+        if branch.status == BranchStatus.MERGED:
+            raise BranchAlreadyMergedError(identifier=branch.name, message=f"Branch '{branch.name}' has been merged and is read-only. No modifications are allowed.")
 ```
 
 ### 5.2 Block schema loading on merged branches
@@ -43,11 +43,11 @@ class CheckBranchStatus:
 **File:** `backend/infrahub/api/schema.py:323`
 
 ```python
-from infrahub.api.validators import CheckBranchStatus
+from infrahub.branch.status_checker import BranchStatusChecker
 
 # In load_schema function:
 try:
-    CheckBranchStatus(branch=branch).check()
+    BranchStatusChecker.check(branch=branch)
 except ValueError as err:
     raise SchemaNotValidError(message=str(err)) from err
 ```
@@ -57,11 +57,11 @@ except ValueError as err:
 **File:** `backend/infrahub/api/artifact.py:77`
 
 ```python
-from infrahub.api.validators import CheckBranchStatus
+from infrahub.branch.status_checker import BranchStatusChecker
 
 # In generate_artifact function:
 try:
-    CheckBranchStatus(branch=branch_params.branch).check()
+    BranchStatusChecker.check(branch=branch_params.branch)
 except ValueError as err:
     raise ValidationError(input_value=str(err)) from err
 ```

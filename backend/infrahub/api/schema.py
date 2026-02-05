@@ -15,7 +15,7 @@ from starlette.responses import JSONResponse
 from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
-from infrahub.api.validators import CheckBranchStatus
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
@@ -45,6 +45,7 @@ from infrahub.core.validators.models.validate_migration import (
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
+from infrahub.exceptions import BranchStatusError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
@@ -324,8 +325,8 @@ async def load_schema(
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     try:
-        CheckBranchStatus(branch=branch).check()
-    except ValueError as err:
+        BranchStatusChecker.check(branch=branch)
+    except BranchStatusError as err:
         raise SchemaNotValidError(message=str(err)) from err
 
     permission_manager.raise_for_permission(

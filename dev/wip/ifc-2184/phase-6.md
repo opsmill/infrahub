@@ -143,7 +143,7 @@ After all phases are complete:
 uv run pytest backend/tests/unit/core/branch/test_merged_status.py \
     backend/tests/functional/branch/test_branch_merged.py \
     backend/tests/unit/permissions/test_merged_branch_permissions.py \
-    backend/tests/unit/api/test_validators.py -v
+    backend/infrahub/branch/status_checker.py -v
 
 # Run full test suite
 uv run invoke backend.test-unit

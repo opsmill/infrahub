@@ -5,6 +5,7 @@ Author:
 Status: draft
 JPD: [INFP-444](https://opsmill.atlassian.net/browse/INFP-444)
 ---
+
 # Branch Freeze Feature
 
 ## Summary
@@ -22,6 +23,7 @@ Users can currently make changes to branches after they've been merged and attem
 ## Solution Overview
 
 Introduce a new `MERGED` branch status that:
+
 - Is set atomically at the end of successful merge operations
 - Blocks all schema and data mutations on the branch
 - Prevents creating new proposed changes with this branch as source
@@ -117,7 +119,8 @@ def check_merged_status(branch: Branch) -> None:
 
 **Update middleware:**
 
-Modify the existing `raise_on_mutation_on_branch_needing_rebase` function:
+Modify the existing `raise_on_mutation_for_branch_status` function:
+
 - add logic in this is to validate allowed mutations on branches with status `MERGED`
 - rename the function to indicate that is not just used for branches with status `NEED_REBASE`
 
@@ -130,7 +133,7 @@ ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH = ["BranchRebase", "BranchDelete", "Bran
 ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]
 
 
-def raise_on_mutation_on_branch_needing_rebase(next, root, info, **kwargs):
+def raise_on_mutation_for_branch_status(next, root, info, **kwargs):
     if info.operation.operation.value == "mutation":
         mutation_name = info.operation.selection_set.selections[0].name.value
 
@@ -234,7 +237,7 @@ query {
   Branch(name: "feature-branch") {
     id
     name
-    status  # Will return "MERGED" for merged branches
+    status # Will return "MERGED" for merged branches
     is_default
     description
   }
@@ -270,14 +273,15 @@ The permission system should respect the `MERGED` status - even users with write
 
 This is handled at the validation layer (middleware), which runs before permission checks. The status check takes precedence.
 
-The permission system shall also be used to communicate to the frontend the current permissions for an object, when the branch is in `MERGED` status. 
+The permission system shall also be used to communicate to the frontend the current permissions for an object, when the branch is in `MERGED` status.
 
 When the backend receives a query for the permissions for a node type, it will consider the branch argument and consider the status of that branch. If the branch is in `MERGED` status we should return a `DENY` permission for the create, update and delete action of the object. The `VIEW` permission will depend on the actual permissions defined in the system.
 
 The exception to this is the permission for a branch object. The delete permission should still be `ALLOW`, depending on the defined permissions, since a branch in the `MERGED` status can still be deleted.
 
 **OPEN QUESTION**
-- [X] Do we use the permission system to communicate to the frontend what actions should be disabled when a branch is in the `MERGED` status.
+
+- [x] Do we use the permission system to communicate to the frontend what actions should be disabled when a branch is in the `MERGED` status.
       The decision has been made to use the permission system to communicate which actions are possible between the back- and frontend when a branch is in `MERGED` status.
 
 ## Frontend
@@ -396,4 +400,3 @@ When a branch is merged, any open proposed change open for this branch (other th
 A branch in the status `MERGED` can still be deleted by the user using the `BranchDelete` mutation, and the provided functionality in the UI to delete a branch.
 
 (pending final UI design to explain the behavior in the UI)
-	

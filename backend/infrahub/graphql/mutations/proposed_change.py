@@ -100,7 +100,12 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
                 )
 
-            source_branch_obj = await Branch.get_by_name(db=dbt, name=source_branch_name)
+            try:
+                source_branch_obj = await Branch.get_by_name(db=dbt, name=source_branch_name)
+            except BranchNotFoundError:
+                raise ValidationError(
+                    input_value="The specified source branch for this proposed change was not found"
+                ) from None
             if source_branch_obj.status == BranchStatus.MERGED:
                 raise ValidationError(
                     input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
