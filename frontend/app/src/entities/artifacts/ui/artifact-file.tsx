@@ -43,7 +43,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
           <DataViewerLinkButton href={downloadUrl} target="_blank" rel="noopener noreferrer">
             Raw
           </DataViewerLinkButton>
-          <DataViewerDownloadButton value={data} fileName={fileName} contentType={contentType} />
+          <DataViewerDownloadButton data={data} fileName={fileName} contentType={contentType} />
           <DataViewerCopyButton value={data} />
         </>
       }
