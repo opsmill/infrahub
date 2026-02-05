@@ -116,6 +116,16 @@ class RepositoryInvalidFileSystemError(RepositoryError):
         self.directory = directory
 
 
+class RepositoryConfigurationError(RepositoryError):
+    """Raised when repository configuration file is missing or invalid."""
+
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message or "Repository configuration file error.",
+        )
+
+
 class CommitNotFoundError(Error):
     HTTP_CODE: int = 400
 

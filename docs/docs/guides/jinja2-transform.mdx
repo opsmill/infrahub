@@ -1,20 +1,20 @@
 ---
-title: Creating a Jinja transform
+title: Creating a Jinja Transformation
 ---
 
-# Creating a Jinja rendered file (transform)
+# Creating a Jinja-rendered file (Transformation)
 
-Within Infrahub a [Transform](../topics/transformation.mdx) is defined in an [external repository](../topics/repository.mdx). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render).
+Within Infrahub a [Transformation](../topics/transformation.mdx) is defined in an [external repository](../topics/repository.mdx). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render).
 
-The goal of this guide is to develop a Jinja Transform and add it to Infrahub, we will achieve this by following these steps.
+The goal of this guide is to develop a Jinja Transformation and add it to Infrahub, we will achieve this by following these steps.
 
 1. Identify the relevant data you want to extract from the database using a [GraphQL query](../topics/graphql.mdx), that can take an input parameter to filter the data
 2. Write a Jinja2 file that use the GraphQL query to read information from the system and render the data into a new format
-3. Create an entry for the Jinja2 Transform within an .infrahub.yml file.
+3. Create an entry for the Jinja2 Transformation within an .infrahub.yml file.
 4. Create a Git repository
-5. Test the Transform rendering with infrahubctl
+5. Test the Transformation rendering with infrahubctl
 6. Add the repository to Infrahub as an external repository
-7. Validate that the Transform works by using the render API endpoint
+7. Validate that the Transformation works by using the render API endpoint
 
 ## 1. Loading a schema
 
@@ -128,7 +128,7 @@ Response to the tags query:
 }
 ```
 
-While it would be possible to create a Transform that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+While it would be possible to create a Transformation that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
 Create a local directory on your computer.
 
@@ -189,15 +189,15 @@ For more information, please consult the [SDK Templating Reference]($(base_url)p
 
 ## 4. Create a .infrahub.yml file
 
-In the .infrahub.yml file you define what transforms you have in your repository that you want to make available for Infrahub.
+In the .infrahub.yml file you define what Transformations you have in your repository that you want to make available for Infrahub.
 
 Create a .infrahub.yml file in the root of the directory.
 
 ```yaml
 ---
 jinja2_transforms:
-  - name: device_config_transform             # Unique name for your transform
-    description: "device config transform"    # (optional)
+  - name: device_config_transform             # Unique name for your Transformation
+    description: "device config Transformation"    # (optional)
     query: "device_config_query"              # Name or ID of the GraphQLQuery
     template_path: "device_config.j2"         # Path to the main Jinja2 template
 
@@ -208,17 +208,17 @@ queries:
 
 > The main Jinja2 template can import other templates
 
-Three parts here are required, first the `name` of the Transform which should be unique across Infrahub, `query` the GraphqlQuery linked to our Transform and also the `template_path` that should point to the Jinja2 file within the repository.
+Three parts here are required, first the `name` of the Transformation which should be unique across Infrahub, `query` the GraphqlQuery linked to our Transformation and also the `template_path` that should point to the Jinja2 file within the repository.
 
 ## 5. Create a Git repository
 
-Within the `device_config_render` folder you should now have tree files:
+Within the `device_config_render` folder you should now have three files:
 
 * device_config.gql: Contains the GraphQL query
 * device_config.j2: Contains the Jinja2 Template
-* .infrahub.yml: Contains the definition for the transform
+* .infrahub.yml: Contains the definition for the Transformation
 
-Before we can test our Transform we must add the files to a local Git repository.
+Before we can test our Transformation we must add the files to a local Git repository.
 
 ```shell
 git init --initial-branch=main
@@ -228,13 +228,13 @@ git commit -m "First commit"
 
 ## 6. Test the render using infrahubctl
 
-Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
+Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available Transformations.
 
 ```shell
 
  Usage: infrahubctl render [OPTIONS] TRANSFORM_NAME [VARIABLES]...
 
- Render a local Jinja2 Transform for debugging purpose.
+ Render a local Jinja2 Transformation for debugging purpose.
 
 ╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────╮
 │ *    transform_name      TEXT            [default: None] [required]                             │
@@ -243,7 +243,7 @@ Using infrahubctl you can first verify that the `.infrahub.yml` file is formatte
 │                                          [default: None]                                        │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ───────────────────────────────────────────────────────────────────────────────────────╮
-│ --branch                       TEXT  Branch on which to render the transform. [default: None]   │
+│ --branch                       TEXT  Branch on which to render the Transformation. [default: None]   │
 │ --debug          --no-debug          [default: no-debug]                                        │
 │ --config-file                  TEXT  [env var: INFRAHUBCTL_CONFIG] [default: infrahubctl.toml]  │
 │ --help                               Show this message and exit.                                │
@@ -266,9 +266,9 @@ If `--branch` is not provided it will automatically use the name of the local br
 
 In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository.mdx) in order to sync the repository you created and make it available within Infrahub.
 
-## 8. Accessing the Transform from the API
+## 8. Accessing the Transformation from the API
 
-A Transform can be rendered on demand via the REST API with the endpoint: `https://<host>/api/transform/jinja2/<transform name or ID>`
+A Transformation can be rendered on demand via the REST API with the endpoint: `https://<host>/api/transform/jinja2/<transform name or ID>`
 
 This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
 
