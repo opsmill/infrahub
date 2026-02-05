@@ -28,7 +28,12 @@ export const Checks = () => {
   }
 
   if (!validators.length) {
-    return <NoDataFound message="No checks for this proposed change." />;
+    return (
+      <div className="grow bg-stone-100 text-sm">
+        <ChecksSummary isLoading={isPending} validators={validators} />
+        <NoDataFound message="No checks for this proposed change." />
+      </div>
+    );
   }
 
   return (
