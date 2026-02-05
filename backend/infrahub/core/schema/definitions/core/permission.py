@@ -34,6 +34,7 @@ core_base_permission = GenericSchema(
             read_only=True,
             optional=True,
             allow_override=AllowOverrideType.NONE,
+            deprecation="Use permission display_label instead",
         ),
     ],
     relationships=[
@@ -55,7 +56,10 @@ core_object_permission = NodeSchema(
     label="Object permission",
     include_in_menu=False,
     order_by=["namespace__value", "name__value", "action__value", "decision__value"],
-    display_labels=["namespace__value", "name__value", "action__value", "decision__value"],
+    display_label=(
+        "object:{{ namespace__value }}:{{ name__value }}:{{ action__value | value_to_permission_action_name | lower }}:"
+        "{{ decision__value | value_to_permission_decision_name | lower }}"
+    ),
     human_friendly_id=["namespace__value", "name__value", "action__value", "decision__value"],
     uniqueness_constraints=[["namespace__value", "name__value", "action__value", "decision__value"]],
     generate_profile=False,
@@ -95,7 +99,9 @@ core_global_permission = NodeSchema(
     label="Global permission",
     include_in_menu=False,
     order_by=["action__value", "decision__value"],
-    display_labels=["action__value", "decision__value"],
+    display_label=(
+        "global:{{ action__value | lower }}:{{ decision__value | value_to_permission_decision_name | lower }}"
+    ),
     human_friendly_id=["action__value", "decision__value"],
     generate_profile=False,
     inherit_from=[InfrahubKind.BASEPERMISSION],
