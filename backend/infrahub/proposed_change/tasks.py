@@ -123,6 +123,7 @@ if TYPE_CHECKING:
 async def _proposed_change_transition_state(
     state: ProposedChangeState,
     database: InfrahubDatabase,
+    user_id: str,
     proposed_change: InternalCoreProposedChange | None = None,
     proposed_change_id: str | None = None,
 ) -> None:
@@ -133,7 +134,7 @@ async def _proposed_change_transition_state(
             )
         if proposed_change:
             proposed_change.state.value = state.value  # type: ignore[misc]
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=user_id)
 
 
 # async def proposed_change_transition_merged(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -186,7 +187,10 @@ async def merge_proposed_change(
             )
         except ValueError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
             )
             return Failed(message=str(exc))
 
@@ -200,7 +204,10 @@ async def merge_proposed_change(
             ):
                 # Ignoring Data integrity checks as they are handled again later
                 await _proposed_change_transition_state(
-                    proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                    proposed_change=proposed_change,
+                    state=ProposedChangeState.OPEN,
+                    database=db,
+                    user_id=context.account.account_id,
                 )
                 return Failed(message="Unable to merge proposed change containing failing checks")
             if validator_kind == InfrahubKind.DATAVALIDATOR:
@@ -208,7 +215,10 @@ async def merge_proposed_change(
                 for check in data_checks.values():
                     if check.conflicts.value and not check.keep_branch.value:
                         await _proposed_change_transition_state(
-                            proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                            proposed_change=proposed_change,
+                            state=ProposedChangeState.OPEN,
+                            database=db,
+                            user_id=context.account.account_id,
                         )
                         return Failed(
                             message="Data conflicts found on branch and missing decisions about what branch to keep"
@@ -219,14 +229,20 @@ async def merge_proposed_change(
             await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
             )
             return Failed(message=f"Merge failure when trying to merge {exc.message}")
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
         await _proposed_change_transition_state(
-            proposed_change=proposed_change, state=ProposedChangeState.MERGED, database=db
+            proposed_change=proposed_change,
+            state=ProposedChangeState.MERGED,
+            database=db,
+            user_id=context.account.account_id,
         )
 
         current_user = await NodeManager.get_one_by_id_or_default_filter(
