@@ -4,7 +4,6 @@ import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewe
 import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { CONFIG } from "@/shared/config/config";
 
 import { getArtifactFileDownloadUrl } from "@/entities/artifacts/domain/get-artifact-file";
 import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
@@ -31,17 +30,17 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
     return <NoDataFound message="File content is empty" />;
   }
 
-  const rawUrl = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
+  const downloadUrl = getArtifactFileDownloadUrl(storageId);
 
   return (
     <DataViewer
       data={content}
       contentType={contentType}
-      downloadUrl={getArtifactFileDownloadUrl(storageId)}
+      downloadUrl={downloadUrl}
       className={className}
       actions={
         <>
-          <DataViewerLinkButton href={rawUrl} target="_blank" rel="noopener noreferrer">
+          <DataViewerLinkButton href={downloadUrl} target="_blank" rel="noopener noreferrer">
             Raw
           </DataViewerLinkButton>
           <DataViewerDownloadButton value={content} fileName={fileName} contentType={contentType} />
