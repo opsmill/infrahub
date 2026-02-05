@@ -11,15 +11,10 @@ import { TasksTab } from "./tasks-tab";
 
 export interface ProposedChangeTabsProps {
   sourceBranch: string;
-  tasksCount: number;
   proposedChangeId: string;
 }
 
-export function ProposedChangeTabs({
-  sourceBranch,
-  tasksCount,
-  proposedChangeId,
-}: ProposedChangeTabsProps) {
+export function ProposedChangeTabs({ sourceBranch, proposedChangeId }: ProposedChangeTabsProps) {
   return (
     <ScrollArea
       scrollX
@@ -34,7 +29,7 @@ export function ProposedChangeTabs({
         <ArtifactsTab sourceBranch={sourceBranch} />
         <SchemaTab sourceBranch={sourceBranch} />
         <ChecksTab proposedChangeId={proposedChangeId} />
-        <TasksTab tasksCount={tasksCount} />
+        <TasksTab proposedChangeId={proposedChangeId} />
       </Row>
     </ScrollArea>
   );

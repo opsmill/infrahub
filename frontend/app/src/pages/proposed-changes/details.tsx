@@ -104,7 +104,7 @@ export function Component() {
     return <LoadingIndicator className="h-full" />;
   }
 
-  const { proposedChangeData, tasksCount, metadata } = data ?? {};
+  const { proposedChangeData, metadata } = data ?? {};
 
   if (error || !proposedChangeData) {
     return (
@@ -142,7 +142,7 @@ export function Component() {
         description={
           <div className="inline-flex items-center gap-1 text-xs">
             <Link
-              to={getObjectDetailsUrl(metadata?.created_by?.__typename, metadata?.created_by?.id)}
+              to={getObjectDetailsUrl(metadata?.created_by?.__typename!, metadata?.created_by?.id)}
               className="font-semibold text-custom-blue-green"
             >
               {metadata?.created_by ? getNodeLabel(metadata.created_by) : ""}
@@ -180,7 +180,6 @@ export function Component() {
 
       <ProposedChangeTabs
         sourceBranch={proposedChangeData.source_branch?.value!}
-        tasksCount={tasksCount ?? 0}
         proposedChangeId={proposedChangeId}
       />
 
