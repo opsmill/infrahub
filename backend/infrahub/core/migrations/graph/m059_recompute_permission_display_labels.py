@@ -52,6 +52,7 @@ MATCH (n:Node {kind: $permission_kind})-[e:IS_PART_OF]->(:Root)
 WHERE e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
+AND NOT exists((n)-[:IS_PART_OF {branch: e.branch, status: "deleted"}]->(:Root))
 WITH DISTINCT n
 // Get action attribute value
 CALL (n) {
@@ -77,6 +78,7 @@ MATCH (n:Node {kind: $permission_kind})-[e:IS_PART_OF]->(:Root)
 WHERE e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
+AND NOT exists((n)-[:IS_PART_OF {branch: e.branch, status: "deleted"}]->(:Root))
 WITH DISTINCT n
 // Get namespace attribute value
 CALL (n) {
