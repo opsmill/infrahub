@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 
 import { Col, Row } from "@/shared/components/container";
+import {
+  getViewerType,
+  type TextContentType,
+  type ViewerType,
+} from "@/shared/components/data-viewer/types";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { CsvTable } from "@/shared/components/editor/csv-table";
@@ -9,22 +14,13 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 import { getFileIcon } from "@/shared/utils/file";
 
-import { getViewerType, type TextContentType, type ViewerType } from "./types";
-
 export interface DataViewerProps {
-  /** The content string to display */
   data: string;
-  /** File name used for download operations */
   fileName?: string;
-  /** MIME content type - determines rendering mode */
   contentType?: string;
-  /** Custom title to display in header (overrides auto-detected title) */
   title?: string;
-  /** Direct URL for downloading the file (used for binary files) */
   downloadUrl?: string;
-  /** Custom action buttons to display in header */
   actions?: ReactNode;
-  /** Additional CSS classes */
   className?: string;
 }
 
