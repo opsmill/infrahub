@@ -64,6 +64,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           storageId={artifact.storage_id.value}
           fileName={`${artifactId}.${extension}`}
           contentType={contentType}
+          className="m-1 grow overflow-hidden"
         />
       </Content.Card>
       <Card className="min-w-90 overflow-auto p-0">
