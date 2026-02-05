@@ -40,7 +40,7 @@ const TEXT_CONTENT_TYPES: TextContentType[] = [
 
 export function getViewerType(contentType?: string): ViewerType {
   if (!contentType) {
-    return { type: "unsupported" };
+    return { type: "text", textContentType: "text/plain" };
   }
 
   if (TEXT_CONTENT_TYPES.includes(contentType as TextContentType)) {

@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,

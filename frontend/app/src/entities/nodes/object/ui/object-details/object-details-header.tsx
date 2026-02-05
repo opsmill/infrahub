@@ -1,9 +1,9 @@
 import { RefreshCwIcon } from "lucide-react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { Button } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";

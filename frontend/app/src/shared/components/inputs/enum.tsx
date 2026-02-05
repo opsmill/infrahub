@@ -2,11 +2,11 @@ import { Icon } from "@iconify-icon/react";
 import React, { forwardRef, useState } from "react";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,

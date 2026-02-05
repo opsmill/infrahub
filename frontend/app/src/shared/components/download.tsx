@@ -31,9 +31,7 @@ export function Download({
   if (downloadUrl) {
     if (!isUrlSafe(downloadUrl)) {
       console.error(`Download: unsafe URL scheme rejected: ${downloadUrl}`);
-      return (
-        <Link isDisabled aria-label={`Download ${fileName} (unavailable)`} {...props} />
-      );
+      return <Link isDisabled aria-label={`Download ${fileName} (unavailable)`} {...props} />;
     }
 
     return (

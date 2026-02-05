@@ -41,7 +41,9 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
   }
 
   const contentType = artifact.content_type.value;
-  const extension = TEXT_CONTENT_TYPE_CONFIG[contentType as TextContentType]?.extension ?? "txt";
+  const extension =
+    TEXT_CONTENT_TYPE_CONFIG[contentType as TextContentType]?.extension ??
+    TEXT_CONTENT_TYPE_CONFIG["text/plain"];
 
   return (
     <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">

@@ -26,7 +26,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 
-import { Button } from "../../../../shared/components/buttons/button-primitive";
+import { Button } from "../../../../shared/components/ui/button";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 

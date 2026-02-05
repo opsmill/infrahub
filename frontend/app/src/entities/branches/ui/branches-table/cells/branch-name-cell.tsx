@@ -2,8 +2,8 @@ import type { PressEvent } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Checkbox } from "@/shared/components/aria/checkbox";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
+import { LinkButton } from "@/shared/components/ui/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";

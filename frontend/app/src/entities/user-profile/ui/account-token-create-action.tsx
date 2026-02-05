@@ -4,10 +4,10 @@ import { Heading } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Modal } from "@/shared/components/aria/modal";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
 import SlideOver from "@/shared/components/display/slide-over";
+import { Button } from "@/shared/components/ui/button";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";

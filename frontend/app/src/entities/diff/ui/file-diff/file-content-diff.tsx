@@ -5,7 +5,6 @@ import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 
-import { Button } from "@/shared/components/buttons/button";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -23,6 +22,7 @@ import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
+import { Button } from "react-aria-components";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
@@ -326,10 +326,10 @@ export function FileContentDiff({
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
+            className="absolute top-1/2 left-1/2 z-10 inline-flex w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-gray-200 p-1"
             onClick={handleClick}
           >
-            <PencilLineIcon className="h-3 w-3" />
+            <PencilLineIcon className="size-3.5" />
           </Button>
         )}
       </>
