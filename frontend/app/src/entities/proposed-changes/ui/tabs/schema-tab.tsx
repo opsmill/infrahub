@@ -8,7 +8,7 @@ export interface SchemaTabProps {
 }
 
 export function SchemaTab({ sourceBranch }: SchemaTabProps) {
-  const { isPending, data } = useGetDiffSummary({
+  const { isPending, data, error } = useGetDiffSummary({
     branch: sourceBranch,
     filters: {
       namespace: { includes: ["Schema"], excludes: ["Profile"] },
@@ -16,7 +16,7 @@ export function SchemaTab({ sourceBranch }: SchemaTabProps) {
     },
   });
 
-  const count = (data?.num_added ?? 0) + (data?.num_updated ?? 0) + (data?.num_removed ?? 0);
+  const count = !error && data ? data.num_added + data.num_updated + data.num_removed : undefined;
 
   return (
     <ProposedChangeTab

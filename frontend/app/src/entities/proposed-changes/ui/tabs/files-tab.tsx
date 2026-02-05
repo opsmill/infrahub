@@ -8,9 +8,10 @@ export interface FilesTabProps {
 }
 
 export function FilesTab({ sourceBranch }: FilesTabProps) {
-  const { isPending, data } = useGetFilesDiff({ branchName: sourceBranch });
+  const { isPending, data, error } = useGetFilesDiff({ branchName: sourceBranch });
 
-  const count = data?.reduce((acc, repo) => acc + (repo.files?.length ?? 0), 0) ?? 0;
+  const count =
+    !error && data ? data.reduce((acc, repo) => acc + (repo.files?.length ?? 0), 0) : undefined;
 
   return (
     <ProposedChangeTab

@@ -8,13 +8,15 @@ export interface ChecksTabProps {
 }
 
 export function ChecksTab({ proposedChangeId }: ChecksTabProps) {
-  const { isPending, data: validators } = useGetValidatorsQuery({ proposedChangeId });
+  const { isPending, data: validators, error } = useGetValidatorsQuery({ proposedChangeId });
+
+  const count = !error && validators ? validators.length : undefined;
 
   return (
     <ProposedChangeTab
       tabId={DIFF_TABS.CHECKS}
       label="Checks"
-      count={validators?.length}
+      count={count}
       isCountLoading={isPending}
     />
   );

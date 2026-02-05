@@ -8,9 +8,10 @@ export interface ArtifactsTabProps {
 }
 
 export function ArtifactsTab({ sourceBranch }: ArtifactsTabProps) {
-  const { isPending, data } = useGetArtifactsDiff({ branch: sourceBranch });
+  const { isPending, data, error } = useGetArtifactsDiff({ branch: sourceBranch });
 
-  const count = data?.filter((artifact) => artifact.action !== "unchanged").length ?? 0;
+  const count =
+    !error && data ? data.filter((artifact) => artifact.action !== "unchanged").length : undefined;
 
   return (
     <ProposedChangeTab
