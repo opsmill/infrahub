@@ -1,10 +1,10 @@
 /**
- * Text MIME content types for DataViewer component.
- * Used to determine how content is rendered (code viewer, markdown, SVG, etc.)
+ * Text MIME content types that render as code/text.
  */
 export type TextContentType =
   | "application/json"
   | "application/yaml"
+  | "application/x-yaml"
   | "application/hcl"
   | "application/graphql"
   | "image/svg+xml"
@@ -14,21 +14,30 @@ export type TextContentType =
   | "text/csv";
 
 /**
- * Viewer type determined from content type.
- * - text: Renderable text content (code, markdown, csv, svg)
- * - image: Binary image content (png, jpeg, gif, etc.)
- * - pdf: PDF document
- * - unsupported: Content type not supported for preview
+ * Image MIME content types that render as images.
  */
-export type ViewerType =
-  | { type: "text"; textContentType: TextContentType }
-  | { type: "image"; imageContentType: string }
-  | { type: "pdf" }
-  | { type: "unsupported" };
+export type ImageContentType =
+  | "image/png"
+  | "image/jpeg"
+  | "image/gif"
+  | "image/webp"
+  | "image/bmp"
+  | "image/x-icon";
+
+/**
+ * PDF MIME content type.
+ */
+export type PdfContentType = "application/pdf";
+
+/**
+ * All supported content types for DataViewer.
+ */
+export type DataViewerContentType = TextContentType | ImageContentType | PdfContentType;
 
 const TEXT_CONTENT_TYPES: TextContentType[] = [
   "application/json",
   "application/yaml",
+  "application/x-yaml",
   "application/hcl",
   "application/graphql",
   "image/svg+xml",
@@ -38,34 +47,61 @@ const TEXT_CONTENT_TYPES: TextContentType[] = [
   "text/csv",
 ];
 
-export function getViewerType(contentType?: string): ViewerType {
-  if (!contentType) {
-    return { type: "text", textContentType: "text/plain" };
-  }
+const IMAGE_CONTENT_TYPES: ImageContentType[] = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/x-icon",
+];
 
-  if (TEXT_CONTENT_TYPES.includes(contentType as TextContentType)) {
-    return { type: "text", textContentType: contentType as TextContentType };
-  }
+export function isTextContentType(contentType?: string): contentType is TextContentType {
+  return TEXT_CONTENT_TYPES.includes(contentType as TextContentType);
+}
 
-  // Common YAML variation
-  if (contentType === "application/x-yaml") {
-    return { type: "text", textContentType: "application/yaml" };
-  }
+export function isImageContentType(contentType?: string): contentType is ImageContentType {
+  return IMAGE_CONTENT_TYPES.includes(contentType as ImageContentType);
+}
 
-  // Other text/* types fallback to plain text
-  if (contentType.startsWith("text/")) {
-    return { type: "text", textContentType: "text/plain" };
-  }
+export function isPdfContentType(contentType?: string): contentType is PdfContentType {
+  return contentType === "application/pdf";
+}
 
-  // Images (except SVG which is handled above as text)
-  if (contentType.startsWith("image/")) {
-    return { type: "image", imageContentType: contentType };
+export function getExtensionFromContentType(contentType?: string): string {
+  switch (contentType) {
+    case "application/json":
+      return "json";
+    case "application/yaml":
+    case "application/x-yaml":
+      return "yaml";
+    case "application/hcl":
+      return "hcl";
+    case "application/graphql":
+      return "graphql";
+    case "application/xml":
+      return "xml";
+    case "image/svg+xml":
+      return "svg";
+    case "text/markdown":
+      return "md";
+    case "text/csv":
+      return "csv";
+    case "application/pdf":
+      return "pdf";
+    case "image/png":
+      return "png";
+    case "image/jpeg":
+      return "jpg";
+    case "image/gif":
+      return "gif";
+    case "image/webp":
+      return "webp";
+    case "image/bmp":
+      return "bmp";
+    case "image/x-icon":
+      return "ico";
+    default:
+      return "txt";
   }
-
-  // PDF
-  if (contentType === "application/pdf") {
-    return { type: "pdf" };
-  }
-
-  return { type: "unsupported" };
 }
