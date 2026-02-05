@@ -1,4 +1,4 @@
-import type { GetTasksHomepageParams } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
+import type { GetTasksHomepageParams } from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage.query";
 
 export const tasksQueryKeys = {
   all: ["tasks"] as const,
