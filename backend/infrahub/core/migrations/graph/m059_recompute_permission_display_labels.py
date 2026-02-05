@@ -36,18 +36,17 @@ class GetPermissionAttributesQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    def __init__(self, permission_kind: str, is_branch_agnostic: bool = False, **kwargs: Any) -> None:
+    def __init__(self, permission_kind: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.permission_kind = permission_kind
-        self.is_branch_agnostic = is_branch_agnostic
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params = {
             "permission_kind": self.permission_kind,
-            "branch_names": [GLOBAL_BRANCH_NAME] if self.is_branch_agnostic else [registry.default_branch],
+            "branch_names": [GLOBAL_BRANCH_NAME] if self.branch_agnostic else [registry.default_branch],
         }
 
-        if self.is_branch_agnostic:
+        if self.branch_agnostic:
             query = """
 MATCH (n:Node {kind: $permission_kind})-[e:IS_PART_OF]->(:Root)
 WHERE e.branch IN $branch_names
@@ -115,7 +114,7 @@ RETURN n.uuid AS node_uuid, namespace_value, name_value, action_value, decision_
             """
 
         self.add_to_query(query)
-        if self.is_branch_agnostic:
+        if self.branch_agnostic:
             self.return_labels = ["node_uuid", "action_value", "decision_value"]
         else:
             self.return_labels = ["node_uuid", "namespace_value", "name_value", "action_value", "decision_value"]
