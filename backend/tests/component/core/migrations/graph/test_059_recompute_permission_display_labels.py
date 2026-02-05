@@ -10,11 +10,13 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m059_recompute_permission_display_labels import Migration059
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreObjectPermission
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -22,12 +24,10 @@ class TestMigration059(TestInfrahubApp):
     async def get_display_label_from_db(
         self, db: InfrahubDatabase, branch: Branch, node_ids: list[str]
     ) -> dict[str, str | None]:
-        query = await NodeListGetAttributeQuery.init(
-            db=db, ids=node_ids, fields={"display_label": {True}}, branch=branch
-        )
+        query = await NodeListGetAttributeQuery.init(db=db, ids=node_ids, fields={"display_label": True}, branch=branch)
         await query.execute(db=db)
         node_attributes_map = query.get_attributes_group_by_node()
-        result_map = {}
+        result_map: dict[str, str | None] = {}
         for node_id in node_ids:
             if node_id not in node_attributes_map:
                 result_map[node_id] = None
@@ -46,7 +46,7 @@ class TestMigration059(TestInfrahubApp):
 
     @pytest.fixture
     async def permissions_dataset(
-        self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+        self, db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch
     ) -> dict[str, tuple[Node, str]]:
         permissions: dict[str, tuple[Node, str]] = {}
 
@@ -87,15 +87,15 @@ class TestMigration059(TestInfrahubApp):
             expected = f"object:Core:Decision{decision.value}:view:{decision_name}"
             permissions[perm.id] = (perm, expected)
 
-        for action, decision, decision_name in [
+        for global_action, decision, decision_name in [
             (GlobalPermissions.MANAGE_ACCOUNTS, PermissionDecision.ALLOW_ALL, "allow_all"),
             (GlobalPermissions.MERGE_BRANCH, PermissionDecision.DENY, "deny"),
             (GlobalPermissions.MANAGE_SCHEMA, PermissionDecision.ALLOW_DEFAULT, "allow_default"),
         ]:
             perm = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-            await perm.new(db=db, action=action.value, decision=decision.value)
+            await perm.new(db=db, action=global_action.value, decision=decision.value)
             await perm.save(db=db)
-            expected = f"global:{action.value}:{decision_name}"
+            expected = f"global:{global_action.value}:{decision_name}"
             permissions[perm.id] = (perm, expected)
 
         return permissions
@@ -145,7 +145,7 @@ class TestMigration059(TestInfrahubApp):
         assert first_values == second_values
 
     async def test_migration_059_execute_against_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
         obj_perm = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
         await obj_perm.new(
@@ -160,7 +160,9 @@ class TestMigration059(TestInfrahubApp):
 
         test_branch = await create_branch(db=db, branch_name="test-branch-m059")
 
-        obj_perm_branch = await NodeManager.get_one(db=db, id=obj_perm.id, branch=test_branch)
+        obj_perm_branch = await NodeManager.get_one(
+            db=db, kind=CoreObjectPermission, id=obj_perm.id, branch=test_branch, raise_on_error=True
+        )
         obj_perm_branch.namespace.value = "Net"
         await obj_perm_branch.save(db=db)
 
