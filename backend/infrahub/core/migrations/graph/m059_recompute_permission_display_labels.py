@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from rich.progress import Progress, TaskID
@@ -27,6 +28,26 @@ if TYPE_CHECKING:
 
 
 console = get_migration_console()
+
+
+@dataclass
+class GlobalPermissionAttributes:
+    """Attributes for a GlobalPermission node."""
+
+    node_uuid: str
+    action: str | None
+    decision: int | None
+
+
+@dataclass
+class ObjectPermissionAttributes:
+    """Attributes for an ObjectPermission node."""
+
+    node_uuid: str
+    namespace: str | None
+    name: str | None
+    action: str | None
+    decision: int | None
 
 
 class GetPermissionAttributesQuery(Query):
@@ -121,8 +142,29 @@ RETURN n.uuid AS node_uuid, namespace_value, name_value, action_value, decision_
         else:
             self.return_labels = ["node_uuid", "namespace_value", "name_value", "action_value", "decision_value"]
 
-    def get_results_as_dicts(self) -> list[dict[str, Any]]:
-        return [{label: result.get(label) for label in self.return_labels} for result in self.get_results()]
+    def get_global_permission_results(self) -> list[GlobalPermissionAttributes]:
+        """Return results as GlobalPermissionAttributes dataclasses."""
+        return [
+            GlobalPermissionAttributes(
+                node_uuid=result.get_as_type("node_uuid", return_type=str),
+                action=result.get_as_str("action_value"),
+                decision=result.get_as_type("decision_value", return_type=int),
+            )
+            for result in self.get_results()
+        ]
+
+    def get_object_permission_results(self) -> list[ObjectPermissionAttributes]:
+        """Return results as ObjectPermissionAttributes dataclasses."""
+        return [
+            ObjectPermissionAttributes(
+                node_uuid=result.get_as_type("node_uuid", return_type=str),
+                namespace=result.get_as_str("namespace_value"),
+                name=result.get_as_str("name_value"),
+                action=result.get_as_str("action_value"),
+                decision=result.get_as_type("decision_value", return_type=int),
+            )
+            for result in self.get_results()
+        ]
 
 
 class GetPermissionAttributesBranchQuery(Query):
@@ -234,8 +276,18 @@ RETURN n.uuid AS node_uuid, namespace_value, name_value, action_value, decision_
         self.add_to_query(query)
         self.return_labels = ["node_uuid", "namespace_value", "name_value", "action_value", "decision_value"]
 
-    def get_results_as_dicts(self) -> list[dict[str, Any]]:
-        return [{label: result.get(label) for label in self.return_labels} for result in self.get_results()]
+    def get_object_permission_results(self) -> list[ObjectPermissionAttributes]:
+        """Return results as ObjectPermissionAttributes dataclasses."""
+        return [
+            ObjectPermissionAttributes(
+                node_uuid=result.get_as_type("node_uuid", return_type=str),
+                namespace=result.get_as_str("namespace_value"),
+                name=result.get_as_str("name_value"),
+                action=result.get_as_str("action_value"),
+                decision=result.get_as_type("decision_value", return_type=int),
+            )
+            for result in self.get_results()
+        ]
 
 
 class Migration059(MigrationRequiringRebase):
@@ -263,27 +315,30 @@ class Migration059(MigrationRequiringRebase):
         query: GetPermissionAttributesQuery | GetPermissionAttributesBranchQuery
         if branch.is_default:
             query = await GetPermissionAttributesQuery.init(
-                db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, is_branch_agnostic=False
+                db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, branch_agnostic=False
             )
         else:
             query = await GetPermissionAttributesBranchQuery.init(
                 db=db, branch=branch, permission_kind=InfrahubKind.OBJECTPERMISSION
             )
         await query.execute(db=db)
-        results = query.get_results_as_dicts()
+        results = query.get_object_permission_results()
 
         if not results:
             return
 
         values_by_id: dict[str, str] = {}
+        jinja_template = InfrahubJinja2Template(template=core_object_permission.display_label)
 
         for row in results:
-            node_uuid = row["node_uuid"]
+            if row.namespace is None or row.name is None or row.action is None or row.decision is None:
+                continue
+
             variables = {
-                "namespace__value": row.get("namespace_value"),
-                "name__value": row.get("name_value"),
-                "action__value": row.get("action_value"),
-                "decision__value": row.get("decision_value"),
+                "namespace__value": row.namespace,
+                "name__value": row.name,
+                "action__value": row.action,
+                "decision__value": row.decision,
             }
 
             if any(v is None for v in variables.values()):
@@ -319,34 +374,29 @@ class Migration059(MigrationRequiringRebase):
             return
 
         query = await GetPermissionAttributesQuery.init(
-            db=db, permission_kind=InfrahubKind.GLOBALPERMISSION, is_branch_agnostic=True
+            db=db, permission_kind=InfrahubKind.GLOBALPERMISSION, branch_agnostic=True
         )
         await query.execute(db=db)
-        results = query.get_results_as_dicts()
+        results = query.get_global_permission_results()
 
         if not results:
             return
 
         values_by_id: dict[str, str] = {}
+        jinja_template = InfrahubJinja2Template(template=core_global_permission.display_label)
 
         for row in results:
-            node_uuid = row["node_uuid"]
-            variables = {"action__value": row.get("action_value"), "decision__value": row.get("decision_value")}
-
-            if any(v is None for v in variables.values()):
+            if row.action is None or row.decision is None:
                 continue
 
-            jinja_template = InfrahubJinja2Template(template=core_global_permission.display_label)
-            rendered = await jinja_template.render(variables=variables)
-            if rendered is not None:
-                values_by_id[node_uuid] = rendered
+            variables = {"action__value": row.action, "decision__value": row.decision}
 
         if values_by_id:
+            global_branch = await Branch.get_by_name(db=db, name=GLOBAL_BRANCH_NAME)
             for offset in range(0, len(values_by_id), self.update_batch_size):
                 batch_ids = list(values_by_id.keys())[offset : offset + self.update_batch_size]
                 batch_map = {k: values_by_id[k] for k in batch_ids}
 
-                global_branch = await Branch.get_by_name(db=db, name=GLOBAL_BRANCH_NAME)
                 update_query = await UpdateAttributeValuesQuery.init(
                     db=db, branch=global_branch, attribute_schema=attribute_schema, values_by_id_map=batch_map
                 )
@@ -367,16 +417,16 @@ class Migration059(MigrationRequiringRebase):
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
 
         obj_count_query = await GetPermissionAttributesQuery.init(
-            db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, is_branch_agnostic=False
+            db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, branch_agnostic=False
         )
         await obj_count_query.execute(db=db)
-        obj_permission_count = len(obj_count_query.get_results_as_dicts())
+        obj_permission_count = len(obj_count_query.get_object_permission_results())
 
         global_count_query = await GetPermissionAttributesQuery.init(
-            db=db, permission_kind=InfrahubKind.GLOBALPERMISSION, is_branch_agnostic=True
+            db=db, permission_kind=InfrahubKind.GLOBALPERMISSION, branch_agnostic=True
         )
         await global_count_query.execute(db=db)
-        global_permission_count = len(global_count_query.get_results_as_dicts())
+        global_permission_count = len(global_count_query.get_global_permission_results())
 
         total_count = obj_permission_count + global_permission_count
 
