@@ -9,15 +9,28 @@ class EnrichedDiffDeleteQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, enriched_diff_root_uuids: list[str] | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        enriched_diff_root_uuids: list[str] | None = None,
+        include_frozen: bool = False,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self.enriched_diff_root_uuids = enriched_diff_root_uuids
+        self.include_frozen = include_frozen
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        diff_filter = ""
+        diff_filters = []
+        self.params = {}
         if self.enriched_diff_root_uuids:
-            self.params = {"diff_root_uuids": self.enriched_diff_root_uuids}
-            diff_filter = "WHERE d_root.uuid IN $diff_root_uuids"
+            self.params["diff_root_uuids"] = self.enriched_diff_root_uuids
+            diff_filters.append("d_root.uuid IN $diff_root_uuids")
+        if not self.include_frozen:
+            diff_filters.append("(d_root.is_frozen IS NULL OR d_root.is_frozen <> TRUE)")
+
+        diff_filter = ""
+        if diff_filters:
+            diff_filter = "WHERE " + " AND ".join(diff_filters)
 
         query = """
 MATCH (d_root:DiffRoot)

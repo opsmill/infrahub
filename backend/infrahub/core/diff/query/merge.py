@@ -39,6 +39,7 @@ class DiffMergeQuery(Query):
             "branch_level": self.target_branch.hierarchy_level,
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
+            "global_branch": GLOBAL_BRANCH_NAME,
             "migrated_kinds_id_map": self.migrated_kinds_id_map,
             "migrated_kinds_uuids": list(self.migrated_kinds_id_map.keys()),
         }
@@ -270,7 +271,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             CALL (rel_peer_id, rel_peer_db_id) {
                 MATCH (rel_peer:Node {uuid: rel_peer_id})-[target_is_part_of:IS_PART_OF]->(:Root)
                 WHERE (rel_peer_db_id IS NULL OR elementId(rel_peer) = rel_peer_db_id)
-                AND target_is_part_of.branch IN [$source_branch, $target_branch]
+                AND target_is_part_of.branch IN [$source_branch, $target_branch, $global_branch]
                 RETURN rel_peer
                 ORDER BY target_is_part_of.branch_level DESC, target_is_part_of.from DESC, target_is_part_of.status ASC
                 LIMIT 1

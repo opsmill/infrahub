@@ -5,11 +5,7 @@ import { useState } from "react";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  Button,
-  ButtonWithTooltip,
-  LinkButton,
-} from "@/shared/components/buttons/button-primitive";
+import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
   Command,
@@ -48,7 +44,7 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-[205px] rounded-lg border-neutral-200 p-0 shadow-none"
+          className="h-8 w-50 rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
         >
           <div className="inline-flex h-full grow items-center gap-1.5 truncate border-gray-200 border-r px-3">

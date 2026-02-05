@@ -165,17 +165,3 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
     </div>
   );
 };
-
-export const ListDisplay = ({ items }: { items?: string[] }) => {
-  return (
-    <div className="flex flex-col items-end space-y-1">
-      {items?.map((item, index) => {
-        return (
-          <Badge variant={"gray-outline"} key={`${item}_${index}`}>
-            {item}
-          </Badge>
-        );
-      })}
-    </div>
-  );
-};

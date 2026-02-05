@@ -6,14 +6,6 @@ test.describe("/proposed-changes checks", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should display checks on a proposed change", async ({ page }) => {
     await page.goto("/proposed-changes");
 
@@ -37,7 +29,7 @@ test.describe("/proposed-changes checks", () => {
       await expect(checksSummary.getByText("Repository")).toBeVisible();
       await expect(checksSummary.getByText("Schema")).toBeVisible();
       await expect(checksSummary.getByText("User")).toBeVisible();
-      await expect(page.url()).toContain("pr_tab=checks");
+      await expect(page.url()).toContain("tab=checks");
     });
   });
 

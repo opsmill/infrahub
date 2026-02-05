@@ -1,5 +1,5 @@
 """
-Tests for Migration 057: Link ProposedChanges to DiffRoots.
+Tests for Migration 058: Link ProposedChanges to DiffRoots.
 
 Test scenarios:
 1. DiffRoots with no appropriate proposed change - should remain unlinked
@@ -24,7 +24,7 @@ from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
-from infrahub.core.migrations.graph.m057_link_proposed_changes_to_diff_roots import Migration057
+from infrahub.core.migrations.graph.m058_link_proposed_changes_to_diff_roots import Migration058
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -33,8 +33,8 @@ from infrahub.database import InfrahubDatabase
 from tests.component.core.diff.factories import EnrichedNodeFactory, EnrichedRootFactory
 
 
-class TestMigration057:
-    """Test migration 057 that links ProposedChanges to DiffRoots."""
+class TestMigration058:
+    """Test migration 058 that links ProposedChanges to DiffRoots."""
 
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> Generator[DiffRepository, None, None]:
@@ -162,7 +162,7 @@ class TestMigration057:
         all_roots = await diff_repository.get_roots_metadata(exclude_merged=False)
         return sorted([r.uuid for r in all_roots if r.proposed_change_id is None])
 
-    async def test_migration_057_comprehensive(
+    async def test_migration_058_comprehensive(
         self,
         db: InfrahubDatabase,
         register_core_models_schema: SchemaBranch,
@@ -170,7 +170,7 @@ class TestMigration057:
         diff_repository: DiffRepository,
     ) -> None:
         """
-        Comprehensive test covering all scenarios for migration 057.
+        Comprehensive test covering all scenarios for migration 058.
         """
         # Create timestamps for testing
         base_time = Timestamp()
@@ -322,7 +322,7 @@ class TestMigration057:
         # =========================================================================
         # EXECUTE: Run the migration
         # =========================================================================
-        migration = Migration057()
+        migration = Migration058()
         await migration.execute(MigrationInput(db=db))
         result = await migration.validate_migration(db=db)
         assert result.success

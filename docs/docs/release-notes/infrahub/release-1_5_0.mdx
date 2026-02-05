@@ -91,14 +91,14 @@ In the documentation you can find [specific instructions to migrate existing sch
 
 Today, in some places in the UI, we are using the HFID of objects to display them with useful context. This was mostly done to overcome the restriction of not supporting relationships in the `display_label`. In a future release we will use the `display_label` for this instead.
 
-## Refactor profiles
+## Refactor Profiles
 
 Profiles have been reworked for performance and future flexibility.
-Previously, attribute values derived from profiles were resolved dynamically at read time, which could impact performance at scale. With 1.5.0:
+Previously, attribute values derived from Profiles were resolved dynamically at read time, which could impact performance at scale. With 1.5.0:
 
-- Attribute values influenced by profiles are now computed and stored at write time (create/update object or profile).
+- Attribute values influenced by Profiles are now computed and stored at write time (create/update object or Profile).
 - Reads no longer have to compute derived values, improving query performance and predictability.
-- This refactor lays groundwork to expand profile capabilities, such as adding relationships to profiles in future versions of Infrahub.
+- This refactor lays groundwork to expand Profile capabilities, such as adding relationships to Profiles in future versions of Infrahub.
 
 ## Memory optimizations
 

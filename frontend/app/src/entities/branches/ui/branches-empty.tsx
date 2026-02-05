@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import useFilters from "@/shared/hooks/useFilters";
 
 export function BranchesEmpty() {

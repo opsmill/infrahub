@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { useQueryState } from "nuqs";
-import { useRef } from "react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
@@ -31,7 +30,6 @@ export function ObjectDetailsTabContent({
 
   const [qspTab] = useQueryState(QSP.TAB);
   const [qspTaskId] = useQueryState(QSP.TASK_ID);
-  const refetchRef = useRef(null);
 
   if (!qspTab) {
     return null;
@@ -42,7 +40,7 @@ export function ObjectDetailsTabContent({
   }
 
   if (qspTab === TASK_TAB && !qspTaskId) {
-    return <TaskItems ref={refetchRef} hideRelatedNode />;
+    return <TaskItems relatedNodeId={objectDetailsData.id} />;
   }
 
   if (qspTab === TASK_TAB && qspTaskId) {
@@ -61,7 +59,7 @@ export function ObjectDetailsTabContent({
           </Link>
         </div>
 
-        <TaskItemDetails ref={refetchRef} />
+        <TaskItemDetails />
       </>
     );
   }

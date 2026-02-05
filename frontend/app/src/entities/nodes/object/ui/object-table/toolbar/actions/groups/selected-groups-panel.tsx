@@ -1,6 +1,6 @@
 import { ListBox } from "react-aria-components";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 
 import {
   GroupPanelBody,

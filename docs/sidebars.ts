@@ -237,6 +237,7 @@ const sidebars: SidebarsConfig = {
                 'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
+                'topics/schema-extensions',
                 'topics/labels',
               ],
             },
@@ -402,7 +403,8 @@ const sidebars: SidebarsConfig = {
             'development/frontend/testing-guidelines',
           ],
         },
-        'development/docs'
+        'development/docs',
+        'development/style-guide'
       ],
     },
     {
@@ -421,6 +423,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_7_4',
             'release-notes/infrahub/release-1_7_3',
             'release-notes/infrahub/release-1_7_2',
             'release-notes/infrahub/release-1_7_1',

@@ -134,7 +134,7 @@ Infrahub uses [Vale](https://vale.sh) to check grammar, style, and word usage. Y
 
 [Markdownlint](https://github.com/DavidAnson/markdownlint) is used to encourage consistent markdown files, and Infrahub's configuration is located at `.markdownlint.yaml`.
 
-Most Vale warnings match up with the [style guide](#style-guide) explanations below. Other warnings often fall into the `Infrahub.spelling` rule. These are caused by misspellings, product names, names of people, or otherwise unknown technical terms. See the [procedures for updating rules](#spelling-errors) below for details on adding terms to the approved list.
+Most Vale warnings match up with the [style guide](./style-guide.mdx) explanations. Other warnings often fall into the `Infrahub.spelling` rule. These are caused by misspellings, product names, names of people, or otherwise unknown technical terms. See the [procedures for updating rules](#spelling-errors) below for details on adding terms to the approved list.
 
 ### Install VS Code linting extensions
 
@@ -365,130 +365,6 @@ You can also organize your screenshots using folders, by specifying the folder n
 ```ts
 await saveScreenshotForDocs(page, "my-folder/my-screenshot-name" );
 ```
-
-## Style guide
-
-As a general rule, prefer consistency and simplicity when possible. This guide should help in making choices, but it is a living document and should evolve as the needs of the project evolve. For anything not answered below, reference the [Microsoft Style Guide](https://learn.microsoft.com/en-us/style-guide/welcome/).
-
-General tips:
-<!-- vale off -->
-- Avoid words like *easy*, *just*, or *simple* to describe how to do something or how "easy" a task is.
-<!-- vale on -->
-- If a sentence looks too long, it probably is. Try and simplify it or break it into multiple sentences.
-- Avoid jargon unless you are sure the reader knows the term.
-- Don't hesitate to link between pages and concepts.
-- Avoid repeating information when possible, and instead link out to topic or reference pages.
-
-### Language
-
-We use American English for most standard text. Unique technical terms are [included below](#common-external-words), or in the [Microsoft A-Z word list](https://learn.microsoft.com/en-us/style-guide/welcome/).
-
-### Trailing commas
-
-Use a trailing comma when listing multiple items. This is commonly known as the Oxford comma or serial comma.
-
-**:x: Don't do this:** There are devices, organizations, and users.
-
-**:white_check_mark: Do this:** There are devices, organizations, and users.
-
-### Headings and titles
-
-Headings and titles should capitalize the first word only and end with no punctuation. The exception being any proper noun.
-
-**:x: Don't do this**: Getting Started!
-
-**:white_check_mark: Do this**: Getting started
-
-Every page should have a top-level heading. Additional heading tiers can only exist if a higher tier has been used.
-
-**:x: Don't do this**:
-
-```markdown
-<!-- This is missing an h2 -->
-# Page title
-
-### Smaller heading
-```
-
-### Avoid over-capitalization
-
-It is tempting to want to capitalize all feature names. Unless the term is a named marketing feature, avoid capitalization.
-
-**:x: Don't do this**: Git Repository, API Server, User Management
-
-**:white_check_mark: Do this**: Git repository, API server, user management
-
-### Lists
-
-Capitalize the first letter of each list item. If an item is a complete sentence, give it a period at the end. If it's not, it is okay to omit punctuation. The [Microsoft Style Guide](https://learn.microsoft.com/en-us/style-guide/scannable-content/lists) has a good explanation of how to handle list punctuation.
-
-When listing items and descriptions, prefer the use of a colon (:) instead of a dash (-).
-
-```markdown
-<!-- Don't do this -->
-- Not - this
-- Or - this
-
-<!-- Do this -->
-- Do: this
-- And: this
-```
-
-### Colons
-
-Avoid extra spaces before a colon.
-
-```markdown
-<!-- Don't do this -->
-Feature : Explanation of feature
-
-<!-- Do this -->
-
-Feature: Explanation of feature
-```
-
-### Code blocks
-
-When creating a code block or snippet with three backticks, make sure to include a language designation.
-<!-- markdownlint-disable -->
-~~~md
-```shell
-this is a shell script
-```
-~~~
-<!-- markdownlint-restore -->
-
-### Marking code items
-
-Sometimes you need to mention a `function` or `ModelName`. To do so, use the inline code backticks in markdown.
-
-### Excalidraw diagrams
-
-You can attach `.excalidraw` diagrams to visually explain concepts, workflows, or processes within the documentation.
-
-:::warning
-Always save Excalidraw files with the "Embed Scene" option checked to maintain the ability to edit in VS Code.
-:::
-
-### Use i.e. for examples
-
-Prefer `i.e.` over `e.g.` or `ex.`. In a sentence, `i.e.` is surrounded by commas.
-
-For example: *Select the current branch, i.e., 'main'.*
-
-It's also acceptable and clearer to use "for example" or "such as".
-
-### Common external words
-
-Refer to external brand guidelines for capitalization rules. Here are some common spellings and uses for brands found in the Infrahub docs. Additional terms can be found in `.vale/styles/Infrahub/branded-terms-case-swap.yml`.
-
-- GitHub
-- GitLab
-- Git
-- RabbitMQ
-- GraphQL
-- MacOS
-- Linux
 
 ## Documentation release checklist
 

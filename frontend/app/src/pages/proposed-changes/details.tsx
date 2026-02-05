@@ -15,10 +15,10 @@ import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/shared/config/co
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/entities/diff/checks/checks";
-import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
+import { ArtifactsDiff } from "@/entities/diff/ui/artifact-diff/artifacts-diff";
+import { FilesDiff } from "@/entities/diff/ui/file-diff/files-diff";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -49,9 +49,9 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
 
   switch (qspTab) {
     case DIFF_TABS.FILES:
-      return <FilesDiff />;
+      return <FilesDiff branchName={proposedChangeData.source_branch?.value!} />;
     case DIFF_TABS.ARTIFACTS:
-      return <ArtifactsDiff />;
+      return <ArtifactsDiff branchName={proposedChangeData.source_branch?.value!} />;
     case DIFF_TABS.SCHEMA:
       return (
         <NodeDiff
@@ -73,7 +73,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
     case DIFF_TABS.CHECKS:
       return <Checks />;
     case TASK_TAB:
-      if (!qspTaskId) return <TaskItems hideRelatedNode />;
+      if (!qspTaskId) return <TaskItems relatedNodeId={proposedChangeData.id} />;
 
       return (
         <div>
