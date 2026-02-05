@@ -97,10 +97,13 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             schema_node=self.new_schema,
             attribute=self.new_attribute_schema,
             at=at,
+            user_id=migration_input.user_id,
         )
 
         # Fetch the pool object to allocate numbers
-        number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+        number_pool = await registry.manager.get_one(
+            db=db, id=pool_id, kind=CoreNumberPool, branch_agnostic=True, raise_on_error=True
+        )
 
         await update_branch_registry(db=db, branch=branch)
 

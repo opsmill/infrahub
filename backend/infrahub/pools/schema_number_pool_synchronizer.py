@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, NumberPoolType
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
@@ -54,17 +55,18 @@ class SchemaNumberPoolSynchronizer:
         self.existing_pool_ids: set[str] = set()
         self._schema_number_pools: list[CoreNumberPool] = []
 
-    async def run(self) -> None:
+    async def run(self, user_id: str = SYSTEM_USER_ID) -> None:
         """Execute the full synchronization process."""
         await self._load_existing_pools()
-        await self._sync_existing_pools_with_schema()
-        await self._process_all_branches()
+        await self._sync_existing_pools_with_schema(user_id=user_id)
+        await self._process_all_branches(user_id=user_id)
 
     async def ensure_pool_for_attribute(
         self,
         schema_node: MainSchemaTypes,
         attribute: AttributeSchema,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> str:
         """Create or find a number pool for a specific schema attribute.
 
@@ -72,6 +74,7 @@ class SchemaNumberPoolSynchronizer:
             schema_node: The schema containing the NumberPool attribute.
             attribute: The NumberPool SchemaAttribute.
             at: Optional timestamp for pool creation (used for consistency in migrations).
+            user_id: The user ID to use for save operations.
 
         Returns:
             The pool ID for the created/found pool.
@@ -98,6 +101,7 @@ class SchemaNumberPoolSynchronizer:
             start_range=attribute.parameters.start_range,
             end_range=attribute.parameters.end_range,
             at=at,
+            user_id=user_id,
         )
 
         self.existing_pool_ids.add(pool_id)
@@ -115,23 +119,25 @@ class SchemaNumberPoolSynchronizer:
         self.existing_pool_ids = {pool.id for pool in schema_number_pools}
         self._schema_number_pools = list(schema_number_pools)
 
-    async def _sync_existing_pools_with_schema(self) -> None:
+    async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""
         for schema_number_pool in self._schema_number_pools:
             defined_on_branches = get_branches_with_schema_number_pool(
                 kind=schema_number_pool.node.value, attribute_name=schema_number_pool.node_attribute.value
             )
             if registry.default_branch in defined_on_branches:
-                await self._update_pool_from_schema(schema_number_pool)
+                await self._update_pool_from_schema(schema_number_pool, user_id=user_id)
             elif not defined_on_branches:
                 self.log.info(
                     f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema"
                 )
-                await schema_number_pool.delete(db=self.db)
+                await schema_number_pool.delete(db=self.db, user_id=user_id)
 
-    async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool) -> None:
+    async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
         """Update a pool's range parameters if they differ from the schema."""
-        schema = self.schema_manager.get(name=schema_number_pool.node.value, branch=registry.default_branch)
+        schema = self.schema_manager.get(
+            name=schema_number_pool.node.value, branch=registry.default_branch, duplicate=False
+        )
         attribute = schema.get_attribute(name=schema_number_pool.node_attribute.value)
         number_pool_updated = False
 
@@ -147,9 +153,9 @@ class SchemaNumberPoolSynchronizer:
             self.log.info(
                 f"Updating NumberPool={schema_number_pool.id} based on changes in the schema on {registry.default_branch}"
             )
-            await schema_number_pool.save(db=self.db)
+            await schema_number_pool.save(db=self.db, user_id=user_id)
 
-    async def _process_all_branches(self) -> None:
+    async def _process_all_branches(self, user_id: str) -> None:
         """Process all branches to create any missing number pools."""
         for branch_name in self.schema_manager.get_branches():
             schemas_to_update: list[str] = []
@@ -157,14 +163,14 @@ class SchemaNumberPoolSynchronizer:
 
             for generic_name in schema_branch.generic_names:
                 generic_schema = schema_branch.get_generic(name=generic_name, duplicate=False)
-                updated_schema = await self._process_schema_node(schema_node=generic_schema)
+                updated_schema = await self._process_schema_node(schema_node=generic_schema, user_id=user_id)
                 if updated_schema:
                     schema_branch.set(name=generic_schema.kind, schema=updated_schema)
                     schemas_to_update.append(generic_schema.kind)
 
             for node_name in schema_branch.node_names:
                 node_schema = schema_branch.get_node(name=node_name, duplicate=False)
-                updated_schema = await self._process_schema_node(schema_node=node_schema)
+                updated_schema = await self._process_schema_node(schema_node=node_schema, user_id=user_id)
                 if updated_schema:
                     schema_branch.set(name=node_schema.kind, schema=updated_schema)
                     schemas_to_update.append(node_schema.kind)
@@ -178,6 +184,7 @@ class SchemaNumberPoolSynchronizer:
     async def _process_schema_node(
         self,
         schema_node: NodeSchema | GenericSchema,
+        user_id: str = SYSTEM_USER_ID,
     ) -> NodeSchema | GenericSchema | None:
         """Process NumberPool attributes for a schema node, creating pools as needed.
 
@@ -194,6 +201,7 @@ class SchemaNumberPoolSynchronizer:
             actual_pool_id = await self.ensure_pool_for_attribute(
                 schema_node=schema_node,
                 attribute=attribute,
+                user_id=user_id,
             )
 
             if actual_pool_id != original_pool_id:
@@ -217,11 +225,13 @@ class SchemaNumberPoolSynchronizer:
         start_range: int,
         end_range: int,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> str:
         """Create or find an existing number pool.
 
         Args:
             at: Optional timestamp for pool creation (used for consistency in migrations).
+            user_id: The user ID to use for save operations.
 
         Returns the actual pool ID, which may be different from number_pool_id if an existing pool was found.
         """
@@ -230,13 +240,11 @@ class SchemaNumberPoolSynchronizer:
             name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
         ):
             if number_pool_id:
-                try:
+                with contextlib.suppress(NodeNotFoundError):
                     await registry.manager.get_one_by_id_or_default_filter(
                         db=self.db, id=str(number_pool_id), kind=CoreNumberPool
                     )
                     return number_pool_id
-                except NodeNotFoundError:
-                    pass
 
             else:
                 number_pool_id = str(uuid4())
@@ -265,5 +273,5 @@ class SchemaNumberPoolSynchronizer:
                 end_range=end_range,
                 pool_type=NumberPoolType.SCHEMA.value,
             )
-            await number_pool.save(db=self.db, at=at)
+            await number_pool.save(db=self.db, at=at, user_id=user_id)
             return number_pool_id

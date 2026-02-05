@@ -15,7 +15,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 )
 async def validate_schema_number_pools(
     branch_name: str,  # noqa: ARG001
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     service: InfrahubServices,
 ) -> None:
     log = get_run_logger()
@@ -24,4 +24,4 @@ async def validate_schema_number_pools(
         log=log,
         schema_manager=registry.schema,
     )
-    await synchronizer.run()
+    await synchronizer.run(user_id=context.account.account_id)
