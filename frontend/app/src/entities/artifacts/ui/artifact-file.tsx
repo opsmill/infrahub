@@ -17,7 +17,7 @@ export interface ArtifactFileProps {
 }
 
 export function ArtifactFile({ storageId, fileName, contentType, className }: ArtifactFileProps) {
-  const { data: content, isPending, error } = useGetArtifactFile({ storageId, contentType });
+  const { data, isPending, error } = useGetArtifactFile({ storageId, contentType });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
@@ -27,7 +27,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
     return <NoDataFound message={error.message} />;
   }
 
-  if (!content) {
+  if (!data) {
     return <NoDataFound message="File content is empty" />;
   }
 
@@ -35,7 +35,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
 
   return (
     <DataViewer
-      data={content}
+      data={data}
       contentType={contentType}
       className={className}
       actions={
@@ -43,8 +43,8 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
           <DataViewerLinkButton href={downloadUrl} target="_blank" rel="noopener noreferrer">
             Raw
           </DataViewerLinkButton>
-          <DataViewerDownloadButton value={content} fileName={fileName} contentType={contentType} />
-          <DataViewerCopyButton value={content} />
+          <DataViewerDownloadButton value={data} fileName={fileName} contentType={contentType} />
+          <DataViewerCopyButton value={data} />
         </>
       }
     />
