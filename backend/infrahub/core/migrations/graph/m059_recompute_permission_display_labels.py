@@ -9,6 +9,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.initialization import get_root_node
+from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
 from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
@@ -19,7 +20,6 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.schema.definitions.core.permission import core_global_permission, core_object_permission
 
 from .load_schema_branch import get_or_load_schema_branch
-from .m047_backfill_or_null_display_label import UpdateAttributeValuesQuery
 
 if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
