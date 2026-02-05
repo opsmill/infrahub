@@ -164,11 +164,11 @@ export function Component() {
           }
         />
 
-        {error && (
-          <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
+        {error ? (
+          <ErrorScreen message={error.message} />
+        ) : (
+          <NoDataFound message="No proposed changes found." />
         )}
-
-        {!proposedChangeData && <NoDataFound message="No proposed changes found." />}
       </Content.Card>
     );
   }
