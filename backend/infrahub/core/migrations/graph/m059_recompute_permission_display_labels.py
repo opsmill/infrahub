@@ -9,7 +9,7 @@ from rich.progress import Progress, TaskID
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
 from infrahub.core.migrations.shared import (
@@ -51,26 +51,18 @@ class ObjectPermissionAttributes:
     decision: int | None
 
 
-class GetPermissionAttributesQuery(Query):
-    """Get permission nodes with their attribute values for computing display_label."""
+class GetGlobalPermissionAttributesQuery(Query):
+    """Get GlobalPermission nodes with their attribute values for computing display_label."""
 
-    name = "get_permission_attributes"
+    name = "get_global_permission_attributes"
     type = QueryType.READ
     insert_return = False
 
-    def __init__(self, permission_kind: str, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.permission_kind = permission_kind
-
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        self.params = {
-            "permission_kind": self.permission_kind,
-            "branch_names": [GLOBAL_BRANCH_NAME] if self.branch_agnostic else [registry.default_branch],
-        }
+        self.params = {"branch_names": [GLOBAL_BRANCH_NAME]}
 
-        if self.branch_agnostic:
-            query = """
-MATCH (n:Node {kind: $permission_kind})-[e:IS_PART_OF]->(:Root)
+        query = """
+MATCH (n:Node {kind: "CoreGlobalPermission"})-[e:IS_PART_OF]->(:Root)
 WHERE e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
@@ -93,10 +85,34 @@ CALL (n) {
     RETURN decision_val.value AS decision_value
 }
 RETURN n.uuid AS node_uuid, action_value, decision_value
-            """
-        else:
-            query = """
-MATCH (n:Node {kind: $permission_kind})-[e:IS_PART_OF]->(:Root)
+        """
+        self.add_to_query(query)
+        self.return_labels = ["node_uuid", "action_value", "decision_value"]
+
+    def get_permission_results(self) -> list[GlobalPermissionAttributes]:
+        """Return results as GlobalPermissionAttributes dataclasses."""
+        return [
+            GlobalPermissionAttributes(
+                node_uuid=result.get_as_type("node_uuid", return_type=str),
+                action=result.get_as_str("action_value"),
+                decision=result.get_as_type("decision_value", return_type=int),
+            )
+            for result in self.get_results()
+        ]
+
+
+class GetObjectPermissionAttributesQuery(Query):
+    """Get ObjectPermission nodes with their attribute values for computing display_label (default branch)."""
+
+    name = "get_object_permission_attributes"
+    type = QueryType.READ
+    insert_return = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params = {"branch_names": [registry.default_branch]}
+
+        query = """
+MATCH (n:Node {kind: "CoreObjectPermission"})-[e:IS_PART_OF]->(:Root)
 WHERE e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
@@ -135,26 +151,11 @@ CALL (n) {
     RETURN decision_val.value AS decision_value
 }
 RETURN n.uuid AS node_uuid, namespace_value, name_value, action_value, decision_value
-            """
-
+        """
         self.add_to_query(query)
-        if self.branch_agnostic:
-            self.return_labels = ["node_uuid", "action_value", "decision_value"]
-        else:
-            self.return_labels = ["node_uuid", "namespace_value", "name_value", "action_value", "decision_value"]
+        self.return_labels = ["node_uuid", "namespace_value", "name_value", "action_value", "decision_value"]
 
-    def get_global_permission_results(self) -> list[GlobalPermissionAttributes]:
-        """Return results as GlobalPermissionAttributes dataclasses."""
-        return [
-            GlobalPermissionAttributes(
-                node_uuid=result.get_as_type("node_uuid", return_type=str),
-                action=result.get_as_str("action_value"),
-                decision=result.get_as_type("decision_value", return_type=int),
-            )
-            for result in self.get_results()
-        ]
-
-    def get_object_permission_results(self) -> list[ObjectPermissionAttributes]:
+    def get_permission_results(self) -> list[ObjectPermissionAttributes]:
         """Return results as ObjectPermissionAttributes dataclasses."""
         return [
             ObjectPermissionAttributes(
@@ -168,16 +169,12 @@ RETURN n.uuid AS node_uuid, namespace_value, name_value, action_value, decision_
         ]
 
 
-class GetPermissionAttributesBranchQuery(Query):
-    """Get permission nodes with their attribute values on a non-default branch."""
+class GetObjectPermissionAttributesBranchQuery(Query):
+    """Get ObjectPermission nodes with their attribute values on a non-default branch."""
 
-    name = "get_permission_attributes_branch"
+    name = "get_object_permission_attributes_branch"
     type = QueryType.READ
     insert_return = False
-
-    def __init__(self, permission_kind: str, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.permission_kind = permission_kind
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter_r, branch_filter_params_r = self.branch.get_query_filter_path(
@@ -186,10 +183,10 @@ class GetPermissionAttributesBranchQuery(Query):
         branch_filter_r2, branch_filter_params_r2 = self.branch.get_query_filter_path(
             at=self.at, variable_name="r2", params_prefix="r2_"
         )
-        self.params = {"permission_kind": self.permission_kind, **branch_filter_params_r, **branch_filter_params_r2}
+        self.params = {**branch_filter_params_r, **branch_filter_params_r2}
 
         query = """
-MATCH (n:Node {kind: $permission_kind})
+MATCH (n:Node {kind: "CoreObjectPermission"})
 CALL (n) {
     MATCH (n)-[r:IS_PART_OF]->(:Root)
     WHERE %(branch_filter_r)s
@@ -277,7 +274,7 @@ RETURN n.uuid AS node_uuid, namespace_value, name_value, action_value, decision_
         self.add_to_query(query)
         self.return_labels = ["node_uuid", "namespace_value", "name_value", "action_value", "decision_value"]
 
-    def get_object_permission_results(self) -> list[ObjectPermissionAttributes]:
+    def get_permission_results(self) -> list[ObjectPermissionAttributes]:
         """Return results as ObjectPermissionAttributes dataclasses."""
         return [
             ObjectPermissionAttributes(
@@ -313,17 +310,13 @@ class Migration059(MigrationRequiringRebase):
         if not core_object_permission.display_label:
             return
 
-        query: GetPermissionAttributesQuery | GetPermissionAttributesBranchQuery
+        query: GetObjectPermissionAttributesQuery | GetObjectPermissionAttributesBranchQuery
         if branch.is_default:
-            query = await GetPermissionAttributesQuery.init(
-                db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, branch_agnostic=False
-            )
+            query = await GetObjectPermissionAttributesQuery.init(db=db)
         else:
-            query = await GetPermissionAttributesBranchQuery.init(
-                db=db, branch=branch, permission_kind=InfrahubKind.OBJECTPERMISSION
-            )
+            query = await GetObjectPermissionAttributesBranchQuery.init(db=db, branch=branch)
         await query.execute(db=db)
-        results = query.get_object_permission_results()
+        results = query.get_permission_results()
 
         if not results:
             return
@@ -374,11 +367,9 @@ class Migration059(MigrationRequiringRebase):
         if not core_global_permission.display_label:
             return
 
-        query = await GetPermissionAttributesQuery.init(
-            db=db, permission_kind=InfrahubKind.GLOBALPERMISSION, branch_agnostic=True
-        )
+        query = await GetGlobalPermissionAttributesQuery.init(db=db, branch_agnostic=True)
         await query.execute(db=db)
-        results = query.get_global_permission_results()
+        results = query.get_permission_results()
 
         if not results:
             return
@@ -425,17 +416,13 @@ class Migration059(MigrationRequiringRebase):
         base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
 
-        obj_count_query = await GetPermissionAttributesQuery.init(
-            db=db, permission_kind=InfrahubKind.OBJECTPERMISSION, branch_agnostic=False
-        )
+        obj_count_query = await GetObjectPermissionAttributesQuery.init(db=db)
         await obj_count_query.execute(db=db)
-        obj_permission_count = len(obj_count_query.get_object_permission_results())
+        obj_permission_count = len(obj_count_query.get_permission_results())
 
-        global_count_query = await GetPermissionAttributesQuery.init(
-            db=db, permission_kind=InfrahubKind.GLOBALPERMISSION, branch_agnostic=True
-        )
+        global_count_query = await GetGlobalPermissionAttributesQuery.init(db=db, branch_agnostic=True)
         await global_count_query.execute(db=db)
-        global_permission_count = len(global_count_query.get_global_permission_results())
+        global_permission_count = len(global_count_query.get_permission_results())
 
         total_count = obj_permission_count + global_permission_count
 
