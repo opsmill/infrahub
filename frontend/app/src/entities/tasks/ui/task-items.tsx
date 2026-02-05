@@ -1,6 +1,5 @@
 import { useLocation } from "react-router";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -11,16 +10,16 @@ import { Table, type tColumn } from "@/shared/components/table/table";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { SEARCH_ANY_FILTER, TASK_OBJECT, TASK_TAB } from "@/shared/config/constants";
+import { SEARCH_ANY_FILTER, TASK_TAB } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { GET_TASK_ITEMS } from "@/entities/tasks/api/getTasksItems";
+import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
+import { useGetTaskList } from "@/entities/tasks/domain/get-task-list/get-task-list.query";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
-
-import { getStateBadge } from "./task-item-details";
+import { getStateBadge } from "@/entities/tasks/ui/task-item-details";
 
 interface TaskItemsProps {
   relatedNodeId?: string;
@@ -31,7 +30,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   const [filters] = useFilters();
 
   const search = filters.find((filter) => filter.name === SEARCH_ANY_FILTER)?.value;
-  const branch = filters.find((filter) => filter.name === "branch__value")?.value;
+  const branchName = filters.find((filter) => filter.name === "branch__value")?.value;
   const state = filters.find((filter) => filter.name === "state__value")?.value;
   const node = filters.find((filter) => filter.name === "node__value")?.value;
 
@@ -40,25 +39,34 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   const relatedNode = relatedNodeId || node;
 
   const {
-    loading,
-    error,
-    data = {},
-  } = useQuery(GET_TASK_ITEMS, {
-    variables: {
-      search,
-      branch,
-      state,
-      relatedNodes: relatedNode ? [relatedNode] : [],
-    },
+    data: count,
+    isPending: isPendingCount,
+    error: errorCount,
+  } = useGetTaskCount({
+    search,
+    branchName,
+    state,
+    relatedNodeIds: relatedNode ? [relatedNode] : [],
   });
 
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching list." />;
+  const {
+    data,
+    error,
+    isPending: loading,
+  } = useGetTaskList({
+    search,
+    branchName,
+    state,
+    relatedNodes: relatedNode ? [relatedNode] : [],
+  });
+
+  if (isPendingCount) {
+    return <LoadingIndicator className="h-full p-4" />;
   }
 
-  const result = data ? (data[TASK_OBJECT] ?? {}) : {};
-
-  const { count, edges } = result;
+  if (error || errorCount) {
+    return <ErrorScreen message="Something went wrong when fetching list." />;
+  }
 
   const columns = [
     {
@@ -102,23 +110,23 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
     ]);
   };
 
-  const rows = edges?.map((edge: any) => {
+  const rows = data?.map((task) => {
     return {
-      link: getUrl(edge.node.id),
+      link: getUrl(task.id),
       values: {
         title: {
-          display: edge.node.title,
+          display: task.title,
         },
         branch: {
-          display: edge.node.branch,
+          display: task.branch,
         },
         state: {
-          display: getStateBadge[edge.node.state],
+          display: getStateBadge[task.state!],
         },
         related_nodes: {
           display: (
             <InlineDisplay
-              items={edge.node.related_nodes}
+              items={task.related_nodes?.filter((n) => !!n) ?? []}
               render={(item) => {
                 if (typeof item === "string") return null;
 
@@ -127,8 +135,8 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
                 return (
                   <Link
                     key={item.id}
-                    to={getObjectDetailsUrl(item.kind, item.id, [
-                      { name: QSP.BRANCH, value: edge.node.branch },
+                    to={getObjectDetailsUrl(item.kind!, item.id, [
+                      { name: QSP.BRANCH, value: task.branch },
                     ])}
                   >
                     <Id id={item.id} kind={item.kind} preventCopy />
@@ -139,13 +147,13 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
           ),
         },
         progress: {
-          display: edge.node.progress,
+          display: task.progress,
         },
         workflow: {
-          display: edge.node.workflow,
+          display: task.workflow,
         },
         updated_at: {
-          display: <DateDisplay date={edge.node.updated_at} />,
+          display: <DateDisplay date={task.updated_at} />,
         },
       },
     };

@@ -1,11 +1,13 @@
-import { graphql } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
-export const GET_TASK_ITEMS = graphql(`
-  query GET_TASK_ITEMS(
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+export const GET_TASK_LIST = graphql(`
+  query GET_TASK_LIST(
     $offset: Int
     $limit: Int
     $search: String
-    $branch: String
+    $branchName: String
     $state: [StateType]
     $relatedNodes: [String]
   ) {
@@ -13,7 +15,7 @@ export const GET_TASK_ITEMS = graphql(`
       offset: $offset
       limit: $limit
       q: $search
-      branch: $branch
+      branch: $branchName
       state: $state
       related_node__ids: $relatedNodes
     ) {
@@ -38,3 +40,12 @@ export const GET_TASK_ITEMS = graphql(`
     }
   }
 `);
+
+export interface GetTaskListFromApiParams extends VariablesOf<typeof GET_TASK_LIST> {}
+
+export function getTaskListFromApi(variables: GetTaskListFromApiParams) {
+  return graphqlClient.query({
+    query: GET_TASK_LIST,
+    variables,
+  });
+}
