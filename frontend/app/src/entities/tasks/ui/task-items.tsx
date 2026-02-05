@@ -57,7 +57,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
     search,
     branchName,
     state,
-    relatedNodes: relatedNode ? [relatedNode] : [],
+    relatedNodeIds: relatedNode ? [relatedNode] : [],
   });
 
   if (isPendingCount) {

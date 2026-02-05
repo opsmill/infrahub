@@ -9,7 +9,7 @@ export const GET_TASK_LIST = graphql(`
     $search: String
     $branchName: String
     $state: [StateType]
-    $relatedNodes: [String]
+    $relatedNodeIds: [String]
   ) {
     InfrahubTask(
       offset: $offset
@@ -17,7 +17,7 @@ export const GET_TASK_LIST = graphql(`
       q: $search
       branch: $branchName
       state: $state
-      related_node__ids: $relatedNodes
+      related_node__ids: $relatedNodeIds
     ) {
       count
       edges {
