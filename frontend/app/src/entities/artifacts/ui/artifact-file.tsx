@@ -2,6 +2,7 @@ import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
 import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
 import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
@@ -11,7 +12,7 @@ import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-fil
 export interface ArtifactFileProps {
   storageId: string;
   fileName: string;
-  contentType?: string;
+  contentType?: DataViewerContentType;
   className?: string;
 }
 
@@ -36,7 +37,6 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
     <DataViewer
       data={content}
       contentType={contentType}
-      downloadUrl={downloadUrl}
       className={className}
       actions={
         <>
