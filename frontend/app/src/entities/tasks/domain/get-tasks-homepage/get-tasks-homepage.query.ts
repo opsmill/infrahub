@@ -5,7 +5,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-key
 import {
   type GetTasksHomepageParams,
   getTasksHomepage,
-} from "@/entities/tasks/domain/get-tasks/get-tasks-homepage";
+} from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage";
 import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
 
 export function getTasksHomepageQueryOptions(params: GetTasksHomepageParams) {
