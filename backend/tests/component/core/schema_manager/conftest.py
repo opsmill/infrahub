@@ -472,3 +472,20 @@ def incorrect_schema_generic_with_empty_namespace_restriction() -> SchemaRoot:
         ],
     }
     return SchemaRoot(**schema)
+
+
+@pytest.fixture
+def incorrect_schema_inherits_from_generic_core_repository() -> SchemaRoot:
+    """One node which inherits from CoreRepository. As the namespace is restricted, this should not be allowed."""
+    schema = {
+        "nodes": [
+            {
+                "name": "ChildrenRepo",
+                "namespace": "Child",
+                "description": "A repository inheriting from the core generic repository",
+                "attributes": [{"name": "children_repository", "kind": "Text"}],
+                "inherit_from": ["CoreGenericRepository"],
+            }
+        ],
+    }
+    return SchemaRoot(**schema)

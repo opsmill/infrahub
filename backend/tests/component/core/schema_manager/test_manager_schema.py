@@ -4723,3 +4723,32 @@ async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
     assert len(schema.all_names) == 2
     assert schema.all_names[0] == "AnimalDog"
     assert schema.all_names[1] == "AnimalGeneric"
+
+
+async def test_schema_loading_when_node_inherits_from_core_repository(
+    incorrect_schema_inherits_from_generic_core_repository,
+):
+    # Arrange
+    test_schema: SchemaRoot = copy.deepcopy(incorrect_schema_inherits_from_generic_core_repository)
+    generic_schemas: list[GenericSchema] = core_models_mixed["generics"]
+
+    schema: SchemaBranch = SchemaBranch(cache={}, name="test")
+    for generic_schema_root in [
+        SchemaRoot(
+            generics=[generic_schema],
+            nodes=[],
+        )
+        for generic_schema in generic_schemas
+    ]:
+        schema.load_schema(schema=generic_schema_root)
+    schema.load_schema(schema=test_schema)
+
+    # Act
+    with pytest.raises(ValueError) as error:
+        schema.validate_restricted_namespaces_from_generic()
+
+    # Assert
+    assert error.type is ValueError
+    assert "Generic node 'CoreGenericRepository' on branch 'test' has restricted namespaces: ['Core']" in str(
+        error.value
+    )
