@@ -52,9 +52,9 @@ class TestMergedBranchStatus(TestInfrahubApp):
         assert "has been merged and is read-only" in exc.value.message
 
         # Schema loading should also be blocked
-        with pytest.raises(ValueError) as exc:
-            await client.schema.load([car_person_schema_unique_owner], branch=branch_name)
-        assert "has been merged and is read-only" in str(exc.value)
+        response = await client.schema.load([car_person_schema_unique_owner], branch=branch_name)
+        assert response.errors
+        assert "has been merged and is read-only" in str(response.errors)
 
     async def test_merged_branch_allows_delete(
         self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
