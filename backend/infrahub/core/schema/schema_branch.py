@@ -2496,6 +2496,57 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
+    def _create_resource_pool_relationship(self, relationship: RelationshipSchema) -> RelationshipSchema | None:
+        """Create a resource pool relationship for IP address or prefix relationships.
+
+        When a relationship points to a schema that inherits from BuiltinIPAddress or BuiltinIPPrefix,
+        this method creates a corresponding relationship to the appropriate resource pool
+        (CoreIPAddressPool or CoreIPPrefixPool).
+
+        Args:
+            relationship: The original relationship schema
+
+        Returns:
+            A RelationshipSchema for the resource pool relationship, or None if not applicable
+        """
+        peer_schema = self.get(name=relationship.peer, duplicate=False)
+        if not isinstance(peer_schema, NodeSchema | GenericSchema):
+            return None
+
+        pool_peer = None
+        if isinstance(peer_schema, GenericSchema):
+            if peer_schema.kind == InfrahubKind.IPADDRESS:
+                pool_peer = InfrahubKind.IPADDRESSPOOL
+            elif peer_schema.kind == InfrahubKind.IPPREFIX:
+                pool_peer = InfrahubKind.IPPREFIXPOOL
+        elif isinstance(peer_schema, NodeSchema):
+            if peer_schema.is_ip_address:
+                pool_peer = InfrahubKind.IPADDRESSPOOL
+            elif peer_schema.is_ip_prefix:
+                pool_peer = InfrahubKind.IPPREFIXPOOL
+
+        if not pool_peer:
+            return None
+
+        pool_rel_name = f"{relationship.name}_from_resource_pool"
+        pool_identifier = f"{relationship.get_identifier()}_from_resource_pool"
+        pool_label = f"{relationship.name}".title() + " from Resource Pool"
+
+        return RelationshipSchema(
+            name=pool_rel_name,
+            peer=pool_peer,
+            kind=relationship.kind,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+            direction=relationship.direction,
+            branch=relationship.branch,
+            identifier=pool_identifier,
+            min_count=relationship.min_count,
+            max_count=relationship.max_count,
+            label=pool_label,
+            inherited=relationship.inherited,
+        )
+
     def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
         template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
 
@@ -2551,6 +2602,11 @@ class SchemaBranch:
                     inherited=relationship.inherited,
                 )
             )
+
+            # Add resource pool relationship if the peer schema is eligible
+            pool_relationship = self._create_resource_pool_relationship(relationship)
+            if pool_relationship:
+                template_schema.relationships.append(pool_relationship)
 
             parent_hfid = f"{relationship.name}__template_name__value"
             if (
