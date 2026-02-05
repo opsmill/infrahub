@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from rich.progress import Progress, TaskID
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
@@ -341,13 +342,13 @@ class Migration059(MigrationRequiringRebase):
                 "decision__value": row.decision,
             }
 
-            if any(v is None for v in variables.values()):
+            try:
+                rendered = await jinja_template.render(variables=variables)
+                if rendered is not None:
+                    values_by_id[row.node_uuid] = rendered
+            except JinjaTemplateError as exc:
+                console.log(f"[yellow]Warning: Failed to render display_label for node {row.node_uuid}: {exc}[/yellow]")
                 continue
-
-            jinja_template = InfrahubJinja2Template(template=core_object_permission.display_label)
-            rendered = await jinja_template.render(variables=variables)
-            if rendered is not None:
-                values_by_id[node_uuid] = rendered
 
         if values_by_id:
             for offset in range(0, len(values_by_id), self.update_batch_size):
@@ -390,6 +391,14 @@ class Migration059(MigrationRequiringRebase):
                 continue
 
             variables = {"action__value": row.action, "decision__value": row.decision}
+
+            try:
+                rendered = await jinja_template.render(variables=variables)
+                if rendered is not None:
+                    values_by_id[row.node_uuid] = rendered
+            except JinjaTemplateError as exc:
+                console.log(f"[yellow]Warning: Failed to render display_label for node {row.node_uuid}: {exc}[/yellow]")
+                continue
 
         if values_by_id:
             global_branch = await Branch.get_by_name(db=db, name=GLOBAL_BRANCH_NAME)
