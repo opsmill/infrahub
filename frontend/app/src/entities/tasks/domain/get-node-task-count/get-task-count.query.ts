@@ -8,7 +8,7 @@ import {
 } from "@/entities/tasks/domain/get-node-task-count/get-task-count";
 import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
 
-export function getTaskCountQueryOptions(params: GetTaskCountParams) {
+export function getTaskCountQueryOptions(params?: GetTaskCountParams) {
   return queryOptions({
     queryKey: tasksQueryKeys.count(params),
     queryFn: () => getTaskCount(params),
@@ -17,7 +17,7 @@ export function getTaskCountQueryOptions(params: GetTaskCountParams) {
 
 export type useGetTaskCountOptions = QueryConfig<typeof getTaskCountQueryOptions>;
 
-export function useGetTaskCount(params: GetTaskCountParams, config: useGetTaskCountOptions = {}) {
+export function useGetTaskCount(params?: GetTaskCountParams, config?: useGetTaskCountOptions) {
   return useQuery({
     ...getTaskCountQueryOptions(params),
     ...config,

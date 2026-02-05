@@ -43,7 +43,7 @@ export const GET_TASK_LIST = graphql(`
 
 export interface GetTaskListFromApiParams extends VariablesOf<typeof GET_TASK_LIST> {}
 
-export function getTaskListFromApi(variables: GetTaskListFromApiParams) {
+export function getTaskListFromApi(variables?: GetTaskListFromApiParams) {
   return graphqlClient.query({
     query: GET_TASK_LIST,
     variables,

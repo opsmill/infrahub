@@ -5,7 +5,7 @@ import {
 
 export type GetTaskListParams = GetTaskListFromApiParams;
 
-export const getTaskList = async (params: GetTaskListParams) => {
+export const getTaskList = async (params?: GetTaskListParams) => {
   const { data, errors } = await getTaskListFromApi(params);
 
   if (errors) {

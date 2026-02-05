@@ -5,7 +5,7 @@ import {
 
 export interface GetTaskCountParams extends GetTaskCountFromApiParams {}
 
-export type GetTaskCount = (params: GetTaskCountParams) => Promise<number>;
+export type GetTaskCount = (params?: GetTaskCountParams) => Promise<number>;
 
 export const getTaskCount: GetTaskCount = async (params) => {
   const { data, errors } = await getTaskCountFromApi(params);

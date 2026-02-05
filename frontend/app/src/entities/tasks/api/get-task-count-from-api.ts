@@ -22,7 +22,7 @@ const TASK_COUNT = graphql(`
 
 export interface GetTaskCountFromApiParams extends VariablesOf<typeof TASK_COUNT> {}
 
-export function getTaskCountFromApi(variables: GetTaskCountFromApiParams) {
+export function getTaskCountFromApi(variables?: GetTaskCountFromApiParams) {
   return graphqlClient.query({
     query: TASK_COUNT,
     variables,

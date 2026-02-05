@@ -17,7 +17,7 @@ export function getTaskListQueryOptions(params: GetTaskListParams) {
 }
 
 export function useGetTaskList(
-  params: GetTaskListParams,
+  params?: GetTaskListParams,
   config?: QueryConfig<typeof getTaskListQueryOptions>
 ) {
   const [{ offset, limit }] = usePagination();
