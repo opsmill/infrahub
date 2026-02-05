@@ -44,11 +44,12 @@ class BranchStatusChecker:
 
 ```python
 from infrahub.branch.status_checker import BranchStatusChecker
+from infrahub.exceptions import BranchStatusError
 
 # In load_schema function:
 try:
     BranchStatusChecker.check(branch=branch)
-except ValueError as err:
+except BranchStatusError as err:
     raise SchemaNotValidError(message=str(err)) from err
 ```
 
@@ -58,11 +59,12 @@ except ValueError as err:
 
 ```python
 from infrahub.branch.status_checker import BranchStatusChecker
+from infrahub.exceptions import BranchStatusError
 
 # In generate_artifact function:
 try:
     BranchStatusChecker.check(branch=branch_params.branch)
-except ValueError as err:
+except BranchStatusError as err:
     raise ValidationError(input_value=str(err)) from err
 ```
 

@@ -12,7 +12,7 @@ def _create_branch(status: BranchStatus, name: str = "test-branch") -> Branch:
     return Branch(name=name, status=status)
 
 
-def _create_node(kind: str = "TestingNode") -> GenericSchema:
+def _create_node() -> GenericSchema:
     return GenericSchema(namespace="Testing", name="TestNode")
 
 
