@@ -25,6 +25,8 @@ Proposed changes address several crucial needs in infrastructure management:
 - **Knowledge sharing**: Create opportunities for team members to learn from each other's changes.
 - **Continuous integration**: Ensure that changes meet quality standards through automated validation checks.
 
+![Proposed change overview showing state, branches, reviewers, and action buttons](../media/topics/proposed_change/pc_tab_overview.png)
+
 ## Multi-dimensional diffing
 
 A proposed change in Infrahub offers a more sophisticated approach by integrating both data-level and code-level differences in a unified interface:
@@ -34,6 +36,8 @@ A proposed change in Infrahub offers a more sophisticated approach by integratin
 - **File differences**: Track modifications to implementation files like Transformations, generators, and templates.
 - **File differences**: Track modifications to implementation files like transforms, Generators, and templates.
 - **Artifact differences**: Compare the [artifacts](artifact) generated to understand output changes.
+
+![Data tab showing differences between branches](../media/topics/proposed_change/pc_tab_data.png)
 
 This multi-dimensional diffing provides a "single pane of glass" view, enabling reviewers to fully understand the scope and impact of changes before approval. This comprehensive visibility is especially valuable for complex infrastructure changes.
 
@@ -53,6 +57,8 @@ Infrahub runs several types of automated validations during the review process:
 - **Merge conflict detection**: Identifies and reports any conflicting changes between the source and target branches that would prevent a clean merge.
 - **Git repository integration**: Displays merge conflicts for connected Git repositories, ensuring alignment between infrastructure code and configuration.
 - **Schema validation**: Verifies potential changes made to the schema.
+
+![Checks tab showing all validation check types](../media/topics/proposed_change/pc_tab_checks.png)
 
 ### Custom checks
 
@@ -100,6 +106,8 @@ To resolve conflicts:
 3. Apply the resolution in the change checks section
 4. Re-run validation to confirm all conflicts have been addressed
 
+![Conflict resolution interface showing branch selection](../media/topics/proposed_change/pc_conflict_resolution.png)
+
 This structured conflict management ensures that merges maintain data integrity and prevent unintended overwrites of important changes, while providing a clear audit trail of resolution decisions.
 
 ## Proposed change lifecycle and collaborative review/approval
@@ -136,6 +144,8 @@ Multiple reviewers can be assigned to a given proposed change. During the review
 - **Inline comments**: Reviewers can comment directly on specific elements of the changes, creating focused discussions about particular modifications.
 - **General feedback**: Team members can provide overall commentary on the proposed change.
 - **Threaded discussions**: Comments support threaded replies, enabling detailed conversations about implementation choices.
+
+![Comments and discussion on proposed changes](../media/topics/proposed_change/pc_comments.png)
 
 This collaborative environment promotes knowledge sharing and improves the overall quality of infrastructure changes through peer review.
 
