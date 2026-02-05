@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import {
+  type DataViewerContentType,
   getViewerType,
   type TextContentType,
   type ViewerType,
@@ -17,7 +18,7 @@ import { getFileIcon } from "@/shared/utils/file";
 export interface DataViewerProps {
   data: string;
   fileName?: string;
-  contentType?: string;
+  contentType?: DataViewerContentType;
   title?: string;
   downloadUrl?: string;
   actions?: ReactNode;
@@ -59,6 +60,7 @@ export const TEXT_CONTENT_TYPE_CONFIG: Record<
   "application/json": { extension: "json", language: "json", label: "JSON" },
   "text/markdown": { extension: "md", language: "markdown", label: "Markdown" },
   "application/yaml": { extension: "yaml", language: "yaml", label: "YAML" },
+  "application/x-yaml": { extension: "yaml", language: "yaml", label: "YAML" },
   "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
   "application/graphql": {
     extension: "graphql",

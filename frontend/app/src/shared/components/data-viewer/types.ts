@@ -5,6 +5,7 @@
 export type TextContentType =
   | "application/json"
   | "application/yaml"
+  | "application/x-yaml"
   | "application/hcl"
   | "application/graphql"
   | "image/svg+xml"
@@ -12,6 +13,28 @@ export type TextContentType =
   | "text/markdown"
   | "application/xml"
   | "text/csv";
+
+/**
+ * Image MIME content types supported by DataViewer.
+ */
+export type ImageContentType =
+  | "image/png"
+  | "image/jpeg"
+  | "image/gif"
+  | "image/webp"
+  | "image/bmp"
+  | "image/x-icon";
+
+/**
+ * PDF MIME content type.
+ */
+export type PdfContentType = "application/pdf";
+
+/**
+ * All supported content types for DataViewer.
+ * Use this type for props that accept content type to enable autocomplete.
+ */
+export type DataViewerContentType = TextContentType | ImageContentType | PdfContentType;
 
 /**
  * Viewer type determined from content type.
@@ -22,13 +45,14 @@ export type TextContentType =
  */
 export type ViewerType =
   | { type: "text"; textContentType: TextContentType }
-  | { type: "image"; imageContentType: string }
+  | { type: "image"; imageContentType: ImageContentType | (string & {}) }
   | { type: "pdf" }
   | { type: "unsupported" };
 
 const TEXT_CONTENT_TYPES: TextContentType[] = [
   "application/json",
   "application/yaml",
+  "application/x-yaml",
   "application/hcl",
   "application/graphql",
   "image/svg+xml",
@@ -38,18 +62,22 @@ const TEXT_CONTENT_TYPES: TextContentType[] = [
   "text/csv",
 ];
 
-export function getViewerType(contentType?: string): ViewerType {
+const IMAGE_CONTENT_TYPES: ImageContentType[] = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/x-icon",
+];
+
+export function getViewerType(contentType?: DataViewerContentType): ViewerType {
   if (!contentType) {
     return { type: "text", textContentType: "text/plain" };
   }
 
   if (TEXT_CONTENT_TYPES.includes(contentType as TextContentType)) {
     return { type: "text", textContentType: contentType as TextContentType };
-  }
-
-  // Common YAML variation
-  if (contentType === "application/x-yaml") {
-    return { type: "text", textContentType: "application/yaml" };
   }
 
   // Other text/* types fallback to plain text
@@ -59,7 +87,12 @@ export function getViewerType(contentType?: string): ViewerType {
 
   // Images (except SVG which is handled above as text)
   if (contentType.startsWith("image/")) {
-    return { type: "image", imageContentType: contentType };
+    return {
+      type: "image",
+      imageContentType: IMAGE_CONTENT_TYPES.includes(contentType as ImageContentType)
+        ? (contentType as ImageContentType)
+        : contentType,
+    };
   }
 
   // PDF
