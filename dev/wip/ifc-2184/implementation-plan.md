@@ -115,19 +115,6 @@ def raise_on_mutation_for_branch_status(next, root, info, **kwargs):
     return next(root, info, **kwargs)
 ```
 
-### Tests
-
-**Extend:** `backend/tests/unit/graphql/test_middleware.py`
-
-- Test middleware blocks mutation on MERGED branch
-- Test middleware allows BranchDelete on MERGED branch
-
-**Verification:**
-
-```bash
-uv run pytest backend/tests/unit/graphql/test_middleware.py -v -k merged
-```
-
 ---
 
 ## Phase 3: Merge Flow ✅

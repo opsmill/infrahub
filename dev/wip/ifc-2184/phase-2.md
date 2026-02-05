@@ -11,7 +11,6 @@
 - [x] Import `check_merged_status` in middleware.py
 - [x] Add `ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]` constant
 - [x] Add merged status check in `raise_on_mutation_for_branch_status` function
-- [x] Create unit tests (`backend/tests/unit/graphql/test_middleware.py`) - 7 tests
 
 ---
 
@@ -43,51 +42,4 @@ def raise_on_mutation_for_branch_status(next, root, info, **kwargs):
             check_merged_status(branch=info.context.branch)
 
     return next(root, info, **kwargs)
-```
-
----
-
-## Tests
-
-**Extend:** `backend/tests/unit/graphql/test_middleware.py` or create new test file
-
-```python
-import pytest
-from infrahub.core.branch.enums import BranchStatus
-
-
-async def test_middleware_blocks_mutation_on_merged_branch(db, default_branch, client):
-    """Test that mutations are blocked on merged branches."""
-    branch = await create_branch(db=db, name="test-merged")
-    branch.status = BranchStatus.MERGED
-    await branch.save(db=db)
-
-    # Attempt a mutation - should fail
-    result = await client.execute(
-        query=SOME_MUTATION,
-        context={"branch": branch}
-    )
-    assert "has been merged and is read-only" in str(result.errors)
-
-
-async def test_middleware_allows_branch_delete_on_merged_branch(db, default_branch, client):
-    """Test that BranchDelete is allowed on merged branches."""
-    branch = await create_branch(db=db, name="test-merged")
-    branch.status = BranchStatus.MERGED
-    await branch.save(db=db)
-
-    # BranchDelete should succeed
-    result = await client.execute(
-        query=BRANCH_DELETE_MUTATION,
-        variables={"name": "test-merged"}
-    )
-    assert result.errors is None
-```
-
----
-
-## Verification
-
-```bash
-uv run pytest backend/tests/unit/graphql/test_middleware.py -v -k merged
 ```
