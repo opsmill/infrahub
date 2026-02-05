@@ -73,7 +73,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
     case DIFF_TABS.CHECKS:
       return <Checks />;
     case TASK_TAB:
-      if (!qspTaskId) return <TaskItems hideRelatedNode />;
+      if (!qspTaskId) return <TaskItems relatedNodeId={proposedChangeData.id} />;
 
       return (
         <div>
