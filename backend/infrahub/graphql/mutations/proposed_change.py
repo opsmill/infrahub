@@ -85,32 +85,31 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             raise ValidationError(input_value="A proposed change has to be in the open state during creation")
 
         source_branch_name = data.get("source_branch", {}).get("value")
+        existing_open_pcs = await NodeManager.query(
+            db=graphql_context.db,
+            schema=InfrahubKind.PROPOSEDCHANGE,
+            filters={
+                "source_branch__value": source_branch_name,
+                "state__value": ProposedChangeState.OPEN.value,
+            },
+        )
+        if existing_open_pcs:
+            raise ValidationError(
+                input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
+            )
+
+        try:
+            source_branch_obj = await Branch.get_by_name(db=graphql_context.db, name=source_branch_name)
+        except BranchNotFoundError:
+            raise ValidationError(
+                input_value="The specified source branch for this proposed change was not found"
+            ) from None
+        if source_branch_obj.status == BranchStatus.MERGED:
+            raise ValidationError(
+                input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
+            )
 
         async with graphql_context.db.start_transaction() as dbt:
-            existing_open_pcs = await NodeManager.query(
-                db=dbt,
-                schema=InfrahubKind.PROPOSEDCHANGE,
-                filters={
-                    "source_branch__value": source_branch_name,
-                    "state__value": ProposedChangeState.OPEN.value,
-                },
-            )
-            if existing_open_pcs:
-                raise ValidationError(
-                    input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
-                )
-
-            try:
-                source_branch_obj = await Branch.get_by_name(db=dbt, name=source_branch_name)
-            except BranchNotFoundError:
-                raise ValidationError(
-                    input_value="The specified source branch for this proposed change was not found"
-                ) from None
-            if source_branch_obj.status == BranchStatus.MERGED:
-                raise ValidationError(
-                    input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
-                )
-
             proposed_change, result = await super().mutate_create(
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )

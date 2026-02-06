@@ -30,7 +30,6 @@ Implement a `MERGED` status for branches that makes them read-only after success
 ### Checklist
 
 - [x] Add MERGED status to BranchStatus enum
-- [x] Create merged status check module
 - [x] Create unit tests (2 tests using actual Branch objects)
 
 ### Implementation
@@ -41,34 +40,16 @@ Implement a `MERGED` status for branches that makes them read-only after success
 
 Add `MERGED = "MERGED"` to the enum.
 
-#### 1.2 Create merged status check module
-
-**New file:** `backend/infrahub/core/branch/merged_status.py`
-
-Follow pattern from `backend/infrahub/core/branch/needs_rebase_status.py`:
-
-```python
-from infrahub.core.branch import Branch
-from infrahub.core.branch.enums import BranchStatus
-
-
-def raise_merged_error(branch_name: str) -> None:
-    raise ValueError(f"Branch '{branch_name}' has been merged and is read-only. No modifications are allowed.")
-
-
-def check_merged_status(branch: Branch) -> None:
-    if branch.status == BranchStatus.MERGED:
-        raise_merged_error(branch_name=branch.name)
-```
+**Note:** Status checking is consolidated in `BranchStatusChecker` class (see Phase 5). The standalone `merged_status.py` and `needs_rebase_status.py` modules were removed in favor of the unified checker class with instance methods.
 
 ### Tests
 
-**New file:** `backend/tests/unit/core/branch/test_merged_status.py`
+**File:** `backend/tests/unit/core/branch/test_merged_status.py`
 
 Tests use actual `Branch` objects (not mocks) for realistic validation:
 
-- Test `check_merged_status` raises ValueError for MERGED branches
-- Test `check_merged_status` passes for OPEN, NEED_REBASE, NEED_UPGRADE_REBASE branches (parametrized)
+- Test `BranchStatusChecker().check_merge_status()` raises `BranchAlreadyMergedError` for MERGED branches
+- Test `BranchStatusChecker().check_merge_status()` passes for OPEN, NEED_REBASE, NEED_UPGRADE_REBASE branches (parametrized)
 
 **Verification:**
 
@@ -82,7 +63,7 @@ uv run pytest backend/tests/unit/core/branch/test_merged_status.py -v
 
 ### Checklist
 
-- [x] Import `check_merged_status` in middleware.py
+- [x] Import `BranchStatusChecker` in middleware.py
 - [x] Add `ALLOWED_MUTATIONS_ON_MERGED_BRANCH` constant
 - [x] Add merged status check in middleware function
 - [x] Create unit tests (7 tests)
@@ -91,26 +72,23 @@ uv run pytest backend/tests/unit/core/branch/test_merged_status.py -v
 
 **File:** `backend/infrahub/graphql/middleware.py`
 
-1. Import `check_merged_status`
+1. Import `BranchStatusChecker` from unified status checker
 2. Add constant: `ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]`
-3. Add merged status check in the existing `raise_on_mutation_for_branch_status` function
+3. Use instance methods for status checks in `raise_on_mutation_for_branch_status` function
 
 ```python
-from infrahub.core.branch.merged_status import check_merged_status
+from infrahub.branch.status_checker import BranchStatusChecker
 
+ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH = ["BranchRebase", "BranchDelete", "BranchCreate", "ProposedChangeCreate"]
 ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]
 
 def raise_on_mutation_for_branch_status(next, root, info, **kwargs):
     if info.operation.operation.value == "mutation":
         mutation_name = info.operation.selection_set.selections[0].name.value
-
-        # Existing NEED_REBASE check
         if mutation_name not in ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH:
-            check_need_rebase_status(branch=info.context.branch)
-
-        # NEW: MERGED status check
+            BranchStatusChecker().check_needs_rebase_status(branch=info.context.branch)
         if mutation_name not in ALLOWED_MUTATIONS_ON_MERGED_BRANCH:
-            check_merged_status(branch=info.context.branch)
+            BranchStatusChecker().check_merge_status(branch=info.context.branch)
 
     return next(root, info, **kwargs)
 ```
@@ -185,7 +163,7 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v
 
 #### 4.1 Block BranchMerge on already-merged branches
 
-**File:** `backend/infrahub/graphql/mutations/branch.py:298`
+**File:** `backend/infrahub/graphql/mutations/branch.py:303`
 
 Add after existing `NEED_UPGRADE_REBASE` check:
 
@@ -196,16 +174,41 @@ if obj.status == BranchStatus.MERGED:
 
 #### 4.2 Block ProposedChangeCreate for merged source branches
 
-**File:** `backend/infrahub/graphql/mutations/proposed_change.py:85`
+**File:** `backend/infrahub/graphql/mutations/proposed_change.py:87`
 
-After getting `source_branch_name`, add:
+After getting `source_branch_name`, add validation **outside** the transaction context:
 
 ```python
-source_branch_obj = await Branch.get_by_name(db=dbt, name=source_branch_name)
+source_branch_name = data.get("source_branch", {}).get("value")
+
+# Query existing open PCs and validate source branch BEFORE transaction
+existing_open_pcs = await NodeManager.query(
+    db=graphql_context.db,
+    schema=InfrahubKind.PROPOSEDCHANGE,
+    filters={
+        "source_branch__value": source_branch_name,
+        "state__value": ProposedChangeState.OPEN.value,
+    },
+)
+if existing_open_pcs:
+    raise ValidationError(
+        input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
+    )
+
+try:
+    source_branch_obj = await Branch.get_by_name(db=graphql_context.db, name=source_branch_name)
+except BranchNotFoundError:
+    raise ValidationError(
+        input_value="The specified source branch for this proposed change was not found"
+    ) from None
 if source_branch_obj.status == BranchStatus.MERGED:
     raise ValidationError(
         input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
     )
+
+async with graphql_context.db.start_transaction() as dbt:
+    # Create proposed change inside transaction
+    ...
 ```
 
 ### Tests
@@ -238,6 +241,8 @@ uv run pytest backend/tests/functional/branch/test_branch_merged.py -v -k "merge
 
 **New file:** `backend/infrahub/branch/status_checker.py`
 
+The checker class consolidates both merged and needs-rebase status checking with separate methods for granular control:
+
 ```python
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -245,39 +250,51 @@ from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError
 
 
 class BranchStatusChecker:
-    @staticmethod
-    def check(branch: Branch) -> None:
-        if branch.status == BranchStatus.NEED_REBASE:
-            raise BranchNeedsRebaseError(identifier=branch.name, message=f"Branch {branch.name} must be rebased before any updates can be made")
+    def check_merge_status(self, branch: Branch) -> None:
         if branch.status == BranchStatus.MERGED:
-            raise BranchAlreadyMergedError(identifier=branch.name, message=f"Branch '{branch.name}' has been merged and is read-only. No modifications are allowed.")
+            raise BranchAlreadyMergedError(
+                identifier=branch.name,
+                message=f"Branch '{branch.name}' has been merged and is read-only. No modifications are allowed.",
+            )
+
+    def check_needs_rebase_status(self, branch: Branch) -> None:
+        if branch.status == BranchStatus.NEED_REBASE:
+            raise BranchNeedsRebaseError(
+                identifier=branch.name, message=f"Branch {branch.name} must be rebased before any updates can be made"
+            )
+
+    def check(self, branch: Branch) -> None:
+        self.check_needs_rebase_status(branch)
+        self.check_merge_status(branch)
 ```
 
 #### 5.2 Block schema loading on merged branches
 
-**File:** `backend/infrahub/api/schema.py:323`
+**File:** `backend/infrahub/api/schema.py:327`
 
 ```python
 from infrahub.branch.status_checker import BranchStatusChecker
+from infrahub.exceptions import BranchStatusError, ValidationError
 
 # In load_schema function:
 try:
-    BranchStatusChecker.check(branch=branch)
-except ValueError as err:
-    raise SchemaNotValidError(message=str(err)) from err
+    BranchStatusChecker().check(branch=branch)
+except BranchStatusError as err:
+    raise ValidationError(input_value=str(err)) from err
 ```
 
 #### 5.3 Block artifact generation on merged branches
 
-**File:** `backend/infrahub/api/artifact.py:77`
+**File:** `backend/infrahub/api/artifact.py:80`
 
 ```python
 from infrahub.branch.status_checker import BranchStatusChecker
+from infrahub.exceptions import BranchStatusError
 
 # In generate_artifact function:
 try:
-    BranchStatusChecker.check(branch=branch_params.branch)
-except ValueError as err:
+    BranchStatusChecker().check(branch=branch_params.branch)
+except BranchStatusError as err:
     raise ValidationError(input_value=str(err)) from err
 ```
 
@@ -391,7 +408,6 @@ uv run invoke format && uv run invoke lint
 | Component             | File                                                    |
 | --------------------- | ------------------------------------------------------- |
 | BranchStatus enum     | `backend/infrahub/core/branch/enums.py`                 |
-| Merged status check   | `backend/infrahub/core/branch/merged_status.py` (new)   |
 | Branch status checker | `backend/infrahub/branch/status_checker.py` (new)       |
 | GraphQL middleware    | `backend/infrahub/graphql/middleware.py`                |
 | Merge flow            | `backend/infrahub/core/branch/tasks.py`                 |
@@ -400,6 +416,8 @@ uv run invoke format && uv run invoke lint
 | Permission report     | `backend/infrahub/permissions/report.py`                |
 | REST schema API       | `backend/infrahub/api/schema.py`                        |
 | REST artifact API     | `backend/infrahub/api/artifact.py`                      |
+
+**Note:** The standalone `merged_status.py` and `needs_rebase_status.py` modules were removed and consolidated into `BranchStatusChecker`.
 
 ### Test Files
 

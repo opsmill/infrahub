@@ -113,7 +113,7 @@ def check_merged_status(branch: Branch) -> None:
     if branch.status == BranchStatus.MERGED:
         raise ValidationError(
             f"Branch '{branch.name}' has been merged and is read-only. "
-            "No modifications are allowed on merged branches."
+            "No modifications are allowed."
         )
 ```
 

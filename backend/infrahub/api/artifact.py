@@ -78,7 +78,7 @@ async def generate_artifact(
     context: InfrahubContext = Depends(get_context),
 ) -> None:
     try:
-        BranchStatusChecker.check(branch=branch_params.branch)
+        BranchStatusChecker().check(branch=branch_params.branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 

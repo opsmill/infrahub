@@ -20,7 +20,7 @@
 
 ### 4.1 Block BranchMerge on already-merged branches
 
-**File:** `backend/infrahub/graphql/mutations/branch.py:298`
+**File:** `backend/infrahub/graphql/mutations/branch.py:303`
 
 Add after existing `NEED_UPGRADE_REBASE` check:
 
@@ -34,16 +34,42 @@ if obj.status == BranchStatus.MERGED:
 
 ### 4.2 Block ProposedChangeCreate for merged source branches
 
-**File:** `backend/infrahub/graphql/mutations/proposed_change.py:85`
+**File:** `backend/infrahub/graphql/mutations/proposed_change.py:87`
 
-After getting `source_branch_name`, add:
+Validations are performed **before** the transaction context. After getting `source_branch_name`:
 
 ```python
-source_branch_obj = await Branch.get_by_name(db=dbt, name=source_branch_name)
+source_branch_name = data.get("source_branch", {}).get("value")
+
+# Query existing open PCs (uses dbt parameter passed to mutate_create)
+existing_open_pcs = await NodeManager.query(
+    db=graphql_context.db,
+    schema=InfrahubKind.PROPOSEDCHANGE,
+    filters={
+        "source_branch__value": source_branch_name,
+        "state__value": ProposedChangeState.OPEN.value,
+    },
+)
+if existing_open_pcs:
+    raise ValidationError(
+        input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
+    )
+
+# Validate source branch status (uses graphql_context.db)
+try:
+    source_branch_obj = await Branch.get_by_name(db=graphql_context.db, name=source_branch_name)
+except BranchNotFoundError:
+    raise ValidationError(
+        input_value="The specified source branch for this proposed change was not found"
+    ) from None
 if source_branch_obj.status == BranchStatus.MERGED:
     raise ValidationError(
         input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
     )
+
+# Transaction starts AFTER validations
+async with graphql_context.db.start_transaction() as dbt:
+    proposed_change, result = await super().mutate_create(...)
 ```
 
 ---
