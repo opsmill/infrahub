@@ -348,9 +348,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
         """
-        number_pool_id: str | None = None
-        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
-            number_pool_id = attribute.schema.parameters.number_pool_id
+        if attribute.schema.kind != "NumberPool" or not isinstance(attribute.schema.parameters, NumberPoolParameters):
+            return
+
+        number_pool_id = attribute.schema.parameters.number_pool_id
         if not number_pool_id:
             errors.append(
                 ValidationError({f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."})
