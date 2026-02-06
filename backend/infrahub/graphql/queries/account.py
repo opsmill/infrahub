@@ -72,21 +72,21 @@ AccountToken = Field(
 
 class AccountGlobalPermissionNode(ObjectType):
     id = Field(String, required=True)
+    display_label = Field(String, required=True)
     description = Field(String, required=False)
     name = Field(String, required=True)
     action = Field(String, required=True)
     decision = Field(String, required=True)
-    identifier = Field(String, required=True)
 
 
 class AccountObjectPermissionNode(ObjectType):
     id = Field(String, required=True)
+    display_label = Field(String, required=True)
     description = Field(String, required=False)
     namespace = Field(String, required=True)
     name = Field(String, required=True)
     action = Field(String, required=True)
     decision = Field(String, required=True)
-    identifier = Field(String, required=True)
 
 
 class AccountGlobalPermissionEdge(ObjectType):
@@ -131,10 +131,10 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
+                    "display_label": str(obj),
                     "description": obj.description,
                     "action": obj.action,
                     "decision": obj.decision,
-                    "identifier": str(obj),
                 }
             }
             for obj in global_list
@@ -146,12 +146,12 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
+                    "display_label": str(obj),
                     "description": obj.description,
                     "namespace": obj.namespace,
                     "name": obj.name,
                     "action": obj.action,
                     "decision": obj.decision,
-                    "identifier": str(obj),
                 }
             }
             for obj in object_list
