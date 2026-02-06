@@ -22,5 +22,12 @@ deprecated_models: dict[str, Any] = {
                 {"name": "description", "kind": "Text", "state": HashableModelState.ABSENT},
             ],
         },
+        {
+            "name": "BasePermission",
+            "namespace": "Core",
+            "attributes": [
+                {"name": "identifier", "kind": "Text", "state": HashableModelState.ABSENT},
+            ],
+        },
     ]
 }
