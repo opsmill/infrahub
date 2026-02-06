@@ -15,6 +15,7 @@ import { QSP } from "@/shared/config/qsp";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
+import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/domain/get-task-list/get-task-list.query";
@@ -46,7 +47,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
     search,
     branchName,
     state,
-    relatedNodeIds: relatedNode ? [relatedNode] : [],
+    relatedNodeIds: relatedNode ? [relatedNode] : undefined,
   });
 
   const {
@@ -57,7 +58,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
     search,
     branchName,
     state,
-    relatedNodeIds: relatedNode ? [relatedNode] : [],
+    relatedNodeIds: relatedNode ? [relatedNode] : undefined,
   });
 
   if (isPendingCount) {
@@ -168,6 +169,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   return (
     <Col className="gap-0">
       <Row className="p-2">
+        <RefreshButton className="rounded-md border-gray-300" />
         <FilterSearchInput placeholder="Filter tasks..." />
         <TaskFilters />
       </Row>
