@@ -55,6 +55,7 @@ const sidebars: SidebarsConfig = {
             type: 'generated-index',
           },
           items: [
+            'guides/development-setup',
             'guides/installation',
             'guides/production-deployment',
             'guides/configuration-changes',
