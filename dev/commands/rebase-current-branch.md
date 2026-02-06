@@ -53,7 +53,7 @@ Rebase the current branch on a target branch (defaults to `develop`), handling a
    git log --oneline -20
    ```
 
-9. **Push if requested**: If the user wants to push, use force-with-lease:
+9. **Ask before pushing**: Always ask the user if they want to push. If they confirm, use force-with-lease:
    ```bash
    git push --force-with-lease
    ```
