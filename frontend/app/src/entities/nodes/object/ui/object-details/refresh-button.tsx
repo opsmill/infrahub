@@ -11,16 +11,21 @@ import { formatFullDate } from "@/shared/utils/date";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
+export interface RefreshButtonProps extends ButtonProps {
+  queryKey?: readonly unknown[];
+}
+
 function getLastUpdateTime() {
   const queries = queryClient.getQueryCache().findAll({ type: "active" });
   if (queries.length === 0) return null;
   return Math.max(...queries.map((q) => q.state.dataUpdatedAt));
 }
 
-export function RefreshButton(props: ButtonProps) {
+export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
+  const watchedQueryKey = queryKey ?? objectQueryKeys.all;
   const [isRefreshSuccess, setIsRefreshSuccess] = React.useState(false);
   const [dataUpdatedAt, setDataUpdatedAt] = React.useState(getLastUpdateTime());
-  const isFetching = useIsFetching({ queryKey: objectQueryKeys.all });
+  const isFetching = useIsFetching({ queryKey: watchedQueryKey });
   const isRefetching = isFetching > 0;
 
   React.useEffect(() => {
@@ -30,7 +35,7 @@ export function RefreshButton(props: ButtonProps) {
   }, [isFetching]);
 
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries();
+    await queryClient.invalidateQueries({ queryKey: watchedQueryKey });
     setIsRefreshSuccess(true);
     setTimeout(() => setIsRefreshSuccess(false), 2000);
   };
@@ -48,7 +53,7 @@ export function RefreshButton(props: ButtonProps) {
         )
       }
     >
-      <Focusable>
+      <Focusable isDisabled={isRefetching}>
         <Button
           variant="outline"
           size="sm"

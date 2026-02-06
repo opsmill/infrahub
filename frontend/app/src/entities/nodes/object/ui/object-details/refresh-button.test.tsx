@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+
 import { render } from "../../../../../../tests/components/render";
 import { RefreshButton } from "./refresh-button";
 
@@ -34,7 +36,7 @@ describe("RefreshButton", () => {
     expect(icon?.classList.contains("animate-spin")).toBe(true);
   });
 
-  it("invalidates queries when clicking refresh", async () => {
+  it("invalidates queries scoped to the default query key when clicking refresh", async () => {
     // GIVEN
     vi.mocked(useIsFetching).mockReturnValue(0);
 
@@ -48,6 +50,24 @@ describe("RefreshButton", () => {
     await component.getByRole("button").click();
 
     // THEN
-    expect(invalidateQueriesSpy).toHaveBeenCalledOnce();
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: objectQueryKeys.all });
+  });
+
+  it("invalidates queries scoped to a custom query key", async () => {
+    // GIVEN
+    const customKey = ["custom", "key"] as const;
+    vi.mocked(useIsFetching).mockReturnValue(0);
+
+    const invalidateQueriesSpy = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockResolvedValue(undefined);
+
+    const component = await render(<RefreshButton queryKey={customKey} />);
+
+    // WHEN
+    await component.getByRole("button").click();
+
+    // THEN
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: customKey });
   });
 });

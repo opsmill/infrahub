@@ -17,6 +17,7 @@ import useFilters from "@/shared/hooks/useFilters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/domain/get-task-list/get-task-list.query";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
@@ -169,7 +170,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   return (
     <Col className="gap-0">
       <Row className="p-2">
-        <RefreshButton className="rounded-md border-gray-300" />
+        <RefreshButton className="rounded-md border-gray-300" queryKey={tasksQueryKeys.all} />
         <FilterSearchInput placeholder="Filter tasks..." />
         <TaskFilters />
       </Row>
