@@ -55,7 +55,6 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import (
     ListAttributeParameters,
-    NumberPoolParameters,
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
@@ -1258,8 +1257,9 @@ class SchemaBranch:
                     generics_with_attribute.append(generic_schema)
 
             if len(generics_with_attribute) > 1:
+                generic_kinds = [g.kind for g in generics_with_attribute]
                 raise ValidationError(
-                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic: {[g.kind for g in generics_with_attribute]}"
+                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic: {generic_kinds}"
                 )
         else:
             for generic_name in node_schema.inherit_from:

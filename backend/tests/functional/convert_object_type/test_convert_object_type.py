@@ -10,6 +10,7 @@ from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -157,7 +158,8 @@ class TestConvertObjectType(TestInfrahubApp):
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
         await snps.run()
 
     @pytest.fixture

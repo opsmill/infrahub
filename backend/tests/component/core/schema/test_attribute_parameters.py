@@ -6,9 +6,11 @@ import pydantic
 import pytest
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, NumberPoolType
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
@@ -23,7 +25,14 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
+
+
+def build_synchronizer(db: InfrahubDatabase) -> SchemaNumberPoolSynchronizer:
+    """Helper to build a SchemaNumberPoolSynchronizer with its dependencies."""
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    return SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
 
 
 def test_number_pool_with_range() -> None:
@@ -173,24 +182,6 @@ def test_number_pool_override_generic() -> None:
         schema_branch.process()
 
 
-def test_number_pool_assign_from_generics() -> None:
-    schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
-    schema_branch = SchemaBranch(cache={})
-    schema_branch.load_schema(schema=schema)
-    schema_branch.process()
-
-    snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
-    snow_request = schema_branch.get_node(name="SnowRequest", duplicate=False)
-
-    incident_attribute = snow_incident.get_attribute(name="number")
-    request_attribute = snow_request.get_attribute(name="number")
-
-    assert isinstance(incident_attribute.parameters, NumberPoolParameters)
-    assert isinstance(request_attribute.parameters, NumberPoolParameters)
-    assert incident_attribute.parameters.number_pool_id
-    assert incident_attribute.parameters.number_pool_id == request_attribute.parameters.number_pool_id
-
-
 def test_number_pool_fail_on_multiple_generics() -> None:
     alternate_base = deepcopy(SNOW_TASK)
     alternate_base.name = "OtherTask"
@@ -216,7 +207,7 @@ async def test_create_nodes_from_generic_numberpools(
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
     schema_branch = registry.schema.register_schema(schema=schema)
 
-    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+    snps = build_synchronizer(db)
     await snps.run()
 
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
@@ -248,6 +239,173 @@ async def test_create_nodes_from_generic_numberpools(
     assert request_1.identifier.value == "REQ2"
     assert request_2.number.value == 3
     assert request_2.identifier.value == "REQ3"
+
+
+async def test_synchronizer_assigns_shared_pool_for_inherited_attributes(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """Test that inherited NumberPool attributes share the same pool after synchronization.
+
+    Given:
+      - GenericSchema 'SnowTask' with NumberPool attribute 'number'
+      - NodeSchema 'SnowIncident' inherits from 'SnowTask'
+      - NodeSchema 'SnowRequest' inherits from 'SnowTask'
+
+    When:
+      - SchemaNumberPoolSynchronizer.run() is called
+
+    Then:
+      - One pool ID is assigned to the generic
+      - Both inheriting nodes share that same pool ID
+    """
+    schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
+    schema_branch = registry.schema.register_schema(schema=schema)
+
+    # Before synchronizer runs, pool IDs should be None
+    snow_task = schema_branch.get_generic(name="SnowTask", duplicate=False)
+    task_attr = snow_task.get_attribute(name="number")
+    assert isinstance(task_attr.parameters, NumberPoolParameters)
+    assert task_attr.parameters.number_pool_id is None
+
+    # Run the synchronizer
+    snps = build_synchronizer(db)
+    await snps.run()
+
+    # After synchronizer runs, get the updated schemas
+    updated_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+    snow_task = updated_schema_branch.get_generic(name="SnowTask", duplicate=False)
+    snow_incident = updated_schema_branch.get_node(name="SnowIncident", duplicate=False)
+    snow_request = updated_schema_branch.get_node(name="SnowRequest", duplicate=False)
+
+    task_attr = snow_task.get_attribute(name="number")
+    incident_attr = snow_incident.get_attribute(name="number")
+    request_attr = snow_request.get_attribute(name="number")
+
+    # All should have the same pool ID now
+    assert task_attr.parameters.number_pool_id is not None
+    assert incident_attr.parameters.number_pool_id is not None
+    assert request_attr.parameters.number_pool_id is not None
+    assert task_attr.parameters.number_pool_id == incident_attr.parameters.number_pool_id
+    assert task_attr.parameters.number_pool_id == request_attr.parameters.number_pool_id
+
+    # Verify the CoreNumberPool was created with correct node and node_attribute
+    pool_id = task_attr.parameters.number_pool_id
+    pools = await NodeManager.query(
+        db=db,
+        schema=CoreNumberPoolProtocol,
+        filters={"id": pool_id},
+    )
+    assert len(pools) == 1
+    pool = pools[0]
+    # Pool should reference the generic (where the attribute is defined), not the inheriting nodes
+    assert pool.node.value == "SnowTask"
+    assert pool.node_attribute.value == "number"
+    assert pool.pool_type.value.value == NumberPoolType.SCHEMA.value
+
+
+async def test_synchronizer_assigns_separate_pools_for_non_inherited_attributes(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """Test that non-inherited NumberPool attributes with the same name get separate pools.
+
+    Given:
+      - GenericSchema 'TestGeneric' (no NumberPool attribute)
+      - NodeSchema 'TestNodeA' inherits from 'TestGeneric', has NumberPool 'sequence_num'
+      - NodeSchema 'TestNodeB' inherits from 'TestGeneric', has NumberPool 'sequence_num'
+
+    When:
+      - SchemaNumberPoolSynchronizer.run() is called
+
+    Then:
+      - Two separate pools are created (one per node)
+      - Each node has its own independent pool ID
+    """
+    # Create schemas with same-named NumberPool on sibling nodes (not inherited)
+    generic_schema = GenericSchema(
+        name="TestGeneric",
+        namespace="Test",
+        include_in_menu=False,
+        label="Test Generic",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+        ],
+    )
+    node_a_schema = NodeSchema(
+        name="NodeA",
+        namespace="Test",
+        inherit_from=["TestTestGeneric"],
+        include_in_menu=True,
+        label="Node A",
+        attributes=[
+            AttributeSchema(
+                name="sequence_num",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                unique=True,
+            ),
+        ],
+    )
+    node_b_schema = NodeSchema(
+        name="NodeB",
+        namespace="Test",
+        inherit_from=["TestTestGeneric"],
+        include_in_menu=True,
+        label="Node B",
+        attributes=[
+            AttributeSchema(
+                name="sequence_num",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                unique=True,
+            ),
+        ],
+    )
+
+    schema = SchemaRoot(generics=[generic_schema], nodes=[node_a_schema, node_b_schema])
+    registry.schema.register_schema(schema=schema)
+
+    # Run the synchronizer
+    snps = build_synchronizer(db)
+    await snps.run()
+
+    # After synchronizer runs, get the updated schemas
+    updated_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+    node_a = updated_schema_branch.get_node(name="TestNodeA", duplicate=False)
+    node_b = updated_schema_branch.get_node(name="TestNodeB", duplicate=False)
+
+    node_a_attr = node_a.get_attribute(name="sequence_num")
+    node_b_attr = node_b.get_attribute(name="sequence_num")
+
+    # Both should have pool IDs, but they should be DIFFERENT
+    assert node_a_attr.parameters.number_pool_id is not None
+    assert node_b_attr.parameters.number_pool_id is not None
+    assert node_a_attr.parameters.number_pool_id != node_b_attr.parameters.number_pool_id
+
+    # Verify the CoreNumberPools were created with correct node and node_attribute values
+    pool_a = await NodeManager.query(
+        db=db,
+        schema=CoreNumberPoolProtocol,
+        filters={"id": node_a_attr.parameters.number_pool_id},
+    )
+    pool_b = await NodeManager.query(
+        db=db,
+        schema=CoreNumberPoolProtocol,
+        filters={"id": node_b_attr.parameters.number_pool_id},
+    )
+
+    assert len(pool_a) == 1
+    assert len(pool_b) == 1
+
+    # Each pool should reference its respective node (not inherited, so each node has its own pool)
+    assert pool_a[0].node.value == "TestNodeA"
+    assert pool_a[0].node_attribute.value == "sequence_num"
+    assert pool_a[0].pool_type.value.value == NumberPoolType.SCHEMA.value
+
+    assert pool_b[0].node.value == "TestNodeB"
+    assert pool_b[0].node_attribute.value == "sequence_num"
+    assert pool_b[0].pool_type.value.value == NumberPoolType.SCHEMA.value
 
 
 def test_validate_min_max_number_attribute() -> None:

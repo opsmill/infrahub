@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING, cast
-from uuid import uuid4
 
-from infrahub import lock
-from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, NumberPoolType
+from infrahub.core.constants import SYSTEM_USER_ID, NumberPoolType
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
-from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
-from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 if TYPE_CHECKING:
@@ -21,11 +15,11 @@ if TYPE_CHECKING:
 
     from structlog.stdlib import BoundLogger
 
-    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
-    from infrahub.core.schema.attribute_schema import AttributeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.manager import SchemaManager
-    from infrahub.core.timestamp import Timestamp
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 
 default_log = get_logger()
 
@@ -47,65 +41,20 @@ class SchemaNumberPoolSynchronizer:
         self,
         db: InfrahubDatabase,
         schema_manager: SchemaManager,
+        upserter: SchemaNumberPoolUpserter,
         log: Logger | LoggerAdapter | BoundLogger | None = None,
     ) -> None:
         self.db = db
         self.log = log or default_log
         self.schema_manager = schema_manager
         self.existing_pool_ids: set[str] = set()
-        self._schema_number_pools: list[CoreNumberPool] = []
+        self.upserter = upserter
 
     async def run(self, user_id: str = SYSTEM_USER_ID) -> None:
         """Execute the full synchronization process."""
         await self._load_existing_pools()
         await self._sync_existing_pools_with_schema(user_id=user_id)
         await self._process_all_branches(user_id=user_id)
-
-    async def ensure_pool_for_attribute(
-        self,
-        schema_node: MainSchemaTypes,
-        attribute: AttributeSchema,
-        at: Timestamp | None = None,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> str:
-        """Create or find a number pool for a specific schema attribute.
-
-        Args:
-            schema_node: The schema containing the NumberPool attribute.
-            attribute: The NumberPool SchemaAttribute.
-            at: Optional timestamp for pool creation (used for consistency in migrations).
-            user_id: The user ID to use for save operations.
-
-        Returns:
-            The pool ID for the created/found pool.
-
-        Raises:
-            ValueError: If the attribute is not a NumberPool type.
-        """
-        if not isinstance(attribute.parameters, NumberPoolParameters):
-            raise ValueError(f"Attribute {attribute.name} on {schema_node.kind} is not a NumberPool type")
-
-        # Ensure existing pools are loaded
-        if not self.existing_pool_ids and not self._schema_number_pools:
-            await self._load_existing_pools()
-
-        # Check if pool already exists with the expected ID
-        if attribute.parameters.number_pool_id and attribute.parameters.number_pool_id in self.existing_pool_ids:
-            return attribute.parameters.number_pool_id
-
-        # Create or find the pool
-        pool_id = await self._get_or_create_number_pool(
-            number_pool_id=attribute.parameters.number_pool_id,
-            pool_node=schema_node.kind,
-            pool_attribute=attribute.name,
-            start_range=attribute.parameters.start_range,
-            end_range=attribute.parameters.end_range,
-            at=at,
-            user_id=user_id,
-        )
-
-        self.existing_pool_ids.add(pool_id)
-        return pool_id
 
     async def _load_existing_pools(self) -> None:
         """Load all existing schema-type number pools."""
@@ -121,7 +70,13 @@ class SchemaNumberPoolSynchronizer:
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""
-        for schema_number_pool in self._schema_number_pools:
+        schema_number_pools = await NodeManager.query(
+            db=self.db,
+            schema=CoreNumberPool,
+            filters={"pool_type__value": NumberPoolType.SCHEMA.value},
+            branch_agnostic=True,
+        )
+        for schema_number_pool in schema_number_pools:
             defined_on_branches = get_branches_with_schema_number_pool(
                 kind=schema_number_pool.node.value, attribute_name=schema_number_pool.node_attribute.value
             )
@@ -159,18 +114,30 @@ class SchemaNumberPoolSynchronizer:
         """Process all branches to create any missing number pools."""
         for branch_name in self.schema_manager.get_branches():
             schemas_to_update: list[str] = []
-            schema_branch = self.db.schema.get_schema_branch(name=branch_name)
+            schema_branch = self.schema_manager.get_schema_branch(name=branch_name)
 
+            # Process generics first so their pool IDs are available for inheriting nodes
             for generic_name in schema_branch.generic_names:
                 generic_schema = schema_branch.get_generic(name=generic_name, duplicate=False)
-                updated_schema = await self._process_schema_node(schema_node=generic_schema, user_id=user_id)
+                updated_schema = await self._process_schema_node(
+                    schema_node=generic_schema,
+                    branch_name=branch_name,
+                    schema_branch=schema_branch,
+                    user_id=user_id,
+                )
                 if updated_schema:
                     schema_branch.set(name=generic_schema.kind, schema=updated_schema)
                     schemas_to_update.append(generic_schema.kind)
 
+            # Process nodes after generics - inherited attributes will look up pool IDs from generics
             for node_name in schema_branch.node_names:
                 node_schema = schema_branch.get_node(name=node_name, duplicate=False)
-                updated_schema = await self._process_schema_node(schema_node=node_schema, user_id=user_id)
+                updated_schema = await self._process_schema_node(
+                    schema_node=node_schema,
+                    branch_name=branch_name,
+                    schema_branch=schema_branch,
+                    user_id=user_id,
+                )
                 if updated_schema:
                     schema_branch.set(name=node_schema.kind, schema=updated_schema)
                     schemas_to_update.append(node_schema.kind)
@@ -184,9 +151,17 @@ class SchemaNumberPoolSynchronizer:
     async def _process_schema_node(
         self,
         schema_node: NodeSchema | GenericSchema,
-        user_id: str = SYSTEM_USER_ID,
+        branch_name: str,
+        schema_branch: SchemaBranch,
+        user_id: str,
     ) -> NodeSchema | GenericSchema | None:
         """Process NumberPool attributes for a schema node, creating pools as needed.
+
+        Args:
+            schema_node: The schema node to process.
+            branch_name: The branch name for schema lookups.
+            schema_branch: The SchemaBranch for schema lookups.
+            user_id: The user ID for any save operations.
 
         Returns a NodeSchema or GenericSchema if the schema was updated.
         """
@@ -197,81 +172,34 @@ class SchemaNumberPoolSynchronizer:
             if not isinstance(attribute.parameters, NumberPoolParameters):
                 continue
 
-            original_pool_id = attribute.parameters.number_pool_id
-            actual_pool_id = await self.ensure_pool_for_attribute(
+            if attribute.parameters.number_pool_id:
+                # Pool ID already exists, so the pool exists, move on
+                continue
+
+            # Try to get existing pool ID
+            new_pool_id = await self.upserter.get_existing_number_pool_id(
                 schema_node=schema_node,
                 attribute=attribute,
-                user_id=user_id,
+                branch_name=branch_name,
+                schema_branch=schema_branch,
             )
 
-            if actual_pool_id != original_pool_id:
-                self.log.info(
-                    f"Updating {schema_node.kind}.{attribute_name} number_pool_id "
-                    f"from {original_pool_id} to {actual_pool_id}"
+            # If no pool ID, create one
+            if not new_pool_id:
+                new_pool = await self.upserter.upsert_number_pool(
+                    schema_node=schema_node,
+                    attribute=attribute,
+                    branch_name=branch_name,
+                    schema_branch=schema_branch,
+                    user_id=user_id,
                 )
-                if not updated_schema:
-                    updated_schema = schema_node.duplicate()
-                updated_attribute = updated_schema.get_attribute(name=attribute_name)
-                attribute_parameters = cast("NumberPoolParameters", updated_attribute.parameters)
-                attribute_parameters.number_pool_id = actual_pool_id
+                new_pool_id = new_pool.id
+
+            self.log.info(f"Setting {schema_node.kind}.{attribute_name} number_pool_id to {new_pool_id}")
+            if not updated_schema:
+                updated_schema = schema_node.duplicate()
+            updated_attribute = updated_schema.get_attribute(name=attribute_name)
+            attribute_parameters = cast("NumberPoolParameters", updated_attribute.parameters)
+            attribute_parameters.number_pool_id = new_pool_id
 
         return updated_schema
-
-    async def _get_or_create_number_pool(
-        self,
-        number_pool_id: str | None,
-        pool_node: str,
-        pool_attribute: str,
-        start_range: int,
-        end_range: int,
-        at: Timestamp | None = None,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> str:
-        """Create or find an existing number pool.
-
-        Args:
-            at: Optional timestamp for pool creation (used for consistency in migrations).
-            user_id: The user ID to use for save operations.
-
-        Returns the actual pool ID, which may be different from number_pool_id if an existing pool was found.
-        """
-        lock_definition = NumberPoolLockDefinition(schema_kind=pool_node, attribute_name=pool_attribute)
-        async with lock.registry.get(
-            name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
-        ):
-            if number_pool_id:
-                with contextlib.suppress(NodeNotFoundError):
-                    await registry.manager.get_one_by_id_or_default_filter(
-                        db=self.db, id=str(number_pool_id), kind=CoreNumberPool
-                    )
-                    return number_pool_id
-
-            else:
-                number_pool_id = str(uuid4())
-
-            existing_pools = await NodeManager.query(
-                db=self.db,
-                schema=CoreNumberPool,
-                filters={
-                    "node__value": pool_node,
-                    "node_attribute__value": pool_attribute,
-                    "pool_type__value": NumberPoolType.SCHEMA.value,
-                },
-                branch_agnostic=True,
-            )
-            if existing_pools:
-                return existing_pools[0].id
-
-            number_pool = await Node.init(db=self.db, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
-            await number_pool.new(
-                db=self.db,
-                id=number_pool_id,
-                name=f"{pool_node}.{pool_attribute} [{number_pool_id}]",
-                node=pool_node,
-                node_attribute=pool_attribute,
-                start_range=start_range,
-                end_range=end_range,
-                pool_type=NumberPoolType.SCHEMA.value,
-            )
-            await number_pool.save(db=self.db, at=at, user_id=user_id)
-            return number_pool_id

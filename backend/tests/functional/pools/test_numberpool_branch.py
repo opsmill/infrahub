@@ -8,6 +8,7 @@ from infrahub_sdk.graphql import Query
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -51,7 +52,8 @@ BRANCH2 = "branch2"
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
         await snps.run()
 
     @pytest.fixture(scope="class")

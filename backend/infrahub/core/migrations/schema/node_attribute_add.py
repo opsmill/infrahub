@@ -3,11 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
-from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
-from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -87,22 +86,16 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db = migration_input.db
         at = migration_input.at
 
-        # Use SchemaNumberPoolSynchronizer to create/find the number pool
-        synchronizer = SchemaNumberPoolSynchronizer(
+        upserter = SchemaNumberPoolUpserter(
             db=db,
-            log=log,
             schema_manager=registry.schema,
         )
-        pool_id = await synchronizer.ensure_pool_for_attribute(
+        number_pool = await upserter.upsert_number_pool(
             schema_node=self.new_schema,
             attribute=self.new_attribute_schema,
+            branch_name=branch.name,
             at=at,
             user_id=migration_input.user_id,
-        )
-
-        # Fetch the pool object to allocate numbers
-        number_pool = await registry.manager.get_one(
-            db=db, id=pool_id, kind=CoreNumberPool, branch_agnostic=True, raise_on_error=True
         )
 
         await update_branch_registry(db=db, branch=branch)

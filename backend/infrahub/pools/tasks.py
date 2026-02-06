@@ -6,6 +6,7 @@ from prefect.logging import get_run_logger
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
 
@@ -21,7 +22,8 @@ async def validate_schema_number_pools(
     log = get_run_logger()
     synchronizer = SchemaNumberPoolSynchronizer(
         db=service.database,
-        log=log,
         schema_manager=registry.schema,
+        upserter=SchemaNumberPoolUpserter(db=service.database, schema_manager=registry.schema),
+        log=log,
     )
     await synchronizer.run(user_id=context.account.account_id)
