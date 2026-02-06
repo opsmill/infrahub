@@ -2541,8 +2541,6 @@ class SchemaBranch:
             direction=relationship.direction,
             branch=relationship.branch,
             identifier=pool_identifier,
-            min_count=relationship.min_count,
-            max_count=relationship.max_count,
             label=pool_label,
             inherited=relationship.inherited,
         )
