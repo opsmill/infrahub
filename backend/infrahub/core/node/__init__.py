@@ -348,10 +348,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
         """
-
+        number_pool_id: str | None = None
         if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
-            attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
-            attribute.is_default = False
+            number_pool_id = attribute.schema.parameters.number_pool_id
+        if not number_pool_id:
+            errors.append(
+                ValidationError({f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."})
+            )
+            return
 
         # Templates should not allocate from pools - just store the reference
         # Actual allocation happens when creating objects from the template
@@ -360,12 +364,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 attribute.source = attribute.from_pool["id"]
             return
 
-        if not attribute.from_pool or not allocate_resources:
+        if not allocate_resources:
             return
 
         try:
-            number_pool = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
+            number_pool = await registry.manager.get_one(
+                db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
             )
         except NodeNotFoundError:
             errors.append(
