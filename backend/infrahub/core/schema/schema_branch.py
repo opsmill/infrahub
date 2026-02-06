@@ -2530,7 +2530,7 @@ class SchemaBranch:
 
         pool_rel_name = f"{relationship.name}_from_resource_pool"
         pool_identifier = f"{relationship.get_identifier()}_from_resource_pool"
-        pool_label = f"{relationship.name}".title() + " from Resource Pool"
+        pool_label = relationship.name.title() + " from Resource Pool"
 
         return RelationshipSchema(
             name=pool_rel_name,
