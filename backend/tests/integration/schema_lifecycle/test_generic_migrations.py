@@ -238,8 +238,10 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         return await registry.get_branch(db=db, branch=branch_name)
 
     @pytest.fixture(scope="class")
-    def schema_generic_rename_unique_attr(self, schema_generic_base: dict[str, Any]) -> dict[str, Any]:
-        updated_schema = deepcopy(schema_generic_base)
+    def schema_generic_with_renamed_unique_attr(
+        self, schema_generic_without_deleted_fields: dict[str, Any]
+    ) -> dict[str, Any]:
+        updated_schema = deepcopy(schema_generic_without_deleted_fields)
         for attr in updated_schema["attributes"]:
             if attr["name"] == "generic_unique_attr":
                 attr["name"] = "generic_unique_attr_new"
@@ -247,12 +249,13 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         return updated_schema
 
     @pytest.fixture(scope="class")
-    def schema_step_01_5_rename_unique_generic_attr(
-        self, schema_generic_rename_unique_attr: dict[str, Any]
+    def schema_step_07_rename_unique_generic_attr(
+        self,
+        schema_generic_with_renamed_unique_attr: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
-            "generics": [schema_generic_rename_unique_attr],
+            "generics": [schema_generic_with_renamed_unique_attr],
         }
 
     @pytest.fixture(scope="class")
@@ -511,51 +514,6 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             ],
         )
         assert not errors
-
-    async def test_step01_5_rename_unique_generic_attr(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        client: InfrahubClient,
-        initial_dataset: dict[str, Node],
-        schema_step_01_5_rename_unique_generic_attr: dict[str, Any],
-    ) -> None:
-        await self._finalize_deleted_and_renamed_fields(
-            db=db,
-            branch=branch,
-            full_schema_dict=schema_step_01_5_rename_unique_generic_attr,
-            rename_map={
-                GENERIC_KIND: {
-                    "generic_unique_attr_new": "generic_unique_attr",
-                },
-            },
-        )
-
-        success, response = await client.schema.check(
-            schemas=[schema_step_01_5_rename_unique_generic_attr], branch=branch.name
-        )
-        assert success, response
-        assert response is not None
-
-        # Verify the generic attribute rename is detected correctly
-        assert "diff" in response
-        diff = response["diff"]
-        assert diff is not None
-
-        # Generic should show the rename
-        assert GENERIC_KIND in diff["changed"]
-        generic_diff = diff["changed"][GENERIC_KIND]
-        assert "generic_unique_attr_new" in generic_diff["changed"]["attributes"]["changed"]
-        assert generic_diff["changed"]["attributes"]["changed"]["generic_unique_attr_new"]["changed"] == {"name": None}
-
-        # All three specific node schemas should show the inherited attribute rename
-        for specific_kind in [SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND]:
-            assert specific_kind in diff["changed"], f"{specific_kind} should be in changed"
-            specific_diff = diff["changed"][specific_kind]
-            assert "generic_unique_attr_new" in specific_diff["changed"]["attributes"]["changed"]
-            assert specific_diff["changed"]["attributes"]["changed"]["generic_unique_attr_new"]["changed"] == {
-                "name": None
-            }
 
     async def test_step02_check_add_specific_overrides(
         self,
@@ -1540,6 +1498,204 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert set(specific_three_schema.relationship_names) >= {"favorite_thing"}
         assert "things" not in specific_three_schema.relationship_names
         assert "favorite_thing" not in specific_three_schema.local_relationship_names
+
+        errors = await self.validate_database(
+            db=db,
+            branch=branch,
+            inheriting_schemas=[
+                updated_schema_branch.get_node(name=schema_kind, duplicate=False)
+                for schema_kind in (SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND)
+            ],
+        )
+        assert not errors
+
+    async def test_step07_rename_unique_generic_attr(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, Node],
+        schema_step_07_rename_unique_generic_attr: dict[str, Any],
+    ) -> None:
+        await self._finalize_deleted_and_renamed_fields(
+            db=db,
+            branch=branch,
+            full_schema_dict=schema_step_07_rename_unique_generic_attr,
+            rename_map={
+                GENERIC_KIND: {
+                    "generic_unique_attr_new": "generic_unique_attr",
+                },
+            },
+        )
+
+        success, response = await client.schema.check(
+            schemas=[schema_step_07_rename_unique_generic_attr], branch=branch.name
+        )
+        assert success, response
+        assert response == {
+            "diff": {
+                "added": {},
+                "changed": {
+                    GENERIC_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {},
+                                "changed": {
+                                    "generic_unique_attr_new": {
+                                        "added": {},
+                                        "changed": {"name": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                            "human_friendly_id": None,
+                            "uniqueness_constraints": None,
+                        },
+                        "removed": {},
+                    },
+                    SPECIFIC_ONE_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {},
+                                "changed": {
+                                    "generic_unique_attr_new": {
+                                        "added": {},
+                                        "changed": {"name": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                            "human_friendly_id": None,
+                            "uniqueness_constraints": None,
+                        },
+                        "removed": {},
+                    },
+                    SPECIFIC_TWO_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {},
+                                "changed": {
+                                    "generic_unique_attr_new": {
+                                        "added": {},
+                                        "changed": {"name": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                            "human_friendly_id": None,
+                            "uniqueness_constraints": None,
+                        },
+                        "removed": {},
+                    },
+                    SPECIFIC_THREE_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {},
+                                "changed": {
+                                    "generic_unique_attr_new": {
+                                        "added": {},
+                                        "changed": {"name": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                            "human_friendly_id": None,
+                            "uniqueness_constraints": None,
+                        },
+                        "removed": {},
+                    },
+                },
+                "removed": {},
+            },
+            "warnings": [],
+        }
+
+        # Verify the generic attribute rename is detected correctly
+        assert "diff" in response
+        diff = response["diff"]
+        assert diff is not None
+
+        # Generic should show the rename
+        assert GENERIC_KIND in diff["changed"]
+        generic_diff = diff["changed"][GENERIC_KIND]
+        assert "generic_unique_attr_new" in generic_diff["changed"]["attributes"]["changed"]
+        assert generic_diff["changed"]["attributes"]["changed"]["generic_unique_attr_new"]["changed"] == {"name": None}
+
+        # All specific node schemas should show the inherited attribute rename
+        for specific_kind in [SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND]:
+            assert specific_kind in diff["changed"], f"{specific_kind} should be in changed"
+            specific_diff = diff["changed"][specific_kind]
+            assert "generic_unique_attr_new" in specific_diff["changed"]["attributes"]["changed"]
+            assert specific_diff["changed"]["attributes"]["changed"]["generic_unique_attr_new"]["changed"] == {
+                "name": None
+            }
+
+    async def test_step07_load_schema_with_renamed_unique_generic_attr(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, Node],
+        branch: Branch,
+        schema_step_07_rename_unique_generic_attr: dict[str, Any],
+    ) -> None:
+        await self._finalize_deleted_and_renamed_fields(
+            db=db,
+            branch=branch,
+            full_schema_dict=schema_step_07_rename_unique_generic_attr,
+            rename_map={
+                GENERIC_KIND: {
+                    "generic_unique_attr_new": "generic_unique_attr",
+                },
+            },
+        )
+        # Load the new schema and apply the migrations
+        response = await client.schema.load(schemas=[schema_step_07_rename_unique_generic_attr], branch=branch.name)
+        assert not response.errors
+
+        await self._refresh_registry(db=db, branch=branch)
+        retrieved_specific_one = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_one"].id)
+        assert not hasattr(retrieved_specific_one, "generic_unique_attr")
+        assert retrieved_specific_one.generic_unique_attr_new.value == "AlphaOne"
+
+        retrieved_specific_two = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["specific_two"].id)
+        assert not hasattr(retrieved_specific_two, "generic_unique_attr")
+        assert retrieved_specific_two.generic_unique_attr_new.value == "BravoTwo"
+
+        retrieved_specific_three = await NodeManager.get_one(
+            db=db, branch=branch, id=initial_dataset["specific_three"].id
+        )
+        assert not hasattr(retrieved_specific_three, "generic_unique_attr")
+        assert retrieved_specific_three.generic_unique_attr_new.value == "CharlieThree"
+
+        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
+        assert "generic_unique_attr" not in generic_schema.attribute_names
+        assert "generic_unique_attr_new" in generic_schema.attribute_names
+        generic_unique_attr_new_schema = generic_schema.get_attribute("generic_unique_attr_new")
+        assert generic_unique_attr_new_schema.unique is True
+
+        specific_one_schema = updated_schema_branch.get(SPECIFIC_ONE_KIND, duplicate=False)
+        assert "generic_unique_attr" not in specific_one_schema.attribute_names
+        assert "generic_unique_attr_new" in specific_one_schema.attribute_names
+        assert "generic_unique_attr_new" not in specific_one_schema.local_attribute_names
+
+        specific_two_schema = updated_schema_branch.get(SPECIFIC_TWO_KIND, duplicate=False)
+        assert "generic_unique_attr" not in specific_two_schema.attribute_names
+        assert "generic_unique_attr_new" in specific_two_schema.attribute_names
+        assert "generic_unique_attr_new" not in specific_two_schema.local_attribute_names
+
+        specific_three_schema = updated_schema_branch.get(SPECIFIC_THREE_KIND, duplicate=False)
+        assert "generic_unique_attr" not in specific_three_schema.attribute_names
+        assert "generic_unique_attr_new" in specific_three_schema.attribute_names
+        assert "generic_unique_attr_new" not in specific_three_schema.local_attribute_names
 
         errors = await self.validate_database(
             db=db,

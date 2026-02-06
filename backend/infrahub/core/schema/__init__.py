@@ -17,6 +17,7 @@ from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
 from .generic_schema import GenericSchema
+from .node_inheritance_handler import NodeInheritanceHandler
 from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
@@ -164,6 +165,7 @@ __all__ = [
     "DropdownChoice",
     "GenericSchema",
     "MainSchemaTypes",
+    "NodeInheritanceHandler",
     "NodeSchema",
     "ProfileSchema",
     "RelationshipSchema",

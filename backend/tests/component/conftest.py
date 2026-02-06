@@ -51,6 +51,7 @@ from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
+    NodeInheritanceHandler,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
@@ -1842,7 +1843,7 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
     }
 
     node = NodeSchema(**SCHEMA)
-    node.inherit_from_interface(interface=generic_vehicule_schema)
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic_vehicule_schema)
     registry.schema.set(name=node.kind, schema=node)
     registry.schema.process_schema_branch(name=default_branch.name)
     return node
@@ -1901,7 +1902,7 @@ async def boat_schema(
     }
 
     node = NodeSchema(**SCHEMA)
-    node.inherit_from_interface(interface=generic_vehicule_schema)
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic_vehicule_schema)
     registry.schema.set(name=node.kind, schema=node)
     registry.schema.process_schema_branch(name=default_branch.name)
     return node

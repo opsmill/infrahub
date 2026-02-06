@@ -324,6 +324,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         for item in self.attributes:
             if item.id == id:
                 return item
+            # Also check source_attribute_id for inherited attributes
+            if item.inherited and item.source_attribute_id == id:
+                return item
 
         raise ValueError(f"Unable to find the attribute with the ID: {id}")
 
