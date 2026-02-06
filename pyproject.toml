@@ -90,7 +90,7 @@ dev = [
     "types-ujson",
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
-    "ruff==0.14.5",
+    "ruff==0.15.0",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=4.2.0,<5",
@@ -552,6 +552,7 @@ ignore = [
     "RUF015",  # Prefer `next(...)` over single element slice
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
     "RUF052",  # Local dummy variable `_meta` is accessed
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",    # Probable insecure usage of temporary file or directory

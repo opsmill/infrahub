@@ -67,11 +67,12 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         assert resp.errors == {}
 
     async def test_schema_load_and_delete(self, client: InfrahubClient) -> None:
-        with Path(CURRENT_DIRECTORY / "test_files/device_and_interface_schema.yml").open(encoding="utf-8") as file:
-            device_and_interface_schema = yaml.safe_load(file.read())
-
-        with Path(CURRENT_DIRECTORY / "test_files/delete_interface_schema.yml").open(encoding="utf-8") as file:
-            delete_interface_schema = yaml.safe_load(file.read())
+        device_and_interface_schema = yaml.safe_load(
+            Path(CURRENT_DIRECTORY / "test_files/device_and_interface_schema.yml").read_text(encoding="utf-8")
+        )
+        delete_interface_schema = yaml.safe_load(
+            Path(CURRENT_DIRECTORY / "test_files/delete_interface_schema.yml").read_text(encoding="utf-8")
+        )
 
         device_branch = await client.branch.create(branch_name="device_branch")
 
