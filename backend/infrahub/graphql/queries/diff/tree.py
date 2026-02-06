@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
+from opentelemetry import trace
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
@@ -514,6 +515,7 @@ class DiffTreeResolver:
             filters_dict["ids"] = root_node_uuids
 
         # ensure any ongoing diff updates complete before we try to retrieve them
+        lock_request_time = Timestamp()
         diff_locker = DiffLocker()
         async with (
             diff_locker.acquire_lock(
@@ -523,21 +525,35 @@ class DiffTreeResolver:
                 target_branch_name=base_branch.name, source_branch_name=diff_branch_name, is_incremental=False
             ),
         ):
-            enriched_diffs = await diff_repo.get(
-                base_branch_name=base_branch.name,
-                diff_branch_names=[diff_branch_name],
-                from_time=from_timestamp,
-                to_time=to_timestamp,
-                filters=EnrichedDiffQueryFilters(**filters_dict),
-                include_parents=include_parents,
-                limit=limit,
-                offset=offset,
-                tracking_id=NameTrackingId(name) if name else None,
-                include_empty=True,
-                proposed_change_id=proposed_change_id,
-                # include merged diffs if filtering on proposed change
-                exclude_merged=not proposed_change_id,
-            )
+            lock_acquired_time = Timestamp()
+            with trace.get_tracer(__name__).start_as_current_span("diff_tree_request") as span:
+                get_start_time = Timestamp()
+                enriched_diffs = await diff_repo.get(
+                    base_branch_name=base_branch.name,
+                    diff_branch_names=[diff_branch_name],
+                    from_time=from_timestamp,
+                    to_time=to_timestamp,
+                    filters=EnrichedDiffQueryFilters(**filters_dict),
+                    include_parents=include_parents,
+                    limit=limit,
+                    offset=offset,
+                    tracking_id=NameTrackingId(name) if name else None,
+                    include_empty=True,
+                    proposed_change_id=proposed_change_id,
+                    # include merged diffs if filtering on proposed change
+                    exclude_merged=not proposed_change_id,
+                )
+                get_end_time = Timestamp()
+
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch_name)
+                span.set_attribute("from_time", from_timestamp.to_string() if from_timestamp else "null")
+                span.set_attribute("to_time", to_timestamp.to_string() if to_timestamp else "null")
+                span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                span.set_attribute("lock_request_time", lock_request_time.to_string())
+                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                span.set_attribute("get_start_time", get_start_time.to_string())
+                span.set_attribute("get_end_time", get_end_time.to_string())
 
         if not enriched_diffs:
             return None
@@ -598,6 +614,7 @@ class DiffTreeResolver:
         filters_dict = dict(filters or {})
 
         # ensure any ongoing diff updates complete before we try to retrieve them
+        lock_request_time = Timestamp()
         diff_locker = DiffLocker()
         async with (
             diff_locker.acquire_lock(
@@ -607,16 +624,31 @@ class DiffTreeResolver:
                 target_branch_name=base_branch.name, source_branch_name=diff_branch_name, is_incremental=False
             ),
         ):
-            summary = await diff_repo.summary(
-                base_branch_name=base_branch.name,
-                diff_branch_names=[diff_branch_name],
-                from_time=from_timestamp,
-                to_time=to_timestamp,
-                filters=filters_dict,
-                proposed_change_id=proposed_change_id,
-                # include merged diffs if filtering on proposed change
-                exclude_merged=not proposed_change_id,
-            )
+            lock_acquired_time = Timestamp()
+            with trace.get_tracer(__name__).start_as_current_span("diff_tree_summary_request") as span:
+                get_start_time = Timestamp()
+                summary = await diff_repo.summary(
+                    base_branch_name=base_branch.name,
+                    diff_branch_names=[diff_branch_name],
+                    from_time=from_timestamp,
+                    to_time=to_timestamp,
+                    filters=filters_dict,
+                    proposed_change_id=proposed_change_id,
+                    # include merged diffs if filtering on proposed change
+                    exclude_merged=not proposed_change_id,
+                )
+                get_end_time = Timestamp()
+
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch_name)
+                span.set_attribute("from_time", from_timestamp.to_string() if from_timestamp else "null")
+                span.set_attribute("to_time", to_timestamp.to_string() if to_timestamp else "null")
+                span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                span.set_attribute("lock_request_time", lock_request_time.to_string())
+                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                span.set_attribute("get_start_time", get_start_time.to_string())
+                span.set_attribute("get_end_time", get_end_time.to_string())
+
         if summary is None:
             return None
 
