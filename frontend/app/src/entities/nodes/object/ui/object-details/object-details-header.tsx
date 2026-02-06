@@ -21,11 +21,7 @@ export function ObjectDetailsHeader({
   objectId,
   permission,
 }: ObjectDetailsHeaderProps) {
-  const {
-    data: objectData,
-    isPending,
-    error,
-  } = useGetObject({ objectSchema, objectId });
+  const { data: objectData, isPending, error } = useGetObject({ objectSchema, objectId });
 
   if (isPending) {
     return (
