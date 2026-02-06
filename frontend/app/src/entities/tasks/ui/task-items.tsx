@@ -139,7 +139,13 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
                       { name: QSP.BRANCH, value: task.branch },
                     ])}
                   >
-                    <Id id={item.id} kind={item.kind} preventCopy />
+                    <Id
+                      id={item.id}
+                      kind={item.kind}
+                      branch={task.branch}
+                      date={new Date(task.updated_at)}
+                      preventCopy
+                    />
                   </Link>
                 );
               }}
