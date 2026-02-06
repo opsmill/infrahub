@@ -11,7 +11,7 @@
 - [x] Update `get_permission_report()` to return DENY for non-view actions on merged branches AND branches needing rebase (`backend/infrahub/permissions/report.py`)
 - [x] Super admin bypass preserved (checked before merged status)
 - [x] Branch delete handled via middleware `ALLOWED_MUTATIONS_ON_MERGED_BRANCH`
-- [x] Create unit tests (`backend/tests/unit/permissions/test_merged_branch_permissions.py`) - 4 tests
+- [x] Create unit tests (`backend/tests/unit/permissions/test_merged_branch_permissions.py`) - 10 tests
 
 **Note:** Implementation simplified from original plan - Branch delete is handled via GraphQL middleware allowlist rather than permission system check for `InfrahubKind.BRANCH`, since branches are deleted via GraphQL mutation not REST API. The permission check now covers both `MERGED` and `NEED_REBASE` statuses for consistent behavior.
 

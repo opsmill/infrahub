@@ -45,7 +45,7 @@ from infrahub.core.validators.models.validate_migration import (
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
-from infrahub.exceptions import BranchStatusError
+from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
@@ -325,9 +325,9 @@ async def load_schema(
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     try:
-        BranchStatusChecker.check(branch=branch)
+        BranchStatusChecker().check(branch=branch)
     except BranchStatusError as err:
-        raise SchemaNotValidError(message=str(err)) from err
+        raise ValidationError(input_value=str(err)) from err
 
     permission_manager.raise_for_permission(
         permission=define_global_permission_from_branch(
