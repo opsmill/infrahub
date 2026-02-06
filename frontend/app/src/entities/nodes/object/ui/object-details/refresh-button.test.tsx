@@ -1,3 +1,4 @@
+import { useIsFetching } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -12,8 +13,6 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useIsFetching: vi.fn(() => 0),
   };
 });
-
-import { useIsFetching } from "@tanstack/react-query";
 
 describe("RefreshButton", () => {
   afterEach(() => {
