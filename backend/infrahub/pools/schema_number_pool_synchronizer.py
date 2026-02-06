@@ -47,26 +47,12 @@ class SchemaNumberPoolSynchronizer:
         self.db = db
         self.log = log or default_log
         self.schema_manager = schema_manager
-        self.existing_pool_ids: set[str] = set()
         self.upserter = upserter
 
     async def run(self, user_id: str = SYSTEM_USER_ID) -> None:
         """Execute the full synchronization process."""
-        await self._load_existing_pools()
         await self._sync_existing_pools_with_schema(user_id=user_id)
         await self._process_all_branches(user_id=user_id)
-
-    async def _load_existing_pools(self) -> None:
-        """Load all existing schema-type number pools."""
-        async with self.db.start_session() as dbs:
-            schema_number_pools = await NodeManager.query(
-                db=dbs,
-                schema=CoreNumberPool,
-                filters={"pool_type__value": NumberPoolType.SCHEMA.value},
-                branch_agnostic=True,
-            )
-        self.existing_pool_ids = {pool.id for pool in schema_number_pools}
-        self._schema_number_pools = list(schema_number_pools)
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""

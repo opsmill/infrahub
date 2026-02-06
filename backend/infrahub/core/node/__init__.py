@@ -347,17 +347,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
+
+        Supports two cases:
+        1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
+        2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
         """
-        if attribute.schema.kind != "NumberPool" or not isinstance(attribute.schema.parameters, NumberPoolParameters):
-            return
-
-        number_pool_id = attribute.schema.parameters.number_pool_id
-        if not number_pool_id:
-            errors.append(
-                ValidationError({f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."})
-            )
-            return
-
         # Templates should not allocate from pools - just store the reference
         # Actual allocation happens when creating objects from the template
         if isinstance(self._schema, TemplateSchema):
@@ -365,7 +359,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 attribute.source = attribute.from_pool["id"]
             return
 
-        if not allocate_resources:
+        number_pool_id: str | None = None
+        # Case 1: Schema-defined NumberPool attribute
+        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+            number_pool_id = attribute.schema.parameters.number_pool_id
+            if not number_pool_id:
+                errors.append(
+                    ValidationError(
+                        {f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."}
+                    )
+                )
+                return
+            attribute.from_pool = {"id": number_pool_id}
+            attribute.is_default = False
+        # Case 2: User-specified from_pool on a regular Number attribute
+        elif attribute.from_pool:
+            number_pool_id = attribute.from_pool.get("id")
+            if not number_pool_id:
+                errors.append(ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."}))
+                return
+
+        if not allocate_resources or not number_pool_id:
+            # no pool allocation necessary
             return
 
         try:
