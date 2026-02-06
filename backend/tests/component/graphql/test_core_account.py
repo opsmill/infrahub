@@ -83,12 +83,16 @@ async def test_permissions(
 
     assert result.errors is None
     assert result.data
-    perms = [edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]]
+    perms = [
+        edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]
+    ]
     assert perms == [
         str(GlobalPermission(action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value))
     ]
 
-    perms = [edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]]
+    perms = [
+        edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]
+    ]
     assert perms == [
         str(
             ObjectPermission(

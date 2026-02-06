@@ -30,9 +30,6 @@ export const GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS = graphql(`
               }
             }
           }
-          identifier {
-            value
-          }
         }
       }
       permissions {

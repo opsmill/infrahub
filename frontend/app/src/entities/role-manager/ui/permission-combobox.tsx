@@ -23,16 +23,15 @@ import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-rel
 import type { NodeCore } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-type PermissionNode = NodeCore & { identifier: { value: string } };
+type PermissionNode = NodeCore;
 
 export interface PermissionComboboxProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   value: PermissionNode[] | null;
   onChange: (value: PermissionNode[]) => void;
 }
 
-// This component is a temporary solution to display the permissions in a combobox
-// We cannot use relationship many because the general beheviour is to use hfid/display_label
-// On permission, label is it an attribute called identifier
+// This component is used to display the permissions in a combobox
+// It uses display_label like other relationship pickers
 export function PermissionCombobox({
   value,
   onChange,
@@ -59,7 +58,7 @@ export function PermissionCombobox({
           <div className="flex grow flex-wrap gap-2">
             {value?.map((node) => (
               <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
-                {node.identifier?.value}
+                {node.display_label}
 
                 <Button
                   size="icon"
@@ -140,13 +139,12 @@ export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipCom
                       onSelect={() =>
                         onSelect({
                           id: node.id,
-                          display_label: node.identifier.value,
-                          identifier: { value: node.identifier.value },
+                          display_label: node.display_label,
                           __typename: node.__typename,
                         })
                       }
                     >
-                      <span className="truncate">{node.identifier.value}</span>
+                      <span className="truncate">{node.display_label}</span>
                     </ComboboxItem>
                   );
                 });

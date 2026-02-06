@@ -77,8 +77,8 @@ function Permissions() {
 
   const columns = [
     {
-      name: "identifier",
-      label: "Identifier",
+      name: "display_label",
+      label: "Label",
     },
     {
       name: "namespace",
@@ -111,7 +111,6 @@ function Permissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: edge?.node?.display_label,
           hfid: edge?.node?.hfid,
           display: {
             value: edge?.node ? getNodeLabel(edge.node) : undefined,
@@ -147,9 +146,9 @@ function Permissions() {
               />
             ),
           },
-          identifier: {
-            value: edge?.node?.identifier?.value,
-            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          display_label: {
+            value: edge?.node?.display_label,
+            display: <BadgeCopy value={edge?.node?.display_label} />,
           },
           __typename: edge?.node?.__typename,
         },

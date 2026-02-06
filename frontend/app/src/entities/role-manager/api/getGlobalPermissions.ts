@@ -24,9 +24,6 @@ export const GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS = graphql(`
               }
             }
           }
-          identifier {
-            value
-          }
           __typename
         }
       }
