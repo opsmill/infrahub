@@ -3,11 +3,11 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
-from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import lock
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
@@ -698,7 +698,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
                 continue
 
-            jinja_template = Jinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
             for variable in jinja_template.get_variables():
                 attribute_path = schema_branch.validate_schema_path(
                     node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types

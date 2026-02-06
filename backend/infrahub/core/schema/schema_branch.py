@@ -9,13 +9,13 @@ from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
@@ -1323,7 +1323,7 @@ class SchemaBranch:
                 )
             return
 
-        jinja_template = Jinja2Template(template=node.display_label)
+        jinja_template = InfrahubJinja2Template(template=node.display_label)
         try:
             variables = jinja_template.get_variables()
             jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
@@ -1380,7 +1380,7 @@ class SchemaBranch:
                 | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
             )
 
-            jinja_template = Jinja2Template(template=attribute.computed_attribute.jinja2_template)
+            jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
             try:
                 variables = jinja_template.get_variables()
                 jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)

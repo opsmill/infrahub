@@ -102,11 +102,17 @@ export const TaskItemDetails = forwardRef((_, ref) => {
             return (
               <Link
                 key={item.id}
-                to={getObjectDetailsUrl(item.kind, item.id, [
+                to={getObjectDetailsUrl(item.kind!, item.id, [
                   { name: QSP.BRANCH, value: object.branch },
                 ])}
               >
-                <Id id={item.id} kind={item.kind} preventCopy />
+                <Id
+                  id={item.id}
+                  kind={item.kind}
+                  branch={object.branch}
+                  date={new Date(object.updated_at)}
+                  preventCopy
+                />
               </Link>
             );
           }}
