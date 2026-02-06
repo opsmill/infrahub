@@ -22,10 +22,8 @@ export const GET_TASK_LIST = graphql(`
       count
       edges {
         node {
-          created_at
           id
           branch
-          related_node
           related_nodes {
             id
             kind
