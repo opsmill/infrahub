@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
@@ -31,6 +32,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByRole("link", { name: "Ethernet1" })).toBeVisible();
       await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_data");
       await page.getByText("UpdatedInterfaceL3Ethernet1").click();
       await expect(
         page.getByText("UpdatedInterfaceL3Ethernet1 main den1-maintenance-")
@@ -51,6 +53,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(
         page.getByText("Choose the branch to resolve the conflict:mainden1-maintenance-conflict")
       ).toBeVisible();
+      await saveScreenshotForDocs(page, "topics/proposed_change/pc_conflict_resolution");
       await page.getByRole("checkbox", { name: "main", exact: true }).click();
       await expect(page.getByText("Conflict marked as resolved")).toBeVisible();
     });
@@ -77,6 +80,7 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByRole("textbox").fill("Some comment ");
       await page.getByRole("button", { name: "Comment", exact: true }).click();
       await expect(page.getByTestId("comment").getByText("AAdmin")).toBeVisible();
+      await saveScreenshotForDocs(page, "topics/proposed_change/pc_comments");
 
       await expect(page.getByLabel("Resolve thread")).not.toBeChecked();
       await page.getByLabel("Resolve thread").click();

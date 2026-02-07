@@ -6,7 +6,7 @@ export const QSP = {
   DATETIME: "at",
   FILTER: "filters",
   PAGINATION: "pagination",
-  PROPOSED_CHANGES_TAB: "pr_tab",
+  PROPOSED_CHANGES_TAB: "tab",
   PROPOSED_CHANGES_STATE: "pr_state",
   QUERY: "query",
   TAB: "tab",

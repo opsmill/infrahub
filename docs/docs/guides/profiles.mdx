@@ -1,31 +1,31 @@
 ---
-title: Creating and assigning profiles
+title: Creating and assigning Profiles
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-This guide shows you how to create and apply profiles to ensure consistent configuration across multiple nodes in Infrahub. Profiles help you maintain standardized configurations and reduce repetitive work when managing similar objects.
+This guide shows you how to create and apply Profiles to ensure consistent configuration across multiple nodes in Infrahub. Profiles help you maintain standardized configurations and reduce repetitive work when managing similar objects.
 
 ## What you'll achieve
 
 By following this guide, you'll:
 
-- Create a profile that defines standard configuration for network interfaces
-- Apply the profile to multiple interfaces to ensure consistency
-- Learn how to override profile values for specific interfaces
-- Understand how profile inheritance works in Infrahub
+- Create a Profile that defines standard configuration for network interfaces
+- Apply the Profile to multiple interfaces to ensure consistency
+- Learn how to override Profile values for specific interfaces
+- Understand how Profile inheritance works in Infrahub
 
 ## Prerequisites
 
 - Infrahub instance running and accessible
-- Schema loaded with nodes that support profiles
+- Schema loaded with nodes that support Profiles
 - Basic understanding of GraphQL mutations and queries
 
 ## Load the schema
 
 :::warning Schema creation
-This step is only necessary if you don't already have a schema with profile-enabled nodes in your instance.
+This step is only necessary if you don't already have a schema with Profile-enabled nodes in your instance.
 :::
 
 1. Create a `schema.yml` file in the schemas directory of your repository:
@@ -150,13 +150,13 @@ You should see: `schema 'schema.yml' loaded successfully`
 
 :::
 
-## Step 1: Creating a profile
+## Step 1: Creating a Profile
 
-### Create an interface profile
+### Create an interface Profile
 
-Let's create a profile that defines the standard configuration for end-user interfaces. This profile will set common attributes that should be applied consistently across multiple interfaces.
+Let's create a Profile that defines the standard configuration for end-user interfaces. This Profile will set common attributes that should be applied consistently across multiple interfaces.
 
-The profile will define these standard settings:
+The Profile will define these standard settings:
 
 - **Speed**: 1000 Mbps
 - **Status**: active (interface is operational)
@@ -167,9 +167,9 @@ The profile will define these standard settings:
 - **Role**: end_user
 - **Untagged VLAN**: 10 (this is the default VLAN for end-user devices)
 
-:::info Relationships in profiles
+:::info Relationships in Profiles
 
-From Infrahub 1.7 relationships can also be defined in profiles. If you are using an earlier version, you can skip the untagged VLAN part. Learn more in the [Understanding profiles in Infrahub](../topics/profiles#relationships-in-profiles) topic.
+From Infrahub 1.7 relationships can also be defined in Profiles. If you are using an earlier version, you can skip the untagged VLAN part. Learn more in the [Understanding Profiles in Infrahub](../topics/profiles#relationships-in-profiles) topic.
 
 :::
 
@@ -185,8 +185,8 @@ From Infrahub 1.7 relationships can also be defined in profiles. If you are usin
 5. Click **Save** to create the VLAN
 6. Navigate to **Object Management** → **Profiles**
 7. Click on **Add Profile**
-8. Select **InfraInterface** as the profile type
-9. Fill in the profile details as follows:
+8. Select **InfraInterface** as the Profile type
+9. Fill in the Profile details as follows:
     - **Profile Name**: end-user-interface
     - **Speed**: 1000
     - **Auto Negotiation**: true
@@ -196,7 +196,7 @@ From Infrahub 1.7 relationships can also be defined in profiles. If you are usin
     - **Status**: active
     - **Role**: end_user
     - **Untagged VLAN**: VLAN 10
-10. Click **Save** to create the profile
+10. Click **Save** to create the Profile
 
 </TabItem>
 <TabItem value="graphql" label="GraphQL">
@@ -242,15 +242,15 @@ mutation {
 </TabItem>
 </Tabs>
 
-### Verify the profile was created
+### Verify the Profile was created
 
-Query Infrahub to confirm the profile exists:
+Query Infrahub to confirm the Profile exists:
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Object Management** → **Profiles**
-2. Locate the **end-user-interface** profile in the list and click on it
+2. Locate the **end-user-interface** Profile in the list and click on it
 
 </TabItem>
 <TabItem value="graphql" label="GraphQL">
@@ -290,14 +290,14 @@ query {
 </Tabs>
 
 :::success
-You should see the profile with all attributes set to your specified values.
+You should see the Profile with all attributes set to your specified values.
 :::
 
-## Step 2: Using the profile
+## Step 2: Using the Profile
 
-### Create interfaces using the profile
+### Create interfaces using the Profile
 
-Now that we have a profile, let's create multiple interfaces that inherit configuration from it. When using profiles, you only need to specify the unique attributes (like name) and reference the profile for all standardized values.
+Now that we have a Profile, let's create multiple interfaces that inherit configuration from it. When using Profiles, you only need to specify the unique attributes (like name) and reference the Profile for all standardized values.
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
@@ -309,7 +309,7 @@ Now that we have a profile, let's create multiple interfaces that inherit config
     - **Interface Name**: GigabitEthernet0/0/0
 
 :::note
-You should see interface field values automatically populated when selecting the profile.
+You should see interface field values automatically populated when selecting the Profile.
 :::
 
 4. Click **Save** to create the interface
@@ -392,9 +392,9 @@ The query should return the IDs of the created interfaces:
 </TabItem>
 </Tabs>
 
-### Verify profile inheritance
+### Verify Profile inheritance
 
-Now let's verify that the interfaces have properly inherited values from the profile. Infrahub's metadata shows which values came from profiles, giving you complete transparency about data origin.
+Now let's verify that the interfaces have properly inherited values from the Profile. Infrahub's metadata shows which values came from Profiles, giving you complete transparency about data origin.
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
@@ -405,9 +405,9 @@ Now let's verify that the interfaces have properly inherited values from the pro
 
 :::success
 
-You should see that the MTU value is inherited from the profile.
+You should see that the MTU value is inherited from the Profile.
 
-![Check profile inheritance in metadata](../media/guides/profiles/metadata.png)
+![Check Profile inheritance in metadata](../media/guides/profiles/metadata.png)
 
 :::
 
@@ -439,7 +439,7 @@ query {
 
 :::success
 
-You should see that the MTU value is inherited from the profile.
+You should see that the MTU value is inherited from the Profile.
 
 ```json
 {
@@ -475,13 +475,13 @@ You should see that the MTU value is inherited from the profile.
 </TabItem>
 </Tabs>
 
-## Step 3: Override profile values
+## Step 3: Override Profile values
 
-While profiles ensure consistency, you sometimes need exceptions for specific devices or interfaces. Infrahub lets you override profile values when needed.
+While Profiles ensure consistency, you sometimes need exceptions for specific devices or interfaces. Infrahub lets you override Profile values when needed.
 
 ### Create an interface with custom MTU
 
-Create an interface with a custom MTU value that overrides the profile default:
+Create an interface with a custom MTU value that overrides the Profile default:
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
@@ -519,7 +519,7 @@ mutation {
 
 ### Verify the override
 
-Confirm that the MTU was overridden while other values still come from the profile:
+Confirm that the MTU was overridden while other values still come from the Profile:
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
@@ -530,7 +530,7 @@ Confirm that the MTU was overridden while other values still come from the profi
 
 :::success
 
-You should see that the MTU value is **not** inherited from the profile (source is empty).
+You should see that the MTU value is **not** inherited from the Profile (source is empty).
 
 :::
 
@@ -554,7 +554,7 @@ query {
 
 :::success
 
-You should see that the MTU value is **not** inherited from the profile.
+You should see that the MTU value is **not** inherited from the Profile.
 
 ```json {9}
 {
@@ -580,20 +580,20 @@ You should see that the MTU value is **not** inherited from the profile.
 </TabItem>
 </Tabs>
 
-## Step 4: Updating a profile
+## Step 4: Updating a Profile
 
-One of the key benefits of profiles is that when you update a profile, all nodes using it automatically inherit the changes. This provides a powerful way to update configurations across your infrastructure.
+One of the key benefits of Profiles is that when you update a Profile, all nodes using it automatically inherit the changes. This provides a powerful way to update configurations across your infrastructure.
 
-### Updating the profile
+### Updating the Profile
 
-We will change the `end-user-interface` profile to set a new default **MTU** of `9000` instead of `1500`.
+We will change the `end-user-interface` Profile to set a new default **MTU** of `9000` instead of `1500`.
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
 
 1. Open the **Infrahub UI** in your browser
 2. Navigate to **Object Management** → **Profiles**
-3. Locate the **end-user-interface** profile in the list and click on it
+3. Locate the **end-user-interface** Profile in the list and click on it
 4. Click **Edit Profile Interface**
 5. Change the **MTU** value to `9000`
 6. Click **Save** to apply the changes
@@ -654,36 +654,36 @@ You should see that the MTU value is now `9000` for all the interfaces.
 
 ## Conclusion
 
-You've successfully set up profiles for your interfaces in Infrahub. Here's what you've accomplished:
+You've successfully set up Profiles for your interfaces in Infrahub. Here's what you've accomplished:
 
-- Created a standardized profile for end-user interfaces
-- Applied the profile to multiple interfaces to ensure consistent configuration
-- Verified how values are inherited from profiles using metadata
-- Overridden specific profile values for individual interfaces when needed
-- Updated a profile and observed changes propagate automatically
-- Worked with multiple profiles and understood inheritance priority
+- Created a standardized Profile for end-user interfaces
+- Applied the Profile to multiple interfaces to ensure consistent configuration
+- Verified how values are inherited from Profiles using metadata
+- Overridden specific Profile values for individual interfaces when needed
+- Updated a Profile and observed changes propagate automatically
+- Worked with multiple Profiles and understood inheritance priority
 
 ## Advanced usage
 
-### Using multiple profiles
+### Using multiple Profiles
 
-Infrahub lets you assign multiple profiles to a single node, giving you powerful composition capabilities. When multiple profiles define the same attribute, the `profile_priority` value controls which takes precedence (lower number = higher priority).
+Infrahub lets you assign multiple Profiles to a single node, giving you powerful composition capabilities. When multiple Profiles define the same attribute, the `profile_priority` value controls which takes precedence (lower number = higher priority).
 
-Learn more about profile priorities in the [Understanding profiles in Infrahub](../topics/profiles.mdx) topic.
+Learn more about Profile priorities in the [Understanding Profiles in Infrahub](../topics/profiles.mdx) topic.
 
-#### Step 1: Creating another profile
+#### Step 1: Creating another Profile
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Object Management** → **Profiles**
 2. Click on **Add Profile**
-3. Select **InfraInterface** as the profile type
-4. Fill in the profile details as follows:
+3. Select **InfraInterface** as the Profile type
+4. Fill in the Profile details as follows:
     - **Profile Name**: high-speed-interface
     - **MTU**: 9000
     - **Speed**: 10000
-5. Click **Save** to create the profile
+5. Click **Save** to create the Profile
 
 </TabItem>
 <TabItem value="graphql" label="GraphQL">
@@ -706,7 +706,7 @@ mutation {
 </TabItem>
 </Tabs>
 
-#### Step 2: Assigning multiple profiles to an interface
+#### Step 2: Assigning multiple Profiles to an interface
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
@@ -717,10 +717,10 @@ mutation {
     - **Profile**: `end-user-interface` and `high-speed-interface`
     - **Interface Name**: GigabitEthernet0/0/4
 
-![Apply multiple profiles form](../media/guides/profiles/form-profiles.png)
+![Apply multiple Profiles form](../media/guides/profiles/form-profiles.png)
 
 :::note
-You should see interface field values automatically populated when selecting the profiles.
+You should see interface field values automatically populated when selecting the Profiles.
 :::
 
 4. Click **Save** to create the interface
@@ -747,9 +747,9 @@ mutation {
 </TabItem>
 </Tabs>
 
-#### Step 3: Validating profile inheritance with multiple profiles
+#### Step 3: Validating Profile inheritance with multiple Profiles
 
-Let's check which profile values are being applied when multiple profiles define the same attribute:
+Let's check which Profile values are being applied when multiple Profiles define the same attribute:
 
 <Tabs groupId="method">
 <TabItem value="web" label="Web interface">
@@ -841,44 +841,44 @@ query {
 
 You should see that:
 
-- The **Speed** value (10000) is inherited from the `high-speed-interface` profile
-- The **Status** value (active) is inherited from the `end-user-interface` profile
+- The **Speed** value (10000) is inherited from the `high-speed-interface` Profile
+- The **Status** value (active) is inherited from the `end-user-interface` Profile
 
 :::
 
-## Using profiles with templates
+## Using Profiles with templates
 
-When both `generate_template` and `generate_profile` are configured on a schema node, you can assign profiles to templates for powerful configuration management. This allows you to:
+When both `generate_template` and `generate_profile` are configured on a schema node, you can assign Profiles to templates for powerful configuration management. This allows you to:
 
 - **Define structure with templates**: Templates define which components exist (i.e., which interfaces are present)
-- **Configure values with profiles**: Profiles define the configuration settings for those components
-- **Bulk updates**: Modify profile values to update all objects created from templates using those profiles
+- **Configure values with Profiles**: Profiles define the configuration settings for those components
+- **Bulk updates**: Modify Profile values to update all objects created from templates using those Profiles
 
-### How template-profile integration works
+### How template-Profile integration works
 
-When you assign a profile to a template and then create objects from that template:
+When you assign a Profile to a template and then create objects from that template:
 
 1. The object is created based on the template structure
-2. The template's profiles are automatically assigned to the created object
-3. Template values (when explicitly configured) take precedence over profile values
+2. The template's Profiles are automatically assigned to the created object
+3. Template values (when explicitly configured) take precedence over Profile values
 4. Profiles provide values for attributes not explicitly set on the template
-5. You can assign multiple profiles to a template with proper priority handling
+5. You can assign multiple Profiles to a template with proper priority handling
 
-This enables you to update configuration values in bulk by modifying the profile, while the template ensures structural consistency and can override specific values when needed.
+This enables you to update configuration values in bulk by modifying the Profile, while the template ensures structural consistency and can override specific values when needed.
 
 For more information, see:
 
 - [Creating an object template guide](../guides/object-template.mdx) - Step-by-step guide for creating templates
-- [Object templates topic](../topics/object-template.mdx) - Understanding template and profile integration
+- [Object templates topic](../topics/object-template.mdx) - Understanding template and Profile integration
 
 ## Related resources
 
-- [Understanding profiles in Infrahub](../topics/profiles.mdx) - Detailed explanation of profile concepts, inheritance rules, and design decisions
+- [Understanding Profiles in Infrahub](../topics/profiles.mdx) - Detailed explanation of Profile concepts, inheritance rules, and design decisions
 - [Metadata](../topics/metadata.mdx) - Learn how Infrahub tracks data lineage and attribute sources
-- [Creating a schema](../guides/create-schema.mdx) - Learn to create schemas that generate profile support
-- [Creating an object template](../guides/object-template.mdx) - Learn how to combine templates with profiles for powerful configuration management
-- [Object templates topic](../topics/object-template.mdx) - Understanding how profiles integrate with templates
+- [Creating a schema](../guides/create-schema.mdx) - Learn to create schemas that generate Profile support
+- [Creating an object template](../guides/object-template.mdx) - Learn how to combine templates with Profiles for powerful configuration management
+- [Object templates topic](../topics/object-template.mdx) - Understanding how Profiles integrate with templates
 - [Node schema reference](../reference/schema/node.mdx) - Complete reference for node configuration including the `generate_profile` option
 - [Schema validation](../reference/schema-validation.mdx) - Validate your schemas before loading
 - [GraphQL API](../topics/graphql.mdx) - Overview of Infrahub's GraphQL API
-- [Python SDK documentation]($(base_url)python-sdk/introduction) - Full SDK reference for programmatic profile operations
+- [Python SDK documentation]($(base_url)python-sdk/introduction) - Full SDK reference for programmatic Profile operations

@@ -1,26 +1,26 @@
 ---
-title: Creating a Python transform
+title: Creating a Python Transformation
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Creating a Python transform
+# Creating a Python Transformation
 
-Within Infrahub a [Transform](../topics/transformation.mdx) is defined in an [external repository](../topics/repository.mdx). However, during development and troubleshooting it is easiest to start from your local computer and run the Transform using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
+Within Infrahub a [Transformation](../topics/transformation.mdx) is defined in an [external repository](../topics/repository.mdx). However, during development and troubleshooting it is easiest to start from your local computer and run the Transformation using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
 
-The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
+The goal of this guide is to develop a Python Transformation and add it to Infrahub, we will achieve this by following these steps.
 
 1. Identify the relevant data you want to extract from the database using a [GraphQL query](../topics/graphql.mdx), that can take an input parameter to filter the data
-2. Write a Python script that use the GraphQL query to read information from the system and transforms the data into a new format
-3. Create an entry for the Transform within an .infrahub.yml file.
+2. Write a Python script that use the GraphQL query to read information from the system and transform the data into a new format
+3. Create an entry for the Transformation within an .infrahub.yml file.
 4. Create a Git repository
-5. Test the Transform with infrahubctl
+5. Test the Transformation with infrahubctl
 6. Add the repository to Infrahub as an external repository
-7. Validate that the Transform works by using the Transform API endpoint
+7. Validate that the Transformation works by using the Transformation API endpoint
 
 ## 1. Loading a schema
 
-In this guide we are going to work with a very simplistic network device model. It won't provide a transform that is very useful, the goal is instead to show how the transforms are created. Once you have mastered the basics you will be ready to go on to create more advanced transforms.
+In this guide we are going to work with a very simplistic network device model. It won't provide a Transformation that is very useful, the goal is instead to show how Transformations are created. Once you have mastered the basics you will be ready to go on to create more advanced Transformations.
 
 ```yaml
 ---
@@ -213,7 +213,7 @@ Response to the query:
   </TabItem>
 </Tabs>
 
-While it would be possible to create a transform that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+While it would be possible to create a Transformation that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
 Create a local directory on your computer.
 
@@ -231,9 +231,9 @@ The query will require an input parameter called `$name` what will refer to the 
 }
 ```
 
-## 3. Create the Python transform file
+## 3. Create the Python Transformation file
 
-The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config_render/device_config.py`:
+The next step is to create the actual Python Transformation. The Transformation is a Python class that inherits from InfrahubTransform from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config_render/device_config.py`:
 
 <Tabs groupId="convertResponse">
   <TabItem value="Non-converted query response">
@@ -269,7 +269,7 @@ class DeviceConfigTransform(InfrahubTransform):
   </TabItem>
 </Tabs>
 
-The example is simplistic in terms of what we do with the data, but all of the important parts of a Transform exist here.
+The example is simplistic in terms of what we do with the data, but all of the important parts of a Transformation exist here.
 
 1. We import the InfrahubTransform class.
 
@@ -293,9 +293,9 @@ Here we need to note the name of the class as we will need it later, optionally 
 
 The query part refers to the the query that we will define in the `.infrahub.yml` repository configuration file later in the guide.
 
-With this configuration, the endpoint of our transform will be [http://localhost:8000/api/transform/python/device_config_transform](http://localhost:8000/api/transform/python/device_config_transform).
+With this configuration, the endpoint of our Transformation will be [http://localhost:8000/api/transform/python/device_config_transform](http://localhost:8000/api/transform/python/device_config_transform).
 
-4. The Transform method
+4. The Transformation method
 
 <Tabs groupId="convertResponse">
   <TabItem value="Non-converted query response">
@@ -327,13 +327,13 @@ async def transform(self, data):
   </TabItem>
 </Tabs>
 
-When running the transform, the `data` input variable will consist of the response to the query we created or the webhook payload if using the transform with a [Custom Webhook](../topics/webhooks.mdx).
+When running the Transformation, the `data` input variable will consist of the response to the query we created or the webhook payload if using the Transformation with a [Custom Webhook](../topics/webhooks.mdx).
 
-In this case, the transform returns a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
+In this case, the Transformation returns a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
 
 :::info
 
-If you are unsure of the format of the data you can set a debug marker when testing the Transform with infrahubctl:
+If you are unsure of the format of the data you can set a debug marker when testing the Transformation with infrahubctl:
 
 ```python
     async def transform(self, data):
@@ -347,7 +347,7 @@ If you are unsure of the format of the data you can set a debug marker when test
 
 ## 4. Create an .infrahub.yml file
 
-The [.infrahub.yml](../topics/infrahub-yml.mdx) file allows you to define both the transform and query.
+The [.infrahub.yml](../topics/infrahub-yml.mdx) file allows you to define both the Transformation and query.
 
 :::info Convert query to Infrahub SDK objects
 We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
@@ -395,8 +395,8 @@ queries:
 </Tabs>
 
 <Tabs>
-  <TabItem value="Python transform" default>
-    Two parts here are required, first the `name` of the Transform which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name `DeviceConfigTransform` instead of the default `Transform`.
+  <TabItem value="Python Transformation" default>
+    Two parts here are required, first the `name` of the Transformation which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name `DeviceConfigTransform` instead of the default `Transform`.
   </TabItem>
   <TabItem value="Queries">
     Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
@@ -405,17 +405,17 @@ queries:
 
 See [this topic](../topics/infrahub-yml.mdx) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
-## 5. Test the Transform using infrahubctl
+## 5. Test the Transformation using infrahubctl
 
-Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
+Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available Transformations.
 
 ```shell title="❯ infrahubctl transform --list"
-Python transforms defined in repository: 1
+Python Transformations defined in repository: 1
 device_config_transform (device_config.py::DeviceConfigTransform)
 ```
 
 :::info
-Trying to run the transform with just the transform name will produce an error.
+Trying to run the Transformation with just the Transformation name will produce an error.
 
 ```shell title="❯ infrahubctl transform device_config_transform"
 {'message': "Variable '$name' of required type 'String!' was not provided.", 'locations': [{'line': 1, 'column': 19}]}
@@ -425,7 +425,7 @@ Here we can see that our query is missing the required input for `$name` which i
 
 :::
 
-Run the Transform and specify the variable name along with the tag we want to target.
+Run the Transformation and specify the variable name along with the tag we want to target.
 
 ```json title="❯ infrahubctl transform device_config_transform name=switch2"
 {
@@ -434,17 +434,17 @@ Run the Transform and specify the variable name along with the tag we want to ta
 }
 ```
 
-We have now successfully created a transform. Most of the transforms you will create would be more complex than this, however the main building blocks will always remain the same. It could be that you need the output in OpenConfig format, as Terraform input variables or any other kind of format.
+We have now successfully created a Transformation. Most of the Transformations you will create would be more complex than this, however the main building blocks will always remain the same. It could be that you need the output in OpenConfig format, as Terraform input variables or any other kind of format.
 
 ## 6. Create a Git repository
 
 Within the `device_config_render` folder you should now have 3 files:
 
 * `device_config_render/device_config.gql`: Contains the GraphQL query
-* `device_config_render/device_config.py`: Contains the Python code for the transform
-* `.infrahub.yml`: Contains the definition for the transform
+* `device_config_render/device_config.py`: Contains the Python code for the Transformation
+* `.infrahub.yml`: Contains the definition for the Transformation
 
-Before we can test our transform we must add the files to a local Git repository.
+Before we can test our Transformation we must add the files to a local Git repository.
 
 ```shell
 git init --initial-branch=main
@@ -456,9 +456,9 @@ git commit -m "First commit"
 
 In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository.mdx) in order to sync the repository you created and make it available within Infrahub.
 
-## 8. Accessing the transform from the API
+## 8. Accessing the Transformation from the API
 
-Once the repository is synced to Infrahub you can access the Transform from the API:
+Once the repository is synced to Infrahub you can access the Transformation from the API:
 
 ```json title="❯ curl http://localhost:8000/api/transform/python/device_config_transform?name=switch2"
 {
