@@ -9,7 +9,6 @@ export function GraphqlQueryViewerCard({ query }: { query: string }) {
     <DataViewer
       title="Query"
       data={query}
-      fileName="query.graphql"
       contentType="application/graphql"
       actions={
         <>
@@ -17,7 +16,7 @@ export function GraphqlQueryViewerCard({ query }: { query: string }) {
             GraphQL sandbox
           </DataViewerLinkButton>
           <DataViewerCopyButton value={query} />
-          <DataViewerDownloadButton value={query} fileName="query.graphql" />
+          <DataViewerDownloadButton data={query} fileName="query.graphql" />
         </>
       }
     />

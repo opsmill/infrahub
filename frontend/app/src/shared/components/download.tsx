@@ -1,5 +1,7 @@
 import { Link, type LinkProps } from "react-aria-components";
 
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
+
 const ALLOWED_URL_SCHEMES = new Set(["http:", "https:", "blob:"]);
 
 function isUrlSafe(url: string): boolean {
@@ -11,18 +13,16 @@ function isUrlSafe(url: string): boolean {
   }
 }
 
-export interface DownloadProps extends Omit<LinkProps, "download" | "href" | "target" | "rel"> {
-  contentType?: string;
+export interface DownloadProps extends Omit<LinkProps, "download" | "href"> {
+  contentType?: DataViewerContentType;
   fileName: string;
-  /** Direct URL for downloading the file. When provided, uses this URL instead of creating a blob. */
   downloadUrl?: string;
-  /** Content value used to create a blob for download when downloadUrl is not provided. */
-  value: string;
+  data: string;
 }
 
 export function Download({
   contentType = "text/plain",
-  value,
+  data,
   fileName,
   downloadUrl,
   ...props
@@ -34,22 +34,12 @@ export function Download({
       return <Link isDisabled aria-label={`Download ${fileName} (unavailable)`} {...props} />;
     }
 
-    return (
-      <Link
-        href={downloadUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        download={fileName}
-        {...props}
-      />
-    );
+    return <Link href={downloadUrl} download={fileName} {...props} />;
   }
 
   // Otherwise, create a blob from the value
-  const blob = new Blob([value], { type: contentType });
+  const blob = new Blob([data], { type: contentType });
   const url = URL.createObjectURL(blob);
 
-  return (
-    <Link href={url} target="_blank" rel="noopener noreferrer" download={fileName} {...props} />
-  );
+  return <Link href={url} download={fileName} {...props} />;
 }

@@ -34,40 +34,6 @@ export type PdfContentType = "application/pdf";
  */
 export type DataViewerContentType = TextContentType | ImageContentType | PdfContentType;
 
-const TEXT_CONTENT_TYPES: TextContentType[] = [
-  "application/json",
-  "application/yaml",
-  "application/x-yaml",
-  "application/hcl",
-  "application/graphql",
-  "image/svg+xml",
-  "text/plain",
-  "text/markdown",
-  "application/xml",
-  "text/csv",
-];
-
-const IMAGE_CONTENT_TYPES: ImageContentType[] = [
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "image/bmp",
-  "image/x-icon",
-];
-
-export function isTextContentType(contentType?: string): contentType is TextContentType {
-  return TEXT_CONTENT_TYPES.includes(contentType as TextContentType);
-}
-
-export function isImageContentType(contentType?: string): contentType is ImageContentType {
-  return IMAGE_CONTENT_TYPES.includes(contentType as ImageContentType);
-}
-
-export function isPdfContentType(contentType?: string): contentType is PdfContentType {
-  return contentType === "application/pdf";
-}
-
 export function getExtensionFromContentType(contentType?: string): string {
   switch (contentType) {
     case "application/json":

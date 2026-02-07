@@ -1,24 +1,18 @@
 import type { ReactNode } from "react";
 
 import { Col, Row } from "@/shared/components/container";
-import {
-  type DataViewerContentType,
-  isImageContentType,
-  isPdfContentType,
-  isTextContentType,
-  type TextContentType,
-} from "@/shared/components/data-viewer/types";
+import type { DataViewerContentType, TextContentType } from "@/shared/components/data-viewer/types";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { CsvTable } from "@/shared/components/editor/csv-table";
 import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { classNames } from "@/shared/utils/common";
+import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
 export interface DataViewerProps {
+  title?: string;
   data: string;
   contentType?: DataViewerContentType;
-  title?: string;
   actions?: ReactNode;
   className?: string;
 }
@@ -49,72 +43,83 @@ function DataViewerContent({
   contentType: DataViewerContentType;
   content: string;
 }) {
-  if (isTextContentType(contentType)) {
-    return <TextContent contentType={contentType} content={content} />;
-  }
-
-  if (isImageContentType(contentType)) {
-    return (
-      <div className="flex justify-center rounded-lg border border-neutral-700 bg-white p-4">
-        <img
-          src={`data:${contentType};base64,${content}`}
-          alt="Preview"
-          className="max-h-150 max-w-full rounded"
-        />
-      </div>
-    );
-  }
-
-  if (isPdfContentType(contentType)) {
-    return (
-      <iframe
-        src={`data:application/pdf;base64,${content}`}
-        title="PDF Preview"
-        className="h-150 w-full rounded-lg border border-neutral-700"
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-neutral-700 py-12 text-center">
-      <p className="text-neutral-400 text-sm">Preview not available for this file type</p>
-    </div>
-  );
-}
-
-function TextContent({ contentType, content }: { contentType: TextContentType; content: string }) {
   switch (contentType) {
-    case "text/markdown":
+    case "text/markdown": {
       return <MarkdownViewer>{content}</MarkdownViewer>;
-
-    case "image/svg+xml":
+    }
+    case "image/svg+xml": {
       return (
         <Svg value={content} className="grow rounded-lg border border-neutral-700 shadow-sm" />
       );
+    }
 
-    case "text/csv":
+    case "text/csv": {
       return (
         <ScrollArea scrollX scrollBarClassName="bg-transparent">
           <CsvTable content={content} />
         </ScrollArea>
       );
+    }
 
-    default:
+    case "application/json":
+    case "application/yaml":
+    case "application/x-yaml":
+    case "application/hcl":
+    case "application/graphql":
+    case "text/plain":
+    case "application/xml": {
       return (
         <ScrollArea
           scrollX
           className="grow rounded-lg border border-neutral-700 shadow-sm"
           scrollBarClassName="bg-transparent"
         >
-          <CodeViewer language={getLanguage(contentType)} customStyle={{ margin: 0 }}>
+          <CodeViewer language={getTextLanguage(contentType)} customStyle={{ margin: 0 }}>
             {content}
           </CodeViewer>
         </ScrollArea>
       );
+    }
+
+    case "application/pdf": {
+      return (
+        <iframe
+          src={`data:application/pdf;base64,${content}`}
+          title="PDF Preview"
+          className="h-150 w-full rounded-lg border border-neutral-700"
+        />
+      );
+    }
+
+    case "image/png":
+    case "image/jpeg":
+    case "image/gif":
+    case "image/webp":
+    case "image/bmp":
+    case "image/x-icon": {
+      return (
+        <div className="flex justify-center rounded-lg border border-neutral-700 bg-white p-4">
+          <img
+            src={`data:${contentType};base64,${content}`}
+            alt="Preview"
+            className="max-h-150 max-w-full rounded"
+          />
+        </div>
+      );
+    }
+
+    default: {
+      warnUnexpectedType(contentType);
+      return (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-neutral-700 py-12 text-center">
+          <p className="text-neutral-400 text-sm">Preview not available for this file type</p>
+        </div>
+      );
+    }
   }
 }
 
-function getLanguage(contentType: TextContentType): string {
+function getTextLanguage(contentType: TextContentType): string {
   switch (contentType) {
     case "application/json":
       return "json";
