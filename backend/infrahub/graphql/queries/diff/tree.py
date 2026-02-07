@@ -554,6 +554,7 @@ class DiffTreeResolver:
                 span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
                 span.set_attribute("get_start_time", get_start_time.to_string())
                 span.set_attribute("get_end_time", get_end_time.to_string())
+                span.set_attribute("num_diffs", str(len(enriched_diffs)))
 
         if not enriched_diffs:
             return None
@@ -648,6 +649,7 @@ class DiffTreeResolver:
                 span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
                 span.set_attribute("get_start_time", get_start_time.to_string())
                 span.set_attribute("get_end_time", get_end_time.to_string())
+                span.set_attribute("summary_retrieved", str(summary is not None))
 
         if summary is None:
             return None
