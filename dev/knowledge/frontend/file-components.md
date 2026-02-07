@@ -1,118 +1,130 @@
 # File Components
 
-Location: `frontend/app/src/shared/components/file/`
+Location: `frontend/app/src/`
 
-Shared components for displaying and uploading files. Used by both artifacts and CoreFileObject nodes.
+File handling in Infrahub follows a layered architecture with `DataViewer` as the core rendering component and entity-specific wrappers for different file sources.
 
-## Components Overview
+## Architecture Overview
 
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| `FileViewer` | Renders file preview based on content type | `file-viewer.tsx` |
-| `FileViewerFallback` | Fallback UI for unsupported file types | `file-viewer.tsx` |
-| `FileInfoCard` | Displays file metadata (name, size, type) | `file-info-card.tsx` |
-| `FilePreviewCard` | Combines FileInfoCard + FileViewer | `file-preview-card.tsx` |
-| `FileDropzone` | Drag-and-drop file upload area | `../inputs/file-dropzone.tsx` |
+```text
+Entity Wrappers (fetch data, handle loading/errors)
+    ObjectFile        ArtifactFile        GraphqlQueryViewer
+    (nodeId)          (storageId)         (query)
+         \                 |                   /
+          \                |                  /
+           v               v                 v
+                      DataViewer
+          (renders content based on MIME type)
+```
 
-## FileViewer
+## Core Component: DataViewer
 
-Unified file preview component that renders different file types appropriately.
+Location: `shared/components/data-viewer/`
+
+Universal content viewer that renders data based on MIME type. Handles text, images, PDFs, and provides a fallback for unsupported types.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `data-viewer.tsx` | Main component with content type routing |
+| `types.ts` | Type definitions and MIME type utilities |
+| `data-viewer-action-button.tsx` | Styled button/link components |
+| `data-viewer-copy-button.tsx` | Copy to clipboard action |
+| `data-viewer-download-button.tsx` | File download action |
+| `data-viewer.styles.ts` | Shared styling |
 
 ### Supported Content Types
 
 | Category | MIME Types | Rendering |
-|----------|-----------|-----------|
-| Text-based | `application/json`, `application/yaml`, `application/xml`, `text/plain`, `text/markdown`, `text/csv`, `image/svg+xml` | Syntax-highlighted via `DataViewer` |
-| Images | `image/*` (except SVG) | Native `<img>` element |
-| PDF | `application/pdf` | Embedded `<iframe>` |
-| Other | Any unsupported type | `FileViewerFallback` with download link |
+|----------|------------|-----------|
+| Code/Text | `application/json`, `application/yaml`, `application/x-yaml`, `application/hcl`, `application/graphql`, `application/xml`, `text/plain` | Syntax-highlighted via `CodeViewer` |
+| Markdown | `text/markdown` | `MarkdownViewer` with view/raw toggle |
+| CSV | `text/csv` | `CsvTable` component |
+| SVG | `image/svg+xml` | `Svg` component |
+| Images | `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/bmp`, `image/x-icon` | Native `<img>` with base64 data URL |
+| PDF | `application/pdf` | Embedded `<iframe>` with base64 |
+| Other | Unsupported types | Fallback message |
 
 ### Usage
 
 ```tsx
-import { FileViewer } from "@/shared/components/file/file-viewer";
-import { CONFIG } from "@/shared/config/config";
+import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
+import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
+import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
 
-// Basic usage
-<FileViewer
-  url="/api/files/config.json"
-  fileName="config.json"
+<DataViewer
+  data={content}
+  contentType="application/json"
+  title="Config Preview"
+  actions={
+    <>
+      <DataViewerDownloadButton value={content} fileName="config.json" contentType="application/json" />
+      <DataViewerCopyButton value={content} />
+    </>
+  }
+/>
+```
+
+### Props
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `data` | `string` | Yes | Content to display (base64 for binary) |
+| `contentType` | `DataViewerContentType` | No | MIME type (default: `text/plain`) |
+| `title` | `string` | No | Header title (default: "Preview") |
+| `actions` | `ReactNode` | No | Action buttons slot |
+| `className` | `string` | No | Additional CSS classes |
+
+## Entity Wrappers
+
+### ObjectFile
+
+Location: `entities/object-file/ui/object-file.tsx`
+
+Displays file content for `CoreFileObject` nodes. Handles data fetching, loading states, and binary/text detection.
+
+```tsx
+import { ObjectFile } from "@/entities/object-file/ui/object-file";
+
+<ObjectFile
+  nodeId="abc-123"
+  fileName="config.yaml"
+  contentType="application/yaml"
+/>
+```
+
+**Data Flow:**
+1. `ObjectFile` calls `useGetObjectFile` hook
+2. Hook uses `getObjectFile` domain function
+3. Domain calls `getObjectFileFromApi` (REST)
+4. Binary files → ArrayBuffer → base64 encoding
+5. Text files → returned as-is
+6. Content passed to `DataViewer`
+
+### ArtifactFile
+
+Location: `entities/artifacts/ui/artifact-file.tsx`
+
+Displays artifact content using storage ID. Same pattern as ObjectFile but uses artifact API endpoints.
+
+```tsx
+import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
+
+<ArtifactFile
+  storageId="storage-abc-123"
+  fileName="output.json"
   contentType="application/json"
 />
-
-// With artifact storage
-<FileViewer
-  url={CONFIG.ARTIFACTS_CONTENT_URL(storageId)}
-  fileName="artifact.yaml"
-  contentType="application/yaml"
-/>
 ```
 
-### Props
+## File Input Components
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `url` | `string` | Yes | URL to fetch file content |
-| `fileName` | `string` | Yes | File name for download/display |
-| `contentType` | `string` | No | MIME type for rendering strategy |
+### FileDropzone
 
-## FileInfoCard
+Location: `shared/components/inputs/file-dropzone.tsx`
 
-Displays file metadata in a compact card format with optional replace action.
-
-### Usage
-
-```tsx
-import { FileInfoCard } from "@/shared/components/file/file-info-card";
-
-<FileInfoCard
-  fileName="document.pdf"
-  fileSize={1024000}
-  contentType="application/pdf"
-  onReplace={() => handleReplace()}
-/>
-```
-
-### Props
-
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `fileName` | `string` | Yes | File name to display |
-| `fileSize` | `number` | No | File size in bytes (formatted automatically) |
-| `contentType` | `string` | No | MIME type (shows icon based on type) |
-| `onReplace` | `() => void` | No | Callback for replace action |
-
-## FilePreviewCard
-
-Combines `FileInfoCard` and `FileViewer` for complete file display. Used in object details views.
-
-### Usage
-
-```tsx
-import { FilePreviewCard } from "@/entities/nodes/object/ui/object-details/file-preview-card";
-
-<FilePreviewCard
-  storageId="abc-123"
-  fileName="config.yaml"
-  fileSize={2048}
-  contentType="application/yaml"
-/>
-```
-
-### Props
-
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `storageId` | `string` | No | Storage ID for file URL generation |
-| `fileName` | `string` | Yes | File name |
-| `fileSize` | `number` | No | File size in bytes |
-| `contentType` | `string` | No | MIME type |
-
-## FileDropzone
-
-Drag-and-drop file upload component using React Aria.
-
-### Usage
+Drag-and-drop file upload using React Aria.
 
 ```tsx
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
@@ -124,83 +136,67 @@ import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 />
 ```
 
-### Props
+### FileInfoCard
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `onFileSelect` | `(file: File) => void` | Yes | Callback when file is selected |
-| `accept` | `string[]` | No | Accepted file types (MIME or extensions) |
-| `maxSize` | `number` | No | Max file size in bytes |
-| `disabled` | `boolean` | No | Disable the dropzone |
-| `hasError` | `boolean` | No | Show error state (red border) |
+Location: `shared/components/file/ui/file-info-card.tsx`
 
-## Integration Examples
-
-### Artifact Details
+Displays file metadata (name, size, type) with appropriate icon.
 
 ```tsx
-// entities/artifacts/ui/artifact-details.tsx
-import { FileViewer } from "@/shared/components/file/file-viewer";
-import { CONFIG } from "@/shared/config/config";
+import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 
-<FileViewer
-  url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
-  fileName={`${artifactId}.${extension}`}
-  contentType={artifact.content_type.value}
+<FileInfoCard
+  fileName="document.pdf"
+  fileSize={1024000}
+  contentType="application/pdf"
+  onReplace={() => openFilePicker()}
 />
 ```
 
-### CoreFileObject Details
+### FileField
 
-```tsx
-// entities/nodes/object/ui/object-details/file-attachment-details.tsx
-import { FilePreviewCard } from "./file-preview-card";
+Location: `shared/components/form/fields/file.field.tsx`
 
-<FilePreviewCard
-  storageId={objectData.storage_id?.value}
-  fileName={objectData.file_name?.value}
-  fileSize={objectData.file_size?.value}
-  contentType={objectData.file_type?.value}
-/>
-```
+Form field that combines FileDropzone and FileInfoCard for file upload forms.
 
-### File Upload Form
+## Utility Functions
 
-```tsx
-// shared/components/form/core-file-form.tsx
-import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
-import { FileInfoCard } from "@/shared/components/file/file-info-card";
+Location: `shared/utils/file.ts`
 
-{selectedFile ? (
-  <FileInfoCard
-    fileName={selectedFile.name}
-    fileSize={selectedFile.size}
-    contentType={selectedFile.type}
-    onReplace={handleReplace}
-  />
-) : (
-  <FileDropzone onFileSelect={handleFileSelect} hasError={!!error} />
-)}
-```
+| Function | Purpose |
+|----------|---------|
+| `getFileIcon(contentType)` | Returns Lucide icon based on MIME type |
+| `isBinaryContentType(contentType)` | Returns `true` for images (except SVG) and PDFs |
+| `arrayBufferToBase64(buffer)` | Converts ArrayBuffer to base64 string |
 
-## URL Generation
+## API Endpoints
 
-Use `CONFIG.ARTIFACTS_CONTENT_URL(storageId)` to generate file URLs:
-
-```tsx
-import { CONFIG } from "@/shared/config/config";
-
-const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
-// Returns: /api/storage/object/{storageId}
-```
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/storage/files/{node_id}` | CoreFileObject content |
+| `GET /api/storage/files/{node_id}?preview=true` | CoreFileObject preview |
+| `GET /api/storage/object/{storage_id}` | Artifact content |
 
 ## Related Files
 
-- `shared/components/file/file-viewer.tsx` - Main viewer component
-- `shared/components/file/file-info-card.tsx` - Metadata card
+**DataViewer:**
+- `shared/components/data-viewer/` - Core viewer components
+
+**Entity Wrappers:**
+- `entities/object-file/` - ObjectFile entity (api/domain/ui)
+- `entities/artifacts/` - Artifact entity (api/domain/ui)
+
+**Input Components:**
 - `shared/components/inputs/file-dropzone.tsx` - Upload dropzone
-- `shared/components/data-viewer/data-viewer.tsx` - Text content rendering
-- `shared/utils/file.ts` - File utility functions (icons, formatting)
-- `entities/nodes/object/ui/object-details/file-preview-card.tsx` - Combined preview
-- `entities/nodes/object/ui/object-details/file-attachment-details.tsx` - File object details
-- `entities/artifacts/ui/artifact-details.tsx` - Artifact file display
+- `shared/components/file/ui/file-info-card.tsx` - File metadata card
+- `shared/components/form/fields/file.field.tsx` - Form field
+
+**Rendering Dependencies:**
+- `shared/components/editor/code/code-viewer.tsx` - Syntax highlighting
+- `shared/components/editor/markdown/markdown-viewer.tsx` - Markdown render
+- `shared/components/editor/csv-table.tsx` - CSV table
+- `shared/components/display/svg.tsx` - SVG display
+
+**Utilities:**
+- `shared/utils/file.ts` - File utilities
+- `shared/components/download.tsx` - Safe download component
