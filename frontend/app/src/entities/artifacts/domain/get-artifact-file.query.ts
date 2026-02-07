@@ -8,10 +8,10 @@ import {
   getArtifactFile,
 } from "@/entities/artifacts/domain/get-artifact-file";
 
-export function getArtifactFileQueryOptions({ storageId }: GetArtifactFileParams) {
+export function getArtifactFileQueryOptions({ storageId, contentType }: GetArtifactFileParams) {
   return queryOptions({
-    queryKey: artifactsQueryKeys.file(storageId),
-    queryFn: () => getArtifactFile({ storageId }),
+    queryKey: artifactsQueryKeys.file(storageId, contentType),
+    queryFn: () => getArtifactFile({ storageId, contentType }),
   });
 }
 

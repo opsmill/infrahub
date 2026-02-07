@@ -1,21 +1,23 @@
-import { CONTENT_TYPE_CONFIG, DataViewer } from "@/shared/components/data-viewer/data-viewer";
+import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
+import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
+import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { CONFIG } from "@/shared/config/config";
 
+import { getArtifactFileDownloadUrl } from "@/entities/artifacts/domain/get-artifact-file";
 import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
 
-interface ArtifactFileProps {
-  artifactId: string;
+export interface ArtifactFileProps {
   storageId: string;
-  contentType: DataViewerContentType;
+  fileName: string;
+  contentType?: DataViewerContentType;
   className?: string;
 }
 
-export function ArtifactFile({ artifactId, storageId, contentType, className }: ArtifactFileProps) {
-  const { data: fileContent, isPending, error } = useGetArtifactFile({ storageId });
+export function ArtifactFile({ storageId, fileName, contentType, className }: ArtifactFileProps) {
+  const { data, isPending, error } = useGetArtifactFile({ storageId, contentType });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
@@ -25,21 +27,26 @@ export function ArtifactFile({ artifactId, storageId, contentType, className }: 
     return <NoDataFound message={error.message} />;
   }
 
-  const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
-  const rawUrl = CONFIG.ARTIFACTS_CONTENT_URL(storageId);
+  if (!data) {
+    return <NoDataFound message="File content is empty" />;
+  }
+
+  const downloadUrl = getArtifactFileDownloadUrl(storageId);
 
   return (
     <DataViewer
-      title={config.label}
-      data={fileContent}
-      fileName={`${artifactId}.${config.extension}`}
+      data={data}
       contentType={contentType}
-      actions={
-        <DataViewerLinkButton href={rawUrl} target="_blank" rel="noopener noreferrer">
-          Raw
-        </DataViewerLinkButton>
-      }
       className={className}
+      actions={
+        <>
+          <DataViewerLinkButton href={downloadUrl} target="_blank" rel="noopener noreferrer">
+            Raw
+          </DataViewerLinkButton>
+          <DataViewerDownloadButton data={data} fileName={fileName} contentType={contentType} />
+          <DataViewerCopyButton value={data} />
+        </>
+      }
     />
   );
 }
