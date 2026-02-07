@@ -1052,20 +1052,13 @@ jobs:
         run: npm install
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install chromium --no-shell
 
       # Make chromium ignore netlink messages by returning ReadMessages early
       - name: Chrome path
-        run: |
-          CHROMIUM_DIR=$(npx playwright install chromium --dry-run 2>&1 | grep 'Install location:' | grep chromium | head -1 | awk '{print $3}')
-          echo "Chromium directory: $CHROMIUM_DIR"
-          ls -la "$CHROMIUM_DIR/" || true
-          echo CHROME_BIN_PATH="$CHROMIUM_DIR/chrome-linux/chrome" >> $GITHUB_ENV
+        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run --no-shell | grep 'Install location:' | grep chromium | head -1 | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
       - name: Chrome func offset
-        run: |
-          echo "Chrome binary path: $CHROME_BIN_PATH"
-          ls -la "$CHROME_BIN_PATH" || echo "Chrome binary not found!"
-          echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
+        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
       - name: Patch chromium
         run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
 
