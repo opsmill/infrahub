@@ -2535,7 +2535,8 @@ class SchemaBranch:
         return RelationshipSchema(
             name=pool_rel_name,
             peer=pool_peer,
-            kind=relationship.kind,
+            description=f"Generated relationship for using a resource pool on the '{relationship.name}' relationship",
+            kind=RelationshipKind.GENERIC,
             optional=True,
             cardinality=RelationshipCardinality.ONE,
             direction=relationship.direction,
