@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
@@ -27,6 +28,11 @@ def get_permission_report(  # noqa: PLR0911
 ) -> BranchRelativePermissionDecision:
     if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
         return BranchRelativePermissionDecision.ALLOW
+
+    # Block mutations on merged branches
+    # Note: Branch delete is allowed via middleware, this covers node permissions
+    if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
+        return BranchRelativePermissionDecision.DENY
 
     if action != "view":
         if node.kind in (InfrahubKind.ACCOUNTGROUP, InfrahubKind.ACCOUNTROLE, InfrahubKind.GENERICACCOUNT) or (

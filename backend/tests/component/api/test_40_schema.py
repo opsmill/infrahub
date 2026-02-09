@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -85,6 +86,60 @@ async def test_schema_read_endpoint_wrong_branch(
 
     assert response.status_code == 400
     assert response.json() is not None
+
+
+async def test_schema_load_blocked_on_merged_branch(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
+    authentication_base,
+    helper,
+) -> None:
+    """Test that schema load returns 422 on merged branches."""
+    branch = await create_branch(branch_name="merged-schema-test", db=db)
+    branch.status = BranchStatus.MERGED
+    await branch.save(db=db)
+    registry.branch[branch.name] = branch
+
+    with client:
+        response = client.post(
+            f"/api/schema/load?branch={branch.name}",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_simple_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "has been merged and is read-only" in response.json()["errors"][0]["message"]
+
+
+async def test_schema_load_blocked_on_need_rebase_branch(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
+    authentication_base,
+    helper,
+) -> None:
+    """Test that schema load returns 422 on branches needing rebase."""
+    branch = await create_branch(branch_name="rebase-schema-test", db=db)
+    branch.status = BranchStatus.NEED_REBASE
+    await branch.save(db=db)
+    registry.branch[branch.name] = branch
+
+    with client:
+        response = client.post(
+            f"/api/schema/load?branch={branch.name}",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_simple_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "must be rebased" in response.json()["errors"][0]["message"]
 
 
 async def test_schema_summary_default_branch(

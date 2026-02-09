@@ -1,15 +1,10 @@
-import { RefreshCwIcon } from "lucide-react";
-
-import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { Button } from "@/shared/components/ui/button";
-import { classNames } from "@/shared/utils/common";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
+import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
 import type { Permission } from "@/entities/permission/types";
@@ -26,12 +21,7 @@ export function ObjectDetailsHeader({
   objectId,
   permission,
 }: ObjectDetailsHeaderProps) {
-  const {
-    data: objectData,
-    isPending,
-    isRefetching,
-    error,
-  } = useGetObject({ objectSchema, objectId });
+  const { data: objectData, isPending, error } = useGetObject({ objectSchema, objectId });
 
   if (isPending) {
     return (
@@ -49,21 +39,12 @@ export function ObjectDetailsHeader({
       <h2 className="truncate font-semibold text-xl">{getNodeLabel(objectData)}</h2>
       <NodeMetadataPopover objectId={objectId} objectKind={objectSchema.kind!} />
 
-      <Button
-        size="icon"
-        variant="ghost"
-        className="text-gray-500"
-        isLoading={isRefetching}
-        onClick={() => queryClient.invalidateQueries({ queryKey: objectQueryKeys.all })}
-      >
-        <RefreshCwIcon className={classNames("size-3.5", isRefetching && "animate-spin")} />
-      </Button>
+      <RefreshButton className="ml-auto" />
 
       <DetailsButtons
         schema={objectSchema}
         objectDetailsData={objectData}
         permission={permission}
-        className="ml-auto"
       />
 
       <ObjectDetailsMenu
