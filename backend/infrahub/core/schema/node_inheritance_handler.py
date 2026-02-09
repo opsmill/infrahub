@@ -87,6 +87,7 @@ class NodeInheritanceHandler:
             self._update_hfid_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_order_by_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_default_filters_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
+            self._update_display_labels_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
 
     def _update_default_filters_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.default_filter:
@@ -106,6 +107,13 @@ class NodeInheritanceHandler:
             return
         node.human_friendly_id = self._get_updated_renamed_attrs_data(
             attr_data=node.human_friendly_id, renamed_attrs=renamed_attrs
+        )
+
+    def _update_display_labels_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
+        if not node.display_labels:
+            return
+        node.display_labels = self._get_updated_renamed_attrs_data(
+            attr_data=node.display_labels, renamed_attrs=renamed_attrs
         )
 
     def _update_uniqueness_constraints_for_renamed_attributes(
