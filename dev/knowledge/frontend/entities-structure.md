@@ -96,7 +96,7 @@ Business logic layer. Responsibilities:
 - React Query hooks (`.query.ts`, `.mutation.ts`)
 - Query key factories (`.query-keys.ts`)
 
-Example: `domain/generate-artifact.ts`
+Example: `domain/get-branch-details.ts`
 
 ```typescript
 export const getBranchDetails: GetBranchDetails = async (params) => {
@@ -150,179 +150,62 @@ import { generateArtifact } from "@/entities/artifacts/domain/generate-artifact"
 import type { ArtifactObject } from "@/entities/artifacts/types";
 ```
 
+## Branch & Date Context
+
+Most entities need the current branch and optional time-machine date for queries. These are provided via shared types and injected at the query hook layer.
+
+### ContextParams
+
+Defined in `shared/api/types.ts`:
+
+```typescript
+export type BranchContextParams = {
+  branchName: string;
+};
+
+export interface ContextParams extends BranchContextParams {
+  atDate?: Date | null;
+}
+```
+
+### Where context is stored
+
+- **Branch:** `useCurrentBranch()` hook from `@/entities/branches/ui/branches-provider`
+- **Date:** `datetimeAtom` Jotai atom from `@/shared/stores/time.atom`
+
+### How context flows through layers
+
+The **query hook** (`.query.ts`) is the single injection point. It reads branch and date from global state and passes them down. Callers never pass branch or date manually.
+
+| Layer | What happens |
+|-------|-------------|
+| **Query hook** (`.query.ts`) | Reads `useCurrentBranch()` + `datetimeAtom`, injects into `queryOptions` |
+| **Query keys** (`.query-keys.ts`) | Includes `branchName` and `atDate` for per-branch/date cache isolation |
+| **Domain function** (`.ts`) | Params type extends `ContextParams`, passes them to the API layer |
+| **API layer** (`-from-api.ts`) | Params type extends `ContextParams`, serializes to transport (`branch` query param, `at` as ISO string) |
+
 ## Complete Example: Object File Entity
 
-The `object-file` entity demonstrates the full pattern for fetching and displaying file content.
-
-### Structure
+Reference implementation at `entities/object-file/`. See [object-file-entity.md](object-file-entity.md) for full code listings.
 
 ```text
 entities/object-file/
 ├── api/
-│   └── get-object-file-from-api.ts    # REST API call
+│   └── get-object-file-from-api.ts    # REST call, params extend ContextParams, serializes branch/atDate to query params
 ├── domain/
-│   ├── get-object-file.ts             # Business logic & URL helpers
-│   ├── get-object-file.query.ts       # React Query hook
-│   └── object-file.query-keys.ts      # Query key factory
+│   ├── get-object-file.ts             # Business logic (binary handling, URL helpers), params extend ContextParams
+│   ├── get-object-file.query.ts       # Query hook: injects branch/date, exposes queryOptions + useGetObjectFile
+│   └── object-file.query-keys.ts      # Key factory: includes branchName, atDate, contentType for cache isolation
 └── ui/
-    └── object-file.tsx                # React component
+    └── object-file.tsx                # React component, imports from domain/ only
 ```
 
-### api/get-object-file-from-api.ts
+### Key Patterns
 
-Raw REST call with no business logic:
-
-```typescript
-import { apiClient } from "@/shared/api/rest/client";
-
-export interface GetObjectFileFromApiParams {
-  nodeId: string;
-  parseAs?: "text" | "arrayBuffer";
-}
-
-export function getObjectFileFromApi({ nodeId, parseAs = "text" }: GetObjectFileFromApiParams) {
-  return apiClient.GET("/api/storage/files/{node_id}", {
-    params: {
-      path: { node_id: nodeId },
-      query: { preview: true },
-    },
-    parseAs,
-  });
-}
-```
-
-### domain/object-file.query-keys.ts
-
-Query key factory for cache management:
-
-```typescript
-export const objectFileQueryKeys = {
-  all: ["object-file"] as const,
-  file: (nodeId: string, contentType?: string) =>
-    [...objectFileQueryKeys.all, "file", nodeId, contentType] as const,
-} as const;
-```
-
-### domain/get-object-file.ts
-
-Business logic: URL generation, binary detection, base64 encoding:
-
-```typescript
-import { CONFIG } from "@/shared/config/config";
-import { arrayBufferToBase64, isBinaryContentType } from "@/shared/utils/file";
-import { getObjectFileFromApi } from "@/entities/object-file/api/get-object-file-from-api";
-
-export interface GetObjectFileParams {
-  nodeId: string;
-  contentType?: string;
-}
-
-export function getObjectFileDownloadUrl(nodeId: string): string {
-  return CONFIG.FILE_BY_NODE_ID_URL(nodeId);
-}
-
-export function getObjectFileRawUrl(nodeId: string): string {
-  return CONFIG.FILE_BY_NODE_ID_URL(nodeId, true);
-}
-
-export async function getObjectFile({ nodeId, contentType }: GetObjectFileParams): Promise<string> {
-  if (!nodeId) throw new Error("Node ID is required");
-
-  // Binary files need base64 encoding for display
-  if (isBinaryContentType(contentType)) {
-    const { data, error } = await getObjectFileFromApi({ nodeId, parseAs: "arrayBuffer" });
-    if (error) throw error;
-    return arrayBufferToBase64(data as ArrayBuffer);
-  }
-
-  const { data, error } = await getObjectFileFromApi({ nodeId });
-  if (error) throw error;
-  return data as string;
-}
-```
-
-### domain/get-object-file.query.ts
-
-React Query hook wrapping the domain function:
-
-```typescript
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import type { QueryConfig } from "@/shared/api/types";
-import { getObjectFile, type GetObjectFileParams } from "./get-object-file";
-import { objectFileQueryKeys } from "./object-file.query-keys";
-
-export function getObjectFileQueryOptions({ nodeId, contentType }: GetObjectFileParams) {
-  return queryOptions({
-    queryKey: objectFileQueryKeys.file(nodeId, contentType),
-    queryFn: () => getObjectFile({ nodeId, contentType }),
-    enabled: !!nodeId,
-  });
-}
-
-export function useGetObjectFile(
-  params: GetObjectFileParams,
-  config?: QueryConfig<typeof getObjectFileQueryOptions>
-) {
-  return useQuery({ ...getObjectFileQueryOptions(params), ...config });
-}
-```
-
-### ui/object-file.tsx
-
-React component using domain hooks (never calls API directly):
-
-```typescript
-import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
-import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
-import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
-import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
-import NoDataFound from "@/shared/components/errors/no-data-found";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { getObjectFileDownloadUrl, getObjectFileRawUrl } from "@/entities/object-file/domain/get-object-file";
-import { useGetObjectFile } from "@/entities/object-file/domain/get-object-file.query";
-
-export interface ObjectFileProps {
-  nodeId: string;
-  fileName: string;
-  contentType?: string;
-  className?: string;
-}
-
-export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectFileProps) {
-  const { data: content, isPending, error } = useGetObjectFile({ nodeId, contentType });
-
-  if (isPending) return <LoadingIndicator className="p-4" />;
-  if (error) return <NoDataFound message={error.message} />;
-  if (!content) return <NoDataFound message="File content is empty" />;
-
-  return (
-    <DataViewer
-      data={content}
-      contentType={contentType}
-      className={className}
-      actions={
-        <>
-          <DataViewerLinkButton href={getObjectFileRawUrl(nodeId)} target="_blank">
-            Raw
-          </DataViewerLinkButton>
-          <DataViewerDownloadButton
-            value={content}
-            fileName={fileName}
-            contentType={contentType}
-            downloadUrl={getObjectFileDownloadUrl(nodeId)}
-          />
-          <DataViewerCopyButton value={content} />
-        </>
-      }
-    />
-  );
-}
-```
-
-### Key Patterns Demonstrated
-
-1. **api/**: Pure transport layer - just HTTP calls, no logic
-2. **domain/**: Business rules (URL generation, binary handling), React Query hooks
-3. **ui/**: Imports from domain only, never from API directly
-4. **Query keys**: Factory pattern for consistent cache keys
-5. **Error handling**: Domain throws, UI catches via React Query
+1. **ContextParams**: Domain and API param types extend `ContextParams` for consistent branch/date typing
+2. **Context injection**: Query hooks read global state and inject it — callers never pass branch/date
+3. **Cache isolation**: Query keys include branch and date so each combination gets its own cache entry
+4. **api/**: Pure transport — serializes `branchName` → `branch` query param, `atDate` → ISO string
+5. **domain/**: Business rules + passes context through to API
+6. **ui/**: Imports from domain only, never from API directly
+7. **Error handling**: Domain throws, UI catches via React Query
