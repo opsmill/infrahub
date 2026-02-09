@@ -137,10 +137,7 @@ export const relationshipsForListView = {
   many: ["Attribute"],
 };
 
-export const relationshipsForDetailsView: {
-  one: RelationshipKind[];
-  many: RelationshipKind[];
-} = {
+export const relationshipsForDetailsView: { one: RelationshipKind[]; many: RelationshipKind[] } = {
   one: ["Generic", "Attribute", "Component", "Parent", "Hierarchy"],
   many: ["Attribute", "Parent"],
 };
