@@ -60,13 +60,7 @@ function getFileData(objectData: NodeObjectWithMetadata) {
   };
 }
 
-const FILE_EXCLUDE_ATTRIBUTES = [
-  "file_name",
-  "file_size",
-  "file_type",
-  "storage_id",
-  "checksum",
-];
+const FILE_EXCLUDE_ATTRIBUTES = ["file_name", "file_size", "file_type", "storage_id", "checksum"];
 
 export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDetailsProps) {
   const [qspTab] = useQueryState(QSP.TAB);

@@ -22,6 +22,12 @@ export const CONFIG = {
   ARTIFACTS_CONTENT_URL: (storageId: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`,
   // File endpoints - for CoreObjectFile nodes
-  FILE_BY_NODE_ID_URL: (nodeId: string, preview = false) =>
-    `${INFRAHUB_API_SERVER_URL}/api/storage/files/${nodeId}${preview ? "?preview=true" : ""}`,
+  FILE_BY_NODE_ID_URL: (nodeId: string, branch: string, preview = false) => {
+    const params = new URLSearchParams();
+    params.append("branch", branch);
+    if (preview) {
+      params.append("preview", "true");
+    }
+    return `${INFRAHUB_API_SERVER_URL}/api/storage/files/${nodeId}?${params.toString()}`;
+  },
 };

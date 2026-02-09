@@ -27,11 +27,7 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
   return (
     <>
       <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
-      <ObjectDetails
-        objectSchema={objectSchema}
-        objectData={objectData}
-        permission={permission}
-      />
+      <ObjectDetails objectSchema={objectSchema} objectData={objectData} permission={permission} />
     </>
   );
 }

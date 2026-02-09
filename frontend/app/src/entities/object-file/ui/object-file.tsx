@@ -5,6 +5,7 @@ import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-v
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   getObjectFileDownloadUrl,
   getObjectFileRawUrl,
@@ -19,7 +20,12 @@ export interface ObjectFileProps {
 }
 
 export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectFileProps) {
-  const { data: content, isPending, error } = useGetObjectFile({ nodeId, contentType });
+  const { currentBranch } = useCurrentBranch();
+  const {
+    data: content,
+    isPending,
+    error,
+  } = useGetObjectFile({ nodeId, contentType, branch: currentBranch.name });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
@@ -33,8 +39,8 @@ export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectF
     return <NoDataFound message="File content is empty" />;
   }
 
-  const rawUrl = getObjectFileRawUrl(nodeId);
-  const downloadUrl = getObjectFileDownloadUrl(nodeId);
+  const rawUrl = getObjectFileRawUrl(nodeId, currentBranch.name);
+  const downloadUrl = getObjectFileDownloadUrl(nodeId, currentBranch.name);
 
   return (
     <DataViewer
