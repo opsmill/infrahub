@@ -395,3 +395,18 @@ class MergeFailedError(Error):
     def __init__(self, branch_name: str) -> None:
         self.message = f"Failed to merge branch '{branch_name}'"
         super().__init__(self.message)
+
+
+class BranchStatusError(Error):
+    HTTP_CODE: int = 400
+
+    def __init__(self, identifier: str, message: str) -> None:
+        self.identifier = identifier
+        self.message = message
+        super().__init__(self.message)
+
+
+class BranchAlreadyMergedError(BranchStatusError): ...
+
+
+class BranchNeedsRebaseError(BranchStatusError): ...

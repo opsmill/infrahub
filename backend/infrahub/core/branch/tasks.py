@@ -356,6 +356,22 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------
+        # Set branch status to MERGED to make it read-only
+        # -------------------------------------------------------------
+        obj.status = BranchStatus.MERGED
+        await obj.save(db=db)
+        registry.branch[obj.name] = obj
+
+        # -------------------------------------------------------------
+        # Cancel any remaining open proposed changes for this merged branch
+        # -------------------------------------------------------------
+        await get_workflow().submit_workflow(
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES,
+            context=context,
+            parameters={"branch_name": obj.name},
+        )
+
+        # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
         # NOTE: we still need to convert this event and potentially pull
         #   some tasks currently executed based on the event into this workflow

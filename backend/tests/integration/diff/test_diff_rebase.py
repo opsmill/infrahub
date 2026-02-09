@@ -550,7 +550,7 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
                 assert prop_diff.conflict is None
 
-    async def test_merge_and_rebase(
+    async def test_merge_branch(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -584,14 +584,31 @@ class TestDiffRebase(TestInfrahubApp):
         no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=default_branch)
         assert no_antartica is None
 
-        # rebase branch_3
-        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_3.name})
+    async def test_rebase_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        client: InfrahubClient,
+    ) -> None:
+        rebase_branch = await create_branch(branch_name="rebase_test_branch", db=db)
+
+        # add a node on main after branch creation
+        main_person = await Node.init(db=db, branch=default_branch, schema=TestKind.PERSON)
+        await main_person.new(db=db, name="RebaseTestPerson", height=170)
+        await main_person.save(db=db)
+
+        # verify the node is NOT on the branch yet
+        branch_person_before = await NodeManager.get_one(db=db, id=main_person.id, branch=rebase_branch)
+        assert branch_person_before is None
+
+        # rebase the branch
+        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": rebase_branch.name})
         assert result["BranchRebase"]["ok"]
 
-        # check branch_3 is updated
-        branch_3 = await Branch.get_by_name(db=db, name=branch_3.name)
-        no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
-        assert no_antartica is None
-        branch_3_jeb = await NodeManager.get_one(db=db, id=main_jeb.id, branch=branch_3)
-        assert branch_3_jeb.name.value == "Jeb"
-        assert branch_3_jeb.height.value == 160
+        # check the branch is updated with the new node
+        rebase_branch = await Branch.get_by_name(db=db, name=rebase_branch.name)
+        branch_person_after = await NodeManager.get_one(db=db, id=main_person.id, branch=rebase_branch)
+        assert branch_person_after is not None
+        assert branch_person_after.name.value == "RebaseTestPerson"
+        assert branch_person_after.height.value == 170
