@@ -1,14 +1,15 @@
 import { apiClient } from "@/shared/api/rest/client";
+import type { ContextParams } from "@/shared/api/types";
 
-export interface GetObjectFileFromApiParams {
+export interface GetObjectFileFromApiParams extends ContextParams {
   nodeId: string;
-  branch: string;
   parseAs?: "text" | "arrayBuffer";
 }
 
 export function getObjectFileFromApi({
   nodeId,
-  branch,
+  branchName,
+  atDate,
   parseAs = "text",
 }: GetObjectFileFromApiParams) {
   return apiClient.GET("/api/storage/files/{node_id}", {
@@ -17,7 +18,8 @@ export function getObjectFileFromApi({
         node_id: nodeId,
       },
       query: {
-        branch,
+        branch: branchName,
+        at: atDate?.toISOString() ?? null,
         preview: true,
       },
     },

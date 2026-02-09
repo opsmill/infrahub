@@ -22,11 +22,7 @@ export interface ObjectFileProps {
 
 export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectFileProps) {
   const { currentBranch } = useCurrentBranch();
-  const {
-    data: content,
-    isPending,
-    error,
-  } = useGetObjectFile({ nodeId, contentType, branch: currentBranch.name });
+  const { data: content, isPending, error } = useGetObjectFile({ nodeId, contentType });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
