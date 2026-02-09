@@ -53,7 +53,7 @@ export function FileDropzone({
       onDropExit={handleDropExit}
       isDisabled={disabled}
       className={classNames(
-        "flex w-full flex-col items-center justify-center rounded-md border p-6 transition-colors",
+        "flex w-full flex-col items-center justify-center rounded-md border transition-colors",
         isDragOver && "border-custom-blue-500 bg-gray-100",
         !isDragOver && !hasError && "border-gray-300 hover:border-custom-blue-500",
         hasError && "border-red-500",
@@ -63,7 +63,7 @@ export function FileDropzone({
     >
       <FileTrigger onSelect={handleSelect} acceptedFileTypes={accept}>
         <Pressable isDisabled={disabled}>
-          <div className="flex w-full cursor-pointer flex-col items-center justify-center">
+          <div className="m-6 flex w-full cursor-pointer flex-col items-center justify-center">
             <Icon
               icon={isDragOver ? "mdi:file-upload" : "mdi:cloud-upload-outline"}
               className={classNames(
