@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { DropZone, FileTrigger, isFileDropItem, Pressable } from "react-aria-components";
+import { Button, DropZone, FileTrigger, isFileDropItem } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -62,8 +62,8 @@ export function FileDropzone({
       )}
     >
       <FileTrigger onSelect={handleSelect} acceptedFileTypes={accept}>
-        <Pressable isDisabled={disabled}>
-          <div className="m-6 flex w-full cursor-pointer flex-col items-center justify-center">
+        <Button isDisabled={disabled} className="flex w-full items-center justify-center">
+          <div className="m-6 flex flex-col items-center justify-center">
             <Icon
               icon={isDragOver ? "mdi:file-upload" : "mdi:cloud-upload-outline"}
               className={classNames(
@@ -83,7 +83,7 @@ export function FileDropzone({
               Max file size: 10MB
             </p>
           </div>
-        </Pressable>
+        </Button>
       </FileTrigger>
     </DropZone>
   );
