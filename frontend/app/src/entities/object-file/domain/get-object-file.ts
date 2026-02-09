@@ -22,10 +22,6 @@ export async function getObjectFile({
   contentType,
   branch,
 }: GetObjectFileParams): Promise<string> {
-  if (!nodeId) {
-    throw new Error("Node ID is required to fetch object file");
-  }
-
   if (isBinaryContentType(contentType)) {
     const { data, error } = await getObjectFileFromApi({ nodeId, branch, parseAs: "arrayBuffer" });
 
