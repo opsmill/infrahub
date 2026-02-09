@@ -20,10 +20,13 @@ import {
 } from "@/shared/components/aria/menu";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
@@ -54,11 +57,16 @@ export function ObjectDetailsMenu({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
   const navigate = useNavigate();
+  const { currentBranch } = useCurrentBranch();
 
   const nodeLabel = getNodeLabel(objectData);
 
-  const isEditAllowed = permission.update.isAllowed;
-  const isDeleteAllowed = permission.delete.isAllowed;
+  const { isAllowed: isEditAllowed, tooltipMessage: editTooltipMessage } = getActionAvailability(
+    currentBranch.status,
+    permission.update
+  );
+  const { isAllowed: isDeleteAllowed, tooltipMessage: deleteTooltipMessage } =
+    getActionAvailability(currentBranch.status, permission.delete);
 
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
@@ -150,35 +158,53 @@ export function ObjectDetailsMenu({
             )}
 
             <MenuSection title="Manage">
-              <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
-                <PencilLineIcon className="size-3.5" />
-                <span>Edit</span>
-              </MenuItem>
+              <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
+                <div>
+                  <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
+                    <PencilLineIcon className="size-3.5" />
+                    <span>Edit</span>
+                  </MenuItem>
+                </div>
+              </Tooltip>
 
-              <MenuItem
-                isDisabled={!isEditAllowed}
-                onAction={() => setIsManageGroupsDrawerOpen(true)}
-              >
-                <GroupIcon className="size-3.5" />
-                <span>Groups</span>
-              </MenuItem>
+              <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
+                <div>
+                  <MenuItem
+                    isDisabled={!isEditAllowed}
+                    onAction={() => setIsManageGroupsDrawerOpen(true)}
+                  >
+                    <GroupIcon className="size-3.5" />
+                    <span>Groups</span>
+                  </MenuItem>
+                </div>
+              </Tooltip>
 
-              <MenuItem
-                href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
-                isDisabled={!isEditAllowed}
-              >
-                <Icon icon="mdi:swap-horizontal" className="size-3" />
-                Convert object type
-              </MenuItem>
+              <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
+                <div>
+                  <MenuItem
+                    href={constructPath(
+                      `/objects/${objectData.__typename}/${objectData.id}/convert`
+                    )}
+                    isDisabled={!isEditAllowed}
+                  >
+                    <Icon icon="mdi:swap-horizontal" className="size-3" />
+                    Convert object type
+                  </MenuItem>
+                </div>
+              </Tooltip>
 
-              <MenuItem
-                isDisabled={!isDeleteAllowed}
-                className="text-red-500"
-                onAction={() => setIsDeleteModalOpen(true)}
-              >
-                <Trash2Icon className="size-3.5" />
-                <span>Delete</span>
-              </MenuItem>
+              <Tooltip enabled={!isDeleteAllowed} content={deleteTooltipMessage} side="left">
+                <div>
+                  <MenuItem
+                    isDisabled={!isDeleteAllowed}
+                    className="text-red-500"
+                    onAction={() => setIsDeleteModalOpen(true)}
+                  >
+                    <Trash2Icon className="size-3.5" />
+                    <span>Delete</span>
+                  </MenuItem>
+                </div>
+              </Tooltip>
             </MenuSection>
           </Menu>
         </MenuPopover>

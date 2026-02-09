@@ -72,11 +72,25 @@ interface ButtonWithTooltipProps extends ButtonProps {
 }
 
 export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
-  ({ tooltipContent, tooltipEnabled, side, ...props }, ref) => (
-    <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
-      <Button ref={ref} {...props} />
-    </Tooltip>
-  )
+  ({ tooltipContent, tooltipEnabled, side, disabled, className, ...props }, ref) => {
+    // When button is disabled, wrap in a span to allow tooltip to work
+    // (disabled buttons have pointer-events-none which prevents tooltips)
+    if (disabled && tooltipEnabled) {
+      return (
+        <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
+          <span className={classNames("inline-flex", className)}>
+            <Button ref={ref} disabled={disabled} {...props} />
+          </span>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
+        <Button ref={ref} disabled={disabled} className={className} {...props} />
+      </Tooltip>
+    );
+  }
 );
 
 export interface LinkButtonProps extends LinkProps, VariantProps<typeof buttonVariants> {}

@@ -13,6 +13,8 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -37,8 +39,14 @@ export function ObjectActionsCell({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const { schema } = useSchema(objectKind);
-  const isEditAllowed = permission.update.isAllowed;
-  const isDeleteAllowed = permission.delete.isAllowed;
+  const { currentBranch } = useCurrentBranch();
+
+  const { isAllowed: isEditAllowed, tooltipMessage: editTooltipMessage } = getActionAvailability(
+    currentBranch.status,
+    permission.update
+  );
+  const { isAllowed: isDeleteAllowed, tooltipMessage: deleteTooltipMessage } =
+    getActionAvailability(currentBranch.status, permission.delete);
 
   if (!schema) {
     return <StickyRightCell isMuted />;
@@ -67,7 +75,7 @@ export function ObjectActionsCell({
               </Link>
             </DropdownMenuItem>
 
-            <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
+            <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
               <div>
                 <DropdownMenuItem
                   disabled={!isEditAllowed}
@@ -79,7 +87,7 @@ export function ObjectActionsCell({
               </div>
             </Tooltip>
 
-            <Tooltip enabled={!isDeleteAllowed} content={permission.delete.message} side="left">
+            <Tooltip enabled={!isDeleteAllowed} content={deleteTooltipMessage} side="left">
               <div>
                 <DropdownMenuItem
                   disabled={!isDeleteAllowed}
