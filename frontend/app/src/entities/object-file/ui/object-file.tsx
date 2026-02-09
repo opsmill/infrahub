@@ -2,6 +2,7 @@ import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
 import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
 import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-viewer-download-button";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
@@ -15,7 +16,7 @@ import { useGetObjectFile } from "@/entities/object-file/domain/get-object-file.
 export interface ObjectFileProps {
   nodeId: string;
   fileName: string;
-  contentType?: string;
+  contentType?: DataViewerContentType;
   className?: string;
 }
 
@@ -53,7 +54,7 @@ export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectF
             Raw
           </DataViewerLinkButton>
           <DataViewerDownloadButton
-            value={content}
+            data={content}
             fileName={fileName}
             contentType={contentType}
             downloadUrl={downloadUrl}
