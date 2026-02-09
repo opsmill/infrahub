@@ -51,13 +51,13 @@ from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
-    NodeInheritanceHandler,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
     core_models,
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.node_inheritance_handler import NodeInheritanceHandler
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes

@@ -10,9 +10,6 @@ class NodeInheritanceHandler:
         existing_inherited_relationships: dict[str, int] = {
             item.name: idx for idx, item in enumerate(node.relationships) if item.inherited
         }
-        existing_inherited_fields = list(existing_inherited_attributes.keys()) + list(
-            existing_inherited_relationships.keys()
-        )
 
         properties_to_inherit = [
             "human_friendly_id",
@@ -59,14 +56,14 @@ class NodeInheritanceHandler:
                     # Update tracking structures to prevent stale lookups
                     existing_inherited_attributes.pop(old_name, None)
                     existing_inherited_attributes[new_attribute.name] = item_idx
-                    existing_inherited_fields.remove(old_name)
-                    existing_inherited_fields.append(new_attribute.name)
                 node.attributes[item_idx].update_from_generic(other=new_attribute)
                 node.attributes[item_idx].name = new_attribute.name  # Update name explicitly
                 node.attributes[item_idx].source_attribute_id = new_attribute.source_attribute_id
             elif attribute.name not in existing_inherited_attributes:
+                # New attribute added on the generic
                 node.attributes.append(new_attribute)
             else:
+                # Existing inherited attribute that has not been renamed
                 item_idx = existing_inherited_attributes[attribute.name]
                 node.attributes[item_idx].update_from_generic(other=new_attribute)
                 node.attributes[item_idx].source_attribute_id = new_attribute.source_attribute_id

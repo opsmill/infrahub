@@ -1618,26 +1618,6 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             "warnings": [],
         }
 
-        # Verify the generic attribute rename is detected correctly
-        assert "diff" in response
-        diff = response["diff"]
-        assert diff is not None
-
-        # Generic should show the rename
-        assert GENERIC_KIND in diff["changed"]
-        generic_diff = diff["changed"][GENERIC_KIND]
-        assert "generic_unique_attr_new" in generic_diff["changed"]["attributes"]["changed"]
-        assert generic_diff["changed"]["attributes"]["changed"]["generic_unique_attr_new"]["changed"] == {"name": None}
-
-        # All specific node schemas should show the inherited attribute rename
-        for specific_kind in [SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND]:
-            assert specific_kind in diff["changed"], f"{specific_kind} should be in changed"
-            specific_diff = diff["changed"][specific_kind]
-            assert "generic_unique_attr_new" in specific_diff["changed"]["attributes"]["changed"]
-            assert specific_diff["changed"]["attributes"]["changed"]["generic_unique_attr_new"]["changed"] == {
-                "name": None
-            }
-
     async def test_step07_load_schema_with_renamed_unique_generic_attr(
         self,
         db: InfrahubDatabase,

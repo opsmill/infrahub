@@ -1732,6 +1732,7 @@ class SchemaBranch:
         """
 
         generics_used_by = defaultdict(list)
+        node_inheritance_handler = NodeInheritanceHandler()
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
@@ -1766,7 +1767,7 @@ class SchemaBranch:
                 # Store the list of node referencing a specific generics
                 if node.namespace != "Internal":
                     generics_used_by[generic_kind].append(node.kind)
-                NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic_kind_schema)
+                node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
