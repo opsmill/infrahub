@@ -17,7 +17,7 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 class TestFileObject(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def schema_file_contract(self) -> dict:
-        return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/file_contract.yml").open(encoding="utf-8"))
+        return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/file_contract.yml").read_text(encoding="utf-8"))
 
     async def test_load_schema(self, client: InfrahubClient, schema_file_contract: dict) -> None:
         """Load the FileContract schema that inherits from CoreFileObject and verify its structure."""
