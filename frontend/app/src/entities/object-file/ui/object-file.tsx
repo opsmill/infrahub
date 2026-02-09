@@ -1,3 +1,5 @@
+import { useAtomValue } from "jotai";
+
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { DataViewerLinkButton } from "@/shared/components/data-viewer/data-viewer-action-button";
 import { DataViewerCopyButton } from "@/shared/components/data-viewer/data-viewer-copy-button";
@@ -5,8 +7,7 @@ import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-v
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-
-import { useAtomValue } from "jotai";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
@@ -14,7 +15,6 @@ import {
   getObjectFileRawUrl,
 } from "@/entities/object-file/domain/get-object-file";
 import { useGetObjectFile } from "@/entities/object-file/domain/get-object-file.query";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 
 export interface ObjectFileProps {
   nodeId: string;

@@ -11,7 +11,11 @@ export interface GetObjectFileParams extends ContextParams {
 
 export type GetObjectFileUrlParams = Pick<GetObjectFileParams, "nodeId" | "branchName" | "atDate">;
 
-export function getObjectFileDownloadUrl({ nodeId, branchName, atDate }: GetObjectFileUrlParams): string {
+export function getObjectFileDownloadUrl({
+  nodeId,
+  branchName,
+  atDate,
+}: GetObjectFileUrlParams): string {
   const params = new URLSearchParams({ branch: branchName });
   if (atDate) {
     params.append("at", atDate.toISOString());
