@@ -32,6 +32,10 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
             schema_kinds.append(f"Profile{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
                 schema_kinds.extend([f"Profile{kind}" for kind in schema.used_by])
+        if not new_attribute_schema.unique and not new_attribute_schema.read_only:
+            schema_kinds.append(f"Template{schema.kind}")
+            if isinstance(schema, GenericSchema) and schema.used_by:
+                schema_kinds.extend([f"Template{kind}" for kind in schema.used_by])
         return schema_kinds
 
     def __init__(
