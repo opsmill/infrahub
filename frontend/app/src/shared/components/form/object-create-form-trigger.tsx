@@ -23,8 +23,15 @@ export const ObjectCreateFormTrigger = ({
   onSuccess,
   isLoading,
   permission,
+  // Destructure these props to prevent them from being spread and overriding computed values
+  disabled: _disabled,
+  tooltipEnabled: _tooltipEnabled,
+  tooltipContent: _tooltipContent,
   ...props
-}: ObjectCreateFormTriggerProps) => {
+}: ObjectCreateFormTriggerProps & {
+  tooltipEnabled?: boolean;
+  tooltipContent?: string;
+}) => {
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const { currentBranch } = useCurrentBranch();
 
@@ -42,11 +49,11 @@ export const ObjectCreateFormTrigger = ({
       <ButtonWithTooltip
         data-cy="create"
         data-testid="create-object-button"
+        {...props}
         disabled={!isAllowed || isLoading}
         onClick={() => setShowCreateDrawer(true)}
         tooltipContent={tooltipMessage}
         tooltipEnabled={!isAllowed}
-        {...props}
       >
         <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
         Add {schema?.label}
