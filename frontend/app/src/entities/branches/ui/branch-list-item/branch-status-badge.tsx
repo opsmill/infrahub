@@ -1,39 +1,56 @@
-import { AlertTriangleIcon, LoaderIcon } from "lucide-react";
-
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
 import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
 
-const pillStyle = "gap-1 rounded-full font-normal";
+const pillStyle = "rounded-full font-normal";
 
 interface BranchStatusBadgeProps extends BadgeProps {
   status: BranchStatus;
+  /** Whether to show the badge for OPEN status. Default: false */
+  showOpen?: boolean;
 }
 
-export function BranchStatusBadge({ status, className, ...props }: BranchStatusBadgeProps) {
+export function BranchStatusBadge({
+  status,
+  className,
+  showOpen = false,
+  ...props
+}: BranchStatusBadgeProps) {
   switch (status) {
     case BRANCH_STATUS.OPEN: {
-      return null;
+      if (!showOpen) return null;
+      return (
+        <Badge className={classNames(pillStyle, className)} variant="green" {...props}>
+          Open
+        </Badge>
+      );
     }
     case BRANCH_STATUS.NEED_REBASE: {
       return (
         <Badge className={classNames(pillStyle, className)} variant="yellow" {...props}>
-          <AlertTriangleIcon className="size-3" /> Rebase needed
+          Rebase needed
         </Badge>
       );
     }
     case BRANCH_STATUS.NEED_UPGRADE_REBASE: {
       return (
         <Badge className={classNames(pillStyle, className)} variant="yellow" {...props}>
-          <AlertTriangleIcon className="size-3" /> Rebase needed (upgrade)
+          Rebase needed (upgrade)
         </Badge>
       );
     }
     case BRANCH_STATUS.DELETING: {
       return (
         <Badge className={classNames(pillStyle, className)} variant="red" {...props}>
-          <LoaderIcon className="size-3 animate-spin" /> Deleting
+          Deleting
+        </Badge>
+      );
+    }
+    case BRANCH_STATUS.MERGED: {
+      return (
+        <Badge className={classNames(pillStyle, className)} variant="blue" {...props}>
+          Merged
         </Badge>
       );
     }
