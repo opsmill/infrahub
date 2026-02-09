@@ -1061,6 +1061,7 @@ jobs:
         run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
       - name: Patch chromium
         run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
         run: npx playwright test artifact
