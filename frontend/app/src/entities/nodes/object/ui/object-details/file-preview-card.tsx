@@ -1,3 +1,4 @@
+import { Col } from "@/shared/components/container";
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 
 import { ObjectFile } from "@/entities/object-file/ui/object-file";
@@ -11,10 +12,10 @@ interface FilePreviewCardProps {
 
 export function FilePreviewCard({ nodeId, fileName, fileSize, contentType }: FilePreviewCardProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <Col>
       <FileInfoCard fileName={fileName} fileSize={fileSize} contentType={contentType} />
 
       <ObjectFile nodeId={nodeId} fileName={fileName} contentType={contentType} />
-    </div>
+    </Col>
   );
 }
