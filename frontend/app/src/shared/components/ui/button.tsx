@@ -78,8 +78,8 @@ export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltip
     if (disabled && tooltipEnabled) {
       return (
         <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
-          <span className="inline-flex">
-            <Button ref={ref} className={className} disabled={disabled} {...props} />
+          <span className={classNames("inline-flex", className)}>
+            <Button ref={ref} {...props} disabled={disabled} />
           </span>
         </Tooltip>
       );
@@ -87,7 +87,7 @@ export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltip
 
     return (
       <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
-        <Button ref={ref} disabled={disabled} className={className} {...props} />
+        <Button ref={ref} {...props} className={className} disabled={disabled} />
       </Tooltip>
     );
   }
