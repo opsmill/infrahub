@@ -2245,7 +2245,7 @@
                     },
                     "namespace": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[A-Z][a-z0-9]+$",
                         "title": "Namespace",
@@ -2538,7 +2538,7 @@
                     },
                     "namespace": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[A-Z][a-z0-9]+$",
                         "title": "Namespace",
@@ -2863,7 +2863,7 @@
                     },
                     "namespace": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[A-Z][a-z0-9]+$",
                         "title": "Namespace",
@@ -3134,7 +3134,7 @@
                     },
                     "namespace": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[A-Z][a-z0-9]+$",
                         "title": "Namespace",
@@ -3516,7 +3516,7 @@
                     },
                     "name": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
@@ -3614,7 +3614,7 @@
                         "anyOf": [
                             {
                                 "type": "string",
-                                "maxLength": 32
+                                "maxLength": 64
                             },
                             {
                                 "type": "null"
@@ -3776,7 +3776,7 @@
                     },
                     "name": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
@@ -3874,7 +3874,7 @@
                         "anyOf": [
                             {
                                 "type": "string",
-                                "maxLength": 32
+                                "maxLength": 64
                             },
                             {
                                 "type": "null"
@@ -4451,7 +4451,7 @@
                     },
                     "namespace": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[A-Z][a-z0-9]+$",
                         "title": "Namespace",
@@ -5221,7 +5221,7 @@
                     },
                     "namespace": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[A-Z][a-z0-9]+$",
                         "title": "Namespace",
@@ -5722,7 +5722,7 @@
                     },
                     "name": {
                         "type": "string",
-                        "maxLength": 32,
+                        "maxLength": 64,
                         "minLength": 3,
                         "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
@@ -5746,7 +5746,7 @@
                         "anyOf": [
                             {
                                 "type": "string",
-                                "maxLength": 32
+                                "maxLength": 64
                             },
                             {
                                 "type": "null"

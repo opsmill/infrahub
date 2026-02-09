@@ -15,10 +15,10 @@ from starlette.responses import JSONResponse
 from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
-from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
@@ -45,6 +45,7 @@ from infrahub.core.validators.models.validate_migration import (
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
+from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
@@ -323,7 +324,10 @@ async def load_schema(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
-    check_need_rebase_status(branch)
+    try:
+        BranchStatusChecker().check(branch=branch)
+    except BranchStatusError as err:
+        raise ValidationError(input_value=str(err)) from err
 
     permission_manager.raise_for_permission(
         permission=define_global_permission_from_branch(
