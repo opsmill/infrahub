@@ -169,7 +169,7 @@ async def download_file_object_by_storage_id(
     )
     permission_manager.raise_for_permission(permission=permission)
 
-    return _build_file_response(file_object=cast("CoreFileObject", node), preview=preview)
+    return _build_file_response(file_object=node, preview=preview)
 
 
 @router.get(
