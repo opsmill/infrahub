@@ -77,6 +77,7 @@ class AccountGlobalPermissionNode(ObjectType):
     name = Field(String, required=True)
     action = Field(String, required=True)
     decision = Field(String, required=True)
+    identifier = Field(String, required=True)
 
 
 class AccountObjectPermissionNode(ObjectType):
@@ -87,6 +88,7 @@ class AccountObjectPermissionNode(ObjectType):
     name = Field(String, required=True)
     action = Field(String, required=True)
     decision = Field(String, required=True)
+    identifier = Field(String, required=True)
 
 
 class AccountGlobalPermissionEdge(ObjectType):
@@ -135,6 +137,7 @@ async def resolve_account_permissions(
                     "description": obj.description,
                     "action": obj.action,
                     "decision": obj.decision,
+                    "identifier": str(obj),
                 }
             }
             for obj in global_list
@@ -152,6 +155,7 @@ async def resolve_account_permissions(
                     "name": obj.name,
                     "action": obj.action,
                     "decision": obj.decision,
+                    "identifier": str(obj),
                 }
             }
             for obj in object_list

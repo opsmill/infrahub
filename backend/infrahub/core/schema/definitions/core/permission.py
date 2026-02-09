@@ -1,4 +1,5 @@
 from infrahub.core.constants import (
+    AllowOverrideType,
     BranchSupportType,
     GlobalPermissions,
     InfrahubKind,
@@ -26,6 +27,14 @@ core_base_permission = GenericSchema(
     generate_profile=False,
     attributes=[
         Attr(name="description", kind="Text", optional=True),
+        Attr(
+            name="identifier",
+            kind="Text",
+            description="Identifier for the permission",
+            read_only=True,
+            optional=True,
+            allow_override=AllowOverrideType.NONE,
+        ),
     ],
     relationships=[
         Rel(
