@@ -1,5 +1,6 @@
 import { UploadIcon } from "lucide-react";
 
+import { Row } from "@/shared/components/container";
 import { formatFileSize } from "@/shared/utils/common";
 import { getFileIcon } from "@/shared/utils/file";
 
@@ -15,7 +16,7 @@ export function FileInfoCard({ fileName, fileSize, contentType, onReplace }: Fil
   const FileIconComponent = getFileIcon(contentType);
 
   const content = (
-    <div className="flex items-center gap-2">
+    <Row>
       <FileIconComponent className="size-5 shrink-0 text-gray-500" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-gray-900 text-sm">{fileName}</p>
@@ -28,7 +29,7 @@ export function FileInfoCard({ fileName, fileSize, contentType, onReplace }: Fil
         )}
       </div>
       {onReplace && <UploadIcon className="size-4 shrink-0 text-gray-400" />}
-    </div>
+    </Row>
   );
 
   if (onReplace) {

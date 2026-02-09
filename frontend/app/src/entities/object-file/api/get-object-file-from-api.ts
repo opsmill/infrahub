@@ -19,7 +19,7 @@ export function getObjectFileFromApi({
       },
       query: {
         branch: branchName,
-        at: atDate?.toISOString() ?? null,
+        at: atDate?.toISOString(),
         preview: true,
       },
     },

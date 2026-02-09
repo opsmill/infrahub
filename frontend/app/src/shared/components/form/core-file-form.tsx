@@ -19,9 +19,9 @@ import { classNames } from "@/shared/utils/common";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
-import { objectFileQueryKeys } from "@/entities/object-file/domain/object-file.query-keys";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
@@ -122,7 +122,7 @@ export function CoreFileForm({
           {
             onSuccess: async (updatedNode) => {
               // Invalidate file queries to refresh the UI
-              await queryClient.invalidateQueries({ queryKey: objectFileQueryKeys.all });
+              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
                 toastId: `alert-success-${schema?.name}-updated`,

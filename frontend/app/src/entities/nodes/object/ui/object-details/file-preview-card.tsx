@@ -1,4 +1,5 @@
 import { Col } from "@/shared/components/container";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 
 import { ObjectFile } from "@/entities/object-file/ui/object-file";
@@ -7,7 +8,7 @@ interface FilePreviewCardProps {
   nodeId: string;
   fileName: string;
   fileSize?: number;
-  contentType?: string;
+  contentType?: DataViewerContentType;
 }
 
 export function FilePreviewCard({ nodeId, fileName, fileSize, contentType }: FilePreviewCardProps) {

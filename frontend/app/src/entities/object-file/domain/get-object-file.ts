@@ -1,5 +1,5 @@
 import type { ContextParams } from "@/shared/api/types";
-import { CONFIG } from "@/shared/config/config";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { arrayBufferToBase64, isBinaryContentType } from "@/shared/utils/file";
 
 import { getObjectFileFromApi } from "@/entities/object-file/api/get-object-file-from-api";
@@ -9,12 +9,18 @@ export interface GetObjectFileParams extends ContextParams {
   contentType?: string;
 }
 
-export function getObjectFileDownloadUrl(nodeId: string, branchName: string): string {
-  return CONFIG.FILE_BY_NODE_ID_URL(nodeId, branchName);
+export type GetObjectFileUrlParams = Pick<GetObjectFileParams, "nodeId" | "branchName" | "atDate">;
+
+export function getObjectFileDownloadUrl({ nodeId, branchName, atDate }: GetObjectFileUrlParams): string {
+  const params = new URLSearchParams({ branch: branchName });
+  if (atDate) {
+    params.append("at", atDate.toISOString());
+  }
+  return `${INFRAHUB_API_SERVER_URL}/api/storage/files/${nodeId}?${params}`;
 }
 
-export function getObjectFileRawUrl(nodeId: string, branchName: string): string {
-  return CONFIG.FILE_BY_NODE_ID_URL(nodeId, branchName, true);
+export function getObjectFileRawUrl(urlParams: GetObjectFileUrlParams): string {
+  return `${getObjectFileDownloadUrl(urlParams)}&preview=true`;
 }
 
 export async function getObjectFile({

@@ -1,5 +1,11 @@
+import type { ContextParams } from "@/shared/api/types";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import type { GetObjectFileParams } from "@/entities/object-file/domain/get-object-file";
+
 export const objectFileQueryKeys = {
-  all: ["object-file"] as const,
-  file: (nodeId: string, branchName: string, atDate?: Date | null, contentType?: string) =>
-    [...objectFileQueryKeys.all, "file", nodeId, branchName, atDate, contentType] as const,
+  all: (context: ContextParams) =>
+    [...objectQueryKeys.allWithContext(context), "object-file"] as const,
+  file: ({ branchName, atDate, nodeId, contentType }: GetObjectFileParams) =>
+    [...objectFileQueryKeys.all({ branchName, atDate }), "file", nodeId, contentType] as const,
 } as const;

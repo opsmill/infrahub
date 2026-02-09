@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { QueryConfig } from "@/shared/api/types";
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -11,21 +11,15 @@ import {
 } from "@/entities/object-file/domain/get-object-file";
 import { objectFileQueryKeys } from "@/entities/object-file/domain/object-file.query-keys";
 
-export function getObjectFileQueryOptions({
-  nodeId,
-  contentType,
-  branchName,
-  atDate,
-}: GetObjectFileParams) {
+export function getObjectFileQueryOptions(params: GetObjectFileParams) {
   return queryOptions({
-    queryKey: objectFileQueryKeys.file(nodeId, branchName, atDate, contentType),
-    queryFn: () => getObjectFile({ nodeId, contentType, branchName, atDate }),
-    enabled: !!nodeId,
+    queryKey: objectFileQueryKeys.file(params),
+    queryFn: () => getObjectFile(params),
   });
 }
 
 export function useGetObjectFile(
-  params: { nodeId: string; contentType?: string },
+  params: Omit<GetObjectFileParams, keyof ContextParams>,
   config?: QueryConfig<typeof getObjectFileQueryOptions>
 ) {
   const { currentBranch } = useCurrentBranch();

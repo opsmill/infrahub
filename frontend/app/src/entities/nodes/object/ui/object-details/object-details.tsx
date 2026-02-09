@@ -1,6 +1,7 @@
 import { useQueryState } from "nuqs";
 
 import { Col } from "@/shared/components/container";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -47,7 +48,7 @@ function isNumber(value: unknown): value is number {
 function getFileData(objectData: NodeObjectWithMetadata) {
   const fileName = getAttributeValue(objectData.file_name, isString);
   const fileSize = getAttributeValue(objectData.file_size, isNumber);
-  const contentType = getAttributeValue(objectData.file_type, isString);
+  const contentType = getAttributeValue(objectData.file_type, isString) as DataViewerContentType;
 
   const hasFileData = !!(fileName || fileSize || contentType);
   const displayName = fileName || getAttributeValue(objectData.name, isString) || "Unnamed file";
@@ -80,12 +81,11 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
 
   return (
     <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
-      <Col className="md:col-span-2">
+      <Col className="shrink-0 grow md:col-span-2">
         <ObjectDetailsCard
           objectSchema={objectSchema}
           objectData={objectData}
           permission={permission}
-          className="shrink-0 grow overflow-x-hidden p-0"
           excludeAttributes={hasFileData ? FILE_EXCLUDE_ATTRIBUTES : undefined}
         />
 

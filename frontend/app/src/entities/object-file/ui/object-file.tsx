@@ -6,12 +6,15 @@ import type { DataViewerContentType } from "@/shared/components/data-viewer/type
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
+import { useAtomValue } from "jotai";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   getObjectFileDownloadUrl,
   getObjectFileRawUrl,
 } from "@/entities/object-file/domain/get-object-file";
 import { useGetObjectFile } from "@/entities/object-file/domain/get-object-file.query";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
 export interface ObjectFileProps {
   nodeId: string;
@@ -22,7 +25,8 @@ export interface ObjectFileProps {
 
 export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectFileProps) {
   const { currentBranch } = useCurrentBranch();
-  const { data: content, isPending, error } = useGetObjectFile({ nodeId, contentType });
+  const atDate = useAtomValue(datetimeAtom);
+  const { data, isPending, error } = useGetObjectFile({ nodeId, contentType });
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
@@ -32,16 +36,18 @@ export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectF
     return <NoDataFound message={error.message} />;
   }
 
-  if (!content) {
-    return <NoDataFound message="File content is empty" />;
+  if (!data) {
+    return null;
   }
 
-  const rawUrl = getObjectFileRawUrl(nodeId, currentBranch.name);
-  const downloadUrl = getObjectFileDownloadUrl(nodeId, currentBranch.name);
+  const urlParams = { nodeId, branchName: currentBranch.name, atDate };
+  const rawUrl = getObjectFileRawUrl(urlParams);
+  const downloadUrl = getObjectFileDownloadUrl(urlParams);
 
   return (
     <DataViewer
-      data={content}
+      title={fileName}
+      data={data}
       contentType={contentType}
       className={className}
       actions={
@@ -50,12 +56,12 @@ export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectF
             Raw
           </DataViewerLinkButton>
           <DataViewerDownloadButton
-            data={content}
+            data={data}
             fileName={fileName}
             contentType={contentType}
             downloadUrl={downloadUrl}
           />
-          <DataViewerCopyButton value={content} />
+          <DataViewerCopyButton value={data} />
         </>
       }
     />
