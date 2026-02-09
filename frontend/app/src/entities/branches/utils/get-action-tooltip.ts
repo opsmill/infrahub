@@ -50,28 +50,3 @@ export function getActionAvailability(
     tooltipMessage: undefined,
   };
 }
-
-/**
- * @deprecated Use getActionAvailability instead for centralized logic
- */
-export function getActionTooltip(
-  branchStatus: BranchStatus,
-  permissionMessage: string | undefined
-): string | undefined {
-  if (branchStatus === BRANCH_STATUS.MERGED) {
-    return "Cannot edit objects on a merged branch";
-  }
-
-  return permissionMessage;
-}
-
-/**
- * @deprecated Use getActionAvailability instead for centralized logic
- */
-export function isActionAllowed(branchStatus: BranchStatus, isPermissionAllowed: boolean): boolean {
-  if (branchStatus === BRANCH_STATUS.MERGED) {
-    return false;
-  }
-
-  return isPermissionAllowed;
-}
