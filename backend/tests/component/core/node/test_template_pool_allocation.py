@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import RelationshipSchema, SchemaRoot
 from tests.constants import TestKind
 from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
 
@@ -27,7 +28,13 @@ async def device_schema(
     register_ipam_schema: SchemaBranch,
     init_nodes_registry,
 ) -> None:
-    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[DEVICE])
+    device = copy.deepcopy(DEVICE)
+    device.relationships = [
+        RelationshipSchema(
+            name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
+        )
+    ]
+    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 

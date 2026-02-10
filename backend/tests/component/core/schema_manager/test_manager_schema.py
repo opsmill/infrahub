@@ -4338,7 +4338,6 @@ async def test_hierarchical_validate_parent_children(
 async def test_schema_branch_add_object_template_schema() -> None:
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    SIMPLE_DEVICE.relationships = []
     device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
@@ -4355,7 +4354,6 @@ async def test_schema_branch_add_object_template_schema() -> None:
 async def test_schema_branch_remove_object_template_schema() -> None:
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    SIMPLE_DEVICE.relationships = []
     device_schema = SchemaRoot(generics=[core_object_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
@@ -4385,7 +4383,6 @@ async def test_schema_branch_remove_object_template_schema() -> None:
 async def test_schema_branch_diff_core_object_template() -> None:
     SIMPLE_DEVICE = copy.deepcopy(DEVICE)
     SIMPLE_DEVICE.inherit_from = []
-    SIMPLE_DEVICE.relationships = []
     device_schema = SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[SIMPLE_DEVICE])
 
     schema = SchemaBranch(cache={}, name="test")
@@ -4401,11 +4398,9 @@ async def test_schema_branch_diff_core_object_template() -> None:
     diff = new_schema.diff(other=schema)
     assert diff.all == [InfrahubKind.OBJECTTEMPLATE]
 
-    device_schema_with_templates = copy.deepcopy(DEVICE_SCHEMA)
-    device_schema_with_templates.get(name=TestKind.DEVICE).relationships = []
-    device_schema_with_templates.generics.extend([core_object_template, core_object_component_template])
+    DEVICE_SCHEMA.generics.extend([core_object_template, core_object_component_template])
     new_schema = SchemaBranch(cache={}, name="test")
-    new_schema.load_schema(schema=device_schema_with_templates)
+    new_schema.load_schema(schema=DEVICE_SCHEMA)
     new_schema.process_inheritance()
     new_schema.manage_object_template_schemas()
 
@@ -4456,11 +4451,8 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
 
 
 async def test_manage_object_templates_with_component_relationships() -> None:
-    device_schema = copy.deepcopy(DEVICE_SCHEMA)
-    device_schema.get(name=TestKind.DEVICE).relationships = []
-
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=device_schema))
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=DEVICE_SCHEMA))
     schema_branch.process_inheritance()
 
     identified = schema_branch.identify_required_object_templates(
@@ -4524,12 +4516,11 @@ async def test_manage_object_templates_with_component_relationships() -> None:
         assert template_rel.peer == f"Template{rel.peer}"
 
     # Verify when a node is marked as absent
-    absent_virtual_interface = copy.deepcopy(DEVICE_SCHEMA)
-    absent_virtual_interface.get(name=TestKind.DEVICE).relationships = []
-    absent_virtual_interface.get(name=TestKind.VIRTUAL_INTERFACE).state = HashableModelState.ABSENT
+    ABSENT_VIRTUAL_INTERFACE = copy.deepcopy(DEVICE_SCHEMA)
+    ABSENT_VIRTUAL_INTERFACE.get(name=TestKind.VIRTUAL_INTERFACE).state = HashableModelState.ABSENT
 
     schema_branch = SchemaBranch(cache={}, name="absent-node")
-    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=absent_virtual_interface))
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=ABSENT_VIRTUAL_INTERFACE))
     schema_branch.process_inheritance()
 
     identified = schema_branch.identify_required_object_templates(
@@ -4545,9 +4536,8 @@ async def test_manage_object_templates_with_component_relationships() -> None:
 
 
 async def test_identify_object_templates_with_generics() -> None:
-    useless_device_schema = copy.deepcopy(DEVICE_SCHEMA)
-    useless_device_schema.get(name=TestKind.DEVICE).relationships = []
-    useless_device_schema.nodes.append(
+    USELESS_DEVICE_SCHEMA = copy.deepcopy(DEVICE_SCHEMA)
+    USELESS_DEVICE_SCHEMA.nodes.append(
         NodeSchema(
             name="UselessDevice",
             namespace="Testing",
@@ -4561,7 +4551,7 @@ async def test_identify_object_templates_with_generics() -> None:
     )
 
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=useless_device_schema))
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=USELESS_DEVICE_SCHEMA))
     schema_branch.process_inheritance()
 
     # As we requested template for TestingDevice, which is an implementation of generic TestingInterfaceHolder we must make sure not to propagate
