@@ -62,7 +62,7 @@ export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectF
             contentType={contentType}
             downloadUrl={downloadUrl}
           />
-          {isCopyableContentType(contentType) && <DataViewerCopyButton value={data} />}
+          {isCopyableContentType(contentType) && <DataViewerCopyButton data={data} />}
         </>
       }
     />

@@ -45,7 +45,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
             Raw
           </DataViewerLinkButton>
           <DataViewerDownloadButton data={data} fileName={fileName} contentType={contentType} />
-          {isCopyableContentType(contentType) && <DataViewerCopyButton value={data} />}
+          {isCopyableContentType(contentType) && <DataViewerCopyButton data={data} />}
         </>
       }
     />
