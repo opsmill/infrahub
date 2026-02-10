@@ -135,7 +135,7 @@ class Webhook(BaseModel):
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
             timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-            payload = json.dumps(self._payload or {})
+            payload = json.dumps(self._payload or {}, separators=(",", ":"))
             unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
             signature = self._sign(data=unsigned_data)
             self._headers["webhook-id"] = message_id
