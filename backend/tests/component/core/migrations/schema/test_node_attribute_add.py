@@ -18,12 +18,24 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema.definitions.core.template import core_object_template
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.edge_timestamps import assert_edge_timestamps
+
+
+@pytest.fixture
+async def car_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
+    registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=default_branch.name)
+    for node in car_person_schema_unregistered.nodes:
+        node.generate_template = True
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -143,22 +155,41 @@ async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_
     assert await count_nodes(db=db, label="Attribute") == 24
 
 
-async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
+async def test_migration(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, schema_aware
+) -> None:
+    # Create TemplateTestPerson nodes to use as owners for TemplateTestCar
+    template_person1 = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_person1.new(db=db, template_name="Template Person 1")
+    await template_person1.save(db=db)
+    template_person2 = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_person2.new(db=db, template_name="Template Person 2")
+    await template_person2.save(db=db)
+
+    # Create 2 TemplateTestCar nodes so migration also covers templates
+    template1 = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template1.new(db=db, template_name="Template Accord", color="#111111", owner=template_person1)
+    await template1.save(db=db)
+    template2 = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template2.new(db=db, template_name="Template Camry", color="#222222", owner=template_person2)
+    await template2.save(db=db)
+
     node = schema_aware
 
     # 1. Snapshot before migration
     snapshotter = DbSnapshotter(db)
     before_snapshot = await snapshotter.snapshot()
 
-    #  2. Count nodes and relationships before migration
-    assert await count_nodes(db=db, label="TestCar") == 5
-    assert await count_nodes(db=db, label="Attribute") == 0
+    # 2. Count nodes before migration
+    assert await count_nodes(db=db, label="TestCar") == 2
+    assert await count_nodes(db=db, label="TemplateTestCar") == 2
+    count_attr_node = await count_nodes(db=db, label="Attribute")
 
     # 3. Create explicit timestamp
     at = Timestamp()
     at_str = at.to_string()
 
-    # 4. Execute migration
+    # 4. Execute add migration for nbr_doors
     migration = NodeAttributeAddMigration(
         new_node_schema=node,
         previous_node_schema=node,
@@ -166,11 +197,13 @@ async def test_migration(db: InfrahubDatabase, default_branch, init_database, sc
     )
     execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
-    assert execution_result.nbr_migrations_executed == 5
+    # 2 TestCar + 2 TemplateTestCar = 4 migrations
+    assert execution_result.nbr_migrations_executed == 4
 
-    # 5. Validate nodes and relationships after migration
-    assert await count_nodes(db=db, label="TestCar") == 5
-    assert await count_nodes(db=db, label="Attribute") == 5
+    # 5. Validate nodes after migration
+    assert await count_nodes(db=db, label="TestCar") == 2
+    assert await count_nodes(db=db, label="TemplateTestCar") == 2
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 4
 
     # 6. Validate edge timestamps
     after_snapshot = await snapshotter.snapshot()

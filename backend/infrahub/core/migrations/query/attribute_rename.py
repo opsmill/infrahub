@@ -45,6 +45,10 @@ class AttributeRenameQuery(Query):
             MATCH (node:Profile%(node_kind)s)
             WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
             RETURN node
+            UNION
+            MATCH (node:Template%(node_kind)s)
+            WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
+            RETURN node
         }
         WITH node
         """ % {"node_kind": self.previous_attr.node_kind}
