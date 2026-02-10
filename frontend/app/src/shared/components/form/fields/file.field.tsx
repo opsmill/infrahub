@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
@@ -25,7 +24,6 @@ export function FileField({
   existingFile,
   onFileSelect,
 }: FileFieldProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { formState } = useFormContext();
 
   const hasFile = selectedFile !== null;
@@ -33,22 +31,15 @@ export function FileField({
   const showFileCard = hasFile || hasExistingFile;
   const showError = formState.submitCount > 0 && required && !hasFile;
 
-  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) onFileSelect(file);
-    event.target.value = "";
-  };
-
   return (
     <div className="space-y-2">
       <LabelFormField label={label} required={required} />
-      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileInputChange} />
       {showFileCard ? (
         <FileInfoCard
           fileName={selectedFile?.name ?? existingFile?.fileName ?? ""}
           fileSize={selectedFile?.size ?? existingFile?.fileSize}
           contentType={selectedFile?.type || existingFile?.contentType}
-          onReplace={() => fileInputRef.current?.click()}
+          onFileSelect={onFileSelect}
         />
       ) : (
         <FileDropzone

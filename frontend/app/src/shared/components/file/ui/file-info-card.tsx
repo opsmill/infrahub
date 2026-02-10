@@ -1,5 +1,5 @@
 import { UploadIcon } from "lucide-react";
-import { Button } from "react-aria-components";
+import { Button, FileTrigger, type FileTriggerProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Row } from "@/shared/components/container";
@@ -11,17 +11,16 @@ export interface FileInfoCardProps {
   fileName: string;
   fileSize?: number;
   contentType?: string;
-  /** Called when the card is clicked to replace the file (upload form only) */
-  onReplace?: () => void;
+  onFileSelect?: (file: File) => void;
 }
 
-export function FileInfoCard({ fileName, fileSize, contentType, onReplace }: FileInfoCardProps) {
+export function FileInfoCard({ fileName, fileSize, contentType, onFileSelect }: FileInfoCardProps) {
   const FileIconComponent = getFileIcon(contentType);
 
   const content = (
-    <Row className="w-full">
+    <Row className="overflow-hidden">
       <FileIconComponent className="size-5 shrink-0 text-gray-500" />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 truncate">
         <p className="truncate font-medium text-gray-900 text-sm">{fileName}</p>
         {(fileSize !== undefined || contentType) && (
           <p className="mt-0.5 text-gray-500 text-xs">
@@ -31,23 +30,31 @@ export function FileInfoCard({ fileName, fileSize, contentType, onReplace }: Fil
           </p>
         )}
       </div>
-      {onReplace && <UploadIcon className="ml-auto size-4 shrink-0 text-gray-400" />}
     </Row>
   );
 
-  if (onReplace) {
+  if (onFileSelect) {
+    const handleSelect: FileTriggerProps["onSelect"] = (files) => {
+      const file = files?.[0];
+      if (file) {
+        onFileSelect(file);
+      }
+    };
+
     return (
-      <Button
-        onClick={onReplace}
-        className={classNames(
-          inputStyle,
-          focusVisibleStyle,
-          "bg-gray-50 px-3 text-left",
-          "hover:border-gray-300 hover:bg-gray-100"
-        )}
-      >
-        {content}
-      </Button>
+      <FileTrigger onSelect={handleSelect}>
+        <Button
+          className={classNames(
+            inputStyle,
+            focusVisibleStyle,
+            "gap-2 bg-gray-50 px-3 text-left",
+            "hover:border-gray-300 hover:bg-gray-100"
+          )}
+        >
+          {content}
+          <UploadIcon className="ml-auto size-4 shrink-0 text-gray-400" />
+        </Button>
+      </FileTrigger>
     );
   }
 
