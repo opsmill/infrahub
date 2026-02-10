@@ -45,7 +45,7 @@ class DefaultPoolAllocator(PoolAllocator):
             ) from exc
 
         try:
-            next_value = await number_pool.get_resource(
+            next_value = await number_pool.get_resource(  # type: ignore
                 db=self.db, branch=self.branch, node=attribute.node, attribute=attribute.schema
             )
         except PoolExhaustedError as exc:
