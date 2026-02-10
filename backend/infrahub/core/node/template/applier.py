@@ -69,12 +69,13 @@ class TemplateApplier:
                 )
                 continue
 
-            if (
-                rel_name in fields
-                or rel_schema.kind
-                not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]
-                or rel_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
-            ):
+            if rel_name in fields:
+                continue
+
+            if rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]:
+                continue
+
+            if rel_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME:
                 continue
 
             relationship: RelationshipManager = getattr(template, rel_name)

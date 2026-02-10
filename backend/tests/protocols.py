@@ -630,6 +630,7 @@ class TestingDevice(TestingInterfaceHolder):
     weight: Integer
     airflow: Enum
     part_number: StringOptional
+    primary_ip: RelationshipManager
 
 
 class TestingManufacturer(CoreNode):
