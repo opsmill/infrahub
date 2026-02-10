@@ -54,7 +54,7 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         classNames(
-          "data-disabled:opacity-50 data-disabled:cursor-default",
+          "data-disabled:cursor-default data-disabled:opacity-50",
           "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
           "data-focused:ring-1",
           className
@@ -101,10 +101,13 @@ export function MenuItemWithTooltip({
 }: MenuItemWithTooltipProps) {
   return (
     <MenuItem isDisabled={isDisabled} {...props}>
-      <Tooltip enabled={tooltipEnabled && isDisabled} content={tooltipContent} side={tooltipSide} style={{ zIndex: 100001 }}>
-        <span className="flex w-full items-center gap-[inherit]">
-          {children}
-        </span>
+      <Tooltip
+        enabled={tooltipEnabled && isDisabled}
+        content={tooltipContent}
+        side={tooltipSide}
+        style={{ zIndex: 100_001 }}
+      >
+        <span className="flex w-full items-center gap-[inherit]">{children}</span>
       </Tooltip>
     </MenuItem>
   );
