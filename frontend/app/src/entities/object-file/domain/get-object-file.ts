@@ -9,24 +9,6 @@ export interface GetObjectFileParams extends ContextParams {
   contentType?: string;
 }
 
-export type GetObjectFileUrlParams = Pick<GetObjectFileParams, "nodeId" | "branchName" | "atDate">;
-
-export function getObjectFileDownloadUrl({
-  nodeId,
-  branchName,
-  atDate,
-}: GetObjectFileUrlParams): string {
-  const params = new URLSearchParams({ branch: branchName });
-  if (atDate) {
-    params.append("at", atDate.toISOString());
-  }
-  return `${INFRAHUB_API_SERVER_URL}/api/storage/files/${nodeId}?${params}`;
-}
-
-export function getObjectFileRawUrl(urlParams: GetObjectFileUrlParams): string {
-  return `${getObjectFileDownloadUrl(urlParams)}&preview=true`;
-}
-
 export async function getObjectFile({
   nodeId,
   contentType,
@@ -51,4 +33,22 @@ export async function getObjectFile({
   if (error) throw error;
 
   return data as string;
+}
+
+export type GetObjectFileUrlParams = Pick<GetObjectFileParams, "nodeId" | "branchName" | "atDate">;
+
+export function getObjectFileDownloadUrl({
+  nodeId,
+  branchName,
+  atDate,
+}: GetObjectFileUrlParams): string {
+  const params = new URLSearchParams({ branch: branchName });
+  if (atDate) {
+    params.append("at", atDate.toISOString());
+  }
+  return `${INFRAHUB_API_SERVER_URL}/api/storage/files/${nodeId}?${params}`;
+}
+
+export function getObjectFileRawUrl(urlParams: GetObjectFileUrlParams): string {
+  return `${getObjectFileDownloadUrl(urlParams)}&preview=true`;
 }

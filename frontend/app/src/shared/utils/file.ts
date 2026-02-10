@@ -26,10 +26,6 @@ export function getFileIcon(contentType: string | undefined): LucideIcon {
   return FILE_TYPE_ICONS[contentType] ?? FileIcon;
 }
 
-/**
- * Check if a content type represents binary data that needs special handling.
- * Binary types include images (except SVG) and PDFs.
- */
 export function isBinaryContentType(contentType?: string): boolean {
   if (!contentType) return false;
 
@@ -46,11 +42,13 @@ export function isBinaryContentType(contentType?: string): boolean {
   return false;
 }
 
-/**
- * Convert an ArrayBuffer to a base64 string.
- */
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
   return btoa(binary);
+}
+
+export function isCopyableContentType(contentType?: string): boolean {
+  if (!contentType) return true;
+  return !isBinaryContentType(contentType);
 }

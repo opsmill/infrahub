@@ -5,6 +5,7 @@ import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-v
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { isCopyableContentType } from "@/shared/utils/file";
 
 import { getArtifactFileDownloadUrl } from "@/entities/artifacts/domain/get-artifact-file";
 import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
@@ -44,7 +45,7 @@ export function ArtifactFile({ storageId, fileName, contentType, className }: Ar
             Raw
           </DataViewerLinkButton>
           <DataViewerDownloadButton data={data} fileName={fileName} contentType={contentType} />
-          <DataViewerCopyButton value={data} />
+          {isCopyableContentType(contentType) && <DataViewerCopyButton value={data} />}
         </>
       }
     />

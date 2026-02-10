@@ -8,6 +8,7 @@ import type { DataViewerContentType } from "@/shared/components/data-viewer/type
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { isCopyableContentType } from "@/shared/utils/file";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
@@ -61,7 +62,7 @@ export function ObjectFile({ nodeId, fileName, contentType, className }: ObjectF
             contentType={contentType}
             downloadUrl={downloadUrl}
           />
-          <DataViewerCopyButton value={data} />
+          {isCopyableContentType(contentType) && <DataViewerCopyButton value={data} />}
         </>
       }
     />
