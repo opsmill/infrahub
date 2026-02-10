@@ -14,7 +14,7 @@ import {
 } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle } from "@/shared/components/aria/style-rac";
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -54,7 +54,7 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         classNames(
-          disabledStyle,
+          "data-disabled:opacity-50 data-disabled:cursor-default",
           "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
           "data-focused:ring-1",
           className
@@ -83,6 +83,32 @@ export const MenuSection = <T extends object>({
     </AriaMenuSection>
   );
 };
+
+export interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
+  tooltipContent?: TooltipProps["content"];
+  tooltipEnabled?: TooltipProps["enabled"];
+  tooltipSide?: TooltipProps["side"];
+  children?: React.ReactNode;
+}
+
+export function MenuItemWithTooltip({
+  tooltipContent,
+  tooltipEnabled,
+  tooltipSide = "left",
+  isDisabled,
+  children,
+  ...props
+}: MenuItemWithTooltipProps) {
+  return (
+    <MenuItem isDisabled={isDisabled} {...props}>
+      <Tooltip enabled={tooltipEnabled && isDisabled} content={tooltipContent} side={tooltipSide} style={{ zIndex: 100001 }}>
+        <span className="flex w-full items-center gap-[inherit]">
+          {children}
+        </span>
+      </Tooltip>
+    </MenuItem>
+  );
+}
 
 export interface CopyToClipboardMenuItemProps extends Omit<MenuItemProps, "onAction" | "children"> {
   textToCopy: string;
