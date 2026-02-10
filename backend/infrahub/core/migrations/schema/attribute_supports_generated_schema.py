@@ -124,14 +124,22 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
         all_queries: list[type[AttributeMigrationQuery]] = []
 
         # Check profile support changes
-        if self.previous_attribute_schema.support_profiles != self.new_attribute_schema.support_profiles:
+        if (
+            isinstance(self.new_schema, (NodeSchema, GenericSchema))
+            and self.new_schema.generate_profile
+            and self.previous_attribute_schema.support_profiles != self.new_attribute_schema.support_profiles
+        ):
             if self.new_attribute_schema.support_profiles:
                 all_queries.append(ProfilesAttributeAddMigrationQuery)
             else:
                 all_queries.append(ProfilesAttributeRemoveMigrationQuery)
 
         # Check template support changes
-        if self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates:
+        if (
+            isinstance(self.new_schema, (NodeSchema, GenericSchema))
+            and self.new_schema.generate_template
+            and self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
+        ):
             if self.new_attribute_schema.support_templates:
                 all_queries.append(TemplatesAttributeAddMigrationQuery)
             else:
