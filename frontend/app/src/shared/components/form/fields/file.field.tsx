@@ -4,6 +4,7 @@ import { useFormContext } from "react-hook-form";
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
+import { classNames } from "@/shared/utils/common";
 
 export interface FileFieldProps {
   label?: string;
@@ -50,7 +51,10 @@ export function FileField({
           onReplace={() => fileInputRef.current?.click()}
         />
       ) : (
-        <FileDropzone onFileSelect={onFileSelect} hasError={showError} />
+        <FileDropzone
+          onFileSelect={onFileSelect}
+          className={classNames(showError && "border-red-500")}
+        />
       )}
       {showError && (
         <p className="text-red-600 text-sm" data-cy="field-error-message">

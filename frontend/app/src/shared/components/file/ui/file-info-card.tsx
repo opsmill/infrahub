@@ -1,7 +1,10 @@
 import { UploadIcon } from "lucide-react";
+import { Button } from "react-aria-components";
 
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Row } from "@/shared/components/container";
-import { formatFileSize } from "@/shared/utils/common";
+import { inputStyle } from "@/shared/components/ui/style";
+import { classNames, formatFileSize } from "@/shared/utils/common";
 import { getFileIcon } from "@/shared/utils/file";
 
 export interface FileInfoCardProps {
@@ -16,7 +19,7 @@ export function FileInfoCard({ fileName, fileSize, contentType, onReplace }: Fil
   const FileIconComponent = getFileIcon(contentType);
 
   const content = (
-    <Row>
+    <Row className="w-full">
       <FileIconComponent className="size-5 shrink-0 text-gray-500" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-gray-900 text-sm">{fileName}</p>
@@ -28,20 +31,23 @@ export function FileInfoCard({ fileName, fileSize, contentType, onReplace }: Fil
           </p>
         )}
       </div>
-      {onReplace && <UploadIcon className="size-4 shrink-0 text-gray-400" />}
+      {onReplace && <UploadIcon className="ml-auto size-4 shrink-0 text-gray-400" />}
     </Row>
   );
 
   if (onReplace) {
     return (
-      <button
-        type="button"
+      <Button
         onClick={onReplace}
-        className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-left hover:border-gray-300 hover:bg-gray-100"
-        title="Replace file"
+        className={classNames(
+          inputStyle,
+          focusVisibleStyle,
+          "bg-gray-50 px-3 text-left",
+          "hover:border-gray-300 hover:bg-gray-100"
+        )}
       >
         {content}
-      </button>
+      </Button>
     );
   }
 
