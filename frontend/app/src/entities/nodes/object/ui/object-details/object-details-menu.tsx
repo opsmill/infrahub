@@ -14,13 +14,13 @@ import {
   CopyToClipboardMenuItem,
   Menu,
   MenuItem,
+  MenuItemWithTooltip,
   MenuPopover,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
@@ -158,53 +158,48 @@ export function ObjectDetailsMenu({
             )}
 
             <MenuSection title="Manage">
-              <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
-                <div>
-                  <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
-                    <PencilLineIcon className="size-3.5" />
-                    <span>Edit</span>
-                  </MenuItem>
-                </div>
-              </Tooltip>
+              <MenuItemWithTooltip
+                isDisabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
+                onAction={() => setIsEditModalOpen(true)}
+              >
+                <PencilLineIcon className="size-3.5" />
+                <span>Edit</span>
+              </MenuItemWithTooltip>
 
-              <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
-                <div>
-                  <MenuItem
-                    isDisabled={!isEditAllowed}
-                    onAction={() => setIsManageGroupsDrawerOpen(true)}
-                  >
-                    <GroupIcon className="size-3.5" />
-                    <span>Groups</span>
-                  </MenuItem>
-                </div>
-              </Tooltip>
+              <MenuItemWithTooltip
+                isDisabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
+                onAction={() => setIsManageGroupsDrawerOpen(true)}
+              >
+                <GroupIcon className="size-3.5" />
+                <span>Groups</span>
+              </MenuItemWithTooltip>
 
-              <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
-                <div>
-                  <MenuItem
-                    href={constructPath(
-                      `/objects/${objectData.__typename}/${objectData.id}/convert`
-                    )}
-                    isDisabled={!isEditAllowed}
-                  >
-                    <Icon icon="mdi:swap-horizontal" className="size-3" />
-                    Convert object type
-                  </MenuItem>
-                </div>
-              </Tooltip>
+              <MenuItemWithTooltip
+                isDisabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
+                href={constructPath(
+                  `/objects/${objectData.__typename}/${objectData.id}/convert`
+                )}
+              >
+                <Icon icon="mdi:swap-horizontal" className="size-3" />
+                Convert object type
+              </MenuItemWithTooltip>
 
-              <Tooltip enabled={!isDeleteAllowed} content={deleteTooltipMessage} side="left">
-                <div>
-                  <MenuItem
-                    isDisabled={!isDeleteAllowed}
-                    className="text-red-500"
-                    onAction={() => setIsDeleteModalOpen(true)}
-                  >
-                    <Trash2Icon className="size-3.5" />
-                    <span>Delete</span>
-                  </MenuItem>
-                </div>
-              </Tooltip>
+              <MenuItemWithTooltip
+                isDisabled={!isDeleteAllowed}
+                tooltipEnabled={!isDeleteAllowed}
+                tooltipContent={deleteTooltipMessage}
+                className="text-red-500"
+                onAction={() => setIsDeleteModalOpen(true)}
+              >
+                <Trash2Icon className="size-3.5" />
+                <span>Delete</span>
+              </MenuItemWithTooltip>
             </MenuSection>
           </Menu>
         </MenuPopover>
