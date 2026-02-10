@@ -1,7 +1,7 @@
 import { useQueryState } from "nuqs";
 
 import { Col } from "@/shared/components/container";
-import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
+import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -11,54 +11,15 @@ import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/obj
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
-import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
+import type { NodeFileObject, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 interface ObjectDetailsProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
-}
-
-// Type guard to check if a property is an attribute
-function isAttribute(
-  prop: unknown
-): prop is { value: string | number | boolean | string[] | null } {
-  return prop !== null && typeof prop === "object" && "value" in prop;
-}
-
-// Helper to safely get attribute value with type checking
-function getAttributeValue<T>(
-  prop: unknown,
-  typeCheck: (value: unknown) => value is T
-): T | undefined {
-  return isAttribute(prop) && typeCheck(prop.value) ? prop.value : undefined;
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isNumber(value: unknown): value is number {
-  return typeof value === "number";
-}
-
-// Extract file-related data from object
-function getFileData(objectData: NodeObjectWithMetadata) {
-  const fileName = getAttributeValue(objectData.file_name, isString);
-  const fileSize = getAttributeValue(objectData.file_size, isNumber);
-  const contentType = getAttributeValue(objectData.file_type, isString) as DataViewerContentType;
-
-  const hasFileData = !!(fileName || fileSize || contentType);
-  const displayName = fileName || getAttributeValue(objectData.name, isString) || "Unnamed file";
-
-  return {
-    hasFileData,
-    fileName: displayName,
-    fileSize,
-    contentType,
-  };
 }
 
 const FILE_EXCLUDE_ATTRIBUTES = ["file_name", "file_size", "file_type", "storage_id", "checksum"];
@@ -77,7 +38,7 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
     );
   }
 
-  const { hasFileData, fileName, fileSize, contentType } = getFileData(objectData);
+  const hasFileData = isOfKind(FILE_OBJECT_KIND, objectSchema);
 
   return (
     <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
@@ -89,14 +50,7 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
           excludeAttributes={hasFileData ? FILE_EXCLUDE_ATTRIBUTES : undefined}
         />
 
-        {hasFileData && (
-          <FilePreviewCard
-            nodeId={objectData.id}
-            fileName={fileName}
-            fileSize={fileSize}
-            contentType={contentType}
-          />
-        )}
+        {hasFileData && <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />}
       </Col>
 
       <Col>
