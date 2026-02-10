@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.relationship.constraints.profiles_removal import RelationshipProfileRemovalConstraint
 from infrahub.core.schema import ProfileSchema
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -48,6 +49,35 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         _meta.schema = schema
 
         super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    def _validate_no_resource_pools_in_data(cls, data: InputObjectType) -> None:
+        """Validate that no relationships in the data use from_pool.
+
+        Profiles cannot use resource pools as the source for relationship values.
+
+        Raises:
+            ValidationError: If any relationship data contains from_pool.
+        """
+        schema: ProfileSchema = cls._meta.active_schema  # type: ignore[assignment]
+        for rel_schema in schema.relationships:
+            rel_name = rel_schema.name
+            if rel_name not in data:
+                continue
+
+            rel_data = data[rel_name]
+            if rel_data is None:
+                continue
+
+            # Handle both single relationships and lists
+            items = [rel_data] if not isinstance(rel_data, list) else rel_data
+            for item in items:
+                # Check if from_pool is present and has a non-None value
+                # (graphene InputObjectType may include keys with None values for unset fields)
+                if isinstance(item, dict) and item.get("from_pool") is not None:
+                    raise ValidationError(
+                        {rel_name: "Resource pools cannot be used as the source for relationship values in Profiles"}
+                    )
 
     @classmethod
     async def _send_profile_refresh_workflows(
@@ -95,6 +125,8 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,
         override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
+        cls._validate_no_resource_pools_in_data(data)
+
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
         workflow_service = graphql_context.active_service.workflow
@@ -118,6 +150,8 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         obj: Node,
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
+        cls._validate_no_resource_pools_in_data(data)
+
         workflow_service = info.context.active_service.workflow
         original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
 
