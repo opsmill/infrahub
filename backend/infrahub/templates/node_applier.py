@@ -12,14 +12,14 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.node.pool.base import PoolAllocator
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.allocator import PoolAllocator
 
 
-class TemplateApplier:
+class NodeTemplateApplier:
     """Applies a template to produce field data for a new node."""
 
     def __init__(self, db: InfrahubDatabase, branch: Branch, pool_allocator: PoolAllocator) -> None:

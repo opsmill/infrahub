@@ -38,8 +38,10 @@ from infrahub.core.schema import (
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
+from infrahub.templates.node_applier import NodeTemplateApplier
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -49,8 +51,6 @@ from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 from .node_property_attribute import DisplayLabel, HumanFriendlyIdentifier
-from .pool.default import DefaultPoolAllocator
-from .template.applier import TemplateApplier
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -502,7 +502,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return
 
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch)
-        applier = TemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
+        applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
         applied_fields = await applier.apply(
             template=template, target_schema=self._schema, target_id=self.id, user_fields=fields
         )
