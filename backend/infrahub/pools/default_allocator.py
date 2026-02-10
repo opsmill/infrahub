@@ -36,7 +36,9 @@ class DefaultPoolAllocator(PoolAllocator):
             return None
 
         try:
-            number_pool = await registry.manager.get_one(db=self.db, id=pool_id, kind=CoreNumberPool)
+            number_pool = await registry.manager.get_one(
+                db=self.db, id=pool_id, kind=CoreNumberPool, raise_on_error=True
+            )
         except NodeNotFoundError as exc:
             raise ValidationError(
                 {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
