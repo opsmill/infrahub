@@ -34,6 +34,7 @@ export function FileField({
   return (
     <div className="space-y-2">
       <LabelFormField label={label} required={required} />
+
       {showFileCard ? (
         <FileInfoCard
           fileName={selectedFile?.name ?? existingFile?.fileName ?? ""}
@@ -47,11 +48,8 @@ export function FileField({
           className={classNames(showError && "border-red-500")}
         />
       )}
-      {showError && (
-        <p className="text-red-600 text-sm" data-cy="field-error-message">
-          {label} is required
-        </p>
-      )}
+
+      {showError && <p className="text-red-600 text-sm">{label} is required</p>}
     </div>
   );
 }
