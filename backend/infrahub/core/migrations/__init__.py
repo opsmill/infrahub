@@ -1,6 +1,6 @@
 from .schema.attribute_kind_update import AttributeKindUpdateMigration
 from .schema.attribute_name_update import AttributeNameUpdateMigration
-from .schema.attribute_supports_profile import AttributeSupportsProfileUpdateMigration
+from .schema.attribute_supports_generated_schema import AttributeSupportsGeneratedSchemaMigration
 from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
 from .schema.node_kind_update import NodeKindUpdateMigration
@@ -20,8 +20,8 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "attribute.name.update": AttributeNameUpdateMigration,
     "attribute.branch.update": None,
     "attribute.kind.update": AttributeKindUpdateMigration,
-    "attribute.optional.update": AttributeSupportsProfileUpdateMigration,
-    "attribute.read_only.update": AttributeSupportsProfileUpdateMigration,
+    "attribute.optional.update": AttributeSupportsGeneratedSchemaMigration,
+    "attribute.read_only.update": AttributeSupportsGeneratedSchemaMigration,
     "relationship.branch.update": None,
     "relationship.direction.update": None,
     "relationship.identifier.update": PlaceholderDummyMigration,

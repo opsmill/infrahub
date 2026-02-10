@@ -2606,7 +2606,7 @@ class SchemaBranch:
                     template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
 
         for node_attr in node.attributes:
-            if node_attr.unique or node_attr.read_only:
+            if not node_attr.support_templates:
                 continue
 
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
