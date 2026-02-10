@@ -182,9 +182,7 @@ export function ObjectDetailsMenu({
                 isDisabled={!isEditAllowed}
                 tooltipEnabled={!isEditAllowed}
                 tooltipContent={editTooltipMessage}
-                href={constructPath(
-                  `/objects/${objectData.__typename}/${objectData.id}/convert`
-                )}
+                href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
               >
                 <Icon icon="mdi:swap-horizontal" className="size-3" />
                 Convert object type
