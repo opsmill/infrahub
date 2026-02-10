@@ -22,8 +22,6 @@ interface ObjectDetailsProps {
   permission: Permission;
 }
 
-const FILE_EXCLUDE_ATTRIBUTES = ["file_name", "file_size", "file_type", "storage_id", "checksum"];
-
 export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDetailsProps) {
   const [qspTab] = useQueryState(QSP.TAB);
   useTitle(`${getNodeLabel(objectData)} details`);
@@ -38,8 +36,6 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
     );
   }
 
-  const hasFileData = isOfKind(FILE_OBJECT_KIND, objectSchema);
-
   return (
     <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
       <Col className="shrink-0 grow md:col-span-2">
@@ -47,10 +43,11 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
           objectSchema={objectSchema}
           objectData={objectData}
           permission={permission}
-          excludeAttributes={hasFileData ? FILE_EXCLUDE_ATTRIBUTES : undefined}
         />
 
-        {hasFileData && <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />}
+        {isOfKind(FILE_OBJECT_KIND, objectSchema) && (
+          <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />
+        )}
       </Col>
 
       <Col>

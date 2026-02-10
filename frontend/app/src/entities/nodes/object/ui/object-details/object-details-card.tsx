@@ -11,12 +11,6 @@ interface ObjectDetailsCardProps {
   objectData: NodeObjectWithMetadata;
   permission: Permission;
   className?: string;
-  /** Attribute names to exclude from display */
-  excludeAttributes?: string[];
-  /** Relationship names to exclude from display */
-  excludeRelationships?: string[];
-  /** Relationship kinds to exclude from display */
-  excludeRelationshipKinds?: string[];
 }
 
 export function ObjectDetailsCard({
@@ -24,9 +18,6 @@ export function ObjectDetailsCard({
   objectData,
   permission,
   className,
-  excludeAttributes,
-  excludeRelationships,
-  excludeRelationshipKinds,
 }: ObjectDetailsCardProps) {
   return (
     <Card className={classNames("overflow-x-hidden p-0", className)} data-testid="object-details">
@@ -36,9 +27,6 @@ export function ObjectDetailsCard({
         objectSchema={objectSchema}
         objectData={objectData}
         permission={permission}
-        excludeAttributes={excludeAttributes}
-        excludeRelationships={excludeRelationships}
-        excludeRelationshipKinds={excludeRelationshipKinds}
       />
     </Card>
   );
