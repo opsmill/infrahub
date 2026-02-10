@@ -56,6 +56,7 @@ def _validate_template_fields(
     expected_attrs: list[ExpectedTemplateAttr] | None = None,
     expected_relationships: list[ExpectedTemplateRelationship] | None = None,
     user_fields: dict[str, Any] | None = None,
+    excluded_fields: list[str] | None = None,
 ) -> None:
     """Validate that template application produced expected fields.
 
@@ -64,10 +65,12 @@ def _validate_template_fields(
         expected_attrs: List of expected attribute values with sources
         expected_relationships: List of expected relationship peers
         user_fields: Original user fields (should be preserved as-is)
+        excluded_fields: List of field names that should NOT be in the output
     """
     user_fields = user_fields or {}
     expected_attrs = expected_attrs or []
     expected_relationships = expected_relationships or []
+    excluded_fields = excluded_fields or []
 
     # Validate user fields are preserved exactly
     for field_name, field_value in user_fields.items():
@@ -90,6 +93,10 @@ def _validate_template_fields(
             assert actual_ids == rel.peer_ids, f"Relationship {rel.name} has wrong peer IDs"
         else:
             assert field_data == {"id": rel.peer_ids[0]}, f"Relationship {rel.name} has wrong peer"
+
+    # Validate excluded fields are not present
+    for field_name in excluded_fields:
+        assert field_name not in fields, f"Field {field_name} should not be in output"
 
 
 @pytest.fixture
@@ -165,8 +172,8 @@ class TestNodeTemplateApplierAttributes:
                 ExpectedTemplateAttr(name="height", value=42, source_id=device_template.id),
             ],
             user_fields=user_fields,
+            excluded_fields=["template_name"],
         )
-        assert "template_name" not in fields
 
     async def test_user_fields_take_precedence(
         self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, device_template: Node
@@ -210,8 +217,8 @@ class TestNodeTemplateApplierAttributes:
                 ExpectedTemplateAttr(name="height", value=1, source_id=template.id),
             ],
             user_fields=user_fields,
+            excluded_fields=["part_number"],
         )
-        assert "part_number" not in fields
 
 
 class TestNodeTemplateApplierRelationships:
@@ -317,9 +324,7 @@ class TestNodeTemplateApplierRelationships:
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
 
-        _validate_template_fields(fields=fields, user_fields=user_fields)
-        assert "primary_tag" not in fields
-        assert "tags" not in fields
+        _validate_template_fields(fields=fields, user_fields=user_fields, excluded_fields=["primary_tag", "tags"])
 
 
 class TestNodeTemplateApplierPoolRelationships:
@@ -452,5 +457,4 @@ class TestNodeTemplateApplierPoolRelationships:
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
 
-        _validate_template_fields(fields=fields, user_fields=user_fields)
-        assert "primary_ip" not in fields
+        _validate_template_fields(fields=fields, user_fields=user_fields, excluded_fields=["primary_ip"])
