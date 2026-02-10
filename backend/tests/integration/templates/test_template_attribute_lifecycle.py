@@ -193,6 +193,7 @@ class TestTemplateAttributeLifecycle(TestInfrahubApp):
     async def test_step_03_set_values_on_new_attributes(
         self,
         default_branch: Branch,
+        schema_step_02: None,
         template_1: Node,
         client: InfrahubClient,
     ) -> None:
