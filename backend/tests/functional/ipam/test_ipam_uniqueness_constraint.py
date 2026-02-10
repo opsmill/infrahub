@@ -21,6 +21,7 @@ class TestUniqueIPHost(TestInfrahubApp):
     def schema(self, default_branch: Branch, register_internal_schema: SchemaBranch) -> SchemaRoot:
         device_with_ip = copy.deepcopy(DEVICE)
         device_with_ip.inherit_from = []
+        device_with_ip.relationships = []
         device_with_ip.generate_template = False
         device_with_ip.attributes.append(
             AttributeSchema(name="primary_address", kind="IPHost", optional=False, unique=True)

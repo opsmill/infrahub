@@ -74,6 +74,11 @@ DEVICE = NodeSchema(
         ),
         AttributeSchema(name="part_number", kind="Text", optional=True),
     ],
+    relationships=[
+        RelationshipSchema(
+            name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
+        )
+    ],
 )
 
 PHYSICAL_INTERFACE = NodeSchema(
