@@ -21,7 +21,8 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
             branch_support=migration.new_attribute_schema.get_branch().value,
         )
 
-        attr_id = migration.new_attribute_schema.id
+        # For inherited attributes, id is None but source_attribute_id contains the generic's attribute ID
+        attr_id = migration.new_attribute_schema.id or migration.new_attribute_schema.source_attribute_id
         if not attr_id:
             raise ValueError("The Id is not defined on new_attribute_schema")
         prev_attr_schema = migration.previous_schema.get_attribute_by_id(id=attr_id)
