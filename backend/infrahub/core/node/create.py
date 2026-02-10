@@ -111,9 +111,8 @@ async def extract_peer_data(
 
 async def allocate_from_resource_pools(
     db: InfrahubDatabase, branch: Branch, obj: Node, template: CoreObjectTemplate, at: Timestamp | None = None
-) -> bool:
+) -> None:
     """Allocate resources from template's _from_resource_pool relationships to the object."""
-    updated = False
     template_schema = template.get_schema()
     obj_schema = obj.get_schema()
 
@@ -137,9 +136,6 @@ async def allocate_from_resource_pools(
         await obj_rel_manager.update(
             data=PeerWithRelationshipMetadata(peer=allocated_resource, source_id=pool.id), db=db
         )
-        updated = True
-
-    return updated
 
 
 async def handle_template_relationships(
@@ -180,19 +176,17 @@ async def handle_template_relationships(
             obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch, at=at)
             await obj_peer.new(db=db, **obj_peer_data)
             await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
-            await obj_peer.save(db=db)
 
-            pools_updated = await allocate_from_resource_pools(
+            await allocate_from_resource_pools(
                 db=db, branch=branch, obj=obj_peer, template=template_relationship_peer, at=at
             )
-            if pools_updated:
-                await obj_peer.save(db=db)
 
             template_profile_ids = await get_profile_ids(db=db, obj=template_relationship_peer)
             if template_profile_ids:
                 node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
                 await node_profiles_applier.apply_profiles(node=obj_peer)
-                await obj_peer.save(db=db)
+
+            await obj_peer.save(db=db)
 
             await handle_template_relationships(
                 db=db,

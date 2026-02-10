@@ -351,9 +351,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
-
-        For TemplateSchema objects, we only store the pool reference without allocating resources.
-        The actual allocation happens when creating objects from the template.
         """
 
         if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
