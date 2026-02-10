@@ -26,13 +26,15 @@ def get_permission_report(  # noqa: PLR0911
     action: str,
     global_permission_report: dict[GlobalPermissions, bool],
 ) -> BranchRelativePermissionDecision:
-    if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
-        return BranchRelativePermissionDecision.ALLOW
-
     # Block mutations on merged branches
     # Note: Branch delete is allowed via middleware, this covers node permissions
+    # We want this check about the super admin permission as not even an admin account
+    # should be able to modify merged branches or those that need a rebase
     if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
         return BranchRelativePermissionDecision.DENY
+
+    if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
+        return BranchRelativePermissionDecision.ALLOW
 
     if action != "view":
         if node.kind in (InfrahubKind.ACCOUNTGROUP, InfrahubKind.ACCOUNTROLE, InfrahubKind.GENERICACCOUNT) or (
