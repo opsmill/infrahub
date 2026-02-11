@@ -113,6 +113,16 @@ export function CoreFileForm({
           fields,
           formData,
         });
+
+        // Check if there are actual changes to submit
+        const hasDataChanges = Object.keys(updatedData).length > 0;
+        const hasFileChange = selectedFile !== null;
+
+        if (!hasDataChanges && !hasFileChange) {
+          // No changes detected, skip submission
+          return;
+        }
+
         if (currentObject?.id) updatedData.id = currentObject.id;
 
         await updateObject.mutateAsync(
