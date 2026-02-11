@@ -45,6 +45,11 @@ export function FileField({
         const hasExistingFile = !!existingFile?.fileName;
         const showFileCard = hasFile || hasExistingFile;
 
+        const handleFileSelect = (file: File) => {
+          field.onChange(file.name);
+          onFileSelect(file);
+        };
+
         return (
           <div className="space-y-2">
             <LabelFormField
@@ -60,10 +65,10 @@ export function FileField({
                   fileName={selectedFile?.name ?? existingFile?.fileName ?? ""}
                   fileSize={selectedFile?.size ?? existingFile?.fileSize}
                   contentType={selectedFile?.type || existingFile?.contentType}
-                  onFileSelect={onFileSelect}
+                  onFileSelect={handleFileSelect}
                 />
               ) : (
-                <FileDropzone onFileSelect={onFileSelect} isDisabled={disabled} />
+                <FileDropzone onFileSelect={handleFileSelect} isDisabled={disabled} />
               )}
             </FormInput>
 
