@@ -57,6 +57,7 @@ from infrahub.core.schema import (
     core_models,
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.node_inheritance_handler import NodeInheritanceHandler
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
@@ -1842,7 +1843,7 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
     }
 
     node = NodeSchema(**SCHEMA)
-    node.inherit_from_interface(interface=generic_vehicule_schema)
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic_vehicule_schema)
     registry.schema.set(name=node.kind, schema=node)
     registry.schema.process_schema_branch(name=default_branch.name)
     return node
@@ -1901,7 +1902,7 @@ async def boat_schema(
     }
 
     node = NodeSchema(**SCHEMA)
-    node.inherit_from_interface(interface=generic_vehicule_schema)
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic_vehicule_schema)
     registry.schema.set(name=node.kind, schema=node)
     registry.schema.process_schema_branch(name=default_branch.name)
     return node

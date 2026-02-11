@@ -64,8 +64,8 @@ class TestMergedBranchPermissions:
         assert result == BranchRelativePermissionDecision.DENY
         mock_manager.report_object_permission.assert_not_called()
 
-    def test_super_admin_bypasses_merged_check(self) -> None:
-        """Test that super admin can still perform actions on merged branches."""
+    def test_super_admin_doesnt_bypass_merged_check(self) -> None:
+        """Test that super admin can't perform actions on merged branches."""
         mock_branch = _create_branch(BranchStatus.MERGED)
         mock_node = _create_node()
         mock_manager = MagicMock()
@@ -77,7 +77,7 @@ class TestMergedBranchPermissions:
             action="create",
             global_permission_report=_create_global_permission_report(super_admin=True),
         )
-        assert result == BranchRelativePermissionDecision.ALLOW
+        assert result == BranchRelativePermissionDecision.DENY
         mock_manager.report_object_permission.assert_not_called()
 
     @patch("infrahub.permissions.report.registry")
@@ -143,8 +143,8 @@ class TestNeedRebaseBranchPermissions:
         assert result == BranchRelativePermissionDecision.DENY
         mock_manager.report_object_permission.assert_not_called()
 
-    def test_super_admin_bypasses_need_rebase_check(self) -> None:
-        """Test that super admin can still perform actions on branches needing rebase."""
+    def test_super_admin_doesnt_bypass_need_rebase_check(self) -> None:
+        """Test that super admin can't perform actions on branches needing rebase."""
         mock_manager = MagicMock()
 
         result = get_permission_report(
@@ -154,7 +154,7 @@ class TestNeedRebaseBranchPermissions:
             action="create",
             global_permission_report=_create_global_permission_report(super_admin=True),
         )
-        assert result == BranchRelativePermissionDecision.ALLOW
+        assert result == BranchRelativePermissionDecision.DENY
         mock_manager.report_object_permission.assert_not_called()
 
     @patch("infrahub.permissions.report.registry")

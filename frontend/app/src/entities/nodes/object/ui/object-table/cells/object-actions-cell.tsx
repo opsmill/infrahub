@@ -9,9 +9,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemWithTooltip,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
@@ -75,29 +75,25 @@ export function ObjectActionsCell({
               </Link>
             </DropdownMenuItem>
 
-            <Tooltip enabled={!isEditAllowed} content={editTooltipMessage} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isEditAllowed}
-                  onClick={() => isEditAllowed && setShowEditForm(true)}
-                >
-                  <Icon icon="mdi:edit-outline" className="text-base" />
-                  Edit
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            <DropdownMenuItemWithTooltip
+              disabled={!isEditAllowed}
+              tooltipEnabled={!isEditAllowed}
+              tooltipContent={editTooltipMessage}
+              onClick={() => isEditAllowed && setShowEditForm(true)}
+            >
+              <Icon icon="mdi:edit-outline" className="text-base" />
+              Edit
+            </DropdownMenuItemWithTooltip>
 
-            <Tooltip enabled={!isDeleteAllowed} content={deleteTooltipMessage} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isDeleteAllowed}
-                  onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-                >
-                  <Icon icon="mdi:delete-outline" className="text-base" />
-                  Delete
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            <DropdownMenuItemWithTooltip
+              disabled={!isDeleteAllowed}
+              tooltipEnabled={!isDeleteAllowed}
+              tooltipContent={deleteTooltipMessage}
+              onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
+            >
+              <Icon icon="mdi:delete-outline" className="text-base" />
+              Delete
+            </DropdownMenuItemWithTooltip>
           </DropdownMenuContent>
         </DropdownMenu>
       </StickyRightCell>
