@@ -87,14 +87,14 @@ export const MenuSection = <T extends object>({
 export interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
   tooltipContent?: TooltipProps["content"];
   tooltipEnabled?: TooltipProps["enabled"];
-  tooltipSide?: TooltipProps["side"];
+  side?: TooltipProps["side"];
   children?: React.ReactNode;
 }
 
 export function MenuItemWithTooltip({
   tooltipContent,
   tooltipEnabled,
-  tooltipSide = "left",
+  side = "left",
   isDisabled,
   children,
   ...props
@@ -104,8 +104,8 @@ export function MenuItemWithTooltip({
       <Tooltip
         enabled={tooltipEnabled && isDisabled}
         content={tooltipContent}
-        side={tooltipSide}
-        style={{ zIndex: 100_001 }}
+        side={side}
+        className="z-1000"
       >
         <span className="flex w-full items-center gap-[inherit]">{children}</span>
       </Tooltip>
