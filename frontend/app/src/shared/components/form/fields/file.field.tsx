@@ -1,36 +1,21 @@
-import type { ComponentProps } from "react";
-
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import type { FormAttributeValue } from "@/shared/components/form/type";
+import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
-import {
-  FormField,
-  type FormField as FormFieldType,
-  FormInput,
-  FormMessage,
-} from "@/shared/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import type { AttributeSchema } from "@/entities/schema/types";
+export interface ExistingFileInfo {
+  fileName: string;
+  fileSize?: number;
+  contentType?: string;
+}
 
-export interface FileFieldProps {
-  attribute?: AttributeSchema;
-  defaultValue?: FormAttributeValue;
-  description?: string;
-  disabled?: boolean;
-  label?: string;
-  name: string;
-  rules?: ComponentProps<typeof FormFieldType>["rules"];
-  isBulkUpdate?: boolean;
-  shouldUnregister?: boolean;
+export interface FileFieldProps extends Omit<FormFieldProps, "attribute"> {
+  attribute?: FormFieldProps["attribute"];
   selectedFile: File | null;
-  existingFile?: {
-    fileName: string;
-    fileSize?: number;
-    contentType?: string;
-  } | null;
+  existingFile?: ExistingFileInfo | null;
   onFileSelect: (file: File) => void;
 }
 
