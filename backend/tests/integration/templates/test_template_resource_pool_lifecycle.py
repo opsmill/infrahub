@@ -272,7 +272,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         await template.save(db=db)
         return template
 
-    async def test_step_01_initial_template_has_no_resource_pool_rels(
+    async def test_step_01_schema_initial_template_has_no_resource_pool_rels(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -289,7 +289,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         pool_rels = {name for name in rel_names if "from_resource_pool" in name}
         assert pool_rels == set()
 
-    async def test_step_01b_initial_endpoint_template_has_no_resource_pool_rels(
+    async def test_step_01b_schema_initial_endpoint_template_has_no_resource_pool_rels(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -329,7 +329,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
             nodes=[updated_device],
         )
 
-    async def test_step_02_add_builtin_ip_address_rel_creates_pool_rel(
+    async def test_step_02_schema_add_builtin_ip_address_rel_creates_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -363,7 +363,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         # Update the template instance to set the address pool
         template = await client.get(
             kind="TemplateTestingDevice",
-            template_name__value="device_template_01",
+            id=node_template_instance.get_id(),
         )
         template.mgmt_address_from_resource_pool = address_pool.id
         await template.save()
@@ -371,12 +371,12 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         # Retrieve and verify the pool is set
         retrieved = await client.get(
             kind="TemplateTestingDevice",
-            template_name__value="device_template_01",
+            id=node_template_instance.get_id(),
         )
         assert retrieved.role.value == "router"
         assert retrieved.mgmt_address_from_resource_pool.id == address_pool.id
 
-    async def test_step_02c_endpoint_template_unaffected_by_node_rel_add(
+    async def test_step_02c_schema_endpoint_template_unaffected_by_node_rel_add(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -416,7 +416,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
             generics=[updated_generic],
         )
 
-    async def test_step_03_add_builtin_ip_prefix_rel_to_generic_creates_pool_rel(
+    async def test_step_03_schema_add_builtin_ip_prefix_rel_to_generic_creates_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -451,7 +451,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         # Update the template instance to set the prefix pool
         template = await client.get(
             kind="TemplateTestingDevice",
-            template_name__value="device_template_01",
+            id=node_template_instance.get_id(),
         )
         template.network_prefix_from_resource_pool = prefix_pool.id
         await template.save()
@@ -459,12 +459,12 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         # Retrieve and verify both pools are set
         retrieved = await client.get(
             kind="TemplateTestingDevice",
-            template_name__value="device_template_01",
+            id=node_template_instance.get_id(),
         )
         assert retrieved.network_prefix_from_resource_pool.id == prefix_pool.id
         assert retrieved.mgmt_address_from_resource_pool.id == address_pool.id
 
-    async def test_step_03c_endpoint_template_gets_prefix_pool_rel(
+    async def test_step_03c_schema_endpoint_template_gets_prefix_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -510,7 +510,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
             generics=[updated_generic],
         )
 
-    async def test_step_04_change_generic_rel_peer_to_ip_adds_pool_rel(
+    async def test_step_04_schema_change_generic_rel_peer_to_ip_adds_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -533,7 +533,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         assert "mgmt_address_from_resource_pool" in rel_names
         assert "network_prefix_from_resource_pool" in rel_names
 
-    async def test_step_04b_endpoint_template_gets_connected_vlan_pool_rel(
+    async def test_step_04b_schema_endpoint_template_gets_connected_vlan_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -550,6 +550,28 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
 
         pool_rels = {rel.name: rel for rel in template_schema.relationships}
         assert pool_rels["connected_vlan_from_resource_pool"].peer == InfrahubKind.IPADDRESSPOOL
+
+    async def test_step_04c_set_connected_vlan_pool_on_template_instance(
+        self,
+        client: InfrahubClient,
+        node_template_instance: Node,
+        address_pool: Node,
+        schema_step_04: None,
+    ) -> None:
+        """Set connected_vlan_from_resource_pool on template instance and verify retrieval."""
+        template = await client.get(
+            kind="TemplateTestingDevice",
+            id=node_template_instance.get_id(),
+        )
+        template.connected_vlan_from_resource_pool = address_pool.id
+        await template.save()
+
+        # Retrieve and verify the pool is set
+        retrieved = await client.get(
+            kind="TemplateTestingDevice",
+            id=node_template_instance.get_id(),
+        )
+        assert retrieved.connected_vlan_from_resource_pool.id == address_pool.id
 
     # -------------------------------------------------------------------------
     # Phase 5: Change connected_vlan peer back to non-IP
@@ -575,7 +597,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
             generics=[updated_generic],
         )
 
-    async def test_step_05_change_peer_back_to_non_ip_removes_pool_rel(
+    async def test_step_05_schema_change_peer_back_to_non_ip_removes_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -595,7 +617,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         assert "mgmt_address_from_resource_pool" in rel_names
         assert "network_prefix_from_resource_pool" in rel_names
 
-    async def test_step_05b_endpoint_template_loses_connected_vlan_pool_rel(
+    async def test_step_05b_schema_endpoint_template_loses_connected_vlan_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -644,7 +666,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
             nodes=[updated_device],
         )
 
-    async def test_step_06_remove_node_ip_rel_removes_its_pool_rel(
+    async def test_step_06_schema_remove_node_ip_rel_removes_its_pool_rel(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -673,12 +695,12 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         """Verify the prefix pool is still set on the template instance after removing the address rel."""
         retrieved = await client.get(
             kind="TemplateTestingDevice",
-            template_name__value="device_template_01",
+            id=node_template_instance.get_id(),
         )
         assert retrieved.role.value == "router"
         assert retrieved.network_prefix_from_resource_pool.id == prefix_pool.id
 
-    async def test_step_06c_endpoint_template_unaffected_by_node_rel_remove(
+    async def test_step_06c_schema_endpoint_template_unaffected_by_node_rel_remove(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -727,7 +749,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
             generics=[updated_generic],
         )
 
-    async def test_step_07_remove_all_ip_rels_clears_all_pool_rels(
+    async def test_step_07_schema_remove_all_ip_rels_clears_all_pool_rels(
         self,
         client: InfrahubClient,
         default_branch: Branch,
@@ -755,11 +777,11 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         """Verify the template instance is still accessible after all schema changes."""
         retrieved = await client.get(
             kind="TemplateTestingDevice",
-            template_name__value="device_template_01",
+            id=node_template_instance.get_id(),
         )
         assert retrieved.role.value == "router"
 
-    async def test_step_07c_endpoint_template_no_pool_rels(
+    async def test_step_07c_schema_endpoint_template_no_pool_rels(
         self,
         client: InfrahubClient,
         default_branch: Branch,
