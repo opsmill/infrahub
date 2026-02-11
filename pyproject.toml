@@ -173,6 +173,10 @@ module = "infrahub.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
+module = "infrahub_sdk.*"
+follow_imports = "skip" # Added to ignore typing issues from the SDK when introducing a py.typed file
+
+[[tool.mypy.overrides]]
 module = "tests.conftest"
 disallow_untyped_defs = false
 
