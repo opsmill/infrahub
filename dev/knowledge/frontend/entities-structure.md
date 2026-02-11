@@ -96,7 +96,7 @@ Business logic layer. Responsibilities:
 - React Query hooks (`.query.ts`, `.mutation.ts`)
 - Query key factories (`.query-keys.ts`)
 
-Example: `domain/generate-artifact.ts`
+Example: `domain/get-branch-details.ts`
 
 ```typescript
 export const getBranchDetails: GetBranchDetails = async (params) => {
@@ -149,3 +149,63 @@ import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-bad
 import { generateArtifact } from "@/entities/artifacts/domain/generate-artifact";
 import type { ArtifactObject } from "@/entities/artifacts/types";
 ```
+
+## Branch & Date Context
+
+Most entities need the current branch and optional time-machine date for queries. These are provided via shared types and injected at the query hook layer.
+
+### ContextParams
+
+Defined in `shared/api/types.ts`:
+
+```typescript
+export type BranchContextParams = {
+  branchName: string;
+};
+
+export interface ContextParams extends BranchContextParams {
+  atDate?: Date | null;
+}
+```
+
+### Where context is stored
+
+- **Branch:** `useCurrentBranch()` hook from `@/entities/branches/ui/branches-provider`
+- **Date:** `datetimeAtom` Jotai atom from `@/shared/stores/time.atom`
+
+### How context flows through layers
+
+The **query hook** (`.query.ts`) is the single injection point. It reads branch and date from global state and passes them down. Callers never pass branch or date manually.
+
+| Layer | What happens |
+|-------|-------------|
+| **Query hook** (`.query.ts`) | Reads `useCurrentBranch()` + `datetimeAtom`, injects into `queryOptions` |
+| **Query keys** (`.query-keys.ts`) | Includes `branchName` and `atDate` for per-branch/date cache isolation |
+| **Domain function** (`.ts`) | Params type extends `ContextParams`, passes them to the API layer |
+| **API layer** (`-from-api.ts`) | Params type extends `ContextParams`, serializes to transport (`branch` query param, `at` as ISO string) |
+
+## Complete Example: Object File Entity
+
+Reference implementation at `entities/object-file/`:
+
+```text
+entities/object-file/
+├── api/
+│   └── get-object-file-from-api.ts    # REST call, params extend ContextParams, serializes branch/atDate to query params
+├── domain/
+│   ├── get-object-file.ts             # Business logic (binary handling, URL helpers), params extend ContextParams
+│   ├── get-object-file.query.ts       # Query hook: injects branch/date, exposes queryOptions + useGetObjectFile
+│   └── object-file.query-keys.ts      # Key factory: includes branchName, atDate, contentType for cache isolation
+└── ui/
+    └── object-file.tsx                # React component, imports from domain/ only
+```
+
+### Key Patterns
+
+1. **ContextParams**: Domain and API param types extend `ContextParams` for consistent branch/date typing
+2. **Context injection**: Query hooks read global state and inject it — callers never pass branch/date
+3. **Cache isolation**: Query keys include branch and date so each combination gets its own cache entry
+4. **api/**: Pure transport — serializes `branchName` → `branch` query param, `atDate` → ISO string
+5. **domain/**: Business rules + passes context through to API
+6. **ui/**: Imports from domain only, never from API directly
+7. **Error handling**: Domain throws, UI catches via React Query

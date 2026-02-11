@@ -260,6 +260,9 @@ class SchemaUpdateValidationResult(BaseModel):
         for field_name, sub_field_diff in node_field_diff.changed.items():
             field = schema.get_field(name=field_name)
 
+            if schema.is_node_schema and field.inherited:
+                continue
+
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 

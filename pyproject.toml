@@ -92,7 +92,7 @@ dev = [
     "types-ujson",
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
-    "ruff==0.14.5",
+    "ruff==0.15.0",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=4.2.0,<5",
@@ -595,6 +595,7 @@ allow-dunder-method-names = [
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "RUF052",   # Local dummy variable is accessed
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password
     "S311",     # Standard pseudo-random generators are not suitable for crypto
@@ -709,6 +710,14 @@ allow-dunder-method-names = [
     "LOG004",  # `.exception()` call outside exception handlers
 ]
 
+"tasks/__init__.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
+]
+
+
 "tasks/container_ops.py" = [
     ##################################################################################################
     # Review and change the below later                                                              #
@@ -739,6 +748,7 @@ allow-dunder-method-names = [
     "PT021",    # Use `yield` instead of `request.addfinalizer`
     "RET504",   # Unnecessary assignment before `return` statement
     "RUF029",   # Function is declared `async`, but doesn't `await`
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
     "SLF001",   # Private member accessed
     "UP031",    # Use format specifiers instead of percent format
@@ -790,6 +800,7 @@ allow-dunder-method-names = [
     "PLR6301",  # Method could be a function, class method, or static method
     "RET504",   # Unnecessary assignment before `return` statement
     "RUF029",   # Function is declared `async`, but doesn't `await`
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
     "S311",     # Standard pseudo-random generators are not suitable for crypto
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
@@ -982,6 +993,7 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
+    "ASYNC240", # Async functions should not use pathlib.Path methods, use trio.Path or anyio.path
     "INP001",   # File is part of an implicit namespace package
     "N806",     # Variable in function should be lowercase
     "PLR0904",  # Too many public methods
