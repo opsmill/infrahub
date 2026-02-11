@@ -134,7 +134,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <NodeRelationshipMatchForm schema={schema} {...props} />;
   }
 
-  if (isOfKind(FILE_OBJECT_KIND, schema) && isNode && schema.generate_profile) {
+  if (isNode && schema.generate_profile && isOfKind(FILE_OBJECT_KIND, schema)) {
     return <FileWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
