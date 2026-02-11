@@ -13,8 +13,9 @@ import { Col } from "@/shared/components/container";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-export interface FileDropzoneProps extends DropZoneProps {
+export interface FileDropzoneProps extends Omit<DropZoneProps, "className"> {
   onFileSelect: (file: File) => void;
+  className?: string;
 }
 
 export function FileDropzone({ onFileSelect, className, ...props }: FileDropzoneProps) {

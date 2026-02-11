@@ -12,9 +12,16 @@ export interface FileInfoCardProps {
   fileSize?: number;
   contentType?: string;
   onFileSelect?: (file: File) => void;
+  className?: string;
 }
 
-export function FileInfoCard({ fileName, fileSize, contentType, onFileSelect }: FileInfoCardProps) {
+export function FileInfoCard({
+  fileName,
+  fileSize,
+  contentType,
+  onFileSelect,
+  className,
+}: FileInfoCardProps) {
   const FileIconComponent = getFileIcon(contentType);
 
   const content = (
@@ -48,7 +55,8 @@ export function FileInfoCard({ fileName, fileSize, contentType, onFileSelect }: 
             inputStyle,
             focusVisibleStyle,
             "gap-2 bg-gray-50 px-3 text-left",
-            "hover:border-gray-300 hover:bg-gray-100"
+            "hover:border-gray-300 hover:bg-gray-100",
+            className
           )}
         >
           {content}
@@ -58,5 +66,11 @@ export function FileInfoCard({ fileName, fileSize, contentType, onFileSelect }: 
     );
   }
 
-  return <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">{content}</div>;
+  return (
+    <div
+      className={classNames("rounded-md border border-gray-200 bg-gray-50 px-3 py-2", className)}
+    >
+      {content}
+    </div>
+  );
 }
