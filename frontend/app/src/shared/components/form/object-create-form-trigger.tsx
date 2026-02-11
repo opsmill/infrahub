@@ -12,7 +12,8 @@ import type { ModelSchema } from "@/entities/schema/types";
 
 import { type ButtonProps, ButtonWithTooltip } from "../ui/button";
 
-interface ObjectCreateFormTriggerProps extends ButtonProps {
+interface ObjectCreateFormTriggerProps
+  extends Omit<ButtonProps, "disabled" | "tooltipEnabled" | "tooltipContent"> {
   schema: ModelSchema;
   onSuccess?: (newObject: any) => void;
   permission: Permission;
@@ -23,15 +24,8 @@ export const ObjectCreateFormTrigger = ({
   onSuccess,
   isLoading,
   permission,
-  // Destructure these props to prevent them from being spread and overriding computed values
-  disabled: _disabled,
-  tooltipEnabled: _tooltipEnabled,
-  tooltipContent: _tooltipContent,
   ...props
-}: ObjectCreateFormTriggerProps & {
-  tooltipEnabled?: boolean;
-  tooltipContent?: string;
-}) => {
+}: ObjectCreateFormTriggerProps) => {
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const { currentBranch } = useCurrentBranch();
 
