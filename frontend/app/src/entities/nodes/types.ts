@@ -10,9 +10,9 @@ export interface NodeCore {
   __typename: string;
 }
 
-export interface NodeAttribute {
+export interface NodeAttribute<T = string | number | boolean | string[] | null> {
   id: string;
-  value: string | number | boolean | string[] | null;
+  value: T;
 }
 
 export interface NodeAttributeMetadata {
@@ -62,6 +62,14 @@ export type NodeObject = NodeCore & {
 
 export type NodeObjectWithMetadata = NodeCore & {
   [key: string]: NodeAttributeWithMetadata | NodeRelationshipWithMetadata;
+};
+
+export type NodeFileObject = NodeObject & {
+  file_name: NodeAttribute<string>;
+  file_size: NodeAttribute<number>;
+  file_type: NodeAttribute<string>;
+  storage_id: NodeAttribute<string>;
+  checksum: NodeAttribute<string>;
 };
 
 export interface NodeMetadata {

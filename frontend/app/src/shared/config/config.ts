@@ -19,6 +19,4 @@ export const CONFIG = {
   },
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
-  ARTIFACTS_CONTENT_URL: (storageId: string) =>
-    `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`,
 };

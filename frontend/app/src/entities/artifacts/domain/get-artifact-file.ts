@@ -1,4 +1,4 @@
-import { CONFIG } from "@/shared/config/config";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { arrayBufferToBase64, isBinaryContentType } from "@/shared/utils/file";
 
 import { getArtifactFileFromApi } from "@/entities/artifacts/api/get-artifact-file-from-api";
@@ -9,7 +9,7 @@ export interface GetArtifactFileParams {
 }
 
 export function getArtifactFileDownloadUrl(storageId: string): string {
-  return CONFIG.ARTIFACTS_CONTENT_URL(storageId);
+  return `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`;
 }
 
 export async function getArtifactFile({
