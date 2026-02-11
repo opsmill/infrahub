@@ -1,8 +1,8 @@
 import { lazy, Suspense } from "react";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { CoreFileForm } from "@/shared/components/form/core-file-form";
 import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import { FileWithProfileForm } from "@/shared/components/form/file-with-profile-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
@@ -136,7 +136,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   // Route BuiltinFileAttachment kinds to dedicated file form with dropzone
   if (isOfKind(FILE_OBJECT_KIND, schema)) {
-    return <CoreFileForm schema={schema} profiles={currentProfiles} {...props} />;
+    return <FileWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
   if (isGeneric) {
