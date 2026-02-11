@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import AllowOverrideType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, AllowOverrideType, InfrahubKind, RelationshipKind
 
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema
@@ -76,7 +76,12 @@ class NodeSchema(GeneratedNodeSchema):
                     raise ValueError(
                         f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
                     )
-                if relationship.kind != RelationshipKind.HIERARCHY and relationship.peer != interface_relationship.peer:
+                if (
+                    relationship.kind == RelationshipKind.HIERARCHY
+                    or relationship.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
+                ):
+                    continue
+                if relationship.peer != interface_relationship.peer:
                     raise ValueError(
                         f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} must have the same peer "
                         f"({interface_relationship.peer} != {relationship.peer})"
