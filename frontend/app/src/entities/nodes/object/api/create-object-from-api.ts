@@ -4,11 +4,15 @@ import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-export interface CreateObjectFromApiApiParams extends BranchContextParams {
+export interface CreateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   profileIds?: Array<string>;
   file?: File;
+}
+
+function buildProfiles(profileIds: Array<string>) {
+  return profileIds.map((id) => ({ id }));
 }
 
 export function createObjectFromApi({
@@ -17,51 +21,31 @@ export function createObjectFromApi({
   profileIds = [],
   branchName,
   file,
-}: CreateObjectFromApiApiParams) {
-  const hasFile = file instanceof File;
-
-  const mutationArgs: Record<string, unknown> = {
-    data: {
-      ...data,
-      ...(profileIds?.length
-        ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
-        : {}),
-    },
-  };
-
-  // For file uploads, use a GraphQL variable
-  if (hasFile) {
-    mutationArgs.file = new VariableType("file");
-  }
-
-  const mutationContent: Record<string, unknown> = {
-    [`${objectKind}Create`]: {
-      __args: mutationArgs,
-      object: {
-        id: true,
-        display_label: true,
-        hfid: true,
-        __typename: true,
+}: CreateObjectFromApiParams) {
+  const mutation = jsonToGraphQLQuery({
+    mutation: {
+      ...(file && { __variables: { file: "Upload!" } }),
+      [`${objectKind}Create`]: {
+        __args: {
+          data: {
+            ...data,
+            ...(profileIds.length && { profiles: buildProfiles(profileIds) }),
+          },
+          ...(file && { file: new VariableType("file") }),
+        },
+        object: {
+          id: true,
+          display_label: true,
+          hfid: true,
+          __typename: true,
+        },
       },
     },
-  };
-
-  // Add variable definitions for file uploads
-  if (hasFile) {
-    mutationContent.__variables = {
-      file: "Upload!",
-    };
-  }
-
-  const mutationDef = {
-    mutation: mutationContent,
-  };
-
-  const mutation = jsonToGraphQLQuery(mutationDef);
+  });
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
-    variables: hasFile ? { file } : undefined,
+    variables: file ? { file } : undefined,
     context: {
       branch: branchName,
     },

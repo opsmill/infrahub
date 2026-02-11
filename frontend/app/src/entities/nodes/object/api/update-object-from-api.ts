@@ -24,8 +24,6 @@ export function updateObjectFromApi({
   branchName,
   file,
 }: UpdateObjectFromApiParams) {
-  const hasFile = file instanceof File;
-
   const objectData: Record<string, unknown> = Object.entries(data).reduce((acc, [key, value]) => {
     const valueWithProp = value as { value?: unknown };
     if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && valueWithProp.value === null) {
@@ -78,6 +76,7 @@ export function updateObjectFromApi({
   }, {});
 
   const objectMutation = {
+    ...(file && { __variables: { file: "Upload!" } }),
     [`${objectKind}Update`]: {
       __args: {
         data: {
@@ -86,7 +85,7 @@ export function updateObjectFromApi({
             ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
             : {}),
         },
-        ...(hasFile && { file: new VariableType("file") }),
+        ...(file && { file: new VariableType("file") }),
       },
       object: {
         id: true,
@@ -95,7 +94,6 @@ export function updateObjectFromApi({
         __typename: true,
       },
     },
-    ...(hasFile && { __variables: { file: "Upload!" } }),
   };
 
   const relationshipAddMutation =
@@ -126,7 +124,7 @@ export function updateObjectFromApi({
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
-    variables: hasFile ? { file } : undefined,
+    variables: file ? { file } : undefined,
     context: {
       branch: branchName,
     },
