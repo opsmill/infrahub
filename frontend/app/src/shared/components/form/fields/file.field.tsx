@@ -1,13 +1,30 @@
-import { useFormContext } from "react-hook-form";
+import type { ComponentProps } from "react";
 
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
+import type { FormAttributeValue } from "@/shared/components/form/type";
+import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
-import { classNames } from "@/shared/utils/common";
+import {
+  FormField,
+  type FormField as FormFieldType,
+  FormInput,
+  FormMessage,
+} from "@/shared/components/ui/form";
+
+import type { AttributeSchema } from "@/entities/schema/types";
 
 export interface FileFieldProps {
+  attribute?: AttributeSchema;
+  defaultValue?: FormAttributeValue;
+  description?: string;
+  disabled?: boolean;
   label?: string;
-  required?: boolean;
+  name: string;
+  rules?: ComponentProps<typeof FormFieldType>["rules"];
+  isBulkUpdate?: boolean;
+  shouldUnregister?: boolean;
   selectedFile: File | null;
   existingFile?: {
     fileName: string;
@@ -18,38 +35,61 @@ export interface FileFieldProps {
 }
 
 export function FileField({
+  attribute,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  description,
+  disabled,
   label = "File",
-  required = false,
+  name,
+  rules,
+  isBulkUpdate,
+  shouldUnregister,
   selectedFile,
   existingFile,
   onFileSelect,
 }: FileFieldProps) {
-  const { formState } = useFormContext();
-
-  const hasFile = selectedFile !== null;
-  const hasExistingFile = !!existingFile?.fileName;
-  const showFileCard = hasFile || hasExistingFile;
-  const showError = formState.submitCount > 0 && required && !hasFile;
-
   return (
-    <div className="space-y-2">
-      <LabelFormField label={label} required={required} />
+    <FormField
+      name={name}
+      rules={rules}
+      defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
+      render={({ field }) => {
+        const fieldData: FormAttributeValue = field.value;
+        const hasFile = selectedFile !== null;
+        const hasExistingFile = !!existingFile?.fileName;
+        const showFileCard = hasFile || hasExistingFile;
 
-      {showFileCard ? (
-        <FileInfoCard
-          fileName={selectedFile?.name ?? existingFile?.fileName ?? ""}
-          fileSize={selectedFile?.size ?? existingFile?.fileSize}
-          contentType={selectedFile?.type || existingFile?.contentType}
-          onFileSelect={onFileSelect}
-        />
-      ) : (
-        <FileDropzone
-          onFileSelect={onFileSelect}
-          className={classNames(showError && "border-red-500")}
-        />
-      )}
+        return (
+          <div className="space-y-2">
+            <LabelFormField
+              label={label}
+              required={!!rules?.required}
+              description={description}
+              fieldData={fieldData}
+            />
 
-      {showError && <p className="text-red-600 text-sm">{label} is required</p>}
-    </div>
+            <FormInput>
+              {showFileCard ? (
+                <FileInfoCard
+                  fileName={selectedFile?.name ?? existingFile?.fileName ?? ""}
+                  fileSize={selectedFile?.size ?? existingFile?.fileSize}
+                  contentType={selectedFile?.type || existingFile?.contentType}
+                  onFileSelect={onFileSelect}
+                />
+              ) : (
+                <FileDropzone onFileSelect={onFileSelect} isDisabled={disabled} />
+              )}
+            </FormInput>
+
+            {!disabled && attribute && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
+
+            <FormMessage />
+          </div>
+        );
+      }}
+    />
   );
 }

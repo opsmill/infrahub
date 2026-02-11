@@ -25,9 +25,7 @@ import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
-export type CoreFileFormData = Record<string, FormFieldValue> & {
-  file?: File | null;
-};
+export type CoreFileFormData = Record<string, FormFieldValue>;
 
 export type CoreFileFormProps = {
   className?: string;
@@ -105,6 +103,7 @@ export function CoreFileForm({
     const mutationParams = {
       objectKind: schema.kind as string,
       profileIds: profiles?.map((profile) => profile.id),
+      ...(selectedFile && { file: selectedFile }),
     };
 
     try {
@@ -116,9 +115,7 @@ export function CoreFileForm({
         if (currentObject?.id) updatedData.id = currentObject.id;
 
         await updateObject.mutateAsync(
-          selectedFile
-            ? { ...mutationParams, data: updatedData, file: selectedFile }
-            : { ...mutationParams, data: updatedData },
+          { ...mutationParams, data: updatedData },
           {
             onSuccess: async (updatedNode) => {
               // Invalidate file queries to refresh the UI
@@ -135,9 +132,7 @@ export function CoreFileForm({
         const newObject = getCreateMutationFromFormData(fields, formData, objectTemplate?.id);
 
         await createObject.mutateAsync(
-          selectedFile
-            ? { ...mutationParams, data: newObject, file: selectedFile }
-            : { ...mutationParams, data: newObject },
+          { ...mutationParams, data: newObject },
           {
             onSuccess: async (newNode) => {
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
@@ -164,7 +159,9 @@ export function CoreFileForm({
     <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
       <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className="space-y-4">
         <FileField
-          required={!isUpdate}
+          name="file"
+          label="File"
+          rules={{ required: !isUpdate }}
           selectedFile={selectedFile}
           existingFile={existingFile}
           onFileSelect={setSelectedFile}
