@@ -7,7 +7,8 @@ that would add or remove support for a _from_resource_pool relationship.
 Covers:
 - Adding/removing BuiltinIPAddress/BuiltinIPPrefix peer relationships on Node and Generic
 - Changing a relationship peer to/from IP types
-- Setting pool instances on template instances and verifying retrieval via the SDK
+- Setting pool instances on node template instances and verifying retrieval via the SDK
+- Verifying that generic template schema changes propagate to inheriting node templates
 """
 
 from __future__ import annotations
@@ -38,9 +39,18 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
     """Test _from_resource_pool relationships lifecycle on templates.
 
     Uses a Generic (TestingEndpoint) with a non-IP relationship and a Node (TestingDevice)
-    that inherits from it. Schema updates add/remove/change BuiltinIPAddress and BuiltinIPPrefix
-    peer relationships, and the tests verify the corresponding _from_resource_pool relationships
-    on the TemplateTestingDevice schema and instances.
+    that inherits from it.
+
+    The template for TestingEndpoint (TemplateTestingEndpoint) is a GenericSchema, not a
+    TemplateSchema, so it cannot be instantiated directly. The template for TestingDevice
+    (TemplateTestingDevice) is a TemplateSchema that inherits from TemplateTestingEndpoint.
+    Changes to the generic template's relationships are therefore reflected on the node
+    template via inheritance.
+
+    Schema updates add/remove/change BuiltinIPAddress and BuiltinIPPrefix peer relationships,
+    and the tests verify the corresponding _from_resource_pool relationships on:
+    - TemplateTestingDevice schema and instances
+    - TemplateTestingEndpoint schema (not instances, since it's a GenericSchema)
     """
 
     # --- Schema component fixtures ---
@@ -79,7 +89,6 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         return GenericSchema(
             name="Endpoint",
             namespace="Testing",
-            generate_template=True,
             attributes=[
                 AttributeSchema(name="description", kind="Text", optional=True),
             ],
@@ -263,33 +272,12 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         await template.save(db=db)
         return template
 
-    @pytest.fixture(scope="class")
-    async def generic_template_instance(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        schema_step_01: None,
-    ) -> Node:
-        """Create an endpoint template instance before adding IP relationships."""
-        template_schema = registry.schema.get_template_schema(
-            name="TemplateTestingEndpoint", branch=default_branch, duplicate=False
-        )
-        template = await Node.init(db=db, schema=template_schema)
-        await template.new(
-            db=db,
-            template_name="endpoint_template_01",
-            description="test endpoint",
-        )
-        await template.save(db=db)
-        return template
-
     async def test_step_01_initial_template_has_no_resource_pool_rels(
         self,
         client: InfrahubClient,
         default_branch: Branch,
         schema_step_01: None,
         node_template_instance: Node,
-        generic_template_instance: Node,
     ) -> None:
         """Verify initial template has no _from_resource_pool relationships."""
         template_schema = await client.schema.get(
@@ -307,7 +295,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         schema_step_01: None,
     ) -> None:
-        """Verify initial endpoint template has no _from_resource_pool relationships."""
+        """Verify initial endpoint template (a GenericSchema) has no _from_resource_pool relationships."""
         template_schema = await client.schema.get(
             kind="TemplateTestingEndpoint", branch=default_branch.name, refresh=True
         )
@@ -328,7 +316,6 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         client: InfrahubClient,
         node_template_instance: Node,
-        generic_template_instance: Node,
         device_schema_base: NodeSchema,
         mgmt_address_rel: RelationshipSchema,
     ) -> None:
@@ -435,12 +422,13 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         schema_step_03: None,
     ) -> None:
-        """Adding BuiltinIPPrefix relationship to Generic should create network_prefix_from_resource_pool."""
+        """Adding BuiltinIPPrefix rel to Generic should propagate to the node template via inheritance."""
         template_schema = await client.schema.get(
             kind="TemplateTestingDevice", branch=default_branch.name, refresh=True
         )
         rel_names = {rel.name for rel in template_schema.relationships}
 
+        # network_prefix was added to the Generic, but appears on the node template via inheritance
         assert "network_prefix" in rel_names
         assert "network_prefix_from_resource_pool" in rel_names
 
@@ -448,7 +436,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         assert pool_rels["network_prefix_from_resource_pool"].peer == InfrahubKind.IPPREFIXPOOL
         assert pool_rels["network_prefix_from_resource_pool"].optional is True
 
-        # mgmt_address pool rel should still be there
+        # mgmt_address pool rel (added directly to the Node) should still be there
         assert "mgmt_address_from_resource_pool" in rel_names
 
     async def test_step_03b_set_prefix_pool_on_template_instance(
@@ -482,7 +470,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         schema_step_03: None,
     ) -> None:
-        """Adding BuiltinIPPrefix to Generic should create pool rel on endpoint template too."""
+        """Adding BuiltinIPPrefix to Generic should create pool rel on the generic template (a GenericSchema)."""
         template_schema = await client.schema.get(
             kind="TemplateTestingEndpoint", branch=default_branch.name, refresh=True
         )
@@ -493,28 +481,6 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
 
         pool_rels = {rel.name: rel for rel in template_schema.relationships}
         assert pool_rels["network_prefix_from_resource_pool"].peer == InfrahubKind.IPPREFIXPOOL
-
-    async def test_step_03d_set_prefix_pool_on_generic_template_instance(
-        self,
-        client: InfrahubClient,
-        generic_template_instance: Node,
-        prefix_pool: Node,
-        schema_step_03: None,
-    ) -> None:
-        """Set prefix pool on endpoint template instance and verify retrieval."""
-        template = await client.get(
-            kind="TemplateTestingEndpoint",
-            template_name__value="endpoint_template_01",
-        )
-        template.network_prefix_from_resource_pool = prefix_pool.id
-        await template.save()
-
-        retrieved = await client.get(
-            kind="TemplateTestingEndpoint",
-            template_name__value="endpoint_template_01",
-        )
-        assert retrieved.description.value == "test endpoint"
-        assert retrieved.network_prefix_from_resource_pool.id == prefix_pool.id
 
     # -------------------------------------------------------------------------
     # Phase 4: Change Generic's connected_vlan peer to BuiltinIPAddress
@@ -550,12 +516,13 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         schema_step_04: None,
     ) -> None:
-        """Changing connected_vlan peer to BuiltinIPAddress should add connected_vlan_from_resource_pool."""
+        """Changing connected_vlan peer to BuiltinIPAddress on the Generic should propagate to the node template."""
         template_schema = await client.schema.get(
             kind="TemplateTestingDevice", branch=default_branch.name, refresh=True
         )
         rel_names = {rel.name for rel in template_schema.relationships}
 
+        # connected_vlan change on Generic propagates to node template via inheritance
         assert "connected_vlan" in rel_names
         assert "connected_vlan_from_resource_pool" in rel_names
 
@@ -614,12 +581,13 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         schema_step_05: None,
     ) -> None:
-        """Changing connected_vlan peer back to non-IP should remove connected_vlan_from_resource_pool."""
+        """Reverting connected_vlan peer to non-IP on the Generic should propagate removal to node template."""
         template_schema = await client.schema.get(
             kind="TemplateTestingDevice", branch=default_branch.name, refresh=True
         )
         rel_names = {rel.name for rel in template_schema.relationships}
 
+        # Revert on the Generic propagates to node template: pool rel removed
         assert "connected_vlan" in rel_names
         assert "connected_vlan_from_resource_pool" not in rel_names
 
@@ -723,21 +691,6 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         rel_names = {rel.name for rel in template_schema.relationships}
         assert "network_prefix_from_resource_pool" in rel_names
 
-    async def test_step_06d_prefix_pool_still_on_endpoint_template(
-        self,
-        client: InfrahubClient,
-        generic_template_instance: Node,
-        prefix_pool: Node,
-        schema_step_06: None,
-    ) -> None:
-        """Verify the prefix pool is still set on the endpoint template instance."""
-        retrieved = await client.get(
-            kind="TemplateTestingEndpoint",
-            template_name__value="endpoint_template_01",
-        )
-        assert retrieved.description.value == "test endpoint"
-        assert retrieved.network_prefix_from_resource_pool.id == prefix_pool.id
-
     # -------------------------------------------------------------------------
     # Phase 7: Remove network_prefix (BuiltinIPPrefix) from Generic
     # -------------------------------------------------------------------------
@@ -780,7 +733,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         default_branch: Branch,
         schema_step_07: None,
     ) -> None:
-        """After removing all IP relationships, no _from_resource_pool relationships should remain."""
+        """After removing all IP rels (from both Node and Generic), no pool rels should remain on the node template."""
         template_schema = await client.schema.get(
             kind="TemplateTestingDevice", branch=default_branch.name, refresh=True
         )
@@ -822,16 +775,3 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         assert pool_rels == set()
 
         assert "connected_vlan" in rel_names
-
-    async def test_step_07d_generic_template_instance_still_accessible(
-        self,
-        client: InfrahubClient,
-        generic_template_instance: Node,
-        schema_step_07: None,
-    ) -> None:
-        """Verify the endpoint template instance is still accessible after all schema changes."""
-        retrieved = await client.get(
-            kind="TemplateTestingEndpoint",
-            template_name__value="endpoint_template_01",
-        )
-        assert retrieved.description.value == "test endpoint"
