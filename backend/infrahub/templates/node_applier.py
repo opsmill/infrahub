@@ -94,7 +94,7 @@ class NodeTemplateApplier:
         if original_rel_name in fields:
             return
 
-        pool_relationship: RelationshipManager = getattr(template, pool_rel_name)
+        pool_relationship = template.get_relationship(name=pool_rel_name)
         allocated = await self.pool_allocator.allocate_for_relationship(
             pool_relationship=pool_relationship, identifier=target_id
         )

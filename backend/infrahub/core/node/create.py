@@ -125,7 +125,7 @@ async def allocate_from_resource_pools(
         if original_rel_name not in obj_schema.relationship_names:
             continue
 
-        pool_rel_manager: RelationshipManager = getattr(template, rel_schema.name)
+        pool_rel_manager = template.get_relationship(name=rel_schema.name)
         pool = await pool_rel_manager.get_peer(db=db)
         if not pool:
             continue
