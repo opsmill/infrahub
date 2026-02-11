@@ -134,8 +134,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <NodeRelationshipMatchForm schema={schema} {...props} />;
   }
 
-  // Route BuiltinFileAttachment kinds to dedicated file form with dropzone
-  if (isOfKind(FILE_OBJECT_KIND, schema)) {
+  if (isOfKind(FILE_OBJECT_KIND, schema) && isNode && schema.generate_profile) {
     return <FileWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
