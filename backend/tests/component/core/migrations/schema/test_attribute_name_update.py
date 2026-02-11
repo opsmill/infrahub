@@ -1,5 +1,7 @@
 import uuid
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions, SchemaPathType
@@ -15,11 +17,24 @@ from infrahub.core.migrations.schema.attribute_name_update import (
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.definitions.core.template import core_object_template
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.edge_timestamps import assert_edge_timestamps
+
+
+@pytest.fixture
+async def car_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
+    registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=default_branch.name)
+    for node in car_person_schema_unregistered.nodes:
+        node.generate_template = True
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 async def test_query_default_branch(
@@ -105,6 +120,22 @@ async def test_query_branch1(
 async def test_migration(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
 ) -> None:
+    # Create TemplateTestPerson nodes to use as owners for TemplateTestCar
+    template_person1 = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_person1.new(db=db, template_name="Template Person 1")
+    await template_person1.save(db=db)
+    template_person2 = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_person2.new(db=db, template_name="Template Person 2")
+    await template_person2.save(db=db)
+
+    # Create 2 TemplateTestCar nodes so migration also covers templates
+    template1 = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template1.new(db=db, template_name="Template Accord", color="#111111", owner=template_person1)
+    await template1.save(db=db)
+    template2 = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template2.new(db=db, template_name="Template Camry", color="#222222", owner=template_person2)
+    await template2.save(db=db)
+
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
@@ -135,11 +166,13 @@ async def test_migration(
     )
     execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=default_branch)
     assert not execution_result.errors
-    assert execution_result.nbr_migrations_executed == 3
+    # 2 TestCar + 1 ProfileTestCar + 2 TemplateTestCar = 5 migrations
+    assert execution_result.nbr_migrations_executed == 5
 
     # 5. Validate nodes and relationships after migration
-    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
-    assert await count_relationships(db=db) == count_rels + 9
+    # 5 new Attribute nodes (one per renamed attribute), 5 x 3 = 15 new relationships
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 5
+    assert await count_relationships(db=db) == count_rels + 15
 
     # 6. Validate edge timestamps
     after_snapshot = await snapshotter.snapshot()
