@@ -10,6 +10,7 @@ import { useCurrentFormContext } from "@/shared/components/form/utils/form-conte
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { isRequired } from "@/shared/components/form/utils/validation";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
@@ -161,7 +162,7 @@ export function CoreFileForm({
         <FileField
           name="file"
           label="File"
-          rules={{ required: !isUpdate }}
+          rules={!isUpdate ? { required: true, validate: { required: isRequired } } : undefined}
           selectedFile={selectedFile}
           existingFile={existingFile}
           onFileSelect={setSelectedFile}

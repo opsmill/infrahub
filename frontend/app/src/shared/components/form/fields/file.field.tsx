@@ -3,6 +3,7 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
+import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
@@ -46,7 +47,7 @@ export function FileField({
         const showFileCard = hasFile || hasExistingFile;
 
         const handleFileSelect = (file: File) => {
-          field.onChange(file.name);
+          field.onChange(updateFormFieldValue(file.name, defaultValue));
           onFileSelect(file);
         };
 
