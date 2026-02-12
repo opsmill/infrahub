@@ -256,7 +256,7 @@ export const getRelationshipDefaultValueFromProfiles = (
     };
   }
 
-  // Handle cardinality one relationships
+  // Handle cardinality one relationship
   if (!relationshipData.node) return null;
 
   return {
