@@ -44,7 +44,7 @@ class NodeTemplateApplier:
             if attr_name in fields or attr_name == OBJECT_TEMPLATE_NAME_ATTR:
                 continue
 
-            attr = getattr(template, attr_name)
+            attr = template.get_attribute(name=attr_name)
 
             # Propagate from_pool reference for NumberPool attributes
             if hasattr(attr, "from_pool") and attr.from_pool:
