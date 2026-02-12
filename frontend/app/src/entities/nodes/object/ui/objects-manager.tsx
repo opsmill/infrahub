@@ -13,7 +13,7 @@ export interface ObjectsTableManagerProps {
 }
 
 export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
-  const { isPending, error, data: permission } = useGetObjectPermissions(schema.kind as string);
+  const { isPending, error, data: permission } = useGetObjectPermissions(schema);
 
   if (isPending) return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
 

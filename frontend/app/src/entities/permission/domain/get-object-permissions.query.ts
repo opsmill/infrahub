@@ -7,37 +7,42 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectPermissions } from "@/entities/permission/domain/get-object-permissions";
+import type { GetPermissionOptions } from "@/entities/permission/utils";
+import type { ModelSchema } from "@/entities/schema/types";
 
-export type GetObjectPermissionsParams = ContextParams & {
-  kind: string;
+export interface GetObjectPermissionsParams extends ContextParams, GetPermissionOptions {
   userId?: string;
-};
+}
 
 export const getObjectPermissionsQueryOptions = ({
-  kind,
   userId,
   branchName,
   atDate,
+  branch,
+  schema,
 }: GetObjectPermissionsParams) => {
+  const kind = schema.kind!;
+
   return queryOptions({
-    queryKey: [branchName, atDate, "permissions", kind, userId],
+    queryKey: [branchName, atDate, "permissions", kind, userId, branch?.status],
     queryFn: () => {
-      return getObjectPermissions({ kind, branchName, atDate });
+      return getObjectPermissions({ branchName, atDate, branch, schema });
     },
   });
 };
 
-export const useGetObjectPermissions = (kind: string) => {
+export const useGetObjectPermissions = (schema: ModelSchema) => {
   const auth = useAuth();
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     getObjectPermissionsQueryOptions({
-      kind,
       userId: auth.user?.id,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
+      branch: currentBranch,
+      schema,
     })
   );
 };

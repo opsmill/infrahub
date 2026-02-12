@@ -738,7 +738,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN201",   # Missing return type annotation for public function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "N806",     # Variable in function should be lowercase
     "PGH003",   # Use specific rule codes when ignoring type issues

@@ -48,11 +48,32 @@ const ResourcePoolDetailsPage = () => {
 
   const objectKind = data.__typename;
   return (
-    <RequireObjectPermissions objectKind={objectKind}>
+    <ResourcePoolContentWithPermissions
+      resourcePoolId={resourcePoolId!}
+      resourcePoolKind={objectKind}
+    />
+  );
+};
+
+type ResourcePoolContentWithPermissionsProps = {
+  resourcePoolId: string;
+  resourcePoolKind: string;
+};
+
+const ResourcePoolContentWithPermissions = ({
+  resourcePoolId,
+  resourcePoolKind,
+}: ResourcePoolContentWithPermissionsProps) => {
+  const { schema } = useSchema(resourcePoolKind);
+
+  if (!schema) return <NoDataFound />;
+
+  return (
+    <RequireObjectPermissions schema={schema}>
       {({ permission }) => (
         <ResourcePoolContent
-          resourcePoolId={resourcePoolId!}
-          resourcePoolKind={objectKind}
+          resourcePoolId={resourcePoolId}
+          schema={schema}
           permission={permission}
         />
       )}
@@ -62,31 +83,22 @@ const ResourcePoolDetailsPage = () => {
 
 type ResourcePoolContentProps = {
   resourcePoolId: string;
-  resourcePoolKind: string;
+  schema: NonNullable<ReturnType<typeof useSchema>["schema"]>;
   permission: Permission;
 };
 
-const ResourcePoolContent = ({
-  resourcePoolId,
-  resourcePoolKind,
-  permission,
-}: ResourcePoolContentProps) => {
-  const { schema } = useSchema(resourcePoolKind);
+const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoolContentProps) => {
+  const resourcePoolKind = schema.kind as string;
   const {
     isPending,
     isRefetching,
     error,
     data: resourcePool,
     refetch,
-  } = useGetObject(
-    {
-      objectSchema: schema!,
-      objectId: resourcePoolId,
-    },
-    {
-      enabled: !!schema,
-    }
-  );
+  } = useGetObject({
+    objectSchema: schema,
+    objectId: resourcePoolId,
+  });
 
   const {
     data: resourcePoolUtilization,
@@ -105,8 +117,6 @@ const ResourcePoolContent = ({
       }),
     ]);
   };
-
-  if (!schema) return <NoDataFound />;
 
   if (isPending || isUtilizationPending) {
     return <LoadingIndicator className="h-full" />;

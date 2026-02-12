@@ -81,7 +81,7 @@ export const Component = () => {
   }
 
   return (
-    <RequireObjectPermissions objectKind={IP_NAMESPACE_GENERIC} loadingClassName="h-full">
+    <RequireObjectPermissions schema={schema} loadingClassName="h-full">
       {({ permission }) => {
         return <IpamNamespaceListPage namespaceSchema={schema} permission={permission} />;
       }}

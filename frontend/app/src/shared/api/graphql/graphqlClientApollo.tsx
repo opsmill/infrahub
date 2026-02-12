@@ -1,13 +1,7 @@
-import {
-  ApolloClient,
-  type DefaultOptions,
-  from,
-  HttpLink,
-  InMemoryCache,
-  Observable,
-} from "@apollo/client";
+import { ApolloClient, type DefaultOptions, from, InMemoryCache, Observable } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
+import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -28,40 +22,15 @@ export const defaultOptions: DefaultOptions = {
   },
 };
 
-// HTTP link with context to update graphql endpoint
-const httpLink = new HttpLink({
-  uri: (operation) => {
+// HTTP link with context to update graphql endpoint (supports file uploads)
+const httpLink = createUploadLink({
+  uri: (operation: { getContext: () => { branch?: string; date?: Date | null } }) => {
     const context = operation.getContext();
 
     // Initial value for url, will be overriden in useQuery
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
 });
-
-// // Web socket link
-// const wsLink2 = new GraphQLWsLink(
-//   createClient({
-//     url: CONFIG.GRAPHQL_WEB_SOCKET_URL(),
-//     connectionParams: {},
-//   })
-// );
-
-// // Web socket link (not maintained)
-// const wsLink = new WebSocketLink(
-//   new SubscriptionClient(CONFIG.GRAPHQL_WEB_SOCKET_URL(), {
-//     reconnect: true,
-//   })
-// );
-
-// // Test operation to use either WS or HTTP
-// const splitLink = split(
-//   ({ query }) => {
-//     const definition = getMainDefinition(query);
-//     return definition.kind === "OperationDefinition" && definition.operation === "subscription";
-//   },
-//   wsLink,
-//   httpLink
-// );
 
 // Auth link to add headers
 export const authLink = setContext((_, previousContext) => {

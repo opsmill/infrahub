@@ -186,7 +186,7 @@ The **query hook** (`.query.ts`) is the single injection point. It reads branch 
 
 ## Complete Example: Object File Entity
 
-Reference implementation at `entities/object-file/`:
+Reference implementation at `entities/object-file/`. See [object-file-entity.md](object-file-entity.md) for full code listings.
 
 ```text
 entities/object-file/

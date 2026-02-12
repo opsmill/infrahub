@@ -72,7 +72,7 @@ from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 from ... import config
-from ..constants.schema import PARENT_CHILD_IDENTIFIER
+from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .node_inheritance_handler import NodeInheritanceHandler
 from .schema_branch_computed import ComputedAttributes
@@ -2530,8 +2530,8 @@ class SchemaBranch:
         if not pool_peer:
             return None
 
-        pool_rel_name = f"{relationship.name}_from_resource_pool"
-        pool_identifier = f"{relationship.get_identifier()}_from_resource_pool"
+        pool_rel_name = f"{relationship.name}{RESOURCE_POOL_REL_SUFFIX}"
+        pool_identifier = f"{relationship.get_identifier()}{RESOURCE_POOL_REL_SUFFIX}"
         pool_label = relationship.name.title() + " from Resource Pool"
 
         return RelationshipSchema(

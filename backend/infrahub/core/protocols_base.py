@@ -9,6 +9,8 @@ from infrahub.core.constants import SYSTEM_USER_ID
 if TYPE_CHECKING:
     from neo4j import AsyncResult, AsyncSession, AsyncTransaction, Record
 
+    from infrahub.core.attribute import BaseAttribute
+    from infrahub.core.relationship import RelationshipManager
     from infrahub.core.schema import NonGenericSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -74,6 +76,8 @@ class CoreNode(Protocol):
     def get_id(self) -> str: ...
     def get_kind(self) -> str: ...
     def get_schema(self) -> NonGenericSchemaTypes: ...
+    def get_attribute(self, name: str) -> BaseAttribute: ...
+    def get_relationship(self, name: str) -> RelationshipManager: ...
 
     @classmethod
     async def init(
