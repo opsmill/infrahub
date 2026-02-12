@@ -49,6 +49,7 @@ class ExpectedTemplateRelationship:
 
     name: str
     peer_ids: list[str]
+    source_id: str | None = None
 
 
 def _validate_template_fields(
@@ -91,6 +92,13 @@ def _validate_template_fields(
         if isinstance(field_data, list):
             actual_ids = [item["id"] for item in field_data]
             assert actual_ids == rel.peer_ids, f"Relationship {rel.name} has wrong peer IDs"
+        elif rel.source_id is not None:
+            # Pool-allocated relationship with source
+            assert "_relation__source" in field_data, f"Relationship {rel.name} missing _relation__source"
+            assert field_data["_relation__source"] == rel.source_id, f"Relationship {rel.name} has wrong source"
+            assert "peer" in field_data, f"Relationship {rel.name} missing peer"
+            if rel.peer_ids:
+                assert field_data["peer"].id == rel.peer_ids[0], f"Relationship {rel.name} has wrong peer ID"
         else:
             assert field_data == {"id": rel.peer_ids[0]}, f"Relationship {rel.name} has wrong peer"
 
@@ -398,10 +406,12 @@ class TestNodeTemplateApplierPoolRelationships:
             template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
         )
 
-        _validate_template_fields(fields=fields, user_fields=user_fields)
-        assert "primary_ip" in fields
-        assert fields["primary_ip"]["_relation__source"] == ip_pool.id
-        assert fields["primary_ip"]["peer"] is not None
+        _validate_template_fields(
+            fields=fields,
+            user_fields=user_fields,
+            # We don't really care about the exact allocated peer ID here, just that it came from the pool
+            expected_relationships=[ExpectedTemplateRelationship(name="primary_ip", peer_ids=[], source_id=ip_pool.id)],
+        )
 
     async def test_user_value_overrides_pool_allocation(
         self,
