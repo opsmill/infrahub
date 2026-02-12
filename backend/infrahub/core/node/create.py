@@ -5,10 +5,12 @@ from typing import TYPE_CHECKING, Any, Mapping
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
+from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
@@ -107,6 +109,35 @@ async def extract_peer_data(
     return obj_peer_data
 
 
+async def allocate_from_resource_pools(
+    db: InfrahubDatabase, branch: Branch, obj: Node, template: CoreObjectTemplate, at: Timestamp | None = None
+) -> None:
+    """Allocate resources from template's _from_resource_pool relationships to the object."""
+    template_schema = template.get_schema()
+    obj_schema = obj.get_schema()
+
+    for rel_schema in template_schema.relationships:
+        if not rel_schema.name.endswith(RESOURCE_POOL_REL_SUFFIX):
+            continue
+
+        original_rel_name = rel_schema.name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
+
+        if original_rel_name not in obj_schema.relationship_names:
+            continue
+
+        pool_rel_manager = template.get_relationship(name=rel_schema.name)
+        pool = await pool_rel_manager.get_peer(db=db)
+        if not pool:
+            continue
+
+        allocated_resource = await pool.get_resource(db=db, branch=branch, identifier=obj.id, at=at)  # type: ignore
+
+        obj_rel_manager = obj.get_relationship(name=original_rel_name)
+        await obj_rel_manager.update(
+            data=PeerWithRelationshipMetadata(peer=allocated_resource, source_id=pool.id), db=db
+        )
+
+
 async def handle_template_relationships(
     db: InfrahubDatabase,
     branch: Branch,
@@ -145,13 +176,17 @@ async def handle_template_relationships(
             obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch, at=at)
             await obj_peer.new(db=db, **obj_peer_data)
             await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
-            await obj_peer.save(db=db)
+
+            await allocate_from_resource_pools(
+                db=db, branch=branch, obj=obj_peer, template=template_relationship_peer, at=at
+            )
 
             template_profile_ids = await get_profile_ids(db=db, obj=template_relationship_peer)
             if template_profile_ids:
                 node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
                 await node_profiles_applier.apply_profiles(node=obj_peer)
-                await obj_peer.save(db=db)
+
+            await obj_peer.save(db=db)
 
             await handle_template_relationships(
                 db=db,
