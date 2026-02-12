@@ -1,4 +1,5 @@
 import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import type {
   Permission,
   PermissionAction,
@@ -6,8 +7,6 @@ import type {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
-
-import { PERMISSION_ALLOW_ALL } from "./constants";
 
 export interface GetPermissionOptions {
   branch?: { status: BranchStatus };
