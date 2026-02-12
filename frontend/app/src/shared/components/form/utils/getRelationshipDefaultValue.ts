@@ -12,11 +12,11 @@ import type {
 } from "@/shared/components/form/type";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 import type {
   NodeFields,
   NodeObject,
   NodeRelationship,
-  NodeRelationshipMany,
   NodeRelationshipWithMetadata,
 } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -67,7 +67,7 @@ const getRelationshipValueFromUser = (
 ): RelationshipValueFromUser | RelationshipValueFromPool | null => {
   if (!relationshipData) return null;
 
-  if (isRelationshipManyData(relationshipData)) {
+  if (isNodeRelationshipMany(relationshipData)) {
     if (relationshipData.edges.length === 0) return null;
 
     // Check if all edges come from a profile source - if so, return null to allow profile fallback
@@ -205,12 +205,8 @@ export const getRelationshipDefaultValueFromTemplate = (
   };
 };
 
-const isRelationshipManyData = (data: NodeRelationship): data is NodeRelationshipMany => {
-  return "edges" in data;
-};
-
 const hasRelationshipValue = (data: NodeRelationship): boolean => {
-  if (isRelationshipManyData(data)) {
+  if (isNodeRelationshipMany(data)) {
     return data.edges.length > 0 && data.edges.some((edge) => edge.node !== null);
   }
   return data.node !== null;
@@ -247,7 +243,7 @@ export const getRelationshipDefaultValueFromProfiles = (
   };
 
   // Handle cardinality many relationships
-  if (isRelationshipManyData(relationshipData)) {
+  if (isNodeRelationshipMany(relationshipData)) {
     const nodes = relationshipData.edges.map(({ node }) => node).filter((n) => !!n);
 
     return {
