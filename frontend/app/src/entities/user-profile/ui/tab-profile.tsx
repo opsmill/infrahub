@@ -30,10 +30,7 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     data: objectData,
     error: objectError,
     isPending: isObjectPending,
-  } = useGetObject(
-    { objectSchema: schema, objectId: accountId },
-    { enabled: !!accountId }
-  );
+  } = useGetObject({ objectSchema: schema, objectId: accountId }, { enabled: !!accountId });
 
   const {
     data: permission,
