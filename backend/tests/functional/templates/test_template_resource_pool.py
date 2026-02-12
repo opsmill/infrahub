@@ -360,14 +360,16 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     async def test_rack_from_template_with_static_slot(
         self, template_with_static_slot: InfrahubNode, client: InfrahubClient
     ) -> None:
+        """Static value from template should have the template as source."""
         rack = await client.create(
             kind="InfraRack", name="rack-from-static-template", object_template=template_with_static_slot.id
         )
         await rack.save()
 
-        retrieved = await client.get(kind="InfraRack", id=rack.id)
+        retrieved = await client.get(kind="InfraRack", id=rack.id, include=["slot_id"], property=True)
         assert retrieved.name.value == "rack-from-static-template"
         assert retrieved.slot_id.value == 50
+        assert retrieved.slot_id.source.id == template_with_static_slot.id
 
     async def test_rack_from_template_with_pool_allocates_slot(
         self, template_with_pool_slot: InfrahubNode, slot_pool: InfrahubNode, client: InfrahubClient
@@ -378,10 +380,11 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         await rack.save()
 
-        retrieved = await client.get(kind="InfraRack", id=rack.id, include=["slot_id"])
+        retrieved = await client.get(kind="InfraRack", id=rack.id, include=["slot_id"], property=True)
         assert retrieved.name.value == "rack-from-pool-template"
         assert retrieved.slot_id.value is not None
         assert 1 <= retrieved.slot_id.value <= 100
+        assert retrieved.slot_id.source.id == slot_pool.id
 
     async def test_rack_explicit_slot_overrides_pool_template(
         self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
