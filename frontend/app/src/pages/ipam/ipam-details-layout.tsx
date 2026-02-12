@@ -63,7 +63,7 @@ export const Component = () => {
   }
 
   return (
-    <RequireObjectPermissions schema={schema}>
+    <RequireObjectPermissions objectKind={schema.kind ?? ""}>
       {({ permission }) => {
         return (
           <IpamDetailsLayout objectSchema={schema} objectId={objectId} permission={permission} />
