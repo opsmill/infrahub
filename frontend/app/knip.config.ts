@@ -14,6 +14,7 @@ const config: KnipConfig = {
   ignoreDependencies: [
     "monaco-graphql", // for graphiql,
     "vitest-browser-react", // for vitest browser mode
+    "@betterer/typescript", // for betterer typescript regressions
   ],
 
   ignoreExportsUsedInFile: true,
