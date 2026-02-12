@@ -489,7 +489,7 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         self, db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
     ) -> CoreNumberPool:
         """A number pool for rack_unit attribute."""
-        pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+        pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
         await pool.new(
             db=db, name="rack-unit-pool", node="TestingDevice", node_attribute="rack_unit", start_range=1, end_range=48
         )
