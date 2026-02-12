@@ -24,7 +24,8 @@
     "test:e2e:screenshots:headed": "UPDATE_DOCS_SCREENSHOTS=1 INFRAHUB_ADDRESS=http://localhost:8000 playwright test --headed",
     "biome": "biome check .",
     "biome:fix": "biome check --write .",
-    "knip": "knip"
+    "knip": "knip",
+    "betterer": "betterer"
   },
   "dependencies": {
     "@apollo/client": "^3.13.8",
@@ -104,6 +105,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@betterer/cli": "^6.0.0-alpha.1",
+    "@betterer/typescript": "^6.0.0-alpha.1",
     "@biomejs/biome": "^2.3.14",
     "@graphql-codegen/cli": "^6.1.1",
     "@graphql-codegen/typescript": "^5.0.7",
