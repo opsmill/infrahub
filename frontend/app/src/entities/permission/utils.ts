@@ -14,7 +14,7 @@ import { PERMISSION_ALLOW_ALL } from "./constants";
 
 export interface GetPermissionOptions {
   branch?: { status: BranchStatus };
-  schema?: ModelSchema;
+  schema: ModelSchema;
 }
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {

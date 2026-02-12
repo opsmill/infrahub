@@ -10,10 +10,9 @@ import { getObjectPermissions } from "@/entities/permission/domain/get-object-pe
 import type { GetPermissionOptions } from "@/entities/permission/utils";
 import type { ModelSchema } from "@/entities/schema/types";
 
-export type GetObjectPermissionsParams = ContextParams &
-  GetPermissionOptions & {
-    userId?: string;
-  };
+export interface GetObjectPermissionsParams extends ContextParams, GetPermissionOptions {
+  userId?: string;
+}
 
 export const getObjectPermissionsQueryOptions = ({
   userId,
@@ -22,7 +21,7 @@ export const getObjectPermissionsQueryOptions = ({
   branch,
   schema,
 }: GetObjectPermissionsParams) => {
-  const kind = schema?.kind as string;
+  const kind = schema.kind!;
 
   return queryOptions({
     queryKey: [branchName, atDate, "permissions", kind, userId, branch?.status],
