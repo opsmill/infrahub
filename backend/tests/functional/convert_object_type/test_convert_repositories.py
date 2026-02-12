@@ -120,7 +120,7 @@ class TestConvertRepository(TestInfrahubApp):
         await people.new(db=db, name="people", members=[john])
         await people.save(db=db)
 
-    async def reset_to_time(self, db: InfrahubDatabase, reset_time: Timestamp):
+    async def reset_to_time(self, db: InfrahubDatabase, reset_time: Timestamp) -> None:
         db_resetter = DatabaseResetter(db=db)
         await db_resetter.reset_to_time(reset_time=reset_time)
 
