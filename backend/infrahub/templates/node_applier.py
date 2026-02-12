@@ -13,7 +13,6 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreObjectTemplate
-    from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.allocator import PoolAllocator
@@ -78,7 +77,7 @@ class NodeTemplateApplier:
             if rel_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME:
                 continue
 
-            relationship: RelationshipManager = getattr(template, rel_name)
+            relationship = template.get_relationship(name=rel_name)
             if rel_schema.cardinality == RelationshipCardinality.ONE:
                 if peer := await relationship.get_peer(db=self.db):
                     fields[rel_name] = {"id": peer.id}
