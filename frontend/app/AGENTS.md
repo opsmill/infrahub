@@ -33,6 +33,7 @@ cd frontend/app && npm run codegen # Generate GraphQL types
 - `dev/knowledge/frontend/react.md` - React 19 and React Compiler patterns
 - `dev/knowledge/frontend/architecture.md` - Project organization
 - `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui)
+- `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 
 ### Guides (How to do X)
 

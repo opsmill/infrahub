@@ -1,10 +1,10 @@
 import {
-  type CreateObjectFromApiApiParams,
+  type CreateObjectFromApiParams,
   createObjectFromApi,
 } from "@/entities/nodes/object/api/create-object-from-api";
 import type { NodeCore } from "@/entities/nodes/types";
 
-export type CreateObjectParams = CreateObjectFromApiApiParams;
+export type CreateObjectParams = CreateObjectFromApiParams;
 
 export type CreateObject = (params: CreateObjectParams) => Promise<NodeCore>;
 

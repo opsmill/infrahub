@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
 import { Col, Row } from "@/shared/components/container";
-import type { DataViewerContentType, TextContentType } from "@/shared/components/data-viewer/types";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { CsvTable } from "@/shared/components/editor/csv-table";
 import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { classNames, warnUnexpectedType } from "@/shared/utils/common";
+import { classNames } from "@/shared/utils/common";
 
 export interface DataViewerProps {
   title?: string;
@@ -61,26 +61,6 @@ function DataViewerContent({
       );
     }
 
-    case "application/json":
-    case "application/yaml":
-    case "application/x-yaml":
-    case "application/hcl":
-    case "application/graphql":
-    case "text/plain":
-    case "application/xml": {
-      return (
-        <ScrollArea
-          scrollX
-          className="grow rounded-lg border border-neutral-700 shadow-sm"
-          scrollBarClassName="bg-transparent"
-        >
-          <CodeViewer language={getTextLanguage(contentType)} customStyle={{ margin: 0 }}>
-            {content}
-          </CodeViewer>
-        </ScrollArea>
-      );
-    }
-
     case "application/pdf": {
       return (
         <iframe
@@ -109,17 +89,23 @@ function DataViewerContent({
     }
 
     default: {
-      warnUnexpectedType(contentType);
+      // Treat all text-based and unknown content types as plain text
       return (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-neutral-700 py-12 text-center">
-          <p className="text-neutral-400 text-sm">Preview not available for this file type</p>
-        </div>
+        <ScrollArea
+          scrollX
+          className="grow rounded-lg border border-neutral-700 shadow-sm"
+          scrollBarClassName="bg-transparent"
+        >
+          <CodeViewer language={getTextLanguage(contentType)} customStyle={{ margin: 0 }}>
+            {content}
+          </CodeViewer>
+        </ScrollArea>
       );
     }
   }
 }
 
-function getTextLanguage(contentType: TextContentType): string {
+function getTextLanguage(contentType: DataViewerContentType): string {
   switch (contentType) {
     case "application/json":
       return "json";

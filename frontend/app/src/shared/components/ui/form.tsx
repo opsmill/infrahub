@@ -21,6 +21,7 @@ import { SlideOverContext } from "@/shared/components/display/slide-over";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
@@ -107,11 +108,7 @@ export const FormInput = React.forwardRef<
     <Slot
       ref={ref}
       id={id}
-      className={classNames(
-        error &&
-          "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/25 focus:border-red-500 focus:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
-        className
-      )}
+      className={classNames(error && inputErrorStyle, className)}
       aria-invalid={!!error}
       {...props}
     />
@@ -135,7 +132,6 @@ export const FormMessage = ({
   return (
     <p
       className={classNames("text-gray-600 text-sm", error && "text-red-600", className)}
-      data-cy={error && "field-error-message"}
       {...props}
     >
       {message}

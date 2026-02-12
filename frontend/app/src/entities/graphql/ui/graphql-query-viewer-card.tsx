@@ -15,7 +15,7 @@ export function GraphqlQueryViewerCard({ query }: { query: string }) {
           <DataViewerLinkButton href={constructPath("/graphql", [{ name: "query", value: query }])}>
             GraphQL sandbox
           </DataViewerLinkButton>
-          <DataViewerCopyButton value={query} />
+          <DataViewerCopyButton data={query} />
           <DataViewerDownloadButton data={query} fileName="query.graphql" />
         </>
       }
