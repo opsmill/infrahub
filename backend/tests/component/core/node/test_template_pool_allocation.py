@@ -177,3 +177,39 @@ async def test_object_from_template_with_explicit_address_uses_explicit(
     assert primary_ip is not None
     assert primary_ip.id == explicit_address.id
     assert primary_ip.address.value == "10.10.3.25/27"
+
+
+async def test_object_from_template_with_direct_address_inherits_address(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_namespace: Node, ip_prefix: Node
+) -> None:
+    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+
+    template_address = await Node.init(db=db, schema=address_schema, branch=default_branch)
+    await template_address.new(db=db, address="10.10.3.50/27", ip_prefix=ip_prefix, ip_namespace=ip_namespace)
+    await template_address.save(db=db)
+
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+    await template.new(db=db, template_name="device-template-with-direct-ip", primary_ip={"id": template_address.id})
+    await template.save(db=db)
+
+    device = await create_node(
+        data={
+            "name": "device-inherits-direct-ip",
+            "manufacturer": "Acme",
+            "weight": 10,
+            "airflow": "Front to rear",
+            "object_template": {"id": template.id},
+        },
+        db=db,
+        branch=default_branch,
+        schema=node_schema,
+    )
+
+    assert device.id is not None
+
+    primary_ip = await device.primary_ip.get_peer(db=db)
+    assert primary_ip is not None
+    assert primary_ip.id == template_address.id
+    assert primary_ip.address.value == "10.10.3.50/27"
