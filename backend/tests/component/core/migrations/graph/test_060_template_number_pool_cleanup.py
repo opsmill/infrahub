@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m060_template_resource_pool_cleanup import Migration060
+from infrahub.core.migrations.graph.m060_template_number_pool_cleanup import Migration060
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot

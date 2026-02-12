@@ -29,7 +29,7 @@ console = get_migration_console()
 class Migration060(MigrationRequiringRebase):
     """Nullify attribute values on template nodes where the source is a CoreNumberPool."""
 
-    name: str = "060_template_resource_pool_cleanup"
+    name: str = "060_template_number_pool_cleanup"
     minimum_version: int = 59
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
