@@ -44,12 +44,12 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
   const createObject = useCreateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
-    relationshipData: currentObject?.roles?.value,
+    objectData: { roles: currentObject?.roles?.value },
     relationshipName: "roles",
   });
 
   const members = getRelationshipDefaultValue({
-    relationshipData: currentObject?.members?.value,
+    objectData: { members: currentObject?.members?.value },
     relationshipName: "members",
   });
 

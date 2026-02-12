@@ -38,7 +38,7 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
   const createObject = useCreateObjectMutation();
 
   const memberDefaultValue = getRelationshipDefaultValue({
-    relationshipData: currentObject?.member_of_groups?.value,
+    objectData: { member_of_groups: currentObject?.member_of_groups?.value },
     relationshipName: "member_of_groups",
   });
 
