@@ -68,7 +68,7 @@ export const ObjectTableProvider = ({
   }, [kindInQsp, schema.hash]);
 
   return (
-    <RequireObjectPermissions objectKind={schema.kind as string}>
+    <RequireObjectPermissions schema={schema}>
       {({ permission }) => {
         return (
           <ObjectTableContext

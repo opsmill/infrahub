@@ -14,8 +14,6 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -41,7 +39,6 @@ export function RelationshipsButtons({
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
   const [relationshipTab] = useQueryState(QSP.TAB);
-  const { currentBranch } = useCurrentBranch();
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
@@ -108,10 +105,7 @@ export function RelationshipsButtons({
     }
   };
 
-  const { isAllowed: isAddAllowed, tooltipMessage: addTooltipMessage } = getActionAvailability(
-    currentBranch.status,
-    permission.create
-  );
+  const { isAllowed: isAddAllowed, message: addTooltipMessage } = permission.create;
 
   return (
     <>

@@ -10,8 +10,6 @@ import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import {
   GENERATOR_DEFINITION_KIND,
   GENERATOR_INSTANCE_KIND,
@@ -40,13 +38,9 @@ export function DetailsButtons({
   className,
 }: DetailsButtonsProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { currentBranch } = useCurrentBranch();
 
   const nodeLabel = getNodeLabel(objectDetailsData);
-  const { isAllowed: isEditAllowed, tooltipMessage: editTooltipMessage } = getActionAvailability(
-    currentBranch.status,
-    permission.update
-  );
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
 
   return (
     <>

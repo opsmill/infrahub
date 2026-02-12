@@ -1,8 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
+import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import type { NodeCore } from "@/entities/nodes/types";
 
@@ -14,10 +13,8 @@ export interface ToolbarDeleteActionProps {
 
 export function ToolbarDeleteAction({ selectedRows }: ToolbarDeleteActionProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const { currentBranch } = useCurrentBranch();
-  const { isAllowed, tooltipMessage } = getActionAvailability(currentBranch.status, {
-    isAllowed: true,
-  });
+  const { permission } = useObjectTableContext();
+  const { isAllowed, message } = permission.delete;
 
   return (
     <>
@@ -25,7 +22,7 @@ export function ToolbarDeleteAction({ selectedRows }: ToolbarDeleteActionProps) 
         variant="danger"
         isDisabled={!isAllowed}
         tooltipEnabled={!isAllowed}
-        tooltipContent={tooltipMessage}
+        tooltipContent={message}
         onPress={() => setIsOpen((prev) => !prev)}
       >
         <Icon icon="mdi:delete-outline" className="text-sm" />

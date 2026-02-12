@@ -25,8 +25,6 @@ import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
@@ -57,16 +55,11 @@ export function ObjectDetailsMenu({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCheckConnectivityOpen, setIsCheckConnectivityOpen] = useState(false);
   const navigate = useNavigate();
-  const { currentBranch } = useCurrentBranch();
 
   const nodeLabel = getNodeLabel(objectData);
 
-  const { isAllowed: isEditAllowed, tooltipMessage: editTooltipMessage } = getActionAvailability(
-    currentBranch.status,
-    permission.update
-  );
-  const { isAllowed: isDeleteAllowed, tooltipMessage: deleteTooltipMessage } =
-    getActionAvailability(currentBranch.status, permission.delete);
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
+  const { isAllowed: isDeleteAllowed, message: deleteTooltipMessage } = permission.delete;
 
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
