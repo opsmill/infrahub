@@ -360,6 +360,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Templates should not allocate from pools - just store the reference
         # Actual allocation happens when creating objects from the template
         if isinstance(self._schema, TemplateSchema):
+            if attribute.from_pool:
+                attribute.source = attribute.from_pool["id"]
             return
 
         if not attribute.from_pool or not allocate_resources:

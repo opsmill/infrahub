@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Mapping
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
@@ -50,6 +50,20 @@ async def extract_peer_data(
 
     for attr_name in template_peer.get_schema().attribute_names:
         template_attr = getattr(template_peer, attr_name)
+
+        # NumberPool from_pool handling requires two code paths:
+        # 1. Template just created in-memory: from_pool is set but not yet persisted
+        # 2. Template loaded from DB: from_pool is not persisted, must reconstruct from source
+        if template_attr.from_pool:
+            obj_peer_data[attr_name] = {"from_pool": template_attr.from_pool}
+            continue
+
+        if template_attr.value is None and template_attr.source_id:
+            source = await template_attr.get_source(db=db)
+            if source and source.get_kind() == InfrahubKind.NUMBERPOOL:
+                obj_peer_data[attr_name] = {"from_pool": {"id": source.id}}
+                continue
+
         if template_attr.value is None:
             continue
         if template_attr.is_default:

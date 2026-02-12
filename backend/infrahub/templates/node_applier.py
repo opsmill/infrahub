@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    InfrahubKind,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -46,10 +47,18 @@ class NodeTemplateApplier:
 
             attr = template.get_attribute(name=attr_name)
 
-            # Propagate from_pool reference for NumberPool attributes
+            # NumberPool from_pool handling requires two code paths:
+            # 1. Template just created in-memory: from_pool is set but not yet persisted
+            # 2. Template loaded from DB: from_pool is not persisted, must reconstruct from source
             if attr.from_pool:
                 fields[attr_name] = {"from_pool": attr.from_pool}
                 continue
+
+            if attr.value is None and attr.source_id:  # type: ignore[attr-defined]
+                source = await attr.get_source(db=self.db)
+                if source and source.get_kind() == InfrahubKind.NUMBERPOOL:
+                    fields[attr_name] = {"from_pool": {"id": source.id}}
+                    continue
 
             if attr.value is not None:
                 # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
