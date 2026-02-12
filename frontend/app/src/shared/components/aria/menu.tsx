@@ -106,7 +106,7 @@ export function MenuItemWithTooltip({
         enabled={tooltipEnabled && isDisabled}
         content={tooltipContent}
         side={side}
-        className="z-1000"
+        className="z-100001"
       >
         <span className="flex w-full items-center gap-[inherit]">{children}</span>
       </Tooltip>
