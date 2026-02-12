@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
-from prefect import State, flow
+from prefect import State, flow, task
+from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType
@@ -223,10 +224,11 @@ async def trigger_update_python_computed_attributes(
         )
 
 
-@flow(
+@task(
     name="computed-attribute-jinja2-update-value",
-    flow_run_name="Update value for computed attribute {node_kind}:{attribute_name}",
-)
+    task_run_name="Update value for computed attribute {node_kind}:{attribute_name}",
+    cache_policy=NONE,
+)  # type: ignore[arg-type]
 async def computed_attribute_jinja2_update_value(
     branch_name: str,
     obj: ComputedAttrJinja2GraphQLResponse,

@@ -322,14 +322,6 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
-COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
-    name="computed-attribute-jinja2-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.computed_attribute.tasks",
-    function="computed_attribute_jinja2_update_value",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-)
-
 COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH = WorkflowDefinition(
     name="computed-attribute-jinja2-update-value-batch",
     type=WorkflowType.CORE,
@@ -344,14 +336,6 @@ DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.display_labels.tasks",
     function="process_display_label",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-)
-
-DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
-    name="display-label-jinja2-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.display_labels.tasks",
-    function="display_label_jinja2_update_value",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -370,14 +354,6 @@ HFID_SETUP = WorkflowDefinition(
     function="hfid_setup",
 )
 
-
-HFID_UPDATE_VALUE = WorkflowDefinition(
-    name="hfid-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.hfid.tasks",
-    function="hfid_update_value",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-)
 
 TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
     name="trigger-update-display-labels",
@@ -678,7 +654,6 @@ WORKFLOWS = [
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
-    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE_BATCH,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -690,7 +665,6 @@ WORKFLOWS = [
     DIFF_UPDATE,
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
-    DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
@@ -708,7 +682,6 @@ WORKFLOWS = [
     GRAPHQL_QUERY_GROUP_UPDATE,
     HFID_PROCESS,
     HFID_SETUP,
-    HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
     PROFILE_REFRESH,
     PROFILE_REFRESH_MULTIPLE,

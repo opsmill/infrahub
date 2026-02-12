@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from prefect import flow
+from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
@@ -33,10 +34,11 @@ mutation UpdateHFID(
 """
 
 
-@flow(
+@task(
     name="hfid-update-value",
-    flow_run_name="Update value for hfid on {node_kind}",
-)
+    task_run_name="Update value for hfid on {node_kind}",
+    cache_policy=NONE,
+)  # type: ignore[arg-type]
 async def hfid_update_value(
     branch_name: str,
     obj: HFIDGraphQLResponse,

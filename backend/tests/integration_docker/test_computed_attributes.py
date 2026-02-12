@@ -11,7 +11,7 @@ from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
-from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -224,9 +224,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_update_schema_not_related_to_computed_attribute(
         self, client: InfrahubClient, schema_computed_tshirt: dict
     ) -> None:
-        nbr_task_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-        )
+        nbr_task_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
 
         # Update schema LocationSite with a change that IS NOT related to the computed attribute
         # The computed attribute of type Jinja2 should not be updated neither on the sites nor on the continents
@@ -241,7 +239,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await wait_for_all_tasks_to_be_completed(client)
 
         nbr_task_after_not_related = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
         )
         assert nbr_task_after_not_related == nbr_task_before
 
@@ -261,6 +259,6 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         # The computed attribute of type Jinja2 should be updated on the sites but NOT on the continents
         nbr_task_after_related = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
         )
         assert nbr_task_after_related == nbr_task_after_not_related + 2
