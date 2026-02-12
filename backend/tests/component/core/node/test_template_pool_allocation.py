@@ -11,6 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.schema import RelationshipSchema, SchemaRoot
+from infrahub.exceptions import PoolExhaustedError
 from tests.constants import TestKind
 from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
 
@@ -213,3 +214,63 @@ async def test_object_from_template_with_direct_address_inherits_address(
     assert primary_ip is not None
     assert primary_ip.id == template_address.id
     assert primary_ip.address.value == "10.10.3.50/27"
+
+
+async def test_object_from_template_raises_validation_error_when_pool_exhausted(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_namespace: Node, ip_prefix: Node
+) -> None:
+    """Creating object from template should raise ValidationError when pool is exhausted."""
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    small_prefix = await Node.init(db=db, schema=prefix_schema)
+    await small_prefix.new(db=db, prefix="10.10.3.8/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=True)
+    await small_prefix.save(db=db)
+
+    pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    small_pool = await CoreIPAddressPool.init(schema=pool_schema, db=db)
+    await small_pool.new(
+        db=db,
+        name="small-address-pool",
+        resources=[small_prefix],
+        ip_namespace=ip_namespace,
+        default_address_type="IpamIPAddress",
+    )
+    await small_pool.save(db=db)
+
+    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+    await template.new(
+        db=db, template_name="device-template-small-pool", primary_ip_from_resource_pool={"id": small_pool.id}
+    )
+    await template.save(db=db)
+
+    # Allocate everything from the pool
+    for i in range(2):
+        device = await create_node(
+            data={
+                "name": f"device-exhaust-{i}",
+                "manufacturer": "Acme",
+                "weight": 10,
+                "airflow": "Front to rear",
+                "object_template": {"id": template.id},
+            },
+            db=db,
+            branch=default_branch,
+            schema=node_schema,
+        )
+        assert device.id is not None
+
+    with pytest.raises(PoolExhaustedError, match=r"There are no more addresses available in this pool"):
+        await create_node(
+            data={
+                "name": "device-should-fail",
+                "manufacturer": "Acme",
+                "weight": 10,
+                "airflow": "Front to rear",
+                "object_template": {"id": template.id},
+            },
+            db=db,
+            branch=default_branch,
+            schema=node_schema,
+        )
