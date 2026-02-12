@@ -28,6 +28,7 @@ import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -232,7 +233,7 @@ export function ObjectDetailsMenu({
         isOpen={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         onDelete={() => {
-          if ("parent" in objectData && "node" in objectData.parent && objectData.parent.node) {
+          if (isNodeRelationshipOne(objectData.parent) && objectData.parent.node) {
             navigate(
               getObjectDetailsUrl(objectData.parent.node.__typename, objectData.parent.node.id)
             );
