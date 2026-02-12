@@ -166,6 +166,32 @@ async def test_constraint_rejects_direct_when_pool_exists(
     assert "Cannot set 'primary_ip' when 'primary_ip_from_resource_pool' is already set." in exc.value.message
 
 
+async def test_constraint_rejects_direct_when_pool_is_set(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema_with_pool_rel: None,
+    ip_address_pool: CoreIPAddressPool,
+    ip_address: Node,
+) -> None:
+    """Test that the constraint rejects adding direct relationship when pool is already set."""
+    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    constraint = TemplateResourcePoolExclusiveConstraint(db=db, branch=default_branch)
+
+    template = await Node.init(db=db, schema=template_schema, branch=default_branch)
+    await template.new(db=db, template_name="device-template-pool-in-db", primary_ip_from_resource_pool=ip_address_pool)
+    await template.save(db=db)
+
+    loaded_template = await registry.manager.get_one(db=db, id=template.id, branch=default_branch)
+    await loaded_template.primary_ip.update(db=db, data={"id": ip_address.id})
+
+    with pytest.raises(ValidationError) as exc:
+        await constraint.check(
+            relm=loaded_template.primary_ip, node_schema=loaded_template.get_schema(), node=loaded_template
+        )
+
+    assert "Cannot set 'primary_ip' when 'primary_ip_from_resource_pool' is already set." in exc.value.message
+
+
 async def test_constraint_skipped_for_non_template_nodes(
     db: InfrahubDatabase, default_branch: Branch, device_schema_with_pool_rel: None, ip_address: Node
 ) -> None:
