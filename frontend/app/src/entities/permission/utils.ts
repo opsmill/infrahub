@@ -28,7 +28,10 @@ const getMessage = (action: string, decision?: PermissionDecisionData): string =
   }
 };
 
-function getPermissionWithBranchStatus(permission: Permission, options?: GetPermissionOptions): Permission {
+function getPermissionWithBranchStatus(
+  permission: Permission,
+  options?: GetPermissionOptions
+): Permission {
   if (options?.branch?.status === BRANCH_STATUS.MERGED && options?.schema.branch !== "agnostic") {
     const mergedDenial: PermissionDecision = {
       isAllowed: false,
@@ -48,7 +51,8 @@ export function getPermission(
   permission?: Array<{ node: PermissionData }>,
   options?: GetPermissionOptions
 ): Permission {
-  if (!Array.isArray(permission)) return getPermissionWithBranchStatus(PERMISSION_ALLOW_ALL, options);
+  if (!Array.isArray(permission))
+    return getPermissionWithBranchStatus(PERMISSION_ALLOW_ALL, options);
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
     if (permission.some(({ node }) => node[action] === "ALLOW")) {
