@@ -148,7 +148,7 @@ describe("getRelationshipDefaultValue", () => {
         },
       });
       const objectTemplate = null;
-      const profiles = [
+      const profiles: ProfileData[] = [
         {
           id: "profile-source-id",
           display_label: "Test Profile Source",
@@ -160,9 +160,15 @@ describe("getRelationshipDefaultValue", () => {
               display_label: "Relationship One",
               __typename: "RelationshipOne",
             },
+            properties: {
+              is_protected: null,
+              owner: null,
+              source: null,
+              updated_at: null,
+            },
           },
         },
-      ] as unknown as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
@@ -229,9 +235,9 @@ describe("getRelationshipDefaultValue", () => {
 
       const relationshipName = "testRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         testRelationship: {
           node: {
             id: "template-rel-id",
@@ -267,9 +273,9 @@ describe("getRelationshipDefaultValue", () => {
       // GIVEN
       const relationshipName = "nonExistentRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         testRelationship: {
           node: {
             id: "template-rel-id",
@@ -302,7 +308,7 @@ describe("getRelationshipDefaultValue", () => {
         },
       };
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-1",
           display_label: "Test Profile",
@@ -316,7 +322,7 @@ describe("getRelationshipDefaultValue", () => {
             },
           },
         },
-      ] as unknown as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
@@ -366,7 +372,7 @@ describe("getRelationshipDefaultValue", () => {
       const relationshipName = "my_relationship";
       const relationshipData: NodeRelationshipManyWithMetadata = { edges: [] };
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-1",
           display_label: "Test Profile",
@@ -384,7 +390,7 @@ describe("getRelationshipDefaultValue", () => {
             ],
           },
         },
-      ] as unknown as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
@@ -476,7 +482,7 @@ describe("getRelationshipDefaultValue", () => {
         ],
       };
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-source-id",
           display_label: "Test Profile Source",
@@ -501,7 +507,7 @@ describe("getRelationshipDefaultValue", () => {
             ],
           },
         },
-      ] as unknown as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
@@ -593,9 +599,9 @@ describe("getRelationshipDefaultValue", () => {
 
       const relationshipName = "manyRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         manyRelationship: {
           edges: [
             {
@@ -649,9 +655,9 @@ describe("getRelationshipDefaultValue", () => {
       // GIVEN
       const relationshipName = "emptyRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         emptyRelationship: {
           edges: [],
         },
@@ -753,9 +759,7 @@ describe("getRelationshipDefaultValue", () => {
   });
 
   describe("when profiles are provided", () => {
-    const buildProfileData = (
-      override: Partial<ProfileData> & { testRelationship?: { node: object | null } }
-    ): ProfileData => ({
+    const buildProfileData = (override: Partial<ProfileData> = {}): ProfileData => ({
       id: "profile-id",
       display_label: "Test Profile",
       __typename: "ProfileTestDevice",
@@ -851,9 +855,9 @@ describe("getRelationshipDefaultValue", () => {
 
       const relationshipName = "testRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         testRelationship: {
           node: {
             id: "template-rel-id",
@@ -955,7 +959,7 @@ describe("getRelationshipDefaultValue", () => {
       // GIVEN
       const relationshipName = "manyRelationship";
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-id",
           display_label: "Test Profile",
@@ -980,7 +984,7 @@ describe("getRelationshipDefaultValue", () => {
             ],
           },
         },
-      ] as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
@@ -1015,14 +1019,13 @@ describe("getRelationshipDefaultValue", () => {
 });
 
 describe("getRelationshipDefaultValueFromProfiles", () => {
-  const buildProfileData = (override: DeepPartial<ProfileData>): ProfileData =>
-    ({
-      id: "profile-id",
-      display_label: "Test Profile",
-      __typename: "ProfileTestDevice",
-      profile_priority: { value: 1000 },
-      ...override,
-    }) as ProfileData;
+  const buildProfileData = (override: Partial<ProfileData> = {}): ProfileData => ({
+    id: "profile-id",
+    display_label: "Test Profile",
+    __typename: "ProfileTestDevice",
+    profile_priority: { value: 1000 },
+    ...override,
+  });
 
   it("returns null when relationshipName is undefined", () => {
     // GIVEN
@@ -1218,7 +1221,7 @@ describe("getRelationshipDefaultValueFromProfiles", () => {
               },
             ],
           },
-        }) as ProfileData,
+        }),
         buildProfileData({
           id: "high-priority-profile",
           display_label: "High Priority Profile",

@@ -47,7 +47,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateRelationshipSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -56,7 +56,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -82,7 +82,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -91,7 +91,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -117,7 +117,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -126,7 +126,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -154,7 +154,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -163,7 +163,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject = {};
 
@@ -186,7 +186,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -195,7 +195,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -224,7 +224,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -233,7 +233,7 @@ describe("getFieldDefaultValue", () => {
             value: null,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -251,7 +251,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -260,7 +260,7 @@ describe("getFieldDefaultValue", () => {
             value: 0,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -279,7 +279,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns profile's value with the highest priority + order by id ASC", () => {
       // GIVEN
-      const fieldSchema = {
+      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
         state: "present",
         name: "name",
@@ -299,9 +299,9 @@ describe("getFieldDefaultValue", () => {
         default_value: "test-value-form-schema",
         inherited: false,
         allow_override: "any",
-      } satisfies GetFieldDefaultValue["fieldSchema"];
+      };
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile3",
           display_label: "Profile 3",
@@ -335,7 +335,7 @@ describe("getFieldDefaultValue", () => {
             value: 1,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -354,7 +354,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns the 1st profile that contains any not null value", () => {
       // GIVEN
-      const fieldSchema = {
+      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
         state: "present",
         name: "name",
@@ -374,9 +374,9 @@ describe("getFieldDefaultValue", () => {
         default_value: "test-value-form-schema",
         inherited: false,
         allow_override: "any",
-      } satisfies GetFieldDefaultValue["fieldSchema"];
+      };
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -399,7 +399,7 @@ describe("getFieldDefaultValue", () => {
             value: 1,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -420,7 +420,7 @@ describe("getFieldDefaultValue", () => {
   describe("when source is schema", () => {
     it("returns schema's default value when it exists, and no profile nor current object field value are provided", () => {
       // GIVEN
-      const fieldSchema = {
+      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
         state: "present",
         name: "name",
@@ -440,7 +440,7 @@ describe("getFieldDefaultValue", () => {
         default_value: "test-value-form-schema",
         inherited: false,
         allow_override: "any",
-      } satisfies GetFieldDefaultValue["fieldSchema"];
+      };
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema });

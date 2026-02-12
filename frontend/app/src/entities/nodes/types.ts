@@ -56,10 +56,14 @@ export type NodeRelationshipWithMetadata =
   | NodeRelationshipOneWithMetadata
   | NodeRelationshipManyWithMetadata;
 
-export type NodeFields = Record<string, NodeAttribute | NodeRelationship>;
+// Include NodeCore's value types so that `NodeCore & NodeFields` doesn't create
+// an impossible intersection (e.g. `id` must be both `string` and `NodeAttribute`).
+type NodeCorePropertyValue = NodeCore[keyof NodeCore];
+
+export type NodeFields = Record<string, NodeAttribute | NodeRelationship | NodeCorePropertyValue>;
 export type NodeFieldsWithMetadata = Record<
   string,
-  NodeAttributeWithMetadata | NodeRelationshipWithMetadata
+  NodeAttributeWithMetadata | NodeRelationshipWithMetadata | NodeCorePropertyValue
 >;
 
 export type NodeObject = NodeCore & NodeFields;

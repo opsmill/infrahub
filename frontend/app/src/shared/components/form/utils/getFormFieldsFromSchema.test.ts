@@ -534,7 +534,7 @@ describe("getFormFieldsFromSchema", () => {
       name: "mainnn",
       description: "Default Branch",
       status: "OPEN",
-      branched_from: "2024-10- 21T12:44:12.365354Z",
+      branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
       is_default: true,
