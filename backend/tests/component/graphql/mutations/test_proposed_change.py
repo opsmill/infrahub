@@ -675,7 +675,6 @@ async def test_create_thread(
             data: {
                 change: { id: $proposed_change }
                 label: { value: "Conversation" }
-                created_at: { value: "2025-03-05T18:01:52+01:00" }
                 resolved: { value: false }
             }
         ) {

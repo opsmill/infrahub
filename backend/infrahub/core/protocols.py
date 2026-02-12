@@ -92,8 +92,6 @@ class CoreCheck(CoreNode):
 
 class CoreComment(CoreNode):
     text: String
-    created_at: DateTimeOptional
-    created_by: RelationshipManager
 
 
 class CoreCredential(CoreNode):
@@ -192,10 +190,8 @@ class CoreTaskTarget(CoreNode):
 class CoreThread(CoreNode):
     label: StringOptional
     resolved: Boolean
-    created_at: DateTimeOptional
     change: RelationshipManager
     comments: RelationshipManager
-    created_by: RelationshipManager
 
 
 class CoreTransformation(CoreNode):
