@@ -1,5 +1,6 @@
 import { warnUnexpectedType } from "@/shared/utils/common";
 
+import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
 import type {
   Permission,
   PermissionAction,
@@ -7,8 +8,14 @@ import type {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 import { PERMISSION_ALLOW_ALL } from "./constants";
+
+export interface GetPermissionOptions {
+  branch?: { status: BranchStatus };
+  schema?: ModelSchema;
+}
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
   if (!decision)
@@ -29,8 +36,27 @@ const getMessage = (action: string, decision?: PermissionDecisionData): string =
   }
 };
 
-export function getPermission(permission?: Array<{ node: PermissionData }>): Permission {
-  if (!Array.isArray(permission)) return PERMISSION_ALLOW_ALL;
+function applyBranchOverride(permission: Permission, options?: GetPermissionOptions): Permission {
+  if (options?.branch?.status === BRANCH_STATUS.MERGED && options?.schema?.branch !== "agnostic") {
+    const mergedDenial: PermissionDecision = {
+      isAllowed: false,
+      message: "Cannot edit objects on a merged branch",
+    };
+    return {
+      view: permission.view,
+      create: mergedDenial,
+      update: mergedDenial,
+      delete: mergedDenial,
+    };
+  }
+  return permission;
+}
+
+export function getPermission(
+  permission?: Array<{ node: PermissionData }>,
+  options?: GetPermissionOptions
+): Permission {
+  if (!Array.isArray(permission)) return applyBranchOverride(PERMISSION_ALLOW_ALL, options);
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
     const permissionAllowNode = permission.find(({ node }) => node[action] === "ALLOW");
@@ -47,10 +73,12 @@ export function getPermission(permission?: Array<{ node: PermissionData }>): Per
     };
   };
 
-  return {
+  const basePermission: Permission = {
     view: createPermissionAction("view"),
     create: createPermissionAction("create"),
     update: createPermissionAction("update"),
     delete: createPermissionAction("delete"),
   };
+
+  return applyBranchOverride(basePermission, options);
 }

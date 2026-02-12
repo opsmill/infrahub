@@ -13,8 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -39,14 +37,9 @@ export function ObjectActionsCell({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const { schema } = useSchema(objectKind);
-  const { currentBranch } = useCurrentBranch();
 
-  const { isAllowed: isEditAllowed, tooltipMessage: editTooltipMessage } = getActionAvailability(
-    currentBranch.status,
-    permission.update
-  );
-  const { isAllowed: isDeleteAllowed, tooltipMessage: deleteTooltipMessage } =
-    getActionAvailability(currentBranch.status, permission.delete);
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
+  const { isAllowed: isDeleteAllowed, message: deleteTooltipMessage } = permission.delete;
 
   if (!schema) {
     return <StickyRightCell isMuted />;

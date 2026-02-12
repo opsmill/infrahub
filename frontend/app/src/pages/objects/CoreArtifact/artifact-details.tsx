@@ -14,7 +14,7 @@ const ArtifactDetailsPage = () => {
   useTitle("Artifact");
   const { artifactId } = useParams();
   const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT, { throwIfNotFound: true });
-  const { isPending, error, data: permission } = useGetObjectPermissions(ARTIFACT_OBJECT);
+  const { isPending, error, data: permission } = useGetObjectPermissions(artifactSchema);
 
   if (isPending) {
     return <LoadingIndicator className="h-full" />;

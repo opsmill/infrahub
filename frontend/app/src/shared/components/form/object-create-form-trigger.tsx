@@ -5,8 +5,6 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ObjectForm from "@/shared/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getActionAvailability } from "@/entities/branches/utils/get-action-tooltip";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -27,16 +25,11 @@ export const ObjectCreateFormTrigger = ({
   ...props
 }: ObjectCreateFormTriggerProps) => {
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
-  const { currentBranch } = useCurrentBranch();
+  const { isAllowed, message } = permission.create;
 
   if (schema.kind === ARTIFACT_OBJECT) {
     return null;
   }
-
-  const { isAllowed, tooltipMessage } = getActionAvailability(
-    currentBranch.status,
-    permission.create
-  );
 
   return (
     <>
@@ -45,7 +38,7 @@ export const ObjectCreateFormTrigger = ({
         data-testid="create-object-button"
         disabled={!isAllowed || isLoading}
         onClick={() => setShowCreateDrawer(true)}
-        tooltipContent={tooltipMessage}
+        tooltipContent={message}
         tooltipEnabled={!isAllowed}
         {...props}
       >
