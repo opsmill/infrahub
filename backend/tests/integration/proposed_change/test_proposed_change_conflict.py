@@ -31,6 +31,8 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
@@ -50,7 +52,7 @@ class ErroringBranchMerger(BranchMerger):
 
 class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def car_dealership_copy(self):
+    def car_dealership_copy(self) -> Generator[tuple[Path, str]]:
         """
         Copies car-dealership local repository to a temporary folder, with a new name.
         This is needed for this test as using car-dealership folder leads to issues most probably
