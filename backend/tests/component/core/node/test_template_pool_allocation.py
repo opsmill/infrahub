@@ -393,7 +393,7 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
 async def test_object_from_template_raises_error_when_number_pool_exhausted(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
 ) -> None:
-    """Creating object from template should raise PoolExhaustedError when NumberPool is exhausted."""
+    """Creating object from template raises ValidationError when NumberPool is exhausted."""
     small_pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
     await small_pool.new(
         db=db, name="small-rack-unit-pool", node=TestKind.DEVICE, node_attribute="rack_unit", start_range=1, end_range=2
