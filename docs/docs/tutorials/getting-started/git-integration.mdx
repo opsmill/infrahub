@@ -53,12 +53,14 @@ After adding the `infrahub-demo-edge` repository you will be able to see several
 
 - 2 Jinja Rendered File under [Jinja2 Transformation](http://localhost:8000/objects/CoreTransformJinja2/) (Menu > Actions > Transformation)
 - 2 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformPython) (Menu > Actions > Transformation)
+<!-- vale off -->
 - 2 [artifact definitions](http://localhost:8000/objects/CoreArtifactDefinition) (Menu > Actions > Artifact Definition)
+<!-- vale on -->
 - 9 GraphQL [Queries](../../topics/graphql.mdx) under [Objects / GraphQL Query](http://localhost:8000/objects/CoreGraphQLQuery/) (Menu > Object Management > GraphQL Query)
 
 :::note Troubleshooting
 
-If you don't see additional objects under the transformations or `GraphQL Queries`, it's possible that the `Task worker` might not be running anymore.
+If you don't see additional objects under the Transformations or `GraphQL Queries`, it's possible that the `Task worker` might not be running anymore.
 
 In this case, you should run `invoke demo.start` first to ensure that everything is working.
 
