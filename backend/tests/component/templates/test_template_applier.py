@@ -8,9 +8,11 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality
+from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
-from infrahub.core.schema import RelationshipSchema, SchemaRoot
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
 from infrahub.pools.allocator import PoolAllocator
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.templates.node_applier import NodeTemplateApplier
@@ -468,3 +470,93 @@ class TestNodeTemplateApplierPoolRelationships:
         )
 
         _validate_template_fields(fields=fields, user_fields=user_fields, excluded_fields=["primary_ip"])
+
+
+class TestNodeTemplateApplierNumberPoolAttributes:
+    @pytest.fixture
+    async def device_with_rack_unit_schema(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        """Device schema with a rack_unit attribute for number pool testing."""
+        device = copy.deepcopy(DEVICE)
+        device.attributes.append(AttributeSchema(name="rack_unit", kind="Number", optional=True))
+        schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
+        await load_schema(db=db, schema=schema)
+        await initialize_registry(db=db)
+
+    @pytest.fixture
+    async def number_pool(
+        self, db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
+    ) -> CoreNumberPool:
+        """A number pool for rack_unit attribute."""
+        pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+        await pool.new(
+            db=db, name="rack-unit-pool", node="TestingDevice", node_attribute="rack_unit", start_range=1, end_range=48
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture
+    async def device_template_with_pool(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_with_rack_unit_schema: None,
+        number_pool: CoreNumberPool,
+    ) -> Node:
+        """A device template with from_pool reference for rack_unit."""
+        template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+        template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+        await template.new(
+            db=db,
+            template_name="device-with-rack-unit-template",
+            manufacturer="Acme",
+            rack_unit={"from_pool": {"id": number_pool.id}},
+        )
+        await template.save(db=db)
+        return template
+
+    async def test_applier_passes_from_pool_to_target(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_with_rack_unit_schema: None,
+        number_pool: CoreNumberPool,
+        device_template_with_pool: Node,
+    ) -> None:
+        """Applier should pass from_pool reference to target fields for later allocation."""
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=device_template_with_pool,
+            target_schema=target_schema,
+            target_id="new-device-id",
+            user_fields=user_fields,
+        )
+
+        _validate_template_fields(fields=fields, user_fields=user_fields)
+        assert fields["rack_unit"] == {"from_pool": {"id": number_pool.id}}
+
+    async def test_applier_preserves_user_value_over_pool_reference(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_with_rack_unit_schema: None,
+        number_pool: CoreNumberPool,
+        device_template_with_pool: Node,
+    ) -> None:
+        """Applier should preserve user-provided value instead of pool reference."""
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear", "rack_unit": 99}
+
+        fields = await applier.apply(
+            template=device_template_with_pool,
+            target_schema=target_schema,
+            target_id="new-device-id",
+            user_fields=user_fields,
+        )
+
+        _validate_template_fields(fields=fields, user_fields=user_fields)
