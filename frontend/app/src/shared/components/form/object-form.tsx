@@ -19,9 +19,8 @@ import {
   REPOSITORY_KIND,
 } from "@/shared/config/constants";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
@@ -54,7 +53,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   kind: string;
   onSubmit?: NodeFormProps["onSubmit"];
   onSuccess?: NodeFormProps["onSuccess"];
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   currentProfiles?: ProfileData[];
   isUpdate?: boolean;
