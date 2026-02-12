@@ -4,7 +4,13 @@ from typing import TYPE_CHECKING, Any, Mapping
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
@@ -30,7 +36,9 @@ async def get_template_relationship_peers(
     """For a given relationship on the template, fetch the related peers."""
     template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
     if relationship.cardinality == RelationshipCardinality.MANY:
-        return await template_relationship_manager.get_peers(db=db, peer_type=CoreObjectTemplate)
+        return await template_relationship_manager.get_peers(
+            db=db, peer_type=CoreObjectTemplate, include_metadata=MetadataOptions.SOURCE
+        )
 
     peers: dict[str, CoreObjectTemplate] = {}
     template_relationship_peer = await template_relationship_manager.get_peer(db=db, peer_type=CoreObjectTemplate)
@@ -49,7 +57,10 @@ async def extract_peer_data(
     obj_peer_data: dict[str, Any] = {}
 
     for attr_name in template_peer.get_schema().attribute_names:
-        template_attr = getattr(template_peer, attr_name)
+        if attr_name not in obj_peer_schema.attribute_names:
+            continue
+
+        template_attr = template_peer.get_attribute(name=attr_name)
 
         # NumberPool from_pool handling requires two code paths:
         # 1. Template just created in-memory: from_pool is set but not yet persisted
@@ -58,7 +69,7 @@ async def extract_peer_data(
             obj_peer_data[attr_name] = {"from_pool": template_attr.from_pool}
             continue
 
-        if template_attr.value is None and template_attr.source_id:
+        if template_attr.value is None and template_attr.source_id:  # type: ignore
             source = await template_attr.get_source(db=db)
             if source and source.get_kind() == InfrahubKind.NUMBERPOOL:
                 obj_peer_data[attr_name] = {"from_pool": {"id": source.id}}
@@ -76,7 +87,7 @@ async def extract_peer_data(
 
         # If the template attribute comes from a profile, preserve the profile as the source
         # Otherwise, use the template itself as the source
-        source_id = template_attr.source_id or template_peer.id
+        source_id = template_attr.source_id or template_peer.id  # type: ignore
         attr_data = {"value": template_attr.value, "source": source_id}
         if template_attr.is_from_profile:
             attr_data["is_from_profile"] = True
