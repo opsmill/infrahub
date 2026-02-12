@@ -19,6 +19,7 @@ import {
 } from "@/entities/nodes/convert/ui/source-option-item";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeRelationshipOne } from "@/entities/nodes/types";
 
 export const ConvertSourceRelationshipOneInput = ({
   sourceObject,
@@ -36,9 +37,9 @@ export const ConvertSourceRelationshipOneInput = ({
   const availableOptions: Array<RelationshipOneSourceOption> = (sourceSchema.relationships ?? [])
     .filter((relationship) => relationship.peer === peer)
     .map((relationship) => {
-      const relationshipData = sourceObject[relationship.name];
+      const relationshipData = sourceObject[relationship.name] as NodeRelationshipOne | undefined;
       return {
-        value: relationshipData && "node" in relationshipData ? relationshipData.node : null,
+        value: relationshipData ? relationshipData.node : null,
         source: {
           type: "source",
           label: relationship.label ?? relationship.name,

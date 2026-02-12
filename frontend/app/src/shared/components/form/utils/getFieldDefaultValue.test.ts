@@ -514,7 +514,6 @@ describe("getFieldDefaultValue", () => {
         id: "template-id" as any,
         __typename: "FakeTemplate" as any,
         field1: {
-          id: "field1-id",
           value: "template-value",
         },
       };
@@ -538,10 +537,9 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        __typename: "FakeTemplate" as any,
+        id: "template-id",
+        __typename: "FakeTemplate",
         field1: {
-          id: "field1-id",
           value: null,
         },
       };

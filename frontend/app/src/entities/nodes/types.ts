@@ -11,7 +11,6 @@ export interface NodeCore {
 }
 
 export interface NodeAttribute<T = string | number | boolean | string[] | null> {
-  id: string;
   value: T;
 }
 
