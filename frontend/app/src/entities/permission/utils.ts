@@ -49,8 +49,9 @@ export function getPermission(
   permission?: Array<{ node: PermissionData }>,
   options?: GetPermissionOptions
 ): Permission {
-  if (!Array.isArray(permission))
+  if (!Array.isArray(permission)) {
     return getPermissionWithBranchStatus(PERMISSION_ALLOW_ALL, options);
+  }
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
     if (permission.some(({ node }) => node[action] === "ALLOW")) {
