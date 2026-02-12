@@ -11,16 +11,21 @@ import type {
   TemplateSource,
 } from "@/shared/components/form/type";
 
-import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type {
+  NodeFields,
+  NodeObject,
+  NodeRelationship,
+  NodeRelationshipMany,
+  NodeRelationshipWithMetadata,
+} from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 type GetRelationshipDefaultValueParams = {
-  relationshipData: RelationshipType | undefined;
+  objectData?: NodeFields | null;
   objectTemplate?: NodeObject | null | undefined;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
@@ -32,7 +37,7 @@ type GetRelationshipDefaultValueParams = {
 
 export const getRelationshipDefaultValue = ({
   isFilterForm,
-  relationshipData,
+  objectData,
   objectTemplate,
   profiles = [],
   relationshipName,
@@ -44,8 +49,12 @@ export const getRelationshipDefaultValue = ({
     return { source: null, value: null };
   }
 
+  const relationshipData = objectData?.[relationshipName] as
+    | NodeRelationshipWithMetadata
+    | undefined;
+
   return (
-    getRelationshipValueFromUser(relationshipData, relationshipName) ??
+    getRelationshipValueFromUser(relationshipData) ??
     getRelationshipValueFromParent(schema, parentSchema, parentData, relationshipName) ??
     getRelationshipDefaultValueFromTemplate(objectTemplate, relationshipName) ??
     getRelationshipDefaultValueFromProfiles(relationshipName, profiles) ??
@@ -54,12 +63,11 @@ export const getRelationshipDefaultValue = ({
 };
 
 const getRelationshipValueFromUser = (
-  relationshipData: RelationshipType | undefined,
-  peerField: string
+  relationshipData: NodeRelationshipWithMetadata | undefined
 ): RelationshipValueFromUser | RelationshipValueFromPool | null => {
   if (!relationshipData) return null;
 
-  if ("edges" in relationshipData) {
+  if (isRelationshipManyData(relationshipData)) {
     if (relationshipData.edges.length === 0) return null;
 
     // Check if all edges come from a profile source - if so, return null to allow profile fallback
@@ -76,20 +84,7 @@ const getRelationshipValueFromUser = (
       if (allFromProfile) return null;
     }
 
-    const values = relationshipData.edges
-      .map(({ node }) =>
-        node
-          ? {
-              id: node.id,
-              display_label: node.display_label,
-              __typename: node.__typename,
-              ...(peerField && (node as Record<string, unknown>)[peerField] !== undefined
-                ? { [peerField]: (node as Record<string, unknown>)[peerField] }
-                : {}),
-            }
-          : null
-      )
-      .filter((n) => !!n);
+    const values = relationshipData.edges.map(({ node }) => node).filter((n) => !!n);
 
     return {
       source: { type: "user" },
@@ -210,29 +205,11 @@ export const getRelationshipDefaultValueFromTemplate = (
   };
 };
 
-type ProfileRelationshipNode = {
-  id: string;
-  display_label: string;
-  __typename: string;
-};
-
-type ProfileRelationshipOneData = {
-  node: ProfileRelationshipNode | null;
-};
-
-type ProfileRelationshipManyData = {
-  edges: Array<{ node: ProfileRelationshipNode | null }>;
-};
-
-type ProfileRelationshipData = ProfileRelationshipOneData | ProfileRelationshipManyData;
-
-const isRelationshipManyData = (
-  data: ProfileRelationshipData
-): data is ProfileRelationshipManyData => {
+const isRelationshipManyData = (data: NodeRelationship): data is NodeRelationshipMany => {
   return "edges" in data;
 };
 
-const hasRelationshipValue = (data: ProfileRelationshipData): boolean => {
+const hasRelationshipValue = (data: NodeRelationship): boolean => {
   if (isRelationshipManyData(data)) {
     return data.edges.length > 0 && data.edges.some((edge) => edge.node !== null);
   }
@@ -253,18 +230,14 @@ export const getRelationshipDefaultValueFromProfiles = (
   );
 
   const profileWithDefaultValueForField = R.find(orderedProfiles, (profile) => {
-    const profileRelationshipData = profile[relationshipName] as
-      | ProfileRelationshipData
-      | undefined;
+    const profileRelationshipData = profile[relationshipName] as NodeRelationship | undefined;
     if (!profileRelationshipData) return false;
     return hasRelationshipValue(profileRelationshipData);
   });
 
   if (!profileWithDefaultValueForField) return null;
 
-  const relationshipData = profileWithDefaultValueForField[
-    relationshipName
-  ] as ProfileRelationshipData;
+  const relationshipData = profileWithDefaultValueForField[relationshipName] as NodeRelationship;
 
   const source = {
     type: "profile" as const,
@@ -275,17 +248,7 @@ export const getRelationshipDefaultValueFromProfiles = (
 
   // Handle cardinality many relationships
   if (isRelationshipManyData(relationshipData)) {
-    const nodes = relationshipData.edges
-      .map(({ node }) =>
-        node
-          ? {
-              id: node.id,
-              display_label: node.display_label,
-              __typename: node.__typename,
-            }
-          : null
-      )
-      .filter((n): n is ProfileRelationshipNode => n !== null);
+    const nodes = relationshipData.edges.map(({ node }) => node).filter((n) => !!n);
 
     return {
       source,

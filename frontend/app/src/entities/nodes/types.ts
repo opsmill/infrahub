@@ -38,8 +38,8 @@ export interface NodeRelationshipMany {
 export type NodeRelationship = NodeRelationshipOne | NodeRelationshipMany;
 
 export interface NodeRelationshipMetadata {
-  is_protected: boolean;
-  updated_at: string;
+  is_protected: boolean | null;
+  updated_at: string | null;
   source: NodeCore | null;
   owner: NodeCore | null;
 }
@@ -56,13 +56,14 @@ export type NodeRelationshipWithMetadata =
   | NodeRelationshipOneWithMetadata
   | NodeRelationshipManyWithMetadata;
 
-export type NodeObject = NodeCore & {
-  [key: string]: NodeAttribute | NodeRelationship;
-};
+export type NodeFields = Record<string, NodeAttribute | NodeRelationship>;
+export type NodeFieldsWithMetadata = Record<
+  string,
+  NodeAttributeWithMetadata | NodeRelationshipWithMetadata
+>;
 
-export type NodeObjectWithMetadata = NodeCore & {
-  [key: string]: NodeAttributeWithMetadata | NodeRelationshipWithMetadata;
-};
+export type NodeObject = NodeCore & NodeFields;
+export type NodeObjectWithMetadata = NodeCore & NodeFieldsWithMetadata;
 
 export type NodeFileObject = NodeObject & {
   file_name: NodeAttribute<string>;
