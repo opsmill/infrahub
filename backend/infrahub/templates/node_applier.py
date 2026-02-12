@@ -47,12 +47,13 @@ class NodeTemplateApplier:
             attr = template.get_attribute(name=attr_name)
 
             # Propagate from_pool reference for NumberPool attributes
-            if hasattr(attr, "from_pool") and attr.from_pool:
+            if attr.from_pool:
                 fields[attr_name] = {"from_pool": attr.from_pool}
                 continue
 
             if attr.value is not None:
-                field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}
+                # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
+                field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}  # type: ignore[attr-defined]
                 if attr.is_from_profile:
                     field_data["is_from_profile"] = True
                 fields[attr_name] = field_data
