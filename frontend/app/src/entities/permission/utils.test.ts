@@ -17,10 +17,6 @@ const createPermissionNode = (overrides?: Partial<PermissionData>): { node: Perm
   },
 });
 
-const awareSchema = { branch: "aware" } as { branch: string };
-const agnosticSchema = { branch: "agnostic" } as { branch: string };
-const localSchema = { branch: "local" } as { branch: string };
-
 describe("getPermission", () => {
   describe("without branch options", () => {
     test("returns PERMISSION_ALLOW_ALL when no permission data", () => {
@@ -67,7 +63,6 @@ describe("getPermission", () => {
     test("does not override permissions when branch is OPEN", () => {
       const result = getPermission([createPermissionNode()], {
         branch: { status: BRANCH_STATUS.OPEN },
-        schema: awareSchema,
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -79,7 +74,6 @@ describe("getPermission", () => {
     test("does not override PERMISSION_ALLOW_ALL when branch is OPEN", () => {
       const result = getPermission(undefined, {
         branch: { status: BRANCH_STATUS.OPEN },
-        schema: awareSchema,
       });
 
       expect(result).toEqual(PERMISSION_ALLOW_ALL);
@@ -87,10 +81,9 @@ describe("getPermission", () => {
   });
 
   describe("with branch MERGED", () => {
-    test("denies create/update/delete for branch-aware objects", () => {
+    test("denies create/update/delete on merged branch", () => {
       const result = getPermission([createPermissionNode()], {
         branch: { status: BRANCH_STATUS.MERGED },
-        schema: awareSchema,
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -102,34 +95,9 @@ describe("getPermission", () => {
       expect(result.delete).toHaveProperty("message", "Cannot edit objects on a merged branch");
     });
 
-    test("denies create/update/delete for branch-local objects", () => {
-      const result = getPermission([createPermissionNode()], {
-        branch: { status: BRANCH_STATUS.MERGED },
-        schema: localSchema,
-      });
-
-      expect(result.view.isAllowed).toBe(true);
-      expect(result.create.isAllowed).toBe(false);
-      expect(result.update.isAllowed).toBe(false);
-      expect(result.delete.isAllowed).toBe(false);
-    });
-
-    test("does NOT deny for branch-agnostic objects", () => {
-      const result = getPermission([createPermissionNode()], {
-        branch: { status: BRANCH_STATUS.MERGED },
-        schema: agnosticSchema,
-      });
-
-      expect(result.view.isAllowed).toBe(true);
-      expect(result.create.isAllowed).toBe(true);
-      expect(result.update.isAllowed).toBe(true);
-      expect(result.delete.isAllowed).toBe(true);
-    });
-
     test("denies when no permission data (PERMISSION_ALLOW_ALL) on merged branch", () => {
       const result = getPermission(undefined, {
         branch: { status: BRANCH_STATUS.MERGED },
-        schema: awareSchema,
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -138,7 +106,7 @@ describe("getPermission", () => {
       expect(result.delete.isAllowed).toBe(false);
     });
 
-    test("denies when no schema provided (safe default)", () => {
+    test("denies when no kind provided (safe default)", () => {
       const result = getPermission(undefined, {
         branch: { status: BRANCH_STATUS.MERGED },
       });
@@ -152,7 +120,6 @@ describe("getPermission", () => {
     test("merged override takes priority over ALLOW permission data", () => {
       const result = getPermission([createPermissionNode()], {
         branch: { status: BRANCH_STATUS.MERGED },
-        schema: awareSchema,
       });
 
       expect(result.create.isAllowed).toBe(false);
@@ -163,7 +130,6 @@ describe("getPermission", () => {
     test("view is never overridden even on merged branch", () => {
       const result = getPermission([createPermissionNode({ view: "ALLOW" })], {
         branch: { status: BRANCH_STATUS.MERGED },
-        schema: awareSchema,
       });
 
       expect(result.view.isAllowed).toBe(true);
