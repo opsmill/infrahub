@@ -275,10 +275,7 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         assert "Templates can only use one of: direct relationship or resource pool allocation" in str(exc.value)
 
     async def test_template_cannot_add_direct_when_pool_exists(
-        self,
-        static_ip_address: InfrahubNode,
-        ip_address_pool: InfrahubNode,
-        client: InfrahubClient,
+        self, static_ip_address: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
     ) -> None:
         template = await client.create(
             kind="TemplateInfraDevice",
@@ -294,6 +291,50 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
             await retrieved.update()
 
         assert "Templates can only use one of: direct relationship or resource pool allocation" in str(exc.value)
+
+    async def test_template_can_add_direct_when_pool_is_unset(
+        self, static_ip_address: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+    ) -> None:
+        template = await client.create(
+            kind="TemplateInfraDevice",
+            template_name="device-pool-replaced-by-direct",
+            primary_address_from_resource_pool=ip_address_pool.id,
+        )
+        await template.save()
+
+        retrieved = await client.get(kind="TemplateInfraDevice", id=template.id)
+        retrieved.primary_address_from_resource_pool = None
+        retrieved.primary_address = static_ip_address.id
+
+        await retrieved.update()
+
+        updated = await client.get(kind="TemplateInfraDevice", id=template.id)
+        await updated.primary_address.fetch()
+        assert updated.primary_address.peer is not None
+        assert updated.primary_address.peer.id == static_ip_address.id
+        assert updated.primary_address_from_resource_pool.id is None
+
+    async def test_template_can_add_pool_when_direct_is_unset(
+        self, static_ip_address: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+    ) -> None:
+        template = await client.create(
+            kind="TemplateInfraDevice",
+            template_name="device-direct-replaced-by-pool",
+            primary_address=static_ip_address.id,
+        )
+        await template.save()
+
+        retrieved = await client.get(kind="TemplateInfraDevice", id=template.id)
+        retrieved.primary_address = None
+        retrieved.primary_address_from_resource_pool = ip_address_pool.id
+
+        await retrieved.update()
+
+        updated = await client.get(kind="TemplateInfraDevice", id=template.id)
+        assert updated.primary_address.id is None
+        await updated.primary_address_from_resource_pool.fetch()
+        assert updated.primary_address_from_resource_pool.peer is not None
+        assert updated.primary_address_from_resource_pool.peer.id == ip_address_pool.id
 
 
 class TestTemplateNumberPoolAttributes(TestInfrahubApp):

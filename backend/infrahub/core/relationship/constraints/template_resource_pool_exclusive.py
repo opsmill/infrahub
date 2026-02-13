@@ -33,6 +33,9 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
         if not node_schema.is_template_schema:
             return
 
+        if not await self._relationship_has_peers(relm=relm):
+            return
+
         rel_name = relm.schema.name
 
         if rel_name.endswith(RESOURCE_POOL_REL_SUFFIX):
@@ -44,6 +47,13 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
             if pool_rel_name in node_schema.relationship_names:
                 await self._check_counterpart_not_set(node=node, counterpart_name=pool_rel_name, current_name=rel_name)
 
+    async def _relationship_has_peers(self, relm: RelationshipManager) -> bool:
+        """Check if a relationship currently has peers (locally or untouched in DB)."""
+        update_details = await relm.fetch_relationship_ids(db=self.db, force_refresh=True)
+        peers_in_local_state = update_details.peer_ids_present_both or update_details.peer_ids_present_local_only
+        peers_untouched_in_db = update_details.peer_ids_present_database_only and not relm.has_fetched_relationships
+        return bool(peers_in_local_state or peers_untouched_in_db)
+
     async def _check_counterpart_not_set(self, node: Node, counterpart_name: str, current_name: str) -> None:
         """Check that the counterpart relationship is not set."""
         try:
@@ -51,15 +61,7 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
         except ValueError:
             return
 
-        update_details = await counterpart_relm.fetch_relationship_ids(db=self.db, force_refresh=True)
-
-        # Counterpart has peers if local state has peers OR db peers exist and weren't cleared locally
-        peers_in_local_state = update_details.peer_ids_present_both or update_details.peer_ids_present_local_only
-        peers_untouched_in_db = (
-            update_details.peer_ids_present_database_only and not counterpart_relm.has_fetched_relationships
-        )
-
-        if peers_in_local_state or peers_untouched_in_db:
+        if await self._relationship_has_peers(relm=counterpart_relm):
             raise ValidationError(
                 {
                     current_name: (
