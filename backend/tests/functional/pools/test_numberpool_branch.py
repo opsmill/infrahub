@@ -7,6 +7,7 @@ from infrahub_sdk.graphql import Query
 
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
@@ -55,6 +56,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
         snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
         await snps.run()
+        graphql_registry.clear_cache()
 
     @pytest.fixture(scope="class")
     def initial_schema(self) -> SchemaRoot:
