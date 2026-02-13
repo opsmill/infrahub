@@ -26,10 +26,7 @@ function ObjectConvertPage() {
   }
 
   return (
-    <RequireObjectPermissions
-      objectKind={schema.kind ?? ""}
-      loadingClassName="h-[calc(100vh-10.5rem)]"
-    >
+    <RequireObjectPermissions objectKind={schema.kind!} loadingClassName="h-[calc(100vh-10.5rem)]">
       {({ permission }) => {
         return <ObjectConvert objectSchema={schema} objectId={objectId} permission={permission} />;
       }}
