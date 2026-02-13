@@ -11,6 +11,8 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { NodeFieldsWithMetadata, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
 
@@ -70,10 +72,17 @@ export const getFormFieldFromRelationship = ({
     | NodeRelationship
     | undefined;
 
+  const { schema: peerSchema } = getSchema(relationshipSchema.peer);
+  const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
+
   return {
     type: type ?? "relationship",
     name: name ?? relationshipSchema.name,
     label,
+    pool:
+      poolKind && peerSchema
+        ? { kind: poolKind, defaultAllocatedObjectKind: peerSchema.kind as string }
+        : undefined,
     defaultValue: getRelationshipDefaultValue({
       objectData,
       objectTemplate,
