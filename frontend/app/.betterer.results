@@ -205,7 +205,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/getObjectItemDisplayValue.tsx:3340131893": [
       [14, 7, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/nodes/object-item-details/action-buttons/details-buttons.tsx:171107656": [
+    "src/entities/nodes/object-item-details/action-buttons/details-buttons.tsx:407919478": [
       [54, 21, 25, "tsc: \'objectDetailsData.targets\' is possibly \'null\' or \'undefined\'.", "1788660526"],
       [54, 47, 4, "tsc: Property \'node\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"],
       [61, 25, 28, "tsc: \'objectDetailsData.definition\' is possibly \'null\' or \'undefined\'.", "164074553"],
@@ -488,8 +488,8 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-allocation-details.tsx:2974559063": [
       [74, 33, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
     ],
-    "src/pages/resource-manager/resource-pool-details.tsx:2520619705": [
-      [148, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
+    "src/pages/resource-manager/resource-pool-details.tsx:2673794461": [
+      [159, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
     "src/pages/role-management/index.tsx:30111790": [
       [21, 28, 10, "tsc: Property \'statusCode\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'statusCode\' does not exist on type \'Error\'.", "3382497788"],
