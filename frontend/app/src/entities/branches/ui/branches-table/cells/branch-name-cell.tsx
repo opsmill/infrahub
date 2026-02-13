@@ -10,7 +10,6 @@ import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
-import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 interface BranchNameCellProps {
@@ -48,11 +47,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
           </LinkButton>
 
           <Row className="gap-1">
-            {branch.is_default ? (
-              <BranchDefaultBadge />
-            ) : (
-              <BranchStatusBadge status={branch.status} />
-            )}
+            {branch.is_default && <BranchDefaultBadge />}
 
             {branch.has_schema_changes && <BranchSchemaChangesBadge />}
 
