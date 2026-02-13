@@ -628,6 +628,30 @@ def test_validate_python_keywords_multiple_keywords() -> None:
     assert keyword_found, f"Expected Python keyword error, got: {error_message}"
 
 
+def test_validate_generate_template_on_generic_schema() -> None:
+    """Test that setting generate_template=True on a GenericSchema raises a validation error."""
+    SCHEMA_WITH_GENERIC_TEMPLATE: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "MyGeneric",
+                "namespace": "Testing",
+                "generate_template": True,
+                "attributes": [{"name": "name", "kind": "Text"}],
+            },
+        ],
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_GENERIC_TEMPLATE)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    with pytest.raises(
+        ValueError,
+        match=r"'generate_template' cannot be set to true on a generic. Templates are only supported on node definitions.",
+    ):
+        schema_branch.validate_generate_template()
+
+
 def test_validate_namespaces_and_keyword_separation() -> None:
     """Test that namespace and Python keyword validation work separately in their proper contexts."""
     # Test that SchemaRoot.validate_namespaces() only catches namespace issues

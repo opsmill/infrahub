@@ -648,6 +648,7 @@ class SchemaBranch:
         for validator in self.validators:
             validator.check(schema_branch=self)
 
+        self.validate_generate_template()
         self.validate_names()
         self.validate_python_keywords()
         self.validate_kinds()
@@ -1135,6 +1136,15 @@ class SchemaBranch:
             raise ValueError(
                 f"{node_schema.kind}.{parent_relationship.name}: Relationship of type parent must not be optional"
             )
+
+    def validate_generate_template(self) -> None:
+        """Validate that generate_template is not explicitly set on a GenericSchema."""
+        for name in self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            if isinstance(node, GenericSchema) and node.generate_template:
+                raise ValueError(
+                    f"{node.kind}: 'generate_template' cannot be set to true on a generic. Templates are only supported on node definitions."
+                )
 
     def validate_names(self) -> None:
         for name in self.all_names:
