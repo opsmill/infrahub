@@ -13,7 +13,7 @@ import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/g
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
-import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
+import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
@@ -26,6 +26,7 @@ export function RelationshipTable({
   ...props
 }: RelationshipTableProps) {
   const { schema: parentSchema } = useSchema(parentKind);
+  const { data: permission } = useGetObjectPermissions(parentKind);
   const [filters] = useFilters();
   const { data: count } = useGetRelationshipCount({
     objectKind: parentKind,
@@ -54,7 +55,7 @@ export function RelationshipTable({
       parentId,
       parentKind,
       relationshipName,
-      permission: PERMISSION_ALLOW_ALL,
+      permission,
       relationshipsCount: flatData.length,
     }),
   ];
@@ -82,6 +83,7 @@ export function RelationshipTable({
                 return (
                   <ToolbarDissociateAction
                     objectId={parentId}
+                    parentKind={parentKind}
                     relationshipIds={selectedRows.map((row) => row.id)}
                     relationshipName={relationshipName}
                     relationshipLabel="all selected rows"

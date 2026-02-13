@@ -40,7 +40,7 @@ export function DetailsButtons({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const nodeLabel = getNodeLabel(objectDetailsData);
-  const isEditAllowed = permission.update.isAllowed;
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
 
   return (
     <>
@@ -70,7 +70,7 @@ export function DetailsButtons({
           size="sm"
           disabled={!isEditAllowed}
           onClick={() => setIsEditModalOpen(true)}
-          tooltipContent={!isEditAllowed ? permission.update.message : undefined}
+          tooltipContent={editTooltipMessage}
           tooltipEnabled={!isEditAllowed}
           data-testid="edit-button"
         >

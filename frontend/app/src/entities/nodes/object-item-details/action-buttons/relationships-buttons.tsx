@@ -105,12 +105,14 @@ export function RelationshipsButtons({
     }
   };
 
+  const { isAllowed: isAddAllowed, message: addTooltipMessage } = permission.create;
+
   return (
     <>
       <ButtonWithTooltip
-        disabled={!permission.create.isAllowed}
+        disabled={!isAddAllowed}
         tooltipEnabled
-        tooltipContent={permission.create.message ?? "Add relationship"}
+        tooltipContent={addTooltipMessage ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
         data-testid="open-relationship-form-button"
         size="sm"
