@@ -82,6 +82,7 @@ export function RelationshipTable({
                 return (
                   <ToolbarDissociateAction
                     objectId={parentId}
+                    parentKind={parentKind}
                     relationshipIds={selectedRows.map((row) => row.id)}
                     relationshipName={relationshipName}
                     relationshipLabel="all selected rows"
