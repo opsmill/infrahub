@@ -13,7 +13,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.constants import TestKind
-from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.schema import CAR_SCHEMA, DEVICE_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -88,6 +88,12 @@ query DiffTree($branch_name: String!, $proposed_change_id: String!) {
     num_updated
     num_removed
     num_conflicts
+    nodes {
+      kind
+      parent {
+        relationship_name
+      }
+    }
   }
 }
 """
@@ -104,12 +110,17 @@ class TestDiffFreeze(TestInfrahubApp):
         prefect_test_fixture: None,
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
+        await load_schema(db, schema=DEVICE_SCHEMA)
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="Original person")
         await john.save(db=db)
 
-        return {"john": john}
+        acme = await Node.init(schema=TestKind.MANUFACTURER, db=db)
+        await acme.new(db=db, name="Acme Motors", description="Test manufacturer")
+        await acme.save(db=db)
+
+        return {"john": john, "acme": acme}
 
     async def test_freeze_diff_on_proposed_change_close(
         self,
@@ -255,9 +266,14 @@ class TestDiffFreeze(TestInfrahubApp):
         branch = await create_branch(db=db, branch_name=branch_name)
 
         # Step 2: Make changes on branch
-        eve = await Node.init(schema=TestKind.PERSON, db=db, branch=branch.name)
-        await eve.new(db=db, name="Eve", height=160, description="Person for branch delete test")
-        await eve.save(db=db)
+        # includes interface-device PARENT relationship for testing parent serialization in DiffTreeResolver
+        device = await Node.init(schema=TestKind.DEVICE, db=db, branch=branch.name)
+        await device.new(db=db, name="device01", manufacturer="Cisco", height=2, weight=10, airflow="Front to rear")
+        await device.save(db=db)
+
+        intf = await Node.init(schema=TestKind.PHYSICAL_INTERFACE, db=db, branch=branch.name)
+        await intf.new(db=db, name="eth0", device=device, phys_type="SFP+ (10GE)")
+        await intf.save(db=db)
 
         # Step 3: Run DiffUpdate to create diff
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_name})
@@ -284,8 +300,9 @@ class TestDiffFreeze(TestInfrahubApp):
         assert diff_before_delete.proposed_change_id == pc_id
         assert diff_before_delete.is_frozen is False
         assert isinstance(diff_before_delete.tracking_id, BranchTrackingId)
-        assert len(diff_before_delete.nodes) == 1
-        assert any(n.label == "Eve" for n in diff_before_delete.nodes)
+        diff_kinds_before = {n.kind for n in diff_before_delete.nodes}
+        assert TestKind.DEVICE in diff_kinds_before
+        assert TestKind.PHYSICAL_INTERFACE in diff_kinds_before
 
         # Step 5: Delete the branch
         result = await client.execute_graphql(query=BRANCH_DELETE, variables={"branch_name": branch_name})
@@ -308,9 +325,9 @@ class TestDiffFreeze(TestInfrahubApp):
         )
         assert frozen_diff.uuid == frozen_branch_metadata.uuid
         assert frozen_diff.is_frozen is True
-        assert len(frozen_diff.nodes) == 1
-        frozen_nodes_by_label = {n.label: n for n in frozen_diff.nodes}
-        assert "Eve" in frozen_nodes_by_label
+        frozen_kinds = {n.kind for n in frozen_diff.nodes}
+        assert TestKind.DEVICE in frozen_kinds
+        assert TestKind.PHYSICAL_INTERFACE in frozen_kinds
 
         # Step 7: Verify frozen diff can be retrieved via DiffTree GraphQL query
         # even after the branch is deleted
@@ -320,11 +337,19 @@ class TestDiffFreeze(TestInfrahubApp):
         )
         assert "DiffTree" in diff_tree_result
         assert diff_tree_result["DiffTree"] is not None
-        # Verify it shows the added node
-        assert diff_tree_result["DiffTree"]["num_added"] == 1
-        assert diff_tree_result["DiffTree"]["num_updated"] == 0
+        # Verify there are added nodes (Device + PhysicalInterface)
+        assert diff_tree_result["DiffTree"]["num_added"] >= 2
         assert diff_tree_result["DiffTree"]["num_removed"] == 0
         assert diff_tree_result["DiffTree"]["num_conflicts"] == 0
+        # Verify node kinds and parent info are returned correctly
+        tree_nodes = diff_tree_result["DiffTree"]["nodes"]
+        tree_nodes_by_kind = {n["kind"]: n for n in tree_nodes}
+        assert TestKind.DEVICE in tree_nodes_by_kind
+        assert TestKind.PHYSICAL_INTERFACE in tree_nodes_by_kind
+        # PhysicalInterface should have Device as its parent via the "interfaces" relationship
+        intf_node = tree_nodes_by_kind[TestKind.PHYSICAL_INTERFACE]
+        assert intf_node["parent"] is not None
+        assert intf_node["parent"]["relationship_name"] == "interfaces"
 
     async def test_branch_diff_update_using_frozen_diff(
         self,
