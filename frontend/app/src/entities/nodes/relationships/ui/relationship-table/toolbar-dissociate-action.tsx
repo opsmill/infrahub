@@ -9,42 +9,42 @@ import {
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 
 export interface ToolBarRemoveFromGroupActionProps
-	extends Omit<DissociateRelationshipModalProps, "isOpen" | "onOpenChange"> {
-	parentKind: string;
+  extends Omit<DissociateRelationshipModalProps, "isOpen" | "onOpenChange"> {
+  parentKind: string;
 }
 
 export function ToolbarDissociateAction({
-	objectId,
-	relationshipLabel,
-	relationshipName,
-	relationshipIds,
-	parentKind,
+  objectId,
+  relationshipLabel,
+  relationshipName,
+  relationshipIds,
+  parentKind,
 }: ToolBarRemoveFromGroupActionProps) {
-	const [isOpen, setIsOpen] = React.useState(false);
-	const { data: permission } = useGetObjectPermissions(parentKind);
-	const { isAllowed, message } = permission?.update ?? { isAllowed: false };
+  const [isOpen, setIsOpen] = React.useState(false);
+  const { data: permission } = useGetObjectPermissions(parentKind);
+  const { isAllowed, message } = permission?.update ?? { isAllowed: false };
 
-	return (
-		<>
-			<ToolbarButtonWithTooltip
-				variant="danger"
-				isDisabled={!isAllowed}
-				tooltipEnabled={!isAllowed}
-				tooltipContent={message}
-				onPress={() => setIsOpen((prev) => !prev)}
-			>
-				<Icon icon="mdi:link-variant-remove" />
-				Dissociate
-			</ToolbarButtonWithTooltip>
+  return (
+    <>
+      <ToolbarButtonWithTooltip
+        variant="danger"
+        isDisabled={!isAllowed}
+        tooltipEnabled={!isAllowed}
+        tooltipContent={message}
+        onPress={() => setIsOpen((prev) => !prev)}
+      >
+        <Icon icon="mdi:link-variant-remove" />
+        Dissociate
+      </ToolbarButtonWithTooltip>
 
-			<DissociateRelationshipsModal
-				objectId={objectId}
-				relationshipIds={relationshipIds}
-				relationshipLabel={relationshipLabel}
-				relationshipName={relationshipName}
-				isOpen={isOpen}
-				onOpenChange={setIsOpen}
-			/>
-		</>
-	);
+      <DissociateRelationshipsModal
+        objectId={objectId}
+        relationshipIds={relationshipIds}
+        relationshipLabel={relationshipLabel}
+        relationshipName={relationshipName}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+      />
+    </>
+  );
 }
