@@ -84,6 +84,21 @@ async def test_processor_calculates_sha1_checksum(
     assert result.metadata.checksum == hashlib.sha1(upload_file.content, usedforsecurity=False).hexdigest()
 
 
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        pytest.param(b"hello world\n", True, id="plain-text"),
+        pytest.param(b"key: value\n", True, id="yaml-text"),
+        pytest.param(b"name,age\nAlice,30\n", True, id="csv-text"),
+        pytest.param(b"\x00\x01\x02\x03", False, id="null-bytes"),
+        pytest.param(b"\x89PNG\r\n\x1a\n\x00", False, id="png-header"),
+        pytest.param(b"", True, id="empty"),
+    ],
+)
+def test_looks_like_text(content: bytes, expected: bool) -> None:
+    assert FileUploadProcessor._looks_like_text(content) is expected
+
+
 async def test_processor_detects_mime_type(dummy_storage: DummyObjectStorage, max_file_size_50mb: None) -> None:
     """Test that MIME type is detected using magic bytes."""
     png_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
@@ -94,6 +109,29 @@ async def test_processor_detects_mime_type(dummy_storage: DummyObjectStorage, ma
 
     assert result
     assert result.metadata.file_type == "image/png"
+
+
+@pytest.mark.parametrize(
+    ("content", "filename", "expected_mime"),
+    [
+        pytest.param(b"key: value\nlist:\n  - item\n", "config.yaml", "application/x-yaml", id="yaml"),
+        pytest.param(b"key: value\n", "config.yml", "application/x-yaml", id="yml"),
+        pytest.param(b"name,age\nAlice,30\n", "data.csv", "text/csv", id="csv"),
+        pytest.param(b'[section]\nkey = "val"\n', "config.toml", "application/toml", id="toml"),
+        pytest.param(b"hello world\n", "readme.txt", "text/plain", id="txt"),
+    ],
+)
+async def test_processor_detects_text_based_mime_types(
+    content: bytes, filename: str, expected_mime: str, dummy_storage: DummyObjectStorage, max_file_size_50mb: None
+) -> None:
+    """Test that text-based file types are detected using filename extension."""
+    upload_file = create_upload_file(content=content, filename=filename)
+
+    processor = FileUploadProcessor(file=upload_file)
+    result = await processor.process()
+
+    assert result
+    assert result.metadata.file_type == expected_mime
 
 
 async def test_processor_fallback_mime_type(dummy_storage: DummyObjectStorage, max_file_size_50mb: None) -> None:

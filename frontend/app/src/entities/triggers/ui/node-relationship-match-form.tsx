@@ -32,7 +32,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -88,13 +88,13 @@ export const NodeRelationshipMatchForm = ({
       }) ?? DEFAULT_FORM_FIELD_VALUE,
     member_of_group:
       getRelationshipDefaultValue({
-        relationshipData: currentObject?.member_of_group as RelationshipType | undefined,
+        objectData: currentObject,
         relationshipName: "member_of_group",
         objectTemplate,
       }) ?? DEFAULT_FORM_FIELD_VALUE,
     trigger:
       getRelationshipDefaultValue({
-        relationshipData: currentObject?.trigger as RelationshipType | undefined,
+        objectData: currentObject,
         relationshipName: "trigger",
         objectTemplate,
         schema: props.schema,

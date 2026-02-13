@@ -34,7 +34,6 @@ export const ObjectCreateFormTrigger = ({
   return (
     <>
       <ButtonWithTooltip
-        data-cy="create"
         data-testid="create-object-button"
         disabled={!isAllowed || isLoading}
         onClick={() => setShowCreateDrawer(true)}

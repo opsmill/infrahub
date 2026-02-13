@@ -10,8 +10,7 @@ import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled"
 import { isRequired } from "@/shared/components/form/utils/validation";
 
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { NodeFieldsWithMetadata, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
 
@@ -41,11 +40,11 @@ interface GetFormFieldFromRelationshipParams {
   isFilterForm: boolean;
   isBulkUpdate?: boolean;
   relationshipSchema: RelationshipSchema;
-  relationshipData?: RelationshipType;
+  objectData?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   profiles?: Array<ProfileData>;
   schema: ModelSchema;
-  parentSchema: ModelSchema | null;
+  parentSchema?: ModelSchema | null;
   parentData?: NodeObject | null;
 }
 
@@ -53,7 +52,7 @@ export const getFormFieldFromRelationship = ({
   type,
   name,
   relationshipSchema,
-  relationshipData,
+  objectData,
   objectTemplate,
   profiles,
   isFilterForm = false,
@@ -65,6 +64,8 @@ export const getFormFieldFromRelationship = ({
 }: GetFormFieldFromRelationshipParams): DynamicRelationshipFieldProps => {
   const label = getFieldLabel({ type, relationshipSchema });
 
+  const relationshipData = objectData?.[relationshipSchema.name] as NodeRelationship | undefined;
+
   const relationshipTemplate = objectTemplate?.[relationshipSchema.name] as
     | NodeRelationship
     | undefined;
@@ -74,7 +75,7 @@ export const getFormFieldFromRelationship = ({
     name: name ?? relationshipSchema.name,
     label,
     defaultValue: getRelationshipDefaultValue({
-      relationshipData,
+      objectData,
       objectTemplate,
       profiles,
       isFilterForm,

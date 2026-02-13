@@ -13,7 +13,7 @@ import type {
 
 import type { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttribute, NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { NodeAttributeWithMetadata, NodeCore, NodeObject } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
 import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
@@ -170,13 +170,13 @@ export const getDefaultValueFromTemplate = (
 ): AttributeValueFromTemplate | null => {
   if (!objectTemplate) return null;
 
-  const currentField = objectTemplate[fieldName] as NodeAttribute | undefined;
+  const currentField = objectTemplate[fieldName] as NodeAttributeWithMetadata | undefined;
 
   if (!currentField) return null;
 
   if (currentField.value === null) return null;
 
-  if (currentField.is_from_profile === true) return null;
+  if (currentField.is_from_profile) return null;
 
   return {
     source: {

@@ -16,7 +16,7 @@ describe("getFormFieldFromRelationship", () => {
     const fields = getFormFieldFromRelationship({
       auth: undefined,
       relationshipSchema,
-      relationshipData: undefined,
+      objectData: undefined,
       objectTemplate: undefined,
       isFilterForm: false,
       schema,

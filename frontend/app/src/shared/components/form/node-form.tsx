@@ -12,9 +12,8 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import type { NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
@@ -28,7 +27,7 @@ export type NodeFormProps = {
   className?: string;
   schema: NodeSchema | ProfileSchema;
   profiles?: ProfileData[];
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;

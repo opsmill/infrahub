@@ -29,6 +29,7 @@ import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-po
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector from "@/entities/resource-manager/ui/resource-selector";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ResourcePoolDetailsPage = () => {
@@ -83,7 +84,7 @@ const ResourcePoolContentWithPermissions = ({
 
 type ResourcePoolContentProps = {
   resourcePoolId: string;
-  schema: NonNullable<ReturnType<typeof useSchema>["schema"]>;
+  schema: ModelSchema;
   permission: Permission;
 };
 
