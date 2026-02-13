@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipCardinality, RelationshipKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from tests.helpers.schema import load_schema
@@ -34,45 +35,6 @@ mutation CreateDeviceFromTemplate($name: String!, $template_id: String!) {
 }
 """
 
-QUERY_TEMPLATE_DEVICE = """
-query GetTemplateDevice($id: ID!) {
-    TemplateInfraDevice(ids: [$id]) {
-        edges {
-            node {
-                template_name { value }
-                primary_address { node { id } }
-                primary_address_from_resource_pool { node { id } }
-            }
-        }
-    }
-}
-"""
-
-QUERY_DEVICE_WITH_PRIMARY_ADDRESS = """
-query GetDevice($id: ID!) {
-    InfraDevice(ids: [$id]) {
-        edges {
-            node {
-                name { value }
-                primary_address { node { id } }
-            }
-        }
-    }
-}
-"""
-
-QUERY_IP_ADDRESS = """
-query GetIPAddress($id: ID!) {
-    IpamIPAddress(ids: [$id]) {
-        edges {
-            node {
-                address { value }
-            }
-        }
-    }
-}
-"""
-
 CREATE_RACK_FROM_TEMPLATE = """
 mutation CreateRackFromTemplate($name: String!, $template_id: String!) {
     InfraRackCreate(
@@ -83,19 +45,6 @@ mutation CreateRackFromTemplate($name: String!, $template_id: String!) {
     ) {
         ok
         object { id }
-    }
-}
-"""
-
-QUERY_RACK_WITH_SLOT = """
-query GetRack($id: ID!) {
-    InfraRack(ids: [$id]) {
-        edges {
-            node {
-                name { value }
-                slot_id { value source { id } }
-            }
-        }
     }
 }
 """
@@ -211,16 +160,17 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         assert pool_rel.optional
 
     async def test_template_with_pool_created(
-        self, template_with_pool: Node, ip_address_pool: Node, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool: Node, ip_address_pool: Node
     ) -> None:
-        result = await client.execute_graphql(query=QUERY_TEMPLATE_DEVICE, variables={"id": template_with_pool.id})
-        template = result["TemplateInfraDevice"]["edges"][0]["node"]
-        assert template["template_name"]["value"] == "device-pool-address"
-        assert template["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
-        assert template["primary_address"]["node"] is None
+        template = await NodeManager.get_one(id=template_with_pool.id, db=db)
+        assert template.template_name.value == "device-pool-address"
+        pool_peer = await template.primary_address_from_resource_pool.get_peer(db=db)
+        assert pool_peer.id == ip_address_pool.id
+        addr_peer = await template.primary_address.get_peer(db=db)
+        assert addr_peer is None
 
     async def test_device_from_template_with_static_address(
-        self, template_with_static_address: Node, static_ip_address: Node, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_static_address: Node, static_ip_address: Node, client: InfrahubClient
     ) -> None:
         create_result = await client.execute_graphql(
             query=CREATE_DEVICE_FROM_TEMPLATE,
@@ -228,15 +178,13 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         )
         device_id = create_result["InfraDeviceCreate"]["object"]["id"]
 
-        query_result = await client.execute_graphql(
-            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device_id}
-        )
-        device = query_result["InfraDevice"]["edges"][0]["node"]
-        assert device["name"]["value"] == "device-from-static-template"
-        assert device["primary_address"]["node"]["id"] == static_ip_address.id
+        device = await NodeManager.get_one(id=device_id, db=db)
+        assert device.name.value == "device-from-static-template"
+        addr_peer = await device.primary_address.get_peer(db=db)
+        assert addr_peer.id == static_ip_address.id
 
     async def test_device_from_template_with_pool_allocates_address(
-        self, template_with_pool: Node, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool: Node, client: InfrahubClient
     ) -> None:
         create_result = await client.execute_graphql(
             query=CREATE_DEVICE_FROM_TEMPLATE,
@@ -244,19 +192,13 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         )
         device_id = create_result["InfraDeviceCreate"]["object"]["id"]
 
-        device_result = await client.execute_graphql(
-            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device_id}
-        )
-        device = device_result["InfraDevice"]["edges"][0]["node"]
-        assert device["name"]["value"] == "device-from-pool-template"
+        device = await NodeManager.get_one(id=device_id, db=db)
+        assert device.name.value == "device-from-pool-template"
 
-        address_id = device["primary_address"]["node"]["id"]
-        assert address_id is not None
-
-        addr_result = await client.execute_graphql(query=QUERY_IP_ADDRESS, variables={"id": address_id})
-        address_value = addr_result["IpamIPAddress"]["edges"][0]["node"]["address"]["value"]
-        assert address_value is not None
-        assert IPv4Interface(address_value).ip in ip_network("10.20.30.0/24")
+        addr_peer = await device.primary_address.get_peer(db=db)
+        assert addr_peer is not None
+        assert addr_peer.address.value is not None
+        assert IPv4Interface(addr_peer.address.value).ip in ip_network("10.20.30.0/24")
 
     async def test_device_from_pool_template_explicit_address_overrides(
         self,
@@ -293,14 +235,12 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         )
         device_id = create_result["InfraDeviceCreate"]["object"]["id"]
 
-        device_result = await client.execute_graphql(
-            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device_id}
-        )
-        device = device_result["InfraDevice"]["edges"][0]["node"]
-        assert device["primary_address"]["node"]["id"] == address.id
+        device = await NodeManager.get_one(id=device_id, db=db)
+        addr_peer = await device.primary_address.get_peer(db=db)
+        assert addr_peer.id == address.id
 
     async def test_multiple_devices_from_pool_template_get_unique_addresses(
-        self, template_with_pool: Node, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool: Node, client: InfrahubClient
     ) -> None:
         result1 = await client.execute_graphql(
             query=CREATE_DEVICE_FROM_TEMPLATE,
@@ -314,23 +254,13 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         )
         device2_id = result2["InfraDeviceCreate"]["object"]["id"]
 
-        dev1_result = await client.execute_graphql(
-            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device1_id}
-        )
-        dev2_result = await client.execute_graphql(
-            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device2_id}
-        )
+        device1 = await NodeManager.get_one(id=device1_id, db=db)
+        device2 = await NodeManager.get_one(id=device2_id, db=db)
 
-        addr1_id = dev1_result["InfraDevice"]["edges"][0]["node"]["primary_address"]["node"]["id"]
-        addr2_id = dev2_result["InfraDevice"]["edges"][0]["node"]["primary_address"]["node"]["id"]
-        assert addr1_id != addr2_id
-
-        addr1_result = await client.execute_graphql(query=QUERY_IP_ADDRESS, variables={"id": addr1_id})
-        addr2_result = await client.execute_graphql(query=QUERY_IP_ADDRESS, variables={"id": addr2_id})
-        assert (
-            addr1_result["IpamIPAddress"]["edges"][0]["node"]["address"]["value"]
-            != addr2_result["IpamIPAddress"]["edges"][0]["node"]["address"]["value"]
-        )
+        addr1_peer = await device1.primary_address.get_peer(db=db)
+        addr2_peer = await device2.primary_address.get_peer(db=db)
+        assert addr1_peer.id != addr2_peer.id
+        assert addr1_peer.address.value != addr2_peer.address.value
 
     async def test_template_cannot_set_both_direct_and_pool_on_create(
         self,
@@ -542,30 +472,15 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         return template
 
     async def test_template_with_pool_stores_reference_not_value(
-        self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode
     ) -> None:
         """Template with from_pool should store reference without allocating a value."""
-        result = await client.execute_graphql(
-            query="""
-            query GetTemplateRack($id: ID!) {
-                TemplateInfraRack(ids: [$id]) {
-                    edges {
-                        node {
-                            template_name { value }
-                            slot_id { value }
-                        }
-                    }
-                }
-            }
-            """,
-            variables={"id": template_with_pool_slot.id},
-        )
-        template = result["TemplateInfraRack"]["edges"][0]["node"]
-        assert template["template_name"]["value"] == "rack-pool-slot"
-        assert template["slot_id"]["value"] is None
+        template = await NodeManager.get_one(id=template_with_pool_slot.id, db=db)
+        assert template.template_name.value == "rack-pool-slot"
+        assert template.slot_id.value is None
 
     async def test_rack_from_template_with_static_slot(
-        self, template_with_static_slot: Node, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_static_slot: Node, client: InfrahubClient
     ) -> None:
         """Static value from template should have the template as source."""
         create_result = await client.execute_graphql(
@@ -574,14 +489,13 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack_id})
-        rack = result["InfraRack"]["edges"][0]["node"]
-        assert rack["name"]["value"] == "rack-from-static-template"
-        assert rack["slot_id"]["value"] == 50
-        assert rack["slot_id"]["source"]["id"] == template_with_static_slot.id
+        rack = await NodeManager.get_one(id=rack_id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert rack.name.value == "rack-from-static-template"
+        assert rack.slot_id.value == 50
+        assert rack.slot_id.source_id == template_with_static_slot.id
 
     async def test_rack_from_template_with_pool_allocates_slot(
-        self, template_with_pool_slot: InfrahubNode, slot_pool: Node, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode, slot_pool: Node, client: InfrahubClient
     ) -> None:
         """Object created from template should allocate from pool."""
         create_result = await client.execute_graphql(
@@ -590,15 +504,14 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack_id})
-        rack = result["InfraRack"]["edges"][0]["node"]
-        assert rack["name"]["value"] == "rack-from-pool-template"
-        assert rack["slot_id"]["value"] is not None
-        assert 1 <= rack["slot_id"]["value"] <= 100
-        assert rack["slot_id"]["source"]["id"] == slot_pool.id
+        rack = await NodeManager.get_one(id=rack_id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert rack.name.value == "rack-from-pool-template"
+        assert rack.slot_id.value is not None
+        assert 1 <= rack.slot_id.value <= 100
+        assert rack.slot_id.source_id == slot_pool.id
 
     async def test_rack_explicit_slot_overrides_pool_template(
-        self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode, client: InfrahubClient
     ) -> None:
         """User-provided slot value should override pool allocation."""
         create_result = await client.execute_graphql(
@@ -624,12 +537,11 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack_id})
-        rack = result["InfraRack"]["edges"][0]["node"]
-        assert rack["slot_id"]["value"] == 999
+        rack = await NodeManager.get_one(id=rack_id, db=db)
+        assert rack.slot_id.value == 999
 
     async def test_multiple_racks_from_pool_template_get_unique_slots(
-        self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
+        self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode, client: InfrahubClient
     ) -> None:
         """Multiple objects from same pool template should get unique slot allocations."""
         result1 = await client.execute_graphql(
@@ -644,14 +556,11 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         rack2_id = result2["InfraRackCreate"]["object"]["id"]
 
-        rack1_result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack1_id})
-        rack2_result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack2_id})
-
-        slot1 = rack1_result["InfraRack"]["edges"][0]["node"]["slot_id"]["value"]
-        slot2 = rack2_result["InfraRack"]["edges"][0]["node"]["slot_id"]["value"]
-        assert slot1 is not None
-        assert slot2 is not None
-        assert slot1 != slot2
+        rack1 = await NodeManager.get_one(id=rack1_id, db=db)
+        rack2 = await NodeManager.get_one(id=rack2_id, db=db)
+        assert rack1.slot_id.value is not None
+        assert rack2.slot_id.value is not None
+        assert rack1.slot_id.value != rack2.slot_id.value
 
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
