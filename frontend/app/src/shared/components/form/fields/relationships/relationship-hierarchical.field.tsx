@@ -17,8 +17,6 @@ import {
   RelationshipHierarchicalManyInput,
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
 import type { NodeCore } from "@/entities/nodes/types";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipHierarchicalFieldProps
   extends Omit<DynamicRelationshipFieldProps, "type"> {}
@@ -33,6 +31,7 @@ export default function RelationshipHierarchicalField({
   rules,
   unique,
   shouldUnregister,
+  pool,
 }: RelationshipHierarchicalFieldProps) {
   return (
     <FormField
@@ -52,8 +51,6 @@ export default function RelationshipHierarchicalField({
             : fieldData.value;
 
         const { peer } = relationship;
-        const { schema: peerSchema } = useSchema(peer);
-        const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
         const onChange = (newValue: NodeCore | NodeCore[] | PoolValue | null) => {
@@ -89,10 +86,10 @@ export default function RelationshipHierarchicalField({
                 )}
               </FormInput>
 
-              {relationship.cardinality === "one" && poolKind && peerSchema && (
+              {relationship.cardinality === "one" && pool && (
                 <PoolSelect
-                  poolKind={poolKind}
-                  poolDefaultAllocatedObjectKind={peerSchema.kind as string}
+                  poolKind={pool.kind}
+                  poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                   selectedPoolId={selectedPoolId}
                   onChange={onChange}
                 />
