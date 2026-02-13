@@ -45,22 +45,25 @@ function DataViewerContent({
   content: string;
 }) {
   switch (contentType) {
-    case "text/markdown":
+    case "text/markdown": {
       return <MarkdownViewer>{content}</MarkdownViewer>;
+    }
 
-    case "image/svg+xml":
+    case "image/svg+xml": {
       return (
         <Svg value={content} className="grow rounded-lg border border-neutral-700 shadow-sm" />
       );
+    }
 
-    case "text/csv":
+    case "text/csv": {
       return (
         <ScrollArea scrollX scrollBarClassName="bg-transparent">
           <CsvTable content={content} />
         </ScrollArea>
       );
+    }
 
-    case "application/pdf":
+    case "application/pdf": {
       return (
         <iframe
           src={`data:application/pdf;base64,${content}`}
@@ -68,13 +71,14 @@ function DataViewerContent({
           className="h-150 w-full rounded-lg border border-neutral-700"
         />
       );
+    }
 
     case "image/png":
     case "image/jpeg":
     case "image/gif":
     case "image/webp":
     case "image/bmp":
-    case "image/x-icon":
+    case "image/x-icon": {
       return (
         <div className="flex justify-center rounded-lg border border-neutral-700 bg-white p-4">
           <img
@@ -84,6 +88,7 @@ function DataViewerContent({
           />
         </div>
       );
+    }
 
     case "application/json":
     case "application/yaml":
@@ -97,10 +102,11 @@ function DataViewerContent({
     case "application/x-python":
     case "application/toml":
     case "application/x-toml":
-    case "text/plain":
+    case "text/plain": {
       return <TextViewer content={content} language={getTextLanguage(contentType)} />;
+    }
 
-    default:
+    default: {
       if (contentType.startsWith("text/")) {
         return <TextViewer content={content} language="text" />;
       }
@@ -112,6 +118,7 @@ function DataViewerContent({
           <p className="text-sm">{contentType}</p>
         </div>
       );
+    }
   }
 }
 
@@ -131,29 +138,40 @@ function TextViewer({ content, language }: { content: string; language: string }
 
 function getTextLanguage(contentType: string): string {
   switch (contentType) {
-    case "application/json":
+    case "application/json": {
       return "json";
+    }
     case "application/yaml":
-    case "application/x-yaml":
+    case "application/x-yaml": {
       return "yaml";
-    case "application/hcl":
+    }
+    case "application/hcl": {
       return "hcl";
-    case "application/graphql":
+    }
+    case "application/graphql": {
       return "graphql";
-    case "application/xml":
+    }
+    case "application/xml": {
       return "xml";
-    case "application/javascript":
+    }
+    case "application/javascript": {
       return "javascript";
-    case "application/typescript":
+    }
+    case "application/typescript": {
       return "typescript";
-    case "application/x-sh":
+    }
+    case "application/x-sh": {
       return "bash";
-    case "application/x-python":
+    }
+    case "application/x-python": {
       return "python";
+    }
     case "application/toml":
-    case "application/x-toml":
+    case "application/x-toml": {
       return "toml";
-    default:
+    }
+    default: {
       return "text";
+    }
   }
 }
