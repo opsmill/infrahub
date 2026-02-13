@@ -3,10 +3,8 @@ import {
   addRelationshipsToApi,
 } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 
-type RelationshipId = string | { from_pool: { id: string } };
-
 export type AddRelationshipsParams = Omit<AddRelationshipsToApiParams, "relationshipIds"> & {
-  relationshipIds: Array<RelationshipId>;
+  relationshipIds: Array<string | { from_pool: { id: string } }>;
 };
 
 export type AddRelationships = (params: AddRelationshipsParams) => Promise<void>;
