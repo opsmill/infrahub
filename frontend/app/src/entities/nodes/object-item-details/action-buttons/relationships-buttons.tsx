@@ -18,6 +18,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-key
 import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -51,6 +52,8 @@ export function RelationshipsButtons({
   const peerRelationshipSchema = peerSchema.schema?.relationships?.find((r) => {
     return r.peer === objectKind;
   });
+
+  const poolKind = peerSchema.schema ? getPoolKindFromSchema(peerSchema.schema) : null;
 
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
@@ -86,9 +89,13 @@ export function RelationshipsButtons({
     const { relation } = data;
 
     if (relation?.id || relation?.from_pool) {
+      const relationshipId = relation.from_pool
+        ? { from_pool: { id: relation.from_pool.id } }
+        : relation.id;
+
       await addRelationship({
         objectId,
-        relationshipIds: [relation.id],
+        relationshipIds: [relationshipId],
         relationshipName: relationshipSchema!.name,
       });
 
@@ -163,6 +170,13 @@ export function RelationshipsButtons({
                     inherited: true,
                   } as RelationshipSchema,
                   options,
+                  pool:
+                    poolKind && peerSchema.schema
+                      ? {
+                          kind: poolKind,
+                          defaultAllocatedObjectKind: peerSchema.schema.kind as string,
+                        }
+                      : undefined,
                 },
               ]}
               onSubmit={async ({ relation }) => {
