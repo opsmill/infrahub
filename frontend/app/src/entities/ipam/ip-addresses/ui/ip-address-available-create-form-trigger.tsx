@@ -11,6 +11,7 @@ import {
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 
 export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIdentifierProps) {
   const { selectedSchema, permission } = useObjectTableContext();
@@ -45,7 +46,18 @@ export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIde
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsCreateFormOpen(false);
           }}
-          currentObject={{ address: { value: props.ipAddressAvailableNode.address.value } }}
+          currentObject={{
+            address: {
+              value: props.ipAddressAvailableNode.address.value,
+              is_default: false,
+              is_from_profile: false,
+              is_protected: false,
+              is_visible: true,
+              owner: null,
+              source: null,
+              updated_at: new Date().toISOString(),
+            } satisfies NodeAttributeWithMetadata,
+          }}
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />
