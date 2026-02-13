@@ -1,3 +1,4 @@
+import { EyeOffIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Col, Row } from "@/shared/components/container";
@@ -47,6 +48,7 @@ function DataViewerContent({
     case "text/markdown": {
       return <MarkdownViewer>{content}</MarkdownViewer>;
     }
+
     case "image/svg+xml": {
       return (
         <Svg value={content} className="grow rounded-lg border border-neutral-700 shadow-sm" />
@@ -88,37 +90,88 @@ function DataViewerContent({
       );
     }
 
+    case "application/json":
+    case "application/yaml":
+    case "application/x-yaml":
+    case "application/hcl":
+    case "application/graphql":
+    case "application/xml":
+    case "application/javascript":
+    case "application/typescript":
+    case "application/x-sh":
+    case "application/x-python":
+    case "application/toml":
+    case "application/x-toml":
+    case "text/plain": {
+      return <TextViewer content={content} language={getTextLanguage(contentType)} />;
+    }
+
     default: {
-      // Treat all text-based and unknown content types as plain text
+      if (contentType.startsWith("text/")) {
+        return <TextViewer content={content} language="text" />;
+      }
+
       return (
-        <ScrollArea
-          scrollX
-          className="grow rounded-lg border border-neutral-700 shadow-sm"
-          scrollBarClassName="bg-transparent"
-        >
-          <CodeViewer language={getTextLanguage(contentType)} customStyle={{ margin: 0 }}>
-            {content}
-          </CodeViewer>
-        </ScrollArea>
+        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border border-neutral-700 p-8 text-neutral-400">
+          <EyeOffIcon className="size-8" />
+          <p>This file can&#39;t be previewed</p>
+          <p className="text-sm">{contentType}</p>
+        </div>
       );
     }
   }
 }
 
-function getTextLanguage(contentType: DataViewerContentType): string {
+function TextViewer({ content, language }: { content: string; language: string }) {
+  return (
+    <ScrollArea
+      scrollX
+      className="grow rounded-lg border border-neutral-700 shadow-sm"
+      scrollBarClassName="bg-transparent"
+    >
+      <CodeViewer language={language} customStyle={{ margin: 0 }}>
+        {content}
+      </CodeViewer>
+    </ScrollArea>
+  );
+}
+
+function getTextLanguage(contentType: string): string {
   switch (contentType) {
-    case "application/json":
+    case "application/json": {
       return "json";
+    }
     case "application/yaml":
-    case "application/x-yaml":
+    case "application/x-yaml": {
       return "yaml";
-    case "application/hcl":
+    }
+    case "application/hcl": {
       return "hcl";
-    case "application/graphql":
+    }
+    case "application/graphql": {
       return "graphql";
-    case "application/xml":
+    }
+    case "application/xml": {
       return "xml";
-    default:
+    }
+    case "application/javascript": {
+      return "javascript";
+    }
+    case "application/typescript": {
+      return "typescript";
+    }
+    case "application/x-sh": {
+      return "bash";
+    }
+    case "application/x-python": {
+      return "python";
+    }
+    case "application/toml":
+    case "application/x-toml": {
+      return "toml";
+    }
+    default: {
       return "text";
+    }
   }
 }
