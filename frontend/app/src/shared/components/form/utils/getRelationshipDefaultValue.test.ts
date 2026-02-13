@@ -1,3 +1,4 @@
+import * as R from "remeda";
 import { describe, expect, it } from "vitest";
 
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -8,42 +9,54 @@ import {
 import { store } from "@/shared/stores";
 
 import type {
-  RelationshipManyType,
-  RelationshipOneType,
-} from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject } from "@/entities/nodes/types";
+  NodeObject,
+  NodeRelationshipManyWithMetadata,
+  NodeRelationshipOneWithMetadata,
+} from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
-const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({
-  node: {
-    id: "relationship-one-id",
-    display_label: "Relationship One",
-    __typename: "RelationshipOne",
-  },
-  properties: {
-    updated_at: "2024-07-17T17:59:05.309135+00:00",
-    is_protected: null,
-    source: null,
-    owner: null,
-    __typename: "RelationshipProperty",
-  },
-  ...override,
-});
+type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+const buildRelationshipOneData = (
+  override?: DeepPartial<NodeRelationshipOneWithMetadata>
+): NodeRelationshipOneWithMetadata => {
+  const base: NodeRelationshipOneWithMetadata = {
+    node: {
+      id: "relationship-one-id",
+      display_label: "Relationship One",
+      __typename: "RelationshipOne",
+    },
+    properties: {
+      updated_at: "2024-07-17T17:59:05.309135+00:00",
+      is_protected: false,
+      source: null,
+      owner: null,
+    },
+  };
+
+  if (!override) return base;
+
+  return R.mergeDeep(base, override) as NodeRelationshipOneWithMetadata;
+};
 
 describe("getRelationshipDefaultValue", () => {
   describe("when cardinality one", () => {
     it("returns null if there is no relationship", () => {
       // GIVEN
-      const relationshipData = undefined;
+      const objectData = null;
       const objectTemplate = null;
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData,
         objectTemplate,
         relationshipName: "testRelationship",
       });
@@ -54,14 +67,15 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns user defined relationship", () => {
       // GIVEN
-      const relationshipData = buildRelationshipOneData({ properties: { source: null } });
+      const relationshipName = "testRelationship";
+      const relationshipData = buildRelationshipOneData();
       const objectTemplate = null;
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -81,6 +95,7 @@ describe("getRelationshipDefaultValue", () => {
         { kind: "FakeResourcePool", inherit_from: [RESOURCE_GENERIC_KIND] } as NodeSchema,
       ]);
 
+      const relationshipName = "testRelationship";
       const relationshipData = buildRelationshipOneData({
         properties: {
           source: {
@@ -94,9 +109,9 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -121,6 +136,7 @@ describe("getRelationshipDefaultValue", () => {
         { kind: "ProfileTestDevice", namespace: "Profile" } as ProfileSchema,
       ]);
 
+      const relationshipName = "testRelationship";
       // When relationship data comes from a profile source, we skip it and let profiles provide the value
       const relationshipData = buildRelationshipOneData({
         properties: {
@@ -132,7 +148,7 @@ describe("getRelationshipDefaultValue", () => {
         },
       });
       const objectTemplate = null;
-      const profiles = [
+      const profiles: ProfileData[] = [
         {
           id: "profile-source-id",
           display_label: "Test Profile Source",
@@ -144,16 +160,22 @@ describe("getRelationshipDefaultValue", () => {
               display_label: "Relationship One",
               __typename: "RelationshipOne",
             },
+            properties: {
+              is_protected: null,
+              owner: null,
+              source: null,
+              updated_at: null,
+            },
           },
         },
-      ] as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         profiles,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -178,6 +200,7 @@ describe("getRelationshipDefaultValue", () => {
         { kind: "ProfileTestDevice", namespace: "Profile" } as ProfileSchema,
       ]);
 
+      const relationshipName = "testRelationship";
       // Relationship data has a profile source, but the profile is no longer assigned to the node
       const relationshipData = buildRelationshipOneData({
         properties: {
@@ -193,10 +216,10 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         profiles,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN - should be empty since the profile was removed
@@ -210,12 +233,11 @@ describe("getRelationshipDefaultValue", () => {
         generateNodeSchema({ kind: "TemplateRelationship", display_labels: ["label"] }),
       ]);
 
-      const relationshipData = undefined;
       const relationshipName = "testRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         testRelationship: {
           node: {
             id: "template-rel-id",
@@ -227,7 +249,6 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         relationshipName,
       });
@@ -250,12 +271,11 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns default form field value when template exists but relationship name is not found", () => {
       // GIVEN
-      const relationshipData = undefined;
       const relationshipName = "nonExistentRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         testRelationship: {
           node: {
             id: "template-rel-id",
@@ -267,7 +287,6 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         relationshipName,
       });
@@ -278,9 +297,18 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns profile value when relationship node is null and profile is provided", () => {
       // GIVEN
-      const relationshipData: RelationshipOneType = { node: null };
+      const relationshipName = "my_relationship";
+      const relationshipData: NodeRelationshipOneWithMetadata = {
+        node: null,
+        properties: {
+          is_protected: null,
+          owner: null,
+          source: null,
+          updated_at: null,
+        },
+      };
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-1",
           display_label: "Test Profile",
@@ -298,10 +326,10 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         profiles,
-        relationshipName: "my_relationship",
+        relationshipName,
       });
 
       // THEN - profile provides the relationship value
@@ -324,11 +352,16 @@ describe("getRelationshipDefaultValue", () => {
   describe("when cardinality many", () => {
     it("returns default value if relationships are empty (allowing profile fallback)", () => {
       // GIVEN
-      const relationshipData: RelationshipManyType = { edges: [] };
+      const relationshipName = "testRelationship";
+      const relationshipData: NodeRelationshipManyWithMetadata = { edges: [] };
       const objectTemplate = null;
 
       // WHEN - no profiles provided, so falls back to default
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        objectData: { [relationshipName]: relationshipData },
+        objectTemplate,
+        relationshipName,
+      });
 
       // THEN - empty data should not block profile fallback
       expect(defaultValue).to.deep.equal({ source: null, value: null });
@@ -336,9 +369,10 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns profile value when relationships are empty and profile is provided", () => {
       // GIVEN
-      const relationshipData: RelationshipManyType = { edges: [] };
+      const relationshipName = "my_relationship";
+      const relationshipData: NodeRelationshipManyWithMetadata = { edges: [] };
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-1",
           display_label: "Test Profile",
@@ -360,10 +394,10 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         profiles,
-        relationshipName: "my_relationship",
+        relationshipName,
       });
 
       // THEN - profile provides the relationship value
@@ -386,13 +420,18 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns user defined relationship", () => {
       // GIVEN
-      const relationshipData: RelationshipManyType = {
+      const relationshipName = "testRelationship";
+      const relationshipData: NodeRelationshipManyWithMetadata = {
         edges: [buildRelationshipOneData({ properties: { source: null } })],
       };
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        objectData: { [relationshipName]: relationshipData },
+        objectTemplate,
+        relationshipName,
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -413,8 +452,9 @@ describe("getRelationshipDefaultValue", () => {
         { kind: "ProfileTestDevice", namespace: "Profile" } as ProfileSchema,
       ]);
 
+      const relationshipName = "manyRelationship";
       // When relationship data comes from a profile source, we skip it and let profiles provide the value
-      const relationshipData: RelationshipManyType = {
+      const relationshipData: NodeRelationshipManyWithMetadata = {
         edges: [
           buildRelationshipOneData({
             properties: {
@@ -442,7 +482,7 @@ describe("getRelationshipDefaultValue", () => {
         ],
       };
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-source-id",
           display_label: "Test Profile Source",
@@ -467,14 +507,14 @@ describe("getRelationshipDefaultValue", () => {
             ],
           },
         },
-      ] as unknown as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         profiles,
-        relationshipName: "manyRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -506,8 +546,9 @@ describe("getRelationshipDefaultValue", () => {
         { kind: "ProfileTestDevice", namespace: "Profile" } as ProfileSchema,
       ]);
 
+      const relationshipName = "manyRelationship";
       // Relationship data has a profile source, but the profile is no longer assigned to the node
-      const relationshipData: RelationshipManyType = {
+      const relationshipData: NodeRelationshipManyWithMetadata = {
         edges: [
           buildRelationshipOneData({
             properties: {
@@ -539,10 +580,10 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         profiles,
-        relationshipName: "manyRelationship",
+        relationshipName,
       });
 
       // THEN - should be empty since the profile was removed
@@ -556,12 +597,11 @@ describe("getRelationshipDefaultValue", () => {
         generateNodeSchema({ kind: "TemplateRelationship", display_labels: ["label"] }),
       ]);
 
-      const relationshipData = undefined;
       const relationshipName = "manyRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         manyRelationship: {
           edges: [
             {
@@ -584,7 +624,6 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         relationshipName,
       });
@@ -614,12 +653,11 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns default form field value when template relationship has empty edges", () => {
       // GIVEN
-      const relationshipData = undefined;
       const relationshipName = "emptyRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         emptyRelationship: {
           edges: [],
         },
@@ -627,7 +665,6 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         relationshipName,
       });
@@ -640,6 +677,7 @@ describe("getRelationshipDefaultValue", () => {
   describe("filter form", () => {
     it("returns null values when isFilterForm is true", () => {
       // GIVEN
+      const relationshipName = "testRelationship";
       const relationshipData = buildRelationshipOneData({ properties: { source: null } });
       const objectTemplate = {
         id: "template-id",
@@ -650,9 +688,10 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
+        objectData: { [relationshipName]: relationshipData },
         objectTemplate,
         isFilterForm,
+        relationshipName,
       });
 
       // THEN
@@ -663,7 +702,6 @@ describe("getRelationshipDefaultValue", () => {
   describe("when parent schema is provided", () => {
     it("returns relationship from parent schema", () => {
       // GIVEN
-      const relationshipData = undefined;
       const objectTemplate = null;
       const parentSchema = generateNodeSchema({
         kind: "TestParent",
@@ -690,7 +728,6 @@ describe("getRelationshipDefaultValue", () => {
       });
       const parentData: NodeObject = {
         id: "parent-id",
-        kind: "TestParent",
         display_label: "Parent Object",
         __typename: "TestParent",
       };
@@ -700,7 +737,6 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         relationshipName: "relationship-to-parent",
         schema: componentSchema,
@@ -723,9 +759,7 @@ describe("getRelationshipDefaultValue", () => {
   });
 
   describe("when profiles are provided", () => {
-    const buildProfileData = (
-      override: Partial<ProfileData> & { testRelationship?: { node: object | null } }
-    ): ProfileData => ({
+    const buildProfileData = (override: Partial<ProfileData> = {}): ProfileData => ({
       id: "profile-id",
       display_label: "Test Profile",
       __typename: "ProfileTestDevice",
@@ -735,7 +769,7 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns relationship from profile when no other data is provided", () => {
       // GIVEN
-      const relationshipData = undefined;
+      const relationshipName = "testRelationship";
       const objectTemplate = null;
       const profiles = [
         buildProfileData({
@@ -751,10 +785,9 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         profiles,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -775,7 +808,7 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns null when profile relationship has null node", () => {
       // GIVEN
-      const relationshipData = undefined;
+      const relationshipName = "testRelationship";
       const objectTemplate = null;
       const profiles = [
         buildProfileData({
@@ -787,10 +820,9 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         profiles,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -799,16 +831,15 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns null when profile does not have the relationship", () => {
       // GIVEN
-      const relationshipData = undefined;
+      const relationshipName = "nonExistentRelationship";
       const objectTemplate = null;
       const profiles = [buildProfileData({})];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         profiles,
-        relationshipName: "nonExistentRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -822,11 +853,11 @@ describe("getRelationshipDefaultValue", () => {
         generateNodeSchema({ kind: "TemplateRelationship", display_labels: ["label"] }),
       ]);
 
-      const relationshipData = undefined;
+      const relationshipName = "testRelationship";
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        display_label: "Template Object" as any,
-        __typename: "TemplateType" as any,
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
         testRelationship: {
           node: {
             id: "template-rel-id",
@@ -849,10 +880,9 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         profiles,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -873,7 +903,7 @@ describe("getRelationshipDefaultValue", () => {
 
     it("selects relationship from profile with highest priority", () => {
       // GIVEN
-      const relationshipData = undefined;
+      const relationshipName = "testRelationship";
       const objectTemplate = null;
       const profiles = [
         buildProfileData({
@@ -904,10 +934,9 @@ describe("getRelationshipDefaultValue", () => {
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         profiles,
-        relationshipName: "testRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -928,9 +957,9 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns cardinality many relationships from profile", () => {
       // GIVEN
-      const relationshipData = undefined;
+      const relationshipName = "manyRelationship";
       const objectTemplate = null;
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile-id",
           display_label: "Test Profile",
@@ -955,14 +984,13 @@ describe("getRelationshipDefaultValue", () => {
             ],
           },
         },
-      ] as ProfileData[];
+      ];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
-        relationshipData,
         objectTemplate,
         profiles,
-        relationshipName: "manyRelationship",
+        relationshipName,
       });
 
       // THEN
@@ -991,11 +1019,7 @@ describe("getRelationshipDefaultValue", () => {
 });
 
 describe("getRelationshipDefaultValueFromProfiles", () => {
-  const buildProfileData = (
-    override: Partial<ProfileData> & {
-      testRelationship?: { node: object | null } | { edges: Array<{ node: object | null }> };
-    }
-  ): ProfileData => ({
+  const buildProfileData = (override: Partial<ProfileData> = {}): ProfileData => ({
     id: "profile-id",
     display_label: "Test Profile",
     __typename: "ProfileTestDevice",

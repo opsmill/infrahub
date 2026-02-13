@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.schema.main import GenericSchemaAPI, TemplateSchemaAPI
 
 from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
@@ -79,6 +80,16 @@ class TestSchemaTemplateGenericInheritance(TestInfrahubApp):
         assert node_template_rel.inherited is False
         assert node_template_rel.peer == "TemplateTestingMyNode"
 
+        # The template for a GenericSchema should be a GenericSchemaAPI (not a TemplateSchemaAPI)
+        generic_template = await client.schema.get(kind="TemplateTestingMyGeneric")
+        assert isinstance(generic_template, GenericSchemaAPI)
+        assert not isinstance(generic_template, TemplateSchemaAPI)
+
+        # The template for a NodeSchema should be a TemplateSchemaAPI (not a GenericSchemaAPI)
+        node_template = await client.schema.get(kind="TemplateTestingMyNode")
+        assert isinstance(node_template, TemplateSchemaAPI)
+        assert not isinstance(node_template, GenericSchemaAPI)
+
     async def test_step_03_load_new_node_inheriting_from_generic(
         self, client: InfrahubClient, schema_new_node: dict[str, Any]
     ) -> None:
@@ -106,6 +117,16 @@ class TestSchemaTemplateGenericInheritance(TestInfrahubApp):
         )
         assert other_node_template_rel.inherited is False
         assert other_node_template_rel.peer == "TemplateTestingMyOtherNode"
+
+        # Verify template types are correct after adding the second node
+        generic_template = await client.schema.get(kind="TemplateTestingMyGeneric")
+        assert isinstance(generic_template, GenericSchemaAPI)
+
+        node_template = await client.schema.get(kind="TemplateTestingMyNode")
+        assert isinstance(node_template, TemplateSchemaAPI)
+
+        other_node_template = await client.schema.get(kind="TemplateTestingMyOtherNode")
+        assert isinstance(other_node_template, TemplateSchemaAPI)
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)

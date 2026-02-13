@@ -16,6 +16,7 @@ import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -41,7 +42,7 @@ export default function RelationshipHierarchicalField({
       shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormRelationshipValue = field.value;
-        const value: RelationshipNode | RelationshipNode[] | null =
+        const value: NodeCore | NodeCore[] | null =
           fieldData.value && "from_pool" in fieldData.value
             ? {
                 id: fieldData.value.from_pool.id,
@@ -55,7 +56,7 @@ export default function RelationshipHierarchicalField({
         const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
-        const onChange = (newValue: RelationshipNode | RelationshipNode[] | PoolValue | null) => {
+        const onChange = (newValue: NodeCore | NodeCore[] | PoolValue | null) => {
           field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
         };
 

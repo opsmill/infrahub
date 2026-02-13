@@ -18,11 +18,10 @@ import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
-import type { NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
@@ -32,7 +31,7 @@ export type CoreFileFormProps = {
   className?: string;
   schema: NodeSchema | ProfileSchema;
   profiles?: ProfileData[];
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;
@@ -40,7 +39,7 @@ export type CoreFileFormProps = {
   onCancel?: () => void;
 };
 
-function getExistingFileInfo(currentObject?: Record<string, AttributeType | RelationshipType>) {
+function getExistingFileInfo(currentObject?: NodeFieldsWithMetadata) {
   if (!currentObject) return null;
 
   const fileName =
