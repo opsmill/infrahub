@@ -102,7 +102,6 @@
         "useExhaustiveDependencies": "off",
         "useHookAtTopLevel": "off",
         "useImportExtensions": "off",
-        "noSwitchDeclarations": "off",
         "useUniqueElementIds": "off"
       },
       "nursery": {
