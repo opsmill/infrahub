@@ -8,9 +8,9 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectPermissions } from "@/entities/permission/domain/get-object-permissions";
 import type { GetPermissionOptions } from "@/entities/permission/utils";
-import type { ModelSchema } from "@/entities/schema/types";
 
 export interface GetObjectPermissionsParams extends ContextParams, GetPermissionOptions {
+  kind: string;
   userId?: string;
 }
 
@@ -19,19 +19,17 @@ export const getObjectPermissionsQueryOptions = ({
   branchName,
   atDate,
   branch,
-  schema,
+  kind,
 }: GetObjectPermissionsParams) => {
-  const kind = schema.kind!;
-
   return queryOptions({
     queryKey: [branchName, atDate, "permissions", kind, userId, branch?.status],
     queryFn: () => {
-      return getObjectPermissions({ branchName, atDate, branch, schema });
+      return getObjectPermissions({ branchName, atDate, branch, kind });
     },
   });
 };
 
-export const useGetObjectPermissions = (schema: ModelSchema) => {
+export const useGetObjectPermissions = (kind: string) => {
   const auth = useAuth();
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
@@ -42,7 +40,7 @@ export const useGetObjectPermissions = (schema: ModelSchema) => {
       branchName: currentBranch.name,
       atDate: timeMachineDate,
       branch: currentBranch,
-      schema,
+      kind,
     })
   );
 };

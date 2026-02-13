@@ -1,4 +1,5 @@
 import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import type {
   Permission,
   PermissionAction,
@@ -6,13 +7,9 @@ import type {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
-
-import { PERMISSION_ALLOW_ALL } from "./constants";
 
 export interface GetPermissionOptions {
   branch?: { status: BranchStatus };
-  schema: ModelSchema;
 }
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
@@ -32,7 +29,7 @@ function getPermissionWithBranchStatus(
   permission: Permission,
   options?: GetPermissionOptions
 ): Permission {
-  if (options?.branch?.status === BRANCH_STATUS.MERGED && options?.schema.branch !== "agnostic") {
+  if (options?.branch?.status === BRANCH_STATUS.MERGED) {
     const mergedDenial: PermissionDecision = {
       isAllowed: false,
       message: "Cannot edit objects on a merged branch",
@@ -51,8 +48,9 @@ export function getPermission(
   permission?: Array<{ node: PermissionData }>,
   options?: GetPermissionOptions
 ): Permission {
-  if (!Array.isArray(permission))
+  if (!Array.isArray(permission)) {
     return getPermissionWithBranchStatus(PERMISSION_ALLOW_ALL, options);
+  }
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
     if (permission.some(({ node }) => node[action] === "ALLOW")) {

@@ -13,7 +13,7 @@ export function ProposedChangesManager({
   schema: proposedChangeSchema,
 }: ProposedChangesManagerProps) {
   return (
-    <RequireObjectPermissions schema={proposedChangeSchema}>
+    <RequireObjectPermissions objectKind={proposedChangeSchema.kind!}>
       {({ permission }) => {
         return (
           <ObjectTableProvider schema={proposedChangeSchema}>

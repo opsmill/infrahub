@@ -69,7 +69,7 @@ const ResourcePoolContentWithPermissions = ({
   if (!schema) return <NoDataFound />;
 
   return (
-    <RequireObjectPermissions schema={schema}>
+    <RequireObjectPermissions objectKind={schema.kind!}>
       {({ permission }) => (
         <ResourcePoolContent
           resourcePoolId={resourcePoolId}

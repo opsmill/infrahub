@@ -36,7 +36,7 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     data: permission,
     error: permissionError,
     isPending: isPermissionPending,
-  } = useGetObjectPermissions(schema);
+  } = useGetObjectPermissions(schema.kind!);
 
   if (isObjectPending || isPermissionPending) {
     return <LoadingIndicator className="h-[244px]" />;

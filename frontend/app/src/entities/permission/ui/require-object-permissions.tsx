@@ -4,20 +4,19 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
 
 export interface RequireObjectPermissionsProps {
-  schema: ModelSchema;
+  objectKind: string;
   loadingClassName?: string;
   children?: React.ReactNode | ((params: { permission: Permission }) => React.ReactNode);
 }
 
 export function RequireObjectPermissions({
-  schema,
+  objectKind,
   children,
   loadingClassName,
 }: RequireObjectPermissionsProps) {
-  const { isPending, error, data: permission } = useGetObjectPermissions(schema);
+  const { isPending, error, data: permission } = useGetObjectPermissions(objectKind);
 
   if (isPending) {
     return <LoadingIndicator className={loadingClassName} />;
