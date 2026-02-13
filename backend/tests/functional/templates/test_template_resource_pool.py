@@ -6,113 +6,197 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
-    from infrahub_sdk.node.node import InfrahubNode
+    from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
+CREATE_DEVICE_FROM_TEMPLATE = """
+mutation CreateDeviceFromTemplate($name: String!, $template_id: String!) {
+    InfraDeviceCreate(
+        data: {
+            name: { value: $name }
+            object_template: { id: $template_id }
+        }
+    ) {
+        ok
+        object { id }
+    }
+}
+"""
+
+QUERY_TEMPLATE_DEVICE = """
+query GetTemplateDevice($id: ID!) {
+    TemplateInfraDevice(ids: [$id]) {
+        edges {
+            node {
+                template_name { value }
+                primary_address { node { id } }
+                primary_address_from_resource_pool { node { id } }
+            }
+        }
+    }
+}
+"""
+
+QUERY_DEVICE_WITH_PRIMARY_ADDRESS = """
+query GetDevice($id: ID!) {
+    InfraDevice(ids: [$id]) {
+        edges {
+            node {
+                name { value }
+                primary_address { node { id } }
+            }
+        }
+    }
+}
+"""
+
+QUERY_IP_ADDRESS = """
+query GetIPAddress($id: ID!) {
+    IpamIPAddress(ids: [$id]) {
+        edges {
+            node {
+                address { value }
+            }
+        }
+    }
+}
+"""
+
+CREATE_RACK_FROM_TEMPLATE = """
+mutation CreateRackFromTemplate($name: String!, $template_id: String!) {
+    InfraRackCreate(
+        data: {
+            name: { value: $name }
+            object_template: { id: $template_id }
+        }
+    ) {
+        ok
+        object { id }
+    }
+}
+"""
+
+QUERY_RACK_WITH_SLOT = """
+query GetRack($id: ID!) {
+    InfraRack(ids: [$id]) {
+        edges {
+            node {
+                name { value }
+                slot_id { value source { id } }
+            }
+        }
+    }
+}
+"""
+
+
 class TestTemplateResourcePoolCreation(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def load_schema(self, db: InfrahubDatabase, initialize_registry: None, client: InfrahubClient) -> None:
-        schema = {
-            "version": "1.0",
-            "nodes": [
-                {"name": "IPAddress", "namespace": "Ipam", "inherit_from": ["BuiltinIPAddress"]},
-                {"name": "IPPrefix", "namespace": "Ipam", "inherit_from": ["BuiltinIPPrefix"]},
-                {
-                    "name": "Device",
-                    "namespace": "Infra",
-                    "generate_template": True,
-                    "attributes": [
-                        {"name": "name", "kind": "Text", "unique": True},
-                        {"name": "description", "kind": "Text", "optional": True},
+    async def device_schema(self, db: InfrahubDatabase, initialize_registry: None) -> None:
+        schema = SchemaRoot(
+            version="1.0",
+            nodes=[
+                NodeSchema(name="IPAddress", namespace="Ipam", inherit_from=["BuiltinIPAddress"]),
+                NodeSchema(name="IPPrefix", namespace="Ipam", inherit_from=["BuiltinIPPrefix"]),
+                NodeSchema(
+                    name="Device",
+                    namespace="Infra",
+                    generate_template=True,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                        AttributeSchema(name="description", kind="Text", optional=True),
                     ],
-                    "relationships": [
-                        {
-                            "name": "primary_address",
-                            "peer": "IpamIPAddress",
-                            "label": "Primary IP Address",
-                            "cardinality": "one",
-                            "optional": True,
-                        },
+                    relationships=[
+                        RelationshipSchema(
+                            name="primary_address",
+                            peer="IpamIPAddress",
+                            label="Primary IP Address",
+                            cardinality=RelationshipCardinality.ONE,
+                            optional=True,
+                        ),
                     ],
-                },
+                ),
             ],
-        }
-        response = await client.schema.load(schemas=[schema])
-        assert response.schema_updated
-        assert not response.errors
+        )
+        await load_schema(db, schema=schema, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def ip_namespace(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
-        ns = await client.create(kind=InfrahubKind.NAMESPACE, name="test-namespace")
-        await ns.save()
+    async def ip_namespace(self, db: InfrahubDatabase, device_schema: None) -> Node:
+        ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+        await ns.new(db=db, name="test-namespace")
+        await ns.save(db=db)
         return ns
 
     @pytest.fixture(scope="class")
-    async def ip_prefix(self, client: InfrahubClient, ip_namespace: InfrahubNode, load_schema: None) -> InfrahubNode:
-        prefix = await client.create(kind="IpamIPPrefix", prefix="10.20.30.0/24", ip_namespace=ip_namespace.id)
-        await prefix.save()
+    async def ip_prefix(self, db: InfrahubDatabase, ip_namespace: Node, device_schema: None) -> Node:
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="10.20.30.0/24", ip_namespace=ip_namespace)
+        await prefix.save(db=db)
         return prefix
 
     @pytest.fixture(scope="class")
     async def ip_address_pool(
-        self, client: InfrahubClient, ip_namespace: InfrahubNode, ip_prefix: InfrahubNode, load_schema: None
-    ) -> InfrahubNode:
-        pool = await client.create(
-            kind=InfrahubKind.IPADDRESSPOOL,
+        self, db: InfrahubDatabase, ip_namespace: Node, ip_prefix: Node, device_schema: None
+    ) -> Node:
+        pool = await Node.init(db=db, schema=InfrahubKind.IPADDRESSPOOL)
+        await pool.new(
+            db=db,
             name="test-address-pool",
-            resources=[ip_prefix.id],
-            ip_namespace=ip_namespace.id,
+            resources=[ip_prefix],
+            ip_namespace=ip_namespace,
             default_address_type="IpamIPAddress",
         )
-        await pool.save()
+        await pool.save(db=db)
         return pool
 
     @pytest.fixture(scope="class")
     async def static_ip_address(
-        self, client: InfrahubClient, ip_namespace: InfrahubNode, ip_prefix: InfrahubNode, load_schema: None
-    ) -> InfrahubNode:
-        address = await client.create(
-            kind="IpamIPAddress", address="10.20.30.100/24", ip_prefix=ip_prefix.id, ip_namespace=ip_namespace.id
-        )
-        await address.save()
+        self, db: InfrahubDatabase, ip_namespace: Node, ip_prefix: Node, device_schema: None
+    ) -> Node:
+        address = await Node.init(db=db, schema="IpamIPAddress")
+        await address.new(db=db, address="10.20.30.100/24", ip_prefix=ip_prefix, ip_namespace=ip_namespace)
+        await address.save(db=db)
         return address
 
     @pytest.fixture(scope="class")
     async def template_with_static_address(
-        self, client: InfrahubClient, static_ip_address: InfrahubNode, load_schema: None
-    ) -> InfrahubNode:
-        template = await client.create(
-            kind="TemplateInfraDevice",
+        self, db: InfrahubDatabase, static_ip_address: Node, device_schema: None
+    ) -> Node:
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(
+            db=db,
             template_name="device-static-address",
             description="Template with static address",
-            primary_address=static_ip_address.id,
+            primary_address=static_ip_address,
         )
-        await template.save()
+        await template.save(db=db)
         return template
 
     @pytest.fixture(scope="class")
-    async def template_with_pool(
-        self, client: InfrahubClient, ip_address_pool: InfrahubNode, load_schema: None
-    ) -> InfrahubNode:
-        template = await client.create(
-            kind="TemplateInfraDevice",
+    async def template_with_pool(self, db: InfrahubDatabase, ip_address_pool: Node, device_schema: None) -> Node:
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(
+            db=db,
             template_name="device-pool-address",
             description="Template with pool allocation",
-            primary_address_from_resource_pool=ip_address_pool.id,
+            primary_address_from_resource_pool=ip_address_pool,
         )
-        await template.save()
+        await template.save(db=db)
         return template
 
     async def test_template_schema_has_pool_relationship(
-        self, client: InfrahubClient, load_schema: None, default_branch: Branch
+        self, client: InfrahubClient, device_schema: None, default_branch: Branch
     ) -> None:
         template_schema = await client.schema.get(kind="TemplateInfraDevice")
         assert template_schema
@@ -127,341 +211,447 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         assert pool_rel.optional
 
     async def test_template_with_pool_created(
-        self, template_with_pool: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+        self, template_with_pool: Node, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        retrieved = await client.get(kind="TemplateInfraDevice", id=template_with_pool.id)
-        assert retrieved.template_name.value == "device-pool-address"
-
-        await retrieved.primary_address_from_resource_pool.fetch()
-        assert retrieved.primary_address_from_resource_pool.peer is not None
-        assert retrieved.primary_address_from_resource_pool.peer.id == ip_address_pool.id
-        assert retrieved.primary_address.id is None
+        result = await client.execute_graphql(query=QUERY_TEMPLATE_DEVICE, variables={"id": template_with_pool.id})
+        template = result["TemplateInfraDevice"]["edges"][0]["node"]
+        assert template["template_name"]["value"] == "device-pool-address"
+        assert template["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
+        assert template["primary_address"]["node"] is None
 
     async def test_device_from_template_with_static_address(
-        self, template_with_static_address: InfrahubNode, static_ip_address: InfrahubNode, client: InfrahubClient
+        self, template_with_static_address: Node, static_ip_address: Node, client: InfrahubClient
     ) -> None:
-        device = await client.create(
-            kind="InfraDevice",
-            name="device-from-static-template",
-            object_template=template_with_static_address.id,
+        create_result = await client.execute_graphql(
+            query=CREATE_DEVICE_FROM_TEMPLATE,
+            variables={"name": "device-from-static-template", "template_id": template_with_static_address.id},
         )
-        await device.save()
+        device_id = create_result["InfraDeviceCreate"]["object"]["id"]
 
-        retrieved = await client.get(kind="InfraDevice", id=device.id)
-        assert retrieved.name.value == "device-from-static-template"
-
-        await retrieved.primary_address.fetch()
-        assert retrieved.primary_address.peer is not None
-        assert retrieved.primary_address.peer.id == static_ip_address.id
+        query_result = await client.execute_graphql(
+            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device_id}
+        )
+        device = query_result["InfraDevice"]["edges"][0]["node"]
+        assert device["name"]["value"] == "device-from-static-template"
+        assert device["primary_address"]["node"]["id"] == static_ip_address.id
 
     async def test_device_from_template_with_pool_allocates_address(
-        self, template_with_pool: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+        self, template_with_pool: Node, client: InfrahubClient
     ) -> None:
-        device = await client.create(
-            kind="InfraDevice", name="device-from-pool-template", object_template=template_with_pool.id
+        create_result = await client.execute_graphql(
+            query=CREATE_DEVICE_FROM_TEMPLATE,
+            variables={"name": "device-from-pool-template", "template_id": template_with_pool.id},
         )
-        await device.save()
+        device_id = create_result["InfraDeviceCreate"]["object"]["id"]
 
-        retrieved = await client.get(kind="InfraDevice", id=device.id, property=True)
-        assert retrieved.name.value == "device-from-pool-template"
+        device_result = await client.execute_graphql(
+            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device_id}
+        )
+        device = device_result["InfraDevice"]["edges"][0]["node"]
+        assert device["name"]["value"] == "device-from-pool-template"
 
-        await retrieved.primary_address.fetch()
-        assert retrieved.primary_address.peer is not None
+        address_id = device["primary_address"]["node"]["id"]
+        assert address_id is not None
 
-        address_peer = await client.get(kind="IpamIPAddress", id=retrieved.primary_address.peer.id)
-        assert address_peer.address.value is not None
-        assert address_peer.address.value.ip in ip_network("10.20.30.0/24")
+        addr_result = await client.execute_graphql(query=QUERY_IP_ADDRESS, variables={"id": address_id})
+        address_value = addr_result["IpamIPAddress"]["edges"][0]["node"]["address"]["value"]
+        assert address_value is not None
+        assert IPv4Interface(address_value).ip in ip_network("10.20.30.0/24")
 
     async def test_device_from_pool_template_explicit_address_overrides(
         self,
-        template_with_pool: InfrahubNode,
-        ip_namespace: InfrahubNode,
-        ip_prefix: InfrahubNode,
+        db: InfrahubDatabase,
+        template_with_pool: Node,
+        ip_namespace: Node,
+        ip_prefix: Node,
         client: InfrahubClient,
     ) -> None:
-        explicit_address = await client.create(
-            kind="IpamIPAddress",
-            address="10.20.30.200/24",
-            ip_prefix=ip_prefix.id,
-            ip_namespace=ip_namespace.id,
+        address = await Node.init(db=db, schema="IpamIPAddress")
+        await address.new(db=db, address="10.20.30.200/24", ip_prefix=ip_prefix, ip_namespace=ip_namespace)
+        await address.save(db=db)
+
+        create_result = await client.execute_graphql(
+            query="""
+            mutation CreateDeviceWithAddress($name: String!, $template_id: String!, $address_id: String!) {
+                InfraDeviceCreate(
+                    data: {
+                        name: { value: $name }
+                        object_template: { id: $template_id }
+                        primary_address: { id: $address_id }
+                    }
+                ) {
+                    ok
+                    object { id }
+                }
+            }
+            """,
+            variables={
+                "name": "device-with-explicit-address",
+                "template_id": template_with_pool.id,
+                "address_id": address.id,
+            },
         )
-        await explicit_address.save()
+        device_id = create_result["InfraDeviceCreate"]["object"]["id"]
 
-        device = await client.create(
-            kind="InfraDevice",
-            name="device-with-explicit-address",
-            object_template=template_with_pool.id,
-            primary_address=explicit_address.id,
+        device_result = await client.execute_graphql(
+            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device_id}
         )
-        await device.save()
-
-        retrieved = await client.get(kind="InfraDevice", id=device.id)
-
-        await retrieved.primary_address.fetch()
-        assert retrieved.primary_address.peer is not None
-        assert retrieved.primary_address.peer.id == explicit_address.id
+        device = device_result["InfraDevice"]["edges"][0]["node"]
+        assert device["primary_address"]["node"]["id"] == address.id
 
     async def test_multiple_devices_from_pool_template_get_unique_addresses(
-        self, template_with_pool: InfrahubNode, client: InfrahubClient
+        self, template_with_pool: Node, client: InfrahubClient
     ) -> None:
-        device1 = await client.create(
-            kind="InfraDevice", name="device-pool-unique-1", object_template=template_with_pool.id
+        result1 = await client.execute_graphql(
+            query=CREATE_DEVICE_FROM_TEMPLATE,
+            variables={"name": "device-pool-unique-1", "template_id": template_with_pool.id},
         )
-        await device1.save()
+        device1_id = result1["InfraDeviceCreate"]["object"]["id"]
 
-        device2 = await client.create(
-            kind="InfraDevice", name="device-pool-unique-2", object_template=template_with_pool.id
+        result2 = await client.execute_graphql(
+            query=CREATE_DEVICE_FROM_TEMPLATE,
+            variables={"name": "device-pool-unique-2", "template_id": template_with_pool.id},
         )
-        await device2.save()
+        device2_id = result2["InfraDeviceCreate"]["object"]["id"]
 
-        retrieved1 = await client.get(kind="InfraDevice", id=device1.id)
-        retrieved2 = await client.get(kind="InfraDevice", id=device2.id)
+        dev1_result = await client.execute_graphql(
+            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device1_id}
+        )
+        dev2_result = await client.execute_graphql(
+            query=QUERY_DEVICE_WITH_PRIMARY_ADDRESS, variables={"id": device2_id}
+        )
 
-        await retrieved1.primary_address.fetch()
-        await retrieved2.primary_address.fetch()
+        addr1_id = dev1_result["InfraDevice"]["edges"][0]["node"]["primary_address"]["node"]["id"]
+        addr2_id = dev2_result["InfraDevice"]["edges"][0]["node"]["primary_address"]["node"]["id"]
+        assert addr1_id != addr2_id
 
-        assert retrieved1.primary_address.peer is not None
-        assert retrieved2.primary_address.peer is not None
-        assert retrieved1.primary_address.peer.id != retrieved2.primary_address.peer.id
-
-        addr1 = await client.get(kind="IpamIPAddress", id=retrieved1.primary_address.peer.id)
-        addr2 = await client.get(kind="IpamIPAddress", id=retrieved2.primary_address.peer.id)
-        assert addr1.address.value != addr2.address.value
+        addr1_result = await client.execute_graphql(query=QUERY_IP_ADDRESS, variables={"id": addr1_id})
+        addr2_result = await client.execute_graphql(query=QUERY_IP_ADDRESS, variables={"id": addr2_id})
+        assert (
+            addr1_result["IpamIPAddress"]["edges"][0]["node"]["address"]["value"]
+            != addr2_result["IpamIPAddress"]["edges"][0]["node"]["address"]["value"]
+        )
 
     async def test_template_cannot_set_both_direct_and_pool_on_create(
         self,
-        static_ip_address: InfrahubNode,
-        ip_address_pool: InfrahubNode,
+        static_ip_address: Node,
+        ip_address_pool: Node,
         client: InfrahubClient,
     ) -> None:
-        template = await client.create(
-            kind="TemplateInfraDevice",
-            template_name="device-both-relationships",
-            primary_address=static_ip_address.id,
-            primary_address_from_resource_pool=ip_address_pool.id,
-        )
-
         with pytest.raises(GraphQLError) as exc:
-            await template.save()
+            await client.execute_graphql(
+                query="""
+                mutation CreateTemplateWithBoth($address_id: String!, $pool_id: String!) {
+                    TemplateInfraDeviceCreate(
+                        data: {
+                            template_name: { value: "device-both-relationships" }
+                            primary_address: { id: $address_id }
+                            primary_address_from_resource_pool: { id: $pool_id }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"address_id": static_ip_address.id, "pool_id": ip_address_pool.id},
+            )
 
         assert "Cannot set 'primary_address' when 'primary_address_from_resource_pool' is already set" in str(exc.value)
 
     async def test_template_cannot_add_pool_when_direct_exists(
-        self,
-        static_ip_address: InfrahubNode,
-        ip_address_pool: InfrahubNode,
-        ip_namespace: InfrahubNode,
-        ip_prefix: InfrahubNode,
-        client: InfrahubClient,
+        self, db: InfrahubDatabase, ip_address_pool: Node, ip_namespace: Node, ip_prefix: Node, client: InfrahubClient
     ) -> None:
-        another_address = await client.create(
-            kind="IpamIPAddress", address="10.20.30.150/24", ip_prefix=ip_prefix.id, ip_namespace=ip_namespace.id
-        )
-        await another_address.save()
+        address = await Node.init(db=db, schema="IpamIPAddress")
+        await address.new(db=db, address="10.20.30.150/24", ip_prefix=ip_prefix, ip_namespace=ip_namespace)
+        await address.save(db=db)
 
-        template = await client.create(
-            kind="TemplateInfraDevice",
-            template_name="device-direct-then-pool",
-            primary_address=another_address.id,
-        )
-        await template.save()
-
-        retrieved = await client.get(kind="TemplateInfraDevice", id=template.id)
-        retrieved.primary_address_from_resource_pool = ip_address_pool.id
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(db=db, template_name="device-direct-then-pool", primary_address=address)
+        await template.save(db=db)
 
         with pytest.raises(GraphQLError) as exc:
-            await retrieved.update()
+            await client.execute_graphql(
+                query="""
+                mutation AddPoolToTemplate($id: String!, $pool_id: String!) {
+                    TemplateInfraDeviceUpdate(
+                        data: {
+                            id: $id
+                            primary_address_from_resource_pool: { id: $pool_id }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"id": template.id, "pool_id": ip_address_pool.id},
+            )
 
         assert "Templates can only use one of: direct relationship or resource pool allocation" in str(exc.value)
 
     async def test_template_cannot_add_direct_when_pool_exists(
-        self, static_ip_address: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+        self, db: InfrahubDatabase, static_ip_address: Node, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        template = await client.create(
-            kind="TemplateInfraDevice",
-            template_name="device-pool-then-direct",
-            primary_address_from_resource_pool=ip_address_pool.id,
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(
+            db=db, template_name="device-pool-then-direct", primary_address_from_resource_pool=ip_address_pool
         )
-        await template.save()
-
-        retrieved = await client.get(kind="TemplateInfraDevice", id=template.id)
-        retrieved.primary_address = static_ip_address.id
+        await template.save(db=db)
 
         with pytest.raises(GraphQLError) as exc:
-            await retrieved.update()
+            await client.execute_graphql(
+                query="""
+                mutation AddDirectToTemplate($id: String!, $address_id: String!) {
+                    TemplateInfraDeviceUpdate(
+                        data: {
+                            id: $id
+                            primary_address: { id: $address_id }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"id": template.id, "address_id": static_ip_address.id},
+            )
 
         assert "Templates can only use one of: direct relationship or resource pool allocation" in str(exc.value)
 
     async def test_template_can_add_direct_when_pool_is_unset(
-        self, static_ip_address: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+        self, db: InfrahubDatabase, static_ip_address: Node, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        template = await client.create(
-            kind="TemplateInfraDevice",
-            template_name="device-pool-replaced-by-direct",
-            primary_address_from_resource_pool=ip_address_pool.id,
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(
+            db=db, template_name="device-pool-replaced-by-direct", primary_address_from_resource_pool=ip_address_pool
         )
-        await template.save()
+        await template.save(db=db)
 
-        retrieved = await client.get(kind="TemplateInfraDevice", id=template.id)
-        retrieved.primary_address_from_resource_pool = None
-        retrieved.primary_address = static_ip_address.id
-
-        await retrieved.update()
-
-        updated = await client.get(kind="TemplateInfraDevice", id=template.id)
-        await updated.primary_address.fetch()
-        assert updated.primary_address.peer is not None
-        assert updated.primary_address.peer.id == static_ip_address.id
-        assert updated.primary_address_from_resource_pool.id is None
+        update_result = await client.execute_graphql(
+            query="""
+            mutation SwapPoolToDirect($id: String!, $address_id: String!) {
+                TemplateInfraDeviceUpdate(
+                    data: {
+                        id: $id
+                        primary_address_from_resource_pool: null
+                        primary_address: { id: $address_id }
+                    }
+                ) {
+                    ok
+                    object {
+                        id
+                        primary_address { node { id } }
+                        primary_address_from_resource_pool { node { id } }
+                    }
+                }
+            }
+            """,
+            variables={"id": template.id, "address_id": static_ip_address.id},
+        )
+        updated = update_result["TemplateInfraDeviceUpdate"]["object"]
+        assert updated["primary_address"]["node"]["id"] == static_ip_address.id
+        assert updated["primary_address_from_resource_pool"]["node"] is None
 
     async def test_template_can_add_pool_when_direct_is_unset(
-        self, static_ip_address: InfrahubNode, ip_address_pool: InfrahubNode, client: InfrahubClient
+        self, db: InfrahubDatabase, static_ip_address: Node, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        template = await client.create(
-            kind="TemplateInfraDevice",
-            template_name="device-direct-replaced-by-pool",
-            primary_address=static_ip_address.id,
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(db=db, template_name="device-direct-replaced-by-pool", primary_address=static_ip_address)
+        await template.save(db=db)
+
+        update_result = await client.execute_graphql(
+            query="""
+            mutation SwapDirectToPool($id: String!, $pool_id: String!) {
+                TemplateInfraDeviceUpdate(
+                    data: {
+                        id: $id
+                        primary_address: null
+                        primary_address_from_resource_pool: { id: $pool_id }
+                    }
+                ) {
+                    ok
+                    object {
+                        id
+                        primary_address { node { id } }
+                        primary_address_from_resource_pool { node { id } }
+                    }
+                }
+            }
+            """,
+            variables={"id": template.id, "pool_id": ip_address_pool.id},
         )
-        await template.save()
-
-        retrieved = await client.get(kind="TemplateInfraDevice", id=template.id)
-        retrieved.primary_address = None
-        retrieved.primary_address_from_resource_pool = ip_address_pool.id
-
-        await retrieved.update()
-
-        updated = await client.get(kind="TemplateInfraDevice", id=template.id)
-        assert updated.primary_address.id is None
-        await updated.primary_address_from_resource_pool.fetch()
-        assert updated.primary_address_from_resource_pool.peer is not None
-        assert updated.primary_address_from_resource_pool.peer.id == ip_address_pool.id
+        updated = update_result["TemplateInfraDeviceUpdate"]["object"]
+        assert updated["primary_address"]["node"] is None
+        assert updated["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
 
 
 class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def load_schema(self, db: InfrahubDatabase, initialize_registry: None, client: InfrahubClient) -> None:
-        schema = {
-            "version": "1.0",
-            "nodes": [
-                {
-                    "name": "Rack",
-                    "namespace": "Infra",
-                    "generate_template": True,
-                    "attributes": [
-                        {"name": "name", "kind": "Text", "unique": True},
-                        {"name": "location", "kind": "Text", "optional": True},
-                        {"name": "slot_id", "kind": "Number", "optional": True},
+    async def device_schema(self, db: InfrahubDatabase, initialize_registry: None) -> None:
+        schema = SchemaRoot(
+            version="1.0",
+            nodes=[
+                NodeSchema(
+                    name="Rack",
+                    namespace="Infra",
+                    generate_template=True,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                        AttributeSchema(name="location", kind="Text", optional=True),
+                        AttributeSchema(name="slot_id", kind="Number", optional=True),
                     ],
-                },
+                ),
             ],
-        }
-        response = await client.schema.load(schemas=[schema])
-        assert response.schema_updated
-        assert not response.errors
+        )
+        await load_schema(db, schema=schema, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def slot_pool(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
-        pool = await client.create(
-            kind=InfrahubKind.NUMBERPOOL,
+    async def slot_pool(self, db: InfrahubDatabase, device_schema: None) -> Node:
+        pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(
+            db=db,
             name="slot-pool",
             node="InfraRack",
             node_attribute="slot_id",
             start_range=1,
             end_range=100,
         )
-        await pool.save()
+        await pool.save(db=db)
         return pool
 
     @pytest.fixture(scope="class")
-    async def template_with_static_slot(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
-        template = await client.create(
-            kind="TemplateInfraRack", template_name="rack-static-slot", location="datacenter-1", slot_id=50
-        )
-        await template.save()
+    async def template_with_static_slot(self, db: InfrahubDatabase, device_schema: None) -> Node:
+        template = await Node.init(db=db, schema="TemplateInfraRack")
+        await template.new(db=db, template_name="rack-static-slot", location="datacenter-1", slot_id=50)
+        await template.save(db=db)
         return template
 
     @pytest.fixture(scope="class")
     async def template_with_pool_slot(
-        self, client: InfrahubClient, slot_pool: InfrahubNode, load_schema: None
+        self, client: InfrahubClient, slot_pool: Node, device_schema: None
     ) -> InfrahubNode:
+        sdk_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=slot_pool.id)
         template = await client.create(
-            kind="TemplateInfraRack", template_name="rack-pool-slot", location="datacenter-1", slot_id=slot_pool
+            kind="TemplateInfraRack",
+            template_name="rack-pool-slot",
+            location="datacenter-1",
+            slot_id=sdk_pool,
         )
         await template.save()
         return template
 
     async def test_template_with_pool_stores_reference_not_value(
-        self, template_with_pool_slot: InfrahubNode, slot_pool: InfrahubNode, client: InfrahubClient
+        self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
     ) -> None:
         """Template with from_pool should store reference without allocating a value."""
-        retrieved = await client.get(kind="TemplateInfraRack", id=template_with_pool_slot.id)
-        assert retrieved.template_name.value == "rack-pool-slot"
-        assert retrieved.slot_id.value is None
+        result = await client.execute_graphql(
+            query="""
+            query GetTemplateRack($id: ID!) {
+                TemplateInfraRack(ids: [$id]) {
+                    edges {
+                        node {
+                            template_name { value }
+                            slot_id { value }
+                        }
+                    }
+                }
+            }
+            """,
+            variables={"id": template_with_pool_slot.id},
+        )
+        template = result["TemplateInfraRack"]["edges"][0]["node"]
+        assert template["template_name"]["value"] == "rack-pool-slot"
+        assert template["slot_id"]["value"] is None
 
     async def test_rack_from_template_with_static_slot(
-        self, template_with_static_slot: InfrahubNode, client: InfrahubClient
+        self, template_with_static_slot: Node, client: InfrahubClient
     ) -> None:
         """Static value from template should have the template as source."""
-        rack = await client.create(
-            kind="InfraRack", name="rack-from-static-template", object_template=template_with_static_slot.id
+        create_result = await client.execute_graphql(
+            query=CREATE_RACK_FROM_TEMPLATE,
+            variables={"name": "rack-from-static-template", "template_id": template_with_static_slot.id},
         )
-        await rack.save()
+        rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        retrieved = await client.get(kind="InfraRack", id=rack.id, include=["slot_id"], property=True)
-        assert retrieved.name.value == "rack-from-static-template"
-        assert retrieved.slot_id.value == 50
-        assert retrieved.slot_id.source.id == template_with_static_slot.id
+        result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack_id})
+        rack = result["InfraRack"]["edges"][0]["node"]
+        assert rack["name"]["value"] == "rack-from-static-template"
+        assert rack["slot_id"]["value"] == 50
+        assert rack["slot_id"]["source"]["id"] == template_with_static_slot.id
 
     async def test_rack_from_template_with_pool_allocates_slot(
-        self, template_with_pool_slot: InfrahubNode, slot_pool: InfrahubNode, client: InfrahubClient
+        self, template_with_pool_slot: InfrahubNode, slot_pool: Node, client: InfrahubClient
     ) -> None:
         """Object created from template should allocate from pool."""
-        rack = await client.create(
-            kind="InfraRack", name="rack-from-pool-template", object_template=template_with_pool_slot.id
+        create_result = await client.execute_graphql(
+            query=CREATE_RACK_FROM_TEMPLATE,
+            variables={"name": "rack-from-pool-template", "template_id": template_with_pool_slot.id},
         )
-        await rack.save()
+        rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        retrieved = await client.get(kind="InfraRack", id=rack.id, include=["slot_id"], property=True)
-        assert retrieved.name.value == "rack-from-pool-template"
-        assert retrieved.slot_id.value is not None
-        assert 1 <= retrieved.slot_id.value <= 100
-        assert retrieved.slot_id.source.id == slot_pool.id
+        result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack_id})
+        rack = result["InfraRack"]["edges"][0]["node"]
+        assert rack["name"]["value"] == "rack-from-pool-template"
+        assert rack["slot_id"]["value"] is not None
+        assert 1 <= rack["slot_id"]["value"] <= 100
+        assert rack["slot_id"]["source"]["id"] == slot_pool.id
 
     async def test_rack_explicit_slot_overrides_pool_template(
         self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
     ) -> None:
         """User-provided slot value should override pool allocation."""
-        rack = await client.create(
-            kind="InfraRack",
-            name="rack-with-explicit-slot",
-            object_template=template_with_pool_slot.id,
-            slot_id=999,
+        create_result = await client.execute_graphql(
+            query="""
+            mutation CreateRackWithSlot($name: String!, $template_id: String!, $slot_id: BigInt!) {
+                InfraRackCreate(
+                    data: {
+                        name: { value: $name }
+                        object_template: { id: $template_id }
+                        slot_id: { value: $slot_id }
+                    }
+                ) {
+                    ok
+                    object { id }
+                }
+            }
+            """,
+            variables={
+                "name": "rack-with-explicit-slot",
+                "template_id": template_with_pool_slot.id,
+                "slot_id": 999,
+            },
         )
-        await rack.save()
+        rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        retrieved = await client.get(kind="InfraRack", id=rack.id)
-        assert retrieved.slot_id.value == 999
+        result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack_id})
+        rack = result["InfraRack"]["edges"][0]["node"]
+        assert rack["slot_id"]["value"] == 999
 
     async def test_multiple_racks_from_pool_template_get_unique_slots(
         self, template_with_pool_slot: InfrahubNode, client: InfrahubClient
     ) -> None:
         """Multiple objects from same pool template should get unique slot allocations."""
-        rack1 = await client.create(
-            kind="InfraRack", name="rack-pool-unique-1", object_template=template_with_pool_slot.id
+        result1 = await client.execute_graphql(
+            query=CREATE_RACK_FROM_TEMPLATE,
+            variables={"name": "rack-pool-unique-1", "template_id": template_with_pool_slot.id},
         )
-        await rack1.save()
+        rack1_id = result1["InfraRackCreate"]["object"]["id"]
 
-        rack2 = await client.create(
-            kind="InfraRack", name="rack-pool-unique-2", object_template=template_with_pool_slot.id
+        result2 = await client.execute_graphql(
+            query=CREATE_RACK_FROM_TEMPLATE,
+            variables={"name": "rack-pool-unique-2", "template_id": template_with_pool_slot.id},
         )
-        await rack2.save()
+        rack2_id = result2["InfraRackCreate"]["object"]["id"]
 
-        retrieved1 = await client.get(kind="InfraRack", id=rack1.id)
-        retrieved2 = await client.get(kind="InfraRack", id=rack2.id)
+        rack1_result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack1_id})
+        rack2_result = await client.execute_graphql(query=QUERY_RACK_WITH_SLOT, variables={"id": rack2_id})
 
-        assert retrieved1.slot_id.value is not None
-        assert retrieved2.slot_id.value is not None
-        assert retrieved1.slot_id.value != retrieved2.slot_id.value
+        slot1 = rack1_result["InfraRack"]["edges"][0]["node"]["slot_id"]["value"]
+        slot2 = rack2_result["InfraRack"]["edges"][0]["node"]["slot_id"]["value"]
+        assert slot1 is not None
+        assert slot2 is not None
+        assert slot1 != slot2
 
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
@@ -477,161 +667,160 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
     """
 
     @pytest.fixture(scope="class")
-    async def load_schema(self, db: InfrahubDatabase, initialize_registry: None, client: InfrahubClient) -> None:
-        schema = {
-            "version": "1.0",
-            "nodes": [
-                {"name": "IPAddress", "namespace": "Ipam", "inherit_from": ["BuiltinIPAddress"]},
-                {"name": "IPPrefix", "namespace": "Ipam", "inherit_from": ["BuiltinIPPrefix"]},
-                {
-                    "name": "Device",
-                    "namespace": "Infra",
-                    "generate_template": True,
-                    "attributes": [
-                        {"name": "name", "kind": "Text", "unique": True},
-                        {"name": "rack_unit", "kind": "Number", "optional": True},
+    async def device_schema(self, db: InfrahubDatabase, initialize_registry: None) -> None:
+        schema = SchemaRoot(
+            version="1.0",
+            nodes=[
+                NodeSchema(name="IPAddress", namespace="Ipam", inherit_from=["BuiltinIPAddress"]),
+                NodeSchema(name="IPPrefix", namespace="Ipam", inherit_from=["BuiltinIPPrefix"]),
+                NodeSchema(
+                    name="Device",
+                    namespace="Infra",
+                    generate_template=True,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                        AttributeSchema(name="rack_unit", kind="Number", optional=True),
                     ],
-                    "relationships": [
-                        {
-                            "name": "mgmt_address",
-                            "peer": "IpamIPAddress",
-                            "cardinality": "one",
-                            "optional": True,
-                        },
-                        {
-                            "name": "interfaces",
-                            "peer": "InfraInterface",
-                            "cardinality": "many",
-                            "kind": "Component",
-                            "optional": True,
-                        },
+                    relationships=[
+                        RelationshipSchema(
+                            name="mgmt_address",
+                            peer="IpamIPAddress",
+                            cardinality=RelationshipCardinality.ONE,
+                            optional=True,
+                        ),
+                        RelationshipSchema(
+                            name="interfaces",
+                            peer="InfraInterface",
+                            cardinality=RelationshipCardinality.MANY,
+                            kind=RelationshipKind.COMPONENT,
+                            optional=True,
+                        ),
                     ],
-                },
-                {
-                    "name": "Interface",
-                    "namespace": "Infra",
-                    "attributes": [
-                        {"name": "name", "kind": "Text"},
-                        {"name": "vlan_id", "kind": "Number", "optional": True},
+                ),
+                NodeSchema(
+                    name="Interface",
+                    namespace="Infra",
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text"),
+                        AttributeSchema(name="vlan_id", kind="Number", optional=True),
                     ],
-                    "relationships": [
-                        {
-                            "name": "device",
-                            "peer": "InfraDevice",
-                            "cardinality": "one",
-                            "kind": "Parent",
-                            "optional": False,
-                        },
-                        {
-                            "name": "prefix",
-                            "peer": "IpamIPPrefix",
-                            "cardinality": "one",
-                            "optional": True,
-                        },
+                    relationships=[
+                        RelationshipSchema(
+                            name="device",
+                            peer="InfraDevice",
+                            cardinality=RelationshipCardinality.ONE,
+                            kind=RelationshipKind.PARENT,
+                            optional=False,
+                        ),
+                        RelationshipSchema(
+                            name="prefix", peer="IpamIPPrefix", cardinality=RelationshipCardinality.ONE, optional=True
+                        ),
                     ],
-                },
+                ),
             ],
-        }
-        response = await client.schema.load(schemas=[schema])
-        assert response.schema_updated
-        assert not response.errors
+        )
+        await load_schema(db, schema=schema, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def ip_namespace(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
-        ns = await client.create(kind=InfrahubKind.NAMESPACE, name="all-pools-namespace")
-        await ns.save()
+    async def ip_namespace(self, db: InfrahubDatabase, device_schema: None) -> Node:
+        ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+        await ns.new(db=db, name="all-pools-namespace")
+        await ns.save(db=db)
         return ns
 
     @pytest.fixture(scope="class")
-    async def mgmt_prefix(self, client: InfrahubClient, ip_namespace: InfrahubNode) -> InfrahubNode:
+    async def mgmt_prefix(self, db: InfrahubDatabase, ip_namespace: Node) -> Node:
         """Management IP prefix: 10.0.0.0/24 for device management addresses."""
-        prefix = await client.create(kind="IpamIPPrefix", prefix="10.0.0.0/24", ip_namespace=ip_namespace.id)
-        await prefix.save()
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="10.0.0.0/24", ip_namespace=ip_namespace)
+        await prefix.save(db=db)
         return prefix
 
     @pytest.fixture(scope="class")
-    async def mgmt_address_pool(
-        self, client: InfrahubClient, ip_namespace: InfrahubNode, mgmt_prefix: InfrahubNode
-    ) -> InfrahubNode:
+    async def mgmt_address_pool(self, db: InfrahubDatabase, ip_namespace: Node, mgmt_prefix: Node) -> Node:
         """IP Address Pool for device management IPs."""
-        pool = await client.create(
-            kind=InfrahubKind.IPADDRESSPOOL,
+        pool = await Node.init(db=db, schema=InfrahubKind.IPADDRESSPOOL)
+        await pool.new(
+            db=db,
             name="mgmt-address-pool",
-            resources=[mgmt_prefix.id],
-            ip_namespace=ip_namespace.id,
+            resources=[mgmt_prefix],
+            ip_namespace=ip_namespace,
             default_address_type="IpamIPAddress",
         )
-        await pool.save()
+        await pool.save(db=db)
         return pool
 
     @pytest.fixture(scope="class")
-    async def interface_supernet(self, client: InfrahubClient, ip_namespace: InfrahubNode) -> InfrahubNode:
+    async def interface_supernet(self, db: InfrahubDatabase, ip_namespace: Node) -> Node:
         """Supernet for interface prefixes: 172.16.0.0/16."""
-        prefix = await client.create(
-            kind="IpamIPPrefix", prefix="172.16.0.0/16", ip_namespace=ip_namespace.id, is_pool=True
-        )
-        await prefix.save()
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="172.16.0.0/16", ip_namespace=ip_namespace, is_pool=True)
+        await prefix.save(db=db)
         return prefix
 
     @pytest.fixture(scope="class")
-    async def interface_prefix_pool(
-        self, client: InfrahubClient, ip_namespace: InfrahubNode, interface_supernet: InfrahubNode
-    ) -> InfrahubNode:
+    async def interface_prefix_pool(self, db: InfrahubDatabase, ip_namespace: Node, interface_supernet: Node) -> Node:
         """IP Prefix Pool for interface /30 prefixes."""
-        pool = await client.create(
-            kind=InfrahubKind.IPPREFIXPOOL,
+        pool = await Node.init(db=db, schema=InfrahubKind.IPPREFIXPOOL)
+        await pool.new(
+            db=db,
             name="interface-prefix-pool",
-            resources=[interface_supernet.id],
-            ip_namespace=ip_namespace.id,
+            resources=[interface_supernet],
+            ip_namespace=ip_namespace,
             default_prefix_length=30,
             default_prefix_type="IpamIPPrefix",
         )
-        await pool.save()
+        await pool.save(db=db)
         return pool
 
     @pytest.fixture(scope="class")
-    async def vlan_pool(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
+    async def vlan_pool(self, db: InfrahubDatabase, device_schema: None) -> Node:
         """Number Pool for VLAN IDs (100-999)."""
-        pool = await client.create(
-            kind=InfrahubKind.NUMBERPOOL,
+        pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(
+            db=db,
             name="vlan-pool",
             node="InfraInterface",
             node_attribute="vlan_id",
             start_range=100,
             end_range=999,
         )
-        await pool.save()
+        await pool.save(db=db)
         return pool
 
     @pytest.fixture(scope="class")
-    async def rack_unit_pool(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
+    async def rack_unit_pool(self, db: InfrahubDatabase, device_schema: None) -> Node:
         """Number Pool for device rack units (1-48)."""
-        pool = await client.create(
-            kind=InfrahubKind.NUMBERPOOL,
+        pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(
+            db=db,
             name="rack-unit-pool",
             node="InfraDevice",
             node_attribute="rack_unit",
             start_range=1,
             end_range=48,
         )
-        await pool.save()
+        await pool.save(db=db)
         return pool
 
     @pytest.fixture(scope="class")
     async def device_template_with_interfaces(
         self,
         client: InfrahubClient,
-        mgmt_address_pool: InfrahubNode,
-        interface_prefix_pool: InfrahubNode,
-        vlan_pool: InfrahubNode,
-        rack_unit_pool: InfrahubNode,
+        mgmt_address_pool: Node,
+        interface_prefix_pool: Node,
+        vlan_pool: Node,
+        rack_unit_pool: Node,
     ) -> InfrahubNode:
         """Device template with 8 interface templates, all using pool allocations."""
+        sdk_rack_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=rack_unit_pool.id)
+        sdk_vlan_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=vlan_pool.id)
+
         device_template = await client.create(
             kind="TemplateInfraDevice",
             template_name="device-with-8-interfaces",
             mgmt_address_from_resource_pool=mgmt_address_pool.id,
-            rack_unit=rack_unit_pool,
+            rack_unit=sdk_rack_pool,
         )
         await device_template.save()
 
@@ -640,8 +829,8 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
                 kind="TemplateInfraInterface",
                 template_name=f"interface-eth{i}",
                 name=f"eth{i}",
-                vlan_id=vlan_pool,
-                device=device_template.id,
+                vlan_id=sdk_vlan_pool,
+                device=device_template,
                 prefix_from_resource_pool=interface_prefix_pool.id,
             )
             await interface_template.save()
@@ -663,10 +852,10 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
     async def test_devices_from_template_get_unique_allocations(
         self,
         device_template_with_interfaces: InfrahubNode,
-        mgmt_address_pool: InfrahubNode,
-        rack_unit_pool: InfrahubNode,
-        vlan_pool: InfrahubNode,
-        interface_prefix_pool: InfrahubNode,
+        mgmt_address_pool: Node,
+        rack_unit_pool: Node,
+        vlan_pool: Node,
+        interface_prefix_pool: Node,
         client: InfrahubClient,
     ) -> None:
         """Each device from template should get unique allocations from all pool types."""
@@ -698,7 +887,7 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
             mgmt_addr = await client.get(kind="IpamIPAddress", id=device.mgmt_address.peer.id)
             mgmt_addresses.add(mgmt_addr.address.value)
 
-            # Device rack_unit from number pool (attribute source is NodeProperty with .id)
+            # Device rack_unit from number pool
             assert device.rack_unit.value is not None, "Device should have rack_unit from number pool"
             assert device.rack_unit.source.id == rack_unit_pool.id, (
                 f"rack_unit source should be the number pool, got {device.rack_unit.source}"
@@ -710,7 +899,7 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
             assert len(interfaces) == 8, "Device should have 8 interfaces from template"
 
             for iface in interfaces:
-                # Interface VLAN from number pool (attribute source is NodeProperty with .id)
+                # Interface VLAN from number pool
                 assert iface.vlan_id.value is not None, "Interface should have vlan_id from number pool"
                 assert iface.vlan_id.source.id == vlan_pool.id, (
                     f"vlan_id source should be the VLAN number pool, got {iface.vlan_id.source}"
