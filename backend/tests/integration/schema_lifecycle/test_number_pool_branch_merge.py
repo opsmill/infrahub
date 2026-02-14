@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -150,13 +151,13 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
             error_message = str(exc_info.value)
             assert "The pool for rack_unit has not been provisioned yet" in error_message
 
-    async def test_validator_creates_single_pool(
+    async def test_synchronizer_creates_single_pool(
         self,
         db: InfrahubDatabase,
         schemas_loaded: None,
     ) -> None:
         """Validate that SchemaNumberPoolSynchronizer creates exactly one CoreNumberPool after schemas are loaded."""
-        # Run the validator
+        # Run the synchronizer
         upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
@@ -183,7 +184,7 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
         ]
 
         assert len(server_pools) == 1, (
-            f"Expected exactly 1 CoreNumberPool for {SERVER_KIND}.rack_unit after running validator, "
+            f"Expected exactly 1 CoreNumberPool for {SERVER_KIND}.rack_unit after running synchronizer, "
             f"found {len(server_pools)}"
         )
 
@@ -551,6 +552,7 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
+        run_synchronizer_for_generic: str,
         run_synchronizer_after_node_added: None,
     ) -> None:
         """Verify that instances of the inheriting node get values from the shared pool."""
@@ -564,6 +566,7 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         assert 1000 <= incident.ticket_number.value <= 9999, (
             f"ticket_number value {incident.ticket_number.value} is outside pool range 1000-9999"
         )
+        assert incident.ticket_number.source_id == run_synchronizer_for_generic
 
 
 class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
@@ -606,29 +609,19 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def generic_with_numberpool(self) -> dict[str, Any]:
-        return {
-            "version": "1.0",
-            "generics": [
-                {
-                    "name": "BaseEquipment",
-                    "namespace": "Testing",
-                    "include_in_menu": False,
-                    "label": "Base Equipment",
-                    "attributes": [
-                        {"name": "description", "kind": "Text"},
-                        {
-                            "name": "asset_tag",
-                            "kind": "NumberPool",
-                            "optional": False,
-                            "read_only": True,
-                            "unique": True,
-                            "parameters": {"start_range": 100000, "end_range": 999999},
-                        },
-                    ],
-                }
-            ],
-        }
+    def generic_with_numberpool(self, generic_without_numberpool: dict[str, Any]) -> dict[str, Any]:
+        generic_with_numberpool = deepcopy(generic_without_numberpool)
+        generic_with_numberpool["generics"][0]["attributes"].append(
+            {
+                "name": "asset_tag",
+                "kind": "NumberPool",
+                "optional": False,
+                "read_only": True,
+                "unique": True,
+                "parameters": {"start_range": 100000, "end_range": 999999},
+            },
+        )
+        return generic_with_numberpool
 
     @pytest.fixture(scope="class")
     async def load_initial_schema(
@@ -752,8 +745,13 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         await device.new(db=db, hostname="router-01", description="Core router")
         await device.save(db=db)
 
+        node_schema = registry.schema.get_node_schema(name="TestingNetworkDevice", branch=default_branch.name)
+        node_attr = node_schema.get_attribute(name="asset_tag")
+        expected_pool_id = node_attr.parameters.number_pool_id
+
         # The asset_tag should have been allocated from the pool
         assert device.asset_tag.value is not None
         assert 100000 <= device.asset_tag.value <= 999999, (
             f"asset_tag value {device.asset_tag.value} is outside pool range 100000-999999"
         )
+        assert device.asset_tag.source_id == expected_pool_id
