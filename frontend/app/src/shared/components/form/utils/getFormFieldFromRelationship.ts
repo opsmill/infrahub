@@ -88,7 +88,7 @@ export const getFormFieldFromRelationship = ({
         ? {
             kind: poolKind,
             defaultAllocatedObjectKind: peerSchema.kind as string,
-            ...(hasFromPoolRelationship ? { fromPoolRelationshipName: fromPoolName } : {}),
+            fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
           }
         : undefined,
     defaultValue: getRelationshipDefaultValue({

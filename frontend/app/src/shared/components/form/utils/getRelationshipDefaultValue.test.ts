@@ -295,6 +295,139 @@ describe("getRelationshipDefaultValue", () => {
       expect(defaultValue).to.deep.equal({ source: null, value: null });
     });
 
+    it("returns pool value from _from_resource_pool relationship when main node is null", () => {
+      // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({
+          kind: "CoreIPAddressPool",
+          display_labels: ["name__value"],
+        }),
+      ]);
+
+      const relationshipName = "ip_address";
+      const objectData = {
+        ip_address: {
+          node: null,
+          properties: {
+            is_protected: null,
+            owner: null,
+            source: null,
+            updated_at: null,
+          },
+        } as NodeRelationshipOneWithMetadata,
+        ip_address_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My IP Pool",
+            __typename: "CoreIPAddressPool",
+            name: { value: "My IP Pool" },
+          },
+          properties: {
+            is_protected: null,
+            owner: null,
+            source: null,
+            updated_at: null,
+          },
+        } as NodeRelationshipOneWithMetadata,
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectData,
+        objectTemplate: null,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          label: "My IP Pool",
+          id: "pool-id",
+          kind: "CoreIPAddressPool",
+        },
+        value: {
+          id: "pool-id",
+          display_label: "My IP Pool",
+          __typename: "CoreIPAddressPool",
+          name: { value: "My IP Pool" },
+        },
+      });
+    });
+
+    it("returns null when main node is null and _from_resource_pool node is also null", () => {
+      // GIVEN
+      const relationshipName = "ip_address";
+      const objectData = {
+        ip_address: {
+          node: null,
+          properties: {
+            is_protected: null,
+            owner: null,
+            source: null,
+            updated_at: null,
+          },
+        } as NodeRelationshipOneWithMetadata,
+        ip_address_from_resource_pool: {
+          node: null,
+          properties: {
+            is_protected: null,
+            owner: null,
+            source: null,
+            updated_at: null,
+          },
+        } as NodeRelationshipOneWithMetadata,
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectData,
+        objectTemplate: null,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
+
+    it("does not consult _from_resource_pool when main relationship has a node", () => {
+      // GIVEN
+      const relationshipName = "ip_address";
+      const objectData = {
+        ip_address: buildRelationshipOneData(),
+        ip_address_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My IP Pool",
+            __typename: "CoreIPAddressPool",
+          },
+          properties: {
+            is_protected: null,
+            owner: null,
+            source: null,
+            updated_at: null,
+          },
+        } as NodeRelationshipOneWithMetadata,
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectData,
+        objectTemplate: null,
+        relationshipName,
+      });
+
+      // THEN - returns user value from main relationship, not pool
+      expect(defaultValue).to.deep.equal({
+        source: { type: "user" },
+        value: {
+          id: "relationship-one-id",
+          display_label: "Relationship One",
+          __typename: "RelationshipOne",
+        },
+      });
+    });
+
     it("returns profile value when relationship node is null and profile is provided", () => {
       // GIVEN
       const relationshipName = "my_relationship";

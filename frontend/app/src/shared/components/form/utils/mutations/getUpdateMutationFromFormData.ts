@@ -37,7 +37,11 @@ export const getUpdateMutationFromFormData = ({
     switch (fieldData.source?.type) {
       case "pool": {
         if (fromPoolField && "from_pool" in fieldData.value) {
-          return { ...acc, [field.name]: null, [fromPoolField]: { id: fieldData.value.from_pool.id } };
+          return {
+            ...acc,
+            [field.name]: null,
+            [fromPoolField]: { id: fieldData.value.from_pool.id },
+          };
         }
         return { ...acc, [field.name]: fieldData.value };
       }
