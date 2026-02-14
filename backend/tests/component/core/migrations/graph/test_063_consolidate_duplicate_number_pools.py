@@ -35,6 +35,7 @@ class TestMigration063:
         This mirrors the real bug where loading the same schema on multiple branches
         creates separate pools for the same node + node_attribute.
         """
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
         # Create all branches BEFORE loading any schemas
         branches = []
         for i in range(3):
@@ -146,7 +147,6 @@ class TestMigration063:
         default_branch: Branch,
         duplicate_pool_setup: dict,
     ) -> None:
-        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
         branches = duplicate_pool_setup["branches"]
         pool_uuids = duplicate_pool_setup["pool_uuids"]
         device_ids = duplicate_pool_setup["device_ids"]
