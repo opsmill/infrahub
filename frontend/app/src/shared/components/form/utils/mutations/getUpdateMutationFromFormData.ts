@@ -32,14 +32,23 @@ export const getUpdateMutationFromFormData = ({
       return acc;
     }
 
+    const fromPoolField = field.pool?.fromPoolRelationshipName;
+
     switch (fieldData.source?.type) {
       case "pool": {
+        if (fromPoolField && "from_pool" in fieldData.value) {
+          return { ...acc, [field.name]: null, [fromPoolField]: { id: fieldData.value.from_pool.id } };
+        }
         return { ...acc, [field.name]: fieldData.value };
       }
       case "user": {
         if (fieldData.value === null) {
           if (field.type === "relationship") {
-            return { ...acc, [field.name]: null };
+            return {
+              ...acc,
+              [field.name]: null,
+              ...(fromPoolField ? { [fromPoolField]: null } : {}),
+            };
           }
           return { ...acc, [field.name]: { value: null } };
         }
@@ -72,6 +81,7 @@ export const getUpdateMutationFromFormData = ({
             return {
               ...acc,
               [field.name]: { id: fieldData.value.id },
+              ...(fromPoolField ? { [fromPoolField]: null } : {}),
             };
           }
         }

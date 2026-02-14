@@ -1,6 +1,9 @@
 import * as R from "remeda";
 
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import {
+  DEFAULT_FORM_FIELD_VALUE,
+  FROM_RESOURCE_POOL_SUFFIX,
+} from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   FormRelationshipValue,
@@ -17,6 +20,7 @@ import type {
   NodeFields,
   NodeObject,
   NodeRelationship,
+  NodeRelationshipOneWithMetadata,
   NodeRelationshipWithMetadata,
 } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -49,12 +53,8 @@ export const getRelationshipDefaultValue = ({
     return { source: null, value: null };
   }
 
-  const relationshipData = objectData?.[relationshipName] as
-    | NodeRelationshipWithMetadata
-    | undefined;
-
   return (
-    getRelationshipValueFromUser(relationshipData) ??
+    getRelationshipValueFromUser(objectData, relationshipName) ??
     getRelationshipValueFromParent(schema, parentSchema, parentData, relationshipName) ??
     getRelationshipDefaultValueFromTemplate(objectTemplate, relationshipName) ??
     getRelationshipDefaultValueFromProfiles(relationshipName, profiles) ??
@@ -63,8 +63,12 @@ export const getRelationshipDefaultValue = ({
 };
 
 const getRelationshipValueFromUser = (
-  relationshipData: NodeRelationshipWithMetadata | undefined
+  objectData: NodeFields | null | undefined,
+  relationshipName: string
 ): RelationshipValueFromUser | RelationshipValueFromPool | null => {
+  if (!objectData) return null;
+
+  const relationshipData = objectData[relationshipName] as NodeRelationshipWithMetadata | undefined;
   if (!relationshipData) return null;
 
   if (isNodeRelationshipMany(relationshipData)) {
@@ -93,7 +97,22 @@ const getRelationshipValueFromUser = (
   }
 
   // Cardinality one
-  if (!relationshipData.node) return null;
+  if (!relationshipData.node) {
+    const resourceFormPoolRelationshipData = objectData[
+      relationshipName + FROM_RESOURCE_POOL_SUFFIX
+    ] as NodeRelationshipOneWithMetadata | undefined;
+
+    if (!resourceFormPoolRelationshipData?.node) return null;
+    return {
+      source: {
+        type: "pool",
+        label: getNodeLabel(resourceFormPoolRelationshipData.node),
+        id: resourceFormPoolRelationshipData.node.id,
+        kind: resourceFormPoolRelationshipData.node.__typename,
+      },
+      value: resourceFormPoolRelationshipData.node,
+    };
+  }
 
   const source = relationshipData.properties?.source;
   if (!source?.__typename) {

@@ -153,6 +153,7 @@ export type FormFieldProps = {
   pool?: {
     kind: string;
     defaultAllocatedObjectKind: string;
+    fromPoolRelationshipName?: string;
   };
   shouldUnregister?: boolean;
 };
