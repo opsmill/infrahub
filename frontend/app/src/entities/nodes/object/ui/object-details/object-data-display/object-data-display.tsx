@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 
 import SlideOver from "@/shared/components/display/slide-over";
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
@@ -11,6 +12,8 @@ import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/ob
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import type {
@@ -21,6 +24,7 @@ import type {
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
@@ -73,11 +77,24 @@ export function ObjectDataDisplay({
         const objectKind = objectSchema.kind!;
 
         if ("peer" in field) {
+          let relationshipData = fieldData as NodeRelationshipWithMetadata;
+
+          if (
+            isTemplateSchema(objectSchema) &&
+            isNodeRelationshipOne(relationshipData) &&
+            !relationshipData.node
+          ) {
+            const poolData = objectData[`${fieldName}${FROM_RESOURCE_POOL_SUFFIX}`];
+            if (isNodeRelationshipOne(poolData)) {
+              relationshipData = poolData;
+            }
+          }
+
           return (
             <ObjectRelationshipRow
               key={fieldName}
               relationshipSchema={field}
-              relationshipData={fieldData as NodeRelationshipWithMetadata}
+              relationshipData={relationshipData}
               objectKind={objectKind}
               permission={permission}
               onClickMetadata={onClickRelationshipMetadata}
@@ -144,6 +161,7 @@ function getRelationshipsVisibleInDataDisplay(
     (rel) =>
       isRelationshipVisibleInDetailedView(rel) &&
       rel.name !== "member_of_groups" &&
+      !isFromResourcePoolRelationship(rel.name) &&
       rel.kind !== "Profile"
   );
 }

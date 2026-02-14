@@ -1,3 +1,4 @@
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
 import type { RelationshipKind } from "@/entities/nodes/types";
 import type { RelationshipSchema } from "@/entities/schema/types";
 
@@ -9,7 +10,10 @@ const RELATIONSHIP_KIND_VISIBLE_IN_TAB: Array<RelationshipKind> = [
 ];
 
 export function isRelationshipVisibleInTab(relationshipSchema: RelationshipSchema): boolean {
-  if (relationshipSchema.cardinality === "one") {
+  if (
+    relationshipSchema.cardinality === "one" ||
+    isFromResourcePoolRelationship(relationshipSchema.name)
+  ) {
     return false;
   }
 
