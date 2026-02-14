@@ -63,6 +63,7 @@ from .m058_link_proposed_changes_to_diff_roots import Migration058
 from .m059_recompute_permission_display_labels import Migration059
 from .m060_template_number_pool_cleanup import Migration060
 from .m061_template_ip_pool_relationship_cleanup import Migration061
+from .m062_consolidate_duplicate_number_pools import Migration062
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -130,6 +131,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration059,
     Migration060,
     Migration061,
+    Migration062,
 ]
 
 
