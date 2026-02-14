@@ -118,6 +118,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
+        diff_coordinator.set_logger(log)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
         initial_from_time = Timestamp(obj.get_branched_from())
         merger = BranchMerger(
@@ -353,6 +354,22 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         # -------------------------------------------------------------
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
+
+        # -------------------------------------------------------------
+        # Set branch status to MERGED to make it read-only
+        # -------------------------------------------------------------
+        obj.status = BranchStatus.MERGED
+        await obj.save(db=db)
+        registry.branch[obj.name] = obj
+
+        # -------------------------------------------------------------
+        # Cancel any remaining open proposed changes for this merged branch
+        # -------------------------------------------------------------
+        await get_workflow().submit_workflow(
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES,
+            context=context,
+            parameters={"branch_name": obj.name},
+        )
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged

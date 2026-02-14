@@ -29,10 +29,18 @@ const styles = cva(
 export function Tooltip({
   children,
   message,
+  isOpen,
+  onOpenChange,
   ...props
 }: TooltipProps & { message: React.ReactNode }) {
   return (
-    <TooltipTrigger delay={200} closeDelay={300} shouldCloseOnPress={false}>
+    <TooltipTrigger
+      delay={200}
+      closeDelay={300}
+      shouldCloseOnPress={false}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+    >
       {children}
 
       <AriaTooltip

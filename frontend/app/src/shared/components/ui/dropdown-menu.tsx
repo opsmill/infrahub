@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/shared/components/ui/accordion";
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => (
@@ -132,3 +133,25 @@ export const DropdownMenuAccordionTrigger = forwardRef<
 });
 
 export const DropdownMenuAccordionContent = AccordionContent;
+
+export interface DropdownMenuItemWithTooltipProps
+  extends ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> {
+  tooltipContent?: TooltipProps["content"];
+  tooltipEnabled?: TooltipProps["enabled"];
+  side?: TooltipProps["side"];
+}
+
+export const DropdownMenuItemWithTooltip = forwardRef<
+  ElementRef<typeof DropdownMenuPrimitive.Item>,
+  DropdownMenuItemWithTooltipProps
+>(({ tooltipContent, tooltipEnabled, side = "left", disabled, children, ...props }, ref) => {
+  return (
+    <Tooltip enabled={tooltipEnabled && disabled} content={tooltipContent} side={side}>
+      <div>
+        <DropdownMenuItem ref={ref} disabled={disabled} {...props}>
+          {children}
+        </DropdownMenuItem>
+      </div>
+    </Tooltip>
+  );
+});

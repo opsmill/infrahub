@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 Infrahub supports two different types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint.
-- `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
+- `Custom Webhook` allows the ability to tie events to a [Transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
 
 # Managing webhooks
 
@@ -48,21 +48,21 @@ mutation {
   </TabItem>
 </Tabs>
 
-# Creating a custom webhook with a transform
+# Creating a custom webhook with a Transformation
 
 Custom webhooks allow you to transform event data before sending it to an external endpoint. This is useful when the receiving system expects a specific payload format, such as Slack, Microsoft Teams, GitHub Actions, or other third-party APIs.
 
-For general information about Python transforms, see the [Python transform guide](./python-transform.mdx). For details about webhook events and payloads, see the [webhooks topic](../topics/webhooks.mdx).
+For general information about Python Transformations, see the [Python Transformation guide](./python-transform.mdx). For details about webhook events and payloads, see the [webhooks topic](../topics/webhooks.mdx).
 
 :::note
 
-When using a transform with a webhook, the transform receives the webhook event data directly instead of executing its GraphQL query. The `query` attribute is still required on the transform class but is not used. See [GitHub issue #6650](https://github.com/opsmill/infrahub/issues/6650) for updates on this requirement.
+When using a Transformation with a webhook, the Transformation receives the webhook event data directly instead of executing its GraphQL query. The `query` attribute is still required on the Transformation class but is not used. See [GitHub issue #6650](https://github.com/opsmill/infrahub/issues/6650) for updates on this requirement.
 
 :::
 
-## 1. Create the Python transform
+## 1. Create the Python Transformation
 
-Create a Python file with a transform class that processes webhook event data. The transform receives a dictionary containing the event information:
+Create a Python file with a Transformation class that processes webhook event data. The Transformation receives a dictionary containing the event information:
 
 ```python title="transforms/slack_webhook.py"
 from typing import Any
@@ -110,7 +110,7 @@ See the [webhooks topic](../topics/webhooks.mdx) for example event payloads.
 
 ## 2. Create a placeholder GraphQL query
 
-Create a GraphQL query file. This query is required but not executed for webhook transforms:
+Create a GraphQL query file. This query is required but not executed for webhook Transformations:
 
 ```graphql title="queries/placeholder.gql"
 query PlaceholderQuery {
@@ -124,7 +124,7 @@ query PlaceholderQuery {
 
 ## 3. Configure .infrahub.yml
 
-Add the transform and query to your repository configuration:
+Add the Transformation and query to your repository configuration:
 
 ```yaml title=".infrahub.yml"
 # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
@@ -141,7 +141,7 @@ queries:
 
 ## 4. Add the repository to Infrahub
 
-Add your repository containing the transform to Infrahub. See the [repository guide](./repository.mdx) for instructions.
+Add your repository containing the Transformation to Infrahub. See the [repository guide](./repository.mdx) for instructions.
 
 ## 5. Create the custom webhook
 
@@ -163,7 +163,7 @@ Add your repository containing the transform to Infrahub. See the [repository gu
 
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
-First, get the transform ID:
+First, get the Transformation ID:
 
 ```graphql
 query GetTransform {
@@ -207,4 +207,4 @@ mutation CreateCustomWebhook {
 1. Make a change that triggers the configured event. For example, update a node if using `infrahub.node.updated`.
 2. Check that your external endpoint received the transformed payload.
 
-For troubleshooting, check the Infrahub logs for webhook delivery status and any transform errors.
+For troubleshooting, check the Infrahub logs for webhook delivery status and any Transformation errors.

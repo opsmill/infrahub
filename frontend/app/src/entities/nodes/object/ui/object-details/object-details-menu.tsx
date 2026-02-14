@@ -14,12 +14,13 @@ import {
   CopyToClipboardMenuItem,
   Menu,
   MenuItem,
+  MenuItemWithTooltip,
   MenuPopover,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
@@ -28,14 +29,13 @@ import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
-import {
-  RepositoryActionsMenu,
-  RepositoryActionsModal,
-} from "@/entities/repository/ui/repository-menu-actions";
+import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
+import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -59,8 +59,8 @@ export function ObjectDetailsMenu({
 
   const nodeLabel = getNodeLabel(objectData);
 
-  const isEditAllowed = permission.update.isAllowed;
-  const isDeleteAllowed = permission.delete.isAllowed;
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
+  const { isAllowed: isDeleteAllowed, message: deleteTooltipMessage } = permission.delete;
 
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
@@ -143,42 +143,55 @@ export function ObjectDetailsMenu({
             </MenuSection>
 
             {isRepository && (
-              <RepositoryActionsMenu
+              <RepositoryMenuSection
                 repositoryId={objectData.id}
+                objectSchema={objectSchema}
                 onCheckConnectivity={() => setIsCheckConnectivityOpen(true)}
+                permission={permission}
               />
             )}
 
             <MenuSection title="Manage">
-              <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
+              <MenuItemWithTooltip
+                isDisabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
+                onAction={() => setIsEditModalOpen(true)}
+              >
                 <PencilLineIcon className="size-3.5" />
                 <span>Edit</span>
-              </MenuItem>
+              </MenuItemWithTooltip>
 
-              <MenuItem
+              <MenuItemWithTooltip
                 isDisabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
                 onAction={() => setIsManageGroupsDrawerOpen(true)}
               >
                 <GroupIcon className="size-3.5" />
                 <span>Groups</span>
-              </MenuItem>
+              </MenuItemWithTooltip>
 
-              <MenuItem
-                href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
+              <MenuItemWithTooltip
                 isDisabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
+                href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
               >
                 <Icon icon="mdi:swap-horizontal" className="size-3" />
                 Convert object type
-              </MenuItem>
+              </MenuItemWithTooltip>
 
-              <MenuItem
+              <MenuItemWithTooltip
                 isDisabled={!isDeleteAllowed}
+                tooltipEnabled={!isDeleteAllowed}
+                tooltipContent={deleteTooltipMessage}
                 className="text-red-500"
                 onAction={() => setIsDeleteModalOpen(true)}
               >
                 <Trash2Icon className="size-3.5" />
                 <span>Delete</span>
-              </MenuItem>
+              </MenuItemWithTooltip>
             </MenuSection>
           </Menu>
         </MenuPopover>
@@ -232,7 +245,7 @@ export function ObjectDetailsMenu({
         isOpen={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         onDelete={() => {
-          if ("parent" in objectData && "node" in objectData.parent && objectData.parent.node) {
+          if (isNodeRelationshipOne(objectData.parent) && objectData.parent.node) {
             navigate(
               getObjectDetailsUrl(objectData.parent.node.__typename, objectData.parent.node.id)
             );
@@ -242,11 +255,11 @@ export function ObjectDetailsMenu({
         }}
       />
 
-      {isRepository && (
-        <RepositoryActionsModal
+      {isRepository && isCheckConnectivityOpen && (
+        <CheckConnectivityModal
           repositoryId={objectData.id}
-          isOpen={isCheckConnectivityOpen}
-          onClose={() => setIsCheckConnectivityOpen(false)}
+          isOpen
+          onOpenChange={() => setIsCheckConnectivityOpen(false)}
         />
       )}
     </>

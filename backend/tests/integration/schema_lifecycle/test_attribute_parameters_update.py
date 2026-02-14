@@ -69,8 +69,8 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,
-        schema_thing_legacy,
-        schema_thing,
+        schema_thing_legacy: dict[str, Any],
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -90,7 +90,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         return 15
 
     @pytest.fixture(scope="class")
-    def schema_thing_legacy_02(self, regex_02, min_length_02, max_length_02) -> dict[str, Any]:
+    def schema_thing_legacy_02(self, regex_02: str, min_length_02: int, max_length_02: int) -> dict[str, Any]:
         return {
             "name": "ThingLegacy",
             "namespace": "Testing",
@@ -108,7 +108,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_thing_02(self, regex_02, min_length_02, max_length_02) -> dict[str, Any]:
+    def schema_thing_02(self, regex_02: str, min_length_02: int, max_length_02: int) -> dict[str, Any]:
         return {
             "name": "Thing",
             "namespace": "Testing",
@@ -138,8 +138,8 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def schema_step_02(
         self,
-        schema_thing_legacy_02,
-        schema_thing_02,
+        schema_thing_legacy_02: dict[str, Any],
+        schema_thing_02: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -147,7 +147,9 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    async def load_schema_01(self, db: InfrahubDatabase, default_branch: Branch, schema_step_01) -> None:
+    async def load_schema_01(
+        self, db: InfrahubDatabase, default_branch: Branch, schema_step_01: dict[str, Any]
+    ) -> None:
         schema_root = SchemaRoot(**schema_step_01)
         await load_schema_root(db=db, branch_name=default_branch.name, schema=schema_root, update_db=True)
 
@@ -184,7 +186,9 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         assert number_attr.parameters.start_range == start_range
         assert number_attr.parameters.end_range == end_range
 
-    async def test_schema_01_is_correct(self, db: InfrahubDatabase, default_branch: Branch, load_schema_01) -> None:
+    async def test_schema_01_is_correct(
+        self, db: InfrahubDatabase, default_branch: Branch, load_schema_01: None
+    ) -> None:
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
         legacy_schema = schema_branch.get_node(name=LEGACY_KIND, duplicate=False)
@@ -318,9 +322,9 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         schema_step_02: dict[str, Any],
-        regex_02,
-        min_length_02,
-        max_length_02,
+        regex_02: str,
+        min_length_02: int,
+        max_length_02: int,
     ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=default_branch.name)

@@ -11,7 +11,7 @@ from .filters import EnrichedDiffQueryFilters
 QUERY_MATCH_NODES = """
     // get the roots of all diffs in the query
     MATCH (diff_root:DiffRoot)
-    WHERE (diff_root.is_merged IS NULL OR diff_root.is_merged <> TRUE)
+    WHERE ($exclude_merged = FALSE OR diff_root.is_merged IS NULL OR diff_root.is_merged <> TRUE)
     AND diff_root.base_branch = $base_branch
     AND diff_root.diff_branch IN $diff_branches
     AND ($from_time IS NULL OR diff_root.from_time >= $from_time)
@@ -44,6 +44,7 @@ class EnrichedDiffGetQuery(Query):
         tracking_id: TrackingId | None = None,
         diff_ids: list[str] | None = None,
         proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -55,6 +56,7 @@ class EnrichedDiffGetQuery(Query):
         self.tracking_id = tracking_id
         self.diff_ids = diff_ids
         self.proposed_change_id = proposed_change_id
+        self.exclude_merged = exclude_merged
         self.filters = filters or EnrichedDiffQueryFilters()
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -66,6 +68,7 @@ class EnrichedDiffGetQuery(Query):
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "diff_ids": self.diff_ids,
             "proposed_change_id": self.proposed_change_id,
+            "exclude_merged": self.exclude_merged,
             "limit": self.limit or config.SETTINGS.database.query_size_limit,
             "offset": self.offset,
         }

@@ -3,16 +3,15 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
-from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import lock
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
-    OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
     BranchSupportType,
@@ -39,8 +38,10 @@ from infrahub.core.schema import (
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
+from infrahub.templates.node_applier import NodeTemplateApplier
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -356,6 +357,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
             attribute.is_default = False
 
+        # Templates should not allocate from pools - just store the reference
+        # Actual allocation happens when creating objects from the template
+        if isinstance(self._schema, TemplateSchema):
+            if attribute.from_pool:
+                attribute.source = attribute.from_pool["id"]
+            return
+
         if not attribute.from_pool or not allocate_resources:
             return
 
@@ -492,36 +500,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             )
             return
 
-        # Handle attributes, copy values from template
-        # Relationships handling in performed in GraphQL mutation to create nodes for relationships
-        for attribute_name in template._attributes:
-            if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
-                continue
-            attr = getattr(template, attribute_name)
-            attr_value = attr.value
-            if attr_value is not None:
-                # Preserve is_from_profile flag when copying from template
-                field_data = {"value": attr_value, "source": attr.source_id or template.id}
-                if attr.is_from_profile:
-                    field_data["is_from_profile"] = True
-                fields[attribute_name] = field_data
+        pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch)
+        applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
+        applied_fields = await applier.apply(
+            template=template, target_schema=self._schema, target_id=self.id, user_fields=fields
+        )
 
-        for relationship_name in template._relationships:
-            relationship_schema = template._schema.get_relationship(name=relationship_name)
-            if (
-                relationship_name in list(fields)
-                or relationship_schema.kind
-                not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]
-                or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
-            ):
-                continue
-
-            relationship: RelationshipManager = getattr(template, relationship_name)
-            if relationship_schema.cardinality == RelationshipCardinality.ONE:
-                if relationship_peer := await relationship.get_peer(db=db):
-                    fields[relationship_name] = {"id": relationship_peer.id}
-            elif relationship_peers := await relationship.get_peers(db=db):
-                fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
+        # Update fields dict in-place with applied values
+        # Only add new keys, don't overwrite existing ones (user fields take precedence)
+        for key, value in applied_fields.items():
+            if key not in fields:
+                fields[key] = value
 
     async def _get_profile_provided_mandatory_fields(
         self, db: InfrahubDatabase, fields: dict[str, Any]
@@ -698,7 +687,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
                 continue
 
-            jinja_template = Jinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
             for variable in jinja_template.get_variables():
                 attribute_path = schema_branch.validate_schema_path(
                     node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types

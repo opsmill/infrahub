@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";

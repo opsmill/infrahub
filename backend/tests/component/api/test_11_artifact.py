@@ -1,3 +1,4 @@
+import io
 from unittest.mock import call, patch
 
 import pytest
@@ -7,7 +8,9 @@ from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import RequestArtifactDefinitionGenerate
@@ -71,7 +74,7 @@ class TestArtifact11(TestInfrahubApp):
         )
         await artifact.save(db=db)
 
-        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=b'{"test": true}')
+        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=io.BytesIO(b'{"test": true}'))
 
         return artifact
 
@@ -177,3 +180,67 @@ class TestArtifact11(TestInfrahubApp):
         response = await test_client.get(f"/api/artifact/{artifact.id}")
 
         assert response.status_code == 200 if allow_anonymous_access else 401
+
+    async def test_artifact_generate_blocked_on_merged_branch(
+        self,
+        db: InfrahubDatabase,
+        admin_headers,
+        default_branch: Branch,
+        register_core_models_schema,
+        register_builtin_models_schema,
+        car_person_data_generic,
+        authentication_base: Node,
+        test_client,
+    ) -> None:
+        """Test that artifact generation returns 422 on merged branches."""
+        _, _, definition = await self.setup_artifact_definition(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+
+        branch = await create_branch(branch_name="merged-artifact-test", db=db)
+        branch.status = BranchStatus.MERGED
+        await branch.save(db=db)
+        registry.branch[branch.name] = branch
+
+        response = await test_client.post(
+            f"/api/artifact/generate/{definition.id}?branch={branch.name}",
+            headers=admin_headers,
+        )
+
+        assert response.status_code == 422
+        assert "has been merged and is read-only" in response.json()["errors"][0]["message"]
+
+    async def test_artifact_generate_blocked_on_need_rebase_branch(
+        self,
+        db: InfrahubDatabase,
+        admin_headers,
+        default_branch: Branch,
+        register_core_models_schema,
+        register_builtin_models_schema,
+        car_person_data_generic,
+        authentication_base: Node,
+        test_client,
+    ) -> None:
+        """Test that artifact generation returns 422 on branches needing rebase."""
+        _, _, definition = await self.setup_artifact_definition(
+            db=db,
+            register_core_models_schema=register_core_models_schema,
+            register_builtin_models_schema=register_builtin_models_schema,
+            car_person_data_generic=car_person_data_generic,
+        )
+
+        branch = await create_branch(branch_name="rebase-artifact-test", db=db)
+        branch.status = BranchStatus.NEED_REBASE
+        await branch.save(db=db)
+        registry.branch[branch.name] = branch
+
+        response = await test_client.post(
+            f"/api/artifact/generate/{definition.id}?branch={branch.name}",
+            headers=admin_headers,
+        )
+
+        assert response.status_code == 422
+        assert "must be rebased" in response.json()["errors"][0]["message"]

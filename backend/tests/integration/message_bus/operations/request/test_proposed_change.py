@@ -114,11 +114,11 @@ class TestProposedChange(TestInfrahubApp):
     async def prepare_proposed_change(
         self,
         db: InfrahubDatabase,
-        tmp_path_module_scope,
+        tmp_path_module_scope: Path,
         git_repos_dir_module_scope: Path,
-        init_db_base,
+        init_db_base: None,
         client: InfrahubClient,
-        redis,
+        redis: None,
         user_account: Node,
         context: InfrahubContext,
     ) -> str:

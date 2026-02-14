@@ -1,7 +1,5 @@
 export const INFRAHUB_EVENT = "InfrahubEvent";
 
-export const BRANCH_EVENTS = ["BranchCreatedEvent"];
-
 export const EVENT_TYPE_CHOICES = [
   {
     label: "Artifact created",

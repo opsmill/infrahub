@@ -5,7 +5,6 @@ import { type ReactNode, useState } from "react";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import { Pill } from "@/shared/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -16,6 +15,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Table, type tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { BadgeCopy } from "@/shared/components/ui/badge-copy";
+import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";

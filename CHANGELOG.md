@@ -11,6 +11,59 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.4) - 2026-02-03
+
+### Removed
+
+- Removed references to the deprecated `is_visible` metadata property from documentation.
+
+### Fixed
+
+- Fix bug in computed attribute calculation that prevented having a computed attribute on a branch if there were no computed attributes on the default branch ([#8270](https://github.com/opsmill/infrahub/issues/8270))
+- Add migration to allow rebasing branches created before #8221 was fixed so that the uniqueness constraint on SchemaNode.name and SchemaGeneric.name is removed
+- Fixed branch merge failing to include relationships to AGNOSTIC nodes (e.g., CoreIPAddressPool) by including the global branch in the peer node lookup query.
+- Fixed confusing issue when "off" was converted to boolean 'false' due to issues with Yaml. The bug was that if "off" or something that Yaml parses as a boolean was used as the name of a Dropdown the incorrect attribute was highlighted in the schema error. When this happened troubleshooting was harder due to misleading errors pointing to another attribute.
+
+## [Infrahub - v1.7.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.3) - 2026-01-28
+
+### Security
+
+- Update system dependencies: OpenSSL patch for CVE-2025-15467
+
+### Fixed
+
+- Single line breaks in text fields are now rendered correctly.
+
+## [Infrahub - v1.7.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.2) - 2026-01-27
+
+### Added
+
+- Added "parallel mode" plugin to the GraphQL web sandbox.
+- GraphQL query parsing and validation is now leveraging a cache to improve performance and CPU consumption.
+
+### Changed
+
+- Infinite scrolling now fetches more entries per page when having a lot of objects. ([#8057](https://github.com/opsmill/infrahub/issues/8057))
+
+### Fixed
+
+- Fixed issue around the use of the validate_certificates attribute on webhooks. This change also modifies this attribute so that it no longer has a default value, instead the Infrahub default configuration for HTTP is used and the attribute is only to override the default. ([#6308](https://github.com/opsmill/infrahub/issues/6308))
+- Fixed a bug that caused branch-agnostic attributes on branch-aware objects to be deleted globally when the object was deleted. Now branch-agnostic attributes on branch-aware objects are only deleted on the branch where the object was deleted. ([#7513](https://github.com/opsmill/infrahub/issues/7513))
+- Figure number and IPAM resources to allocate from a pool by using Cypher queries instead of iterating logic, this should fix timeout observed when allocating resources within large pools ([#7897](https://github.com/opsmill/infrahub/issues/7897))
+- Fixed an issue where parallel create or update operations would attach multiple peers to a cardinality one relationship. ([#7972](https://github.com/opsmill/infrahub/issues/7972))
+- Search anywhere bar now scale with the number of objects within Infrahub.
+  Cardinality many relationships are now ignored and not shown in search results. ([#8059](https://github.com/opsmill/infrahub/issues/8059))
+- Prevent opening a proposed change if there is already an open proposed change for the branch. ([#8123](https://github.com/opsmill/infrahub/issues/8123))
+- Fix bug in node create logic that could cause edges to be added to the database with the wrong hierarchy level on the global branch. Includes a migration to fix existing problem edges. ([#8158](https://github.com/opsmill/infrahub/issues/8158))
+- Fix bug in node create logic that could cause branch-local edges to be added to the database with the wrong hierarchy level. Includes a migration to fix existing problem edges. ([#8159](https://github.com/opsmill/infrahub/issues/8159))
+- Fix diff update logic to prevent crash when copying a diff with recursive relationships ([#8165](https://github.com/opsmill/infrahub/issues/8165))
+- Update branch delete logic to correctly delete branch-agnostic attributes from objects being deleted with the branch. Includes a migration to clean up any orphaned objects with branch-agnostic attributes left in the database. ([#8211](https://github.com/opsmill/infrahub/issues/8211))
+- Prevent creating duplicate schemas on branches and merging them into the default branch ([#8221](https://github.com/opsmill/infrahub/issues/8221))
+- Fixed an issue where unexpected restarts of tasks workers would result in tasks being in "Running" state forever.
+  As a side effect, this would block Git repositories sync tasks to be launched. ([#8227](https://github.com/opsmill/infrahub/issues/8227))
+- Fixed an issue causing overfetching in IPAM tree
+- When using local docs, icons and images are correctly loaded.
+
 ## [Infrahub - v1.7.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.1) - 2026-01-12
 
 ### Added

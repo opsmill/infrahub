@@ -7,9 +7,10 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
+from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
@@ -20,6 +21,7 @@ from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
+from infrahub.permissions.types import define_object_permission_from_branch
 from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workflows.catalogue import (
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
@@ -234,6 +236,13 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
         repository_id = str(data.id)
+
+        schema = registry.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=branch.name, duplicate=False)
+        permission = define_object_permission_from_branch(
+            schema=schema, action=PermissionAction.UPDATE, branch_name=branch.name
+        )
+        graphql_context.active_permissions.raise_for_permission(permission=permission)
+
         repo = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
             kind=CoreReadOnlyRepository,

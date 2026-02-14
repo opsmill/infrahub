@@ -1,9 +1,9 @@
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
+import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";

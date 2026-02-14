@@ -32,9 +32,9 @@ Finally, we've ensured Webhooks are more consistent by aligning custom webhook d
 
 ## Disable generator in Infrahub's CI pipeline and after a branch merge operation
 
-To provide a cleaner experience when setting up event-based generators, we've introduced the capability to selectively disable generators during specific lifecycle events: CI pipeline execution and branch merge operations.
+To provide a cleaner experience when setting up event-based Generators, we've introduced the capability to selectively disable Generators during specific lifecycle events: CI pipeline execution and branch merge operations.
 
-Previously, generators could be triggered multiple times, leading to redundant processing: once by their configured event trigger rules, again during the Proposed Change (CI) phase, and finally after merging into the main branch.
+Previously, Generators could be triggered multiple times, leading to redundant processing: once by their configured event trigger rules, again during the Proposed Change (CI) phase, and finally after merging into the main branch.
 
 You can now prevent this overlap by optionally disabling generator execution on a per-generator basis directly within your repository configuration file, `.infrahub.yml`. This ensures your automation runs only when you explicitly intend it to, giving you finer control over when your generation logic executes.
 
@@ -91,14 +91,14 @@ In the documentation you can find [specific instructions to migrate existing sch
 
 Today, in some places in the UI, we are using the HFID of objects to display them with useful context. This was mostly done to overcome the restriction of not supporting relationships in the `display_label`. In a future release we will use the `display_label` for this instead.
 
-## Refactor profiles
+## Refactor Profiles
 
 Profiles have been reworked for performance and future flexibility.
-Previously, attribute values derived from profiles were resolved dynamically at read time, which could impact performance at scale. With 1.5.0:
+Previously, attribute values derived from Profiles were resolved dynamically at read time, which could impact performance at scale. With 1.5.0:
 
-- Attribute values influenced by profiles are now computed and stored at write time (create/update object or profile).
+- Attribute values influenced by Profiles are now computed and stored at write time (create/update object or Profile).
 - Reads no longer have to compute derived values, improving query performance and predictability.
-- This refactor lays groundwork to expand profile capabilities, such as adding relationships to profiles in future versions of Infrahub.
+- This refactor lays groundwork to expand Profile capabilities, such as adding relationships to Profiles in future versions of Infrahub.
 
 ## Memory optimizations
 

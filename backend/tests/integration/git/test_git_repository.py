@@ -25,6 +25,7 @@ from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
+from tests.integration.conftest import IntegrationHelper
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
@@ -48,7 +49,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    async def workflow_local(self, prefect_test_fixture):
+    async def workflow_local(self, prefect_test_fixture: None) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager()
@@ -57,7 +58,9 @@ class TestInfrahubClient:
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, redis, nats) -> None:
+    async def base_dataset(
+        self, db: InfrahubDatabase, redis: dict[int, int] | None, nats: dict[int, int] | None
+    ) -> None:
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
         await load_infrastructure_schema(db=db)
@@ -66,8 +69,8 @@ class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def test_client(
         self,
-        base_dataset,
-        workflow_local,
+        base_dataset: None,
+        workflow_local: WorkflowLocalExecution,
         db_class: InfrahubDatabase,
     ) -> AsyncGenerator[InfrahubTestClient, None]:
         async def _db(singleton: bool = True) -> InfrahubDatabase:
@@ -78,13 +81,13 @@ class TestInfrahubClient:
                 yield InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient, integration_helper) -> InfrahubClient:
+    async def client(self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper) -> InfrahubClient:
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
         return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
-    async def query_99(self, db: InfrahubDatabase, test_client):
+    async def query_99(self, db: InfrahubDatabase, test_client: InfrahubTestClient) -> Node:
         obj = await Node.init(schema=InfrahubKind.GRAPHQLQUERY, db=db)
         await obj.new(
             db=db,
@@ -97,12 +100,12 @@ class TestInfrahubClient:
     @pytest.fixture
     async def repo(
         self,
-        test_client,
-        client,
+        test_client: InfrahubTestClient,
+        client: InfrahubClient,
         db: InfrahubDatabase,
         git_repo_infrahub_demo_edge_integration: FileRepo,
-        git_repos_dir,
-    ):
+        git_repos_dir: Path,
+    ) -> InfrahubRepository:
         # Create the repository in the Graph
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
         await obj.new(
@@ -186,7 +189,7 @@ class TestInfrahubClient:
             await client.get(kind=CoreGraphQLQuery, id=obj.id)
 
     async def test_import_all_python_files(
-        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
         for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
             obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
@@ -271,7 +274,7 @@ class TestInfrahubClient:
             await client.get(kind=CoreTransformPython, id=obj2.id)
 
     async def test_import_all_yaml_files(
-        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
@@ -316,7 +319,11 @@ class TestInfrahubClient:
 
 class TestGetMissingFile(TestInfrahubApp):
     async def test_get_missing_file(
-        self, db: InfrahubDatabase, client: InfrahubClient, git_repo_car_dealership, test_client
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        git_repo_car_dealership: FileRepo,
+        test_client: InfrahubTestClient,
     ) -> None:
         # Ideally above tests would rely on `TestInfrahubApp.repo` instead of TestInfrahubClient
         # and we would reuse `TestInfrahubClient.repo` fixture here.

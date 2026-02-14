@@ -17,6 +17,10 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+
+  *:focus-visible {
+    outline-color: var(--color-cyan-600);
+  }
 }
 
 @layer utilities {

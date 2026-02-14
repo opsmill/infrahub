@@ -259,10 +259,13 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-- Unit tests: no external dependencies except database
+- Unit tests: no external dependencies only file access
+- Component tests: Similar to unit tests with regards to small testing scope but can require database access
 - Integration tests: require Neo4j via testcontainers
 - Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 - Async tests auto-configured via pytest-asyncio
+
+For additional information around testing patterns refer to [./testing.md](./testing.md)
 
 ## See Also
 

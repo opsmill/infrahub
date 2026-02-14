@@ -15,9 +15,11 @@ from infrahub.core.constants import (
     MetadataOptions,
     PermissionDecision,
 )
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import (
     EventMeta,
     ProposedChangeApprovalRevokedEvent,
@@ -81,6 +83,31 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         state = data.get("state", {}).get("value")
         if state and state != ProposedChangeState.OPEN.value:
             raise ValidationError(input_value="A proposed change has to be in the open state during creation")
+
+        source_branch_name = data.get("source_branch", {}).get("value")
+        existing_open_pcs = await NodeManager.query(
+            db=graphql_context.db,
+            schema=InfrahubKind.PROPOSEDCHANGE,
+            filters={
+                "source_branch__value": source_branch_name,
+                "state__value": ProposedChangeState.OPEN.value,
+            },
+        )
+        if existing_open_pcs:
+            raise ValidationError(
+                input_value=f"An open proposed change already exists for branch '{source_branch_name}'"
+            )
+
+        try:
+            source_branch_obj = await Branch.get_by_name(db=graphql_context.db, name=source_branch_name)
+        except BranchNotFoundError:
+            raise ValidationError(
+                input_value="The specified source branch for this proposed change was not found"
+            ) from None
+        if source_branch_obj.status == BranchStatus.MERGED:
+            raise ValidationError(
+                input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
+            )
 
         async with graphql_context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(
@@ -165,6 +192,13 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         proposed_change, result = await super().mutate_update(
             info=info, data=data, branch=branch, database=graphql_context.db, node=obj
         )
+
+        if updated_state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED):
+            component_registry = get_component_registry()
+            diff_repository = await component_registry.get_component(
+                DiffRepository, db=graphql_context.db, branch=branch
+            )
+            await diff_repository.freeze_diffs_for_proposed_change(proposed_change_id=proposed_change.id)
 
         if updated_state == ProposedChangeState.MERGED:
             await graphql_context.service.workflow.execute_workflow(

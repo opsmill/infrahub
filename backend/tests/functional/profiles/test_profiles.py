@@ -54,7 +54,7 @@ class TestProfiles(TestInfrahubApp):
         assert response["InfrahubProfilesRefresh"]["ok"]
 
     @pytest.fixture(params=BRANCH_NAMES)
-    async def branch(self, request, client: InfrahubClient) -> BranchData:
+    async def branch(self, request: pytest.FixtureRequest, client: InfrahubClient) -> BranchData:
         branch_name = request.param
         try:
             return await client.branch.get(branch_name=branch_name)

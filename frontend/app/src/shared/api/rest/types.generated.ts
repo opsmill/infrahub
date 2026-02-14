@@ -382,6 +382,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/storage/files/by-hfid/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download File Object By Hfid
+         * @description Download a file by the FileObject node's Human-Friendly ID (HFID).
+         *
+         *     Requires `VIEW` permission on the FileObject node.
+         *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+         *     filename.
+         */
+        get: operations["download_file_object_by_hfid_api_storage_files_by_hfid__kind__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/files/by-storage-id/{storage_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download File Object By Storage Id
+         * @description Download a file from storage by its storage_id.
+         *
+         *     Requires `VIEW` permission on the FileObject node.
+         *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+         *     filename.
+         */
+        get: operations["download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/files/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download File Object
+         * @description Download a file by the FileObject node's UUID.
+         *
+         *     Requires `VIEW` permission on the FileObject node.
+         *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
+         *     filename.
+         */
+        get: operations["download_file_object_api_storage_files__node_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/storage/object/{identifier}": {
         parameters: {
             query?: never;
@@ -1111,7 +1183,7 @@ export interface components {
              * Parameters
              * @description Extra parameters specific to this kind of attribute
              */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1222,7 +1294,7 @@ export interface components {
              * Parameters
              * @description Extra parameters specific to this kind of attribute
              */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1562,6 +1634,21 @@ export interface components {
             additionalProperties?: boolean | {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * ListAttributeParameters
+         * @description Parameters for List attributes supporting regex validation on list items.
+         */
+        ListAttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Regex
+             * @description Regular expression that each list item value must match if defined
+             */
+            regex?: string | null;
         };
         /** LoggingSettings */
         LoggingSettings: {
@@ -2028,7 +2115,7 @@ export interface components {
              * @default true
              */
             optional: boolean;
-            /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
+            /** @description Type of branch support for the relationship. If not defined, it will be determined based on both peers. */
             branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Inherited
@@ -3081,6 +3168,122 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_object_by_hfid_api_storage_files_by_hfid__kind__get: {
+        parameters: {
+            query: {
+                /** @description HFID component values in order */
+                hfid: string[];
+                /** @description Return file for inline display rather than as an attachment */
+                preview?: boolean;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content with Content-Type matching the file's MIME type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get: {
+        parameters: {
+            query?: {
+                /** @description Return file for inline display rather than as an attachment */
+                preview?: boolean;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                storage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content with Content-Type matching the file's MIME type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_object_api_storage_files__node_id__get: {
+        parameters: {
+            query?: {
+                /** @description Return file for inline display rather than as an attachment */
+                preview?: boolean;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content with Content-Type matching the file's MIME type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
             /** @description Validation Error */

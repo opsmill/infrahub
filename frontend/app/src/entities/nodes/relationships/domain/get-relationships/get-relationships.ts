@@ -1,23 +1,19 @@
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
+
 import {
   getRelationshipsFromApi,
   type getRelationshipsFromApiParams,
 } from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import type { NodeCore } from "@/entities/nodes/types";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const RELATIONSHIPS_PER_PAGE = 20;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
-export type GetRelationships = (params: GetRelationshipsParams) => Promise<Array<NodeCore>>;
+export type GetRelationships = (params: GetRelationshipsParams) => Promise<NodeCore[]>;
 
 export const getRelationships: GetRelationships = async ({
   branchName,
   atDate,
-  limit = RELATIONSHIPS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   peer,
   search,

@@ -12,12 +12,14 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus.types import KVTTL
 from infrahub.permissions import AssignedPermissions, PermissionBackend
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -256,7 +258,6 @@ async def test_cannot_approve_own_created_proposed_change(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     registry.permission_backends = [DummyReviewProposedChangeAllow()]
-
     branch_name = str(uuid4().hex)
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
@@ -297,6 +298,96 @@ async def test_cannot_approve_own_created_proposed_change(
     )
     assert approve_proposed_change.errors
     assert "You cannot review your own proposed changes" in str(approve_proposed_change.errors)
+
+
+async def test_duplicate_open_proposed_change_validation(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that we cannot create a second open proposed change for the same source branch,
+    but can create one after the existing one is closed."""
+    branch_name = str(uuid4().hex)
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
+
+    # Create first proposed change - should succeed
+    first_pc = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "first-proposed-change",
+        },
+    )
+    assert not first_pc.errors
+    first_pc_id = first_pc.data["CoreProposedChangeCreate"]["object"]["id"]
+
+    pcs = await NodeManager.query(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    assert len(pcs) == 1
+    assert pcs[0].source_branch.value == source_branch.name
+    assert pcs[0].state.value.value == ProposedChangeState.OPEN.value
+    assert pcs[0].name.value == "first-proposed-change"
+
+    # Create second proposed change for same branch - should fail
+    second_pc_attempt = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "second-proposed-change",
+        },
+    )
+    assert second_pc_attempt.errors
+    assert f"An open proposed change already exists for branch '{source_branch.name}'" in str(second_pc_attempt.errors)
+
+    pcs = await NodeManager.query(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    assert len(pcs) == 1
+
+    # Close the first proposed change
+    close_pc = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "proposed_change": first_pc_id,
+            "state": "closed",
+        },
+    )
+    assert not close_pc.errors
+
+    # Create second proposed change - should succeed now that first is closed
+    second_pc = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "second-proposed-change",
+        },
+    )
+    assert not second_pc.errors
+
+    pcs = await NodeManager.query(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    assert len(pcs) == 2
 
 
 class TestTriggerProposedChange(TestInfrahubApp):

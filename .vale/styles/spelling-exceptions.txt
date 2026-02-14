@@ -76,6 +76,7 @@ file_path
 frontend
 generator_definitions
 GitHub
+Grafana
 Graphql
 GraphQL
 GraphQL's
@@ -168,6 +169,8 @@ RabbitMQ
 rebase
 Rebase
 rebased
+Rebased
+rebasing
 Rebasing
 redis
 Redis

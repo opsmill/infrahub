@@ -8,7 +8,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchStatusFilterForm } from "@/entities/branches/ui/filters/branch-status-filter-form";
-import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export function BranchStatusHeader() {
   const [filters] = useFilters();
@@ -23,7 +23,7 @@ export function BranchStatusHeader() {
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
       <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
-        <TableColumnHeaderIcon fieldSchema={fieldSchema} />
+        <FieldSchemaIcon fieldSchema={fieldSchema} />
 
         <span className="mr-2 truncate">{fieldSchema.label ?? fieldSchema.name}</span>
         <Icon

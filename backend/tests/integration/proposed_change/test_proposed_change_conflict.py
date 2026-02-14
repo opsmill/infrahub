@@ -31,6 +31,8 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
@@ -50,7 +52,7 @@ class ErroringBranchMerger(BranchMerger):
 
 class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def car_dealership_copy(self):
+    def car_dealership_copy(self) -> Generator[tuple[Path, str]]:
         """
         Copies car-dealership local repository to a temporary folder, with a new name.
         This is needed for this test as using car-dealership folder leads to issues most probably
@@ -290,8 +292,12 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         proposed_change_create.state.value = ProposedChangeState.MERGED.value
         await proposed_change_create.save()
 
-        proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_create.id)
+        proposed_change_after = await client.get(
+            kind=CoreProposedChange, id=proposed_change_create.id, include_metadata=True
+        )
         assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
+        assert proposed_change_after.state.updated_by.id == proposed_change_user.id
+        assert proposed_change_after.state.updated_by.display_label == "Jimmy-Change-User"
 
         for _ in range(10):
             merge_event = await client.execute_graphql(

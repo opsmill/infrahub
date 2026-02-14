@@ -1,5 +1,6 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import {
@@ -10,7 +11,6 @@ import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -21,11 +21,11 @@ export interface GetIpAddressListParams extends ContextParams, PaginationParams 
 
 export type GetIpAddressList = (
   params: GetIpAddressListParams
-) => Promise<Array<NodeObject | IpAddressAvailableNode>>;
+) => Promise<(NodeObject | IpAddressAvailableNode)[]>;
 
 export const getIpAddressList: GetIpAddressList = async ({
   schema,
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   branchName,
   atDate,

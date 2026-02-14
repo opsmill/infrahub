@@ -107,6 +107,7 @@ class EnrichedRootFactory(DataclassFactory[EnrichedDiffRoot]):
     contains_conflict = False
     exists_on_database = False
     proposed_change_id = None
+    is_frozen = False
 
 
 class CalculatedDiffsFactory(DataclassFactory[CalculatedDiffs]): ...

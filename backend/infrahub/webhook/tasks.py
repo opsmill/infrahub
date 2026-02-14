@@ -12,7 +12,7 @@ from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub.message_bus.types import KVTTL
-from infrahub.trigger.models import TriggerType
+from infrahub.trigger.models import ExecuteWorkflow, TriggerType
 from infrahub.trigger.setup import gather_all_automations, setup_triggers_specific
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_http
 from infrahub.workflows.utils import add_tags
@@ -159,7 +159,7 @@ async def configure_webhook_one(
             description=trigger.get_description(),
             enabled=True,
             trigger=trigger.trigger.get_prefect(),
-            actions=[action.get(deployment.id) for action in trigger.actions],
+            actions=[action.get(deployment.id) for action in trigger.actions if isinstance(action, ExecuteWorkflow)],
         )
 
         if existing_automation:

@@ -7,8 +7,11 @@ import { BranchCreatedByCell } from "@/entities/branches/ui/branches-table/cells
 import { BranchDateCell } from "@/entities/branches/ui/branches-table/cells/branch-date-cell";
 import { BranchIdentifierHeader } from "@/entities/branches/ui/branches-table/cells/branch-identifier-header";
 import { BranchNameCell } from "@/entities/branches/ui/branches-table/cells/branch-name-cell";
+import { BranchProposedChangesCell } from "@/entities/branches/ui/branches-table/cells/branch-proposed-changes-cell";
 import { BranchStatusCell } from "@/entities/branches/ui/branches-table/cells/branch-status-cell";
+import { BranchStatusHeader } from "@/entities/branches/ui/branches-table/cells/branch-status-header";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
+import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 
@@ -35,33 +38,47 @@ export function getBranchIdentifierColumn(): ColumnDef<BranchListItem, string> {
 }
 
 export function getBranchFieldsColumns(): Array<ColumnDef<BranchListItem>> {
-  // TODO: Enable filters when backend supports them (use TableColumnHeader instead of TableColumnHeaderSimple)
   return [
     columnHelper.accessor("status", {
       id: "status",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.status} />,
+      header: () => <BranchStatusHeader />,
       cell: ({ cell }) => <BranchStatusCell status={cell.getValue()} />,
     }) as ColumnDef<BranchListItem>,
+    columnHelper.display({
+      id: "proposed_changes",
+      size: 250,
+      minSize: 250,
+      header: () => (
+        <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.proposed_changes} />
+      ),
+      cell: ({ row }) => <BranchProposedChangesCell branchName={row.original.name} />,
+    }),
     columnHelper.accessor("branched_from", {
       id: "branched_from",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.branched_from} />,
+      header: () => <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.branched_from} />,
       cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }),
+    }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("updated_at", {
       id: "updated_at",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.updated_at} />,
+      header: () => (
+        <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__updated_at} />
+      ),
       cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }),
+    }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("created_at", {
       id: "created_at",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.created_at} />,
+      header: () => (
+        <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_at} />
+      ),
       cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }),
+    }) as ColumnDef<BranchListItem>,
     columnHelper.accessor("created_by", {
       id: "created_by",
-      header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.created_by} />,
+      header: () => (
+        <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_by} />
+      ),
       cell: ({ cell }) => <BranchCreatedByCell createdBy={cell.getValue()} />,
-    }),
+    }) as ColumnDef<BranchListItem>,
   ];
 }
 

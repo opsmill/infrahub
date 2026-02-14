@@ -3,9 +3,9 @@ import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
 import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";

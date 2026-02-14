@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
@@ -72,6 +73,7 @@ describe("RelationshipHierarchicalComboboxList", () => {
   ];
 
   beforeEach(() => {
+    queryClient.clear();
     store.set(genericSchemasAtom, [hierarchyGenericSchema]);
     store.set(nodeSchemasAtom, [rootSchema, parentSchema, childSchema]);
     vi.mocked(getRelationships).mockResolvedValue([]);
@@ -191,11 +193,13 @@ describe("RelationshipHierarchicalComboboxList", () => {
 
   it("displays load more button when there are more results", async () => {
     // GIVEN
-    const manyRelationships = Array.from({ length: 20 }, (_, i) => ({
+    // Return exactly DEFAULT_PAGE_SIZE (40) items to indicate there may be more
+    const manyRelationships = Array.from({ length: 40 }, (_, i) => ({
       id: `test-id-${i}`,
       display_label: `Test Relationship ${i}`,
       __typename: rootSchema.kind,
     }));
+    // Total count is higher than returned items
     vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
 
     // WHEN
@@ -204,6 +208,9 @@ describe("RelationshipHierarchicalComboboxList", () => {
     );
 
     // THEN
+    await expect
+      .element(component.getByRole("option", { name: manyRelationships[0]!.display_label }))
+      .toBeVisible();
     await expect.element(component.getByRole("option", { name: "Load more" })).toBeVisible();
   });
 
@@ -223,6 +230,9 @@ describe("RelationshipHierarchicalComboboxList", () => {
 
     // THEN
     const listbox = component.getByRole("listbox");
+    await expect
+      .element(component.getByRole("option", { name: manyRelationships[0]!.display_label }))
+      .toBeVisible();
     expect(listbox.element().scrollHeight).toBeGreaterThan(listbox.element().clientHeight);
   });
 });

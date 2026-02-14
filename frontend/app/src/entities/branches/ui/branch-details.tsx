@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { Button, LinkButton } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -39,7 +39,7 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
   if (isPending) {
-    return <LoadingIndicator className="h-[239px]" />;
+    return <LoadingIndicator className="h-59.75" />;
   }
 
   if (error) {
@@ -54,57 +54,59 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
     <div className="flex flex-col gap-4">
       <BranchAttributes branch={branch} />
 
-      <div className="flex flex-col gap-4">
-        <div>
-          {branch?.name && (
-            <div className="flex flex-1 flex-col gap-4 md:flex-row">
-              <BranchMergeButton branch={branch} />
+      {!branch.is_default && (
+        <div className="flex flex-col gap-4">
+          <div>
+            {branch?.name && (
+              <div className="flex flex-1 flex-col gap-4 md:flex-row">
+                <BranchMergeButton branch={branch} />
 
-              <LinkButton
-                onClick={(event) => {
-                  if (!isAuthenticated || branch.is_default) {
-                    event?.preventDefault();
-                  }
-                }}
-                className={classNames(
-                  (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
-                )}
-                to={constructPath("/proposed-changes/new", [
-                  { name: QSP.SOURCE_BRANCH, value: branch?.name },
-                ])}
-              >
-                Propose change
-                <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-              </LinkButton>
+                <LinkButton
+                  onClick={(event) => {
+                    if (!isAuthenticated || branch.is_default) {
+                      event?.preventDefault();
+                    }
+                  }}
+                  className={classNames(
+                    (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
+                  )}
+                  to={constructPath("/proposed-changes/new", [
+                    { name: QSP.SOURCE_BRANCH, value: branch?.name },
+                  ])}
+                >
+                  Propose change
+                  <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                </LinkButton>
 
-              <BranchRebaseButton branch={branch} />
+                <BranchRebaseButton branch={branch} />
 
-              <BranchValidateButton branch={branch} />
+                <BranchValidateButton branch={branch} />
 
-              <Button
-                disabled={!isAuthenticated || !!branch.is_default}
-                onClick={() => setDisplayModal(true)}
-                variant={"danger"}
-              >
-                Delete
-                <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <Accordion
-          title={<div className="font-normal text-xs">Tasks</div>}
-          data-testid="tasks-accordion"
-        >
-          <div className="mt-2">
-            <TaskDisplay
-              branch={branch?.name}
-              workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
-            />
+                <Button
+                  disabled={!isAuthenticated || !!branch.is_default}
+                  onClick={() => setDisplayModal(true)}
+                  variant={"danger"}
+                >
+                  Delete
+                  <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
+                </Button>
+              </div>
+            )}
           </div>
-        </Accordion>
-      </div>
+
+          <Accordion
+            title={<div className="font-normal text-xs">Tasks</div>}
+            data-testid="tasks-accordion"
+          >
+            <div className="mt-2">
+              <TaskDisplay
+                branch={branch.name}
+                workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+              />
+            </div>
+          </Accordion>
+        </div>
+      )}
 
       <ModalDelete
         title="Delete"

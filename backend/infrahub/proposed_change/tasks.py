@@ -61,6 +61,7 @@ from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerReposito
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
@@ -122,6 +123,7 @@ if TYPE_CHECKING:
 async def _proposed_change_transition_state(
     state: ProposedChangeState,
     database: InfrahubDatabase,
+    user_id: str,
     proposed_change: InternalCoreProposedChange | None = None,
     proposed_change_id: str | None = None,
 ) -> None:
@@ -132,7 +134,7 @@ async def _proposed_change_transition_state(
             )
         if proposed_change:
             proposed_change.state.value = state.value  # type: ignore[misc]
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=user_id)
 
 
 # async def proposed_change_transition_merged(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -185,7 +187,10 @@ async def merge_proposed_change(
             )
         except ValueError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
             )
             return Failed(message=str(exc))
 
@@ -199,7 +204,10 @@ async def merge_proposed_change(
             ):
                 # Ignoring Data integrity checks as they are handled again later
                 await _proposed_change_transition_state(
-                    proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                    proposed_change=proposed_change,
+                    state=ProposedChangeState.OPEN,
+                    database=db,
+                    user_id=context.account.account_id,
                 )
                 return Failed(message="Unable to merge proposed change containing failing checks")
             if validator_kind == InfrahubKind.DATAVALIDATOR:
@@ -207,7 +215,10 @@ async def merge_proposed_change(
                 for check in data_checks.values():
                     if check.conflicts.value and not check.keep_branch.value:
                         await _proposed_change_transition_state(
-                            proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                            proposed_change=proposed_change,
+                            state=ProposedChangeState.OPEN,
+                            database=db,
+                            user_id=context.account.account_id,
                         )
                         return Failed(
                             message="Data conflicts found on branch and missing decisions about what branch to keep"
@@ -218,14 +229,20 @@ async def merge_proposed_change(
             await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
             )
             return Failed(message=f"Merge failure when trying to merge {exc.message}")
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
         await _proposed_change_transition_state(
-            proposed_change=proposed_change, state=ProposedChangeState.MERGED, database=db
+            proposed_change=proposed_change,
+            state=ProposedChangeState.MERGED,
+            database=db,
+            user_id=context.account.account_id,
         )
 
         current_user = await NodeManager.get_one_by_id_or_default_filter(
@@ -296,6 +313,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
         component_registry = get_component_registry()
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.update_branch_diff(
             base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
         )
@@ -687,6 +705,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch=source_branch,
         schema_branch=source_schema_branch,
         schema=graphql_params.schema,
+        document=cached_parse(model.artifact_definition.query_payload),
     )
 
     only_has_unique_targets = query_analyzer.query_report.only_has_unique_targets
@@ -1097,6 +1116,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.update_branch_diff(
             base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
         )

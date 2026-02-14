@@ -102,6 +102,14 @@ class CoreCredential(CoreNode):
     description: StringOptional
 
 
+class CoreFileObject(CoreNode):
+    file_name: String
+    checksum: String
+    file_size: Integer
+    file_type: String
+    storage_id: String
+
+
 class CoreGenericAccount(CoreNode):
     name: String
     password: HashedPassword

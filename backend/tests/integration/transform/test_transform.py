@@ -13,15 +13,18 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
     from tests.helpers.file_repo import FileRepo
+    from tests.helpers.test_client import InfrahubTestClient
 
 
 class TestTransforms(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, client) -> None:
+    async def base_dataset(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
@@ -67,7 +70,14 @@ class TestTransforms(TestInfrahubApp):
         await q1.save(db=db)
 
     @pytest.fixture(scope="class")
-    async def repo(self, test_client, client, db: InfrahubDatabase, git_repo_car_dealership: FileRepo, git_repos_dir):
+    async def repo(
+        self,
+        test_client: InfrahubTestClient,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        git_repo_car_dealership: FileRepo,
+        git_repos_dir: Path,
+    ) -> InfrahubRepository:
         # Create the repository in the Graph
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
         await obj.new(
@@ -86,7 +96,7 @@ class TestTransforms(TestInfrahubApp):
         return repo
 
     async def test_transform_jinja(
-        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset: None
     ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
@@ -105,7 +115,7 @@ class TestTransforms(TestInfrahubApp):
         assert response.text == "Name: John"
 
     async def test_transform_python(
-        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset: None
     ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
@@ -125,7 +135,7 @@ class TestTransforms(TestInfrahubApp):
         assert response.json() == {"name": "John"}
 
     async def test_convert_query_response_transform_python(
-        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset: None
     ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)

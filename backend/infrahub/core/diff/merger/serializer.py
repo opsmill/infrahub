@@ -257,7 +257,9 @@ class DiffMergeSerializer:
         }
 
     def _get_actions_and_peers(self, relationship_diff: EnrichedDiffSingleRelationship) -> list[tuple[DiffAction, str]]:
-        is_related_prop = [p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED][0]
+        is_related_prop = next(
+            p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED
+        )
         actions_and_values = self._get_property_actions_and_values(property_diff=is_related_prop, python_value_type=str)
         actions_and_peers: list[tuple[DiffAction, str]] = []
         for action, peer_id in actions_and_values:

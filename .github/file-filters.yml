@@ -44,6 +44,10 @@ e2e_test_files:
 demo_files: &demo_files
   - "models/**"
 
+vale_files: &vale_files
+  - ".vale/**"
+  - ".vale.ini"
+
 doc_files: &doc_files
   - "docs/**"
   - package.json
@@ -87,6 +91,7 @@ documentation_all:
   - *development_files
   - *doc_files
   - *markdown_all
+  - *vale_files
 
 documentation_generated_all:
   - *infrahub_reference_generated
@@ -114,3 +119,4 @@ e2e_all:
   - *ci_config
   - *development_files
   - *infrahub_uv_files
+  - *sdk_files

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Path, Request
-from graphql import graphql
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from infrahub.api.dependencies import (
@@ -22,6 +21,7 @@ from infrahub.core.protocols import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import TransformError
+from infrahub.graphql.execution import execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
@@ -69,7 +69,7 @@ async def transform_python(
             db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
         )
 
-        result = await graphql(
+        result = await execute_graphql_query(
             schema=gql_params.schema,
             source=query.query.value,
             context_value=gql_params.context,
@@ -134,7 +134,7 @@ async def transform_jinja2(
             db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
         )
 
-        result = await graphql(
+        result = await execute_graphql_query(
             schema=gql_params.schema,
             source=query.query.value,
             context_value=gql_params.context,

@@ -9,9 +9,7 @@ import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 export const FilterSchema = z.array(
   z.object({
     name: z.union([
-      z
-        .string()
-        .regex(/^.+__.+$/), // Allows any string with at least one "__" separator
+      z.string().regex(/^.+__.+$/), // Allows any string with at least one "__" separator
       z.literal(AVAILABLE_IP_FILTER_NAME),
       z.literal("order"),
     ]),

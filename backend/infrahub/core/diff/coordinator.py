@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
 from uuid import uuid4
 
+from opentelemetry import trace
 from prefect import flow
 
 from infrahub.core.branch import Branch
@@ -25,6 +26,10 @@ from .model.path import (
 )
 
 if TYPE_CHECKING:
+    import logging
+
+    from structlog.stdlib import BoundLogger
+
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
@@ -39,7 +44,7 @@ if TYPE_CHECKING:
     from .repository.repository import DiffRepository
 
 
-log = get_logger()
+default_log = get_logger()
 
 
 @dataclass
@@ -84,6 +89,10 @@ class DiffCoordinator:
         self.data_check_synchronizer = data_check_synchronizer
         self.conflict_transferer = conflict_transferer
         self.diff_locker = diff_locker
+        self.logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | BoundLogger = default_log
+
+    def set_logger(self, logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | BoundLogger) -> None:
+        self.logger = logger
 
     async def run_update(
         self,
@@ -116,23 +125,42 @@ class DiffCoordinator:
             name=name,
         )
 
+    async def _link_diff_to_proposed_change(
+        self, diff_root: EnrichedDiffRootMetadata, proposed_change_id: str | None
+    ) -> None:
+        """Link a diff root to a proposed change if needed.
+
+        Updates the database link and the in-memory object's proposed_change_id.
+        """
+        if not proposed_change_id:
+            return
+        if diff_root.proposed_change_id != proposed_change_id:
+            diff_uuids = [diff_root.uuid]
+            if diff_root.partner_uuid:
+                diff_uuids.append(diff_root.partner_uuid)
+            await self.diff_repo.link_to_proposed_change(diff_uuids=diff_uuids, proposed_change_id=proposed_change_id)
+        diff_root.proposed_change_id = proposed_change_id
+
     async def update_branch_diff(
         self, base_branch: Branch, diff_branch: Branch, proposed_change_id: str | None = None
     ) -> EnrichedDiffRootMetadata:
         tracking_id = BranchTrackingId(name=diff_branch.name)
-        log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
+        self.logger.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         existing_incremental_lock = self.diff_locker.get_existing_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
-            log.info(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
+            self.logger.info(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
             async with self.diff_locker.acquire_lock(
                 target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
             ):
-                log.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
-                return await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                self.logger.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
+                diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+                return diff_root
         from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
+        lock_request_time = Timestamp()
         async with (
             self.diff_locker.acquire_lock(
                 target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
@@ -141,33 +169,51 @@ class DiffCoordinator:
                 target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
             ),
         ):
-            refreshed_branch = await Branch.get_by_name(db=self.db, name=diff_branch.name)
-            if refreshed_branch.get_branched_from() != diff_branch.get_branched_from():
-                log.info(
-                    f"Branch {diff_branch.name} was merged or rebased while waiting for lock, returning latest diff"
+            lock_acquired_time = Timestamp()
+
+            with trace.get_tracer(__name__).start_as_current_span("update_branch_diff") as span:
+                refreshed_branch = await Branch.get_by_name(db=self.db, name=diff_branch.name)
+                if refreshed_branch.get_branched_from() != diff_branch.get_branched_from():
+                    self.logger.info(
+                        f"Branch {diff_branch.name} was merged or rebased while waiting for lock, returning latest diff"
+                    )
+                    diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
+                    await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+                    return diff_root
+                self.logger.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
+                enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
+                    base_branch=base_branch,
+                    diff_branch=diff_branch,
+                    from_time=from_time,
+                    to_time=to_time,
+                    tracking_id=tracking_id,
+                    force_branch_refresh=False,
                 )
-                return await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
-            log.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
-            enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
-                base_branch=base_branch,
-                diff_branch=diff_branch,
-                from_time=from_time,
-                to_time=to_time,
-                tracking_id=tracking_id,
-                force_branch_refresh=False,
-            )
 
-            # set proposed change IDs
-            if proposed_change_id:
-                enriched_diffs.diff_branch_diff.proposed_change_id = proposed_change_id
-                enriched_diffs.base_branch_diff.proposed_change_id = proposed_change_id
+                if proposed_change_id:
+                    enriched_diffs.diff_branch_diff.proposed_change_id = proposed_change_id
+                    enriched_diffs.base_branch_diff.proposed_change_id = proposed_change_id
 
-            await self.diff_repo.save(
-                enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
-            )
-            await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
-        return enriched_diffs.diff_branch_diff
+                save_start_time = Timestamp()
+                await self.diff_repo.save(
+                    enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
+                )
+                save_end_time = Timestamp()
+
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch.name)
+                span.set_attribute("from_time", from_time.to_string())
+                span.set_attribute("to_time", to_time.to_string())
+                span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                span.set_attribute("lock_request_time", lock_request_time.to_string())
+                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                span.set_attribute("save_start_time", save_start_time.to_string())
+                span.set_attribute("save_end_time", save_end_time.to_string())
+
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
+                self.logger.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
+
+            return enriched_diffs.diff_branch_diff
 
     async def create_or_update_arbitrary_timeframe_diff(
         self,
@@ -178,25 +224,47 @@ class DiffCoordinator:
         name: str,
     ) -> EnrichedDiffRootMetadata:
         tracking_id = NameTrackingId(name=name)
+        lock_request_time = Timestamp()
         async with self.diff_locker.acquire_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
         ):
-            log.info(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
-            enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
-                base_branch=base_branch,
-                diff_branch=diff_branch,
-                from_time=from_time,
-                to_time=to_time,
-                tracking_id=tracking_id,
-                force_branch_refresh=False,
-            )
+            lock_acquired_time = Timestamp()
+            with trace.get_tracer(__name__).start_as_current_span("create_or_update_arbitrary_timeframe_diff") as span:
+                self.logger.info(
+                    f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}"
+                )
+                enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
+                    base_branch=base_branch,
+                    diff_branch=diff_branch,
+                    from_time=from_time,
+                    to_time=to_time,
+                    tracking_id=tracking_id,
+                    force_branch_refresh=False,
+                )
 
-            await self.diff_repo.save(
-                enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
-            )
-            await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
-        return enriched_diffs.diff_branch_diff
+                # should never have a proposed change id for an arbitrary diff
+                enriched_diffs.diff_branch_diff.proposed_change_id = None
+                enriched_diffs.base_branch_diff.proposed_change_id = None
+
+                save_start_time = Timestamp()
+                await self.diff_repo.save(
+                    enriched_diffs=enriched_diffs, node_identifiers_to_drop=list(node_identifiers_to_drop)
+                )
+                save_end_time = Timestamp()
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
+
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch.name)
+                span.set_attribute("from_time", from_time.to_string())
+                span.set_attribute("to_time", to_time.to_string())
+                span.set_attribute("name", name)
+                span.set_attribute("lock_request_time", lock_request_time.to_string())
+                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                span.set_attribute("save_start_time", save_start_time.to_string())
+                span.set_attribute("save_end_time", save_end_time.to_string())
+
+                self.logger.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
+            return enriched_diffs.diff_branch_diff
 
     async def recalculate(
         self,
@@ -204,43 +272,59 @@ class DiffCoordinator:
         diff_branch: Branch,
         diff_id: str,
     ) -> EnrichedDiffRoot:
+        lock_request_time = Timestamp()
         async with self.diff_locker.acquire_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
         ):
-            log.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
-            current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
-            current_base_diff = await self.diff_repo.get_one(
-                diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
-            )
-            if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
-                to_time = Timestamp()
-            else:
-                to_time = current_branch_diff.to_time
-            await self.diff_repo.delete_diff_roots(diff_root_uuids=[current_branch_diff.uuid, current_base_diff.uuid])
-            from_time = current_branch_diff.from_time
-            branched_from_time = Timestamp(diff_branch.get_branched_from())
-            from_time = max(from_time, branched_from_time)
-            enriched_diffs, _ = await self._update_diffs(
-                base_branch=base_branch,
-                diff_branch=diff_branch,
-                from_time=branched_from_time,
-                to_time=to_time,
-                tracking_id=current_branch_diff.tracking_id,
-                force_branch_refresh=True,
-            )
-            if current_branch_diff:
-                await self.conflict_transferer.transfer(
-                    earlier=current_branch_diff, later=enriched_diffs.diff_branch_diff
+            lock_acquired_time = Timestamp()
+            with trace.get_tracer(__name__).start_as_current_span("recalculate") as span:
+                self.logger.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
+                current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
+                current_base_diff = await self.diff_repo.get_one(
+                    diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
+                if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
+                    to_time = Timestamp()
+                else:
+                    to_time = current_branch_diff.to_time
+                await self.diff_repo.delete_diff_roots(
+                    diff_root_uuids=[current_branch_diff.uuid, current_base_diff.uuid]
+                )
+                from_time = current_branch_diff.from_time
+                branched_from_time = Timestamp(diff_branch.get_branched_from())
+                from_time = max(from_time, branched_from_time)
+                enriched_diffs, _ = await self._update_diffs(
+                    base_branch=base_branch,
+                    diff_branch=diff_branch,
+                    from_time=branched_from_time,
+                    to_time=to_time,
+                    tracking_id=current_branch_diff.tracking_id,
+                    force_branch_refresh=True,
+                )
+                if current_branch_diff:
+                    await self.conflict_transferer.transfer(
+                        earlier=current_branch_diff, later=enriched_diffs.diff_branch_diff
+                    )
 
-            # transfer proposed change IDs
-            enriched_diffs.base_branch_diff.proposed_change_id = current_base_diff.proposed_change_id
-            enriched_diffs.diff_branch_diff.proposed_change_id = current_branch_diff.proposed_change_id
+                # transfer proposed change IDs
+                enriched_diffs.base_branch_diff.proposed_change_id = current_base_diff.proposed_change_id
+                enriched_diffs.diff_branch_diff.proposed_change_id = current_branch_diff.proposed_change_id
 
-            await self.diff_repo.save(enriched_diffs=enriched_diffs)
-            await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
-        return enriched_diffs.diff_branch_diff
+                save_start_time = Timestamp()
+                await self.diff_repo.save(enriched_diffs=enriched_diffs)
+                save_end_time = Timestamp()
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
+
+                span.set_attribute("base_branch_name", base_branch.name)
+                span.set_attribute("diff_branch_name", diff_branch.name)
+                span.set_attribute("diff_id", diff_id)
+                span.set_attribute("lock_request_time", lock_request_time.to_string())
+                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                span.set_attribute("save_start_time", save_start_time.to_string())
+                span.set_attribute("save_end_time", save_end_time.to_string())
+
+                self.logger.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
+            return enriched_diffs.diff_branch_diff
 
     def _get_ordered_diff_pairs(
         self, diff_pairs: Iterable[EnrichedDiffsMetadata], allow_overlap: bool = False
@@ -413,7 +497,7 @@ class DiffCoordinator:
         if partial_enriched_diffs is not None and not aggregated_enriched_diffs:
             ordered_diffs = self._get_ordered_diff_pairs(diff_pairs=partial_enriched_diffs, allow_overlap=False)
             ordered_diff_reprs = [repr(d) for d in ordered_diffs]
-            log.info(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
+            self.logger.info(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
             incremental_diffs_and_requests: list[EnrichedDiffsMetadata | EnrichedDiffRequest | None] = []
             current_time = diff_request.from_time
             while current_time < diff_request.to_time:
@@ -429,7 +513,7 @@ class DiffCoordinator:
                 else:
                     end_time = diff_request.to_time
                 # if there are no changes on either branch in this time range, then there cannot be a diff
-                log.info(
+                self.logger.info(
                     f"Checking number of changes on branches for {diff_request!r}, from_time={current_time}, to_time={end_time}"
                 )
                 num_changes_by_branch = await get_num_changes_in_time_range_by_branch(
@@ -438,7 +522,7 @@ class DiffCoordinator:
                     to_time=end_time,
                     db=self.db,
                 )
-                log.info(f"Number of changes: {num_changes_by_branch}")
+                self.logger.info(f"Number of changes: {num_changes_by_branch}")
                 might_have_changes_in_time_range = any(num_changes_by_branch.values())
                 if not might_have_changes_in_time_range:
                     incremental_diffs_and_requests.append(None)
@@ -494,11 +578,13 @@ class DiffCoordinator:
         for diff_or_request in diff_or_request_list:
             if isinstance(diff_or_request, EnrichedDiffRequest):
                 if previous_diff_pair:
-                    log.info(f"Getting node field specifiers diff uuid={previous_diff_pair.diff_branch_diff.uuid}")
+                    self.logger.info(
+                        f"Getting node field specifiers diff uuid={previous_diff_pair.diff_branch_diff.uuid}"
+                    )
                     node_field_specifiers = await self.diff_repo.get_node_field_specifiers(
                         diff_id=previous_diff_pair.diff_branch_diff.uuid,
                     )
-                    log.info(f"Number node field specifiers: {len(node_field_specifiers)}")
+                    self.logger.info(f"Number node field specifiers: {len(node_field_specifiers)}")
                     diff_or_request.node_field_specifiers = node_field_specifiers
                 is_incremental_diff = diff_or_request.from_time != full_diff_request.from_time
                 calculated_diff = await self._calculate_enriched_diff(
@@ -517,13 +603,13 @@ class DiffCoordinator:
                 previous_diff_pair = single_enriched_diffs
                 continue
 
-            log.info("Combining diffs...")
+            self.logger.info("Combining diffs...")
             previous_diff_pair = await self._combine_diffs(
                 earlier=previous_diff_pair,
                 later=single_enriched_diffs,
                 node_identifiers=updated_node_identifiers,
             )
-            log.info("Diffs combined.")
+            self.logger.info("Diffs combined.")
 
         node_identifiers_to_drop: set[NodeIdentifier] = set()
         if isinstance(previous_diff_pair, EnrichedDiffs):
@@ -538,8 +624,8 @@ class DiffCoordinator:
         later: EnrichedDiffs | EnrichedDiffsMetadata,
         node_identifiers: set[NodeIdentifier],
     ) -> EnrichedDiffs | EnrichedDiffsMetadata:
-        log.info(f"Earlier diff to combine: {earlier!r}")
-        log.info(f"Later diff to combine: {later!r}")
+        self.logger.info(f"Earlier diff to combine: {earlier!r}")
+        self.logger.info(f"Later diff to combine: {later!r}")
         # if one of the diffs is hydrated and has no data, we can combine them without hydrating the other
         if isinstance(earlier, EnrichedDiffs) and earlier.is_empty:
             later.base_branch_diff.from_time = earlier.base_branch_diff.from_time
@@ -552,17 +638,17 @@ class DiffCoordinator:
 
         # hydrate the diffs to combine, if necessary
         if not isinstance(earlier, EnrichedDiffs):
-            log.info("Hydrating earlier diff...")
+            self.logger.info("Hydrating earlier diff...")
             earlier = await self.diff_repo.hydrate_diff_pair(
                 enriched_diffs_metadata=earlier, node_identifiers=node_identifiers
             )
-            log.info("Earlier diff hydrated.")
+            self.logger.info("Earlier diff hydrated.")
         if not isinstance(later, EnrichedDiffs):
-            log.info("Hydrating later diff...")
+            self.logger.info("Hydrating later diff...")
             later = await self.diff_repo.hydrate_diff_pair(
                 enriched_diffs_metadata=later, node_identifiers=node_identifiers
             )
-            log.info("Later diff hydrated.")
+            self.logger.info("Later diff hydrated.")
 
         return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)
 
@@ -572,7 +658,7 @@ class DiffCoordinator:
     async def _calculate_enriched_diff(
         self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
     ) -> EnrichedDiffs:
-        log.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
+        self.logger.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
             base_branch=diff_request.base_branch,
             diff_branch=diff_request.diff_branch,
@@ -581,9 +667,9 @@ class DiffCoordinator:
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
         )
-        log.info("Calculation complete. Enriching diff...")
+        self.logger.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(
             calculated_diffs=calculated_diff_pair, tracking_id=diff_request.tracking_id
         )
-        log.info("Enrichment complete")
+        self.logger.info("Enrichment complete")
         return enriched_diff_pair

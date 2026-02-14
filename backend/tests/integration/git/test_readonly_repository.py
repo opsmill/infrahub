@@ -60,7 +60,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         )
 
     @pytest.fixture(scope="class")
-    async def person_john(self, db: InfrahubDatabase, load_car_schema) -> Node:
+    async def person_john(self, db: InfrahubDatabase, load_car_schema: None) -> Node:
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, age=25)
         await john.save(db=db)
@@ -73,7 +73,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         initialize_registry: None,
         git_repos_dir_module_scope: Path,
         git_repos_source_dir_module_scope: Path,
-        load_car_schema,
+        load_car_schema: None,
         person_john: Node,
     ) -> None:
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
@@ -187,7 +187,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     async def test_step04_new_branch_with_artifact(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
         helper: TestHelper,
         person_john: Node,

@@ -53,7 +53,16 @@ from .m048_undelete_rel_props import Migration048
 from .m049_remove_is_visible_relationship import Migration049
 from .m050_backfill_vertex_metadata import Migration050
 from .m051_subtract_branched_from_microsecond import Migration051
-from .m052_set_coreproposedchange_created_by_on_node import Migration052
+from .m052_fix_global_branch_level import Migration052
+from .m053_fix_branch_level_zero import Migration053
+from .m054_cleanup_orphaned_nodes import Migration054
+from .m055_remove_webhook_validate_certificates_default import Migration055
+from .m056_update_schema_node_generic_constraints import Migration056
+from .m057_set_coreproposedchange_created_by_on_node import Migration057
+from .m058_link_proposed_changes_to_diff_roots import Migration058
+from .m059_recompute_permission_display_labels import Migration059
+from .m060_template_number_pool_cleanup import Migration060
+from .m061_template_ip_pool_relationship_cleanup import Migration061
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -112,6 +121,15 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration050,
     Migration051,
     Migration052,
+    Migration053,
+    Migration054,
+    Migration055,
+    Migration056,
+    Migration057,
+    Migration058,
+    Migration059,
+    Migration060,
+    Migration061,
 ]
 
 

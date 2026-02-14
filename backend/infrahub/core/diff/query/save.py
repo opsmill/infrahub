@@ -37,23 +37,21 @@ CALL (diff_root_map) {
     SET diff_root.from_time = diff_root_map.from_time
     SET diff_root.to_time = diff_root_map.to_time
     SET diff_root.tracking_id = diff_root_map.tracking_id
+    SET diff_root.is_frozen = diff_root_map.is_frozen
     RETURN diff_root
 }
 // -------------------------
 // link the diff root to the proposed change
 // -------------------------
 CALL (diff_root, diff_root_map) {
+    WITH diff_root, diff_root_map
+    WHERE diff_root_map.proposed_change_id IS NOT NULL
     // find the current linked proposed change, if any
     OPTIONAL MATCH (diff_root)-[current_edge:DIFF_FOR_PROPOSED_CHANGE]->(current_proposed_change)
-    WITH current_edge, current_proposed_change
-    // delete the current link if it is incorrect, including NULL handling
-    WHERE (
-        current_proposed_change.uuid <> diff_root_map.proposed_change_id
-        OR (current_proposed_change IS NULL AND diff_root_map.proposed_change_id IS NOT NULL)
-        OR (current_proposed_change IS NOT NULL AND diff_root_map.proposed_change_id IS NULL)
-    )
+    WITH diff_root, diff_root_map, current_edge, current_proposed_change
+    // delete the current link if it points to a different proposed change
+    WHERE current_proposed_change IS NULL OR current_proposed_change.uuid <> diff_root_map.proposed_change_id
     DELETE current_edge
-    // create the new link
     WITH diff_root, diff_root_map
     MATCH (new_proposed_change:Node {uuid: diff_root_map.proposed_change_id})
     CREATE (diff_root)-[:DIFF_FOR_PROPOSED_CHANGE]->(new_proposed_change)
@@ -82,6 +80,7 @@ CALL (diff_roots) {
                     "uuid": enriched_diff.uuid,
                     "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
                     "proposed_change_id": enriched_diff.proposed_change_id,
+                    "is_frozen": enriched_diff.is_frozen,
                 }
             )
         return {"diff_root_list": diff_root_list}

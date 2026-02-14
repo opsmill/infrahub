@@ -2,16 +2,17 @@ import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 
 export interface IpPrefixAvailableIdentifierProps extends ButtonProps {
   ipPrefixNode: IpPrefixNode;
@@ -77,7 +78,18 @@ export function IpPrefixAvailableIdentifier({
             setIsCreateFormOpen(false);
             queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
           }}
-          currentObject={{ prefix: { value: ipPrefixNode.display_label } }}
+          currentObject={{
+            prefix: {
+              value: ipPrefixNode.display_label ?? null,
+              is_default: false,
+              is_from_profile: false,
+              is_protected: false,
+              is_visible: true,
+              owner: null,
+              source: null,
+              updated_at: new Date().toISOString(),
+            } satisfies NodeAttributeWithMetadata,
+          }}
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />

@@ -36,8 +36,8 @@ const DatetimeField = ({
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
-        const handleChange = (newDate: Date) => {
-          const newDateValue = formatISO(newDate);
+        const handleChange = (newDate: Date | null) => {
+          const newDateValue = newDate ? formatISO(newDate) : null;
           field.onChange(updateFormFieldValue(newDateValue, defaultValue));
         };
 

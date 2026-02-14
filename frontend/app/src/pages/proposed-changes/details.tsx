@@ -9,31 +9,26 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Tabs } from "@/shared/components/tabs";
 import { Badge } from "@/shared/components/ui/badge";
 import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/entities/diff/checks/checks";
-import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
+import { ArtifactsDiff } from "@/entities/diff/ui/artifact-diff/artifacts-diff";
+import { FilesDiff } from "@/entities/diff/ui/file-diff/files-diff";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/domain/get-proposed-change-details.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
+import { ProposedChangeTabs } from "@/entities/proposed-changes/ui/tabs/proposed-change-tabs";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
-
-export const PROPOSED_CHANGES_TABS = {
-  CONVERSATIONS: "conversations",
-};
 
 const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) => {
   const { proposedChangeData } = props;
@@ -49,9 +44,9 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
 
   switch (qspTab) {
     case DIFF_TABS.FILES:
-      return <FilesDiff />;
+      return <FilesDiff branchName={proposedChangeData.source_branch?.value!} />;
     case DIFF_TABS.ARTIFACTS:
-      return <ArtifactsDiff />;
+      return <ArtifactsDiff branchName={proposedChangeData.source_branch?.value!} />;
     case DIFF_TABS.SCHEMA:
       return (
         <NodeDiff
@@ -73,7 +68,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
     case DIFF_TABS.CHECKS:
       return <Checks />;
     case TASK_TAB:
-      if (!qspTaskId) return <TaskItems hideRelatedNode />;
+      if (!qspTaskId) return <TaskItems relatedNodeId={proposedChangeData.id} />;
 
       return (
         <div>
@@ -101,7 +96,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
 
 export function Component() {
   const { proposedChangeId } = useParams() as { proposedChangeId: string };
-  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
 
@@ -109,40 +104,7 @@ export function Component() {
     return <LoadingIndicator className="h-full" />;
   }
 
-  const { proposedChangeData, tasksCount, metadata } = data ?? {};
-
-  const tabs = [
-    {
-      label: "Overview",
-      name: PROPOSED_CHANGES_TABS.CONVERSATIONS,
-    },
-    {
-      label: "Data",
-      name: DIFF_TABS.DATA,
-    },
-    {
-      label: "Files",
-      name: DIFF_TABS.FILES,
-    },
-    {
-      label: "Artifacts",
-      name: DIFF_TABS.ARTIFACTS,
-    },
-    {
-      label: "Schema",
-      name: DIFF_TABS.SCHEMA,
-    },
-    {
-      label: "Checks",
-      name: DIFF_TABS.CHECKS,
-      component: ProposedChangesChecksTab,
-    },
-    {
-      label: "Tasks",
-      name: TASK_TAB,
-      count: tasksCount ?? 0,
-    },
-  ];
+  const { proposedChangeData, metadata } = data ?? {};
 
   if (error || !proposedChangeData) {
     return (
@@ -157,18 +119,18 @@ export function Component() {
           isReloadLoading={isPending}
           end={
             <ObjectHelpButton
-              documentationUrl={schema?.documentation}
+              documentationUrl={schema.documentation}
               kind={PROPOSED_CHANGES_OBJECT}
               className="ml-auto"
             />
           }
         />
 
-        {error && (
-          <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
+        {error ? (
+          <ErrorScreen message={error.message} />
+        ) : (
+          <NoDataFound message="No proposed changes found." />
         )}
-
-        {!proposedChangeData && <NoDataFound message="No proposed changes found." />}
       </Content.Card>
     );
   }
@@ -180,7 +142,7 @@ export function Component() {
         description={
           <div className="inline-flex items-center gap-1 text-xs">
             <Link
-              to={getObjectDetailsUrl(metadata?.created_by?.__typename, metadata?.created_by?.id)}
+              to={getObjectDetailsUrl(metadata?.created_by?.__typename!, metadata?.created_by?.id)}
               className="font-semibold text-custom-blue-green"
             >
               {metadata?.created_by ? getNodeLabel(metadata.created_by) : ""}
@@ -216,7 +178,10 @@ export function Component() {
         }
       />
 
-      <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
+      <ProposedChangeTabs
+        sourceBranch={proposedChangeData.source_branch?.value!}
+        proposedChangeId={proposedChangeId}
+      />
 
       <ProposedChangeDetailsContent {...data} />
     </Content.Card>

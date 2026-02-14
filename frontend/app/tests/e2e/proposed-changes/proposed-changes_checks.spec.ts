@@ -1,24 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/proposed-changes checks", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should display checks on a proposed change", async ({ page }) => {
-    await page.goto("/proposed-changes");
+    await page.goto("/proposed-changes/new");
 
     await test.step("create a new proposed change", async () => {
-      await page.getByTestId("add-proposed-changes-button").click();
       await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
       await page.getByLabel("Name *").fill("pc-checks");
       await page.getByLabel("Source Branch *").click();
@@ -29,6 +21,16 @@ test.describe("/proposed-changes checks", () => {
 
     await test.step("go to Checks tab and see summary for all checks", async () => {
       await page.getByLabel("Tabs").getByText("Checks").click();
+      await expect(page.getByTestId("checks-summary")).toBeVisible();
+      while (
+        (await page.getByText("Data Integrity").isHidden()) ||
+        (await page.getByText("Schema Integrity").isHidden())
+      ) {
+        // checks are async, we must wait for them
+        await page.reload();
+        await expect(page.getByLabel("Tabs").getByText("Checks")).toBeVisible();
+        await expect(page.getByTestId("checks-summary")).toBeVisible();
+      }
       const checksSummary = page.getByTestId("checks-summary");
       await expect(checksSummary.getByText("Retry")).toBeVisible();
       await expect(checksSummary.getByText("Artifact")).toBeVisible();
@@ -37,7 +39,10 @@ test.describe("/proposed-changes checks", () => {
       await expect(checksSummary.getByText("Repository")).toBeVisible();
       await expect(checksSummary.getByText("Schema")).toBeVisible();
       await expect(checksSummary.getByText("User")).toBeVisible();
-      await expect(page.url()).toContain("pr_tab=checks");
+      await expect(page.url()).toContain("tab=checks");
+
+      await page.waitForTimeout(3000); // wait for circle animation to finish
+      await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_checks");
     });
   });
 

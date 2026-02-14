@@ -1,13 +1,18 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-export interface CreateObjectFromApiApiParams extends BranchContextParams {
+export interface CreateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   profileIds?: Array<string>;
+  file?: File;
+}
+
+function buildProfiles(profileIds: Array<string>) {
+  return profileIds.map((id) => ({ id }));
 }
 
 export function createObjectFromApi({
@@ -15,17 +20,18 @@ export function createObjectFromApi({
   objectKind,
   profileIds = [],
   branchName,
-}: CreateObjectFromApiApiParams) {
+  file,
+}: CreateObjectFromApiParams) {
   const mutation = jsonToGraphQLQuery({
     mutation: {
+      ...(file && { __variables: { file: "Upload!" } }),
       [`${objectKind}Create`]: {
         __args: {
           data: {
             ...data,
-            ...(profileIds?.length
-              ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
-              : {}),
+            ...(profileIds.length && { profiles: buildProfiles(profileIds) }),
           },
+          ...(file && { file: new VariableType("file") }),
         },
         object: {
           id: true,
@@ -39,6 +45,7 @@ export function createObjectFromApi({
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
+    variables: file ? { file } : undefined,
     context: {
       branch: branchName,
     },

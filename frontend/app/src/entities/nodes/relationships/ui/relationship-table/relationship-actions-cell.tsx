@@ -2,18 +2,18 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { TableCell } from "@/shared/components/table/table-cell";
+import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemWithTooltip,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -54,7 +54,7 @@ export function RelationshipActionsCell({
     return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
   }
 
-  const isEditAllowed = permission.update.isAllowed;
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
   const isDissociateAllowed = canDissociateRelationship({
     parentSchema,
     relationshipName,
@@ -85,30 +85,26 @@ export function RelationshipActionsCell({
               View properties
             </DropdownMenuItem>
 
-            <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isEditAllowed}
-                  onClick={() => isEditAllowed && setShowEditForm(true)}
-                >
-                  <Icon icon="mdi:edit-outline" className="text-base" />
-                  Edit
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            <DropdownMenuItemWithTooltip
+              disabled={!isEditAllowed}
+              tooltipEnabled={!isEditAllowed}
+              tooltipContent={editTooltipMessage}
+              onClick={() => isEditAllowed && setShowEditForm(true)}
+            >
+              <Icon icon="mdi:edit-outline" className="text-base" />
+              Edit
+            </DropdownMenuItemWithTooltip>
 
             {isDissociateAllowed && (
-              <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
-                <div>
-                  <DropdownMenuItem
-                    disabled={!isEditAllowed}
-                    onClick={() => isEditAllowed && setShowDissociateModal(true)}
-                  >
-                    <Icon icon="mdi:link-variant-remove" className="text-base" />
-                    Dissociate
-                  </DropdownMenuItem>
-                </div>
-              </Tooltip>
+              <DropdownMenuItemWithTooltip
+                disabled={!isEditAllowed}
+                tooltipEnabled={!isEditAllowed}
+                tooltipContent={editTooltipMessage}
+                onClick={() => isEditAllowed && setShowDissociateModal(true)}
+              >
+                <Icon icon="mdi:link-variant-remove" className="text-base" />
+                Dissociate
+              </DropdownMenuItemWithTooltip>
             )}
           </DropdownMenuContent>
         </DropdownMenu>

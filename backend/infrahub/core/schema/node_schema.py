@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import AllowOverrideType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, AllowOverrideType, InfrahubKind, RelationshipKind
 
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema
@@ -39,6 +39,11 @@ class NodeSchema(GeneratedNodeSchema):
         """Return whether a node is a derivative of built-in IP addreses."""
         return InfrahubKind.IPADDRESS in self.inherit_from
 
+    @property
+    def is_file_object(self) -> bool:
+        """Return whether a node is a derivative of built-in file objects."""
+        return InfrahubKind.FILEOBJECT in self.inherit_from
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Perform checks specific to inheritance from Generics.
 
@@ -71,64 +76,16 @@ class NodeSchema(GeneratedNodeSchema):
                     raise ValueError(
                         f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
                     )
-                if relationship.kind != RelationshipKind.HIERARCHY and relationship.peer != interface_relationship.peer:
+                if (
+                    relationship.kind == RelationshipKind.HIERARCHY
+                    or relationship.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
+                ):
+                    continue
+                if relationship.peer != interface_relationship.peer:
                     raise ValueError(
                         f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} must have the same peer "
                         f"({interface_relationship.peer} != {relationship.peer})"
                     )
-
-    def inherit_from_interface(self, interface: GenericSchema) -> None:
-        existing_inherited_attributes: dict[str, int] = {
-            item.name: idx for idx, item in enumerate(self.attributes) if item.inherited
-        }
-        existing_inherited_relationships: dict[str, int] = {
-            item.name: idx for idx, item in enumerate(self.relationships) if item.inherited
-        }
-        existing_inherited_fields = list(existing_inherited_attributes.keys()) + list(
-            existing_inherited_relationships.keys()
-        )
-
-        properties_to_inherit = [
-            "human_friendly_id",
-            "display_label",
-            "display_labels",
-            "default_filter",
-            "menu_placement",
-            "uniqueness_constraints",
-            "icon",
-            "order_by",
-        ]
-        for prop_name in properties_to_inherit:
-            if getattr(interface, prop_name) and not getattr(self, prop_name):
-                setattr(self, prop_name, getattr(interface, prop_name))
-
-        for attribute in interface.attributes:
-            if attribute.name in self.valid_local_names:
-                continue
-
-            new_attribute = attribute.duplicate()
-            new_attribute.id = None
-            new_attribute.inherited = True
-
-            if attribute.name not in existing_inherited_fields:
-                self.attributes.append(new_attribute)
-            else:
-                item_idx = existing_inherited_attributes[attribute.name]
-                self.attributes[item_idx].update_from_generic(other=new_attribute)
-
-        for relationship in interface.relationships:
-            if relationship.name in self.valid_local_names:
-                continue
-
-            new_relationship = relationship.duplicate()
-            new_relationship.id = None
-            new_relationship.inherited = True
-
-            if relationship.name not in existing_inherited_fields:
-                self.relationships.append(new_relationship)
-            else:
-                item_idx = existing_inherited_relationships[relationship.name]
-                self.relationships[item_idx].update_from_generic(other=new_relationship)
 
     def get_hierarchy_schema(
         self, db: InfrahubDatabase, branch: Branch | str | None = None, duplicate: bool = False

@@ -13,6 +13,7 @@ from infrahub.core.diff.model.path import (
     BranchTrackingId,
     EnrichedDiffRoot,
     EnrichedDiffs,
+    FrozenTrackingId,
     NameTrackingId,
     NodeDiffFieldSummary,
 )
@@ -1271,6 +1272,295 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             to_time=self.diff_to_time.add(hours=1),
         )
         assert len(retrieved) == 3
+
+    async def test_get_exclude_merged(self, diff_repository: DiffRepository, reset_database) -> None:
+        base_branch_name = "main"
+        # Create two diffs with tracking IDs
+        merged_diff = EnrichedRootFactory.build(base_branch_name=base_branch_name)
+        merged_tracking_id = BranchTrackingId(name=merged_diff.diff_branch_name)
+        merged_diff.tracking_id = merged_tracking_id
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=merged_diff, do_summary_counts=False
+        )
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[merged_tracking_id])
+
+        unmerged_diff = EnrichedRootFactory.build(base_branch_name=base_branch_name)
+        unmerged_tracking_id = BranchTrackingId(name=unmerged_diff.diff_branch_name)
+        unmerged_diff.tracking_id = unmerged_tracking_id
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=unmerged_diff, do_summary_counts=False
+        )
+
+        # get(exclude_merged=True) should exclude merged diff
+        diffs = await diff_repository.get(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            exclude_merged=True,
+        )
+        assert {d.uuid for d in diffs} == {unmerged_diff.uuid}
+
+        # get(exclude_merged=False) should include both diffs
+        diffs = await diff_repository.get(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            exclude_merged=False,
+        )
+        assert {d.uuid for d in diffs} == {merged_diff.uuid, unmerged_diff.uuid}
+
+        # get_roots_metadata(exclude_merged=True) should exclude merged diff
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_names=[base_branch_name],
+            exclude_merged=True,
+        )
+        metadata_uuids = {m.uuid for m in metadata}
+        assert merged_diff.uuid not in metadata_uuids
+        assert unmerged_diff.uuid in metadata_uuids
+
+        # get_roots_metadata(exclude_merged=False) should include both diffs
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[merged_diff.diff_branch_name, unmerged_diff.diff_branch_name],
+            base_branch_names=[base_branch_name],
+            exclude_merged=False,
+        )
+        metadata_uuids = {m.uuid for m in metadata}
+        assert merged_diff.uuid in metadata_uuids
+        assert unmerged_diff.uuid in metadata_uuids
+
+        # summary(exclude_merged=True) should exclude merged diff
+        summary = await diff_repository.summary(
+            diff_branch_names=[merged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=merged_tracking_id,
+            exclude_merged=True,
+        )
+        assert summary is None
+
+        summary = await diff_repository.summary(
+            diff_branch_names=[unmerged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=unmerged_tracking_id,
+            exclude_merged=True,
+        )
+        assert summary is not None
+
+        # summary(exclude_merged=False) should include merged diff
+        summary = await diff_repository.summary(
+            diff_branch_names=[merged_diff.diff_branch_name],
+            base_branch_name=base_branch_name,
+            tracking_id=merged_tracking_id,
+            exclude_merged=False,
+        )
+        assert summary is not None
+
+    async def test_freeze_diffs_for_proposed_change(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test freezing diffs linked to a proposed change."""
+        # Create proposed change node
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        # Save diff with proposed change (is_frozen defaults to False)
+        tracking_id = BranchTrackingId(name=str(uuid4()))
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
+            is_frozen=False,
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
+            is_frozen=False,
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Verify diffs are not frozen initially
+        metadata = await diff_repository.get_roots_metadata(proposed_change_id=proposed_change_id)
+        assert len(metadata) == 2
+        for m in metadata:
+            assert m.is_frozen is False
+            assert isinstance(m.tracking_id, BranchTrackingId)
+
+        # Freeze diffs
+        await diff_repository.freeze_diffs_for_proposed_change(proposed_change_id=proposed_change_id)
+
+        # Verify diffs are frozen with FrozenTrackingId
+        metadata = await diff_repository.get_roots_metadata(proposed_change_id=proposed_change_id)
+        assert len(metadata) == 2
+        for m in metadata:
+            assert m.is_frozen is True
+            assert isinstance(m.tracking_id, FrozenTrackingId)
+            assert m.tracking_id.name == proposed_change_id
+
+    async def test_delete_frozen_diff_protection(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test that frozen diffs are protected from deletion unless include_frozen=True."""
+        # Create proposed change nodes
+        frozen_pc_id = str(uuid4())
+        unfrozen_pc_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": frozen_pc_id})
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": unfrozen_pc_id})
+
+        # Create diff that will be frozen
+        frozen_tracking_id = NameTrackingId(name=str(uuid4()))
+        frozen_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
+            tracking_id=frozen_tracking_id,
+            proposed_change_id=frozen_pc_id,
+            is_frozen=False,
+        )
+        frozen_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=frozen_tracking_id,
+            proposed_change_id=frozen_pc_id,
+            is_frozen=False,
+        )
+        frozen_base_diff.partner_uuid = frozen_branch_diff.uuid
+        frozen_branch_diff.partner_uuid = frozen_base_diff.uuid
+        frozen_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=frozen_base_diff,
+            diff_branch_diff=frozen_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=frozen_diffs, do_summary_counts=False)
+        await diff_repository.freeze_diffs_for_proposed_change(proposed_change_id=frozen_pc_id)
+
+        # Create unfrozen diff
+        unfrozen_tracking_id = NameTrackingId(name=str(uuid4()))
+        unfrozen_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time.add(minutes=30),
+            to_time=self.diff_to_time.add(minutes=30),
+            nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
+            tracking_id=unfrozen_tracking_id,
+            proposed_change_id=unfrozen_pc_id,
+            is_frozen=False,
+        )
+        unfrozen_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time.add(minutes=30),
+            to_time=self.diff_to_time.add(minutes=30),
+            nodes=set(),
+            tracking_id=unfrozen_tracking_id,
+            proposed_change_id=unfrozen_pc_id,
+            is_frozen=False,
+        )
+        unfrozen_base_diff.partner_uuid = unfrozen_branch_diff.uuid
+        unfrozen_branch_diff.partner_uuid = unfrozen_base_diff.uuid
+        unfrozen_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=unfrozen_base_diff,
+            diff_branch_diff=unfrozen_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=unfrozen_diffs, do_summary_counts=False)
+
+        # Verify both diffs exist before deletion
+        frozen_metadata_before = await diff_repository.get_roots_metadata(proposed_change_id=frozen_pc_id)
+        assert len(frozen_metadata_before) == 2
+        unfrozen_metadata_before = await diff_repository.get_roots_metadata(proposed_change_id=unfrozen_pc_id)
+        assert len(unfrozen_metadata_before) == 2
+
+        # Delete with include_frozen=False: only unfrozen diffs should be deleted
+        await diff_repository.delete_diff_roots(
+            diff_root_uuids=[frozen_branch_diff.uuid, unfrozen_branch_diff.uuid],
+            include_frozen=False,
+        )
+
+        # Verify frozen diff still exists
+        frozen_metadata = await diff_repository.get_roots_metadata(proposed_change_id=frozen_pc_id)
+        frozen_uuids = {m.uuid for m in frozen_metadata}
+        assert frozen_branch_diff.uuid in frozen_uuids
+
+        # Verify unfrozen diff is deleted
+        unfrozen_metadata = await diff_repository.get_roots_metadata(proposed_change_id=unfrozen_pc_id)
+        unfrozen_uuids = {m.uuid for m in unfrozen_metadata}
+        assert unfrozen_branch_diff.uuid not in unfrozen_uuids
+
+        # Delete with include_frozen=True: frozen diffs should now be deleted
+        await diff_repository.delete_diff_roots(
+            diff_root_uuids=[frozen_branch_diff.uuid],
+            include_frozen=True,
+        )
+
+        # Verify frozen diff is now deleted
+        frozen_metadata_after = await diff_repository.get_roots_metadata(proposed_change_id=frozen_pc_id)
+        frozen_uuids_after = {m.uuid for m in frozen_metadata_after}
+        assert frozen_branch_diff.uuid not in frozen_uuids_after
+
+    async def test_save_and_retrieve_is_frozen(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test that is_frozen property is saved and retrieved correctly."""
+        # Create diff with is_frozen=True
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=FrozenTrackingId(name="frozen-tracking-test"),
+            is_frozen=True,
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=FrozenTrackingId(name="frozen-tracking-test"),
+            is_frozen=True,
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Retrieve and verify
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[self.diff_branch_name, self.base_branch_name],
+            tracking_id=FrozenTrackingId(name="frozen-tracking-test"),
+        )
+        assert len(metadata) == 2
+        for m in metadata:
+            assert m.is_frozen is True
+            assert isinstance(m.tracking_id, FrozenTrackingId)
 
 
 async def verify_no_orphaned_nodes(db: InfrahubDatabase) -> None:

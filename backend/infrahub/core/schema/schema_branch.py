@@ -9,13 +9,13 @@ from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
@@ -54,7 +54,11 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters, TextAttributeParameters
+from infrahub.core.schema.attribute_parameters import (
+    ListAttributeParameters,
+    NumberPoolParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -68,8 +72,9 @@ from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 from ... import config
-from ..constants.schema import PARENT_CHILD_IDENTIFIER
+from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .node_inheritance_handler import NodeInheritanceHandler
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
@@ -509,44 +514,53 @@ class SchemaBranch:
 
         return fields or None
 
-    def _text_attr_needs_reconciliation(self, attr: AttributeSchema) -> bool:
-        """Check if a Text attribute needs reconciliation between deprecated fields and parameters."""
-        if not isinstance(attr.parameters, TextAttributeParameters):
-            return False
-        return (
-            attr.regex != attr.parameters.regex
-            or attr.min_length != attr.parameters.min_length
-            or attr.max_length != attr.parameters.max_length
-        )
+    def _attr_needs_legacy_param_reconciliation(self, attr: AttributeSchema) -> bool:
+        """Check if an attribute needs reconciliation between deprecated fields and parameters.
 
-    def _reconcile_text_attr(self, attr: AttributeSchema) -> None:
-        """Reconcile a single Text attribute's deprecated fields with parameters.
+        Supports Text/TextArea attributes (regex, min_length, max_length) and List attributes (regex).
+        """
+        if isinstance(attr.parameters, TextAttributeParameters):
+            return (
+                attr.regex != attr.parameters.regex
+                or attr.min_length != attr.parameters.min_length
+                or attr.max_length != attr.parameters.max_length
+            )
+        if isinstance(attr.parameters, ListAttributeParameters):
+            return attr.regex != attr.parameters.regex
+        return False
+
+    def _reconcile_legacy_attr_params(self, attr: AttributeSchema) -> None:
+        """Reconcile an attribute's deprecated fields with parameters.
 
         Parameters take precedence over deprecated top-level fields when both are set.
+        Supports Text/TextArea attributes (regex, min_length, max_length) and List attributes (regex).
         """
-        if not isinstance(attr.parameters, TextAttributeParameters):
-            return
+        if isinstance(attr.parameters, (TextAttributeParameters, ListAttributeParameters)):
+            # Sync regex: parameters takes precedence
+            if attr.parameters.regex is not None:
+                attr.regex = attr.parameters.regex
+            elif attr.regex is not None:
+                attr.parameters.regex = attr.regex
 
-        # Sync regex: parameters takes precedence
-        if attr.parameters.regex is not None:
-            attr.regex = attr.parameters.regex
-        elif attr.regex is not None:
-            attr.parameters.regex = attr.regex
+        if isinstance(attr.parameters, TextAttributeParameters):
+            # Sync min_length: parameters takes precedence
+            if attr.parameters.min_length is not None:
+                attr.min_length = attr.parameters.min_length
+            elif attr.min_length is not None:
+                attr.parameters.min_length = attr.min_length
 
-        # Sync min_length: parameters takes precedence
-        if attr.parameters.min_length is not None:
-            attr.min_length = attr.parameters.min_length
-        elif attr.min_length is not None:
-            attr.parameters.min_length = attr.min_length
+            # Sync max_length: parameters takes precedence
+            if attr.parameters.max_length is not None:
+                attr.max_length = attr.parameters.max_length
+            elif attr.max_length is not None:
+                attr.parameters.max_length = attr.max_length
 
-        # Sync max_length: parameters takes precedence
-        if attr.parameters.max_length is not None:
-            attr.max_length = attr.parameters.max_length
-        elif attr.max_length is not None:
-            attr.parameters.max_length = attr.max_length
+    def _reconcile_legacy_attribute_parameters(self, schema: SchemaRoot | None = None) -> None:
+        """Reconcile deprecated fields and parameters for attributes with legacy parameter support.
 
-    def _reconcile_text_attribute_parameters(self, schema: SchemaRoot | None = None) -> None:
-        """Reconcile regex, min_length, max_length between deprecated fields and parameters for Text attributes.
+        This handles the transition of validation parameters (regex, min_length, max_length)
+        from top-level attribute fields to the nested parameters object. Supports Text/TextArea
+        and List attributes.
 
         Args:
             schema: If provided, reconcile incoming schema data before merging.
@@ -556,19 +570,19 @@ class SchemaBranch:
             # Incoming schema: modify in place
             for item in schema.nodes + schema.generics:
                 for attr in item.attributes:
-                    self._reconcile_text_attr(attr)
+                    self._reconcile_legacy_attr_params(attr)
             return
 
         # Loaded schemas: need to duplicate before modifying
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            if not any(self._text_attr_needs_reconciliation(attr) for attr in node.attributes):
+            if not any(self._attr_needs_legacy_param_reconciliation(attr) for attr in node.attributes):
                 continue
 
             node = node.duplicate()
             for attr in node.attributes:
-                self._reconcile_text_attr(attr)
+                self._reconcile_legacy_attr_params(attr)
             self.set(name=name, schema=node)
 
     def load_schema(self, schema: SchemaRoot) -> None:
@@ -576,8 +590,8 @@ class SchemaBranch:
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
-        # Reconcile deprecated text attribute parameters before merging
-        self._reconcile_text_attribute_parameters(schema)
+        # Reconcile deprecated attribute parameters before merging
+        self._reconcile_legacy_attribute_parameters(schema)
 
         for item in schema.nodes + schema.generics:
             try:
@@ -618,7 +632,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
-        self._reconcile_text_attribute_parameters()
+        self._reconcile_legacy_attribute_parameters()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -1309,7 +1323,7 @@ class SchemaBranch:
                 )
             return
 
-        jinja_template = Jinja2Template(template=node.display_label)
+        jinja_template = InfrahubJinja2Template(template=node.display_label)
         try:
             variables = jinja_template.get_variables()
             jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
@@ -1366,7 +1380,7 @@ class SchemaBranch:
                 | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
             )
 
-            jinja_template = Jinja2Template(template=attribute.computed_attribute.jinja2_template)
+            jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
             try:
                 variables = jinja_template.get_variables()
                 jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
@@ -1718,6 +1732,7 @@ class SchemaBranch:
         """
 
         generics_used_by = defaultdict(list)
+        node_inheritance_handler = NodeInheritanceHandler()
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
@@ -1752,7 +1767,7 @@ class SchemaBranch:
                 # Store the list of node referencing a specific generics
                 if node.namespace != "Internal":
                     generics_used_by[generic_kind].append(node.kind)
-                node.inherit_from_interface(interface=generic_kind_schema)
+                node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
@@ -2040,7 +2055,7 @@ class SchemaBranch:
             for item in template.attributes + template.relationships:
                 if item.order_weight:
                     continue
-                item.order_weight = generic_node_weights[item.name] if item.name in generic_node_weights else None
+                item.order_weight = generic_node_weights.get(item.name)
 
             self.set(name=template.kind, schema=template)
 
@@ -2483,6 +2498,56 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
+    def _create_resource_pool_relationship(self, relationship: RelationshipSchema) -> RelationshipSchema | None:
+        """Create a resource pool relationship for IP address or prefix relationships.
+
+        When a relationship points to a schema that inherits from BuiltinIPAddress or BuiltinIPPrefix,
+        this method creates a corresponding relationship to the appropriate resource pool
+        (CoreIPAddressPool or CoreIPPrefixPool).
+
+        Args:
+            relationship: The original relationship schema
+
+        Returns:
+            A RelationshipSchema for the resource pool relationship, or None if not applicable
+        """
+        peer_schema = self.get(name=relationship.peer, duplicate=False)
+        if not isinstance(peer_schema, NodeSchema | GenericSchema):
+            return None
+
+        pool_peer = None
+        if isinstance(peer_schema, GenericSchema):
+            if peer_schema.kind == InfrahubKind.IPADDRESS:
+                pool_peer = InfrahubKind.IPADDRESSPOOL
+            elif peer_schema.kind == InfrahubKind.IPPREFIX:
+                pool_peer = InfrahubKind.IPPREFIXPOOL
+        elif isinstance(peer_schema, NodeSchema):
+            if peer_schema.is_ip_address:
+                pool_peer = InfrahubKind.IPADDRESSPOOL
+            elif peer_schema.is_ip_prefix:
+                pool_peer = InfrahubKind.IPPREFIXPOOL
+
+        if not pool_peer:
+            return None
+
+        pool_rel_name = f"{relationship.name}{RESOURCE_POOL_REL_SUFFIX}"
+        pool_identifier = f"{relationship.get_identifier()}{RESOURCE_POOL_REL_SUFFIX}"
+        pool_label = relationship.name.title() + " from Resource Pool"
+
+        return RelationshipSchema(
+            name=pool_rel_name,
+            peer=pool_peer,
+            description=f"Generated relationship for using a resource pool on the '{relationship.name}' relationship",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+            direction=relationship.direction,
+            branch=relationship.branch,
+            identifier=pool_identifier,
+            label=pool_label,
+            inherited=relationship.inherited,
+        )
+
     def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
         template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
 
@@ -2538,6 +2603,11 @@ class SchemaBranch:
                     inherited=relationship.inherited,
                 )
             )
+
+            # Add resource pool relationship if the peer schema is eligible
+            pool_relationship = self._create_resource_pool_relationship(relationship)
+            if pool_relationship:
+                template_schema.relationships.append(pool_relationship)
 
             parent_hfid = f"{relationship.name}__template_name__value"
             if (
@@ -2622,7 +2692,7 @@ class SchemaBranch:
                     template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
 
         for node_attr in node.attributes:
-            if node_attr.unique or node_attr.read_only:
+            if not node_attr.support_templates:
                 continue
 
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)

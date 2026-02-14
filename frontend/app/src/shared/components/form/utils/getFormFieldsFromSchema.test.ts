@@ -322,8 +322,6 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      login: async () => {},
-      signOut: () => {},
       setToken: () => {},
       user: {
         id: "1",
@@ -381,8 +379,6 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      login: async () => {},
-      signOut: () => {},
       setToken: () => {},
       user: {
         id: "1",
@@ -537,7 +533,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "mainnn",
       description: "Default Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -598,7 +594,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "other",
       description: "other Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -659,7 +655,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "main",
       description: "Default Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -720,7 +716,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "other",
       description: "other Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,

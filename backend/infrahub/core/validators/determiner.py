@@ -86,6 +86,10 @@ class ConstraintValidatorDeterminer:
         schemas = list(self.schema_branch.get_all(duplicate=False).values())
         # added here to check their uniqueness constraints
         with contextlib.suppress(SchemaNotFoundError):
+            schemas.append(self.schema_branch.get_node(name="SchemaNode", duplicate=False))
+        with contextlib.suppress(SchemaNotFoundError):
+            schemas.append(self.schema_branch.get_node(name="SchemaGeneric", duplicate=False))
+        with contextlib.suppress(SchemaNotFoundError):
             schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
         with contextlib.suppress(SchemaNotFoundError):
             schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))

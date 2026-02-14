@@ -28,7 +28,7 @@ class CoreNumberPool(Node):
         """Returns the number of excluded values for the attribute of the number pool."""
 
         pool_node = registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
-        attribute = [attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value][0]  # type: ignore [attr-defined]
+        attribute = next(attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value)  # type: ignore [attr-defined]
         if not isinstance(attribute.parameters, NumberAttributeParameters):
             return 0
 

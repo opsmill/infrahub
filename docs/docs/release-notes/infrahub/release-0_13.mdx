@@ -50,10 +50,10 @@ More information about IPAM is available in the [Documentation](../../topics/ipa
 
 #### Profiles
 
-A profile in Infrahub allow you to define a common set of attributes that should be applied to nodes.
+A Profile in Infrahub allows you to define a common set of attributes that should be applied to nodes.
 
-A node that has a profile assigned, will get the values of its attributes inherited from the assigned profile, if no value is defined for the attribute at the node, or if the default value is used.
-The attribute values of a node that were inherited from a profile can be overridden, by defining them at the node.
+A node that has a Profile assigned, will get the values of its attributes inherited from the assigned Profile, if no value is defined for the attribute at the node, or if the default value is used.
+The attribute values of a node that were inherited from a Profile can be overridden, by defining them at the node.
 
 More information about Profiles is available in the [Documentation](../../topics/profiles.mdx).
 
@@ -88,7 +88,7 @@ infrahub db index --help
 A Generator is a generic plugin that can be used apply your own logic to create new nodes and relationships.
 Generator are expected to be idempotent and should be able to run multiple times and always produce the same result.
 
-One use case for the generators is to be able to manage technical objects derived from a higher level definition of a service.
+One use case for the Generators is to be able to manage technical objects derived from a higher level definition of a service.
 
 Generators are associated with some input data identified by a GraphQL query.
 Similar to the Transforms & Artifacts, Generator will be automatically executed as part of the CI Pipeline if the data associated with a given generator has changed.

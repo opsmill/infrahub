@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { useEffect, useRef } from "react";
 
 import type { components } from "@/shared/api/rest/types.generated";
 import { Badge } from "@/shared/components/ui/badge";
@@ -8,7 +9,21 @@ import type { RelationshipSchema } from "@/entities/schema/types";
 
 import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
 
-export const RelationshipDisplay = ({ relationship }: { relationship: RelationshipSchema }) => {
+export const RelationshipDisplay = ({
+  relationship,
+  defaultOpen = false,
+}: {
+  relationship: RelationshipSchema;
+  defaultOpen?: boolean;
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (defaultOpen && ref.current) {
+      ref.current.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+  }, [defaultOpen]);
+
   const cardinalityLabel = relationship.cardinality
     ? getLabelForCardinality(relationship.cardinality)
     : null;
@@ -19,6 +34,7 @@ export const RelationshipDisplay = ({ relationship }: { relationship: Relationsh
 
   return (
     <AccordionStyled
+      ref={ref}
       title={relationship.label || relationship.name}
       kind={
         <>
@@ -33,6 +49,7 @@ export const RelationshipDisplay = ({ relationship }: { relationship: Relationsh
       description={relationship.description}
       isOptional={relationship.optional}
       isDeprecated={!!relationship.deprecation}
+      defaultOpen={defaultOpen}
     >
       <div>
         <PropertyRow title="ID" value={relationship.id} />

@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import type { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
@@ -11,11 +13,22 @@ import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styl
 
 export const AttributeDisplay = ({
   attribute,
+  defaultOpen = false,
 }: {
   attribute: components["schemas"]["AttributeSchema-Output"];
+  defaultOpen?: boolean;
 }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (defaultOpen && ref.current) {
+      ref.current.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+  }, [defaultOpen]);
+
   return (
     <AccordionStyled
+      ref={ref}
       title={attribute.label || attribute.name}
       kind={attribute.kind}
       description={attribute.description}
@@ -24,6 +37,7 @@ export const AttributeDisplay = ({
       isReadOnly={attribute.read_only}
       isComputed={!!attribute.computed_attribute}
       isDeprecated={!!attribute.deprecation}
+      defaultOpen={defaultOpen}
     >
       <div>
         <PropertyRow title="ID" value={attribute.id} />

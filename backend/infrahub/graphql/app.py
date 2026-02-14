@@ -22,10 +22,7 @@ from graphql import (
     ExecutionContext,
     ExecutionResult,
     GraphQLError,
-    GraphQLFormattedError,
     OperationType,
-    graphql,
-    parse,
     subscribe,
     validate,
 )
@@ -45,6 +42,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
 
@@ -58,11 +56,11 @@ from .metrics import (
     GRAPHQL_RESPONSE_SIZE_METRICS,
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
-from .middleware import raise_on_mutation_on_branch_needing_rebase
+from .middleware import raise_on_mutation_for_branch_status
 
 if TYPE_CHECKING:
     import graphene
-    from graphql import GraphQLSchema
+    from graphql import GraphQLFormattedError, GraphQLSchema
     from graphql.language.ast import (
         DocumentNode,
         OperationDefinitionNode,
@@ -213,6 +211,7 @@ class InfrahubGraphQLApp:
             schema=graphql_params.schema,
             operation_name=operation_name,
             branch=branch,
+            document=cached_parse(query),
         )
 
         # if the query contains some mutation, it's not currently supported to set AT manually
@@ -228,6 +227,7 @@ class InfrahubGraphQLApp:
                 schema=graphql_params.schema,
                 operation_name=operation_name,
                 branch=branch,
+                document=cached_parse(query),
             )
         impacted_models = analyzed_query.query_report.impacted_models
 
@@ -252,12 +252,12 @@ class InfrahubGraphQLApp:
             span.set_attributes(labels)
 
             with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-                result = await graphql(
+                result = await execute_graphql_query(
                     schema=graphql_params.schema,
                     source=query,
                     context_value=graphql_params.context,
                     root_value=self.root_value,
-                    middleware=[raise_on_mutation_on_branch_needing_rebase],
+                    middleware=[raise_on_mutation_for_branch_status],
                     variable_values=variable_values,
                     operation_name=operation_name,
                     execution_context_class=self.execution_context_class,
@@ -265,6 +265,7 @@ class InfrahubGraphQLApp:
 
         response: dict[str, Any] = {"data": result.data}
         if result.errors:
+            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(result.errors))
             for error in result.errors:
                 if error.original_error:
                     self._log_error(error=error.original_error)
@@ -282,10 +283,6 @@ class InfrahubGraphQLApp:
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
         GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(impacted_models))
-
-        _, errors = analyzed_query.is_valid
-        if errors:
-            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
 
@@ -391,7 +388,7 @@ class InfrahubGraphQLApp:
         document: DocumentNode | None = None
 
         try:
-            document = parse(query)
+            document = cached_parse(query)
             operation = get_operation_ast(document, operation_name)
             errors = validate(graphql_params.schema, document)
         except GraphQLError as e:

@@ -35,7 +35,7 @@ class AttributeIsIndexed:
 
 class TestMigrationAttributeKind(TestInfrahubApp):
     @pytest.fixture(params=[True, False])
-    async def branch(self, request, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+    async def branch(self, request: pytest.FixtureRequest, db: InfrahubDatabase, default_branch: Branch) -> Branch:
         if request.param:
             return default_branch
         branch_name = "branch-attr-kind-update"
@@ -107,7 +107,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,
-        schema_thing,
+        schema_thing: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -124,7 +124,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_step_02(
         self,
-        schema_thing_illegal_updates,
+        schema_thing_illegal_updates: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -140,7 +140,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_step_03(
         self,
-        schema_thing_text_to_text_area,
+        schema_thing_text_to_text_area: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -156,7 +156,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_step_04(
         self,
-        schema_thing_text_area_to_text,
+        schema_thing_text_area_to_text: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -172,7 +172,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_step_05(
         self,
-        schema_thing_url_to_text,
+        schema_thing_url_to_text: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -188,7 +188,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
     @pytest.fixture(scope="class")
     def schema_step_06(
         self,
-        schema_thing_text_area_revert,
+        schema_thing_text_area_revert: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -200,8 +200,8 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initialize_registry,
-        schema_step_01,
+        initialize_registry: None,
+        schema_step_01: dict[str, Any],
     ) -> dict[str, Node]:
         await load_schema(db=db, schema=schema_step_01)
 

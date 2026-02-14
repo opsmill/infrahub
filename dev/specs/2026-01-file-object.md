@@ -3,10 +3,16 @@ Title: File object feature
 Author:
   - Wim Van Deun
   - Yvonne Jouffrault
-Status: draft
+  - Guillaume Mazoyer
+Status: implemented
 JPD: INFP-403
 ---
+
 # File object feature
+
+## Overview
+
+The FileObject feature allows users to upload files and link them to other objects in Infrahub. Users define their own file object types by inheriting from `CoreFileObject`, which provides automatic file metadata tracking (filename, size, checksum, MIME type) and integration with Infrahub's version control and permission systems.
 
 ## Backend
 
@@ -14,19 +20,18 @@ JPD: INFP-403
 
 #### CoreFileObject generic
 
-A new `CoreFileObject` generic will be implemented, custom file object types need to be defined by the user, inheriting from this generic.
+The `CoreFileObject` generic provides the base attributes for all file objects. Custom file object types must inherit from this generic.
 
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
 generics:
-  - name: FileObject # In Infrahub internal schema
+  - name: FileObject
     namespace: Core
     attributes:
       - name: file_name
         kind: Text
-        optional: false
         read_only: true
         optional: false
       - name: checksum
@@ -47,266 +52,198 @@ generics:
         optional: false
 ```
 
-The following attributes will have to be defined:
+**Attributes:**
 
-- `file_name` (read-only, required) : the name of the file, as uploaded by the user
-- `checksum` (read-only, required): checksum (md5 or sha1) calculated on the uploaded file
-- `file_size` (read-only, required): the size of the file in bytes
-- `file_type` (read-only, required): the type of the file, derived from the uploaded file’s file extension, or derived from the mime-type.
-- `storage_id` (read-only, required): the id of the uploaded file in Infrahub’s storage
+| Attribute | Description |
+|-----------|-------------|
+| `file_name` | Original filename as uploaded by the user |
+| `checksum` | SHA-1 checksum calculated on the uploaded file |
+| `file_size` | File size in bytes |
+| `file_type` | MIME type detected from file content using magic bytes (via `puremagic`) |
+| `storage_id` | UUID of the file in Infrahub's storage system (UUIDT format) |
+
+All attributes are read-only and system-managed. When a file is uploaded, the system automatically populates all attributes.
 
 #### User-defined file object type
 
-A user will have to define their own file attachment types in their schema. Multiple file attachment types can be defined.
-
-For example here we define a CircuitContract type that we can attach to the Circuit type in the user’s schema
+Users define their own file object types in their schema by inheriting from `CoreFileObject`:
 
 ```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-- name: CircuitContract
-  namespace: Network
-  inherit_from:
-    - CoreFileObject
-  attributes:
-    - name: contract_start
-      kind: DateTime
-      optional: false
-    - name: active
-      kind: Boolean
-    - name: contract_end
-      kind: DateTime
-      optional: false
-  relationships:
-    - name: signed_by
-      peer: CoreAccount
-      kind: Attribute
-      optional: false
-      cardinality: one
-    - name: circuit
-      label: Circuit
-      peer: NetworkCircuit
-      kind: Attribute
-      cardinality: one
-      optional: true
+version: "1.0"
+nodes:
+  - name: CircuitContract
+    namespace: Network
+    inherit_from:
+      - CoreFileObject
+    attributes:
+      - name: contract_start
+        kind: DateTime
+        optional: false
+      - name: contract_end
+        kind: DateTime
+        optional: false
+    relationships:
+      - name: signed_by
+        peer: CoreAccount
+        kind: Attribute
+        cardinality: one
+        optional: true
+      - name: circuit
+        peer: NetworkCircuit
+        kind: Attribute
+        cardinality: one
+        optional: true
 ```
 
-Then on the specific type that you want to attach a file
+FileObjects can be related to other objects using standard Infrahub relationships:
 
 ```yaml
----
-- name: Circuit
-  namespace: Network
-  attributes:
-    - name: circuit_id
-      kind: Text
-      optional: false
-    - name: bandwidth
-      kind: Number
-      optional: false
-  relationships:
-    - name: provider
-      peer: OrganisationProvider
-      kind: Attribute
-      cardinality: one
-      optional: false
-    - name: contracts
-      peer: NetworkCircuitContract
-      kind: Generic
-      cardinality: many
-      optional: true
+  - name: Circuit
+    namespace: Network
+    attributes:
+      - name: circuit_id
+        kind: Text
+        optional: false
+    relationships:
+      - name: contracts
+        peer: NetworkCircuitContract
+        kind: Generic
+        cardinality: many
+        optional: true
 ```
 
-Here we define a new cardinality many relationship named contracts with the peer `NetworkCircuitContract`, meaning multiple contracts can be attached to the circuit object.
+### Storage Architecture
 
-You can also use cardinality one relationships, if you want to create a file attachment of which you want to only have one. For example, you may want to only have the latest/current contract available on each circuit. In that case you can use a cardinality one relationship and modify the existing attachment as new contracts get closed for this circuit. Which would leverage Infrahub’s version control features to store previous versions of a file attachment.
+#### Design Principles
 
-The user will be able to use the different relationship kinds that are already available in Infrahub, to influence how the attachment will be displayed in the UI.
+1. **Immutable storage**: Once stored, files are never modified or deleted (enables time travel)
+2. **Branch-agnostic storage**: Storage is a simple key-value store; branch awareness is at the node level
+3. **No deduplication**: Each upload creates a new storage entry with a unique UUID
 
-Another example of a file attachment could be a maintenance notification, that we also want to attach to a circuit
+#### How Branch Awareness Works
 
-```yaml
----
-- name: CircuitMaintenance
-  namespace: Network
-  inherit_from:
-    - CoreFileObject
-  attributes:
-    - name: maintenance_start
-      kind: DateTime
-      optional: false
-    - name: maintenance_end
-      kind: DateTime
-      optional: false
-    - name: acknowledged
-      kind: Boolean
-      optional: false
-      default_value: false
-  relationships:
-    - name: circuit
-      label: Circuit
-      peer: NetworkCircuit
-      kind: Attribute
-      cardinality: one
-      optional: true
-    - name: acknowledged_by
-      peer: CoreAccount
-      kind: Attribute
-      cardinality: one
-      optional: true
+Storage itself is branch-agnostic, but **CoreFileObject nodes are branch-aware**:
+
+```
+Storage Layer (branch-agnostic):
+  "abc-123" → file bytes (original version)
+  "def-456" → file bytes (updated version)
+
+Database Layer (branch-aware):
+  Branch "main":     NetworkCircuitContract { storage_id: "abc-123" }
+  Branch "feature":  NetworkCircuitContract { storage_id: "def-456" }
 ```
 
-Then on the circuit type
+When a file is updated on a branch:
+1. New file is stored with a new `storage_id` (UUID)
+2. The node's `storage_id` attribute is updated on that branch
+3. Main branch still references the original `storage_id`
+4. Both files remain in storage, enabling version control and time travel
 
-```yaml
----
-- name: Circuit
-  namespace: Network
-  attributes:
-    - name: circuit_id
-      kind: Text
-      optional: false
-    - name: bandwidth
-      kind: Number
-      optional: false
-  relationships:
-    - name: provider
-      peer: OrganisationProvider
-      kind: Attribute
-      cardinality: one
-      optional: false
-    - name: contracts
-      peer: NetworkCircuitContract
-      kind: Generic
-      cardinality: many
-      optional: true
-    - name: maintenance_notifications
-      kind: Generic
-      peer: NetworkCircuitMaintenance
-      cardinality: many
-      optional: true
+#### Time Navigation
+
+Both storage entries exist forever, enabling time travel:
+
+```
+Query FileObject at time T1:
+  → Database returns storage_id = "abc123" (old version)
+  → Storage retrieves file from "abc123"
+
+Query same FileObject at time T2:
+  → Database returns storage_id = "xyz789" (new version)
+  → Storage retrieves file from "xyz789"
 ```
 
-### Version control
+### Version Control
 
-File objects should be able to be version controlled, similar to other objects in Infrahub's database.
+File objects support full version control:
 
-This means that the file object can be modified over time and that Infrahub will keep track of the state of the object.
+- **Branching**: Create/update file objects on branches; changes isolated until merged
+- **Time travel**: Query file objects at any point in time using the `at` parameter
+- **Proposed changes**: File object changes can be reviewed and merged via proposed changes
+- **Branch-agnostic option**: Users can define file objects as branch-agnostic if needed
 
-This also implies that the storage object in Infrahub's storage system will have to exist forever, and when a file object is "deleted" from the database, that the storage object will not be deleted.
+**Known limitation**: Merge conflicts on file objects work at the attribute level, not object level. It's possible to select mismatched `checksum` and `storage_id` values during conflict resolution. Object-level conflict resolution is planned for a future release.
 
-We should be able to create file objects in a branch, and use the branch merge or proposed change functionality to merge that change into the main branch.
+### Permission System
 
-Users should also have the capability to define file objects as branch agnostic.
+File objects integrate with Infrahub's permission system:
 
-### Permission system
+- VIEW permission required to download files via REST API
+- CREATE/UPDATE permissions required for mutations
+- The legacy `/api/storage/object/` endpoint rejects FileObject access, directing users to the permission-checked endpoints
 
-File object's need to be integrated with Infrahub's permission system, so that you can control who can view/edit/create file objects.
+### File Size Limitation
 
-It's important that the permission system not only considers the permission on the file object, but also on the storage object itself. A user who has no permission to view a `FileObject` object should also not have a capability to download the object using the storage API.
-
-### File size limitation
-
-We should be able to configure a maximum file size for CoreFileObject. When a user tries to upload an file object that is to big, we should be able to deny the creation of this file object.
-
-The feature is scoped to add small file objects (config, office-type documents, images), IE no multi-GB size of files, for example device firmware.
-
-In Infrahub's configuration file, we need add a new setting that allows us to set the maximum file size of file objects.
-
-If this configuration setting is not provided, we should provide a default value
+Configure maximum file size in `infrahub.toml`:
 
 ```toml
 [storage]
 driver = "local"
-max_file_size=200 #in MB
+max_file_size = 50  # in MB, default is 50
+```
+
+File size is validated before storage. Uploads exceeding the limit are rejected with a clear error message.
+
+#### Production Deployment: Reverse Proxy Limits
+
+For production, configure file size limits at the reverse proxy level:
+
+**nginx:**
+```nginx
+client_max_body_size 200M;
+```
+
+**Traefik:**
+```yaml
+http:
+  middlewares:
+    limit-body:
+      buffering:
+        maxRequestBodyBytes: 209715200  # 200MB
 ```
 
 ### GraphQL API
 
-New GraphQL queries and mutations should be added to create file objects
+#### Querying File Objects
 
-#### Querying for file object
-
-Using the generic `CoreFileObject`
+Query all file objects using the generic:
 
 ```graphql
 query {
   CoreFileObject {
     edges {
-      node_metadata {
-        created_at
-        created_by {
-          id
-          name {
-            value
-          }
-        }
-        updated_at
-        updated_by {
-          id
-        }
-        node {
-          file_name {
-            value
-          }
-          checksum {
-            value
-          }
-          file_size {
-            value
-          }
-          file_type {
-            value
-          }
-          storage_id {
-            value
-          }
-        }
+      node {
+        id
+        file_name { value }
+        checksum { value }
+        file_size { value }
+        file_type { value }
+        storage_id { value }
       }
     }
   }
 }
 ```
 
-Using the specific type query, using the above schema as an example
+Query specific file object types:
 
 ```graphql
 query {
   NetworkCircuitContract {
     edges {
       node {
-        name {
-          value
-        }
-        file_name {
-          value
-        }
-        checksum {
-          value
-        }
-        file_size {
-          value
-        }
-        file_type {
-          value
-        }
-        storage_id {
-          value
-        }
+        id
+        file_name { value }
+        file_size { value }
+        file_type { value }
+        checksum { value }
+        contract_start { value }
+        contract_end { value }
         circuit {
-          node {
-            id
-          }
-        }
-        contract_start {
-          value
-        }
-        contract_end {
-          value
-        }
-        signed_by {
-          node {
-            value
-          }
+          node { id }
         }
       }
     }
@@ -314,169 +251,342 @@ query {
 }
 ```
 
-#### GraphQL query filters
-
-For the above example, the following filters should be available:
-
-- `name__value`
-- `name__values`
-- `checksum__value`
-- `checksum__values`
-- `file_name__value`
-- `file_names__value`
-- `name__values`
-- `file__size__value`
-- `file__size__values`
-- `file__type__value`
-- `file__type__values`
-- `storage__id__value`
-- `storage__id__values`
-- `contract_start__value`
-- `contract_start__values`
-- `contract_end__value`
-- `contract_end__values`
-- `circuit__ids`
-- `circuit__attribute__value`
-- `signed_by__ids`
-- `signed_by__attribute__value`
-
 #### Mutations
 
-The following mutations need to be implemented, although the goal is that they should probably not be used by the end-users directly.
+##### Create with File Upload
 
 ```graphql
-mutation {
+mutation($file: Upload!) {
   NetworkCircuitContractCreate(
     data: {
-      name: {value: ""},
-      checksum: {value: ""},
-      file_size: {value: 123},
-      file_type: {value: ""},
-      storage_id: {value: ""},
-      circuit: {id: ""},
-      contract_start: {value: ""},
-      contract_end: {value: ""},
-      signed_by: {id: ""},
+      contract_start: { value: "2026-01-01" }
+      contract_end: { value: "2026-12-31" }
+      signed_by: { id: "account-uuid" }
     }
+    file: $file
   ) {
     ok
-    __typename
     object {
       id
+      storage_id { value }
+      file_name { value }
+      checksum { value }
+      file_size { value }
+      file_type { value }
     }
   }
 }
 ```
 
+##### Update with New File
+
 ```graphql
-mutation {
+mutation($file: Upload!) {
   NetworkCircuitContractUpdate(
     data: {
-      id: "",
-      hfid: [""],
-      name: {value: ""},
-      checksum: {value: ""},
-      file_size: {value: 123},
-      file_type: {value: ""},
-      storage_id: {value: ""},
-      circuit: {id: ""},
-      contract_start: {value: ""},
-      contract_end: {value: ""},
-      signed_by: {id: ""},
+      id: "contract-uuid"
+      contract_end: { value: "2027-12-31" }
     }
+    file: $file  # Optional: upload new file version
   ) {
     ok
-    __typename
     object {
       id
+      storage_id { value }
     }
   }
 }
 ```
 
+##### Upsert with File
+
 ```graphql
-mutation {
+mutation($file: Upload!) {
   NetworkCircuitContractUpsert(
     data: {
-      id: "",
-      hfid: [""],
-      name: {value: ""},
-      checksum: {value: ""},
-      file_size: {value: 123},
-      file_type: {value: ""},
-      storage_id: {value: ""},
-      circuit: {id: ""},
-      contract_start: {value: ""},
-      contract_end: {value: ""},
-      signed_by: {id: ""},
+      hfid: ["contract-2026.pdf"]
+      contract_start: { value: "2026-01-01" }
+      contract_end: { value: "2026-12-31" }
     }
+    file: $file
   ) {
     ok
-    __typename
     object {
       id
+      storage_id { value }
     }
   }
 }
 ```
 
-```graphql
-mutation {
-  NetworkCircuitContractDelete(
-    data: {
-      id: "",
-      hfid: [""],
-    }
-  ) {
-    ok
-    __typename
-  }
-}
+**Note:** Upsert is idempotent - if the uploaded file has the same checksum as the existing file, no new storage entry is created.
+
+#### GraphQL Multipart Request Format
+
+File uploads use the [GraphQL Multipart Request Spec](https://github.com/jaydenseric/graphql-multipart-request-spec):
+
+```bash
+curl -X POST http://localhost:8000/graphql \
+  -H "X-INFRAHUB-KEY: your-api-token" \
+  -F 'operations={"query": "mutation($file: Upload!) { NetworkCircuitContractCreate(data: { contract_start: { value: \"2026-01-01\" }, contract_end: { value: \"2026-12-31\" } }, file: $file) { ok object { id file_name { value } checksum { value } } } }", "variables": { "file": null }}' \
+  -F 'map={"0": ["variables.file"]}' \
+  -F '0=@/path/to/contract.pdf'
 ```
 
 ### REST API
 
-Infrahub already has the `/api/storage` API endpoints. However these endpoints do not take Infrahub's permission system into account.
+#### Download Endpoints
 
-We need to add new REST API endpoints that allow you to upload and download `FileObject` objects, that also take the permission system into account.
+Three download endpoints are available, all requiring VIEW permission:
 
-#### Download FileObject
+##### Download by Node ID (Primary)
 
-```text
-GET /api/CoreFileObject/object/{identifier}
-Return headers:
-- Content-Length
-- Content-Type > derrived from the FileObject
-- Content-Disposition > contains the file name derrived from the FileObject
-Return: {content}
+```
+GET /api/storage/files/{node_id}?branch={branch}&preview={true|false}
+
+Response headers:
+- Content-Type: <file_type from node>
+- Content-Disposition: attachment; filename="<filename>"
+
+Response: <binary content>
 ```
 
-When receiving this HTTP request, Infrahub should look up the CoreFileObject object using the `storage_id__value` filter.
+##### Download by HFID
 
-We can then validate that the user has the correct permission to view/download the `CoreFileObject` object.
+```
+GET /api/storage/files/by-hfid/{kind}?hfid={value1}&hfid={value2}&branch={branch}
 
-#### Upload FileObject
-
-```text
-POST /api/CoreFileObject/upload
-Body: {"file": "String"} # binary
-Return: {"identifier": {identifier}, "checksum": "String"}
+Example: GET /api/storage/files/by-hfid/NetworkCircuitContract?hfid=contract-2026.pdf
 ```
 
-#### Open questions
+##### Download by Storage ID
 
-- What is the right order of operation? Do we first create the `CoreFileObject` object and then the object in the storage system, or the other way around?
+```
+GET /api/storage/files/by-storage-id/{storage_id}?branch={branch}
+```
 
-### Python SDK
+**Query Parameters:**
 
-We need to add the ability to create `CoreFileObjects` and relate them to other objects using the Python SDK.
+| Parameter | Description |
+|-----------|-------------|
+| `branch` | Branch name (optional, defaults to current branch) |
+| `preview` | If `true`, returns `Content-Disposition: inline` for browser preview |
 
-#### Adding a new FileObject
+**Response Codes:**
 
-This method, would allow the user to upload and attach a new attachment to an object.
-This method should work for cardinality one or many attachment relationships.
+| Code | Description |
+|------|-------------|
+| 200 | Success |
+| 401 | Unauthorized |
+| 403 | Permission denied |
+| 404 | Not found |
 
-Mainly a convenience method to avoid the user having to upload and create the CoreFileAttachment object in a separate step.
+#### Download Examples
+
+```bash
+# Download by node ID
+curl -H "X-INFRAHUB-KEY: your-token" \
+  "http://localhost:8000/api/storage/files/abc123-node-uuid" \
+  -o contract.pdf
+
+# Download from a specific branch
+curl -H "X-INFRAHUB-KEY: your-token" \
+  "http://localhost:8000/api/storage/files/abc123-node-uuid?branch=feature-branch" \
+  -o contract.pdf
+
+# Preview in browser (inline disposition)
+curl -H "X-INFRAHUB-KEY: your-token" \
+  "http://localhost:8000/api/storage/files/abc123-node-uuid?preview=true"
+```
+
+## Python SDK
+
+The Python SDK provides a streamlined API for working with file objects through methods on the node objects themselves.
+
+### Creating a File Object
+
+```python
+from pathlib import Path
+from infrahub_sdk import InfrahubClient
+
+async def create_contract():
+    client = InfrahubClient()
+
+    # Create the file object node
+    contract = await client.create(
+        kind="NetworkCircuitContract",
+        data={
+            "contract_start": "2026-01-01",
+            "contract_end": "2026-12-31",
+        },
+    )
+
+    # Option 1: Upload from file path (streams from disk - memory efficient)
+    contract.upload_from_path(path=Path("/tmp/contract.pdf"))
+
+    # Option 2: Upload from bytes (for small files or dynamic content)
+    # contract.upload_from_bytes(content=b"file content", name="contract.pdf")
+
+    # Option 3: Upload from file-like object (streams)
+    # with open("/tmp/contract.pdf", "rb") as f:
+    #     contract.upload_from_bytes(content=f, name="contract.pdf")
+
+    # Save uploads the file and creates the node
+    await contract.save()
+
+    print(f"Created contract: {contract.id}")
+    print(f"File name: {contract.file_name.value}")
+    print(f"Checksum: {contract.checksum.value}")
+```
+
+### Downloading a File
+
+```python
+from pathlib import Path
+from infrahub_sdk import InfrahubClient
+
+async def download_contract(contract_id: str):
+    client = InfrahubClient()
+
+    # Fetch the file object
+    contract = await client.get(kind="NetworkCircuitContract", id=contract_id)
+
+    # Option 1: Download to memory (for small files)
+    content = await contract.download_file()
+    print(f"Downloaded {len(content)} bytes")
+
+    # Option 2: Stream to disk (memory efficient for large files)
+    dest = Path("/tmp/downloaded-contract.pdf")
+    bytes_written = await contract.download_file(dest=dest)
+    print(f"Saved {bytes_written} bytes to {dest}")
+```
+
+### Updating a File
+
+```python
+from pathlib import Path
+from infrahub_sdk import InfrahubClient
+
+async def update_contract(contract_id: str):
+    client = InfrahubClient()
+
+    # Fetch existing contract
+    contract = await client.get(kind="NetworkCircuitContract", id=contract_id)
+
+    # Upload new file version
+    contract.upload_from_path(path=Path("/tmp/updated-contract.pdf"))
+
+    # Save updates the file and node
+    await contract.save()
+
+    print(f"Updated storage_id: {contract.storage_id.value}")
+```
+
+### Working with Branches
+
+```python
+from pathlib import Path
+from infrahub_sdk import InfrahubClient
+
+async def branch_workflow():
+    client = InfrahubClient()
+
+    # Create contract on main branch
+    contract = await client.create(
+        kind="NetworkCircuitContract",
+        data={"contract_start": "2026-01-01", "contract_end": "2026-12-31"},
+    )
+    contract.upload_from_bytes(content=b"Main branch content", name="contract.pdf")
+    await contract.save()
+    contract_id = contract.id
+
+    # Create a branch
+    branch = await client.branch.create(branch_name="update-contract")
+
+    # Update contract on the branch
+    branch_client = client.clone(branch=branch.name)
+    branch_contract = await branch_client.get(kind="NetworkCircuitContract", id=contract_id)
+    branch_contract.upload_from_bytes(content=b"Branch content", name="updated.pdf")
+    await branch_contract.save()
+
+    # Verify isolation: main branch still has original file
+    main_contract = await client.get(kind="NetworkCircuitContract", id=contract_id)
+    main_content = await main_contract.download_file()
+    assert main_content == b"Main branch content"
+
+    # Branch has updated file
+    branch_content = await branch_contract.download_file()
+    assert branch_content == b"Branch content"
+```
+
+### Complete Example Script
+
+```python
+#!/usr/bin/env python3
+"""Example script demonstrating FileObject operations with the Infrahub SDK."""
+
+import asyncio
+from pathlib import Path
+from infrahub_sdk import InfrahubClient
+
+
+async def main():
+    client = InfrahubClient()
+
+    # 1. Create a file object with upload
+    print("Creating contract...")
+    contract = await client.create(
+        kind="NetworkCircuitContract",
+        data={
+            "contract_start": "2026-01-01",
+            "contract_end": "2026-12-31",
+        },
+    )
+    contract.upload_from_bytes(
+        content=b"Service Level Agreement\n\nTerms and conditions...",
+        name="sla-2026.txt",
+    )
+    await contract.save()
+
+    print(f"  ID: {contract.id}")
+    print(f"  File: {contract.file_name.value}")
+    print(f"  Size: {contract.file_size.value} bytes")
+    print(f"  Type: {contract.file_type.value}")
+    print(f"  Checksum: {contract.checksum.value}")
+
+    # 2. Download the file
+    print("\nDownloading contract...")
+    content = await contract.download_file()
+    print(f"  Content: {content.decode()[:50]}...")
+
+    # 3. Update with a new file
+    print("\nUpdating contract with new file...")
+    contract_to_update = await client.get(kind="NetworkCircuitContract", id=contract.id)
+    contract_to_update.upload_from_bytes(
+        content=b"Updated Service Level Agreement\n\nRevised terms...",
+        name="sla-2026-v2.txt",
+    )
+    await contract_to_update.save()
+
+    # Re-fetch to see updated values
+    updated = await client.get(kind="NetworkCircuitContract", id=contract.id)
+    print(f"  New file: {updated.file_name.value}")
+    print(f"  New checksum: {updated.checksum.value}")
+
+    # 4. Download to disk
+    print("\nDownloading to disk...")
+    dest = Path("/tmp/downloaded-sla.txt")
+    bytes_written = await updated.download_file(dest=dest)
+    print(f"  Saved {bytes_written} bytes to {dest}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Synchronous API
+
+The SDK also provides synchronous methods:
 
 ```python
 from pathlib import Path
@@ -484,164 +594,128 @@ from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync()
 
-# Creating a CoreFileAttachment
-
-account = client.get(kind=CoreUserAccount, id=<uuid>)
-circuit = client.get(kind=InfraCircuit, id=<uuid>)
-
-identifier = client.file_object.upload(content=Path("/tmp/contract.pdf").read())
-circuit_contract = client.create(
-    kind=NetworkCircuitContract,
-    circuit=circuit,
-    name="contract",
-    contract_start="2026-01-01",
-    contract_end="2026-12-31",
-    signed_by=account,
-    storage_id=identifier
-)
-circuit_contract.save()
-```
-
-#### Downloading a FileObject
-
-```python
-from pathlib import Path
-from infrahub_sdk import InfrahubClientSync
-
-client = InfrahubClientSync()
-
-account = client.get(kind=CoreUserAccount, id=<uuid>)
-
-# for card many
-circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contracts"], prefetch_relationships=True)
-contract: NetworkCircuitContract = circuit.contracts.peers[0].peer
-content = client.file_object.get(identifier=contract.storage_id.value)
-
-with open(f"/tmp/{contract.file_name.value}", "wb") as f:
-    f.write(content)
-
-# for card one
-circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contract"], prefetch_relationships=True)
-
-contract: NetworkCircuitContract = circuit.contract.peer
-content = client.file_object.get(identifier=contract.storage_id.value)
-with open(f"/tmp/{contract.file_name.value}", "wb") as f:
-    f.write(content)
-```
-
-#### Updating a FileObject
-
-```python
-from pathlib import Path
-from infrahub_sdk import InfrahubClientSync
-
-client = InfrahubClientSync()
-
-# Creating a CoreFileAttachment
-
-account = client.get(kind=CoreUserAccount, id=<uuid>)
-
-# card many
-circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contracts"], prefetch_relationships=True)
-
-contract: NetworkCircuitContract = circuit.contracts.peers[0].peer
-contract.contract_start = "2026-02-01"
-contract.save(allow_upsert=True)
-
-# card one
-circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contract"], prefetch_relationships=True)
-
-contract: NetworkCircuitContract = circuit.contract.peer
-contract.contract_start = "2026-02-01"
-contract.save(allow_upsert=True)
-```
-
-#### Uploading a new version of a FileObject
-
-```python
-from pathlib import Path
-from infrahub_sdk import InfrahubClientSync
-
-client = InfrahubClientSync()
-
-# Creating a CoreFileAttachment
-
-account = client.get(kind=CoreUserAccount, id=<uuid>)
-
-# Card many
-circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contracts"], prefetch_relationships=True)
-contract: NetworkCircuitContract = circuit.contracts.peers[0].peer
-
-identifier = client.file_object.upload(content=Path("/tmp/contract.pdf").read())
-
-contract.storage_id = identifier
+# Create
+contract = client.create(kind="NetworkCircuitContract", data={...})
+contract.upload_from_path(path=Path("/tmp/contract.pdf"))
 contract.save()
 
-# Card one
-circuit = client.get(kind=InfraCircuit, id=<uuid>, include=["contract"], prefetch_relationships=True)
-
-contract: NetworkCircuitContract = circuit.contract.peer
-identifier = client.file_object.upload(content=Path("/tmp/contract.pdf").read())
-
-contract.storage_id = identifier
-contract.save()
+# Download
+content = contract.download_file()
+# or
+contract.download_file(dest=Path("/tmp/output.pdf"))
 ```
 
-### Open issues
+### SDK Method Reference
 
-- A known issue will occur when there is a merge conflict. For example, a branch was created after which a file object is updated in the main branch and the newly created branch. When opening a proposed change the user will be asked to resolve a conflict. Today conflict resolution works at the attribute or relationship level, not at the object-level. This means it is possible for the user to pick the checksum of the main branch and the storage_id of the other branch, invalidating the file object. For the first implementation this will be a documented limitation, but we should look at object level conflict resolution (new card to be created)
-- What should be default file size limitation that we implement
-- Are we going to implement the file upload feature using the GraphQL API, or do we implement a separate REST API. An implementation for Graphene seems to exist here: https://github.com/lmcgartland/graphene-file-upload
-  - The current storage system only supports text based files
-  - REST API is currently not branch aware, meaning we can't automatically generate rest endpoints for new `FileObjects` in the schema, but we can probably just work with one generic Rest API endpoint
-  - If we implement a REST API endpoint, we need to make sure we cannot download object files using the storage api, since it doesn't have permission enforcement. For this there's 2 options 1) introduce permissions for artifacts 2) have separate storage "directories" so that object files with permissions cannot be retrieved using the storage API.
+| Method | Description |
+|--------|-------------|
+| `node.upload_from_path(path)` | Select file from disk for upload (streamed) |
+| `node.upload_from_bytes(content, name)` | Set content for upload (bytes or BinaryIO) |
+| `node.download_file()` | Download to memory, returns `bytes` |
+| `node.download_file(dest=Path)` | Stream to disk, returns bytes written |
+| `node.is_file_object()` | Check if node inherits from CoreFileObject |
+| `node.clear_file()` | Clear pending file content before save |
 
-### Future considerations
+## Future Considerations
 
-- How can we implement a `FileObject` for which the actual file will not be stored in Infrahub's storage system, for example a config backup in an external system
-- Can we implement a system where permissions are automatically inherited from the object that the `FileObject` relates too. For example, a circuit contract would automatically inherit the permissions of the circuit.
-  - Probably this effort could be part of a bigger effort around revisiting the permission system (more granular permission system)
-  - What do we do in the case where a `FileObject` is related to many other objects
-- What is the overlap with the existing Artifacts feature in Infrahub and how can we consolidate some of the functionality
-- Can we implement a file type restriction for a given `FileObject` type. For example, I only want to have PDF files for `NetworkCircuitContract` file objects
-  - Should be defined in the schema
-  - Special type of attribute kind?
-  - How do we handle migrations?
+- **External storage**: Support FileObjects where the actual file is stored in an external system
+- **Permission inheritance**: Automatically inherit permissions from related objects
+- **Artifacts consolidation**: Explore overlap with the existing Artifacts feature
+- **MIME type filtering**: Per-type restrictions (e.g., only PDFs for contracts)
+- **Global MIME filters**: `storage.allowed_mime_types` or `storage.blocked_mime_types` config options
+- **Storage cleanup**: Garbage collection for unreferenced storage entries
+- **Deduplication**: Optional deduplication by checksum to save storage space
 
 ## Frontend Scope
 
-### Schema-Driven Display
+> **Status:** Not yet implemented. This section contains requirements and placeholders for frontend work.
 
-- FileObjects should behave like any other object type in Infrahub
-  - File object list view
-  - File object detailed view
-- FileObject detailed view will have a section at the bottom that renders the content of the file object, if it is of a supported file type. This section is similar to what the artifact detailed page has today and will be displayed at the bottom of the FileObject detailed page.
-- The FileObject create/update form, will have a "file upload" widget that allows you to upload the file that should be stored for this FileObject object.
+### Requirements
 
-### Relations
+#### Schema-Driven Display
 
-FileObjects can be related to any other object in Infrahub, by creating relationships to other object types in the schema.
-This give the user the impression of attachments.
+- FileObjects behave like standard Infrahub objects (list view, detail view)
+- Detail view renders file content preview for supported types (similar to artifacts)
+- Create/update forms include a file upload widget
 
-### API Integration Needs
+#### Key Considerations
 
-- **Query**: Fetch `FileObject` objects via GraphQL using relationship (e.g., circuit.contracts)
-- **Update**: Mutate the file object data
-- **Delete**: Delete file  object
-- **Upload**: POST to /api/CoreFileObject/upload → Create storage object
-- **Download**: GET /api/CoreFileObject/object/{identifier}
-
-### Key Frontend Considerations
-
-- **Permission-aware**: Only show Upload/Edit/Delete if user has permission
+- **Permission-aware**: Show Upload/Edit/Delete based on user permissions
 - **Branch-aware**: Display file objects for current branch context
-- **Relationship kind handling**: Respect Generic vs Attribute kind for display style
 - **Error handling**: File size exceeded, upload failures, permission denied
 - **Loading states**: Upload progress, file preview loading
 
-### Open Questions [UI]
+### Implementation Details
 
-- ‘delete’ :  do we allow ‘delete file’ and allow the ‘file object’ to be saved with custom fields but no file' OR do we only allow ‘delete’ file object in which case the user must delete the entire file object and then ‘create/upload’ a new one.  [there might be a use case where they want to replace the file but delete existing and then save/come back to upload a new one]
-- What metadata do we want to display for the file (file size, upload date, type, who uploaded it?)
-- Do we want to give the user the option to preview/replace/delete inline in the Object detail view or ONLY on the ‘edit modal’ in the right panel.  [the simpler option]
-- For cardinality ‘many’ :  will we also allow min + max ?  from paul: “so when creating an object that has attachments, we won't be able to have a min count since we don't provide file attachments in the object creation form, only afterwardswe can see later if that's an issue but having it as 2 steps for now and figure it out”.
+<!-- TODO: Update this section when frontend implementation is complete -->
+
+#### Components
+
+<!-- TODO: List the React components created for FileObject support -->
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| <!-- TODO --> | <!-- TODO --> | <!-- TODO --> |
+
+#### API Integration
+
+The frontend uses the following APIs:
+
+| Operation | API | Notes |
+|-----------|-----|-------|
+| Query file objects | GraphQL `CoreFileObject` / specific type queries | Standard GraphQL queries |
+| Create with file | GraphQL mutation with `file: Upload!` parameter | Uses multipart/form-data |
+| Update with file | GraphQL mutation with optional `file: Upload` | Uses multipart/form-data |
+| Download file | `GET /api/storage/files/{node_id}` | Binary download |
+| Preview file | `GET /api/storage/files/{node_id}?preview=true` | Inline display |
+
+<!-- TODO: Document how multipart uploads are implemented in the frontend -->
+
+#### File Upload Widget
+
+<!-- TODO: Document the file upload widget implementation -->
+
+- Drag and drop support: <!-- TODO -->
+- File size validation (client-side): <!-- TODO -->
+- Progress indicator: <!-- TODO -->
+- Supported file types display: <!-- TODO -->
+
+#### File Preview
+
+<!-- TODO: Document file preview implementation -->
+
+Supported preview types:
+- Images (PNG, JPEG, GIF, SVG): <!-- TODO -->
+- PDF documents: <!-- TODO -->
+- Text files: <!-- TODO -->
+- Other: <!-- TODO -->
+
+#### Error Handling
+
+<!-- TODO: Document error handling UI -->
+
+| Error | User Message | UI Behavior |
+|-------|--------------|-------------|
+| File too large | <!-- TODO --> | <!-- TODO --> |
+| Upload failed | <!-- TODO --> | <!-- TODO --> |
+| Permission denied | <!-- TODO --> | <!-- TODO --> |
+| Download failed | <!-- TODO --> | <!-- TODO --> |
+
+### Open Questions
+
+- Should "delete file" allow saving the FileObject without a file, or require deleting the entire object?
+- What metadata to display (file size, upload date, type, uploader)?
+- Should preview/replace/delete be available inline in detail view or only in edit modal?
+- For cardinality "many" relationships, should min/max constraints be supported?
+
+### Testing
+
+<!-- TODO: Document frontend tests -->
+
+#### Unit Tests
+
+<!-- TODO: List unit test files -->
+
+#### E2E Tests
+
+<!-- TODO: List E2E test scenarios -->

@@ -26,7 +26,7 @@ export const BadgeUnchanged = ({
     <Badge
       className={classNames(
         "rounded-full p-1 text-base",
-        (children || children === 0) && "gap-1 px-1",
+        (children || children === 0) && "gap-1 py-0.5 pr-1.5",
         hasConflicts && "gap-1 border-none p-0 pl-1",
         className
       )}

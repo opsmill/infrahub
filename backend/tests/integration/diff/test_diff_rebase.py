@@ -103,7 +103,7 @@ class TestDiffRebase(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         main_schema_root: SchemaRoot,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
@@ -198,7 +198,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_1_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_1: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_1: Branch,
     ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_1 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_1)
@@ -215,7 +220,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_2_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_2: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_2: Branch,
     ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_2 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_2)
@@ -232,7 +242,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_3_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_3: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_3: Branch,
     ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
         antarctica_branch_1 = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
@@ -259,9 +274,9 @@ class TestDiffRebase(TestInfrahubApp):
     async def test_no_conflicts_before_merge(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
-        add_branch_1_changes,
-        add_branch_2_changes,
+        initial_dataset: dict[str, Node],
+        add_branch_1_changes: None,
+        add_branch_2_changes: None,
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
@@ -352,8 +367,8 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
-        add_branch_1_changes,
+        initial_dataset: dict[str, Node],
+        add_branch_1_changes: None,
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
@@ -447,7 +462,7 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         branch_2: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
     ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
@@ -465,7 +480,7 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_2: Branch,
         diff_repository: DiffRepository,
     ) -> None:
@@ -535,14 +550,14 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
                 assert prop_diff.conflict is None
 
-    async def test_merge_and_rebase(
+    async def test_merge_branch(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
         branch_3: Branch,
-        add_branch_3_changes,
+        add_branch_3_changes: None,
     ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
 
@@ -569,14 +584,31 @@ class TestDiffRebase(TestInfrahubApp):
         no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=default_branch)
         assert no_antartica is None
 
-        # rebase branch_3
-        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_3.name})
+    async def test_rebase_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        client: InfrahubClient,
+    ) -> None:
+        rebase_branch = await create_branch(branch_name="rebase_test_branch", db=db)
+
+        # add a node on main after branch creation
+        main_person = await Node.init(db=db, branch=default_branch, schema=TestKind.PERSON)
+        await main_person.new(db=db, name="RebaseTestPerson", height=170)
+        await main_person.save(db=db)
+
+        # verify the node is NOT on the branch yet
+        branch_person_before = await NodeManager.get_one(db=db, id=main_person.id, branch=rebase_branch)
+        assert branch_person_before is None
+
+        # rebase the branch
+        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": rebase_branch.name})
         assert result["BranchRebase"]["ok"]
 
-        # check branch_3 is updated
-        branch_3 = await Branch.get_by_name(db=db, name=branch_3.name)
-        no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
-        assert no_antartica is None
-        branch_3_jeb = await NodeManager.get_one(db=db, id=main_jeb.id, branch=branch_3)
-        assert branch_3_jeb.name.value == "Jeb"
-        assert branch_3_jeb.height.value == 160
+        # check the branch is updated with the new node
+        rebase_branch = await Branch.get_by_name(db=db, name=rebase_branch.name)
+        branch_person_after = await NodeManager.get_one(db=db, id=main_person.id, branch=rebase_branch)
+        assert branch_person_after is not None
+        assert branch_person_after.name.value == "RebaseTestPerson"
+        assert branch_person_after.height.value == 170

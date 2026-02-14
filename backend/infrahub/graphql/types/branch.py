@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.node.standard import StandardNodeQueryFields
 
 from ...exceptions import BranchNotFoundError
@@ -86,8 +87,10 @@ class InfrahubBranch(BranchType):
         cls,
         fields: StandardNodeQueryFields,
         graphql_context: GraphqlContext,
+        branch_filters: BranchListFilters | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
+        kwargs["branch_filters"] = branch_filters
         async with graphql_context.db.start_session(read_only=True) as db:
             objs = await Branch.get_list(db=db, **kwargs)
             return [await obj.to_graphql(fields=fields) for obj in objs]
@@ -99,8 +102,9 @@ class InfrahubBranch(BranchType):
         graphql_context: GraphqlContext,
         name: str,
     ) -> dict[str, Any]:
+        branch_filters = BranchListFilters(name=name)
         branch_responses = await cls.get_list(
-            fields=StandardNodeQueryFields(node=fields), graphql_context=graphql_context, name=name
+            fields=StandardNodeQueryFields(node=fields), graphql_context=graphql_context, branch_filters=branch_filters
         )
 
         if branch_responses:
@@ -127,6 +131,11 @@ class InfrahubBranchType(ObjectType):
     )
 
     @classmethod
-    async def get_list_count(cls, graphql_context: GraphqlContext, **kwargs: Any) -> int:
+    async def get_list_count(
+        cls,
+        graphql_context: GraphqlContext,
+        branch_filters: BranchListFilters | None = None,
+        **kwargs: Any,
+    ) -> int:
         async with graphql_context.db.start_session(read_only=True) as db:
-            return await Branch.get_list_count(db=db, **kwargs)
+            return await Branch.get_list_count(db=db, branch_filters=branch_filters, **kwargs)

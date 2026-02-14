@@ -4,7 +4,7 @@ import enum
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Self
 
-from pydantic import Field, ValidationInfo, field_validator, model_validator
+from pydantic import Field, PrivateAttr, ValidationInfo, field_validator, model_validator
 
 from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
@@ -15,6 +15,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
     AttributeParameters,
+    ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
@@ -37,6 +38,17 @@ def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
     _enum_class: type[enum.Enum] | None = None
+    # Stores the source generic's attribute ID for inherited attributes
+    # Used for rename detection in diffs while keeping id=None for inherited attrs
+    _source_attribute_id: str | None = PrivateAttr(default=None)
+
+    @property
+    def source_attribute_id(self) -> str | None:
+        return self._source_attribute_id
+
+    @source_attribute_id.setter
+    def source_attribute_id(self, value: str | None) -> None:
+        self._source_attribute_id = value
 
     @classmethod
     def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -70,6 +82,10 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @property
     def support_profiles(self) -> bool:
+        return self.read_only is False and self.unique is False
+
+    @property
+    def support_templates(self) -> bool:
         return self.read_only is False and self.unique is False
 
     def get_id(self) -> str:
@@ -137,6 +153,9 @@ class AttributeSchema(GeneratedAttributeSchema):
 
         if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea"]:
             raise ValueError(f"TextAttributeParameters can't be used as parameters for {self.kind}")
+
+        if isinstance(self.parameters, ListAttributeParameters) and self.kind != "List":
+            raise ValueError(f"ListAttributeParameters can't be used as parameters for {self.kind}")
 
         return self
 
@@ -263,9 +282,27 @@ class NumberAttributeSchema(AttributeSchema):
     )
 
 
+class ListAttributeSchema(AttributeSchema):
+    """Schema for List attributes with regex validation support.
+
+    Note: Only regex validation is supported for List attributes.
+    Unlike Text/TextArea attributes, min_length and max_length are not supported.
+    """
+
+    parameters: ListAttributeParameters = Field(
+        default_factory=ListAttributeParameters,
+        description="Extra parameters specific to list attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    def get_regex(self) -> str | None:
+        return self.parameters.regex
+
+
 attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
     "NumberPool": NumberPoolSchema,
     "Text": TextAttributeSchema,
     "TextArea": TextAttributeSchema,
+    "List": ListAttributeSchema,
     "Number": NumberAttributeSchema,
 }
