@@ -77,18 +77,7 @@ export function ObjectDataDisplay({
         const objectKind = objectSchema.kind!;
 
         if ("peer" in field) {
-          let relationshipData = fieldData as NodeRelationshipWithMetadata;
-
-          if (
-            isTemplateSchema(objectSchema) &&
-            isNodeRelationshipOne(relationshipData) &&
-            !relationshipData.node
-          ) {
-            const poolData = objectData[`${fieldName}${FROM_RESOURCE_POOL_SUFFIX}`];
-            if (isNodeRelationshipOne(poolData)) {
-              relationshipData = poolData;
-            }
-          }
+          const relationshipData = resolveRelationshipData(fieldName, objectSchema, objectData);
 
           return (
             <ObjectRelationshipRow
@@ -148,10 +137,16 @@ export function ObjectDataDisplay({
   );
 }
 
+const FILE_OBJECT_HIDDEN_ATTRIBUTES = [
+  "file_name",
+  "file_size",
+  "file_type",
+  "storage_id",
+  "checksum",
+];
+
 function getAttributesVisibleInFileObject(attributes: AttributeSchema[]): AttributeSchema[] {
-  return attributes.filter(
-    (attr) => !["file_name", "file_size", "file_type", "storage_id", "checksum"].includes(attr.name)
-  );
+  return attributes.filter((attr) => !FILE_OBJECT_HIDDEN_ATTRIBUTES.includes(attr.name));
 }
 
 function getRelationshipsVisibleInDataDisplay(
@@ -164,4 +159,25 @@ function getRelationshipsVisibleInDataDisplay(
       !isFromResourcePoolRelationship(rel.name) &&
       rel.kind !== "Profile"
   );
+}
+
+function resolveRelationshipData(
+  fieldName: string,
+  objectSchema: ModelSchema,
+  objectData: NodeObjectWithMetadata
+): NodeRelationshipWithMetadata {
+  const relationshipData = objectData[fieldName] as NodeRelationshipWithMetadata;
+
+  if (
+    isTemplateSchema(objectSchema) &&
+    isNodeRelationshipOne(relationshipData) &&
+    !relationshipData.node
+  ) {
+    const poolData = objectData[`${fieldName}${FROM_RESOURCE_POOL_SUFFIX}`];
+    if (isNodeRelationshipOne(poolData)) {
+      return poolData as NodeRelationshipWithMetadata;
+    }
+  }
+
+  return relationshipData;
 }
