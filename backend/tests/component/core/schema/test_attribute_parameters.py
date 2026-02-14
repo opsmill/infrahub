@@ -384,28 +384,17 @@ async def test_synchronizer_assigns_separate_pools_for_non_inherited_attributes(
     assert node_a_attr.parameters.number_pool_id != node_b_attr.parameters.number_pool_id
 
     # Verify the CoreNumberPools were created with correct node and node_attribute values
-    pool_a = await NodeManager.query(
-        db=db,
-        schema=CoreNumberPoolProtocol,
-        filters={"id": node_a_attr.parameters.number_pool_id},
-    )
-    pool_b = await NodeManager.query(
-        db=db,
-        schema=CoreNumberPoolProtocol,
-        filters={"id": node_b_attr.parameters.number_pool_id},
-    )
-
-    assert len(pool_a) == 1
-    assert len(pool_b) == 1
+    pool_a = await NodeManager.get_one(db=db, id=node_a_attr.parameters.number_pool_id)
+    pool_b = await NodeManager.get_one(db=db, id=node_b_attr.parameters.number_pool_id)
 
     # Each pool should reference its respective node (not inherited, so each node has its own pool)
-    assert pool_a[0].node.value == "TestNodeA"
-    assert pool_a[0].node_attribute.value == "sequence_num"
-    assert pool_a[0].pool_type.value.value == NumberPoolType.SCHEMA.value
+    assert pool_a.get_attribute("node").value == "TestNodeA"
+    assert pool_a.get_attribute("node_attribute").value == "sequence_num"
+    assert pool_a.get_attribute("pool_type").value.value == NumberPoolType.SCHEMA.value
 
-    assert pool_b[0].node.value == "TestNodeB"
-    assert pool_b[0].node_attribute.value == "sequence_num"
-    assert pool_b[0].pool_type.value.value == NumberPoolType.SCHEMA.value
+    assert pool_b.get_attribute("node").value == "TestNodeB"
+    assert pool_b.get_attribute("node_attribute").value == "sequence_num"
+    assert pool_b.get_attribute("pool_type").value.value == NumberPoolType.SCHEMA.value
 
 
 def test_validate_min_max_number_attribute() -> None:
