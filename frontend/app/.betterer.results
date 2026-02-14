@@ -238,8 +238,8 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2093276488": [
       [19, 10, 8, "tsc: Type \'(null | string | undefined)[]\' is not assignable to type \'string[]\'.\\n  Type \'string | null | undefined\' is not assignable to type \'string\'.\\n    Type \'undefined\' is not assignable to type \'string\'.", "3441362927"]
     ],
-    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:1549310860": [
-      [137, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
+    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:3566025401": [
+      [126, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
     ],
     "src/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row.test.tsx:3986220632": [
       [81, 9, 21, "tsc: Property \'objectKind\' is missing in type \'\\"Attribute\\" | \\"Component\\" | \\"Group\\" | \\"Hierarchy\\" | \\"Parent\\" | \\"Profile\\" | \\"Template\\"; label?: string | \\"absent\\"; name: string; peer: string; kind: \\"Generic\\" | \\"agnostic\\" | \\"any\\"; read_only: boolean; deprecation?: string | \\"cascade\\" | \\"inbound\\"; hierarchical?: string | \\"local\\" | \\"many\\"; min_count: number; max_count: number; common_parent?: string | \\"outbound\\" | null | null | null | null | null | null | null | null | null | null | null | undefined; allow_override: \\"none\\" | undefined; cardinality: \\"one\\" | undefined; common_relatives?: string[] | undefined; description?: string | undefined; identifier?: string | undefined; inherited: boolean; direction: \\"bidirectional\\" | undefined; on_delete?: \\"no-action\\" | undefined; optional: boolean; branch?: \\"aware\\" | undefined; order_weight?: number | undefined; state: \\"present\\" | undefined; }; relationshipData: NodeRelationshipOneWithMetadata; permission: Permission; } | { relationshipSchema: { id?: string\' but required in type \'ObjectRelationshipRowProps\'.", "417292446"],
@@ -642,7 +642,7 @@ exports[`fix ts error`] = {
     "src/shared/components/ui/alert.tsx:757342485": [
       [15, 12, 11, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2602525471"]
     ],
-    "src/shared/config/constants.ts:2184613740": [
+    "src/shared/config/constants.ts:2355663402": [
       [0, 31, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ]
   }`
