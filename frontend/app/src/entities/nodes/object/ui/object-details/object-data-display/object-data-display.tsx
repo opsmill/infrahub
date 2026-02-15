@@ -3,7 +3,6 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 
 import SlideOver from "@/shared/components/display/slide-over";
-import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
@@ -13,18 +12,13 @@ import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
-import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
+import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import type {
-  NodeAttributeWithMetadata,
-  NodeObjectWithMetadata,
-  NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
+import type { NodeAttributeWithMetadata, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
@@ -77,7 +71,11 @@ export function ObjectDataDisplay({
         const objectKind = objectSchema.kind!;
 
         if ("peer" in field) {
-          const relationshipData = resolveRelationshipData(fieldName, objectSchema, objectData);
+          const relationshipData = resolveRelationshipData({
+            relationshipName: fieldName,
+            objectSchema,
+            objectData,
+          });
 
           return (
             <ObjectRelationshipRow
@@ -159,25 +157,4 @@ function getRelationshipsVisibleInDataDisplay(
       !isFromResourcePoolRelationship(rel.name) &&
       rel.kind !== "Profile"
   );
-}
-
-function resolveRelationshipData(
-  fieldName: string,
-  objectSchema: ModelSchema,
-  objectData: NodeObjectWithMetadata
-): NodeRelationshipWithMetadata {
-  const relationshipData = objectData[fieldName] as NodeRelationshipWithMetadata;
-
-  if (
-    isTemplateSchema(objectSchema) &&
-    isNodeRelationshipOne(relationshipData) &&
-    !relationshipData.node
-  ) {
-    const poolData = objectData[`${fieldName}${FROM_RESOURCE_POOL_SUFFIX}`];
-    if (isNodeRelationshipOne(poolData)) {
-      return poolData as NodeRelationshipWithMetadata;
-    }
-  }
-
-  return relationshipData;
 }
