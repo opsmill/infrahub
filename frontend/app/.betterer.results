@@ -32,7 +32,7 @@ exports[`fix ts error`] = {
       [69, 7, 10, "tsc: Property \'attribute\' is missing in type \'{ name: string; label: string; }\' but required in type \'InputFieldProps\'.", "1610618705"],
       [71, 7, 13, "tsc: Property \'attribute\' is missing in type \'{ name: string; label: string; rules: { required: true; }; }\' but required in type \'FormFieldProps\'.", "3862624788"]
     ],
-    "src/entities/branches/ui/branch-selector.tsx:3832919985": [
+    "src/entities/branches/ui/branch-selector.tsx:2068696219": [
       [5, 28, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
     "src/entities/branches/ui/branches-table/branches-toolbar.tsx:1006213371": [
