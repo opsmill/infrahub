@@ -37,8 +37,8 @@ get_current_branch() {
         for dir in "$specs_dir"/*; do
             if [[ -d "$dir" ]]; then
                 local dirname=$(basename "$dir")
-                if [[ "$dirname" =~ ^([0-9]{3})- ]]; then
-                    local number=${BASH_REMATCH[1]}
+                if [[ "$dirname" =~ ^([a-z]{2,4}-)?([0-9]{3})- ]]; then
+                    local number=${BASH_REMATCH[2]}
                     number=$((10#$number))
                     if [[ "$number" -gt "$highest" ]]; then
                         highest=$number
@@ -72,9 +72,9 @@ check_feature_branch() {
         return 0
     fi
 
-    if [[ ! "$branch" =~ ^[0-9]{3}- ]]; then
+    if [[ ! "$branch" =~ ^([a-z]{2,4}-)?[0-9]{3}- ]]; then
         echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
-        echo "Feature branches should be named like: 001-feature-name" >&2
+        echo "Feature branches should be named like: fac-001-feature-name (initials-number-name)" >&2
         return 1
     fi
 
@@ -84,27 +84,30 @@ check_feature_branch() {
 get_feature_dir() { echo "$1/specs/$2"; }
 
 # Find feature directory by numeric prefix instead of exact branch match
-# This allows multiple branches to work on the same spec (e.g., 004-fix-bug, 004-add-feature)
+# This allows multiple branches to work on the same spec (e.g., fac-004-fix-bug, jdo-004-add-feature)
 find_feature_dir_by_prefix() {
     local repo_root="$1"
     local branch_name="$2"
     local specs_dir="$repo_root/specs"
 
-    # Extract numeric prefix from branch (e.g., "004" from "004-whatever")
-    if [[ ! "$branch_name" =~ ^([0-9]{3})- ]]; then
+    # Extract numeric prefix from branch (e.g., "004" from "fac-004-whatever" or "004-whatever")
+    if [[ ! "$branch_name" =~ ^(([a-z]{2,4})-)?([0-9]{3})- ]]; then
         # If branch doesn't have numeric prefix, fall back to exact match
         echo "$specs_dir/$branch_name"
         return
     fi
 
-    local prefix="${BASH_REMATCH[1]}"
+    local prefix="${BASH_REMATCH[3]}"
 
-    # Search for directories in specs/ that start with this prefix
+    # Search for directories in specs/ that match this numeric prefix (any initials)
     local matches=()
     if [[ -d "$specs_dir" ]]; then
-        for dir in "$specs_dir"/"$prefix"-*; do
+        for dir in "$specs_dir"/*; do
             if [[ -d "$dir" ]]; then
-                matches+=("$(basename "$dir")")
+                local dirname=$(basename "$dir")
+                if [[ "$dirname" =~ ^([a-z]{2,4}-)?${prefix}- ]]; then
+                    matches+=("$dirname")
+                fi
             fi
         done
     fi
