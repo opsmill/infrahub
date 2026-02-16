@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -17,7 +18,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
 from infrahub.graphql.field_extractor import extract_graphql_fields
 
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
         EnrichedDiffRoot,
         EnrichedDiffSingleRelationship,
     )
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -193,14 +195,20 @@ class DiffTreeResolver:
                 if not graphql_context or not self.source_branch_name:
                     return ParentNodeInfo(node=n, relationship_name=relationship_name)
 
-                node_schema = graphql_context.db.schema.get(
-                    name=diff_node.kind, branch=self.source_branch_name, duplicate=False
-                )
-                rel_schema = node_schema.get_relationship(name=r.name)
+                node_schema: MainSchemaTypes | None = None
+                parent_schema: MainSchemaTypes | None = None
+                for branch_name in [self.source_branch_name, registry.default_branch]:
+                    with contextlib.suppress(BranchNotFoundError, SchemaNotFoundError):
+                        node_schema = graphql_context.db.schema.get(
+                            name=diff_node.kind, branch=branch_name, duplicate=False
+                        )
+                        parent_schema = graphql_context.db.schema.get(name=n.kind, branch=branch_name, duplicate=False)
+                        break
 
-                parent_schema = graphql_context.db.schema.get(
-                    name=n.kind, branch=self.source_branch_name, duplicate=False
-                )
+                if not node_schema or not parent_schema:
+                    return ParentNodeInfo(node=n, relationship_name=relationship_name)
+
+                rel_schema = node_schema.get_relationship(name=r.name)
                 rels_parent = parent_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
 
                 if rels_parent and len(rels_parent) == 1:
