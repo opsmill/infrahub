@@ -29,7 +29,7 @@ async def device_schema(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-    init_nodes_registry,
+    init_nodes_registry: None,
 ) -> None:
     device = copy.deepcopy(DEVICE)
     device.relationships = [
