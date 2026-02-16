@@ -7,8 +7,8 @@ action:
   name: replace
 swap:
   (?<![\.|/|#])ansible[\.!]?\s: Ansible
-  (?<=[a-z]\s)Artifact[\.!]?\s: artifact
-  (?<=[a-z]\s)Artifacts[\.!]?\s: artifacts
+  (?<=[a-z] )Artifact[\.!]?\s: artifact
+  (?<=[a-z] )Artifacts[\.!]?\s: artifacts
   (?<![\.|/|#])docker[\.!]?\s: Docker
   (?<![\.|/|#])[Dd]ockerhub[\.!]?\s: DockerHub
   (?<![\.|/|#])generator[\.!]?\s: Generator
@@ -37,8 +37,6 @@ swap:
   (?:[^/]prometheus): Prometheus
   (?<![\.|/|#])python[\.!]?\s: Python
   (?<![\.|/|#])[Rr]abbitmq[\.!]?\s: RabbitMQ
-  relatioinship: relationship
-  Relatioinship: Relationship
   (?<![\.|/|#])(?:resource [Mm]anager|Resource manager)[\.!]?\s: Resource Manager
   (?<![\.|/|#])[Rr]esource [Mm]anagers[\.!]?\s: Resource Manager
   (?:[^/]terraform): Terraform
