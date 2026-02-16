@@ -505,6 +505,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/telemetry/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Telemetry Snapshots */
+        get: operations["get_telemetry_snapshots_api_telemetry_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transform/python/{transform_id}": {
         parameters: {
             query?: never;
@@ -2188,6 +2205,11 @@ export interface components {
             /** Git Agent Dsn */
             git_agent_dsn?: string | null;
         };
+        /**
+         * RemoteSendStatus
+         * @enum {string}
+         */
+        RemoteSendStatus: "pending" | "sent" | "skipped" | "failed";
         /** SSOInfo */
         SSOInfo: {
             /** Providers */
@@ -2359,6 +2381,35 @@ export interface components {
         SchemasLoadAPI: {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
+        };
+        /** TelemetrySnapshotListResponse */
+        TelemetrySnapshotListResponse: {
+            /** Count */
+            count: number;
+            /** Snapshots */
+            snapshots: components["schemas"]["TelemetrySnapshotResponse"][];
+        };
+        /** TelemetrySnapshotResponse */
+        TelemetrySnapshotResponse: {
+            /** Id */
+            id: string;
+            /** Created At */
+            created_at: string;
+            /** Kind */
+            kind: string;
+            /** Payload Format */
+            payload_format: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Infrahub Version */
+            infrahub_version: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Checksum */
+            checksum: string;
+            remote_send_status: components["schemas"]["RemoteSendStatus"];
         };
         /** TextAttributeParameters */
         TextAttributeParameters: {
@@ -3412,6 +3463,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_telemetry_snapshots_api_telemetry_snapshots_get: {
+        parameters: {
+            query?: {
+                /** @description Include snapshots created on or after this date (ISO 8601) */
+                start_date?: string | null;
+                /** @description Include snapshots created on or before this date (ISO 8601) */
+                end_date?: string | null;
+                /** @description Maximum number of snapshots to return */
+                limit?: number;
+                /** @description Number of snapshots to skip */
+                offset?: number;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetrySnapshotListResponse"];
                 };
             };
             /** @description Validation Error */
