@@ -7,6 +7,7 @@ from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema, NumberAttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
@@ -14,7 +15,7 @@ from tests.helpers.schema import TICKET, load_schema
 
 
 async def test_allocate_from_number_pool(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
@@ -51,7 +52,9 @@ async def test_allocate_from_number_pool(
     assert await np1.get_free(db=db, branch=default_branch) == 3
 
 
-async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+async def test_resource_utilization(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     """
     Allocates:
     - 1 ticket in first number pool
@@ -128,7 +131,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_allocate_from_number_pool_for_generic(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     ticket = GenericSchema(
         name="Ticket",
@@ -187,7 +190,7 @@ async def test_allocate_from_number_pool_for_generic(
 
 
 async def test_allocate_from_number_pool_with_excluded_values(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     speeding_ticket = NodeSchema(
         name="SpeedingTicket",

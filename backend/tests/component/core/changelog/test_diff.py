@@ -15,13 +15,14 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 
 
 async def test_events_from_diff(
-    db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, base_dataset_02: dict, register_core_models_schema: SchemaBranch
 ) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     at = Timestamp()
@@ -35,7 +36,7 @@ async def test_events_from_diff(
     assert len(changelogs) == 2
 
 
-async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:
+async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch: Branch, car_person_schema: None) -> None:
     p1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
