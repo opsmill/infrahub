@@ -2465,13 +2465,6 @@
                         "default": true,
                         "update": "validate_constraint"
                     },
-                    "generate_template": {
-                        "type": "boolean",
-                        "title": "Generate Template",
-                        "description": "Indicate if an object template schema should be generated for this schema",
-                        "default": false,
-                        "update": "allowed"
-                    },
                     "used_by": {
                         "items": {
                             "type": "string"
@@ -4670,13 +4663,6 @@
                         "description": "Indicate if a profile schema should be generated for this schema",
                         "default": true,
                         "update": "validate_constraint"
-                    },
-                    "generate_template": {
-                        "type": "boolean",
-                        "title": "Generate Template",
-                        "description": "Indicate if an object template schema should be generated for this schema",
-                        "default": false,
-                        "update": "allowed"
                     },
                     "used_by": {
                         "items": {
