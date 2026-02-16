@@ -136,7 +136,7 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
 
         # Check template support changes
         if (
-            isinstance(self.new_schema, (NodeSchema, GenericSchema))
+            isinstance(self.new_schema, NodeSchema)
             and self.new_schema.generate_template
             and self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
         ):

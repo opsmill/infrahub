@@ -924,14 +924,6 @@ generic_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
-            name="generate_template",
-            kind="Boolean",
-            description="Indicate if an object template schema should be generated for this schema",
-            default_value=False,
-            optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
-        ),
-        SchemaAttribute(
             name="used_by",
             kind="List",
             internal_kind=str,
