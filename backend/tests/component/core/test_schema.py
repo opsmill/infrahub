@@ -302,7 +302,9 @@ async def test_node_schema_generate_fields_for_display_label_with_generic(defaul
     assert generic_display_label == {"name": {"value": None}, "height": {"value": None}}
 
 
-async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
+async def test_rel_schema_query_filter(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
     person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
@@ -337,7 +339,9 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
     assert matches == []
 
 
-async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
+async def test_rel_schema_query_filter_no_value(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
     person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
@@ -373,7 +377,7 @@ async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_br
 
 
 async def test_rel_schema_query_filter_large_attribute_type(
-    db: InfrahubDatabase, default_branch, car_person_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
     person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
