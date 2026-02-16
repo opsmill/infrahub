@@ -265,7 +265,7 @@ Migrate to try/except for handling errors raised by these methods. The deprecate
   - Diff tree and list of changes can be scrolled separately
   ([#5451](https://github.com/opsmill/infrahub/issues/5451))
 - fix to allow updating the node kind to null when creating or updating a webhook ([#6397](https://github.com/opsmill/infrahub/issues/6397))
-- Breaking change: The format of the data payload has been corrected for transform based webhooks so that they are consistent with standard webhooks as well as custom webhooks (without an attached transform). Due to this change any Transformations attached to a webhook needs to be updated to account for the new format. ([#6815](https://github.com/opsmill/infrahub/issues/6815))
+- Breaking change: The format of the data payload has been corrected for Transformation-based webhooks so that they are consistent with standard webhooks as well as custom webhooks (without an attached Transformation). Due to this change any Transformations attached to a webhook needs to be updated to account for the new format. ([#6815](https://github.com/opsmill/infrahub/issues/6815))
 - Fixed an issue with resource pools allocating duplicate values on concurrent mutations. ([#7254](https://github.com/opsmill/infrahub/issues/7254))
 - Prevent creation of attributes with state `absent` ([#7353](https://github.com/opsmill/infrahub/issues/7353))
 - Prevent creation of nodes with state `absent` ([#7354](https://github.com/opsmill/infrahub/issues/7354))
