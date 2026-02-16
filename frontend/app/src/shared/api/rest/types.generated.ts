@@ -1976,7 +1976,7 @@ export interface components {
             start_range: number;
             /**
              * Number Pool Id
-             * @description The ID of the numberpool associated with this attribute
+             * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
              */
             number_pool_id?: string | null;
         };
