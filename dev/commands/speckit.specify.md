@@ -45,9 +45,9 @@ Given that feature description, do this:
       ```
 
    b. Find the highest feature number across all sources for the short-name:
-      - Remote branches: `git ls-remote --heads origin | grep -E 'refs/heads/[0-9]+-<short-name>$'`
-      - Local branches: `git branch | grep -E '^[* ]*[0-9]+-<short-name>$'`
-      - Specs directories: Check for directories matching `specs/[0-9]+-<short-name>`
+      - Remote branches: `git ls-remote --heads origin | grep -E 'refs/heads/([a-z]{2,4}-)?[0-9]+-<short-name>$'`
+      - Local branches: `git branch | grep -E '^[* ]*([a-z]{2,4}-)?[0-9]+-<short-name>$'`
+      - Specs directories: Check for directories matching `specs/([a-z]{2,4}-)?[0-9]+-<short-name>`
 
    c. Determine the next available number:
       - Extract all numbers from all three sources
@@ -56,11 +56,13 @@ Given that feature description, do this:
 
    d. Run the script `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` with the calculated number and short-name:
       - Pass `--number N+1` and `--short-name "your-short-name"` along with the feature description
-      - Bash example: `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS" --json --number 5 --short-name "user-auth" "Add user authentication"`
-      - PowerShell example: `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS" -Json -Number 5 -ShortName "user-auth" "Add user authentication"`
+      - The `--initials` flag is optional; initials are auto-detected from `git config user.name` (first letter of first name + first two letters of last name, lowercased)
+      - Bash example: `.specify/scripts/bash/create-new-feature.sh --json --number 5 --short-name "user-auth" "Add user authentication"`
+      - PowerShell example: `.specify/scripts/bash/create-new-feature.sh --json -Number 5 -ShortName "user-auth" "Add user authentication"`
 
    **IMPORTANT**:
    - Check all three sources (remote branches, local branches, specs directories) to find the highest number
+   - Numbers are global across all developers -- scan ALL branches regardless of initials prefix
    - Only match branches/directories with the exact short-name pattern
    - If no existing branches/directories found with this short-name, start with number 1
    - You must only ever run this script once per feature
