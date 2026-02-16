@@ -2,6 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-02-16
+**Updated**: 2026-02-16 (post-clarification)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,6 +32,8 @@
 
 ## Notes
 
-- All items pass validation. Spec is ready for `/speckit.clarify` or `/speckit.plan`.
-- The spec deliberately avoids mentioning storage technology (Neo4j, S3, etc.) — those are implementation decisions for the planning phase.
-- The "telemetry opt-out controls only remote transmission" policy change is documented as an explicit assumption.
+- All 16 items pass validation. Spec is ready for `/speckit.plan`.
+- Clarification session completed (3 questions asked, 3 answered).
+- Retention cleanup explicitly deferred to future enhancement (documented in Out of Scope).
+- Auth model clarified: permission-based with "telemetry:read" permission.
+- Export format clarified: JSON (single file, array of snapshots).

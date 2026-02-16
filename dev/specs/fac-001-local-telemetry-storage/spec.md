@@ -69,11 +69,12 @@ As an infrastructure operator, when I perform a database backup, the stored tele
 - **FR-002**: System MUST continue to send telemetry to the remote endpoint when telemetry opt-out is NOT enabled (preserving existing behavior).
 - **FR-003**: Each stored telemetry snapshot MUST contain: deployment identifier, product version, product type (community/enterprise), feature usage counts, database statistics, worker/branch counts, schema metadata, collection timestamp, and a data integrity checksum.
 - **FR-004**: Each stored snapshot MUST record whether it was successfully sent to the remote telemetry endpoint.
-- **FR-005**: System MUST provide a CLI command to export stored telemetry snapshots to a portable file format, with optional date-range filtering.
+- **FR-005**: System MUST provide a CLI command to export stored telemetry snapshots as a JSON file (single file containing an array of snapshot objects), with optional date-range filtering.
 - **FR-006**: System MUST provide a CLI command to list stored telemetry snapshots with summary information.
 - **FR-007**: Stored telemetry data MUST be automatically included in standard database backups without additional configuration.
 - **FR-008**: System MUST be compatible with container orchestration environments (no dependency on persistent local directories for telemetry storage).
 - **FR-009**: System MUST provide a programmatic interface for retrieving stored telemetry data, enabling integration with future tech support bundle tools.
+- **FR-010**: Access to telemetry export and retrieval MUST require a "telemetry:read" permission, assignable to any role through the existing permission system.
 
 ### Key Entities
 
@@ -90,13 +91,26 @@ As an infrastructure operator, when I perform a database backup, the stored tele
 - **SC-005**: Administrators can export up to 5 years of telemetry data in a single CLI command, completing within 2 minutes.
 - **SC-006**: Storage overhead for telemetry data remains under 50 MB for 5 years of daily snapshots.
 
+## Clarifications
+
+### Session 2026-02-16
+
+- Q: Should this feature include automatic data retention cleanup (auto-delete old snapshots)? → A: Deferred — retention cleanup is excluded from this feature and will be tracked as a separate future enhancement.
+- Q: What authentication model should govern access to telemetry data? → A: Permission-based — introduce a specific "telemetry:read" permission assignable to any role.
+- Q: What file format should the CLI export produce? → A: JSON — a single file containing an array of snapshot objects.
+
 ## Assumptions
 
 - The daily telemetry payload is small (~3-5 KB per snapshot), making long-term storage feasible within the existing database without significant overhead.
 - The existing database backup infrastructure captures all persistent data; no separate backup mechanism is needed for telemetry.
 - Air-gapped customers can transfer exported files to OpsMill via secure out-of-band channels (USB, secure file transfer, etc.).
 - The telemetry opt-out setting controls only remote transmission; local storage is not affected by opt-out (this is a deliberate policy change).
-- Authentication and authorization is needed for telemetry CLI.
+- Access to telemetry data (CLI export and programmatic interface) requires a "telemetry:read" permission, assignable to any role via the existing permission system.
+
+## Out of Scope
+
+- Automatic data retention cleanup (auto-deleting snapshots older than a threshold). To be addressed as a separate future enhancement.
+- Telemetry status dashboard or listing CLI commands (operational convenience, not core data retention).
 
 ## Dependencies
 
