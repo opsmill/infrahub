@@ -165,3 +165,70 @@ This approach:
 - Provides consistent error handling
 - Makes testing validators easier
 - Separates concerns (validation from form binding)
+
+## Focus Management
+
+### AutoFocus Usage
+
+Use `autoFocus` only for:
+- Modal search inputs and first form fields
+- Bulk operation inputs requiring immediate attention
+- Dedicated search interfaces
+
+Avoid in long forms, mobile contexts, or when multiple fields could compete for focus.
+
+### Styling
+
+Standard inputs use `focusVisibleStyle` from `@/shared/components/ui/style`:
+
+```tsx
+import { focusVisibleStyle, inputErrorStyle } from "@/shared/components/ui/style";
+
+// Normal focus: blue ring
+<input className={focusVisibleStyle} />
+
+// Error focus: red ring
+<input className={classNames(focusVisibleStyle, hasError && inputErrorStyle)} />
+```
+
+React Aria components use `data-focus-visible` variant from `@/shared/components/aria/style-rac`.
+
+### Ref-Based Focus Control
+
+**Number inputs** - Prevent scroll-to-change:
+
+```tsx
+const ref = usePreventScrollOnNumberInput();
+<input type="number" ref={ref} />
+```
+
+**Modal initial focus** - Control dialog focus order:
+
+```tsx
+const focusRef = useRef(null);
+<Dialog initialFocus={focusRef}>
+  <button tabIndex={-1} ref={focusRef} />
+  <input name="field" />
+</Dialog>
+```
+
+**Dynamic focus** - Pool allocation toggle:
+
+```tsx
+const [override, setOverride] = useState(false);
+<Input
+  autoFocus={override}
+  onBlur={() => setOverride(false)}
+/>
+```
+
+### Dialog Focus
+
+HeadlessUI Dialog and React Aria Modal provide automatic focus trap, restoration, and keyboard handling. Use `initialFocus` prop to control focus order.
+
+### Best Practices
+
+- Use `focus-visible` (not `focus`) to show outline only for keyboard navigation
+- Let framework components (Dialog, Modal) handle focus management
+- Style error states with red focus ring
+- Test keyboard navigation (Tab order, focus trap, restoration)
