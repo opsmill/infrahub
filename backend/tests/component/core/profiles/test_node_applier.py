@@ -12,6 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import CHILD, THING, load_schema
@@ -926,7 +927,7 @@ async def test_node_from_template_with_profile_precedence(
 
 
 async def test_node_with_cardinality_one_relationship_profile_updated_on_profile_update(
-    db: InfrahubDatabase, default_branch, car_person_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
     person_schema = registry.schema.get("TestPerson", branch=default_branch.name)
 

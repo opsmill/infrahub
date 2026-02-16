@@ -984,20 +984,13 @@ allow-dunder-method-names = [
 # Remove each entry below once all ANN001 violations in that path have been resolved.            #
 ##################################################################################################
 "backend/tests/component/conftest.py" = ["ANN001"]                             # 96 violations
-"backend/tests/component/test_database.py" = ["ANN001"]                        # 1 violation
 "backend/tests/component/api/**.py" = ["ANN001"]                               # 271 violations
-"backend/tests/component/cli/**.py" = ["ANN001"]                               # 8 violations
-"backend/tests/component/computed_attribute/**.py" = ["ANN001"]                # 9 violations
 "backend/tests/component/core/changelog/**.py" = ["ANN001"]                    # 16 violations
 "backend/tests/component/core/constraint_validators/**.py" = ["ANN001"]        # 321 violations
 "backend/tests/component/core/convert_object_type/**.py" = ["ANN001"]          # 15 violations
 "backend/tests/component/core/diff/**.py" = ["ANN001"]                         # 238 violations
-"backend/tests/component/core/graph/**.py" = ["ANN001"]                        # 2 violations
-"backend/tests/component/core/hierarchy/**.py" = ["ANN001"]                    # 3 violations
 "backend/tests/component/core/ipam/**.py" = ["ANN001"]                         # 42 violations
 "backend/tests/component/core/migrations/**.py" = ["ANN001"]                   # 175 violations
-"backend/tests/component/core/node/**.py" = ["ANN001"]                         # 4 violations
-"backend/tests/component/core/profiles/**.py" = ["ANN001"]                     # 2 violations
 "backend/tests/component/core/resource_manager/**.py" = ["ANN001"]             # 12 violations
 "backend/tests/component/core/schema/**.py" = ["ANN001"]                       # 8 violations
 "backend/tests/component/core/schema_manager/**.py" = ["ANN001"]               # 113 violations
@@ -1015,24 +1008,16 @@ allow-dunder-method-names = [
 "backend/tests/component/core/test_account.py" = ["ANN001"]                   # 10 violations
 "backend/tests/component/git/**.py" = ["ANN001"]                               # 81 violations
 "backend/tests/component/git_credential/**.py" = ["ANN001"]                    # 9 violations
-"backend/tests/component/graphql/auth/**.py" = ["ANN001"]                      # 4 violations
 "backend/tests/component/graphql/diff/**.py" = ["ANN001"]                      # 23 violations
 "backend/tests/component/graphql/loaders/**.py" = ["ANN001"]                   # 6 violations
 "backend/tests/component/graphql/mutations/**.py" = ["ANN001"]                 # 91 violations
 "backend/tests/component/graphql/profiles/**.py" = ["ANN001"]                  # 11 violations
 "backend/tests/component/graphql/queries/**.py" = ["ANN001"]                   # 94 violations
-"backend/tests/component/graphql/resolvers/**.py" = ["ANN001"]                 # 2 violations
 "backend/tests/component/graphql/*.py" = ["ANN001"]                            # 176 violations
-"backend/tests/component/locks/**.py" = ["ANN001"]                             # 1 violation
-"backend/tests/component/menu/**.py" = ["ANN001"]                              # 3 violations
 "backend/tests/component/message_bus/**.py" = ["ANN001"]                       # 15 violations
-"backend/tests/component/patch/**.py" = ["ANN001"]                             # 1 violation
 "backend/tests/component/profiles/**.py" = ["ANN001"]                          # 13 violations
-"backend/tests/component/services/**.py" = ["ANN001"]                          # 2 violations
 "backend/tests/component/storage/**.py" = ["ANN001"]                           # 5 violations
 "backend/tests/component/task_manager/**.py" = ["ANN001"]                      # 8 violations
-"backend/tests/component/telemetry/**.py" = ["ANN001"]                         # 1 violation
-"backend/tests/component/trigger/**.py" = ["ANN001"]                           # 3 violations
 
 "backend/tests/query_benchmark/**.py" = [
     ##################################################################################################

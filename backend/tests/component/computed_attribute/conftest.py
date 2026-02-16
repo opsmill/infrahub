@@ -14,11 +14,12 @@ from infrahub.core.schema import (
     SchemaRoot,
 )
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
-async def gqlquery01(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch) -> Node:
+async def gqlquery01(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch) -> Node:
     query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
     await query.new(
         db=db, name="query01", query="query { TestCar { name { value } } }", models=["TestCar", "TestPerson"]
@@ -28,7 +29,9 @@ async def gqlquery01(db: InfrahubDatabase, register_core_models_schema, default_
 
 
 @pytest.fixture
-async def repo01(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch, gqlquery01: Node) -> Node:
+async def repo01(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch, gqlquery01: Node
+) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
     repo = await repo.new(
         db=db, name="repo02", ref=default_branch.name, commit="commit02", location="location02", queries=[gqlquery01]
@@ -39,7 +42,11 @@ async def repo01(db: InfrahubDatabase, register_core_models_schema, default_bran
 
 @pytest.fixture
 async def transform01(
-    db: InfrahubDatabase, register_core_models_schema, default_branch: Branch, gqlquery01: Node, repo01: Node
+    db: InfrahubDatabase,
+    register_core_models_schema: SchemaBranch,
+    default_branch: Branch,
+    gqlquery01: Node,
+    repo01: Node,
 ) -> Node:
     transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON, branch=default_branch)
     await transform.new(
@@ -51,7 +58,7 @@ async def transform01(
 
 @pytest.fixture
 async def car_person_schema_computed_attr(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> None:
     SCHEMA = SchemaRoot(
         nodes=[

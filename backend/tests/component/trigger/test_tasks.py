@@ -1,3 +1,5 @@
+from collections.abc import Generator
+
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
 
@@ -8,7 +10,7 @@ from infrahub.workflows.initialization import setup_deployments, setup_worker_po
 
 
 @pytest.fixture
-async def prefect_client(prefect_test_fixture):
+async def prefect_client(prefect_test_fixture: Generator):
     async with get_client(sync_client=False) as prefect_client:
         yield prefect_client
 
@@ -26,7 +28,7 @@ async def init_prefect(prefect_client: PrefectClient) -> None:
     await setup_deployments(client=prefect_client)
 
 
-async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, cleanup_automation) -> None:
+async def test_setup_triggers(prefect_client: PrefectClient, init_prefect: None, cleanup_automation: None) -> None:
     report = await setup_triggers(client=prefect_client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN)
 
     assert len(report.deleted) == 0
