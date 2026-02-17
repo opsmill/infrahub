@@ -422,6 +422,9 @@ class WorkflowSettings(BaseSettings):
         ge=0,
         description="Threshold for caching flow run counts (0 to always cache, higher values to disable)",
     )
+    worker_events_retention_period: int = Field(
+        default=7, ge=1, description="Specify the number of days to retain events for (days)"
+    )
 
     @property
     def api_endpoint(self) -> str:

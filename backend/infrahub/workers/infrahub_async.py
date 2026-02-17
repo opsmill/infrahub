@@ -121,6 +121,7 @@ class InfrahubWorkerAsync(BaseWorker):
                     prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
                     prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
                     prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
+                    prefect_settings.PREFECT_EVENTS_RETENTION_PERIOD: f"{config.SETTINGS.workflow.worker_events_retention_period}d",
                 }
             )
         )
