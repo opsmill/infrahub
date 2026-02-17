@@ -39,3 +39,4 @@ cd frontend/app && npm run codegen # Generate GraphQL types
 
 - `dev/guides/frontend/writing-unit-tests.md` - Unit tests for TypeScript functions
 - `dev/guides/frontend/writing-component-tests.md` - React component tests
+- `dev/guides/frontend/writing-e2e-tests.md` - Playwright E2E tests
