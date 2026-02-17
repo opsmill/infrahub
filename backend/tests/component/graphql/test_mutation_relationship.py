@@ -43,7 +43,6 @@ async def test_relationship_add(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:
@@ -403,7 +402,6 @@ async def test_relationship_groups_add(
     default_permission_backend: None,
     default_branch: Branch,
     car_person_generics_data: dict[str, Node],
-    enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:
@@ -553,7 +551,6 @@ async def test_relationship_groups_remove(
     default_permission_backend: None,
     default_branch: Branch,
     car_person_generics_data,
-    enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:

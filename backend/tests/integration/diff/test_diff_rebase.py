@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -69,11 +69,6 @@ mutation($branch: String!) {
 
 
 class TestDiffRebase(TestInfrahubApp):
-    @pytest.fixture(scope="class", autouse=True)
-    def configure_settings(self) -> None:
-        config.SETTINGS.broker.enable = True
-        config.SETTINGS.cache.enable = False
-
     @pytest.fixture(scope="class", autouse=True)
     def initialize_lock(self) -> None:
         lock.initialize_lock(local_only=True)
