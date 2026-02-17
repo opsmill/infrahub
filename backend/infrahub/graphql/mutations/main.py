@@ -122,7 +122,12 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        if graphql_context.background and obj.node_changelog.has_changes:
+        if (
+            graphql_context.background
+            and graphql_context.account_session
+            and graphql_context.service
+            and obj.node_changelog.has_changes
+        ):
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
