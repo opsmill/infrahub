@@ -30,11 +30,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
     test("should not be able to create file object", async ({ page }) => {
       await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
 
-      // Create button should not be visible or enabled
-      const createButton = page.getByTestId("create-object-button");
-      if (await createButton.isVisible()) {
-        await expect(createButton).toBeDisabled();
-      }
+      await expect(page.getByTestId("create-object-button")).toBeDisabled();
     });
   });
 
@@ -193,21 +189,14 @@ test.describe("File Upload - InfraCircuitContract", () => {
     test("should not be able to upload files", async ({ page }) => {
       await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
 
-      // Create button should be disabled or not visible
-      const createButton = page.getByTestId("create-object-button");
-      if (await createButton.isVisible()) {
-        await expect(createButton).toBeDisabled();
-      }
+      await expect(page.getByTestId("create-object-button")).toBeDisabled();
     });
 
     test("should not be able to edit existing file", async ({ page }) => {
       await test.step("navigate to an existing file object", async () => {
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
 
-        const fileLink = page.getByRole("link").first();
-        if (await fileLink.isVisible()) {
-          await fileLink.click();
-        }
+        await page.getByRole("link", { name: TEST_FILE_NAME }).click();
       });
 
       await test.step("verify edit button is disabled", async () => {
@@ -246,19 +235,17 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await page.getByRole("link", { name: contractNumber }).click();
       });
 
-      await test.step("verify download button exists", async () => {
-        // Look for download button
+      await test.step("download the file", async () => {
         const downloadButton = page.getByRole("button", { name: /download/i });
+        await expect(downloadButton).toBeVisible();
 
-        if (await downloadButton.isVisible()) {
-          // Start waiting for download before clicking
-          const downloadPromise = page.waitForEvent("download");
-          await downloadButton.click();
-          const download = await downloadPromise;
+        // Start waiting for download before clicking
+        const downloadPromise = page.waitForEvent("download");
+        await downloadButton.click();
+        const download = await downloadPromise;
 
-          // Verify download filename
-          expect(download.suggestedFilename()).toBe(fileName);
-        }
+        // Verify download filename
+        expect(download.suggestedFilename()).toBe(fileName);
       });
     });
   });
