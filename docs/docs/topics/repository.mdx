@@ -91,7 +91,8 @@ This separation ensures that Git operations don't block API requests and enables
 **For Read-only Repositories:**
 
 - No automatic synchronization occurs
-- Updates require manual modification of the `ref` property
+- Updates can be triggered by modifying the `ref` property to point to a different branch, tag, or commit
+- Alternatively, use the **Import latest commit** action to fetch the latest commit for the current ref from the remote without changing the ref
 - Each update fetches the specified commit and imports resources according to configuration
 
 ### Merging branches
@@ -150,7 +151,8 @@ Indicates the state of data synchronization:
 Beyond basic synchronization, repositories support administrative actions for troubleshooting and maintenance:
 
 - **Check connectivity**: Validates network access and authentication without modifying data
-- **Reimport last commit**: Forces re-processing of the current commit without fetching new changes, useful for recovering from import errors
+- **Reimport current commit**: Forces re-processing of the current commit without fetching new changes, useful for recovering from import errors
+- **Import latest commit** (read-only repositories only): Fetches the latest commit from the remote for the tracked ref and imports its resources. This is useful when the remote repository has new changes and you want to pull them without manually updating the `ref` property. Unlike changing the `ref`, this operation keeps the same ref but updates to whatever commit that ref currently points to on the remote
 
 ## Design trade-offs and constraints
 
