@@ -98,19 +98,19 @@ const getRelationshipValueFromUser = (
 
   // Cardinality one
   if (!relationshipData.node) {
-    const resourceFormPoolRelationshipData = objectData[
+    const resourceFromPoolRelationshipData = objectData[
       relationshipName + FROM_RESOURCE_POOL_SUFFIX
     ] as NodeRelationshipOneWithMetadata | undefined;
 
-    if (!resourceFormPoolRelationshipData?.node) return null;
+    if (!resourceFromPoolRelationshipData?.node) return null;
     return {
       source: {
         type: "pool",
-        label: getNodeLabel(resourceFormPoolRelationshipData.node),
-        id: resourceFormPoolRelationshipData.node.id,
-        kind: resourceFormPoolRelationshipData.node.__typename,
+        label: getNodeLabel(resourceFromPoolRelationshipData.node),
+        id: resourceFromPoolRelationshipData.node.id,
+        kind: resourceFromPoolRelationshipData.node.__typename,
       },
-      value: resourceFormPoolRelationshipData.node,
+      value: resourceFromPoolRelationshipData.node,
     };
   }
 
