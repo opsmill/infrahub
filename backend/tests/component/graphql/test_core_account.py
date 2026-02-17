@@ -59,6 +59,7 @@ async def test_permissions(
             global_permissions {
                 edges {
                     node {
+                        display_label
                         identifier
                     }
                 }
@@ -66,6 +67,7 @@ async def test_permissions(
             object_permissions {
                 edges {
                     node {
+                        display_label
                         identifier
                     }
                 }
@@ -83,19 +85,44 @@ async def test_permissions(
 
     assert result.errors is None
     assert result.data
-    perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]]
-    assert perms == [
-        str(GlobalPermission(action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value))
+    perm_display_labels = [
+        edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]
     ]
-
-    perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]]
-    assert perms == [
-        str(
-            ObjectPermission(
-                namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
+    perm_identifiers = [
+        edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]
+    ]
+    assert (
+        perm_display_labels
+        == perm_identifiers
+        == [
+            str(
+                GlobalPermission(
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+                )
             )
-        )
+        ]
+    )
+
+    perm_display_labels = [
+        edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]
     ]
+    perm_identifiers = [
+        edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]
+    ]
+    assert (
+        perm_display_labels
+        == perm_identifiers
+        == [
+            str(
+                ObjectPermission(
+                    namespace="*",
+                    name="*",
+                    action=PermissionAction.ANY.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            )
+        ]
+    )
 
     gql_params = await prepare_graphql_params(
         db=db,
