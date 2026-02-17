@@ -7,6 +7,7 @@ const SEARCH = graphql(`
   query Search($search: String!, $caseSensitive: Boolean) {
     InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true, case_sensitive: $caseSensitive) {
       count
+      is_prefix_lookup
       edges {
         node {
           id

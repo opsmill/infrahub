@@ -1393,3 +1393,101 @@ class IPPrefixReconcileQuery(Query):
         if not results:
             return None
         return IPPrefixReconcileQueryResult.from_db(results[0])
+
+
+@dataclass(frozen=True)
+class IPParentPrefixResult:
+    """A single parent prefix result from the lookup query."""
+
+    prefix_id: str
+    prefix_value: str
+    prefix_length: int
+    namespace_id: str
+
+
+class IPParentPrefixLookupQuery(Query):
+    name = "ip_parent_prefix_lookup"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        ip_value: ipaddress.IPv4Address | ipaddress.IPv6Address | ipaddress.IPv4Network | ipaddress.IPv6Network,
+        **kwargs,
+    ) -> None:
+        self.ip_value = ip_value
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+        self.params["ip_version"] = self.ip_value.version
+
+        if isinstance(self.ip_value, ipaddress.IPv4Address | ipaddress.IPv6Address):
+            binary = format(int(self.ip_value), "b").zfill(self.ip_value.max_prefixlen)
+            start_prefixlen: int = self.ip_value.max_prefixlen
+        else:
+            binary = format(int(self.ip_value.network_address), "b").zfill(self.ip_value.max_prefixlen)
+            start_prefixlen = self.ip_value.prefixlen
+
+        possible_prefix_map: dict[str, int] = {}
+        for max_prefix_len in range(start_prefixlen, -1, -1):
+            tmp_prefix = binary[:max_prefix_len]
+            possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
+            if possible_prefix not in possible_prefix_map:
+                possible_prefix_map[possible_prefix] = max_prefix_len
+
+        self.params["possible_prefix_and_length_list"] = []
+        self.params["possible_prefix_list"] = []
+        for possible_prefix, max_length in possible_prefix_map.items():
+            self.params["possible_prefix_and_length_list"].append([possible_prefix, max_length])
+            self.params["possible_prefix_list"].append(possible_prefix)
+
+        # ruff: noqa: E501
+        query = """
+        // Get all active IP namespaces
+        MATCH (ip_namespace:%(namespace_kind)s)
+        CALL (ip_namespace) {
+            MATCH (ip_namespace)-[r:IS_PART_OF]->(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ip_namespace, r
+        WHERE r.status = "active"
+        WITH ip_namespace
+        // Find parent prefixes matching possible binary addresses
+        MATCH path = (ip_namespace)-[:IS_RELATED]-(nsr:Relationship {name: "ip_namespace__ip_prefix"})
+            -[:IS_RELATED]-(pfx:%(prefix_kind)s)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
+            -[:HAS_VALUE]->(av:%(prefix_attr_kind)s)
+        WHERE av.version = $ip_version
+            AND av.binary_address IN $possible_prefix_list
+            AND any(pal IN $possible_prefix_and_length_list WHERE av.binary_address = pal[0] AND av.prefixlen <= pal[1])
+            AND all(r IN relationships(path) WHERE (%(branch_filter)s) AND r.status = "active")
+        """ % {
+            "namespace_kind": InfrahubKind.IPNAMESPACE,
+            "prefix_kind": InfrahubKind.IPPREFIX,
+            "prefix_attr_kind": PREFIX_ATTRIBUTE_LABEL,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = [
+            "DISTINCT pfx.uuid AS prefix_id",
+            "av.value AS prefix_value",
+            "av.prefixlen AS prefix_length",
+            "ip_namespace.uuid AS namespace_id",
+        ]
+        self.order_by = ["av.prefixlen DESC"]
+
+    def get_results_as_list(self) -> list[IPParentPrefixResult]:
+        return [
+            IPParentPrefixResult(
+                prefix_id=result.get_as_type("prefix_id", return_type=str),
+                prefix_value=result.get_as_type("prefix_value", return_type=str),
+                prefix_length=result.get_as_type("prefix_length", return_type=int),
+                namespace_id=result.get_as_type("namespace_id", return_type=str),
+            )
+            for result in self.get_results()
+        ]

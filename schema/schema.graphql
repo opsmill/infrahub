@@ -10624,6 +10624,7 @@ type NodeEdge {
 type NodeEdges {
   count: Int!
   edges: [NodeEdge!]!
+  is_prefix_lookup: Boolean
 }
 
 type NodeMutatedEvent implements EventNodeInterface {

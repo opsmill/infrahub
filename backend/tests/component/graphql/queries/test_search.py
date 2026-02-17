@@ -1,3 +1,5 @@
+import ipaddress
+
 import pytest
 
 from infrahub.core.branch import Branch
@@ -5,7 +7,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.queries.search import _collapse_ipv6
+from infrahub.graphql.queries.search import _collapse_ipv6, _try_parse_ip_or_prefix
 from tests.helpers.graphql import graphql
 
 SEARCH_QUERY = """
@@ -26,6 +28,21 @@ SEARCH_QUERY_WITH_CASE_SENSITIVE = """
 query ($search: String!, $caseSensitive: Boolean) {
     InfrahubSearchAnywhere(q: $search, case_sensitive: $caseSensitive) {
         count
+        edges {
+            node {
+                id
+                kind
+            }
+        }
+    }
+}
+"""
+
+SEARCH_QUERY_WITH_PREFIX_LOOKUP = """
+query ($search: String!) {
+    InfrahubSearchAnywhere(q: $search) {
+        count
+        is_prefix_lookup
         edges {
             node {
                 id
@@ -124,7 +141,7 @@ async def test_search_ipv6_address_extended_format(
 
     res_collapsed = await graphql(
         schema=gql_params.schema,
-        source=SEARCH_QUERY,
+        source=SEARCH_QUERY_WITH_PREFIX_LOOKUP,
         context_value=gql_params.context,
         root_value=None,
         variable_values={"search": "2001:db8::"},
@@ -132,7 +149,7 @@ async def test_search_ipv6_address_extended_format(
 
     res_extended = await graphql(
         schema=gql_params.schema,
-        source=SEARCH_QUERY,
+        source=SEARCH_QUERY_WITH_PREFIX_LOOKUP,
         context_value=gql_params.context,
         root_value=None,
         variable_values={"search": "2001:0db8:0000:0000:0000:0000:0000:0000"},
@@ -155,6 +172,10 @@ async def test_search_ipv6_address_extended_format(
         res_extended.data["InfrahubSearchAnywhere"]["edges"][1]["node"]["id"]
         == res_collapsed.data["InfrahubSearchAnywhere"]["edges"][1]["node"]["id"]
     )
+
+    # Both formats trigger the prefix lookup path
+    assert res_collapsed.data["InfrahubSearchAnywhere"]["is_prefix_lookup"] is True
+    assert res_extended.data["InfrahubSearchAnywhere"]["is_prefix_lookup"] is True
 
 
 async def test_search_ipv6_network_extended_format(
@@ -312,6 +333,158 @@ def test_collapse_ipv6_address_or_network(query, expected) -> None:
 def test_collapse_ipv6_address_or_network_invalid_cases(query) -> None:
     with pytest.raises(ValueError):
         _collapse_ipv6(query)
+
+
+@pytest.mark.parametrize(
+    "input_str,expected_type",
+    [
+        ("10.1.2.45", ipaddress.IPv4Address),
+        ("0.0.0.0", ipaddress.IPv4Address),  # noqa: S104
+        ("2001:db8::1", ipaddress.IPv6Address),
+        ("2001:0db8:0000::1", ipaddress.IPv6Address),
+        ("::1", ipaddress.IPv6Address),
+        ("10.0.0.0/8", ipaddress.IPv4Network),
+        ("10.1.2.0/24", ipaddress.IPv4Network),
+        ("2001:db8::/32", ipaddress.IPv6Network),
+        ("10.1.2", None),
+        ("router-core-01", None),
+        ("", None),
+        ("10.0.0.0/33", None),
+    ],
+)
+def test_try_parse_ip_or_prefix(input_str, expected_type) -> None:
+    result = _try_parse_ip_or_prefix(input_str)
+    if expected_type is None:
+        assert result is None
+    else:
+        assert isinstance(result, expected_type)
+
+
+async def test_search_prefix_lookup_ipv4_address(
+    db: InfrahubDatabase,
+    ip_dataset_01,
+    branch: Branch,
+) -> None:
+    """Searching for a valid IPv4 address returns parent prefixes via prefix lookup."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PREFIX_LOOKUP,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "10.10.1.1"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    data = result.data["InfrahubSearchAnywhere"]
+    assert data["is_prefix_lookup"] is True
+
+    # 10.10.1.1 is contained in:
+    #   NS1: net143 (10.10.1.0/27), net142 (10.10.1.0/24), net140 (10.10.0.0/16), net146 (10.0.0.0/8)
+    #   NS2: net240 (10.10.0.0/15)
+    # Ordered by prefix length DESC
+    assert data["count"] == 5
+    result_ids = [edge["node"]["id"] for edge in data["edges"]]
+    assert ip_dataset_01["net143"].id in result_ids
+    assert ip_dataset_01["net142"].id in result_ids
+    assert ip_dataset_01["net140"].id in result_ids
+    assert ip_dataset_01["net240"].id in result_ids
+    assert ip_dataset_01["net146"].id in result_ids
+
+    # All results should be IP prefixes
+    for edge in data["edges"]:
+        assert edge["node"]["kind"] == InfrahubKind.IPPREFIX
+
+    # Results ordered by prefix length descending
+    assert result_ids[0] == ip_dataset_01["net143"].id  # /27
+    assert result_ids[-1] == ip_dataset_01["net146"].id  # /8
+
+
+async def test_search_prefix_lookup_ipv4_prefix(
+    db: InfrahubDatabase,
+    ip_dataset_01,
+    branch: Branch,
+) -> None:
+    """Searching for a valid IPv4 CIDR prefix returns the exact match and parent prefixes."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PREFIX_LOOKUP,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "10.10.1.0/24"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    data = result.data["InfrahubSearchAnywhere"]
+    assert data["is_prefix_lookup"] is True
+
+    # 10.10.1.0/24 matches (exact or parent):
+    #   NS1: net142 (10.10.1.0/24 exact), net140 (10.10.0.0/16), net146 (10.0.0.0/8)
+    #   NS2: net240 (10.10.0.0/15)
+    # Does NOT include net143 (10.10.1.0/27) since it's a child
+    assert data["count"] == 4
+    result_ids = [edge["node"]["id"] for edge in data["edges"]]
+    assert ip_dataset_01["net142"].id in result_ids
+    assert ip_dataset_01["net140"].id in result_ids
+    assert ip_dataset_01["net240"].id in result_ids
+    assert ip_dataset_01["net146"].id in result_ids
+    assert ip_dataset_01["net143"].id not in result_ids
+
+
+@pytest.mark.parametrize("search_term", ["10.1.2", "ns1"])
+async def test_search_prefix_lookup_text_fallback(
+    db: InfrahubDatabase,
+    ip_dataset_01,
+    branch: Branch,
+    search_term: str,
+) -> None:
+    """Non-IP text and partial IPs fall through to text search (is_prefix_lookup=None)."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PREFIX_LOOKUP,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": search_term},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["is_prefix_lookup"] is None
+
+
+async def test_search_prefix_lookup_no_matching_prefixes(
+    db: InfrahubDatabase,
+    ip_dataset_01,
+    branch: Branch,
+) -> None:
+    """A valid IP with no matching prefixes in the DB returns is_prefix_lookup=true with count=0."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PREFIX_LOOKUP,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "172.16.0.1"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    data = result.data["InfrahubSearchAnywhere"]
+    assert data["is_prefix_lookup"] is True
+    assert data["count"] == 0
+    assert data["edges"] == []
 
 
 async def test_search_groups(

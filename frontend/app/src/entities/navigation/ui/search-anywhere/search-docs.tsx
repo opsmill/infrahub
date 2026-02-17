@@ -26,7 +26,7 @@ export const SearchDocs = () => {
     );
   }
 
-  if (error || results.length === 0) return null;
+  if (error || !Array.isArray(results) || results.length === 0) return null;
 
   return (
     <SearchAnywhereGroup heading="Documentation">

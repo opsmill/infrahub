@@ -9,6 +9,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
 
@@ -30,6 +31,7 @@ class NodeEdge(ObjectType):
 class NodeEdges(ObjectType):
     count = Field(Int, required=True)
     edges = Field(List(of_type=NonNull(NodeEdge)), required=True)
+    is_prefix_lookup = Field(Boolean, required=False)
 
 
 def _collapse_ipv6(s: str) -> str:
@@ -98,6 +100,24 @@ def _collapse_ipv6(s: str) -> str:
     return compressed_address
 
 
+def _try_parse_ip_or_prefix(
+    q: str,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | ipaddress.IPv4Network | ipaddress.IPv6Network | None:
+    """Try to parse a query string as an IP address or network prefix.
+
+    Attempts ip_address() first, then ip_network(strict=False).
+    Returns the parsed object on success, or None on failure.
+    """
+    try:
+        return ipaddress.ip_address(q)
+    except ValueError:
+        pass
+    try:
+        return ipaddress.ip_network(q, strict=False)
+    except ValueError:
+        return None
+
+
 async def search_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
@@ -112,6 +132,8 @@ async def search_resolver(
 
     fields = extract_graphql_fields(info=info)
 
+    is_prefix_lookup = False
+
     if is_valid_uuid(q):
         matching = await NodeManager.get_one(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
@@ -123,7 +145,24 @@ async def search_resolver(
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
             q = _collapse_ipv6(q)
 
-        if case_sensitive:
+        ip_value = _try_parse_ip_or_prefix(q)
+
+        if ip_value is not None:
+            # Valid IP address or CIDR prefix: run parent prefix lookup
+            lookup_query = await IPParentPrefixLookupQuery.init(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                ip_value=ip_value,
+                limit=limit,
+            )
+            await lookup_query.execute(db=graphql_context.db)
+
+            for prefix_result in lookup_query.get_results_as_list():
+                results.append({"id": prefix_result.prefix_id, "kind": InfrahubKind.IPPREFIX})
+
+            is_prefix_lookup = True
+        elif case_sensitive:
             # Case-sensitive search using the dedicated query
             query = await NodeGetListByAttributeValueQuery.init(
                 db=graphql_context.db,
@@ -157,6 +196,9 @@ async def search_resolver(
 
     if "count" in fields:
         response["count"] = len(results)
+
+    if "is_prefix_lookup" in fields:
+        response["is_prefix_lookup"] = is_prefix_lookup or None
 
     return response
 

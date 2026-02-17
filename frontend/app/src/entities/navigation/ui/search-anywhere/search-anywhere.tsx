@@ -10,6 +10,7 @@ import { SearchActions } from "./search-actions";
 import { SearchAnywhereContext } from "./search-anywhere-context";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
+import { SearchPrefixes } from "./search-prefixes";
 
 type SearchModalProps = {
   isCollapsed?: boolean;
@@ -55,6 +56,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
 
           <Command.List className="[&_[cmdk-group]]:mt-2">
             <SearchAnywhereEmpty />
+            <SearchPrefixes />
             <SearchActions />
             <SearchNodes />
             <SearchDocs />

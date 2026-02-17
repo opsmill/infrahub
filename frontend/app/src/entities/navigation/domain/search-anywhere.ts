@@ -10,6 +10,7 @@ export type ObjectResult = { id: string; kind: string };
 export type SearchAnywhere = (params: SearchAnywhereParams) => Promise<{
   count: number;
   matchingObjects: Array<ObjectResult>;
+  isPrefixLookup: boolean;
 }>;
 
 export const searchAnywhere: SearchAnywhere = async (params) => {
@@ -24,5 +25,6 @@ export const searchAnywhere: SearchAnywhere = async (params) => {
   return {
     count: InfrahubSearchAnywhere.count,
     matchingObjects: InfrahubSearchAnywhere.edges?.map(({ node }) => node) ?? [],
+    isPrefixLookup: Boolean(InfrahubSearchAnywhere.is_prefix_lookup),
   };
 };

@@ -39,6 +39,10 @@ export const SearchNodes = () => {
     return null;
   }
 
+  if (data?.isPrefixLookup) {
+    return null;
+  }
+
   if (isPending) {
     return (
       <SearchAnywhereGroup heading="Objects">
