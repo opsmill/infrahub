@@ -16,6 +16,8 @@ import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-t
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -80,7 +82,9 @@ export function getObjectFieldsColumns(
   headerProps?: PopoverTriggerProps
 ): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
+  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []).filter(
+    (rel) => !isFromResourcePoolRelationship(rel.name)
+  );
   const sortedColumns = sortByOrderWeight([...attributes, ...relationships]);
 
   return sortedColumns.map((columnSchema) => {
@@ -88,14 +92,18 @@ export function getObjectFieldsColumns(
       header: () => {
         return <TableColumnHeader columnSchema={columnSchema} {...headerProps} />;
       },
-      cell: ({ cell }) => {
+      cell: ({ cell, row }) => {
         const value = cell.getValue();
         if ("peer" in columnSchema) {
           return (
             <TableCell>
               <TableRelationshipCell
                 relationshipSchema={columnSchema}
-                relationshipData={value as NodeRelationship}
+                relationshipData={resolveRelationshipData({
+                  objectSchema: schema,
+                  objectData: row.original,
+                  relationshipName: columnSchema.name,
+                })}
               />
             </TableCell>
           );
