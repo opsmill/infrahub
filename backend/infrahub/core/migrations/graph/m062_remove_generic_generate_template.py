@@ -20,8 +20,11 @@ class RemoveGenericGenerateTemplateQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
-        MATCH (sg:SchemaGeneric)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "generate_template"})
-        DETACH DELETE attr
+MATCH (sg:SchemaGeneric)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "generate_template"})-[:HAS_VALUE]->(val)
+DETACH DELETE attr
+WITH val
+WHERE NOT EXISTS { MATCH (val)-[]-() }
+DELETE val
         """
         self.add_to_query(query)
 
@@ -50,9 +53,14 @@ MATCH p3 = (sn)-[:IS_RELATED]-(rel:Relationship {name: "schema__node__attributes
 WHERE all(r IN relationships(p3) WHERE r.status = "active" AND r.to IS NULL)
 WITH sa, rel
 LIMIT 1
-
-// Delete the SchemaAttribute and its relationship node
-DETACH DELETE sa, rel
+// Find child Attribute nodes and their value nodes
+MATCH (sa)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[:HAS_VALUE]->(val)
+// Delete the SchemaAttribute, Relationship node, and child Attributes
+DETACH DELETE sa, rel, attr
+// Clean up orphaned value nodes (Boolean nodes are shared and will still have edges)
+WITH val
+WHERE NOT EXISTS { MATCH (val)-[]-() }
+DELETE val
         """
         self.add_to_query(query)
 
