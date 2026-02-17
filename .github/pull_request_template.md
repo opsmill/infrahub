@@ -70,3 +70,4 @@ Closes <!-- #issue -->
 - [ ] [Changelog entry](../dev/guidelines/changelog.md) added (`uv run towncrier create ...`)
 - [ ] External docs updated (if user-facing or ops-facing change)
 - [ ] Internal .md docs updated (internal knowledge and AI code tools knowledge)
+- [ ] I have reviewed AI generated content
