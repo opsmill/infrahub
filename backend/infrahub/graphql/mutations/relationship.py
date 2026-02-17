@@ -128,7 +128,12 @@ class RelationshipAdd(Mutation):
                 for node in nodes.values():
                     await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
-        if graphql_context.background and node_changelog.has_changes:
+        if (
+            graphql_context.background
+            and graphql_context.account_session
+            and graphql_context.service
+            and node_changelog.has_changes
+        ):
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,
@@ -259,7 +264,12 @@ class RelationshipRemove(Mutation):
                 for node in nodes.values():
                     await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
-        if graphql_context.background and node_changelog.has_changes:
+        if (
+            graphql_context.background
+            and graphql_context.account_session
+            and graphql_context.service
+            and node_changelog.has_changes
+        ):
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,
