@@ -45,15 +45,16 @@ describe("getRelationshipsVisibleInListView", () => {
     expect(result).toEqual([]);
   });
 
-  it("should handle relationships with missing kind", () => {
+  it("should handle relationships with unknown kind", () => {
     // GIVEN
-    const relationships = [
-      { kind: "Attribute", cardinality: "one" } as RelationshipSchema,
-      { kind: "Nope", cardinality: "one" } as unknown as RelationshipSchema,
-    ];
+    const attribute = generateRelationshipSchema({ kind: "Attribute", cardinality: "one" });
+    const unknown = generateRelationshipSchema({
+      kind: "Nope" as never,
+      cardinality: "one",
+    });
 
     // WHEN
-    const result = getRelationshipsVisibleInListView(relationships);
+    const result = getRelationshipsVisibleInListView([attribute, unknown]);
 
     // THEN
     expect(result).toHaveLength(1);
