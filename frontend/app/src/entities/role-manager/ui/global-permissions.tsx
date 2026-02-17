@@ -62,8 +62,8 @@ function GlobalPermissions() {
 
   const columns = [
     {
-      name: "display_label",
-      label: "Label",
+      name: "identifier",
+      label: "Identifier",
     },
     {
       name: "action",
@@ -85,6 +85,7 @@ function GlobalPermissions() {
       return {
         values: {
           id: edge?.node?.id,
+          display_label: edge?.node?.display_label,
           hfid: edge?.node?.hfid,
           action: { value: edge?.node?.action?.value },
           decision: {
@@ -104,9 +105,9 @@ function GlobalPermissions() {
             ),
             value: { edges: edge?.node?.roles?.edges },
           },
-          display_label: {
-            value: edge?.node?.display_label,
-            display: <BadgeCopy value={edge?.node?.display_label} />,
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
           },
           __typename: edge.node.__typename,
         },
@@ -191,7 +192,7 @@ function GlobalPermissions() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel={rowToUpdate?.display_label?.value ?? "New"}
+              currentObjectLabel={rowToUpdate?.identifier?.value ?? "New"}
               title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />

@@ -97,7 +97,7 @@ function Roles() {
           value: { edges: edge?.node?.permissions?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.permissions?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.permissions?.edges?.map((edge) => edge?.node?.identifier?.value)}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),
