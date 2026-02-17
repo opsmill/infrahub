@@ -6,6 +6,7 @@ import pydantic
 import pytest
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -404,7 +405,7 @@ def test_list_attribute_with_regex_parameter() -> None:
 
 
 async def test_list_attribute_regex_parameter_validation(
-    db: InfrahubDatabase, default_branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Test that list values are validated against regex defined in parameters."""
     node_schema: dict[str, Any] = {

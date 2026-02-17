@@ -33,7 +33,7 @@ INCIDENT = NodeSchema(
 
 
 @pytest.fixture
-async def register_test_schema(default_branch: Branch, register_core_models_schema) -> SchemaBranch:
+async def register_test_schema(default_branch: Branch, register_core_models_schema: SchemaBranch) -> SchemaBranch:
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     schema = SchemaRoot(

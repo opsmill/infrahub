@@ -8,6 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -52,7 +53,7 @@ RETURN n.uuid AS n_uuid, labels(n) AS n_labels, e.branch AS branch, e.status AS 
         default_branch: Branch,
         car_accord_main: Node,
         person_john_main: Node,
-        register_internal_models_schema,
+        register_internal_models_schema: SchemaBranch,
     ) -> None:
         main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)

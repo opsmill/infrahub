@@ -1,3 +1,4 @@
+from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import (
     AttributeChangelog,
     NodeChangelog,
@@ -10,10 +11,13 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
-async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+async def test_node_changelog_creation(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -184,7 +188,7 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
 
 
 async def test_node_changelog_update_with_cardinality_one_relationship(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -258,7 +262,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
 
 
 async def test_node_changelog_update_with_cardinality_many_relationship(
-    db: InfrahubDatabase, default_branch, animal_person_schema, standard_group_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch, standard_group_schema: None
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
 
@@ -303,7 +307,7 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
 
 
 async def test_node_changelog_delete_with_cardinality_one_relationship(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -325,7 +329,7 @@ async def test_node_changelog_delete_with_cardinality_one_relationship(
 
 
 async def test_node_changelog_delete_with_cardinality_many_relationship(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -360,7 +364,7 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
         assert changelog.relationships["owner"].peer_status == DiffAction.REMOVED
 
 
-async def test_node_changelog_parent(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:
+async def test_node_changelog_parent(db: InfrahubDatabase, default_branch: Branch, car_person_schema: None) -> None:
     """Validate that parents are registrered in the node_changelog for parent/component relationships."""
     person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person1.new(db=db, name="Jack")
