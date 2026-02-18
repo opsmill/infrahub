@@ -6,7 +6,7 @@ on:
     branches:
       - develop
     paths:
-      - 'frontend/packages/ui/**'
+      - 'frontend/design-system/**'
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ jobs:
   chromatic:
     defaults:
       run:
-        working-directory: ./frontend/packages/ui
+        working-directory: .frontend/design-system
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +26,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
       - name: Install dependencies
@@ -36,7 +36,7 @@ jobs:
         uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          workingDir: ./frontend/packages/ui
+          workingDir: ./frontend/design-system
       - name: Outputs Storybook URL
         run: |
           echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"

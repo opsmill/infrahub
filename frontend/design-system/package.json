@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "chromatic": "chromatic",
     "check": "ultracite check",
     "fix": "ultracite fix"
   },
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "babel-plugin-react-compiler": "^1.0.0",
+    "chromatic": "^15.1.1",
     "globals": "^17.3.0",
     "storybook": "^10.2.10",
     "typescript": "~5.9.3",
