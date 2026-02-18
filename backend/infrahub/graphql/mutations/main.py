@@ -47,6 +47,27 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+async def emit_node_mutation_events(
+    node: Node, graphql_context: GraphqlContext, action: MutationAction, deleted_nodes: list[Node] | None = None
+) -> None:
+    if not graphql_context.background or not node.has_changelog or not node.node_changelog.has_changes:
+        return
+
+    log_data = get_log_data()
+    request_id = log_data.get("request_id", "")
+    events = await generate_node_mutation_events(
+        node=node,
+        deleted_nodes=deleted_nodes or [],
+        db=graphql_context.db,
+        branch=graphql_context.branch,
+        context=graphql_context.get_context(),
+        request_id=request_id,
+        action=action,
+    )
+    for event in events:
+        graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+
+
 @dataclass
 class UpsertResult:
     node: Node
@@ -186,27 +207,9 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        if (
-            graphql_context.background
-            and graphql_context.account_session
-            and graphql_context.service
-            and obj.node_changelog.has_changes
-        ):
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-
-            events = await generate_node_mutation_events(
-                node=obj,
-                deleted_nodes=deleted_nodes,
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                context=graphql_context.get_context(),
-                request_id=request_id,
-                action=action,
-            )
-
-            for event in events:
-                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+        await emit_node_mutation_events(
+            node=obj, graphql_context=graphql_context, action=action, deleted_nodes=deleted_nodes
+        )
 
         return mutation
 

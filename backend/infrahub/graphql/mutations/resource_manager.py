@@ -7,7 +7,7 @@ from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
-from infrahub.core.constants import InfrahubKind, NumberPoolType
+from infrahub.core.constants import InfrahubKind, MutationAction, NumberPoolType
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
@@ -17,7 +17,7 @@ from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, Valid
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ..queries.resource_manager import PoolAllocatedNode
-from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, emit_node_mutation_events
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -93,6 +93,8 @@ class IPPrefixPoolGetResource(Mutation):
             user_id=graphql_context.assigned_user_id,
         )
 
+        await emit_node_mutation_events(node=resource, graphql_context=graphql_context, action=MutationAction.CREATED)
+
         result = {
             "ok": True,
             "node": {
@@ -139,6 +141,8 @@ class IPAddressPoolGetResource(Mutation):
             data=data.get("data"),
             user_id=graphql_context.assigned_user_id,
         )
+
+        await emit_node_mutation_events(node=resource, graphql_context=graphql_context, action=MutationAction.CREATED)
 
         result = {
             "ok": True,
