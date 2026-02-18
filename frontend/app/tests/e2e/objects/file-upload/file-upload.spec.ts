@@ -11,6 +11,9 @@ test.describe("File Upload - InfraCircuitContract", () => {
   const BRANCH_NAME = generateRandomBranchName("file-upload");
   const TEST_FILE_NAME = "contract.pdf";
   const TEST_FILE_CONTENT = "Mock PDF contract content for E2E testing";
+  const CONTRACT_UPLOAD = "CONTRACT-UPLOAD";
+  const CONTRACT_UPDATE = "CONTRACT-UPDATE";
+  const CONTRACT_DOWNLOAD = "CONTRACT-DOWNLOAD";
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
@@ -64,7 +67,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
       });
 
       await test.step("fill required fields", async () => {
-        await fillCircuitContractFields(page);
+        await fillCircuitContractFields(page, { contractNumber: CONTRACT_UPLOAD });
       });
 
       await test.step("submit the form", async () => {
@@ -74,10 +77,9 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await expect(page.getByText(/created/i)).toBeVisible();
       });
 
-      await test.step("verify file appears in list", async () => {
+      await test.step("verify contract appears in list", async () => {
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
-        // File name should appear in the list
-        await expect(page.getByText(TEST_FILE_NAME)).toBeVisible();
+        await expect(page.getByRole("link", { name: CONTRACT_UPLOAD })).toBeVisible();
       });
     });
 
@@ -107,7 +109,6 @@ test.describe("File Upload - InfraCircuitContract", () => {
     test("should update existing file", async ({ page }) => {
       const initialFileName = "initial-contract.pdf";
       const updatedFileName = "updated-contract.pdf";
-      const contractNumber = `CONTRACT-UPDATE-${Date.now()}`;
 
       await test.step("create initial file", async () => {
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
@@ -119,7 +120,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
           content: "Initial contract content",
         });
 
-        await fillCircuitContractFields(page, { contractNumber });
+        await fillCircuitContractFields(page, { contractNumber: CONTRACT_UPDATE });
 
         await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText(/created/i)).toBeVisible();
@@ -130,7 +131,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
 
         // Click on the contract by its contract_number (which is the display label)
-        await page.getByRole("link", { name: contractNumber }).click();
+        await page.getByRole("link", { name: CONTRACT_UPDATE }).click();
 
         // Click edit button
         await page.getByTestId("edit-button").click();
@@ -208,7 +209,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
       await test.step("navigate to an existing file object", async () => {
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
 
-        await page.getByRole("link", { name: TEST_FILE_NAME }).click();
+        await page.getByRole("link", { name: CONTRACT_UPLOAD }).click();
       });
 
       await test.step("verify edit button is disabled", async () => {
@@ -223,7 +224,6 @@ test.describe("File Upload - InfraCircuitContract", () => {
     test("should download uploaded file", async ({ page }) => {
       const fileName = "download-test.pdf";
       const fileContent = "This file should be downloadable";
-      const contractNumber = `CONTRACT-DOWNLOAD-${Date.now()}`;
 
       await test.step("create and upload file", async () => {
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
@@ -235,7 +235,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
           content: fileContent,
         });
 
-        await fillCircuitContractFields(page, { contractNumber });
+        await fillCircuitContractFields(page, { contractNumber: CONTRACT_DOWNLOAD });
 
         await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText(/created/i)).toBeVisible();
@@ -244,7 +244,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
       await test.step("navigate to object detail page", async () => {
         // Navigate back to list and click on the created contract
         await page.goto(`/objects/InfraCircuitContract?branch=${BRANCH_NAME}`);
-        await page.getByRole("link", { name: contractNumber }).click();
+        await page.getByRole("link", { name: CONTRACT_DOWNLOAD }).click();
       });
 
       await test.step("download the file", async () => {
