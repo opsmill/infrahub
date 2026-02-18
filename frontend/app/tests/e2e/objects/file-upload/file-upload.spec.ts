@@ -6,6 +6,8 @@ import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 import { fillCircuitContractFields, uploadFile } from "./file-upload-helpers";
 
 test.describe("File Upload - InfraCircuitContract", () => {
+  test.describe.configure({ mode: "serial" });
+
   const BRANCH_NAME = generateRandomBranchName("file-upload");
   const TEST_FILE_NAME = "contract.pdf";
   const TEST_FILE_CONTENT = "Mock PDF contract content for E2E testing";
@@ -156,13 +158,21 @@ test.describe("File Upload - InfraCircuitContract", () => {
 
     test("should handle different file types", async ({ page }) => {
       const testFiles = [
-        { name: "contract.json", mimeType: "application/json", content: '{"contract": "data"}' },
+        {
+          name: "contract.json",
+          mimeType: "application/json",
+          content: '{"contract": "data"}',
+        },
         {
           name: "contract.yaml",
           mimeType: "application/x-yaml",
           content: "contract: data\nstatus: active\n",
         },
-        { name: "contract.txt", mimeType: "text/plain", content: "Plain text contract\n" },
+        {
+          name: "contract.txt",
+          mimeType: "text/plain",
+          content: "Plain text contract\n",
+        },
       ];
 
       for (const testFile of testFiles) {
@@ -174,7 +184,9 @@ test.describe("File Upload - InfraCircuitContract", () => {
 
           await expect(page.getByText(testFile.name)).toBeVisible();
 
-          await fillCircuitContractFields(page, { contractNumber: `CONTRACT-${testFile.name}` });
+          await fillCircuitContractFields(page, {
+            contractNumber: `CONTRACT-${testFile.name}`,
+          });
 
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText(/created/i)).toBeVisible();
