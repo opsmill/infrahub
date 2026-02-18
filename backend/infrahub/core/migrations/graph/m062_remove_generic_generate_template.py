@@ -20,11 +20,9 @@ class RemoveGenericGenerateTemplateQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
-MATCH (sg:SchemaGeneric)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "generate_template"})-[:HAS_VALUE]->(val)
+MATCH (sg:SchemaGeneric)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "generate_template"})
+WITH DISTINCT attr
 DETACH DELETE attr
-WITH val
-WHERE NOT EXISTS { MATCH (val)-[]-() }
-DELETE val
         """
         self.add_to_query(query)
 
