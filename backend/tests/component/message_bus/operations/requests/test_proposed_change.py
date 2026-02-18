@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import pytest
 import ujson
+from fast_depends import Provider
 from infrahub_sdk.diff import NodeDiff
 from pytest_httpx import HTTPXMock
 
@@ -12,6 +13,7 @@ from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -101,7 +103,10 @@ async def branch2(db: InfrahubDatabase):
 
 @pytest.fixture
 async def schema_integrity_01(
-    db: InfrahubDatabase, default_branch, register_core_models_schema, branch_diff_01: ProposedChangeBranchDiff
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    branch_diff_01: ProposedChangeBranchDiff,
 ) -> RequestProposedChangeSchemaIntegrity:
     obj = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
     await obj.new(db=db, name="pc1", source_branch=SOURCE_BRANCH_A, destination_branch="main")
@@ -119,8 +124,8 @@ async def schema_integrity_01(
 async def test_get_proposed_change_schema_integrity_constraints(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
-    schema_integrity_01,
+    car_person_schema: SchemaBranch,
+    schema_integrity_01: RequestProposedChangeSchemaIntegrity,
     branch_diff_01_summary: list[NodeDiff],
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -266,12 +271,12 @@ async def test_get_proposed_change_schema_integrity_constraints(
 
 async def test_schema_integrity(
     db: InfrahubDatabase,
-    default_branch,
-    register_core_models_schema,
-    car_person_schema,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
     schema_integrity_01: RequestProposedChangeSchemaIntegrity,
     branch_diff_01_summary: list[NodeDiff],
-    dependency_provider,
+    dependency_provider: Provider,
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main: Node,

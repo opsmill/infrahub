@@ -3,12 +3,15 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.profiles.gather import gather_trigger_profile_refresh
 
 
-async def test_gather_trigger_profile_refresh_core_models(register_core_models_schema, default_branch: Branch) -> None:
+async def test_gather_trigger_profile_refresh_core_models(
+    register_core_models_schema: SchemaBranch, default_branch: Branch
+) -> None:
     """Test that triggers are created for core model profiles that have trigger fields."""
     triggers = await gather_trigger_profile_refresh()
 
@@ -90,7 +93,11 @@ async def test_gather_trigger_profile_refresh_with_attribute_relationship(
 
 
 async def test_gather_trigger_profile_refresh_different_branch(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    data_schema: None,
+    node_group_schema: None,
 ) -> None:
     """Test that branch-specific triggers are created when schema differs across branches."""
     SCHEMA = SchemaRoot(
