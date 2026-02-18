@@ -8,8 +8,8 @@ from opentelemetry import trace
 from prefect import flow
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -132,7 +132,7 @@ class DiffCoordinator:
         """Look up the ID of an OPEN CoreProposedChange for the given source branch."""
         open_proposed_changes = await NodeManager.query(
             db=self.db,
-            schema=InfrahubKind.PROPOSEDCHANGE,
+            schema=CoreProposedChange,
             filters={
                 "source_branch__value": branch_name,
                 "state__value": ProposedChangeState.OPEN.value,

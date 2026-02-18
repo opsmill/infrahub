@@ -106,6 +106,7 @@ async def test_branch_rebase_diff_conflict(
     default_branch: Branch,
     workflow_local: WorkflowLocalExecution,
     dependency_provider: Provider,
+    register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
     car_camry_main: Node,
 ) -> None:

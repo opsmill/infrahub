@@ -43,6 +43,10 @@ from .get_one_node import get_one_diff_node
 
 
 class TestDiffAndMerge:
+    @pytest.fixture(autouse=True)
+    async def _setup_core_schema(self, register_core_models_schema) -> None:
+        return
+
     @pytest.fixture
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
         component_registry = get_component_registry()
@@ -104,7 +108,6 @@ class TestDiffAndMerge:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
     ) -> None:
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
@@ -1861,8 +1864,6 @@ class TestDiffAndMerge:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_internal_models_schema: SchemaBranch,
-        register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
         car_accord_main: Node,
         car_camry_main: Node,
@@ -2122,8 +2123,6 @@ class TestDiffAndMerge:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_internal_models_schema: SchemaBranch,
-        register_core_models_schema: SchemaBranch,
         car_person_schema_generics: SchemaBranch,
     ) -> None:
         # schema with multiple generics
@@ -2436,8 +2435,6 @@ class TestDiffAndMerge:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_internal_models_schema: SchemaBranch,
-        register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
         car_accord_main: Node,
         car_camry_main: Node,

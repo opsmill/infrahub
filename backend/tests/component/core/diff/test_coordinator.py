@@ -3,6 +3,8 @@ from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
@@ -16,7 +18,6 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -25,6 +26,10 @@ from infrahub.proposed_change.constants import ProposedChangeState
 
 
 class TestDiffCoordinator:
+    @pytest.fixture(autouse=True)
+    async def _setup_core_schema(self, register_core_models_schema) -> None:
+        return
+
     async def get_wrapped_diff_coordinator(
         self,
         db: InfrahubDatabase,
@@ -376,7 +381,6 @@ class TestDiffCoordinator:
     async def test_schema_deleted_on_source_and_target_branches(
         self,
         db: InfrahubDatabase,
-        register_internal_models_schema,
         default_branch: Branch,
         person_john_main,
     ) -> None:
@@ -516,7 +520,6 @@ class TestDiffCoordinator:
     async def test_open_proposed_change_discovered_when_not_provided(
         self,
         db: InfrahubDatabase,
-        register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         person_john_main: Node,
     ) -> None:
@@ -561,7 +564,6 @@ class TestDiffCoordinator:
     async def test_non_open_proposed_changes_not_discovered(
         self,
         db: InfrahubDatabase,
-        register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         person_john_main: Node,
     ) -> None:

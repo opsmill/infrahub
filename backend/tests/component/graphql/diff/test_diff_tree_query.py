@@ -460,6 +460,7 @@ async def test_diff_tree_one_attr_change(
 async def test_diff_tree_one_relationship_change(
     db: InfrahubDatabase,
     default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
     car_accord_main: Node,
     person_john_main: Node,
