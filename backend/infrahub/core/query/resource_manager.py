@@ -70,6 +70,7 @@ class NumberPoolAllocatedResult:
             id=result.get_as_type("id", str),
             branch=result.get_as_type("branch", str),
             value=result.get_as_type("value", int),
+            identifier=result.get_as_type("identifier", str),
         )
 
 
@@ -217,7 +218,7 @@ class NumberPoolGetAllocated(Query):
 
         query = """
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
-        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)
+        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
         WHERE
             pool.uuid = $pool_id
             AND av.value >= $start_range and av.value <= $end_range
@@ -232,7 +233,7 @@ class NumberPoolGetAllocated(Query):
         }
         self.add_to_query(query)
 
-        self.return_labels = ["n.uuid as id", "hv.branch as branch", "av.value as value"]
+        self.return_labels = ["n.uuid as id", "hv.branch as branch", "av.value as value", "ir.identifier as identifier"]
         self.order_by = ["av.value"]
 
     def get_data(self) -> list[NumberPoolAllocatedResult]:

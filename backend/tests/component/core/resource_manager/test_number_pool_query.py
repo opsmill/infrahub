@@ -6,7 +6,12 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPoolGetUsed, PoolChangeReserved
+from infrahub.core.query.resource_manager import (
+    NumberPoolGetAllocated,
+    NumberPoolGetReserved,
+    NumberPoolGetUsed,
+    PoolChangeReserved,
+)
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -126,6 +131,38 @@ async def test_NumberPoolGetUsed(
     # Delete nodes in main and ensure the numbers are reallocated
     await incidents[1].delete(db=db)
     assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+
+
+async def test_NumberPoolGetAllocated_returns_identifier(
+    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
+) -> None:
+    """Test that NumberPoolGetAllocated returns the identifier (node UUID) from the IS_RESERVED relationship."""
+    # Arrange
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+
+    incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+
+    pools: list[CoreNumberPool] = await registry.schema.query(
+        db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch.name
+    )
+    incident_pool = next(pool for pool in pools if pool.node.value == INCIDENT.kind)
+
+    query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True)
+
+    # Act
+    await query.execute(db=db)
+    results = query.get_data()
+
+    # Assert
+    assert len(results) == 3
+
+    # Build a lookup by allocated value
+    results_by_value = {r.value: r for r in results}
+
+    # Each allocated result should have the identifier set to the node UUID
+    for idx, incident in enumerate(incidents, start=1):
+        result = results_by_value[idx]
+        assert result.identifier == incident.get_id()
 
 
 async def test_PoolChangeReserved(
