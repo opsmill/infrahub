@@ -69,7 +69,7 @@ export function createTestFile(
   content?: string
 ): { name: string; mimeType: string; buffer: Buffer } {
   const type = TEST_FILE_TYPES[fileType];
-  const defaultContent = content || generateTestFileContent("small");
+  const defaultContent = content ?? generateTestFileContent("small");
 
   return {
     name: fileName,
