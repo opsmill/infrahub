@@ -98,11 +98,13 @@ export async function fillCircuitContractFields(
     ...options,
   };
 
-  // Wait for form to be ready
-  await page.getByLabel("Contract Number").first().waitFor({ state: "visible" });
+  const form = page.getByTestId("side-panel-container");
 
-  await page.getByLabel("Contract Number").first().fill(defaults.contractNumber);
-  await page.getByLabel("Vendor").first().fill(defaults.vendor);
-  await page.getByLabel("Start Date").first().fill(defaults.startDate);
-  await page.getByLabel("End Date").first().fill(defaults.endDate);
+  // Wait for form to be ready
+  await form.getByLabel("Contract Number").waitFor({ state: "visible" });
+
+  await form.getByLabel("Contract Number").fill(defaults.contractNumber);
+  await form.getByLabel("Vendor").fill(defaults.vendor);
+  await form.getByLabel("Start Date").fill(defaults.startDate);
+  await form.getByLabel("End Date").fill(defaults.endDate);
 }
