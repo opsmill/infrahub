@@ -60,6 +60,9 @@ class NumberPoolAllocatedResult:
     value: int
     """The allocated number value."""
 
+    identifier: str
+    """Identifier used for the reservation."""
+
     @classmethod
     def from_db(cls, result: QueryResult) -> NumberPoolAllocatedResult:
         """Convert raw QueryResult to typed dataclass."""
