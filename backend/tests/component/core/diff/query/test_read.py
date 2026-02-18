@@ -86,7 +86,9 @@ class TestDiffReadQuery(TestInfrahub):
         registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     @pytest.fixture(scope="class")
-    async def hierarchical_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema):
+    async def hierarchical_data(
+        self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+    ) -> dict[str, Node]:
         REGIONS = (
             ("north-america",),
             ("europe",),
@@ -128,7 +130,7 @@ class TestDiffReadQuery(TestInfrahub):
         return nodes
 
     @pytest.fixture(scope="class")
-    async def load_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_data):
+    async def load_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_data) -> dict[str, Any]:
         rack1_main = hierarchical_data["paris-r1"]
         rack2_main = hierarchical_data["paris-r2"]
 

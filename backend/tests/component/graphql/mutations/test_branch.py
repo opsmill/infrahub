@@ -422,7 +422,7 @@ async def test_branch_merge_wrong_branch(
 
 async def test_branch_merge_need_upgrade_rebase(
     db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch_to_upgrade")
     branch.status = BranchStatus.NEED_UPGRADE_REBASE
     await branch.save(db=db)

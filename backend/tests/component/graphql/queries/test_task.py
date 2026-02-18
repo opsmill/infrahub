@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
@@ -138,7 +139,7 @@ async def tag_red(db: InfrahubDatabase, default_branch: Branch) -> Node:
 
 
 @pytest.fixture
-async def prefect_client(prefect_test_fixture):
+async def prefect_client(prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 

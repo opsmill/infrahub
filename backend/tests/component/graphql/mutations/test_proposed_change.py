@@ -559,7 +559,7 @@ async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_m
 
 async def test_merge_proposed_change_with_branch_upgrade_rebase_status(
     db: InfrahubDatabase, register_core_models_schema: None
-):
+) -> None:
     branch_name = "upgrade-rebase-status-proposed-change"
     source_branch = Branch(name=branch_name)
     source_branch.status = BranchStatus.NEED_UPGRADE_REBASE

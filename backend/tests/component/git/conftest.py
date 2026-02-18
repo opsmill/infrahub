@@ -2,7 +2,7 @@ import re
 import shutil
 import tarfile
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 import anyio
 import pytest
@@ -33,7 +33,7 @@ def client() -> InfrahubClient:
 
 
 @pytest.fixture
-def branch01():
+def branch01() -> BranchData:
     return BranchData(
         id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
         name="branch01",
@@ -46,7 +46,7 @@ def branch01():
 
 
 @pytest.fixture
-def branch02():
+def branch02() -> BranchData:
     return BranchData(
         id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         name="branch02",
@@ -59,7 +59,7 @@ def branch02():
 
 
 @pytest.fixture
-def branch99():
+def branch99() -> BranchData:
     return BranchData(
         id="2e933717-086c-47cf-8242-21421dd3c2bb",
         name="branch99",
@@ -734,7 +734,7 @@ async def check_definition_data_01() -> dict:
 
 
 @pytest.fixture
-async def gql_query_data_03():
+async def gql_query_data_03() -> dict[str, Any]:
     # QUERY
     query_string = """
     query {
@@ -833,7 +833,7 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def artifact_definition_data_01():
+async def artifact_definition_data_01() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
@@ -875,7 +875,7 @@ async def artifact_definition_node_01(client, schema_02: ClientSchemaRoot, artif
 
 
 @pytest.fixture
-async def artifact_definition_data_02():
+async def artifact_definition_data_02() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
@@ -917,7 +917,7 @@ async def artifact_definition_node_02(client, schema_02: ClientSchemaRoot, artif
 
 
 @pytest.fixture
-async def artifact_data_01():
+async def artifact_data_01() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": "CoreArtifact",
@@ -950,7 +950,7 @@ async def artifact_node_01(client, schema_02: ClientSchemaRoot, artifact_data_01
 
 
 @pytest.fixture
-async def artifact_data_02():
+async def artifact_data_02() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACT,
@@ -1184,7 +1184,7 @@ async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-def git_use_explicit_merge_commit_config():
+def git_use_explicit_merge_commit_config() -> Generator[None, None, None]:
     initial_use_explicit_merge_commit = config.SETTINGS.git.use_explicit_merge_commit
     config.SETTINGS.git.use_explicit_merge_commit = True
     yield

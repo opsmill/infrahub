@@ -10,7 +10,7 @@ from infrahub.git.utils import get_repositories_commit_per_branch
 
 
 @pytest.fixture
-async def repository_01(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch):
+async def repository_01(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=default_branch)
     await repo.new(db=db, name="repo01", default_branch=default_branch.name, commit="commit01", location="location01")
     await repo.save(db=db)
@@ -18,7 +18,7 @@ async def repository_01(db: InfrahubDatabase, register_core_models_schema, defau
 
 
 @pytest.fixture
-async def repository_02(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch):
+async def repository_02(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
     await repo.new(db=db, name="repo02", ref=default_branch.name, commit="commit02", location="location02")
     await repo.save(db=db)

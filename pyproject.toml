@@ -898,7 +898,6 @@ allow-dunder-method-names = [
     "ANN001",   # Missing type annotation for function argument
     "ANN002",   # Missing type annotation for `*args`
     "ANN003",   # Missing type annotation for `**kwargs`
-    "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "LOG015",   # `info()` call on root logger
     "PLR0913",  # Too many arguments in function definition
@@ -929,7 +928,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN002",   # Missing type annotation for `*args`
     "ANN003",   # Missing type annotation for `**kwargs`
-    "ANN201",   # Missing return type annotation for public function
     "ANN202",   # Missing return type annotation for private function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC240", # Async functions should not use pathlib.Path methods

@@ -1,5 +1,6 @@
 import uuid
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
@@ -27,7 +28,7 @@ query {
 """
 
 
-def filter_outofscope_events(events: dict, in_scope_ids: list[str]):
+def filter_outofscope_events(events: dict, in_scope_ids: list[str]) -> dict[str, Any]:
     """
     Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
@@ -37,7 +38,7 @@ def filter_outofscope_events(events: dict, in_scope_ids: list[str]):
 
 
 @pytest.fixture(scope="module")
-async def prefect_client(prefect_test_fixture: Generator[None]):
+async def prefect_client(prefect_test_fixture: Generator[None]) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 

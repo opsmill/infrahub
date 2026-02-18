@@ -24,7 +24,7 @@ class DatabaseNodeWithLabels:
 
 
 class TestCheckInheritance:
-    async def get_database_nodes_with_labels(self, db: InfrahubDatabase):
+    async def get_database_nodes_with_labels(self, db: InfrahubDatabase) -> set[DatabaseNodeWithLabels]:
         query = """
 MATCH (n:TestPerson)-[e:IS_PART_OF]->(:Root)
 WITH DISTINCT n, e.branch AS branch

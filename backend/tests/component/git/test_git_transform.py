@@ -11,7 +11,7 @@ from infrahub.transformations.tasks import transform_python, transform_render_ji
 
 
 @pytest.fixture
-async def init_service():
+async def init_service() -> InfrahubServices:
     return await InfrahubServices.new(client=InfrahubClient(), workflow=WorkflowLocalExecution())
 
 

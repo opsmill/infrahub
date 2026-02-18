@@ -97,7 +97,7 @@ def branch_diff_01_summary() -> list[NodeDiff]:
 
 
 @pytest.fixture
-async def branch2(db: InfrahubDatabase):
+async def branch2(db: InfrahubDatabase) -> Branch:
     return await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
 

@@ -26,7 +26,7 @@ from tests.adapters.message_bus import BusRecorder
 
 
 @pytest.fixture
-async def init_service():
+async def init_service() -> InfrahubServices:
     recorder = BusRecorder()
     database = MagicMock()
     workflow = WorkflowLocalExecution()
@@ -35,7 +35,7 @@ async def init_service():
 
 
 @pytest.fixture
-def context():
+def context() -> InfrahubContext:
     return InfrahubContext(
         account=AccountSession(account_id="123", auth_type=AuthType.NONE),
         branch=BranchContext(name="main", id="placeholder"),

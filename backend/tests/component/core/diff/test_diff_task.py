@@ -11,7 +11,7 @@ from infrahub.dependencies.registry import get_component_registry
 
 
 class DummyComponentRegistry:
-    async def get_component(self, *args, **kwargs):
+    async def get_component(self, *args, **kwargs) -> AsyncMock:
         mock_component = AsyncMock()
         # Needed so .run_update can be awaited and does nothing
         mock_component.run_update = AsyncMock()
