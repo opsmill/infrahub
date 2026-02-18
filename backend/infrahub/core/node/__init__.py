@@ -104,6 +104,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
+        self._active_user_id: str = SYSTEM_USER_ID
 
     def _set_created_at(self, value: Timestamp | None) -> None:
         self._metadata.created_at = value
@@ -145,6 +146,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return self.id
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
+
+    def get_user_id(self) -> str:
+        """Return the active user ID associated with the node."""
+        return self._active_user_id
 
     def get_attribute(self, name: str) -> BaseAttribute:
         attribute = getattr(self, name, None)
@@ -936,6 +941,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields: list[str] | None = None,
     ) -> Self:
         """Create or Update the Node in the database."""
+        self._active_user_id = user_id
         save_at = Timestamp(at)
 
         if self._existing:

@@ -573,7 +573,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, at=at, **data_from_pool)  # type: ignore[attr-defined]
+            user_id = self._node.get_user_id() if self._node else SYSTEM_USER_ID
+            assigned_peer: Node = await pool.get_resource(
+                db=db, branch=self.branch, at=at, user_id=user_id, **data_from_pool
+            )  # type: ignore[attr-defined]
             self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
 

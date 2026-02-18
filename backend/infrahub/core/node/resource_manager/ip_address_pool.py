@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
@@ -33,6 +34,7 @@ class CoreIPAddressPool(Node):
         address_type: str | None = None,
         prefixlen: int | None = None,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> Node:
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
@@ -72,7 +74,7 @@ class CoreIPAddressPool(Node):
                 await node.new(db=db, address=str(next_address), ip_namespace=ip_namespace, **data)
             except ValidationError as exc:
                 raise ValueError(f"IPAddressPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
-            await node.save(db=db, at=at)
+            await node.save(db=db, at=at, user_id=user_id)
             reconciler = IpamReconciler(db=db, branch=branch)
             await reconciler.reconcile(ip_value=next_address, namespace=ip_namespace.id, node_uuid=node.get_id())
 

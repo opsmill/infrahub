@@ -135,7 +135,12 @@ async def extract_peer_data(
 
 
 async def allocate_from_resource_pools(
-    db: InfrahubDatabase, branch: Branch, obj: Node, template: CoreObjectTemplate, at: Timestamp | None = None
+    db: InfrahubDatabase,
+    branch: Branch,
+    obj: Node,
+    template: CoreObjectTemplate,
+    at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> None:
     """Allocate resources from template's _from_resource_pool relationships to the object."""
     template_schema = template.get_schema()
@@ -155,7 +160,7 @@ async def allocate_from_resource_pools(
         if not pool:
             continue
 
-        allocated_resource = await pool.get_resource(db=db, branch=branch, identifier=obj.id, at=at)  # type: ignore
+        allocated_resource = await pool.get_resource(db=db, branch=branch, identifier=obj.id, at=at, user_id=user_id)  # type: ignore
 
         obj_rel_manager = obj.get_relationship(name=original_rel_name)
         await obj_rel_manager.update(
@@ -171,6 +176,7 @@ async def handle_template_relationships(
     fields: list,
     constraint_runner: NodeConstraintRunner | None = None,
     at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> None:
     if constraint_runner is None:
         component_registry = get_component_registry()
@@ -203,7 +209,7 @@ async def handle_template_relationships(
             await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
 
             await allocate_from_resource_pools(
-                db=db, branch=branch, obj=obj_peer, template=template_relationship_peer, at=at
+                db=db, branch=branch, obj=obj_peer, template=template_relationship_peer, at=at, user_id=user_id
             )
 
             template_profile_ids = await get_profile_ids(db=db, obj=template_relationship_peer)
@@ -211,7 +217,7 @@ async def handle_template_relationships(
                 node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
                 await node_profiles_applier.apply_profiles(node=obj_peer)
 
-            await obj_peer.save(db=db)
+            await obj_peer.save(db=db, user_id=user_id)
 
             await handle_template_relationships(
                 db=db,
@@ -221,6 +227,7 @@ async def handle_template_relationships(
                 template=template_relationship_peer,
                 fields=fields,
                 at=at,
+                user_id=user_id,
             )
 
 
@@ -256,6 +263,7 @@ async def _do_create_node(
             obj=obj,
             fields=fields_to_validate,
             at=at,
+            user_id=user_id,
         )
     return obj
 
