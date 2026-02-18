@@ -290,6 +290,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return v if self._existing else f"{v}[NEW]"
 
     @property
+    def has_changelog(self) -> bool:
+        return self._node_changelog is not None
+
+    @property
     def node_changelog(self) -> NodeChangelog:
         if self._node_changelog:
             return self._node_changelog
