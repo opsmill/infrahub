@@ -45,7 +45,7 @@ def create_infrahub_prefect() -> FastAPI:
     if config.SETTINGS.initialized:
         events_retention_days = config.SETTINGS.workflow.worker_events_retention_period
     else:
-        events_retention_days = os.environ.get("INFRAHUB_WORKFLOW_WORKER_EVENTS_RETENTION_PERIOD", "7")
+        events_retention_days = int(os.environ.get("INFRAHUB_WORKFLOW_WORKER_EVENTS_RETENTION_PERIOD", "7"))
     os.environ["PREFECT_EVENTS_RETENTION_PERIOD"] = f"{events_retention_days}d"
 
     app = create_app()
