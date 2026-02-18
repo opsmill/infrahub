@@ -49,10 +49,14 @@ class SchemaNumberPoolSynchronizer:
         self.schema_manager = schema_manager
         self.upserter = upserter
 
-    async def run(self, user_id: str = SYSTEM_USER_ID) -> None:
-        """Execute the full synchronization process."""
+    async def run(self, user_id: str = SYSTEM_USER_ID) -> set[str]:
+        """Execute the full synchronization process.
+
+        Returns:
+            Set of branch names where schema changes were persisted.
+        """
         await self._sync_existing_pools_with_schema(user_id=user_id)
-        await self._process_all_branches(user_id=user_id)
+        return await self._process_all_branches(user_id=user_id)
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
         """Update or delete existing pools based on current schema definitions."""
@@ -96,8 +100,14 @@ class SchemaNumberPoolSynchronizer:
             )
             await schema_number_pool.save(db=self.db, user_id=user_id)
 
-    async def _process_all_branches(self, user_id: str) -> None:
-        """Process all branches to create any missing number pools."""
+    async def _process_all_branches(self, user_id: str) -> set[str]:
+        """Process all branches to create any missing number pools.
+
+        Returns:
+            Set of branch names where schema changes were persisted.
+        """
+        updated_branches: set[str] = set()
+
         for branch_name in self.schema_manager.get_branches():
             schemas_to_update: list[str] = []
             schema_branch = self.schema_manager.get_schema_branch(name=branch_name)
@@ -133,6 +143,9 @@ class SchemaNumberPoolSynchronizer:
                 await self.schema_manager.update_schema_branch(
                     db=self.db, branch=branch_name, schema=schema_branch, limit=schemas_to_update, update_db=True
                 )
+                updated_branches.add(branch_name)
+
+        return updated_branches
 
     async def _process_schema_node(
         self,
