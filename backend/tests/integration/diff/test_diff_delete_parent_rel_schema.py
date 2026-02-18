@@ -10,6 +10,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.test_app import TestInfrahubApp
@@ -150,8 +151,6 @@ class TestDiffDeleteParentRelSchema(TestInfrahubApp):
         assert not response.errors
 
         # Modify VirtualInterface and delete the cluster
-        from infrahub.core.manager import NodeManager
-
         vi_updated = await NodeManager.get_one(db=db, id=vi.id, branch=diff_branch)
         vi_updated.name.value = "eth0-updated"  # type: ignore[union-attr]
         await vi_updated.save(db=db)
