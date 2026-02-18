@@ -43,7 +43,11 @@ def context():
 
 
 async def test_merged(
-    db: InfrahubDatabase, default_branch: Branch, prefect_test_fixture, context: InfrahubContext, init_service
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    context: InfrahubContext,
+    init_service: InfrahubServices,
 ) -> None:
     """
     Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors

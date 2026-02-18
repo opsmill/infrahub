@@ -12,6 +12,7 @@ from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath, SchemaPathType
 from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -35,7 +36,9 @@ async def _get_branch_merger(
     )
 
 
-async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema) -> None:
+async def test_merge_graph(
+    db: InfrahubDatabase, default_branch: Branch, base_dataset_02: dict, register_core_models_schema: SchemaBranch
+) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     at = Timestamp()
     component_registry = get_component_registry()
@@ -80,7 +83,7 @@ async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02
 
 
 async def test_merge_graph_delete(
-    db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, base_dataset_02: dict, register_core_models_schema: SchemaBranch
 ) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     component_registry = get_component_registry()
@@ -103,7 +106,10 @@ async def test_merge_graph_delete(
 
 
 async def test_merge_relationship_many(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_organization_schema: SchemaBranch,
 ) -> None:
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
@@ -198,10 +204,10 @@ async def test_merge_relationship_one(
 async def test_merge_update_schema(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_schema_db,
+    register_core_schema_db: None,
     car_accord_main: Node,
     car_volt_main: Node,
-    person_john_main,
+    person_john_main: Node,
 ) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.update_schema_branch(
