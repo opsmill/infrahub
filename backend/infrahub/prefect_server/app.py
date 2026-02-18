@@ -32,15 +32,21 @@ async def _init_prefect() -> None:
 
 
 def create_infrahub_prefect() -> FastAPI:
+    from infrahub import config
+
     if (
         os.getenv("PREFECT_API_BLOCKS_REGISTER_ON_START") == "false"
         and os.getenv("PREFECT_API_DATABASE_MIGRATE_ON_START") == "false"
     ):
         # We are probably running distributed mode
-        from infrahub import config
-
         config.SETTINGS.initialize_and_exit()
         asyncio.run(_init_prefect())
+
+    if config.SETTINGS.initialized:
+        events_retention_days = config.SETTINGS.workflow.worker_events_retention_period
+    else:
+        events_retention_days = os.environ.get("INFRAHUB_WORKFLOW_WORKER_EVENTS_RETENTION_PERIOD", "7")
+    os.environ["PREFECT_EVENTS_RETENTION_PERIOD"] = f"{events_retention_days}d"
 
     app = create_app()
     api_app: FastAPI = app.__dict__["api_app"]
