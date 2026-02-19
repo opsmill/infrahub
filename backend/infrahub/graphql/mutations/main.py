@@ -48,7 +48,11 @@ log = get_logger()
 
 
 async def emit_node_mutation_events(
-    node: Node, graphql_context: GraphqlContext, action: MutationAction, deleted_nodes: list[Node] | None = None
+    node: Node,
+    graphql_context: GraphqlContext,
+    action: MutationAction,
+    deleted_nodes: list[Node] | None = None,
+    side_effect_nodes: list[Node] | None = None,
 ) -> None:
     if not graphql_context.background or not node.has_changelog or not node.node_changelog.has_changes:
         return
@@ -63,6 +67,7 @@ async def emit_node_mutation_events(
         context=graphql_context.get_context(),
         request_id=request_id,
         action=action,
+        side_effect_nodes=side_effect_nodes or [],
     )
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
@@ -158,7 +163,6 @@ class InfrahubMutationMixin:
         action = MutationAction.UNDEFINED
         deleted_nodes: list[Node] = []
         mutation_succeeded = False
-
         try:
             if "Create" in cls.__name__:
                 file_stored = await cls._process_file(file_processor=file_processor, data=data)
@@ -207,8 +211,15 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
+        creation_context = obj.creation_context if obj else None
+        side_effect_nodes = creation_context.side_effect_nodes if creation_context else None
+
         await emit_node_mutation_events(
-            node=obj, graphql_context=graphql_context, action=action, deleted_nodes=deleted_nodes
+            node=obj,
+            graphql_context=graphql_context,
+            action=action,
+            deleted_nodes=deleted_nodes,
+            side_effect_nodes=side_effect_nodes,
         )
 
         return mutation
