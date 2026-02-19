@@ -23,6 +23,7 @@ from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
+    SUBTEMPLATE_EXCLUDED_KINDS,
     BranchSupportType,
     ComputedAttributeKind,
     HashableModelState,
@@ -2547,12 +2548,10 @@ class SchemaBranch:
             ]:
                 continue
 
-            peer_schema = self.get(name=relationship.peer, duplicate=False)
-            peer_in_restricted_ns = peer_schema.namespace in RESTRICTED_NAMESPACES
-
             rel_template_peer = (
                 relationship.peer
-                if relationship.kind in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC] or peer_in_restricted_ns
+                if relationship.kind in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship.peer in SUBTEMPLATE_EXCLUDED_KINDS
                 else self._get_object_template_kind(node_kind=relationship.peer)
             )
 
@@ -2694,7 +2693,7 @@ class SchemaBranch:
         if (
             node_schema in identified
             or node_schema.state == HashableModelState.ABSENT
-            or node_schema.namespace in RESTRICTED_NAMESPACES
+            or node_schema.kind in SUBTEMPLATE_EXCLUDED_KINDS
         ):
             return identified
 
@@ -2705,7 +2704,7 @@ class SchemaBranch:
                 [
                     schema
                     for schema in (self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from)
-                    if isinstance(schema, NodeSchema | GenericSchema) and schema.namespace not in RESTRICTED_NAMESPACES
+                    if isinstance(schema, NodeSchema | GenericSchema) and schema.kind not in SUBTEMPLATE_EXCLUDED_KINDS
                 ]
             )
 
