@@ -135,10 +135,10 @@ async def test_object_from_template_with_pool_allocates_address(
     assert len(primary_ip_rel) == 1
     assert primary_ip_rel[0].source_id == ip_address_pool.id
 
-    assert device.creation_context is not None
-    assert len(device.creation_context.side_effect_nodes) == 1
-    assert device.creation_context.side_effect_nodes[0].get_kind() == "IpamIPAddress"
-    assert device.creation_context.side_effect_nodes[0].id == primary_ip.id
+    assert device._creation_context is not None
+    assert len(device._creation_context.side_effect_nodes) == 1
+    assert device._creation_context.side_effect_nodes[0].get_kind() == "IpamIPAddress"
+    assert device._creation_context.side_effect_nodes[0].id == primary_ip.id
 
 
 async def test_object_from_template_with_explicit_address_uses_explicit(
@@ -491,8 +491,8 @@ async def test_template_children_and_pool_recorded_as_side_effects(
         schema=node_schema,
     )
 
-    assert device.creation_context is not None
-    side_effects = device.creation_context.side_effect_nodes
+    assert device._creation_context is not None
+    side_effects = device._creation_context.side_effect_nodes
 
     intf_side_effects = [n for n in side_effects if n.get_kind() == TestKind.PHYSICAL_INTERFACE]
     assert len(intf_side_effects) == 1

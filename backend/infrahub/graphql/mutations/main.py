@@ -211,7 +211,7 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        creation_context = obj.creation_context if obj else None
+        creation_context = obj._creation_context if obj else None
         side_effect_nodes = creation_context.side_effect_nodes if creation_context else None
 
         await emit_node_mutation_events(

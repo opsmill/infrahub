@@ -574,7 +574,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            user_id = self._node.get_user_id() if self._node else SYSTEM_USER_ID
+            user_id = self._node._active_user_id if self._node else SYSTEM_USER_ID
             assigned_peer: Node = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=self.branch, at=at, user_id=user_id, **data_from_pool
             )

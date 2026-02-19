@@ -333,7 +333,7 @@ async def create_node(
                         user_id=user_id,
                     )
 
-    obj.creation_context = creation_context
+    obj._creation_context = creation_context
 
     if await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
