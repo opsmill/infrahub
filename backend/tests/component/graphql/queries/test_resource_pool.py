@@ -25,8 +25,8 @@ async def prefix_pools_02(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_01,
+    init_nodes_registry: None,
+    ip_dataset_01: dict[str, Any],
 ) -> dict[str, Any]:
     ns1 = ip_dataset_01["ns1"]
     ipv6_prefix_resource = ip_dataset_01["net161"]
@@ -186,7 +186,7 @@ query Resources($pool_ids: [ID]) {
 
 
 async def test_create_ipv6_prefix_and_read_allocations(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02: dict[str, Any]
 ) -> None:
     ipv6_prefix_resource = prefix_pools_02["ipv6_prefix_resource"]
     ipv6_prefix_pool = prefix_pools_02["ipv6_prefix_pool"]
@@ -296,7 +296,7 @@ async def test_create_ipv6_prefix_and_read_allocations(
 
 
 async def test_create_ipv4_prefix_and_read_allocations(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02: dict[str, Any]
 ) -> None:
     ipv4_prefix_resource = prefix_pools_02["ipv4_prefix_resource"]
     ipv4_prefix_pool = prefix_pools_02["ipv4_prefix_pool"]
@@ -370,7 +370,7 @@ async def test_create_ipv4_prefix_and_read_allocations(
 
 
 async def test_create_ipv4_address_and_read_allocations(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02: dict[str, Any]
 ) -> None:
     ipv4_address_resource = prefix_pools_02["ipv4_address_resource"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
@@ -441,7 +441,7 @@ async def test_create_ipv4_address_and_read_allocations(
 
 
 async def test_read_resources_in_pool_with_branch(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02: dict[str, Any]
 ) -> None:
     ns1 = prefix_pools_02["ns1"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
@@ -522,8 +522,8 @@ async def test_read_resources_in_pool_with_branch(
 async def test_read_resources_in_pool_new_schema_in_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    init_nodes_registry,
-    default_ipnamespace,
+    init_nodes_registry: None,
+    default_ipnamespace: Node,
     ipam_schema: SchemaRoot,
 ) -> None:
     branch2 = await create_branch(db=db, branch_name="branch2")
@@ -686,7 +686,7 @@ async def test_read_resources_in_pool_new_schema_in_branch(
 
 
 async def test_read_resources_in_pool_with_branch_with_mutations(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02: dict[str, Any]
 ) -> None:
     ns1 = prefix_pools_02["ns1"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
@@ -793,7 +793,7 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
 
 
 async def test_number_pool_utilization(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     default_branch.update_schema_hash()

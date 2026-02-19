@@ -1,4 +1,7 @@
+from typing import Any
+
 import pytest
+from fast_depends import Provider
 from infrahub_sdk.client import InfrahubClient
 
 from infrahub.auth import AccountSession
@@ -7,6 +10,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
@@ -22,9 +27,9 @@ class TestBranchCreate(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
-        register_core_models_schema,
-        session_admin,
+        car_person_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
         client: InfrahubClient,
         service: InfrahubServices,
     ) -> None:
@@ -126,11 +131,11 @@ class TestBranchCreate(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
-        register_core_models_schema,
-        session_admin,
-        client,
-        service,
+        car_person_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         query = """
         mutation($branch_name: String!) {
@@ -170,10 +175,10 @@ class TestBranchCreate(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
-        register_core_models_schema,
-        session_admin,
-        service,
+        car_person_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        service: InfrahubServices,
     ) -> None:
         query = """
         mutation($branch_name: String!) {
@@ -198,11 +203,11 @@ class TestBranchCreate(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
-        register_core_models_schema,
-        session_admin,
-        client,
-        service,
+        car_person_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         query = """
         mutation {
@@ -246,7 +251,7 @@ class TestBranchCreate(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        session_admin,
+        session_admin: AccountSession,
         service: InfrahubServices,
     ) -> None:
         query = """
@@ -274,7 +279,7 @@ class TestBranchCreate(TestInfrahubApp):
 
 
 @pytest.fixture
-async def local_services(db: InfrahubDatabase, dependency_provider) -> InfrahubServices:
+async def local_services(db: InfrahubDatabase, dependency_provider: Provider) -> InfrahubServices:
     message_bus = BusRecorder()
     workflow = WorkflowLocalExecution()
 
@@ -289,9 +294,9 @@ async def local_services(db: InfrahubDatabase, dependency_provider) -> InfrahubS
 async def test_branch_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
-    register_core_models_schema,
-    session_admin,
+    car_person_schema: SchemaBranch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
     local_services: InfrahubServices,
 ) -> None:
     delete_query = """
@@ -310,7 +315,11 @@ async def test_branch_delete(
 
 
 async def test_branch_rebase_wrong_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin, local_services: InfrahubServices
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
 ) -> None:
     query = """
     mutation {
@@ -388,7 +397,11 @@ async def test_branch_update_description(
 
 
 async def test_branch_merge_wrong_branch(
-    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
+    db: InfrahubDatabase,
+    base_dataset_02: dict[str, Any],
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
 ) -> None:
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
@@ -421,7 +434,11 @@ async def test_branch_merge_wrong_branch(
 
 
 async def test_branch_merge_need_upgrade_rebase(
-    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
+    db: InfrahubDatabase,
+    base_dataset_02: dict[str, Any],
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch_to_upgrade")
     branch.status = BranchStatus.NEED_UPGRADE_REBASE
@@ -455,7 +472,11 @@ async def test_branch_merge_need_upgrade_rebase(
 
 
 async def test_branch_merge_with_conflict_fails(
-    db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin, local_services: InfrahubServices
+    db: InfrahubDatabase,
+    car_person_schema: SchemaBranch,
+    car_camry_main: Node,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
 ) -> None:
     query = """
     mutation {

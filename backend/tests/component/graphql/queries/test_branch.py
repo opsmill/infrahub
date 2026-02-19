@@ -2,9 +2,12 @@ import operator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from infrahub_sdk import InfrahubClient
+
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.types import BranchType, InfrahubBranch
@@ -50,10 +53,10 @@ class TestBranchQuery(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_models_schema,
-        session_admin,
-        client,
-        service,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         create_branch_query = """
         mutation {
@@ -184,10 +187,10 @@ class TestBranchQuery(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_models_schema,
-        session_admin,
-        client,
-        service,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         branch_map = {}
         for i in range(10):
@@ -316,10 +319,10 @@ class TestBranchQuery(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_models_schema,
-        session_admin,
-        client,
-        service,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         query = """
             query {
@@ -376,10 +379,10 @@ class TestBranchQuery(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_models_schema,
-        session_admin,
-        client,
-        service,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         query = """
             query {
