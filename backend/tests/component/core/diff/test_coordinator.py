@@ -18,8 +18,8 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.validators.schema_branch.interface import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import SchemaNotFoundError
