@@ -5,12 +5,13 @@ from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account) -> None:
+async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account: Node) -> None:
     new_password = "NewP@ssw0rd"
     new_description = "what a cool description"
     query = """
@@ -49,9 +50,9 @@ async def test_permissions(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
-    authentication_base,
-    session_admin,
-    first_account,
+    authentication_base: None,
+    session_admin: AccountSession,
+    first_account: Node,
 ) -> None:
     query = """
     query {

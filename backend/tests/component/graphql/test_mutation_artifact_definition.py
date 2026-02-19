@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -68,8 +69,8 @@ async def definition1(
 async def test_create_artifact_definition(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
-    car_person_data_generic,
+    register_core_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
     create_test_admin: Node,
     group1: Node,
     transformation1: Node,
@@ -149,8 +150,8 @@ async def test_create_artifact_definition(
 async def test_update_artifact_definition(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
-    car_person_data_generic,
+    register_core_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
     create_test_admin: Node,
     definition1: Node,
     branch: Branch,

@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, Generator
 
 import pytest
 from graphql import ExecutionResult
@@ -408,7 +408,7 @@ def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict
 
 
 @pytest.fixture(scope="module")
-async def prefect_client(prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
+async def prefect_client(prefect_test_fixture: Generator[None, None, None]) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 
@@ -429,8 +429,8 @@ async def test_event_query_prefect(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    events_data,
-    event_ids_inscope,
+    events_data: dict[str, InfrahubEvent],
+    event_ids_inscope: list[str],
 ) -> None:
     result = await run_query(
         db=db,
