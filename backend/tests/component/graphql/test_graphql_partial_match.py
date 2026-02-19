@@ -3,13 +3,15 @@ from deepdiff import DeepDiff
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.helpers.graphql import graphql_query
 
 
 @pytest.mark.parametrize("filter_value", ["l", "o", "w", "low", "L", "LOW"])
 async def test_query_filter_local_attrs_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema, filter_value
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, filter_value: str
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
@@ -43,7 +45,7 @@ async def test_query_filter_local_attrs_partial_match(
 
 
 async def test_query_filter_local_int_attr_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
@@ -76,7 +78,7 @@ async def test_query_filter_local_int_attr_partial_match(
 
 
 async def test_query_filter_local_bool_attr_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4, is_false=True)
@@ -109,7 +111,7 @@ async def test_query_filter_local_bool_attr_partial_match(
 
 
 async def test_query_filter_relationships_with_generic_filter_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ) -> None:
     query = """
     query {
@@ -151,7 +153,11 @@ async def test_query_filter_relationships_with_generic_filter_partial_match(
 
 
 async def test_query_filter_relationships_with_generic_filter_mutliple_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, person_john_main, person_jane_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     volt_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await volt_car.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=person_john_main.id)
@@ -183,7 +189,7 @@ async def test_query_filter_relationships_with_generic_filter_mutliple_partial_m
 
 
 async def test_query_filter_local_attrs_partial_match_values(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
     """Ensure that query partial_match filtering works when using arrays/lists as part of the query input."""
     obj1 = await Node.init(db=db, schema=criticality_schema)

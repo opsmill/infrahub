@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -253,7 +254,7 @@ async def diff_coordinator(db: InfrahubDatabase, diff_branch: Branch) -> DiffCoo
 async def test_diff_tree_no_changes(
     db: InfrahubDatabase,
     default_branch: Branch,
-    criticality_low,
+    criticality_low: Node,
     diff_coordinator: DiffCoordinator,
     diff_branch: Branch,
 ) -> None:
@@ -329,7 +330,7 @@ async def test_diff_tree_one_attr_change(
     db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
-    criticality_low,
+    criticality_low: Node,
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
     diff_repository: DiffRepository,
@@ -716,7 +717,7 @@ async def test_diff_tree_one_relationship_change(
 async def test_diff_tree_hierarchy_change(
     db: InfrahubDatabase,
     default_branch: Branch,
-    hierarchical_location_data,
+    hierarchical_location_data: dict[str, Node],
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
 ) -> None:
@@ -780,7 +781,7 @@ async def test_diff_tree_summary_no_diffs(
 async def test_diff_tree_summary_no_changes(
     db: InfrahubDatabase,
     default_branch: Branch,
-    criticality_low,
+    criticality_low: Node,
     diff_coordinator: DiffCoordinator,
     diff_branch: Branch,
 ) -> None:
@@ -845,7 +846,11 @@ async def test_diff_tree_summary_no_changes(
     ],
 )
 async def test_diff_summary_filters(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, counters: DiffSummaryCounters
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data: dict[str, Node],
+    filters: dict[str, Any],
+    counters: DiffSummaryCounters,
 ) -> None:
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
@@ -949,7 +954,11 @@ async def test_diff_summary_filters(
     ],
 )
 async def test_diff_get_filters(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, labels
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data: dict[str, Node],
+    filters: dict[str, Any],
+    labels: list[str],
 ) -> None:
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
@@ -1005,7 +1014,7 @@ async def test_diff_tree_and_summary_filter_by_proposed_change_id(
     db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
-    criticality_low,
+    criticality_low: Node,
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
     diff_repository: DiffRepository,
@@ -1154,7 +1163,7 @@ async def test_diff_tree_multiple_diffs_with_proposed_change_filter(
     db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
-    criticality_low,
+    criticality_low: Node,
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
     diff_repository: DiffRepository,

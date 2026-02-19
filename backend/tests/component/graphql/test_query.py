@@ -18,6 +18,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
 
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -57,7 +58,9 @@ async def execute_query(
     return result
 
 
-async def test_execute_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+async def test_execute_query(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -77,7 +80,9 @@ async def test_execute_query(db: InfrahubDatabase, default_branch: Branch, regis
     assert result.data == {"BuiltinTag": {"count": 2}}
 
 
-async def test_execute_missing_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+async def test_execute_missing_query(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     default_branch.update_schema_hash()
     with pytest.raises(ValueError) as exc:
         await execute_query(name="query02", db=db, branch=default_branch)
