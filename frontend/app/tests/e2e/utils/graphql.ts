@@ -52,6 +52,22 @@ export const createBranchAPI = async (request: APIRequestContext, name: string) 
   return await executeGraphQLMutation(request, mutation, { name });
 };
 
+export const mergeBranchAPI = async (request: APIRequestContext, name: string): Promise<any> => {
+  const mutation = `
+    mutation BranchMerge($name: String!) {
+      BranchMerge(data: { name: $name }) {
+        ok
+        object {
+          id
+          name
+        }
+      }
+    }
+  `;
+
+  return await executeGraphQLMutation(request, mutation, { name });
+};
+
 export const deleteBranchAPI = async (request: APIRequestContext, name: string): Promise<any> => {
   const mutation = `
     mutation BranchDelete($name: String!) {
