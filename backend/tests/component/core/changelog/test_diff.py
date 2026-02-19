@@ -36,7 +36,12 @@ async def test_events_from_diff(
     assert len(changelogs) == 2
 
 
-async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch: Branch, car_person_schema: None) -> None:
+async def test_merge_diff_changelogs(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -160,6 +165,10 @@ async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch: Branc
 
 
 class TestConflict:
+    @pytest.fixture(autouse=True)
+    async def _setup_proposed_change_schema(self, register_simplified_proposed_change_schema: SchemaBranch) -> None:
+        return
+
     async def _get_diff_coordinator(self, db: InfrahubDatabase, branch: Branch) -> DiffCoordinator:
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
