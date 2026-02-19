@@ -123,10 +123,10 @@ async def test_ipprefix_nextavailable(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
-    ip_dataset_01,
-    prefix,
-    prefix_length,
-    response,
+    ip_dataset_01: dict[str, Any],
+    prefix: str,
+    prefix_length: int | None,
+    response: str,
 ) -> None:
     obj = ip_dataset_01[prefix]
 
@@ -165,10 +165,10 @@ async def test_ipaddress_nextavailable(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
-    ip_dataset_02,
-    prefix,
-    prefix_length,
-    response,
+    ip_dataset_02: dict[str, Any],
+    prefix: str,
+    prefix_length: int | None,
+    response: str,
 ) -> None:
     obj = ip_dataset_02[prefix]
 

@@ -25,11 +25,12 @@ from infrahub.graphql.loaders.account import (
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
-async def test_account(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> Node:
+async def test_account(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch) -> Node:
     """Create a test account for loader tests."""
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="Test Account", account_type="User", password="TestPassword123")
@@ -40,7 +41,7 @@ async def test_account(db: InfrahubDatabase, default_branch: Branch, register_co
 async def test_system_user_returns_synthetic_data(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     """Verify SYSTEM_USER_ID returns synthetic system account data.
 
@@ -90,7 +91,7 @@ async def test_real_account_loads_from_database(
 async def test_unknown_account_returns_placeholder(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     """Verify unknown/deleted accounts return a placeholder response.
 
@@ -143,7 +144,7 @@ async def test_caching_returns_same_result_object(
 async def test_batch_loading_multiple_accounts(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     """Verify multiple accounts can be loaded in a single batch.
 
@@ -207,7 +208,7 @@ async def test_mixed_system_and_real_accounts(
 async def test_system_user_name_field_returns_display_label(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     """Verify SYSTEM_USER_ID returns proper name field structure.
 
@@ -230,7 +231,7 @@ async def test_system_user_name_field_returns_display_label(
 async def test_loader_params_hash_excludes_fields(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     """Verify AccountLoaderParams hash is based on branch and timestamp, not fields.
 
