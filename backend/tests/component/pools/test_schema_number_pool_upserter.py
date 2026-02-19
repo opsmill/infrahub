@@ -1,4 +1,3 @@
-
 import pytest
 
 from infrahub.core.branch.models import Branch
