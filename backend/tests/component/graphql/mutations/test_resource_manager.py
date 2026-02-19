@@ -129,11 +129,15 @@ async def test_create_object_and_assign_prefix_from_pool(
         },
     }
 
-    assert len(memory_event.events) == 1
-    node_event = memory_event.events[0]
-    assert isinstance(node_event, NodeCreatedEvent)
-    assert node_event.kind == "TestMandatoryPrefix"
-    assert node_event.meta.account_id == session_first_account.account_id
+    parent_events = [
+        e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "TestMandatoryPrefix"
+    ]
+    prefix_events = [e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "IpamIPPrefix"]
+    assert len(parent_events) == 1
+    assert len(prefix_events) == 1
+    assert parent_events[0].meta.account_id == session_first_account.account_id
+    assert prefix_events[0].meta.account_id == session_first_account.account_id
+    assert prefix_events[0].meta.parent == parent_events[0].meta.id
 
 
 async def test_update_object_and_assign_prefix_from_pool(
@@ -294,11 +298,15 @@ async def test_create_object_and_assign_address_from_pool(
         },
     }
 
-    assert len(memory_event.events) == 1
-    node_event = memory_event.events[0]
-    assert isinstance(node_event, NodeCreatedEvent)
-    assert node_event.kind == "TestMandatoryAddress"
-    assert node_event.meta.account_id == session_first_account.account_id
+    parent_events = [
+        e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "TestMandatoryAddress"
+    ]
+    address_events = [e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "IpamIPAddress"]
+    assert len(parent_events) == 1
+    assert len(address_events) == 1
+    assert parent_events[0].meta.account_id == session_first_account.account_id
+    assert address_events[0].meta.account_id == session_first_account.account_id
+    assert address_events[0].meta.parent == parent_events[0].meta.id
 
 
 async def test_prefix_pool_get_resource(
@@ -384,6 +392,7 @@ async def test_prefix_pool_get_resource_with_identifier(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
+    enable_broker_config: None,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
@@ -423,8 +432,10 @@ async def test_prefix_pool_get_resource_with_identifier(
         % pool.id
     )
 
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -434,6 +445,9 @@ async def test_prefix_pool_get_resource_with_identifier(
     )
 
     assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
     assert result.data
     assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
     assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
@@ -442,6 +456,9 @@ async def test_prefix_pool_get_resource_with_identifier(
         "kind": "IpamIPPrefix",
         "identifier": "myidentifier",
     }
+
+    # Second allocation with same identifier returns existing resource, no new CREATED event
+    assert len(memory_event.events) == 0
 
 
 async def test_prefix_pool_get_resource_with_prefix_length(
