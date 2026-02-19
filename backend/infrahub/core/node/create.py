@@ -162,6 +162,7 @@ async def allocate_from_resource_pools(
             continue
 
         allocated_resource = await pool.get_resource(db=db, branch=branch, identifier=obj.id, at=at, user_id=user_id)  # type: ignore
+        NodeCreationContext.record_if_active(node=allocated_resource)
 
         obj_rel_manager = obj.get_relationship(name=original_rel_name)
         await obj_rel_manager.update(
@@ -219,6 +220,7 @@ async def handle_template_relationships(
                 await node_profiles_applier.apply_profiles(node=obj_peer)
 
             await obj_peer.save(db=db, user_id=user_id)
+            NodeCreationContext.record_if_active(node=obj_peer)
 
             await handle_template_relationships(
                 db=db,
