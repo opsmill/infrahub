@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node.creation_context import NodeCreationContext
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
@@ -105,6 +106,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
         self._active_user_id: str = SYSTEM_USER_ID
+        self.creation_context: NodeCreationContext | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
         self._metadata.created_at = value
