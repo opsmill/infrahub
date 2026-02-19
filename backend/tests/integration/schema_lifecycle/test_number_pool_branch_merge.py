@@ -631,7 +631,8 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         generic_without_numberpool: dict[str, Any],
     ) -> None:
         """Load the generic and inheriting node WITHOUT the NumberPool attribute."""
-        await client.schema.load(schemas=[generic_without_numberpool], branch=default_branch.name)
+        response = await client.schema.load(schemas=[generic_without_numberpool], branch=default_branch.name)
+        assert not response.errors
 
     @pytest.fixture(scope="class")
     async def add_numberpool_to_generic(
@@ -642,7 +643,8 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         load_initial_schema: None,
     ) -> None:
         """Add the NumberPool attribute to the existing generic (migrations create the pool)."""
-        await client.schema.load(schemas=[generic_with_numberpool], branch=default_branch.name)
+        response = await client.schema.load(schemas=[generic_with_numberpool], branch=default_branch.name)
+        assert not response.errors
 
     @pytest.fixture(scope="class")
     async def run_synchronizer(

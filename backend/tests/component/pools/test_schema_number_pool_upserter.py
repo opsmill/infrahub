@@ -1,3 +1,4 @@
+
 import pytest
 
 from infrahub.core.branch.models import Branch
@@ -8,6 +9,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
@@ -33,7 +35,9 @@ def base_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def default_number_pool(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
+async def default_number_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> Node:
     number_pool = await Node.init(db=db, schema="CoreNumberPool", branch=default_branch)
     await number_pool.new(
         db=db,
@@ -89,7 +93,9 @@ async def test_get_existing_number_pool_id_returns_none_when_no_pool(
     assert pool_id is None
 
 
-async def test_upsert_number_pool_creates_new_pool(db: InfrahubDatabase, base_schema: NodeSchema) -> None:
+async def test_upsert_number_pool_creates_new_pool(
+    db: InfrahubDatabase, base_schema: NodeSchema, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that upsert_number_pool creates a new pool when none exists."""
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
     attribute = base_schema.get_attribute("number")
