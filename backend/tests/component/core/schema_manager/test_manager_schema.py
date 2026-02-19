@@ -4654,3 +4654,8 @@ async def test_manage_object_templates_component_relationship_to_core_node() -> 
 
     with pytest.raises(SchemaNotFoundError):
         schema_branch.get(name="TemplateCoreNumberPool", duplicate=False)
+
+    # The template should still have the relationship, pointing to the original core node
+    template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
+    pool_rel = template.get_relationship(name="number_pools")
+    assert pool_rel.peer == InfrahubKind.NUMBERPOOL

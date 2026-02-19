@@ -2548,16 +2548,12 @@ class SchemaBranch:
                 continue
 
             peer_schema = self.get(name=relationship.peer, duplicate=False)
-            if (
-                relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
-                and peer_schema.namespace in RESTRICTED_NAMESPACES
-            ):
-                continue
+            peer_in_restricted_ns = peer_schema.namespace in RESTRICTED_NAMESPACES
 
             rel_template_peer = (
-                self._get_object_template_kind(node_kind=relationship.peer)
-                if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
-                else relationship.peer
+                relationship.peer
+                if relationship.kind in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC] or peer_in_restricted_ns
+                else self._get_object_template_kind(node_kind=relationship.peer)
             )
 
             is_optional = (
