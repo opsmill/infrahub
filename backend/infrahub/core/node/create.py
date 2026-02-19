@@ -13,8 +13,8 @@ from infrahub.core.constants import (
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
+from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.node import Node
-from infrahub.core.node.creation_context import NodeCreationContext
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata

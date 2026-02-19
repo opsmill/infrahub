@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
-from infrahub.core.node.creation_context import NodeCreationContext
+from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.allocator import PoolAllocator

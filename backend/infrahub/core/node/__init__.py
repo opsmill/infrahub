@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-    from infrahub.core.node.creation_context import NodeCreationContext
+    from infrahub.core.creation_context import NodeCreationContext
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")

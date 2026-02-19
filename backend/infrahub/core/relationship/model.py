@@ -23,9 +23,9 @@ from pydantic import BaseModel, Field
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
-from infrahub.core.node.creation_context import NodeCreationContext
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
