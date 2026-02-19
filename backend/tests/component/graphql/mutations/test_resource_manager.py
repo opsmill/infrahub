@@ -14,6 +14,8 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import SNOW_TICKET_SCHEMA, TICKET, load_schema
 
@@ -899,16 +901,25 @@ async def test_test_number_pool_update(
     assert query_after_delete.data["CoreNumberPool"]["count"] == 0
 
 
-async def test_delete_number_pool_in_use_by_numberpool_attribute(
+@pytest.fixture
+async def snow_ticket_schema_with_pools(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+    await snps.run()
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+
+async def test_delete_number_pool_in_use_by_numberpool_attribute(
+    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
+) -> None:
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     query_before_creation = await graphql(
         schema=gql_params.schema,
         source=QUERY_NUMBER_POOL,
@@ -921,57 +932,7 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
 
     assert not query_before_creation.errors
     assert query_before_creation.data
-    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
-
-    create_snow_incident_mutation = """
-    mutation CreateSnowIncident(
-        $title: String!,
-    ) {
-    SnowIncidentCreate(
-        data: {
-        title: {value: $title},
-        }
-    ) {
-        object {
-            title {
-                value
-            }
-            number {
-                value
-                source {
-                    id
-                }
-            }
-            identifier {
-                value
-            }
-        }
-      }
-    }
-    """
-
-    create_snow_incident = await graphql(
-        schema=gql_params.schema,
-        source=create_snow_incident_mutation,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "title": "Printer is saying PC load Letter",
-        },
-    )
-
-    assert not create_snow_incident.errors
-    assert create_snow_incident.data
-    assert (
-        create_snow_incident.data["SnowIncidentCreate"]["object"]["title"]["value"]
-        == "Printer is saying PC load Letter"
-    )
-    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["value"] == 1
-    assert (
-        create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["source"]["id"]
-        == number_pool_attribute.parameters.number_pool_id
-    )
-    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["identifier"]["value"] == "INC1"
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 1
 
     delete_fail = await graphql(
         schema=gql_params.schema,
@@ -988,15 +949,13 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
 
 
 async def test_update_schema_number_pool_range(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
 ) -> None:
-    await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     query_before_creation = await graphql(
         schema=gql_params.schema,
         source=QUERY_NUMBER_POOL,
@@ -1009,46 +968,7 @@ async def test_update_schema_number_pool_range(
 
     assert not query_before_creation.errors
     assert query_before_creation.data
-    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
-
-    create_snow_incident_mutation = """
-    mutation CreateSnowIncident(
-        $title: String!,
-    ) {
-    SnowIncidentCreate(
-        data: {
-        title: {value: $title},
-        }
-    ) {
-        object {
-            title {
-                value
-            }
-            number {
-                value
-                source {
-                    id
-                }
-            }
-            identifier {
-                value
-            }
-        }
-      }
-    }
-    """
-
-    create_snow_incident = await graphql(
-        schema=gql_params.schema,
-        source=create_snow_incident_mutation,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "title": "Printer is saying PC load Letter",
-        },
-    )
-    assert not create_snow_incident.errors
-    assert create_snow_incident.data
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 1
 
     update_forbidden = await graphql(
         schema=gql_params.schema,

@@ -7,7 +7,6 @@ import keyword
 from collections import defaultdict
 from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
@@ -56,7 +55,6 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import (
     ListAttributeParameters,
-    NumberPoolParameters,
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
@@ -1235,27 +1233,13 @@ class SchemaBranch:
                             ) from None
 
     def validate_attribute_parameters(self) -> None:
-        for name in self.generics.keys():
-            generic_schema = self.get_generic(name=name, duplicate=False)
-            for attribute in generic_schema.attributes:
-                if (
-                    attribute.kind == "NumberPool"
-                    and isinstance(attribute.parameters, NumberPoolParameters)
-                    and not attribute.parameters.number_pool_id
-                ):
-                    attribute.parameters.number_pool_id = str(uuid4())
-
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
-                if attribute.kind == "NumberPool" and isinstance(attribute.parameters, NumberPoolParameters):
-                    self._validate_number_pool_parameters(
-                        node_schema=node_schema, attribute=attribute, number_pool_parameters=attribute.parameters
-                    )
+                if attribute.kind == "NumberPool":
+                    self._validate_number_pool_parameters(node_schema=node_schema, attribute=attribute)
 
-    def _validate_number_pool_parameters(
-        self, node_schema: NodeSchema, attribute: AttributeSchema, number_pool_parameters: NumberPoolParameters
-    ) -> None:
+    def _validate_number_pool_parameters(self, node_schema: NodeSchema, attribute: AttributeSchema) -> None:
         if attribute.optional:
             raise ValidationError(f"{node_schema.kind}.{attribute.name} is a NumberPool it can't be optional")
 
@@ -1264,30 +1248,26 @@ class SchemaBranch:
                 f"{node_schema.kind}.{attribute.name} is a NumberPool it has to be a read_only attribute"
             )
 
-        if attribute.inherited and not number_pool_parameters.number_pool_id:
+        if attribute.inherited:
+            # Validate that the attribute isn't inherited from multiple generics
             generics_with_attribute = []
             for generic_name in node_schema.inherit_from:
                 generic_schema = self.get_generic(name=generic_name, duplicate=False)
                 if attribute.name in generic_schema.attribute_names:
-                    generic_attribute = generic_schema.get_attribute(name=attribute.name)
                     generics_with_attribute.append(generic_schema)
-                    if isinstance(generic_attribute.parameters, NumberPoolParameters):
-                        number_pool_parameters.number_pool_id = generic_attribute.parameters.number_pool_id
 
             if len(generics_with_attribute) > 1:
+                generic_kinds = [g.kind for g in generics_with_attribute]
                 raise ValidationError(
-                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic"
+                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic: {generic_kinds}"
                 )
-        elif not attribute.inherited:
+        else:
             for generic_name in node_schema.inherit_from:
                 generic_schema = self.get_generic(name=generic_name, duplicate=False)
                 if attribute.name in generic_schema.attribute_names:
                     raise ValidationError(
                         f"Overriding '{node_schema.kind}.{attribute.name}' NumberPool attribute from generic '{generic_name}' is not supported"
                     )
-
-            if not number_pool_parameters.number_pool_id:
-                number_pool_parameters.number_pool_id = str(uuid4())
 
     def validate_computed_attributes(self) -> None:
         self.computed_attributes = ComputedAttributes()

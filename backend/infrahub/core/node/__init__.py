@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub import lock
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
@@ -17,7 +16,6 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
-    NumberPoolType,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -28,7 +26,6 @@ from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.schema import (
     AttributeSchema,
-    GenericSchema,
     NodeSchema,
     NonGenericSchemaTypes,
     ProfileSchema,
@@ -39,7 +36,6 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.default_allocator import DefaultPoolAllocator
-from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.templates.node_applier import NodeTemplateApplier
 from infrahub.types import ATTRIBUTE_TYPES
@@ -351,12 +347,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
+
+        Supports two cases:
+        1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
+        2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
         """
-
-        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
-            attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
-            attribute.is_default = False
-
         # Templates should not allocate from pools - just store the reference
         # Actual allocation happens when creating objects from the template
         if isinstance(self._schema, TemplateSchema):
@@ -367,26 +362,41 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 attribute.clear_source()
             return
 
-        if not attribute.from_pool or not allocate_resources:
-            return
-
-        try:
-            number_pool = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
-            )
-        except NodeNotFoundError:
-            if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
-                number_pool = await self.fetch_or_create_number_pool(
-                    db=db, schema_node=self._schema, schema_attribute=attribute.schema, branch=self._branch
-                )
-
-            else:
+        number_pool_id: str | None = None
+        # Case 1: Schema-defined NumberPool attribute
+        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+            number_pool_id = attribute.schema.parameters.number_pool_id
+            if not number_pool_id:
                 errors.append(
                     ValidationError(
-                        {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+                        {f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."}
                     )
                 )
                 return
+            attribute.from_pool = {"id": number_pool_id}
+            attribute.is_default = False
+        # Case 2: User-specified from_pool on a regular Number attribute
+        elif attribute.from_pool:
+            number_pool_id = attribute.from_pool.get("id")
+            if not number_pool_id:
+                errors.append(ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."}))
+                return
+
+        if not allocate_resources or not number_pool_id:
+            # no pool allocation necessary
+            return
+
+        try:
+            number_pool = await registry.manager.get_one(
+                db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
+            )
+        except NodeNotFoundError:
+            errors.append(
+                ValidationError(
+                    {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+                )
+            )
+            return
 
         if (
             number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
@@ -412,69 +422,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     }
                 )
             )
-
-    @staticmethod
-    async def fetch_or_create_number_pool(
-        db: InfrahubDatabase,
-        schema_node: NodeSchema | GenericSchema,
-        schema_attribute: AttributeSchema,
-        branch: Branch | None = None,
-        at: Timestamp | None = None,
-    ) -> CoreNumberPool:
-        """Fetch or create a number pool based on the schema attribute parameters.
-
-        Warning, ideally this method should be outside of the Node class, but it is itself using the Node class to create the pool node.
-        """
-
-        if (
-            schema_attribute.kind != "NumberPool"
-            or not schema_attribute.parameters
-            or not isinstance(schema_attribute.parameters, NumberPoolParameters)
-        ):
-            raise ValueError("Attribute is not of type NumberPool")
-
-        number_pool_from_db: CoreNumberPool | None = None
-        number_pool_parameters: NumberPoolParameters = schema_attribute.parameters
-
-        lock_definition = NumberPoolLockDefinition(pool_id=str(number_pool_parameters.number_pool_id))
-        async with lock.registry.get(
-            name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
-        ):
-            try:
-                number_pool_from_db = await registry.manager.get_one_by_id_or_default_filter(
-                    db=db, id=str(number_pool_parameters.number_pool_id), kind=CoreNumberPool
-                )
-                return number_pool_from_db  # type: ignore[return-value]
-
-            except NodeNotFoundError:
-                schema = db.schema.get_node_schema(name="CoreNumberPool", duplicate=False)
-
-                pool_node = schema_node.kind
-                if schema_attribute.inherited:
-                    for generic_name in schema_node.inherit_from:
-                        generic_node = db.schema.get_generic_schema(name=generic_name, duplicate=False)
-                        if schema_attribute.name in generic_node.attribute_names:
-                            pool_node = generic_node.kind
-                            break
-
-                number_pool = await Node.init(db=db, schema=schema, branch=branch)
-                await number_pool.new(
-                    db=db,
-                    id=number_pool_parameters.number_pool_id,
-                    name=f"{pool_node}.{schema_attribute.name} [{number_pool_parameters.number_pool_id}]",
-                    node=pool_node,
-                    node_attribute=schema_attribute.name,
-                    start_range=number_pool_parameters.start_range,
-                    end_range=number_pool_parameters.end_range,
-                    pool_type=NumberPoolType.SCHEMA.value,
-                )
-                await number_pool.save(db=db, at=at)
-
-                # Do a lookup of the number pool to get the correct mapped type from the registry
-                # without this we don't get access to the .get_resource() method.
-                return await registry.manager.get_one_by_id_or_default_filter(
-                    db=db, id=number_pool.id, kind=CoreNumberPool
-                )
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""

@@ -4,7 +4,15 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID, HashableModelState, MetadataOptions, SchemaPathType
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    BranchSupportType,
+    HashableModelState,
+    InfrahubKind,
+    MetadataOptions,
+    NumberPoolType,
+    SchemaPathType,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_attribute_add import (
@@ -17,8 +25,10 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
 )
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -257,3 +267,152 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
     assert attr._get_created_by() == test_user_id
     assert attr._get_updated_at() == migration_time
     assert attr._get_updated_by() == test_user_id
+
+
+# -----------------------------------------------------------------------------
+# NumberPool Attribute Add Tests
+# -----------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def server_schema_without_numberpool() -> NodeSchema:
+    """Return a TestServer schema without the NumberPool attribute."""
+    return NodeSchema(
+        name="Server",
+        namespace="Test",
+        default_filter="name__value",
+        branch=BranchSupportType.AWARE,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE),
+        ],
+    )
+
+
+@pytest.fixture
+async def server_schema_with_numberpool() -> NodeSchema:
+    """Return a TestServer schema with a NumberPool attribute."""
+    return NodeSchema(
+        name="Server",
+        namespace="Test",
+        default_filter="name__value",
+        branch=BranchSupportType.AWARE,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE),
+            AttributeSchema(
+                name="rack_unit",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                branch=BranchSupportType.AWARE,
+                parameters=NumberPoolParameters(start_range=1, end_range=100),
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+async def servers_in_db(
+    db: InfrahubDatabase,
+    branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    server_schema_without_numberpool: NodeSchema,
+) -> list[Node]:
+    """Create test servers without the rack_unit attribute."""
+    # Register CoreNumberPool implementation class in registry for get_resource method
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+    # Register the schema without NumberPool
+    schema = SchemaRoot(nodes=[server_schema_without_numberpool])
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+
+    servers = []
+    for i in range(3):
+        server = await Node.init(db=db, schema="TestServer", branch=branch)
+        await server.new(db=db, name=f"server-{i}")
+        await server.save(db=db)
+        servers.append(server)
+    return servers
+
+
+async def test_migration_numberpool_attribute(
+    db: InfrahubDatabase,
+    branch: Branch,
+    server_schema_with_numberpool: NodeSchema,
+    servers_in_db: list[Node],
+) -> None:
+    """Test that adding a NumberPool attribute creates the pool, allocates unique values, and sets the source."""
+    # Get the current schema (without NumberPool)
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+
+    # Verify initial state
+    num_server_objects = await NodeManager.count(db=db, schema="TestServer", branch=branch)
+    assert num_server_objects == 3
+    initial_pool_count = len(
+        await NodeManager.query(
+            db=db,
+            schema="CoreNumberPool",
+            filters={"pool_type__value": NumberPoolType.SCHEMA.value},
+            branch_agnostic=True,
+        )
+    )
+    assert initial_pool_count == 0
+
+    # Verify the new schema has parameters
+    new_attr = server_schema_with_numberpool.get_attribute(name="rack_unit")
+    assert isinstance(new_attr.parameters, NumberPoolParameters)
+
+    # Run the migration
+    at = Timestamp()
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=server_schema_with_numberpool,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+
+    # Register the new schema before executing the migration
+    registry.schema.set(name="TestServer", schema=server_schema_with_numberpool, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=at), branch=branch)
+    assert not execution_result.errors
+
+    # Verify a CoreNumberPool was created
+    pools = await NodeManager.query(
+        db=db,
+        schema="CoreNumberPool",
+        filters={
+            "node__value": "TestServer",
+            "node_attribute__value": "rack_unit",
+            "pool_type__value": NumberPoolType.SCHEMA.value,
+        },
+        branch_agnostic=True,
+    )
+    assert len(pools) == 1
+    number_pool = pools[0]
+
+    # Verify pool parameters
+    assert number_pool.get_attribute("start_range").value == 1
+    assert number_pool.get_attribute("end_range").value == 100
+
+    # Query servers and verify they have unique rack_unit values
+    servers_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[s.get_id() for s in servers_in_db], include_metadata=MetadataOptions.SOURCE
+    )
+    assert len(servers_map) == 3
+
+    rack_unit_values = [server.get_attribute("rack_unit").value for server in servers_map.values()]
+
+    # All values should be assigned (not None)
+    assert all(v is not None for v in rack_unit_values), "All servers should have rack_unit values assigned"
+
+    # All values should be unique
+    assert len(set(rack_unit_values)) == 3, "All rack_unit values should be unique"
+
+    # All values should be within the pool range
+    assert all(1 <= v <= 100 for v in rack_unit_values), "All rack_unit values should be within range 1-100"
+
+    # Verify the source is set to the pool for all servers
+    for server in servers_map.values():
+        source = await server.get_attribute("rack_unit").get_source(db=db)
+        assert source is not None, "rack_unit should have a source set"
+        assert source.id == number_pool.id, f"rack_unit source should be the pool {number_pool.id}"
