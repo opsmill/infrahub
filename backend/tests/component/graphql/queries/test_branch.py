@@ -36,7 +36,7 @@ query($name: String, $partial_match: Boolean = false) {
 """
 
 
-def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
+def test_check_branch_type_has_corresponding_infrahub_branch_value_field() -> None:
     exempted_fields = ("id", "created_at", "node_metadata")
     for field_name, field_value in BranchType._meta.fields.items():
         if field_name in exempted_fields:

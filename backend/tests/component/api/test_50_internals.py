@@ -1,3 +1,5 @@
+from collections.abc import Generator
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -72,7 +74,7 @@ async def test_info_endpoint_anonymous_account(
 
 
 @pytest.fixture
-def override_search_index_path():
+def override_search_index_path() -> Generator[None, None, None]:
     old_search_index_path = config.SETTINGS.main.docs_index_path
     old_search_docs_loader = internal.search_docs_loader
     config.SETTINGS.main.docs_index_path = get_fixtures_dir() / "docs" / "search-index.json"
@@ -83,7 +85,7 @@ def override_search_index_path():
 
 
 @pytest.fixture
-def no_search_index_path():
+def no_search_index_path() -> Generator[None, None, None]:
     old_search_index_path = config.SETTINGS.main.docs_index_path
     old_search_docs_loader = internal.search_docs_loader
     config.SETTINGS.main.docs_index_path = get_fixtures_dir() / "docs" / "no-index.json"

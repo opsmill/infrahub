@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -79,7 +80,7 @@ async def ip_dataset_01_load(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Node]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -177,7 +178,7 @@ async def diff_repository(db: InfrahubDatabase, default_branch: Branch) -> DiffR
 
 
 @pytest.fixture(scope="module")
-def start_time():
+def start_time() -> Timestamp:
     return Timestamp()
 
 
@@ -188,7 +189,7 @@ async def ip_dataset_01(
     ip_dataset_01_load,
     diff_repository: DiffRepository,
     start_time: Timestamp,
-):
+) -> Generator[dict[str, Node], None, None]:
     yield ip_dataset_01_load
 
     all_diff_roots = await diff_repository.get_roots_metadata()

@@ -39,7 +39,7 @@ async def car_person_schema(
 
 
 @pytest.fixture
-async def schema_aware():
+async def schema_aware() -> NodeSchema:
     SCHEMA = {
         "name": "Car",
         "namespace": "Test",

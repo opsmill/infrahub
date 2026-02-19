@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
@@ -10,7 +10,7 @@ from infrahub.workflows.initialization import setup_deployments, setup_worker_po
 
 
 @pytest.fixture
-async def prefect_client(prefect_test_fixture: Generator):
+async def prefect_client(prefect_test_fixture: Generator) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as prefect_client:
         yield prefect_client
 

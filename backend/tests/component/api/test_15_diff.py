@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from infrahub import config
@@ -92,7 +94,7 @@ async def test_get_display_labels_with_branch(db: InfrahubDatabase, default_bran
 
 
 @pytest.fixture
-async def r1_update_01(data_diff_attribute):
+async def r1_update_01(data_diff_attribute) -> dict[str, Any]:
     r1 = data_diff_attribute["r1"]
 
     expected_response = {

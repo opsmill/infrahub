@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
@@ -397,7 +398,7 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
     return [str(event.meta.id) for event in events_data.values()]
 
 
-def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
+def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict[str, Any]:
     """
     Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
@@ -407,7 +408,7 @@ def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
 
 
 @pytest.fixture(scope="module")
-async def prefect_client(prefect_test_fixture):
+async def prefect_client(prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 

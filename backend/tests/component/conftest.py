@@ -12,6 +12,7 @@ from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -78,7 +79,7 @@ def load_component_dependency_registry() -> None:
 
 
 @pytest.fixture(scope="session")
-def neo4j_factory():
+def neo4j_factory() -> _GraphHydrator:
     """Return a Hydration Scope from Neo4j used to generate fake
     Node and Relationship object.
 
@@ -91,7 +92,7 @@ def neo4j_factory():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def prefect_test_fixture():
+def prefect_test_fixture() -> Generator[None, None, None]:
     def _run_uvicorn_command(self) -> subprocess.Popen[Any]:
         """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
         # used to turn off serving the UI
@@ -1116,7 +1117,9 @@ async def car_person_schema_global(
 
 
 @pytest.fixture
-async def car_person_data_generic(db: InfrahubDatabase, register_core_models_schema, car_person_schema_generics):
+async def car_person_data_generic(
+    db: InfrahubDatabase, register_core_models_schema, car_person_schema_generics
+) -> dict[str, Node]:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -1768,7 +1771,7 @@ def do_criticality_schema(branch: Branch, schema_root: SchemaRoot) -> NodeSchema
 
 
 @pytest.fixture
-async def criticality_protocol():
+async def criticality_protocol() -> type[CoreNode]:
     class TestCriticality(CoreNode):
         name: String
         label: StringOptional
@@ -1788,7 +1791,7 @@ async def criticality_protocol():
 
 
 @pytest.fixture
-async def criticality_low(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def criticality_low(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
     await obj.save(db=db)
@@ -1797,7 +1800,7 @@ async def criticality_low(db: InfrahubDatabase, default_branch: Branch, critical
 
 
 @pytest.fixture
-async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="medium", level=3, description="My desc", color="#333333")
     await obj.save(db=db)
@@ -1805,7 +1808,7 @@ async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criti
 
 
 @pytest.fixture
-async def criticality_high(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def criticality_high(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="high", level=2, description="My other desc", color="#333333")
     await obj.save(db=db)
@@ -2606,7 +2609,7 @@ async def session_second_account(db: InfrahubDatabase, second_account) -> Accoun
 
 
 @pytest.fixture
-async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+async def repos_in_main(db: InfrahubDatabase, register_core_models_schema) -> dict[str, Node]:
     repo01 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo01.new(
         db=db,
@@ -2631,7 +2634,7 @@ async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
 
 
 @pytest.fixture
-async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_schema) -> dict[str, Node]:
     repo01 = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
     await repo01.new(
         db=db,
@@ -2675,7 +2678,7 @@ async def ip_dataset_01(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Any]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -2772,7 +2775,7 @@ async def ip_dataset_prefix_v4(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Any]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -2884,7 +2887,7 @@ async def prefix_pool_01(
     init_nodes_registry,
     person_ip_schema,
     ip_dataset_prefix_v4,
-):
+) -> dict[str, Any]:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -2907,7 +2910,7 @@ async def prefix_pool_01(
 
 
 @pytest.fixture
-def workflow_local(dependency_provider: Provider):
+def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExecution, None, None]:
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow

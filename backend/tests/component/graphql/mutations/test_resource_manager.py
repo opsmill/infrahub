@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core import registry
@@ -24,7 +26,7 @@ async def prefix_pool_01(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> dict[str, Any]:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 

@@ -719,7 +719,7 @@ async def test_template_profile_application(
     criticality_schema: NodeSchema,
     criticality_low: Node,
     branch: Branch,
-):
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
 
@@ -766,7 +766,7 @@ async def test_template_with_multiple_profiles(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
-):
+) -> None:
     """Test that templates can have multiple profiles with correct priority handling."""
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
@@ -823,7 +823,7 @@ async def test_template_profile_manual_values_precedence(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
-):
+) -> None:
     """Test that template's own values take precedence over profile values.
 
     When a template has a manually configured value, profile values should not override it.
@@ -871,7 +871,7 @@ async def test_node_from_template_with_profile_precedence(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
-):
+) -> None:
     """Test that when creating a node from a template with profiles,
     template's manually defined values take precedence over profile values,
     while profile values are used for attributes not set on the template."""

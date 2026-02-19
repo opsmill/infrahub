@@ -2443,7 +2443,7 @@ class TestDiffAndMerge:
         car_camry_main: Node,
         person_jane_main: Node,
         person_john_main: Node,
-    ):
+    ) -> None:
         car_accord_created_at = car_accord_main._get_created_at()
         car_camry_created_at = car_camry_main._get_created_at()
         original_car_owner = person_john_main

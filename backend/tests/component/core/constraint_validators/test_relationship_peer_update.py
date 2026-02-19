@@ -91,7 +91,9 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
 
 
 @pytest.fixture
-async def car_person_generic_data(db: InfrahubDatabase, car_person_schema_generics_simple, default_branch: Branch):
+async def car_person_generic_data(
+    db: InfrahubDatabase, car_person_schema_generics_simple, default_branch: Branch
+) -> dict[str, Node]:
     p_1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await p_1.new(db=db, name="P1")
     await p_1.save(db=db)
