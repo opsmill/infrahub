@@ -2547,6 +2547,13 @@ class SchemaBranch:
             ]:
                 continue
 
+            peer_schema = self.get(name=relationship.peer, duplicate=False)
+            if (
+                relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                and peer_schema.namespace in RESTRICTED_NAMESPACES
+            ):
+                continue
+
             rel_template_peer = (
                 self._get_object_template_kind(node_kind=relationship.peer)
                 if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
@@ -2688,13 +2695,23 @@ class SchemaBranch:
         self, node_schema: NodeSchema | GenericSchema, identified: set[NodeSchema | GenericSchema]
     ) -> set[NodeSchema]:
         """Identify all templates required to turn a given node into a template."""
-        if node_schema in identified or node_schema.state == HashableModelState.ABSENT:
+        if (
+            node_schema in identified
+            or node_schema.state == HashableModelState.ABSENT
+            or node_schema.namespace in RESTRICTED_NAMESPACES
+        ):
             return identified
 
         identified.add(node_schema)
 
-        if node_schema.is_node_schema:
-            identified.update([self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from])
+        if isinstance(node_schema, NodeSchema):
+            identified.update(
+                [
+                    schema
+                    for schema in (self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from)
+                    if isinstance(schema, NodeSchema | GenericSchema) and schema.namespace not in RESTRICTED_NAMESPACES
+                ]
+            )
 
         for relationship in node_schema.relationships:
             if (
