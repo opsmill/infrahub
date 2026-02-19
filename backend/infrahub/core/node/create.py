@@ -14,6 +14,7 @@ from infrahub.core.constants import (
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
+from infrahub.core.node.creation_context import NodeCreationContext
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
@@ -294,31 +295,16 @@ async def create_node(
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
     obj: Node
+    creation_context = NodeCreationContext()
     async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
         if db.is_transaction:
             node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-            obj = await _do_create_node(
-                node_class=node_class,
-                node_constraint_runner=node_constraint_runner,
-                db=db,
-                schema=schema,
-                branch=branch,
-                fields_to_validate=fields_to_validate,
-                data=data,
-                at=at,
-                user_id=user_id,
-            )
-        else:
-            async with db.start_transaction() as dbt:
-                node_constraint_runner = await component_registry.get_component(
-                    NodeConstraintRunner, db=dbt, branch=branch
-                )
-
+            with creation_context:
                 obj = await _do_create_node(
                     node_class=node_class,
                     node_constraint_runner=node_constraint_runner,
-                    db=dbt,
+                    db=db,
                     schema=schema,
                     branch=branch,
                     fields_to_validate=fields_to_validate,
@@ -326,6 +312,26 @@ async def create_node(
                     at=at,
                     user_id=user_id,
                 )
+        else:
+            async with db.start_transaction() as dbt:
+                node_constraint_runner = await component_registry.get_component(
+                    NodeConstraintRunner, db=dbt, branch=branch
+                )
+
+                with creation_context:
+                    obj = await _do_create_node(
+                        node_class=node_class,
+                        node_constraint_runner=node_constraint_runner,
+                        db=dbt,
+                        schema=schema,
+                        branch=branch,
+                        fields_to_validate=fields_to_validate,
+                        data=data,
+                        at=at,
+                        user_id=user_id,
+                    )
+
+    obj.creation_context = creation_context
 
     if await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
