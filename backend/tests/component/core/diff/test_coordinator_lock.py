@@ -14,6 +14,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
@@ -21,11 +22,13 @@ from infrahub.dependencies.registry import get_component_registry
 
 class TestDiffCoordinatorLocks:
     @pytest.fixture(autouse=True)
-    async def _setup_core_schema(self, register_core_models_schema) -> None:
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
         return
 
     @pytest.fixture
-    async def branch_with_data(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Branch:
+    async def branch_with_data(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+    ) -> Branch:
         lock.initialize_lock(local_only=True)
         branch_1 = await create_branch(branch_name="branch_1", db=db)
         for _ in range(10):

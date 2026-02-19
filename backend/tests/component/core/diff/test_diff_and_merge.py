@@ -44,7 +44,7 @@ from .get_one_node import get_one_diff_node
 
 class TestDiffAndMerge:
     @pytest.fixture(autouse=True)
-    async def _setup_core_schema(self, register_core_models_schema) -> None:
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
         return
 
     @pytest.fixture

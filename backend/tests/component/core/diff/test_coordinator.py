@@ -19,6 +19,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.schema_branch.interface import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import SchemaNotFoundError
@@ -27,7 +28,7 @@ from infrahub.proposed_change.constants import ProposedChangeState
 
 class TestDiffCoordinator:
     @pytest.fixture(autouse=True)
-    async def _setup_core_schema(self, register_core_models_schema) -> None:
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
         return
 
     async def get_wrapped_diff_coordinator(
