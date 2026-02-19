@@ -12,7 +12,6 @@ test.describe("File Upload - InfraCircuitContract", () => {
   const TEST_FILE_NAME = "contract.pdf";
   const TEST_FILE_CONTENT = "Mock PDF contract content for E2E testing";
   const CONTRACT_UPLOAD = "CONTRACT-UPLOAD";
-  const CONTRACT_UPDATE = "CONTRACT-UPDATE";
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
