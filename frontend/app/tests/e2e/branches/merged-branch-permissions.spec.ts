@@ -23,7 +23,7 @@ test.describe("Merged branch - disabled actions", () => {
     await page.goto(`/branches/${BRANCH_NAME}`);
 
     await expect(page.getByRole("heading", { name: BRANCH_NAME })).toBeVisible();
-    await expect(page.getByText("Merged")).toBeVisible();
+    await expect(page.getByText("Merged", { exact: true })).toBeVisible();
   });
 
   test("should disable create and row actions on the object list view", async ({ page }) => {
