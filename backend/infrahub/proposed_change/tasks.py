@@ -427,6 +427,38 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
     candidate_schema = dest_schema.duplicate()
     candidate_schema.update(schema=source_schema)
+
+    try:
+        candidate_schema.duplicate().process()
+    except ValueError as exc:
+        error_msg = str(exc)
+        parts = error_msg.split(":", 1)
+        kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
+        schema_path = f"schema/{kind}"
+        database = await get_database()
+        async with database.start_transaction() as db:
+            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+                db=db,
+                validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+                validator_label="Schema Integrity",
+                check_schema_kind=InfrahubKind.SCHEMACHECK,
+            )
+            await object_conflict_validator_recorder.record_conflicts(
+                proposed_change_id=model.proposed_change,
+                conflicts=[
+                    SchemaConflict(
+                        name=schema_path,
+                        type="schema.process.validation",
+                        kind=kind,
+                        id=schema_path,
+                        path=schema_path,
+                        value=error_msg,
+                        branch=model.source_branch,
+                    )
+                ],
+            )
+        return
+
     schema_diff = dest_schema.diff(other=candidate_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
