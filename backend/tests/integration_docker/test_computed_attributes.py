@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 import yaml
+from dulwich.objects import Commit
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
@@ -136,6 +137,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         repo = GitRepo(name="computed_attribute", src_directory=src_directory, dst_directory=remote_repos_dir)
         commit = repo._repo.git[repo._repo.git.head()]
         assert len(list(repo._repo.git.get_walker())) == 1
+        assert isinstance(commit, Commit)
         assert commit.message.decode("utf-8") == "First commit"
 
         response = await repo.add_to_infrahub(client=client)
