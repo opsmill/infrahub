@@ -6,6 +6,7 @@ import { createBranchAPI, deleteBranchAPI, mergeBranchAPI } from "../utils/graph
 
 test.describe("Merged branch - disabled actions", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.slow();
 
   const BRANCH_NAME = generateRandomBranchName("merged-branch");
   const TOOLTIP_MESSAGE = "Cannot edit objects on a merged branch";
