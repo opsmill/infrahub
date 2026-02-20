@@ -285,7 +285,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                     -[source_r_rel_1:IS_RELATED]
                     -(r:Relationship {name: rel_name})
                     -[source_r_rel_2:IS_RELATED]
-                    -(rel_peer)
+                    -(rel_peer:Node)
                 WHERE source_r_rel_1.branch IN [$source_branch, $target_branch]
                 AND source_r_rel_2.branch IN [$source_branch, $target_branch]
                 AND source_r_rel_1.from <= $at AND source_r_rel_1.to IS NULL
@@ -315,7 +315,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                     -[target_r_rel_1:IS_RELATED {branch: $target_branch, status: "active"}]
                     -(r:Relationship {name: rel_name})
                     -[target_r_rel_2:IS_RELATED {branch: $target_branch, status: "active"}]
-                    -(rel_peer)
+                    -(rel_peer:Node)
                 WHERE related_rel_status = "deleted"
                 AND target_r_rel_1.from <= $at AND target_r_rel_1.to IS NULL
                 AND target_r_rel_2.from <= $at AND target_r_rel_2.to IS NULL
@@ -332,7 +332,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                     -[r_rel_1:IS_RELATED {branch: $target_branch, status: related_rel_status}]
                     -(:Relationship {name: rel_name})
                     -[r_rel_2:IS_RELATED {branch: $target_branch, status: related_rel_status}]
-                    -(rel_peer)
+                    -(rel_peer:Node)
                 WHERE r_rel_1.from <= $at
                 AND (r_rel_1.to >= $at OR r_rel_1.to IS NULL)
                 AND r_rel_2.from <= $at
