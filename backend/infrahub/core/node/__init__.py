@@ -105,7 +105,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
-        self._active_user_id: str = SYSTEM_USER_ID
         self._creation_context: NodeCreationContext | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
@@ -765,7 +764,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self
 
-    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+    async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
         extra_filters: dict[str, set[str]] = {}
 
         if not self._existing:
@@ -793,7 +792,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if name in extra_filters:
                 query_filter.extend(list(extra_filters[name]))
 
-            await relm.resolve(db=db, fields=query_filter)
+            await relm.resolve(db=db, fields=query_filter, user_id=user_id)
 
     async def load(
         self,
@@ -943,7 +942,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields: list[str] | None = None,
     ) -> Self:
         """Create or Update the Node in the database."""
-        self._active_user_id = user_id
         save_at = Timestamp(at)
 
         if self._existing:

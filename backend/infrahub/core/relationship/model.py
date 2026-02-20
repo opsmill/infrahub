@@ -519,7 +519,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         )
         await delete_query.execute(db=db)
 
-    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> None:
+    async def resolve(
+        self,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+        fields: list[str] | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         """Resolve the peer of the relationship."""
 
         fields = fields or []
@@ -574,7 +580,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            user_id = self._node._active_user_id if self._node else SYSTEM_USER_ID
             assigned_peer: Node = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=self.branch, at=at, user_id=user_id, **data_from_pool
             )
@@ -1281,9 +1286,11 @@ class RelationshipManager:
 
         return True
 
-    async def resolve(self, db: InfrahubDatabase, fields: list[str] | None = None) -> None:
+    async def resolve(
+        self, db: InfrahubDatabase, fields: list[str] | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
         for rel in self._relationships:
-            await rel.resolve(db=db, fields=fields)
+            await rel.resolve(db=db, fields=fields, user_id=user_id)
 
     async def remove_locally(
         self,
@@ -1341,7 +1348,7 @@ class RelationshipManager:
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
 
-        await self.resolve(db=db)
+        await self.resolve(db=db, user_id=user_id)
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)
