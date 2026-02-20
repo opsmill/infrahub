@@ -28,6 +28,7 @@ test.describe("Merged branch - disabled actions", () => {
 
   test("should disable create and row actions on the object list view", async ({ page }) => {
     await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+    await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
 
     await test.step("create button is disabled with tooltip", async () => {
       await expect(page.getByTestId("create-object-button")).toBeDisabled();
@@ -44,9 +45,11 @@ test.describe("Merged branch - disabled actions", () => {
 
   test("should disable edit button on the object details view", async ({ page }) => {
     await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+    await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
     await page.getByRole("link", { name: "blue" }).click();
 
     await test.step("edit button is disabled with tooltip", async () => {
+      await expect(page.getByTestId("edit-button")).toBeVisible();
       await expect(page.getByTestId("edit-button")).toBeDisabled();
       await page.getByTestId("edit-button").hover({ force: true });
       await expect(page.getByText(TOOLTIP_MESSAGE)).toBeVisible();
@@ -67,10 +70,13 @@ test.describe("Merged branch - disabled actions", () => {
 
   test("should disable add relationship button on the relationship view", async ({ page }) => {
     await page.goto(`/objects/InfraPlatform?branch=${BRANCH_NAME}`);
+    await expect(page.getByRole("link", { name: "Cisco IOS", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Devices 10" })).toBeVisible();
     await page.getByRole("link", { name: "Devices 10" }).click();
 
     await test.step("add relationship button is disabled with tooltip", async () => {
+      await expect(page.getByTestId("open-relationship-form-button")).toBeVisible();
       await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
       await page.getByTestId("open-relationship-form-button").hover({ force: true });
       await expect(page.getByText(TOOLTIP_MESSAGE)).toBeVisible();
