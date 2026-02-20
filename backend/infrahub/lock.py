@@ -274,7 +274,7 @@ class InfrahubLockRegistry:
         service: InfrahubServices | None = None,
         name_generator: LockNameGenerator | None = None,
     ) -> None:
-        if config.SETTINGS.cache.enable and not local_only:
+        if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 credential_provider: UsernamePasswordCredentialProvider | None = None
                 if config.SETTINGS.cache.username and config.SETTINGS.cache.password:

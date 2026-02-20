@@ -8,7 +8,7 @@ from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
@@ -186,7 +186,12 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        if config.SETTINGS.broker.enable and graphql_context.background and obj.node_changelog.has_changes:
+        if (
+            graphql_context.background
+            and graphql_context.account_session
+            and graphql_context.service
+            and obj.node_changelog.has_changes
+        ):
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 

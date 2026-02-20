@@ -243,7 +243,6 @@ async def test_update_all_attributes(
     db: InfrahubDatabase,
     default_branch: Branch,
     all_attribute_types_schema: NodeSchema,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
@@ -446,7 +445,6 @@ async def test_update_single_relationship(
     person_jim_main: Node,
     car_accord_main: Node,
     branch: Branch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     query = """
