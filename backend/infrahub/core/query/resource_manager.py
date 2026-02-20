@@ -63,16 +63,6 @@ class NumberPoolAllocatedResult:
     identifier: str
     """Identifier used for the reservation."""
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NumberPoolAllocatedResult:
-        """Convert raw QueryResult to typed dataclass."""
-        return cls(
-            id=result.get_as_type("id", str),
-            branch=result.get_as_type("branch", str),
-            value=result.get_as_type("value", int),
-            identifier=result.get_as_type("identifier", str),
-        )
-
 
 @dataclass(frozen=True)
 class NumberPoolFreeData:
@@ -242,7 +232,15 @@ class NumberPoolGetAllocated(Query):
         Returns:
             List of NumberPoolAllocatedResult containing allocated number info.
         """
-        return [NumberPoolAllocatedResult.from_db(result) for result in self.get_results()]
+        return [
+            NumberPoolAllocatedResult(
+                id=result.get_as_type("id", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+                identifier=result.get_as_type("identifier", str),
+            )
+            for result in self.get_results()
+        ]
 
 
 class NumberPoolGetReserved(Query):
