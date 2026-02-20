@@ -61,7 +61,9 @@ from .m056_update_schema_node_generic_constraints import Migration056
 from .m057_set_coreproposedchange_created_by_on_node import Migration057
 from .m058_link_proposed_changes_to_diff_roots import Migration058
 from .m059_recompute_permission_display_labels import Migration059
-from .m060_set_comment_thread_created_by_on_node import Migration060
+from .m060_template_number_pool_cleanup import Migration060
+from .m061_template_ip_pool_relationship_cleanup import Migration061
+from .m062_set_comment_thread_created_by_on_node import Migration062
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -128,6 +130,8 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration058,
     Migration059,
     Migration060,
+    Migration061,
+    Migration062,
 ]
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import io
+import mimetypes
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -64,21 +65,49 @@ class FileUploadProcessor:
         return f"{value:.1f} PB"
 
     @staticmethod
-    def _detect_mime_type(content: bytes) -> str:
-        """Detect the MIME type of a file using magic bytes.
+    def _looks_like_text(content: bytes) -> bool:
+        """Heuristic to determine if file content looks like text.
+
+        https://github.com/file/file/blob/f2a6e7cb7db9b5fd86100403df6b2f830c7f22ba/src/encoding.c#L151-L228
+
+        Args:
+            content: The initial bytes of the file content.
+
+        Returns:
+            True if the content looks like text, False otherwise.
+        """
+        if b"\x00" in content:
+            return False
+
+        textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+        return not content.translate(None, textchars)
+
+    @staticmethod
+    def _detect_mime_type(content: bytes, filename: str | None = None) -> str:
+        """Detect the MIME type of a file using magic bytes and optional filename.
+
+        Passes the filename to puremagic so it can use the extension to improve detection
+        of text-based formats (YAML, TOML, etc.) that lack distinctive magic bytes.
 
         Falls back to `application/octet-stream` if the type cannot be determined.
 
         Args:
             content: The file content (or first few KB) as bytes.
+            filename: Optional original filename used to refine detection.
 
         Returns:
             The detected MIME type string.
         """
         with contextlib.suppress(puremagic.PureError):
-            results = puremagic.magic_string(content)
+            results = puremagic.magic_string(content, filename=filename)
             if results:
                 return results[0].mime_type
+
+        if filename and FileUploadProcessor._looks_like_text(content=content):
+            # puremagic does not recognize some text-based format such as CSV
+            guessed_type, _ = mimetypes.guess_type(filename)
+            if guessed_type:
+                return guessed_type
 
         return "application/octet-stream"
 
@@ -143,9 +172,9 @@ class FileUploadProcessor:
             )
 
         magic_bytes = await self.file.read(2048)
-        file_type = self._detect_mime_type(content=magic_bytes)
-        checksum = await self._compute_checksum()
         file_name = self.file.filename or ""
+        file_type = self._detect_mime_type(content=magic_bytes, filename=file_name or None)
+        checksum = await self._compute_checksum()
 
         self._metadata = FileMetadata(file_name=file_name, checksum=checksum, file_size=file_size, file_type=file_type)
 

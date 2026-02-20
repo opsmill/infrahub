@@ -11,6 +11,7 @@ import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/domai
 import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/domain/get-next-ip-prefix-available.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/domain/allocate-resource.mutation";
 import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -76,7 +77,16 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         nextIpValue
           ? {
               ...props.currentObject,
-              [ipFieldName]: { value: nextIpValue },
+              [ipFieldName]: {
+                value: nextIpValue,
+                is_default: false,
+                is_from_profile: false,
+                is_protected: false,
+                is_visible: true,
+                owner: null,
+                source: null,
+                updated_at: new Date().toISOString(),
+              } satisfies NodeAttributeWithMetadata,
             }
           : props.currentObject
       }

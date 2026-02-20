@@ -31,8 +31,13 @@ export type PdfContentType = "application/pdf";
 
 /**
  * All supported content types for DataViewer.
+ * Includes well-known types plus any arbitrary MIME type string.
  */
-export type DataViewerContentType = TextContentType | ImageContentType | PdfContentType;
+export type DataViewerContentType =
+  | TextContentType
+  | ImageContentType
+  | PdfContentType
+  | (string & {});
 
 export function getExtensionFromContentType(contentType?: string): string {
   switch (contentType) {

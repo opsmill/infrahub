@@ -148,7 +148,10 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.getByText("Ip Addresses0").click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByTestId("select-open-pool-option-button").click();
-      await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();
+      await page.getByRole("option", { name: "Loopbacks pool" }).click();
+      await expect(page.getByTestId("source-pool-badge")).toContainText("Loopbacks pool");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Association with IpamIPAddress added")).toBeVisible();
     });
   });
 

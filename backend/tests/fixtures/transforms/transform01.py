@@ -5,7 +5,7 @@ class Transform01(InfrahubTransform):
     query = "my_query"
     url = "transform01"
 
-    def transform(self, data: dict):
+    def transform(self, data: dict) -> dict:
         return {str(key).upper(): value for key, value in data.items()}
 
 

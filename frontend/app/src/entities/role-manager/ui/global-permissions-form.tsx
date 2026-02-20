@@ -44,7 +44,7 @@ export const GlobalPermissionForm = ({
   const createObject = useCreateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
-    relationshipData: currentObject?.roles?.value,
+    objectData: { roles: currentObject?.roles?.value },
     relationshipName: "roles",
   });
 

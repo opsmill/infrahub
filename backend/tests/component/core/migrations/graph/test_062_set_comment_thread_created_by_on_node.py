@@ -1,10 +1,10 @@
-from infrahub.core.migrations.graph.m060_set_comment_thread_created_by_on_node import Migration060
+from infrahub.core.migrations.graph.m062_set_comment_thread_created_by_on_node import Migration062
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_060(db: InfrahubDatabase, default_branch) -> None:
+async def test_migration_062(db: InfrahubDatabase, default_branch) -> None:
     account1_uuid = "account-uuid-1"
     account2_uuid = "account-uuid-2"
     comment1_uuid = "comment-uuid-1"
@@ -46,7 +46,7 @@ async def test_migration_060(db: InfrahubDatabase, default_branch) -> None:
         },
     )
 
-    migration = Migration060()
+    migration = Migration062()
     await migration.execute(MigrationInput(db=db))
     result = await migration.validate_migration(db=db)
     assert result.success

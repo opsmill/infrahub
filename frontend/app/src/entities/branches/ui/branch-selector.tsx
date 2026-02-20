@@ -20,6 +20,7 @@ import { QSP } from "@/shared/config/qsp";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
+import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 
@@ -44,12 +45,15 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-50 rounded-lg border-neutral-200 p-0 shadow-none"
+          className="h-8 w-60 rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
         >
-          <div className="inline-flex h-full grow items-center gap-1.5 truncate border-gray-200 border-r px-3">
-            <Icon icon="mdi:source-branch" />
-            <span className="truncate">{currentBranch.name}</span>
+          <div className="inline-flex h-full grow items-center justify-between gap-1.5 border-gray-200 border-r px-3">
+            <div className="inline-flex min-w-0 items-center gap-1.5">
+              <Icon icon="mdi:source-branch" className="shrink-0" />
+              <span className="truncate">{currentBranch.name}</span>
+            </div>
+            <BranchStatusBadge status={currentBranch.status} className="shrink-0" />
           </div>
 
           <Icon icon="mdi:chevron-down" className="px-3 text-2xl" />
@@ -169,6 +173,7 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
           {branch.sync_with_git && (
             <Icon icon="mdi:source-branch-sync" className="text-gray-400 text-sm" />
           )}
+          <BranchStatusBadge status={branch.status} />
         </div>
       </div>
     </ComboboxItem>

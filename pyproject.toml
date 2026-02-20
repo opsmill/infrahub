@@ -175,6 +175,10 @@ module = "infrahub.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
+module = "infrahub_sdk.*"
+follow_imports = "skip" # Added to ignore typing issues from the SDK when introducing a py.typed file
+
+[[tool.mypy.overrides]]
 module = "tests.conftest"
 disallow_untyped_defs = false
 
@@ -738,7 +742,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN201",   # Missing return type annotation for public function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "N806",     # Variable in function should be lowercase
     "PGH003",   # Use specific rule codes when ignoring type issues
@@ -924,7 +927,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN001",   # Missing type annotation for function argument
     "ANN002",   # Missing type annotation for `*args`
     "ANN003",   # Missing type annotation for `**kwargs`
     "ANN201",   # Missing return type annotation for public function
@@ -975,6 +977,74 @@ allow-dunder-method-names = [
     "UP031",    # Use format specifiers instead of percent format
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
+
+##################################################################################################
+# ANN001 (Missing type annotation for function argument) granular ignores for                    #
+# backend/tests/component/. Split from the broad section above to allow incremental fixes.       #
+# Remove each entry below once all ANN001 violations in that path have been resolved.            #
+##################################################################################################
+"backend/tests/component/conftest.py" = ["ANN001"]                             # 96 violations
+"backend/tests/component/test_database.py" = ["ANN001"]                        # 1 violation
+"backend/tests/component/api/**.py" = ["ANN001"]                               # 271 violations
+"backend/tests/component/cli/**.py" = ["ANN001"]                               # 8 violations
+"backend/tests/component/computed_attribute/**.py" = ["ANN001"]                # 9 violations
+"backend/tests/component/core/changelog/**.py" = ["ANN001"]                    # 16 violations
+"backend/tests/component/core/constraint_validators/**.py" = ["ANN001"]        # 321 violations
+"backend/tests/component/core/convert_object_type/**.py" = ["ANN001"]          # 15 violations
+"backend/tests/component/core/diff/**.py" = ["ANN001"]                         # 238 violations
+"backend/tests/component/core/graph/**.py" = ["ANN001"]                        # 2 violations
+"backend/tests/component/core/hierarchy/**.py" = ["ANN001"]                    # 3 violations
+"backend/tests/component/core/ipam/**.py" = ["ANN001"]                         # 42 violations
+"backend/tests/component/core/migrations/**.py" = ["ANN001"]                   # 175 violations
+"backend/tests/component/core/node/**.py" = ["ANN001"]                         # 4 violations
+"backend/tests/component/core/profiles/**.py" = ["ANN001"]                     # 2 violations
+"backend/tests/component/core/resource_manager/**.py" = ["ANN001"]             # 12 violations
+"backend/tests/component/core/schema/**.py" = ["ANN001"]                       # 8 violations
+"backend/tests/component/core/schema_manager/**.py" = ["ANN001"]               # 113 violations
+"backend/tests/component/core/test_node_get_list_query.py" = ["ANN001"]        # 96 violations
+"backend/tests/component/core/test_relationship_query.py" = ["ANN001"]        # 59 violations
+"backend/tests/component/core/test_node.py" = ["ANN001"]                      # 53 violations
+"backend/tests/component/core/test_node_manager_delete.py" = ["ANN001"]       # 52 violations
+"backend/tests/component/core/test_manager_node.py" = ["ANN001"]              # 43 violations
+"backend/tests/component/core/test_node_query.py" = ["ANN001"]                # 31 violations
+"backend/tests/component/core/test_branch_diff.py" = ["ANN001"]               # 26 violations
+"backend/tests/component/core/test_get_kinds_lock.py" = ["ANN001"]            # 25 violations
+"backend/tests/component/core/test_branch.py" = ["ANN001"]                    # 15 violations
+"backend/tests/component/core/test_branch_rebase.py" = ["ANN001"]             # 11 violations
+"backend/tests/component/core/test_branch_merge.py" = ["ANN001"]              # 10 violations
+"backend/tests/component/core/test_account.py" = ["ANN001"]                   # 10 violations
+"backend/tests/component/core/test_query.py" = ["ANN001"]                     # 8 violations
+"backend/tests/component/core/test_attribute.py" = ["ANN001"]                 # 7 violations
+"backend/tests/component/core/test_schema_parse_schema_path.py" = ["ANN001"]  # 6 violations
+"backend/tests/component/core/test_schema.py" = ["ANN001"]                    # 6 violations
+"backend/tests/component/core/test_node_standard.py" = ["ANN001"]             # 6 violations
+"backend/tests/component/core/test_query_subquery.py" = ["ANN001"]            # 4 violations
+"backend/tests/component/core/test_relationship.py" = ["ANN001"]              # 3 violations
+"backend/tests/component/core/test_node_get_list_by_attribute_value_query.py" = ["ANN001"] # 3 violations
+"backend/tests/component/core/test_utils.py" = ["ANN001"]                     # 2 violations
+"backend/tests/component/core/test_query_utils.py" = ["ANN001"]               # 2 violations
+"backend/tests/component/core/test_core_utils.py" = ["ANN001"]                # 2 violations
+"backend/tests/component/core/test_initialization.py" = ["ANN001"]            # 1 violation
+"backend/tests/component/git/**.py" = ["ANN001"]                               # 81 violations
+"backend/tests/component/git_credential/**.py" = ["ANN001"]                    # 9 violations
+"backend/tests/component/graphql/auth/**.py" = ["ANN001"]                      # 4 violations
+"backend/tests/component/graphql/diff/**.py" = ["ANN001"]                      # 23 violations
+"backend/tests/component/graphql/loaders/**.py" = ["ANN001"]                   # 6 violations
+"backend/tests/component/graphql/mutations/**.py" = ["ANN001"]                 # 91 violations
+"backend/tests/component/graphql/profiles/**.py" = ["ANN001"]                  # 11 violations
+"backend/tests/component/graphql/queries/**.py" = ["ANN001"]                   # 94 violations
+"backend/tests/component/graphql/resolvers/**.py" = ["ANN001"]                 # 2 violations
+"backend/tests/component/graphql/*.py" = ["ANN001"]                            # 176 violations
+"backend/tests/component/locks/**.py" = ["ANN001"]                             # 1 violation
+"backend/tests/component/menu/**.py" = ["ANN001"]                              # 3 violations
+"backend/tests/component/message_bus/**.py" = ["ANN001"]                       # 15 violations
+"backend/tests/component/patch/**.py" = ["ANN001"]                             # 1 violation
+"backend/tests/component/profiles/**.py" = ["ANN001"]                          # 13 violations
+"backend/tests/component/services/**.py" = ["ANN001"]                          # 2 violations
+"backend/tests/component/storage/**.py" = ["ANN001"]                           # 5 violations
+"backend/tests/component/task_manager/**.py" = ["ANN001"]                      # 8 violations
+"backend/tests/component/telemetry/**.py" = ["ANN001"]                         # 1 violation
+"backend/tests/component/trigger/**.py" = ["ANN001"]                           # 3 violations
 
 "backend/tests/query_benchmark/**.py" = [
     ##################################################################################################
