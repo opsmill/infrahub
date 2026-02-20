@@ -1012,6 +1012,32 @@ class IPPrefixReconcileQuery(Query):
         self.namespace_id = _get_namespace_id(namespace)
         super().__init__(**kwargs)
 
+    def _build_possible_parent_prefixes(
+        self, is_address: bool, prefixlen: int, prefix_bin: str, prefix_bin_host: str
+    ) -> None:
+        """Build the list of possible parent prefix candidates for the parent-finding query."""
+        possible_prefix_map: dict[str, int] = {}
+        if is_address:
+            # For addresses, use the full host binary to find parent prefixes at any
+            # prefix length, regardless of the address's own mask (#7267).
+            # Cap at max_prefixlen - 1 so that host-route prefixes (/32 IPv4, /128 IPv6)
+            # are not considered as parents for addresses with a less specific mask.
+            parent_search_binary = prefix_bin
+            max_parent_prefixlen = self.ip_value.max_prefixlen - 1
+            start_prefixlen = max(prefixlen, max_parent_prefixlen)
+        else:
+            parent_search_binary = prefix_bin_host
+            start_prefixlen = prefixlen - 1
+        for max_prefix_len in range(start_prefixlen, -1, -1):
+            tmp_prefix = parent_search_binary[:max_prefix_len]
+            possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
+            if possible_prefix not in possible_prefix_map:
+                possible_prefix_map[possible_prefix] = max_prefix_len
+        self.params["possible_prefix_and_length_list"] = [
+            [prefix, length] for prefix, length in possible_prefix_map.items()
+        ]
+        self.params["possible_prefix_list"] = list(possible_prefix_map.keys())
+
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -1035,19 +1061,10 @@ class IPPrefixReconcileQuery(Query):
         self.params["prefix_binary_full"] = prefix_bin
         self.params["prefix_binary_host"] = prefix_bin_host
         self.params["ip_version"] = self.ip_value.version
-        # possible prefix: highest possible prefix length for a match
-        possible_prefix_map: dict[str, int] = {}
-        start_prefixlen = prefixlen if is_address else prefixlen - 1
-        for max_prefix_len in range(start_prefixlen, -1, -1):
-            tmp_prefix = prefix_bin_host[:max_prefix_len]
-            possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
-            if possible_prefix not in possible_prefix_map:
-                possible_prefix_map[possible_prefix] = max_prefix_len
-        self.params["possible_prefix_and_length_list"] = []
-        self.params["possible_prefix_list"] = []
-        for possible_prefix, max_length in possible_prefix_map.items():
-            self.params["possible_prefix_and_length_list"].append([possible_prefix, max_length])
-            self.params["possible_prefix_list"].append(possible_prefix)
+        self.params["max_prefixlen"] = self.ip_value.max_prefixlen
+        self._build_possible_parent_prefixes(
+            is_address=is_address, prefixlen=prefixlen, prefix_bin=prefix_bin, prefix_bin_host=prefix_bin_host
+        )
 
         namespace_query = """
         // ------------------
@@ -1283,7 +1300,7 @@ class IPPrefixReconcileQuery(Query):
             AND (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
             AND (
                 ($ip_prefix_kind IN labels(maybe_new_child) AND av.prefixlen > $prefixlen)
-                OR ($ip_address_kind IN labels(maybe_new_child) AND av.prefixlen >= $prefixlen)
+                OR ($ip_address_kind IN labels(maybe_new_child) AND ($prefixlen < $max_prefixlen OR av.prefixlen >= $prefixlen))
             )
             AND av.version = $ip_version
             AND av.binary_address STARTS WITH $prefix_binary_host
@@ -1323,7 +1340,7 @@ class IPPrefixReconcileQuery(Query):
             WITH av, is_active, (
                 (
                     ($ip_prefix_kind IN labels(maybe_new_child) AND av.prefixlen > $prefixlen)
-                    OR ($ip_address_kind IN labels(maybe_new_child) AND av.prefixlen >= $prefixlen)
+                    OR ($ip_address_kind IN labels(maybe_new_child) AND ($prefixlen < $max_prefixlen OR av.prefixlen >= $prefixlen))
                 )
                 AND av.version = $ip_version
                 AND av.binary_address STARTS WITH $prefix_binary_host
@@ -1356,7 +1373,7 @@ class IPPrefixReconcileQuery(Query):
                     WHEN potential_parent[0] = ips[ind][0] THEN has_more_specific_parent  // skip comparison to self
                     WHEN $ip_address_kind in labels(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
                     WHEN $ip_prefix_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
-                    WHEN $ip_address_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
+                    WHEN $ip_address_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen >= $max_prefixlen AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // host-route prefix (/32 or /128) cannot parent addresses with less specific mask
                     WHEN (ips[ind][1]).binary_address STARTS WITH SUBSTRING((potential_parent[1]).binary_address, 0, (potential_parent[1]).prefixlen) THEN TRUE  // we found a parent
                     ELSE has_more_specific_parent
                 END
