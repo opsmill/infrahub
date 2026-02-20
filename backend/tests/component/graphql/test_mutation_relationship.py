@@ -551,12 +551,7 @@ async def test_relationship_groups_remove(
     db: InfrahubDatabase,
     default_permission_backend: None,
     default_branch: Branch,
-<<<<<<< HEAD
     car_person_generics_data: dict[str, Node],
-    enable_broker_config: None,
-=======
-    car_person_generics_data,
->>>>>>> stable
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:

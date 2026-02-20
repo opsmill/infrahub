@@ -241,14 +241,8 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
 
 async def test_update_all_attributes(
     db: InfrahubDatabase,
-<<<<<<< HEAD
     default_branch: Branch,
     all_attribute_types_schema: NodeSchema,
-    enable_broker_config: None,
-=======
-    default_branch,
-    all_attribute_types_schema,
->>>>>>> stable
     session_first_account: AccountSession,
 ) -> None:
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")

@@ -8,13 +8,8 @@ from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
-<<<<<<< HEAD
-from infrahub import config, lock
-from infrahub.core.constants import InfrahubKind, MutationAction
-=======
 from infrahub import lock
-from infrahub.core.constants import MutationAction
->>>>>>> stable
+from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager

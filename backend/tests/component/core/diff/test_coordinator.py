@@ -7,11 +7,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-<<<<<<< HEAD
-from infrahub.core.constants import DiffAction, InfrahubKind
-=======
-from infrahub.core.constants import DiffAction, RelationshipCardinality
->>>>>>> stable
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
@@ -22,11 +18,8 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-<<<<<<< HEAD
-from infrahub.core.schema.schema_branch import SchemaBranch
-=======
 from infrahub.core.schema import SchemaRoot
->>>>>>> stable
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -425,7 +418,6 @@ class TestDiffCoordinator:
         john_diff = nodes_by_id[person_john_main.id]
         assert john_diff.action is DiffAction.REMOVED
 
-<<<<<<< HEAD
     async def test_proposed_change_linked_during_update_branch_diff(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
     ) -> None:
@@ -552,21 +544,10 @@ class TestDiffCoordinator:
         person_john_branch.height.value += 1
         await person_john_branch.save(db=db)
 
-=======
-    async def test_parent_reassigned_then_deleted(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        hierarchical_location_schema_simple: SchemaRoot,
-    ) -> None:
-        """Test reassigning a child to a new parent and deleting the old parent"""
-        branch = await create_branch(db=db, branch_name="branch_parent_reassign")
->>>>>>> stable
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
 
-<<<<<<< HEAD
         # Update branch diff WITHOUT providing proposed_change_id
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
@@ -616,7 +597,19 @@ class TestDiffCoordinator:
 
         # The diff should NOT be linked to any of the non-open proposed changes
         assert diff_metadata.proposed_change_id is None
-=======
+
+    async def test_parent_reassigned_then_deleted(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        hierarchical_location_schema_simple: SchemaRoot,
+    ) -> None:
+        """Test reassigning a child to a new parent and deleting the old parent"""
+        branch = await create_branch(db=db, branch_name="branch_parent_reassign")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
         # Create region R1 and site S with parent=R1
         region1 = await Node.init(db=db, branch=branch, schema="LocationRegion")
         await region1.new(db=db, name="test-region-1")
@@ -672,4 +665,3 @@ class TestDiffCoordinator:
         r2_node = nodes_by_id[region2.id]
         assert r2_node.kind == "LocationRegion"
         assert r2_node.action is DiffAction.ADDED
->>>>>>> stable
