@@ -22,6 +22,7 @@ class NodeCreationContext:
     """
 
     side_effect_nodes: list[Node] = field(default_factory=list)
+    _token: contextvars.Token[NodeCreationContext | None] | None = None
 
     def record(self, node: Node) -> None:
         self.side_effect_nodes.append(node)
@@ -41,4 +42,5 @@ class NodeCreationContext:
         return self
 
     def __exit__(self, *args: object) -> None:
-        _creation_context.reset(self._token)
+        if self._token is not None:
+            _creation_context.reset(self._token)

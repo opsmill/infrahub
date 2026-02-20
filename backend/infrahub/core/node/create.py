@@ -244,6 +244,7 @@ async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) 
 async def _do_create_node(
     node_class: type[Node],
     node_constraint_runner: NodeConstraintRunner,
+    creation_context: NodeCreationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
     branch: Branch,
@@ -252,22 +253,25 @@ async def _do_create_node(
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
-    obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await obj.new(db=db, **data)
-    await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-    await obj.save(db=db, at=at, user_id=user_id)
+    with creation_context:
+        obj = await node_class.init(db=db, schema=schema, branch=branch)
+        await obj.new(db=db, **data)
+        await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+        await obj.save(db=db, at=at, user_id=user_id)
 
-    object_template = await obj.get_object_template(db=db)
-    if object_template:
-        await handle_template_relationships(
-            db=db,
-            branch=branch,
-            template=object_template,
-            obj=obj,
-            fields=fields_to_validate,
-            at=at,
-            user_id=user_id,
-        )
+        object_template = await obj.get_object_template(db=db)
+        if object_template:
+            await handle_template_relationships(
+                db=db,
+                branch=branch,
+                template=object_template,
+                obj=obj,
+                fields=fields_to_validate,
+                at=at,
+                user_id=user_id,
+            )
+
+    obj._creation_context = creation_context
     return obj
 
 
@@ -302,11 +306,29 @@ async def create_node(
         if db.is_transaction:
             node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-            with creation_context:
+            obj = await _do_create_node(
+                node_class=node_class,
+                node_constraint_runner=node_constraint_runner,
+                creation_context=creation_context,
+                db=db,
+                schema=schema,
+                branch=branch,
+                fields_to_validate=fields_to_validate,
+                data=data,
+                at=at,
+                user_id=user_id,
+            )
+        else:
+            async with db.start_transaction() as dbt:
+                node_constraint_runner = await component_registry.get_component(
+                    NodeConstraintRunner, db=dbt, branch=branch
+                )
+
                 obj = await _do_create_node(
                     node_class=node_class,
                     node_constraint_runner=node_constraint_runner,
-                    db=db,
+                    creation_context=creation_context,
+                    db=dbt,
                     schema=schema,
                     branch=branch,
                     fields_to_validate=fields_to_validate,
@@ -314,26 +336,6 @@ async def create_node(
                     at=at,
                     user_id=user_id,
                 )
-        else:
-            async with db.start_transaction() as dbt:
-                node_constraint_runner = await component_registry.get_component(
-                    NodeConstraintRunner, db=dbt, branch=branch
-                )
-
-                with creation_context:
-                    obj = await _do_create_node(
-                        node_class=node_class,
-                        node_constraint_runner=node_constraint_runner,
-                        db=dbt,
-                        schema=schema,
-                        branch=branch,
-                        fields_to_validate=fields_to_validate,
-                        data=data,
-                        at=at,
-                        user_id=user_id,
-                    )
-
-    obj._creation_context = creation_context
 
     if await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
