@@ -137,11 +137,8 @@ async def test_NumberPoolGetAllocated_returns_identifier(
     db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
 ) -> None:
     """Test that NumberPoolGetAllocated returns the identifier (node UUID) from the IS_RESERVED relationship."""
-    # Arrange
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
-
     incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
-
     pools: list[CoreNumberPool] = await registry.schema.query(
         db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch.name
     )
@@ -153,9 +150,7 @@ async def test_NumberPoolGetAllocated_returns_identifier(
     await query.execute(db=db)
     results = query.get_data()
 
-    # Assert
     assert len(results) == 3
-
     # Build a lookup by allocated value
     results_by_value = {r.value: r for r in results}
 
