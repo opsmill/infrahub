@@ -6,7 +6,7 @@ from cachetools import LRUCache
 from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
 
 from infrahub import lock
-from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions
+from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -387,9 +387,16 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
+        # profiles is a virtual relationship managed by SchemaBranch.process(), never persisted
         await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
         await obj.relationships.update(
-            db=db, data=[item.id for item in node.local_relationships if item.id and item.name != "profiles"], at=at
+            db=db,
+            data=[
+                item.id
+                for item in node.local_relationships
+                if item.id and item.name != PROFILES_RELATIONSHIP_NAME
+            ],
+            at=at,
         )
         await obj.save(db=db, at=at, user_id=user_id)
 
@@ -773,7 +780,7 @@ class SchemaManager(NodeManager):
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
-                if rel_name == "profiles":
+                if rel_name == PROFILES_RELATIONSHIP_NAME:
                     continue
                 node_data[rel_name] = []
 

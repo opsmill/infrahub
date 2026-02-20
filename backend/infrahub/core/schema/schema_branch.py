@@ -21,6 +21,7 @@ from infrahub.core.constants import (
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
+    PROFILES_RELATIONSHIP_NAME,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -75,7 +76,7 @@ log = get_logger()
 
 
 profiles_rel_settings: dict[str, Any] = {
-    "name": "profiles",
+    "name": PROFILES_RELATIONSHIP_NAME,
     "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     "peer": InfrahubKind.PROFILE,
     "kind": RelationshipKind.PROFILE,
@@ -2327,14 +2328,14 @@ class SchemaBranch:
                 continue
 
             # Add relationship between node and profile
-            if "profiles" not in node.relationship_names:
+            if PROFILES_RELATIONSHIP_NAME not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
                 node_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
-                rel_profiles = node.get_relationship(name="profiles")
+                rel_profiles = node.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         has_changes = True
@@ -2343,7 +2344,7 @@ class SchemaBranch:
                     continue
 
                 node_schema = self.get(name=node_name, duplicate=True)
-                rel_profiles = node_schema.get_relationship(name="profiles")
+                rel_profiles = node_schema.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         setattr(rel_profiles, name, value)
@@ -2533,7 +2534,7 @@ class SchemaBranch:
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
         if getattr(node, "generate_profile", False):
-            if "profiles" not in [r.name for r in template_schema.relationships]:
+            if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
                 settings = dict(profiles_rel_settings)
                 settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
                 template_schema.relationships.append(RelationshipSchema(**settings))
