@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, AllowOverrideType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import (
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    PROFILES_RELATIONSHIP_NAME,
+    AllowOverrideType,
+    InfrahubKind,
+    RelationshipKind,
+)
 
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema
@@ -124,7 +130,7 @@ class NodeSchema(GeneratedNodeSchema):
         for relationship in interface.relationships:
             if relationship.name in self.valid_local_names:
                 continue
-            if relationship.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME:
+            if relationship.name in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME):
                 continue
 
             new_relationship = relationship.duplicate()

@@ -41,11 +41,18 @@ if TYPE_CHECKING:
 
 
 class SchemaManager(NodeManager):
+    _virtual_relationship_names: set[str] = {PROFILES_RELATIONSHIP_NAME}
+
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
         self._branches: dict[str, SchemaBranch] = {}
         self._branch_hash_by_name: dict[str, str] = {}
         self._sdk_branches: LRUCache[str, SDKBranchSchema] = LRUCache(maxsize=10)
+
+    @classmethod
+    def _is_virtual_relationship(cls, name: str) -> bool:
+        """Virtual relationships exist only in-memory (added by SchemaBranch.process) and are never persisted."""
+        return name in cls._virtual_relationship_names
 
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
@@ -345,6 +352,9 @@ class SchemaManager(NodeManager):
                 new_node.attributes.append(new_attr)
 
             for item in node.relationships:
+                if self._is_virtual_relationship(item.name):
+                    new_node.relationships.append(item.duplicate())
+                    continue
                 if item.inherited is False:
                     new_rel = await self.create_relationship_in_db(
                         schema=relationship_schema, item=item, parent=obj, branch=branch, db=db, at=at, user_id=user_id
@@ -387,14 +397,11 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
-        # profiles is a virtual relationship managed by SchemaBranch.process(), never persisted
         await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
         await obj.relationships.update(
             db=db,
             data=[
-                item.id
-                for item in node.local_relationships
-                if item.id and item.name != PROFILES_RELATIONSHIP_NAME
+                item.id for item in node.local_relationships if item.id and not self._is_virtual_relationship(item.name)
             ],
             at=at,
         )
@@ -419,6 +426,8 @@ class SchemaManager(NodeManager):
                 new_node.attributes.append(new_attr)
 
         for item in node.local_relationships:
+            if self._is_virtual_relationship(item.name):
+                continue
             if item.id and item.id in items:
                 await self.update_relationship_in_db(item=item, rel=items[item.id], db=db, at=at, user_id=user_id)
             elif not item.id:
@@ -458,13 +467,56 @@ class SchemaManager(NodeManager):
             for key, value in schema_dict.items():
                 getattr(obj, key).value = value
 
-        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
-        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
-
         new_node = node.duplicate()
-
         diff_attributes = diff.changed.get("attributes")
         diff_relationships = diff.changed.get("relationships")
+
+        items = await self._resolve_diff_fields(
+            db=db, branch=branch, node=node, diff_attributes=diff_attributes, diff_relationships=diff_relationships
+        )
+
+        if diff_attributes:
+            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
+
+        if diff_relationships:
+            await obj.relationships.update(
+                db=db,
+                data=[
+                    item.id
+                    for item in node.local_relationships
+                    if item.id and not self._is_virtual_relationship(item.name)
+                ],
+                at=at,
+            )
+
+        await obj.save(db=db, at=at, user_id=user_id)
+
+        await self._apply_diff_field_changes(
+            db=db,
+            branch=branch,
+            node=node,
+            new_node=new_node,
+            obj=obj,
+            items=items,
+            diff_attributes=diff_attributes,
+            diff_relationships=diff_relationships,
+            at=at,
+            user_id=user_id,
+        )
+
+        # Save back the node with the (potentially) newly created IDs in the SchemaManager
+        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+        return new_node
+
+    async def _resolve_diff_fields(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        node: NodeSchema | GenericSchema,
+        diff_attributes: HashableModelDiff | None,
+        diff_relationships: HashableModelDiff | None,
+    ) -> dict[str, Node]:
+        """Fetch DB nodes for attributes and relationships referenced in the schema diff."""
         attrs_rels_to_update: set[str] = set()
         if diff_attributes:
             attrs_rels_to_update.update(set(diff_attributes.added.keys()))
@@ -484,6 +536,9 @@ class SchemaManager(NodeManager):
                 item_ids.add(field.id)
                 item_names.add(field.name)
         missing_field_names = list(attrs_rels_to_update - item_names)
+
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
         items: dict[str, Node] = {}
         if item_ids:
@@ -510,13 +565,24 @@ class SchemaManager(NodeManager):
             )
             items.update({field.id: field for field in missing_attrs + missing_rels})
 
-        if diff_attributes:
-            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
+        return items
 
-        if diff_relationships:
-            await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id], at=at)
-
-        await obj.save(db=db, at=at, user_id=user_id)
+    async def _apply_diff_field_changes(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        node: NodeSchema | GenericSchema,
+        new_node: NodeSchema | GenericSchema,
+        obj: Node,
+        items: dict[str, Node],
+        diff_attributes: HashableModelDiff | None,
+        diff_relationships: HashableModelDiff | None,
+        at: Timestamp,
+        user_id: str,
+    ) -> None:
+        """Create, update, or delete attribute and relationship DB nodes based on the schema diff."""
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
         if diff_attributes:
             for item in node.local_attributes:
@@ -540,6 +606,8 @@ class SchemaManager(NodeManager):
 
         if diff_relationships:
             for item in node.local_relationships:
+                if self._is_virtual_relationship(item.name):
+                    continue
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
                 if item.name in diff_relationships.added or (
                     item.name in diff_relationships.changed and item.id is None
@@ -566,15 +634,12 @@ class SchemaManager(NodeManager):
             field_names_to_remove.extend(list(attr_names_to_remove))
         if diff_relationships and diff_relationships.removed:
             rel_names_to_remove = set(diff_relationships.removed.keys()) - set(node.local_relationship_names)
+            rel_names_to_remove -= self._virtual_relationship_names
             field_names_to_remove.extend(list(rel_names_to_remove))
         if field_names_to_remove:
             for field_schema in items.values():
                 if field_schema.name.value in field_names_to_remove:
                     await field_schema.delete(db=db, at=at, user_id=user_id)
-
-        # Save back the node with the (potentially) newly created IDs in the SchemaManager
-        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
-        return new_node
 
     async def delete_node_in_db(
         self,
@@ -780,7 +845,7 @@ class SchemaManager(NodeManager):
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
-                if rel_name == PROFILES_RELATIONSHIP_NAME:
+                if cls._is_virtual_relationship(rel_name):
                     continue
                 node_data[rel_name] = []
 
