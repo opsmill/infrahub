@@ -447,6 +447,7 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
             -(rel:Relationship {name: attr_rel_prop_diff.relationship_id})
             -[r2:IS_RELATED]
             -(rel_peer:Node {uuid: attr_rel_prop_diff.peer_uuid})
+        USING INDEX n:Node(uuid)
         WHERE attr_rel_prop_diff.relationship_id IS NOT NULL
         AND (node_db_id IS NULL OR elementId(n) = node_db_id)
         AND (peer_db_id IS NULL OR elementId(rel_peer) = peer_db_id)
