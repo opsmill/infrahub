@@ -11,13 +11,11 @@ import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/ob
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import type {
-  NodeAttributeWithMetadata,
-  NodeObjectWithMetadata,
-  NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
+import type { NodeAttributeWithMetadata, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -73,11 +71,17 @@ export function ObjectDataDisplay({
         const objectKind = objectSchema.kind!;
 
         if ("peer" in field) {
+          const relationshipData = resolveRelationshipData({
+            relationshipName: fieldName,
+            objectSchema,
+            objectData,
+          });
+
           return (
             <ObjectRelationshipRow
               key={fieldName}
               relationshipSchema={field}
-              relationshipData={fieldData as NodeRelationshipWithMetadata}
+              relationshipData={relationshipData}
               objectKind={objectKind}
               permission={permission}
               onClickMetadata={onClickRelationshipMetadata}
@@ -131,10 +135,16 @@ export function ObjectDataDisplay({
   );
 }
 
+const FILE_OBJECT_HIDDEN_ATTRIBUTES = [
+  "file_name",
+  "file_size",
+  "file_type",
+  "storage_id",
+  "checksum",
+];
+
 function getAttributesVisibleInFileObject(attributes: AttributeSchema[]): AttributeSchema[] {
-  return attributes.filter(
-    (attr) => !["file_name", "file_size", "file_type", "storage_id", "checksum"].includes(attr.name)
-  );
+  return attributes.filter((attr) => !FILE_OBJECT_HIDDEN_ATTRIBUTES.includes(attr.name));
 }
 
 function getRelationshipsVisibleInDataDisplay(
@@ -144,6 +154,7 @@ function getRelationshipsVisibleInDataDisplay(
     (rel) =>
       isRelationshipVisibleInDetailedView(rel) &&
       rel.name !== "member_of_groups" &&
+      !isFromResourcePoolRelationship(rel.name) &&
       rel.kind !== "Profile"
   );
 }

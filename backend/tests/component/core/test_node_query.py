@@ -472,7 +472,7 @@ async def test_query_NodeListGetRelationshipsQuery_hierarchical(
 
 async def test_query_NodeListGetRelationshipsQuery_pagination_and_parallel_runtime(
     db: InfrahubDatabase, default_branch: Branch, person_tag_schema, query_limit_of_one, neo4j_runtime_parallel
-):
+) -> None:
     """
     Test all expected results are returned with pagination and parallel runtime
     """

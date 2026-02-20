@@ -21,7 +21,7 @@ class TestAnonymousAuthChecker:
 
     @pytest.mark.parametrize("is_authenticated,is_supported", [(True, False), (False, True)])
     async def test_supports_unauthenticated_accounts(
-        self, db: InfrahubDatabase, branch: Branch, is_authenticated, is_supported
+        self, db: InfrahubDatabase, branch: Branch, is_authenticated: bool, is_supported: bool
     ) -> None:
         self.account_session.authenticated = is_authenticated
 
@@ -31,7 +31,7 @@ class TestAnonymousAuthChecker:
 
     @pytest.mark.parametrize("anonymous_setting,query_has_mutations", [(False, False), (False, True), (True, True)])
     async def test_failures_raise_error(
-        self, db: InfrahubDatabase, branch: Branch, anonymous_setting, query_has_mutations
+        self, db: InfrahubDatabase, branch: Branch, anonymous_setting: bool, query_has_mutations: bool
     ) -> None:
         self.mock_anonymous_setting_get.return_value = anonymous_setting
         self.graphql_query.contains_mutation = query_has_mutations

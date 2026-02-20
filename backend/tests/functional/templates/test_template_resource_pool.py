@@ -562,6 +562,72 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         assert rack2.slot_id.value is not None
         assert rack1.slot_id.value != rack2.slot_id.value
 
+    async def test_template_can_swap_pool_to_static_value(
+        self, db: InfrahubDatabase, slot_pool: Node, client: InfrahubClient, device_schema: None
+    ) -> None:
+        """Swapping from pool to static value should set the value and clear the pool source."""
+        sdk_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=slot_pool.id)
+        template = await client.create(
+            kind="TemplateInfraRack", template_name="rack-pool-to-static", location="datacenter-1", slot_id=sdk_pool
+        )
+        await template.save()
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value is None
+        assert tmpl.slot_id.source_id == slot_pool.id
+
+        await client.execute_graphql(
+            query="""
+            mutation SwapPoolToStatic($id: String!, $slot_id: BigInt!) {
+                TemplateInfraRackUpdate(
+                    data: {
+                        id: $id
+                        slot_id: { value: $slot_id, from_pool: null }
+                    }
+                ) {
+                    ok
+                }
+            }
+            """,
+            variables={"id": template.id, "slot_id": 42},
+        )
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value == 42
+        assert tmpl.slot_id.source_id is None
+
+    async def test_template_can_swap_static_value_to_pool(
+        self, db: InfrahubDatabase, slot_pool: Node, client: InfrahubClient, device_schema: None
+    ) -> None:
+        """Swapping from static value to pool should clear the value and set pool as source."""
+        template = await Node.init(db=db, schema="TemplateInfraRack")
+        await template.new(db=db, template_name="rack-static-to-pool", location="datacenter-1", slot_id=75)
+        await template.save(db=db)
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value == 75
+        assert tmpl.slot_id.source_id is None
+
+        await client.execute_graphql(
+            query="""
+            mutation SwapStaticToPool($id: String!, $pool_id: String!) {
+                TemplateInfraRackUpdate(
+                    data: {
+                        id: $id
+                        slot_id: { from_pool: { id: $pool_id } }
+                    }
+                ) {
+                    ok
+                }
+            }
+            """,
+            variables={"id": template.id, "pool_id": slot_pool.id},
+        )
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value is None
+        assert tmpl.slot_id.source_id == slot_pool.id
+
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
     """End-to-end test for pool allocations in templates with nested component relationships.

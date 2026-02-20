@@ -22,6 +22,10 @@ export const getCreateMutationFromFormData = (
     }
 
     if (isFormFieldValueFromPool(fieldData)) {
+      const fromPoolField = field.pool?.fromPoolRelationshipName;
+      if (fromPoolField && "from_pool" in fieldData.value) {
+        return { ...acc, [fromPoolField]: { id: fieldData.value.from_pool.id } };
+      }
       return { ...acc, [field.name]: fieldData.value };
     }
 

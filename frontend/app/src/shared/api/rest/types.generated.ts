@@ -670,12 +670,6 @@ export interface components {
              */
             generate_profile: boolean;
             /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -1540,12 +1534,6 @@ export interface components {
              * @default true
              */
             generate_profile: boolean;
-            /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
             /**
              * Used By
              * @description List of Nodes that are referencing this Generic

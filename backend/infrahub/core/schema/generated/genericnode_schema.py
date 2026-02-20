@@ -18,11 +18,6 @@ class GeneratedGenericSchema(BaseNodeSchema):
         description="Indicate if a profile schema should be generated for this schema",
         json_schema_extra={"update": "validate_constraint"},
     )
-    generate_template: bool = Field(
-        default=False,
-        description="Indicate if an object template schema should be generated for this schema",
-        json_schema_extra={"update": "allowed"},
-    )
     used_by: list[str] = Field(
         default_factory=list,
         description="List of Nodes that are referencing this Generic",

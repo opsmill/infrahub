@@ -1,3 +1,6 @@
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
+
 import pytest
 from fast_depends import Provider
 from fastapi.testclient import TestClient
@@ -15,7 +18,7 @@ from infrahub.workflows.initialization import setup_task_manager
 
 
 @pytest.fixture
-def client(dependency_provider: Provider, nats, redis):
+def client(dependency_provider: Provider, nats, redis) -> Generator[TestClient, None, None]:
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 
@@ -27,17 +30,17 @@ def client(dependency_provider: Provider, nats, redis):
 
 
 @pytest.fixture
-def client_headers():
+def client_headers() -> dict[str, str]:
     return {"Authorization": "Token XXXX"}
 
 
 @pytest.fixture
-def admin_headers():
+def admin_headers() -> dict[str, str]:
     return {"X-INFRAHUB-KEY": "admin-security"}
 
 
 @pytest.fixture
-def rpc_bus(helper, dependency_provider):
+def rpc_bus(helper, dependency_provider) -> Generator[Any, None, None]:
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
     config.OVERRIDE.message_bus = bus
@@ -47,7 +50,7 @@ def rpc_bus(helper, dependency_provider):
 
 
 @pytest.fixture
-async def workflow_local(dependency_provider):
+async def workflow_local(dependency_provider) -> AsyncGenerator[WorkflowLocalExecution, None]:
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     await setup_task_manager()
@@ -144,7 +147,9 @@ async def car_person_data(
 
 
 @pytest.fixture
-async def car_person_data_generic_diff(db: InfrahubDatabase, default_branch, car_person_data_generic, first_account):
+async def car_person_data_generic_diff(
+    db: InfrahubDatabase, default_branch, car_person_data_generic, first_account
+) -> dict[str, Any]:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     # Time After Creation of branch2
@@ -233,7 +238,9 @@ async def car_person_data_generic_diff(db: InfrahubDatabase, default_branch, car
 
 
 @pytest.fixture
-async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, car_person_data_generic_diff):
+async def car_person_data_artifact_diff(
+    db: InfrahubDatabase, default_branch, car_person_data_generic_diff
+) -> dict[str, Any]:
     query = """
     query {
         TestPerson {
@@ -360,7 +367,9 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
 
 
 @pytest.fixture
-async def data_diff_attribute(db: InfrahubDatabase, default_branch, car_person_data_generic, first_account):
+async def data_diff_attribute(
+    db: InfrahubDatabase, default_branch, car_person_data_generic, first_account
+) -> dict[str, Any]:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     # Time After Creation of branch2

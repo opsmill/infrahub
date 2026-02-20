@@ -1,6 +1,8 @@
 import pytest
+from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -11,8 +13,8 @@ class TestNumberAttrForbidsBool(TestInfrahubApp):
     async def test_number_attr_forbids_bool(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
+        default_branch: Branch,
+        client: InfrahubClient,
     ) -> None:
         schema = {
             "version": "1.0",

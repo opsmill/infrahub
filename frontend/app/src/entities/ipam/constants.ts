@@ -1,4 +1,3 @@
-import { RELATIONSHIP_VIEW_BLACKLIST } from "@/shared/config/constants";
 import type { Filter } from "@/shared/hooks/useFilters";
 
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";
@@ -13,7 +12,13 @@ export const IPAM_QSP = {
   NAMESPACE: "namespace",
 };
 
-export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [...RELATIONSHIP_VIEW_BLACKLIST, "ip_addresses"];
+export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [
+  "member_of_groups",
+  "subscriber_of_groups",
+  "children",
+  "profiles",
+  "ip_addresses",
+];
 
 // Filter related
 export const AVAILABLE_IP_FILTER_NAME = "include_available" as const;

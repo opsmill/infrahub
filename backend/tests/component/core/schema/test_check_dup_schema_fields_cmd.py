@@ -104,7 +104,7 @@ class TestCheckDuplicateSchemaFields:
         default_branch: Branch,
         load_main_schema: dict[str, Node],
         branch: Branch,
-    ):
+    ) -> None:
         node_schema = load_main_schema["node_schema"]
         generic_schema = load_main_schema["generic_schema"]
 

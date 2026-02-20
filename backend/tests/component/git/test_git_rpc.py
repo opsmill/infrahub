@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from unittest.mock import ANY, AsyncMock, patch
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
@@ -58,7 +61,7 @@ class AsyncContextManagerMock:
 
 class TestAddRepository:
     @pytest.fixture
-    async def setup(self, dependency_provider):
+    async def setup(self, dependency_provider) -> AsyncGenerator[None, None]:
         self.default_branch_name = "default-branch"
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
@@ -216,7 +219,7 @@ async def test_git_rpc_diff(
 
 class TestAddReadOnly:
     @pytest.fixture
-    async def setup(self, dependency_provider):
+    async def setup(self, dependency_provider) -> AsyncGenerator[None, None]:
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
         self.service = await InfrahubServices.new(client=self.client, message_bus=self.recorder)
@@ -270,7 +273,7 @@ class TestAddReadOnly:
 
 class TestPullReadOnly:
     @pytest.fixture
-    async def setup(self, dependency_provider):
+    async def setup(self, dependency_provider) -> AsyncGenerator[None, None]:
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
         self.workflow = WorkflowLocalExecution()

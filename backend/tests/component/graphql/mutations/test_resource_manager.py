@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core import registry
@@ -22,9 +24,9 @@ async def prefix_pool_01(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
-):
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> dict[str, Any]:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -47,7 +49,7 @@ async def prefix_pool_01(
 
 
 async def test_create_object_and_assign_prefix_from_pool(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: Node
 ) -> None:
     pool = prefix_pool_01["pool"]
 
@@ -111,7 +113,7 @@ async def test_create_object_and_assign_prefix_from_pool(
 
 
 async def test_update_object_and_assign_prefix_from_pool(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: Node
 ) -> None:
     pool = prefix_pool_01["pool"]
     net142 = prefix_pool_01["net142"]
@@ -183,8 +185,8 @@ async def test_create_object_and_assign_address_from_pool(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
@@ -265,8 +267,8 @@ async def test_prefix_pool_get_resource(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
@@ -325,8 +327,8 @@ async def test_prefix_pool_get_resource_with_identifier(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
@@ -392,8 +394,8 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
@@ -453,8 +455,8 @@ async def test_address_pool_get_resource(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
@@ -512,8 +514,8 @@ async def test_address_pool_get_resource_with_identifier(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
@@ -578,8 +580,8 @@ async def test_address_pool_get_resource_with_prefix_length(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
@@ -715,7 +717,7 @@ query NumberPool(
 
 
 async def test_test_number_pool_creation_errors(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     default_branch.update_schema_hash()
@@ -802,7 +804,7 @@ async def test_test_number_pool_creation_errors(
 
 
 async def test_test_number_pool_update(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     default_branch.update_schema_hash()

@@ -4,6 +4,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import MutationAction, RelationshipDeleteBehavior
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.models import ParentEvent
@@ -14,7 +15,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 
 
-async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
+async def test_delete_object(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> None:
     obj1 = await Node.init(db=db, schema="TestPerson")
     await obj1.new(db=db, name="John", height=180)
     await obj1.save(db=db)
@@ -53,7 +54,11 @@ async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_sc
 
 
 async def test_delete_prevented(
-    db: InfrahubDatabase, default_branch, car_person_schema, car_camry_main, person_jane_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    car_camry_main: Node,
+    person_jane_main: Node,
 ) -> None:
     query = (
         """
@@ -89,7 +94,7 @@ async def test_delete_prevented(
 
 
 async def test_delete_allowed_when_peer_rel_optional_on_generic(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -132,7 +137,7 @@ async def test_delete_allowed_when_peer_rel_optional_on_generic(
 
 
 async def test_delete_prevented_when_peer_rel_required_on_generic(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -170,7 +175,7 @@ async def test_delete_prevented_when_peer_rel_required_on_generic(
 
 
 async def test_delete_events_with_cascade(
-    db,
+    db: InfrahubDatabase,
     default_branch: Branch,
     dependent_generics_schema: SchemaBranch,
     enable_broker_config: None,

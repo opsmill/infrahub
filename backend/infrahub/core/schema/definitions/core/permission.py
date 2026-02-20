@@ -34,7 +34,6 @@ core_base_permission = GenericSchema(
             read_only=True,
             optional=True,
             allow_override=AllowOverrideType.NONE,
-            deprecation="Use permission display_label instead",
         ),
     ],
     relationships=[

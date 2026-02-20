@@ -1,6 +1,7 @@
 from unittest.mock import ANY, call, patch
 from uuid import uuid4
 
+from fast_depends import Provider
 from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
@@ -14,6 +15,7 @@ from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, 
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -123,7 +125,7 @@ mutation UpdateProposedChange(
 
 
 async def test_create_invalid_branch_combinations(
-    db: InfrahubDatabase, default_branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     branch_name = str(uuid4().hex)
     invalid_branch = str(uuid4().hex)
@@ -559,7 +561,7 @@ async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_m
 
 async def test_merge_proposed_change_with_branch_upgrade_rebase_status(
     db: InfrahubDatabase, register_core_models_schema: None
-):
+) -> None:
     branch_name = "upgrade-rebase-status-proposed-change"
     source_branch = Branch(name=branch_name)
     source_branch.status = BranchStatus.NEED_UPGRADE_REBASE
@@ -593,7 +595,7 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         session_first_account: AccountSession,
         session_admin: AccountSession,
         client: InfrahubClient,
-        dependency_provider,
+        dependency_provider: Provider,
     ) -> None:
         with dependency_provider.scope(build_client, lambda: client):
             cache = MemoryCache()

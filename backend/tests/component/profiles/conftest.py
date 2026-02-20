@@ -10,12 +10,17 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaRoot,
 )
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
 async def profile_schema_with_attributes(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    data_schema: None,
+    node_group_schema: None,
 ) -> None:
     """Create a schema with a node that has attributes that can be set via profiles."""
     SCHEMA = SchemaRoot(
@@ -41,7 +46,11 @@ async def profile_schema_with_attributes(
 
 @pytest.fixture
 async def profile_schema_with_generic_relationship(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    data_schema: None,
+    node_group_schema: None,
 ) -> None:
     """Create a schema with a node that has a generic relationship that can be set via profiles."""
     generic_schema = GenericSchema(
@@ -88,7 +97,11 @@ async def profile_schema_with_generic_relationship(
 
 @pytest.fixture
 async def profile_schema_with_attribute_relationship(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    data_schema: None,
+    node_group_schema: None,
 ) -> None:
     """Create a schema with a node that has an attribute relationship that can be set via profiles."""
     location_schema = NodeSchema(

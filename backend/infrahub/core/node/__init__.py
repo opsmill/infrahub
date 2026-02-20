@@ -362,6 +362,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if isinstance(self._schema, TemplateSchema):
             if attribute.from_pool:
                 attribute.source = attribute.from_pool["id"]
+                attribute.value = None
+            elif attribute.from_pool is None:
+                attribute.clear_source()
             return
 
         if not attribute.from_pool or not allocate_resources:
