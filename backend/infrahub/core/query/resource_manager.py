@@ -19,14 +19,6 @@ class NumberPoolIdentifierData:
     value: int
     identifier: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NumberPoolIdentifierData:
-        """Convert raw QueryResult to typed dataclass."""
-        return cls(
-            value=result.get_as_type("value", return_type=int),
-            identifier=result.get_as_type("identifier", return_type=str),
-        )
-
 
 @dataclass(frozen=True)
 class PoolIdentifierResult:
@@ -304,7 +296,13 @@ class NumberPoolGetReserved(Query):
         Returns:
             List of NumberPoolIdentifierData containing value and identifier.
         """
-        return [NumberPoolIdentifierData.from_db(result) for result in self.get_results()]
+        return [
+            NumberPoolIdentifierData(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
+            for result in self.get_results()
+        ]
 
     def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
         """Yield reservations as typed dataclass instances.
@@ -435,7 +433,10 @@ class NumberPoolGetUsed(Query):
             NumberPoolIdentifierData for each used value in the pool.
         """
         for result in self.get_results():
-            yield NumberPoolIdentifierData.from_db(result)
+            yield NumberPoolIdentifierData(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
 
 
 class NumberPoolGetFree(Query):
