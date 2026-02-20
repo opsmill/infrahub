@@ -10,7 +10,7 @@ def get_branches_with_schema_number_pool(kind: str, attribute_name: str) -> list
 
     for active_branch in active_branches:
         try:
-            schema = registry.schema.get(name=kind, branch=active_branch)
+            schema = registry.schema.get(name=kind, branch=active_branch, duplicate=False)
         except SchemaNotFoundError:
             continue
 

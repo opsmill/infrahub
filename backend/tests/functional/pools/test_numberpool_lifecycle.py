@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.graphql import Query
 
-from infrahub.auth import AccountSession, AuthType
-from infrahub.context import InfrahubContext
 from infrahub.core.constants import HashableModelState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -15,9 +13,10 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.pools.registration import get_branches_with_schema_number_pool
-from infrahub.pools.tasks import validate_schema_number_pools
-from infrahub.services import InfrahubServices
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.workers.dependencies import build_cache
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
@@ -58,6 +57,12 @@ number_pool_allocation_query = Query(
 
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
+    async def _post_schema_load_updates(self, db: InfrahubDatabase) -> None:
+        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        await snps.run()
+        graphql_registry.clear_cache()
+
     @pytest.fixture(scope="class")
     def initial_schema(self) -> SchemaRoot:
         schema = SchemaRoot(
@@ -84,18 +89,11 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
                 schemas=[initial_schema.model_dump()], wait_until_converged=True
             )
             assert not schema_load_response.errors
+        await self._post_schema_load_updates(db)
 
     async def test_numberpool_assignment_direct_node(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
     ) -> None:
-        service = await InfrahubServices.new(database=db)
-        context = InfrahubContext.init(
-            branch=default_branch,
-            account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
-        )
-
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
-
         test_schema = registry.schema.get_node_schema(name="TestNumberAttribute")
         test_attribute = test_schema.get_attribute(name="assigned_number")
         assert isinstance(test_attribute.parameters, NumberPoolParameters)
@@ -121,11 +119,10 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         schema = SchemaRoot(version="1.0", nodes=[node_schema_definition])
         schema_load_response = await client.schema.load(schemas=[schema.model_dump()], wait_until_converged=True)
         assert not schema_load_response.errors
+        await self._post_schema_load_updates(db)
 
         after_purge = get_branches_with_schema_number_pool(kind="TestNumberAttribute", attribute_name="assigned_number")
         assert after_purge == []
-
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
 
         with pytest.raises(NodeNotFoundError):
             await NodeManager.find_object(
@@ -137,13 +134,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def test_numberpool_assignment_from_generic(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
     ) -> None:
-        service = await InfrahubServices.new(database=db)
-        context = InfrahubContext.init(
-            branch=default_branch,
-            account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
-        )
-
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+        await self._post_schema_load_updates(db)
 
         test_schema = registry.schema.get_node_schema(name="SnowIncident")
         test_attribute = test_schema.get_attribute(name="number")
@@ -173,11 +164,10 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         schema = SchemaRoot(version="1.0", generics=[snow_task], nodes=[snow_request, snow_incident])
         schema_load_response = await client.schema.load(schemas=[schema.model_dump()], wait_until_converged=True)
         assert not schema_load_response.errors
+        await self._post_schema_load_updates(db)
 
         after_purge = get_branches_with_schema_number_pool(kind="SnowTask", attribute_name="number")
         assert after_purge == []
-
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
 
         with pytest.raises(NodeNotFoundError):
             await NodeManager.find_object(
@@ -198,6 +188,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             schemas=[initial_schema.model_dump()], wait_until_converged=True
         )
         assert not schema_load_response.errors
+        await self._post_schema_load_updates(db)
 
         # Create incidents to ensure there are some data into the database
         for idx in range(1, 6):
@@ -207,6 +198,9 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
 
         pools_before = await client.all(kind="CoreNumberPool", branch=default_branch.name)
         assert len(pools_before) == 1
+        expected_pool_names = {("SnowTask", "number")}
+        number_pool_details = {(pool.node.value, pool.node_attribute.value) for pool in pools_before}
+        assert number_pool_details == expected_pool_names
 
         # Add a new attribute to the existing schema with a large pool
         new_schema = initial_schema.duplicate()
@@ -223,10 +217,14 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
 
         schema_load_response = await client.schema.load(schemas=[new_schema.model_dump()], wait_until_converged=True)
         assert not schema_load_response.errors
+        await self._post_schema_load_updates(db)
 
         # Validate that the new pool has been created
         pools_after = await client.all(kind="CoreNumberPool", branch=default_branch.name)
         assert len(pools_after) == 2
+        expected_pool_names.add(("SnowIncident", "new_number"))
+        number_pool_details = {(pool.node.value, pool.node_attribute.value) for pool in pools_after}
+        assert number_pool_details == expected_pool_names
 
         # Validate that the existing incidents have been updated with the new number
         incidents = await registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
