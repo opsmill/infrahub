@@ -383,7 +383,7 @@ jobs:
         python-version:
           - "3.12"
           - "3.13"
-          - "3.14"
+          # - "3.14"  // failing b/c of pillow 12.1.1 for now
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
