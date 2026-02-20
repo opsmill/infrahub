@@ -5,12 +5,15 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.git.utils import get_repositories_commit_per_branch
 
 
 @pytest.fixture
-async def repository_01(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch) -> Node:
+async def repository_01(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch
+) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=default_branch)
     await repo.new(db=db, name="repo01", default_branch=default_branch.name, commit="commit01", location="location01")
     await repo.save(db=db)
@@ -18,7 +21,9 @@ async def repository_01(db: InfrahubDatabase, register_core_models_schema, defau
 
 
 @pytest.fixture
-async def repository_02(db: InfrahubDatabase, register_core_models_schema, default_branch: Branch) -> Node:
+async def repository_02(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch
+) -> Node:
     repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
     await repo.new(db=db, name="repo02", ref=default_branch.name, commit="commit02", location="location02")
     await repo.save(db=db)
@@ -26,7 +31,7 @@ async def repository_02(db: InfrahubDatabase, register_core_models_schema, defau
 
 
 async def test_get_repositories_commit_per_branch_main(
-    db: InfrahubDatabase, register_core_models_schema, repository_01: Node, repository_02: Node
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node, repository_02: Node
 ) -> None:
     repositories = await get_repositories_commit_per_branch(db=db)
     assert list(repositories.keys()) == ["repo01", "repo02"]
@@ -48,7 +53,7 @@ async def test_get_repositories_commit_per_branch_main(
 
 
 async def test_get_repositories_commit_per_branch_branches(
-    db: InfrahubDatabase, register_core_models_schema, repository_01: Node, repository_02: Node
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node, repository_02: Node
 ) -> None:
     branch2 = await create_branch(db=db, branch_name="branch2")
     repo01_branch = await NodeManager.get_one(db=db, id=repository_01.id, branch=branch2)

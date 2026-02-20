@@ -37,6 +37,7 @@ from tests.helpers.test_client import dummy_async_request
 if TYPE_CHECKING:
     from types import TracebackType
 
+    from fast_depends import Provider
     from infrahub_sdk.branch import BranchData
 
     from infrahub.core.node import Node
@@ -61,7 +62,7 @@ class AsyncContextManagerMock:
 
 class TestAddRepository:
     @pytest.fixture
-    async def setup(self, dependency_provider) -> AsyncGenerator[None, None]:
+    async def setup(self, dependency_provider: Provider) -> AsyncGenerator[None, None]:
         self.default_branch_name = "default-branch"
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
@@ -79,7 +80,7 @@ class TestAddRepository:
             patch.stopall()
 
     async def test_git_rpc_create_successful(
-        self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup
+        self, prefect_test_fixture: None, git_upstream_repo_01: dict[str, str], setup: None
     ) -> None:
         repo_id = str(UUIDT())
         model = GitRepositoryAdd(
@@ -125,8 +126,8 @@ class TestAddRepository:
 
 
 async def test_git_rpc_merge(
-    prefect_test_fixture,
-    dependency_provider,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
     git_repo_01: InfrahubRepository,
     branch01: BranchData,
     helper: TestHelper,
@@ -171,7 +172,7 @@ async def test_git_rpc_merge(
 
 
 async def test_git_rpc_diff(
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_01: InfrahubRepository,
     branch01: BranchData,
     branch02: BranchData,
@@ -219,7 +220,7 @@ async def test_git_rpc_diff(
 
 class TestAddReadOnly:
     @pytest.fixture
-    async def setup(self, dependency_provider) -> AsyncGenerator[None, None]:
+    async def setup(self, dependency_provider: Provider) -> AsyncGenerator[None, None]:
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
         self.service = await InfrahubServices.new(client=self.client, message_bus=self.recorder)
@@ -238,7 +239,7 @@ class TestAddReadOnly:
             # teardown
             patch.stopall()
 
-    async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: dict[str, str], setup) -> None:
+    async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: dict[str, str], setup: None) -> None:
         repo_id = str(UUIDT())
         model = GitRepositoryAddReadOnly(
             repository_id=repo_id,
@@ -273,7 +274,7 @@ class TestAddReadOnly:
 
 class TestPullReadOnly:
     @pytest.fixture
-    async def setup(self, dependency_provider) -> AsyncGenerator[None, None]:
+    async def setup(self, dependency_provider: Provider) -> AsyncGenerator[None, None]:
         self.client = AsyncMock(spec=InfrahubClient)
         self.recorder = BusSimulator()
         self.workflow = WorkflowLocalExecution()
@@ -315,7 +316,7 @@ class TestPullReadOnly:
             # teardown
             patch.stopall()
 
-    async def test_improper_message(self, setup) -> None:
+    async def test_improper_message(self, setup: None) -> None:
         self.model.ref = None
         self.model.commit = None
 
@@ -324,7 +325,7 @@ class TestPullReadOnly:
         self.mock_repo_class.new.assert_not_awaited()
         self.mock_repo_class.init.assert_not_awaited()
 
-    async def test_existing_repository(self, setup) -> None:
+    async def test_existing_repository(self, setup: None) -> None:
         self.mock_repo.import_objects_from_files = AsyncMock()
 
         await pull_read_only(model=self.model)
@@ -346,7 +347,7 @@ class TestPullReadOnly:
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
-    async def test_new_repository(self, setup, prefect_test_fixture) -> None:
+    async def test_new_repository(self, setup: None, prefect_test_fixture: None) -> None:
         self.mock_repo_class.init.side_effect = RepositoryError(self.repo_name, "it is broken")
         self.mock_repo.import_objects_from_files = AsyncMock()
 
