@@ -18,10 +18,15 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.conftest import do_register_simplified_proposed_change_schema
 from tests.helpers.test_app import TestInfrahub
 
 
 class TestDiffReadQuery(TestInfrahub):
+    @pytest.fixture(scope="class", autouse=True)
+    async def _setup_core_schema(self, default_branch: Branch) -> None:
+        do_register_simplified_proposed_change_schema(branch=default_branch)
+
     @pytest.fixture(scope="class")
     async def hierarchical_location_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         SCHEMA: dict[str, Any] = {

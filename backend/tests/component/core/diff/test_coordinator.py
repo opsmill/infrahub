@@ -3,9 +3,11 @@ from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
@@ -16,13 +18,19 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.proposed_change.constants import ProposedChangeState
 
 
 class TestDiffCoordinator:
+    @pytest.fixture(autouse=True)
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
+        return
+
     async def get_wrapped_diff_coordinator(
         self,
         db: InfrahubDatabase,
@@ -374,7 +382,6 @@ class TestDiffCoordinator:
     async def test_schema_deleted_on_source_and_target_branches(
         self,
         db: InfrahubDatabase,
-        register_internal_models_schema,
         default_branch: Branch,
         person_john_main,
     ) -> None:
@@ -510,3 +517,82 @@ class TestDiffCoordinator:
         assert len(retrieved_metadata) == 2
         for metadata in retrieved_metadata:
             assert metadata.proposed_change_id == proposed_change_id
+
+    async def test_open_proposed_change_discovered_when_not_provided(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_john_main: Node,
+    ) -> None:
+        """When update_branch_diff is called without proposed_change_id but an OPEN
+        CoreProposedChange exists for the branch, the diff should be linked to it."""
+        branch = await create_branch(db=db, branch_name="branch")
+
+        # Create a real OPEN CoreProposedChange for this branch
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
+        await proposed_change.new(
+            db=db,
+            name="test-pc",
+            source_branch=branch.name,
+            destination_branch=default_branch.name,
+        )
+        await proposed_change.save(db=db)
+
+        # Make a change on the branch so the diff has content
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # Update branch diff WITHOUT providing proposed_change_id
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # The diff should have discovered and linked the open proposed change
+        assert diff_metadata.proposed_change_id == proposed_change.id
+
+        # Verify both diff roots are linked via the repository
+        retrieved_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch.name, default_branch.name],
+            proposed_change_id=proposed_change.id,
+        )
+        assert len(retrieved_metadata) == 2
+        for metadata in retrieved_metadata:
+            assert metadata.proposed_change_id == proposed_change.id
+
+    async def test_non_open_proposed_changes_not_discovered(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_john_main: Node,
+    ) -> None:
+        """Diffs should not be linked to CLOSED, CANCELED, or MERGED proposed changes."""
+        branch = await create_branch(db=db, branch_name="branch")
+
+        # Create proposed changes in non-open states for this branch
+        for state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED, ProposedChangeState.MERGED):
+            pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
+            await pc.new(
+                db=db,
+                name=f"pc-{state.value}",
+                source_branch=branch.name,
+                destination_branch=default_branch.name,
+                state=state.value,
+            )
+            await pc.save(db=db)
+
+        # Make a change on the branch so the diff has content
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+
+        # Update branch diff WITHOUT providing proposed_change_id
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # The diff should NOT be linked to any of the non-open proposed changes
+        assert diff_metadata.proposed_change_id is None
