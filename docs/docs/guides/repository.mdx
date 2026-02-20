@@ -71,7 +71,7 @@ If you are using a **personal access token for authentication**, you should put 
 
 :::
 
-<Tabs>
+<Tabs groupId="method" queryString>
 <TabItem value="Via the Web Interface" default>
   1. Log in to the Infrahub UI
   2. Go to **Integrations > Git Repositories**
@@ -88,7 +88,7 @@ If you are using a **personal access token for authentication**, you should put 
 <TabItem value="Via infrahubctl">
   Using the [infrahubctl]($(base_url)infrahubctl/infrahubctl) command-line tool, you can add a repository by running the following command:
 
-  <Tabs groupId="repository-type">
+  <Tabs groupId="repository-type" queryString>
     <TabItem value="Repository" default>
     ```shell
     infrahubctl repository add "My Git Repository" "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" --username MY_USERNAME --password MY_TOKEN_OR_PASSWORD
@@ -134,7 +134,7 @@ If you are using a **personal access token for authentication**, you should put 
 
   3. Use one of the mutations below based on your repository type:
 
-  <Tabs groupId="repository-type">
+  <Tabs groupId="repository-type" queryString>
     <TabItem value="Repository" default>
     ```graphql
     mutation {
@@ -192,7 +192,7 @@ If you are using a **personal access token for authentication**, you should put 
 
   2. Create the repository object:
 
-  <Tabs groupId="repository-type">
+  <Tabs groupId="repository-type" queryString>
     <TabItem value="Repository" default>
     ```python
     # Create repository object
@@ -236,7 +236,7 @@ Unlike fully integrated repositories which sync automatically, read-only reposit
 
 For more details on how each repository type tracks changes, refer to the [Repository Topic](../topics/repository.mdx#read-only-vs-core).
 
-<Tabs>
+<Tabs groupId="method" queryString>
 <TabItem value="Via the Web Interface" default>
 
 1. Log in to the Infrahub UI
@@ -391,7 +391,7 @@ RUN update-ca-certificates
 INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
-<Tabs>
+<Tabs groupId="deployment" queryString>
 <TabItem value="Using Docker Compose" default>
 
 If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
@@ -447,7 +447,7 @@ RUN git config --global http.sslVerify "false"
 INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
-<Tabs>
+<Tabs groupId="deployment" queryString>
 <TabItem value="Using Docker Compose" default>
 
 If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
@@ -503,7 +503,7 @@ RUN git config --global http.proxy http://user:password@internal.proxy:8080
 INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
-<Tabs>
+<Tabs groupId="deployment" queryString>
 <TabItem value="Using Docker Compose" default>
 
 If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
