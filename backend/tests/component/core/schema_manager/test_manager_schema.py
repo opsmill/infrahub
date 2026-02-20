@@ -4623,8 +4623,8 @@ async def test_identify_object_templates_with_generics() -> None:
     }
 
 
-async def test_manage_object_templates_component_relationship_to_core_node() -> None:
-    """Template generation must skip core nodes reached via Component relationships."""
+async def test_manage_object_templates_component_relationship_to_excluded_kind() -> None:
+    """Template generation must not create subtemplates for excluded kinds like resource pools."""
     car_schema = copy.deepcopy(CAR_SCHEMA)
     car = car_schema.get(name=TestKind.CAR)
     car.generate_template = True
