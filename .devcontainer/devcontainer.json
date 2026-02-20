@@ -41,7 +41,10 @@
   "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
   "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
   "features": {
-    "docker-in-docker": "latest",
+    "docker-in-docker": {
+      "version": "latest",
+      "moby": false
+    },
     "github-cli": "latest"
   },
   "hostRequirements": {
