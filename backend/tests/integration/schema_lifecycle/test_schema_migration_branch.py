@@ -18,6 +18,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError, SchemaNotFoundError
+from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
 from ..shared import load_schema
 from .shared import (
@@ -490,11 +491,10 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert len(attr_schemas) == 1
         assert {a.name.value for a in attr_schemas} == {"name"}
         rel_schemas = await NodeManager.query(db=db, schema="SchemaRelationship", filters={"node__id": tag_schema.id})
-        assert len(rel_schemas) == 5
+        assert len(rel_schemas) == 4
         assert {r.name.value for r in rel_schemas} == {
             "cars",
             "persons",
-            "profiles",
             "subscriber_of_groups",
             "member_of_groups",
         }
@@ -548,7 +548,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         with pytest.raises(SchemaNotFoundError):
             registry.schema.get(name=f"Profile{CAR_KIND}", branch=self.branch1, check_branch_only=True)
         car_schema = registry.schema.get(name=CAR_KIND, branch=self.branch1, duplicate=False)
-        assert "profiles" in car_schema.relationship_names
+        assert "profiles" not in car_schema.relationship_names
 
     async def test_step05_merge(
         self,
@@ -604,3 +604,4 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
+        await assert_no_virtual_schema_relationships_in_db(db=db)

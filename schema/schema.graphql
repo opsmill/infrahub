@@ -393,7 +393,6 @@ interface BuiltinIPNamespace {
   ip_prefixes(broadcast_address__is_protected: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], hostmask__is_protected: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
-  profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
@@ -411,7 +410,6 @@ input BuiltinIPNamespaceUpdateInput {
   ip_prefixes: [RelatedIPPrefixNodeInput]
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeUpdate
-  profiles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -12301,21 +12299,6 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
-    profiles__display_label__isnull: Boolean
-    profiles__display_label__value: String
-    profiles__display_label__values: [String]
-    profiles__ids: [ID]
-    profiles__isnull: Boolean
-    profiles__profile_name__is_protected: Boolean
-    profiles__profile_name__owner__id: ID
-    profiles__profile_name__source__id: ID
-    profiles__profile_name__value: String
-    profiles__profile_name__values: [String]
-    profiles__profile_priority__is_protected: Boolean
-    profiles__profile_priority__owner__id: ID
-    profiles__profile_priority__source__id: ID
-    profiles__profile_priority__value: BigInt
-    profiles__profile_priority__values: [BigInt]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
