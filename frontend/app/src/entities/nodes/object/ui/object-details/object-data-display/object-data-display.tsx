@@ -10,6 +10,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
+import { getAttributesVisibleInFileObject } from "@/entities/nodes/object/utils/get-attributes-visible-in-file-object";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
 import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
@@ -133,18 +134,6 @@ export function ObjectDataDisplay({
       </SlideOver>
     </div>
   );
-}
-
-const FILE_OBJECT_HIDDEN_ATTRIBUTES = [
-  "file_name",
-  "file_size",
-  "file_type",
-  "storage_id",
-  "checksum",
-];
-
-function getAttributesVisibleInFileObject(attributes: AttributeSchema[]): AttributeSchema[] {
-  return attributes.filter((attr) => !FILE_OBJECT_HIDDEN_ATTRIBUTES.includes(attr.name));
 }
 
 function getRelationshipsVisibleInDataDisplay(
