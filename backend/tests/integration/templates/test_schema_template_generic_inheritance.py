@@ -8,6 +8,7 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.test_app import TestInfrahubApp
+from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
 
 class TestSchemaTemplateGenericInheritance(TestInfrahubApp):
@@ -110,3 +111,4 @@ class TestSchemaTemplateGenericInheritance(TestInfrahubApp):
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
+        await assert_no_virtual_schema_relationships_in_db(db=db)

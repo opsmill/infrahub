@@ -6,7 +6,12 @@ from cachetools import LRUCache
 from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
 
 from infrahub import lock
-from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, MetadataOptions
+from infrahub.core.constants import (
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    PROFILES_RELATIONSHIP_NAME,
+    SYSTEM_USER_ID,
+    MetadataOptions,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -41,7 +46,7 @@ if TYPE_CHECKING:
 
 
 class SchemaManager(NodeManager):
-    _virtual_relationship_names: set[str] = {PROFILES_RELATIONSHIP_NAME}
+    _virtual_relationship_names: set[str] = {OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME}
 
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
