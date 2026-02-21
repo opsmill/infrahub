@@ -412,5 +412,13 @@ DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
 OBJECT_TEMPLATE_NAME_ATTR = "template_name"
+# Kinds that cannot be auto-generated as subtemplates. When used as COMPONENT/PARENT peers,
+# the template relationship points to the original node instead of a template version.
+SUBTEMPLATE_EXCLUDED_KINDS = [
+    InfrahubKind.NUMBERPOOL,
+    InfrahubKind.IPADDRESSPOOL,
+    InfrahubKind.IPPREFIXPOOL,
+    InfrahubKind.RESOURCEPOOL,
+]
 PROFILE_NODE_RELATIONSHIP_IDENTIFIER = "node__profile"
 PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER = "template__profile"

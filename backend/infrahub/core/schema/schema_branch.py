@@ -23,6 +23,7 @@ from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
+    SUBTEMPLATE_EXCLUDED_KINDS,
     BranchSupportType,
     ComputedAttributeKind,
     HashableModelState,
@@ -2548,9 +2549,10 @@ class SchemaBranch:
                 continue
 
             rel_template_peer = (
-                self._get_object_template_kind(node_kind=relationship.peer)
-                if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
-                else relationship.peer
+                relationship.peer
+                if relationship.kind in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship.peer in SUBTEMPLATE_EXCLUDED_KINDS
+                else self._get_object_template_kind(node_kind=relationship.peer)
             )
 
             is_optional = (
@@ -2688,13 +2690,23 @@ class SchemaBranch:
         self, node_schema: NodeSchema | GenericSchema, identified: set[NodeSchema | GenericSchema]
     ) -> set[NodeSchema]:
         """Identify all templates required to turn a given node into a template."""
-        if node_schema in identified or node_schema.state == HashableModelState.ABSENT:
+        if (
+            node_schema in identified
+            or node_schema.state == HashableModelState.ABSENT
+            or node_schema.kind in SUBTEMPLATE_EXCLUDED_KINDS
+        ):
             return identified
 
         identified.add(node_schema)
 
-        if node_schema.is_node_schema:
-            identified.update([self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from])
+        if isinstance(node_schema, NodeSchema):
+            identified.update(
+                [
+                    schema
+                    for schema in (self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from)
+                    if isinstance(schema, NodeSchema | GenericSchema) and schema.kind not in SUBTEMPLATE_EXCLUDED_KINDS
+                ]
+            )
 
         for relationship in node_schema.relationships:
             if (
