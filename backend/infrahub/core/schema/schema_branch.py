@@ -2330,9 +2330,7 @@ class SchemaBranch:
             ):
                 continue
 
-            if (
-                isinstance(node, (NodeSchema, GenericSchema)) and not node.generate_profile
-            ) or node.state == HashableModelState.ABSENT:
+            if node.state == HashableModelState.ABSENT:
                 continue
 
             # Add relationship between node and profile
