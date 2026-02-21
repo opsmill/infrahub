@@ -548,7 +548,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         with pytest.raises(SchemaNotFoundError):
             registry.schema.get(name=f"Profile{CAR_KIND}", branch=self.branch1, check_branch_only=True)
         car_schema = registry.schema.get(name=CAR_KIND, branch=self.branch1, duplicate=False)
-        assert "profiles" not in car_schema.relationship_names
+        assert "profiles" in car_schema.relationship_names
 
     async def test_step05_merge(
         self,

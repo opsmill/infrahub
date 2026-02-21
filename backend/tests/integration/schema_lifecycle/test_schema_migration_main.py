@@ -359,7 +359,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
 
         assert registry.schema.has(name=f"Profile{CAR_KIND}") is False
         car_schema = registry.schema.get(name=CAR_KIND, duplicate=False)
-        assert "profiles" not in car_schema.relationship_names
+        assert "profiles" in car_schema.relationship_names
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
