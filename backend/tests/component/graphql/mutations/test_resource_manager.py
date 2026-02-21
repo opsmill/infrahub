@@ -56,11 +56,7 @@ async def prefix_pool_01(
 
 
 async def test_create_object_and_assign_prefix_from_pool(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    prefix_pool_01: Node,
-    enable_broker_config: None,
-    session_first_account: AccountSession,
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: Node, session_first_account: AccountSession
 ) -> None:
     pool = prefix_pool_01["pool"]
 
@@ -215,7 +211,6 @@ async def test_create_object_and_assign_address_from_pool(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
@@ -316,7 +311,6 @@ async def test_prefix_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
@@ -392,7 +386,6 @@ async def test_prefix_pool_get_resource_with_identifier(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
-    enable_broker_config: None,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
@@ -529,7 +522,6 @@ async def test_address_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
