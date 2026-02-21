@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.creation_context import NodeCreationContext
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
@@ -104,6 +105,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
+        self._creation_context: NodeCreationContext | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
         self._metadata.created_at = value
@@ -283,6 +285,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     def __repr__(self) -> str:
         v = f"{self.get_kind()}(ID: {str(self.id)})"
         return v if self._existing else f"{v}[NEW]"
+
+    @property
+    def has_changelog(self) -> bool:
+        return self._node_changelog is not None
 
     @property
     def node_changelog(self) -> NodeChangelog:
@@ -758,7 +764,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self
 
-    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+    async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
         extra_filters: dict[str, set[str]] = {}
 
         if not self._existing:
@@ -786,7 +792,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if name in extra_filters:
                 query_filter.extend(list(extra_filters[name]))
 
-            await relm.resolve(db=db, fields=query_filter)
+            await relm.resolve(db=db, fields=query_filter, user_id=user_id)
 
     async def load(
         self,
