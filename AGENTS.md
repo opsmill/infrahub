@@ -2,6 +2,24 @@
 
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
+## Conversation Style
+
+Responses must be direct and substantive. Do not use filler phrases, compliments, or social pleasantries.
+
+**Prohibited phrases** (including variations):
+
+- "You're right", "You're absolutely right", "Great question", "Good idea"
+- "I apologize", "I'm sorry", "Sorry about that"
+- "Let me explain", "Let me walk you through", "I'd be happy to"
+- Any other introductory or transitional filler
+
+**Required behavior:**
+
+- Get to the point immediately — no preamble
+- Challenge ideas and assumptions when warranted
+- Ask clarifying questions rather than guessing intent
+- Offer direct criticism when an approach has flaws
+
 ## Tech Stack
 
 - **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10
