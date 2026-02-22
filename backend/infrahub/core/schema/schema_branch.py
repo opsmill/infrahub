@@ -1744,9 +1744,6 @@ class SchemaBranch:
                     generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=generic_kind_schema)
 
-                if generic_kind_schema.generate_profile and not node.generate_profile:
-                    node.generate_profile = True
-
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
                     f"{node.kind} Only one generic with hierarchical support is allowed per node {generic_with_hierarchical_support}"
@@ -2328,9 +2325,6 @@ class SchemaBranch:
                 InfrahubKind.IPRANGEAVAILABLE,
                 InfrahubKind.IPPREFIXAVAILABLE,
             ):
-                continue
-
-            if node.state == HashableModelState.ABSENT:
                 continue
 
             # Add relationship between node and profile
