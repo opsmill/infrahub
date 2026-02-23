@@ -2469,7 +2469,7 @@ class SchemaBranch:
                 self.set(name=node_name, schema=node_schema)
 
     def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
-        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=True)
 
         # Remove previous relationships to account for new ones
         template_schema.relationships = [
@@ -2671,7 +2671,12 @@ class SchemaBranch:
                 or node.state == HashableModelState.ABSENT
             ):
                 try:
-                    node.relationships = [r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME]
+                    if any(r.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME for r in node.relationships):
+                        node = self.get(name=node_name, duplicate=True)
+                        node.relationships = [
+                            r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME
+                        ]
+                        self.set(name=node_name, schema=node)
                     self.delete(name=self._get_object_template_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
                     ...
