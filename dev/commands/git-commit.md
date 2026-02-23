@@ -47,10 +47,10 @@ Stage all changes, create a conventional commit, and push to the remote branch.
    ```
 
 4. **Compose the commit message**:
-   - If the user provided a message argument, use it as the basis but ensure it follows conventional commit format.
+   - If the user provided a message argument, use it as the basis, but ensure it follows conventional commit format.
    - If no message was provided, generate one from the diff analysis.
    - Format: `<type>(<scope>): <short description>`
-   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+   - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
    - Scope is optional but encouraged (e.g., `frontend`, `backend`, `schema`, `api`, `docs`)
    - Keep the first line under 72 characters
    - Add a blank line and bullet points for multi-file or complex changes
@@ -121,7 +121,6 @@ Follow the project's conventional commit format from `dev/guidelines/git-workflo
 | `refactor` | Code refactoring without behavior changes |
 | `test` | Adding or updating tests |
 | `chore` | Maintenance tasks, dependencies, tooling |
-| `style` | Formatting, whitespace, missing semicolons |
 
 ### Scope Examples
 
@@ -146,4 +145,4 @@ refactor(backend): extract validation logic into shared utils
 - Never commit secrets, API keys, credentials, or `.env` files
 - If you see suspicious files (`.env`, credentials, tokens), warn the user and exclude them
 - Use `--force-with-lease` (never `--force`) when pushing amended commits
-- Never force push to `stable` or `develop` branche
+- Never force push to `stable` or `develop` branches
