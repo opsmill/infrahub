@@ -26,6 +26,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -39,7 +40,9 @@ export const ProposedChangeCreateForm = () => {
   const [sourceBranch] = useQueryState(QSP.SOURCE_BRANCH);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
-  const sourceBranches = branches.filter((branch) => !branch.is_default);
+  const sourceBranches = branches.filter(
+    (branch) => !branch.is_default && branch.status !== (BRANCH_STATUS.MERGED as never)
+  );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
 
