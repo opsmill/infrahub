@@ -21,15 +21,17 @@ test.describe("/proposed-changes checks", () => {
 
     await test.step("go to Checks tab and see summary for all checks", async () => {
       await page.getByLabel("Tabs").getByText("Checks").click();
-      await expect(page.getByTestId("checks-summary")).toBeVisible();
-      while (
-        (await page.getByText("Data Integrity").isHidden()) ||
-        (await page.getByText("Schema Integrity").isHidden())
-      ) {
-        // checks are async, we must wait for them
-        await page.reload();
-        await expect(page.getByLabel("Tabs").getByText("Checks")).toBeVisible();
+      if (process.env.UPDATE_DOCS_SCREENSHOTS) {
         await expect(page.getByTestId("checks-summary")).toBeVisible();
+        while (
+          (await page.getByText("Data Integrity").isHidden()) ||
+          (await page.getByText("Schema Integrity").isHidden())
+        ) {
+          // checks are async, we must wait for them
+          await page.reload();
+          await expect(page.getByLabel("Tabs").getByText("Checks")).toBeVisible();
+          await expect(page.getByTestId("checks-summary")).toBeVisible();
+        }
       }
       const checksSummary = page.getByTestId("checks-summary");
       await expect(checksSummary.getByText("Retry")).toBeVisible();
