@@ -50,8 +50,9 @@ export const ProposedChangeCreateForm = () => {
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
-  if (branches.length === 0 || !proposedChangeSchema)
+  if (branches.length === 0 || !proposedChangeSchema) {
     return <Spinner className="flex justify-center" />;
+  }
 
   return (
     <Form
