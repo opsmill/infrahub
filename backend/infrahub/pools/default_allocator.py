@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
+from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.allocator import PoolAllocator
@@ -61,4 +62,7 @@ class DefaultPoolAllocator(PoolAllocator):
         if not pool:
             return None
 
-        return await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)  # type: ignore
+        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)  # type: ignore
+        if allocated:
+            NodeCreationContext.record_if_active(node=allocated)
+        return allocated

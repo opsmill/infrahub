@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
@@ -18,6 +18,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -596,3 +597,71 @@ class TestDiffCoordinator:
 
         # The diff should NOT be linked to any of the non-open proposed changes
         assert diff_metadata.proposed_change_id is None
+
+    async def test_parent_reassigned_then_deleted(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        hierarchical_location_schema_simple: SchemaRoot,
+    ) -> None:
+        """Test reassigning a child to a new parent and deleting the old parent"""
+        branch = await create_branch(db=db, branch_name="branch_parent_reassign")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # Create region R1 and site S with parent=R1
+        region1 = await Node.init(db=db, branch=branch, schema="LocationRegion")
+        await region1.new(db=db, name="test-region-1")
+        await region1.save(db=db)
+
+        site = await Node.init(db=db, branch=branch, schema="LocationSite")
+        await site.new(db=db, name="test-site", parent=region1)
+        await site.save(db=db)
+
+        # Window 1: R1=ADDED, S=ADDED with parent=R1
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # Reassign site to new parent R2, then delete R1
+        region2 = await Node.init(db=db, branch=branch, schema="LocationRegion")
+        await region2.new(db=db, name="test-region-2")
+        await region2.save(db=db)
+
+        site_branch = await NodeManager.get_one(db=db, branch=branch, id=site.id)
+        await site_branch.parent.update(db=db, data=region2)
+        site_branch.status.value = "offline"
+        await site_branch.save(db=db)
+
+        await NodeManager.delete(
+            db=db, nodes=[await NodeManager.get_one(db=db, branch=branch, id=region1.id)], branch=branch
+        )
+
+        # Window 2: S reassigned to R2, R1 deleted
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
+
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+
+        # R1 was ADDED then deleted — should not be in the final diff
+        assert set(nodes_by_id.keys()) == {site.id, region2.id}
+
+        # Site must still be present as ADDED
+        site_node = nodes_by_id[site.id]
+        assert site_node.kind == "LocationSite"
+        assert site_node.action is DiffAction.ADDED
+
+        # Site's parent relationship should point to R2
+        rels_by_name = {r.name: r for r in site_node.relationships}
+        assert "parent" in rels_by_name
+        parent_rel = rels_by_name["parent"]
+        assert parent_rel.cardinality is RelationshipCardinality.ONE
+        assert len(parent_rel.relationships) == 1
+        parent_element = list(parent_rel.relationships)[0]
+        assert parent_element.peer_id == region2.id
+
+        # R2 must be present as ADDED
+        r2_node = nodes_by_id[region2.id]
+        assert r2_node.kind == "LocationRegion"
+        assert r2_node.action is DiffAction.ADDED

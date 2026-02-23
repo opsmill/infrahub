@@ -543,25 +543,12 @@ def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) ->
     storage_dir = tmpdir_factory.mktemp("storage")
     config.SETTINGS.storage.local.path_ = Path(storage_dir)
 
-    config.SETTINGS.broker.enable = False
-    config.SETTINGS.cache.enable = True
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
     config.OVERRIDE.message_bus = BusRecorder()
 
     initialize_lock(local_only=True)
-
-
-@pytest.fixture
-def enable_broker_config() -> Generator[None, None, None]:
-    # This is required for situations where we need the broker to be enabled.
-    # We should really remove this setting as it doesn't make any sense to have
-    # outside of the test environment
-    original_config = config.SETTINGS.broker.enable
-    config.SETTINGS.broker.enable = True
-    yield
-    config.SETTINGS.broker.enable = original_config
 
 
 @pytest.fixture

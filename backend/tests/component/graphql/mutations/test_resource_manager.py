@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -13,7 +14,13 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.events.node_action import NodeCreatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.manager import registry as graphql_registry
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.services import InfrahubServices
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import SNOW_TICKET_SCHEMA, TICKET, load_schema
 
@@ -49,7 +56,7 @@ async def prefix_pool_01(
 
 
 async def test_create_object_and_assign_prefix_from_pool(
-    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: Node
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: Node, session_first_account: AccountSession
 ) -> None:
     pool = prefix_pool_01["pool"]
 
@@ -88,8 +95,12 @@ async def test_create_object_and_assign_prefix_from_pool(
         % pool.id
     )
 
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -99,6 +110,9 @@ async def test_create_object_and_assign_prefix_from_pool(
     )
 
     assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
     assert result.data
     assert result.data["TestMandatoryPrefixCreate"]["ok"]
     assert result.data["TestMandatoryPrefixCreate"]["object"] == {
@@ -110,6 +124,16 @@ async def test_create_object_and_assign_prefix_from_pool(
             },
         },
     }
+
+    parent_events = [
+        e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "TestMandatoryPrefix"
+    ]
+    prefix_events = [e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "IpamIPPrefix"]
+    assert len(parent_events) == 1
+    assert len(prefix_events) == 1
+    assert parent_events[0].meta.account_id == session_first_account.account_id
+    assert prefix_events[0].meta.account_id == session_first_account.account_id
+    assert prefix_events[0].meta.parent == parent_events[0].meta.id
 
 
 async def test_update_object_and_assign_prefix_from_pool(
@@ -187,6 +211,7 @@ async def test_create_object_and_assign_address_from_pool(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
+    session_first_account: AccountSession,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
@@ -238,8 +263,12 @@ async def test_create_object_and_assign_address_from_pool(
         % pool.id
     )
 
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -249,6 +278,9 @@ async def test_create_object_and_assign_address_from_pool(
     )
 
     assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
     assert result.data
     assert result.data["TestMandatoryAddressCreate"]["ok"]
     assert result.data["TestMandatoryAddressCreate"]["object"] == {
@@ -261,6 +293,16 @@ async def test_create_object_and_assign_address_from_pool(
         },
     }
 
+    parent_events = [
+        e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "TestMandatoryAddress"
+    ]
+    address_events = [e for e in memory_event.events if isinstance(e, NodeCreatedEvent) and e.kind == "IpamIPAddress"]
+    assert len(parent_events) == 1
+    assert len(address_events) == 1
+    assert parent_events[0].meta.account_id == session_first_account.account_id
+    assert address_events[0].meta.account_id == session_first_account.account_id
+    assert address_events[0].meta.parent == parent_events[0].meta.id
+
 
 async def test_prefix_pool_get_resource(
     db: InfrahubDatabase,
@@ -269,6 +311,7 @@ async def test_prefix_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
+    session_first_account: AccountSession,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
@@ -303,8 +346,12 @@ async def test_prefix_pool_get_resource(
         % pool.id
     )
 
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -314,12 +361,22 @@ async def test_prefix_pool_get_resource(
     )
 
     assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
     assert result.data
     assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
     assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
         "display_label": "10.10.0.0/24",
         "kind": "IpamIPPrefix",
     }
+
+    assert len(memory_event.events) == 2
+    # The second event is related to the IP namespace
+    node_event = memory_event.events[0]
+    assert isinstance(node_event, NodeCreatedEvent)
+    assert node_event.kind == "IpamIPPrefix"
+    assert node_event.meta.account_id == session_first_account.account_id
 
 
 async def test_prefix_pool_get_resource_with_identifier(
@@ -368,8 +425,10 @@ async def test_prefix_pool_get_resource_with_identifier(
         % pool.id
     )
 
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -379,6 +438,9 @@ async def test_prefix_pool_get_resource_with_identifier(
     )
 
     assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
     assert result.data
     assert result.data["InfrahubIPPrefixPoolGetResource"]["ok"]
     assert result.data["InfrahubIPPrefixPoolGetResource"]["node"] == {
@@ -387,6 +449,9 @@ async def test_prefix_pool_get_resource_with_identifier(
         "kind": "IpamIPPrefix",
         "identifier": "myidentifier",
     }
+
+    # Second allocation with same identifier returns existing resource, no new CREATED event
+    assert len(memory_event.events) == 0
 
 
 async def test_prefix_pool_get_resource_with_prefix_length(
@@ -457,6 +522,7 @@ async def test_address_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry: None,
     ip_dataset_prefix_v4: dict[str, Any],
+    session_first_account: AccountSession,
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
@@ -490,8 +556,12 @@ async def test_address_pool_get_resource(
         % pool.id
     )
 
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -501,12 +571,22 @@ async def test_address_pool_get_resource(
     )
 
     assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
     assert result.data
     assert result.data["InfrahubIPAddressPoolGetResource"]["ok"]
     assert result.data["InfrahubIPAddressPoolGetResource"]["node"] == {
         "display_label": "10.10.3.2/27",
         "kind": "IpamIPAddress",
     }
+
+    assert len(memory_event.events) == 2
+    # The second event is related to the IP namespace
+    node_event = memory_event.events[0]
+    assert isinstance(node_event, NodeCreatedEvent)
+    assert node_event.kind == "IpamIPAddress"
+    assert node_event.meta.account_id == session_first_account.account_id
 
 
 async def test_address_pool_get_resource_with_identifier(
@@ -899,16 +979,26 @@ async def test_test_number_pool_update(
     assert query_after_delete.data["CoreNumberPool"]["count"] == 0
 
 
-async def test_delete_number_pool_in_use_by_numberpool_attribute(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+@pytest.fixture
+async def snow_ticket_schema_with_pools(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+    await snps.run()
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    graphql_registry.clear_cache()
+
+
+async def test_delete_number_pool_in_use_by_numberpool_attribute(
+    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
+) -> None:
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     query_before_creation = await graphql(
         schema=gql_params.schema,
         source=QUERY_NUMBER_POOL,
@@ -921,57 +1011,7 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
 
     assert not query_before_creation.errors
     assert query_before_creation.data
-    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
-
-    create_snow_incident_mutation = """
-    mutation CreateSnowIncident(
-        $title: String!,
-    ) {
-    SnowIncidentCreate(
-        data: {
-        title: {value: $title},
-        }
-    ) {
-        object {
-            title {
-                value
-            }
-            number {
-                value
-                source {
-                    id
-                }
-            }
-            identifier {
-                value
-            }
-        }
-      }
-    }
-    """
-
-    create_snow_incident = await graphql(
-        schema=gql_params.schema,
-        source=create_snow_incident_mutation,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "title": "Printer is saying PC load Letter",
-        },
-    )
-
-    assert not create_snow_incident.errors
-    assert create_snow_incident.data
-    assert (
-        create_snow_incident.data["SnowIncidentCreate"]["object"]["title"]["value"]
-        == "Printer is saying PC load Letter"
-    )
-    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["value"] == 1
-    assert (
-        create_snow_incident.data["SnowIncidentCreate"]["object"]["number"]["source"]["id"]
-        == number_pool_attribute.parameters.number_pool_id
-    )
-    assert create_snow_incident.data["SnowIncidentCreate"]["object"]["identifier"]["value"] == "INC1"
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 1
 
     delete_fail = await graphql(
         schema=gql_params.schema,
@@ -988,15 +1028,13 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
 
 
 async def test_update_schema_number_pool_range(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
 ) -> None:
-    await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     query_before_creation = await graphql(
         schema=gql_params.schema,
         source=QUERY_NUMBER_POOL,
@@ -1009,46 +1047,7 @@ async def test_update_schema_number_pool_range(
 
     assert not query_before_creation.errors
     assert query_before_creation.data
-    assert query_before_creation.data["CoreNumberPool"]["count"] == 0
-
-    create_snow_incident_mutation = """
-    mutation CreateSnowIncident(
-        $title: String!,
-    ) {
-    SnowIncidentCreate(
-        data: {
-        title: {value: $title},
-        }
-    ) {
-        object {
-            title {
-                value
-            }
-            number {
-                value
-                source {
-                    id
-                }
-            }
-            identifier {
-                value
-            }
-        }
-      }
-    }
-    """
-
-    create_snow_incident = await graphql(
-        schema=gql_params.schema,
-        source=create_snow_incident_mutation,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "title": "Printer is saying PC load Letter",
-        },
-    )
-    assert not create_snow_incident.errors
-    assert create_snow_incident.data
+    assert query_before_creation.data["CoreNumberPool"]["count"] == 1
 
     update_forbidden = await graphql(
         schema=gql_params.schema,

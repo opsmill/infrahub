@@ -24,4 +24,9 @@ async def schema_updated(
         branch_name=branch_name, component=service.component, db=service.database, log=log
     )
 
-    await validate_schema_number_pools(branch_name=branch_name, context=context, service=service)
+    updated_branches = await validate_schema_number_pools(branch_name=branch_name, context=context, service=service)
+
+    if updated_branches:
+        await wait_for_schema_to_converge(
+            branch_name=branch_name, component=service.component, db=service.database, log=log
+        )

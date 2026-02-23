@@ -5587,7 +5587,7 @@
                             }
                         ],
                         "title": "Number Pool Id",
-                        "description": "The ID of the numberpool associated with this attribute",
+                        "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.",
                         "update": "not_supported"
                     }
                 },

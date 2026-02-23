@@ -32,7 +32,7 @@ spec:
             - "-listen"
             - ":6379"
             - "-sentinel"
-            - "cache:26379"
+            - "redis:26379"
           ports:
             - containerPort: 6379
               name: redis
