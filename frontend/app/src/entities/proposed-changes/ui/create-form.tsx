@@ -41,7 +41,7 @@ export const ProposedChangeCreateForm = () => {
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter(
-    (branch) => !branch.is_default && branch.status !== (BRANCH_STATUS.MERGED as never)
+    (branch) => !branch.is_default && branch.status !== BRANCH_STATUS.MERGED
   );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
