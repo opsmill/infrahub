@@ -134,7 +134,10 @@ async def test_NumberPoolGetUsed(
 
 
 async def test_NumberPoolGetAllocated_returns_identifier(
-    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
 ) -> None:
     """Test that NumberPoolGetAllocated returns the identifier (node UUID) from the IS_RESERVED relationship."""
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
