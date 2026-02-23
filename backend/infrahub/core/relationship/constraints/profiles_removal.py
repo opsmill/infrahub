@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
-from infrahub.core.constants import MetadataOptions
+from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema, ProfileSchema
 from infrahub.exceptions import ValidationError
@@ -133,7 +133,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
             )
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:
-        if relm.name == "profiles" and isinstance(node_schema, NodeSchema):
+        if relm.name == PROFILES_RELATIONSHIP_NAME and isinstance(node_schema, NodeSchema):
             await self._check_node_profiles_removal(relm=relm, node_schema=node_schema, node=node)
             return
 
