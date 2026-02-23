@@ -1,9 +1,9 @@
 import type {
+  BranchStatus,
   InfrahubBranch,
   InfrahubBranchType,
   InfrahubNodeMetadata,
 } from "@/shared/api/graphql/generated/graphql";
-import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 import type { Filter } from "@/shared/hooks/useFilters";
 
