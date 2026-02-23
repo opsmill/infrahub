@@ -41,7 +41,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test("2. Create a new branch", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("branch-selector-trigger").click();
-    await page.getByTestId("create-branch-button").click();
+    await page.getByTestId("create-branch-buttonn").click();
 
     await test.step("fill and submit form for new organization", async () => {
       await expect(page.getByText("Create a new branch")).toBeVisible();

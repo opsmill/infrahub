@@ -7,7 +7,7 @@ test.describe("Branch selector", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("create-branch-button")).toBeDisabled();
+      await expect(page.getByTestId("create-branch-buttonn")).toBeDisabled();
 
       await test.step("to go branch list view", async () => {
         await page.getByRole("link", { name: "View all branches" }).click();
