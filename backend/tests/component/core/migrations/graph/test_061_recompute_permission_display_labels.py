@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m059_recompute_permission_display_labels import Migration059
+from infrahub.core.migrations.graph.m061_recompute_permission_display_labels import Migration061
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreObjectPermission
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class TestMigration059(TestInfrahubApp):
+class TestMigration061(TestInfrahubApp):
     async def get_display_label_from_db(
         self, db: InfrahubDatabase, branch: Branch, node_ids: list[str]
     ) -> dict[str, str | None]:
@@ -112,7 +112,7 @@ class TestMigration059(TestInfrahubApp):
             assert initial_values[perm_id] == "old-value"
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
@@ -129,14 +129,14 @@ class TestMigration059(TestInfrahubApp):
         all_ids = list(permissions_dataset)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         first_values = await self.get_display_label_from_db(db=db, branch=default_branch, node_ids=all_ids)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
@@ -167,13 +167,13 @@ class TestMigration059(TestInfrahubApp):
         await obj_perm_branch.save(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             await migration.execute(migration_input=MigrationInput(db=dbs))
 
         await test_branch.rebase(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute_against_branch(
                 migration_input=MigrationInput(db=dbs), branch=test_branch
             )

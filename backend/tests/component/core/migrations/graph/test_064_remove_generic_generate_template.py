@@ -3,7 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
-from infrahub.core.migrations.graph.m062_remove_generic_generate_template import Migration062
+from infrahub.core.migrations.graph.m064_remove_generic_generate_template import Migration064
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput
 from infrahub.core.path import SchemaPath
@@ -77,7 +77,7 @@ async def test_migration_062(
     schema_attr_before = await db.execute_query(query=COUNT_GENERATE_TEMPLATE_SCHEMA_ATTRIBUTE)
     assert schema_attr_before[0].get("count") > 0
 
-    migration = Migration062.init()
+    migration = Migration064.init()
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 

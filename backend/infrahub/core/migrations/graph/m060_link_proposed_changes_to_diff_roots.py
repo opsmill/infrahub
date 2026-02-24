@@ -152,9 +152,9 @@ class LinkMergedProposedChangesToDiffRootsQuery(Query):
         self.add_to_query(query)
 
 
-class Migration058(GraphMigration):
-    name: str = "058_link_proposed_changes_to_diff_roots"
-    minimum_version: int = 57
+class Migration060(GraphMigration):
+    name: str = "060_link_proposed_changes_to_diff_roots"
+    minimum_version: int = 59
     queries: Sequence[type[Query]] = [
         LinkOpenProposedChangesToDiffRootsQuery,
         LinkMergedProposedChangesToDiffRootsQuery,

@@ -24,7 +24,7 @@ from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
-from infrahub.core.migrations.graph.m058_link_proposed_changes_to_diff_roots import Migration058
+from infrahub.core.migrations.graph.m060_link_proposed_changes_to_diff_roots import Migration060
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -33,7 +33,7 @@ from infrahub.database import InfrahubDatabase
 from tests.component.core.diff.factories import EnrichedNodeFactory, EnrichedRootFactory
 
 
-class TestMigration058:
+class TestMigration060:
     """Test migration 058 that links ProposedChanges to DiffRoots."""
 
     @pytest.fixture
@@ -322,7 +322,7 @@ class TestMigration058:
         # =========================================================================
         # EXECUTE: Run the migration
         # =========================================================================
-        migration = Migration058()
+        migration = Migration060()
         await migration.execute(MigrationInput(db=db))
         result = await migration.validate_migration(db=db)
         assert result.success
