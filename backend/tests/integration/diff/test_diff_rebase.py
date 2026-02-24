@@ -83,6 +83,7 @@ class TestDiffRebase(TestInfrahubApp):
         continent_schema.parent = None
         main_schema_root.nodes.append(continent_schema)
         manufacturer_schema = main_schema_root.get(TestKind.MANUFACTURER)
+        manufacturer_schema.generate_profile = False
         manufacturer_schema.relationships.append(
             RelationshipSchema(
                 name="continents",
