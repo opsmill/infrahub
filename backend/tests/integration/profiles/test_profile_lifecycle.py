@@ -16,6 +16,8 @@ from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+from .validation import assert_no_virtual_schema_relationships_in_db
+
 PERSON_VALUES = """
         object {
             id
@@ -1572,3 +1574,9 @@ class TestProfileLifecycle(TestInfrahubApp):
             _ = retrieved_person_2.nothing
         with pytest.raises(AttributeError):
             _ = retrieved_person_2.generic_nothing
+
+    async def test_step_20_no_profiles_schema_relationships_in_db(
+        self,
+        db: InfrahubDatabase,
+    ) -> None:
+        await assert_no_virtual_schema_relationships_in_db(db)

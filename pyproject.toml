@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.7.4"
+version = "1.7.5"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.14"
@@ -90,7 +90,7 @@ dev = [
     "types-ujson",
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
-    "ruff==0.14.5",
+    "ruff==0.15.0",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=4.2.0,<5",
@@ -171,6 +171,10 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "infrahub.*"
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.*"
+follow_imports = "skip" # Added to ignore typing issues from the SDK when introducing a py.typed file
 
 [[tool.mypy.overrides]]
 module = "tests.conftest"
@@ -552,6 +556,7 @@ ignore = [
     "RUF015",  # Prefer `next(...)` over single element slice
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
     "RUF052",  # Local dummy variable `_meta` is accessed
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",    # Probable insecure usage of temporary file or directory

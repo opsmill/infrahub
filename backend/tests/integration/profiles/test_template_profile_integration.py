@@ -19,6 +19,8 @@ from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+from .validation import assert_no_virtual_schema_relationships_in_db
+
 
 class TestTemplateProfileIntegration(TestInfrahubApp):
     """Test template profile support through GraphQL and Python SDK."""
@@ -714,6 +716,12 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert retrieved_device.manufacturer.value == "Dell"
         assert retrieved_device.manufacturer.source.id == retrieved_template.id  # Explicitly set on template
 
+    async def test_step_06_no_profiles_schema_relationships_in_db(
+        self,
+        db: InfrahubDatabase,
+    ) -> None:
+        await assert_no_virtual_schema_relationships_in_db(db)
+
 
 class TestTemplateProfileWithComponents(TestInfrahubApp):
     """Test template profile support with component relationships."""
@@ -1233,3 +1241,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             assert interface.enabled.value is True
             assert interface.enabled.is_from_profile is True
             assert interface.enabled.source_id == interface_profile.id
+
+    async def test_step_04_no_profiles_schema_relationships_in_db(
+        self,
+        db: InfrahubDatabase,
+    ) -> None:
+        await assert_no_virtual_schema_relationships_in_db(db)

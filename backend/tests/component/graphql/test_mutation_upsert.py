@@ -95,7 +95,6 @@ async def test_upsert_event_on_no_change(
     db: InfrahubDatabase,
     car_person_schema: Node,
     branch: Branch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     query = """
