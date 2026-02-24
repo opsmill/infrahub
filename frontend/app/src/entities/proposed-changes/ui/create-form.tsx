@@ -84,9 +84,12 @@ export const ProposedChangeCreateForm = () => {
             required: "Required",
             validate: {
               branchExists: (value: string) => {
-                if (sourceBranches.some((b) => b.name === value)) return true;
-                if (branches.some((b) => b.name === value))
+                if (sourceBranches.some((b) => b.name === value)) {
+                  return true;
+                }
+                if (branches.some((b) => b.name === value)) {
                   return "Branch is not available (merged or default)";
+                }
                 return "Branch does not exist";
               },
             },
