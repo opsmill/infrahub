@@ -1,23 +1,13 @@
-import { Icon } from "@iconify-icon/react";
-import { PlusIcon } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router";
-
-import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
-import { Button, LinkButton } from "@/shared/components/ui/button";
-import { QSP } from "@/shared/config/qsp";
-import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
 import { useGetBranchDetails } from "@/entities/branches/domain/get-branch-details.query";
+import { BranchDeleteButton } from "@/entities/branches/ui/branch-delete-button";
 import { BranchAttributes } from "@/entities/branches/ui/branch-details/branch-attributes";
 import { BranchMergeButton } from "@/entities/branches/ui/branch-merge-button";
+import { BranchProposeChangeButton } from "@/entities/branches/ui/branch-propose-change-button";
 import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
 import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import {
@@ -31,12 +21,7 @@ interface BranchDetailsProps {
   branchName: string;
 }
 export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
-  const { isAuthenticated } = useAuth();
-  const [displayModal, setDisplayModal] = useState(false);
-  const navigate = useNavigate();
-
   const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
-  const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
   if (isPending) {
     return <LoadingIndicator className="h-59.75" />;
@@ -61,35 +46,13 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
               <div className="flex flex-1 flex-col gap-4 md:flex-row">
                 <BranchMergeButton branch={branch} />
 
-                <LinkButton
-                  onClick={(event) => {
-                    if (!isAuthenticated || branch.is_default) {
-                      event?.preventDefault();
-                    }
-                  }}
-                  className={classNames(
-                    (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
-                  )}
-                  to={constructPath("/proposed-changes/new", [
-                    { name: QSP.SOURCE_BRANCH, value: branch?.name },
-                  ])}
-                >
-                  Propose change
-                  <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </LinkButton>
+                <BranchProposeChangeButton branch={branch} />
 
                 <BranchRebaseButton branch={branch} />
 
                 <BranchValidateButton branch={branch} />
 
-                <Button
-                  disabled={!isAuthenticated || !!branch.is_default}
-                  onClick={() => setDisplayModal(true)}
-                  variant={"danger"}
-                >
-                  Delete
-                  <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
-                </Button>
+                <BranchDeleteButton branch={branch} />
               </div>
             )}
           </div>
@@ -107,30 +70,6 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
           </Accordion>
         </div>
       )}
-
-      <ModalDelete
-        title="Delete"
-        description={
-          <>
-            Are you sure you want to remove the branch <b>`{branch.name}`</b>?
-          </>
-        }
-        onDelete={async () => {
-          await deleteBranch({ name: branch.name });
-
-          const queryStringParams = getCurrentQsp();
-          const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
-
-          const path = isDeletedBranchSelected
-            ? constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }])
-            : constructPath("/branches");
-
-          navigate(path);
-        }}
-        isOpen={displayModal}
-        onOpenChange={setDisplayModal}
-        isLoading={isDeleting}
-      />
     </div>
   );
 };
