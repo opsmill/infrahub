@@ -12,6 +12,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
@@ -46,6 +47,9 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   }, [loading, hasOngoingTask]);
 
   const hasMergeInProgress = isMergeRequested || hasOngoingTask;
+  const isMerged = branch.status === BRANCH_STATUS.MERGED;
+  const isDisabled =
+    !isAuthenticated || loading || !!branch.is_default || isMerged || hasMergeInProgress;
 
   const handleSubmit = async () => {
     setIsMergeRequested(true);
@@ -78,7 +82,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
 
   return (
     <Button
-      disabled={!isAuthenticated || loading || branch.is_default || hasMergeInProgress}
+      disabled={isDisabled}
       onClick={handleSubmit}
       variant={"active"}
       className="flex items-center gap-2"
