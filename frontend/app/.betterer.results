@@ -63,9 +63,9 @@ exports[`fix ts error`] = {
     "src/entities/diff/node-diff/conflict.tsx:1915762184": [
       [4, 39, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/diff/node-diff/index.tsx:2918900447": [
-      [75, 46, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
-      [93, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+    "src/entities/diff/node-diff/index.tsx:331347187": [
+      [87, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
+      [108, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/diff/node-diff/node-property.tsx:2777655921": [
       [27, 22, 17, "tsc: Property \'base_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'base_branch_value\'?", "1959743778"],
