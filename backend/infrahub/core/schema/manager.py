@@ -891,8 +891,12 @@ class SchemaManager(NodeManager):
                 if branch_hash:
                     branch_processed.add(branch_hash)
                 if branch := self._branches.get(active_branch):
-                    nodes = branch.get_all(include_internal=True, duplicate=False)
-                    hashes_to_keep.update([node.get_hash() for node in nodes.values()])
+                    # Use stored hash keys from the dicts rather than recalculating the hash
+                    # on cached objects, in case objects have been improperly mutated in-place
+                    hashes_to_keep.update(branch.nodes.values())
+                    hashes_to_keep.update(branch.generics.values())
+                    hashes_to_keep.update(branch.profiles.values())
+                    hashes_to_keep.update(branch.templates.values())
 
         removed_branches: list[str] = []
         for branch_name in list(self._branches.keys()):
