@@ -82,7 +82,7 @@ profiles_rel_settings: dict[str, Any] = {
     "kind": RelationshipKind.PROFILE,
     "cardinality": RelationshipCardinality.MANY,
     "branch": BranchSupportType.AWARE,
-    "order_weight": 99_000,    
+    "order_weight": 99_000,
 }
 
 
