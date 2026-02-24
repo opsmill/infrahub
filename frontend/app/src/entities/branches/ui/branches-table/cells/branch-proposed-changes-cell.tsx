@@ -1,8 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
+import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { LinkButton } from "@/shared/components/ui/button";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -15,10 +17,7 @@ import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-pr
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
-const BRANCH_PROPOSED_CHANGES_FILTERS = {
-  sourceBranch: (branchName: string) => ({ name: "source_branch__value", value: branchName }),
-  openState: { name: STATE_VALUES_FILTER, value: [OPEN_STATE] },
-};
+const OPEN_STATE_FILTER = { name: STATE_VALUES_FILTER, value: [OPEN_STATE] };
 
 interface BranchProposedChangesCellProps {
   branchName: string;
@@ -26,13 +25,16 @@ interface BranchProposedChangesCellProps {
 
 export function BranchProposedChangesCell({ branchName }: BranchProposedChangesCellProps) {
   const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { throwIfNotFound: true });
+  const filters = [{ name: "source_branch__value", value: branchName }, OPEN_STATE_FILTER];
+  const { data, isPending } = useGetProposedChanges({ schema, filters });
 
-  const filters = [
-    BRANCH_PROPOSED_CHANGES_FILTERS.sourceBranch(branchName),
-    BRANCH_PROPOSED_CHANGES_FILTERS.openState,
-  ];
-
-  const { data } = useGetProposedChanges({ schema, filters });
+  if (isPending) {
+    return (
+      <TableCell className="h-auto min-h-14">
+        <Spinner />
+      </TableCell>
+    );
+  }
 
   const totalCount = data?.pages?.[0]?.count ?? 0;
   const firstPC = data?.pages?.[0]?.items?.[0];
@@ -53,7 +55,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
 
   return (
     <TableCell className="h-auto min-h-14">
-      <div className="flex flex-wrap items-center gap-2">
+      <Row className="flex-wrap">
         <LinkButton
           variant="outline"
           size="sm"
@@ -72,7 +74,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
             +{remainingCount} more
           </Link>
         )}
-      </div>
+      </Row>
     </TableCell>
   );
 }
