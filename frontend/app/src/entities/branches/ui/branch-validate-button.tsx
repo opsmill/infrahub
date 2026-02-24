@@ -11,6 +11,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
@@ -34,6 +35,13 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
+  const isMerged = branch.status === BRANCH_STATUS.MERGED;
+  const isDisabled =
+    !isAuthenticated ||
+    loading ||
+    !!branch.is_default ||
+    isMerged ||
+    !!(taskData?.count && taskData.count > 0);
 
   const handleSubmit = async () => {
     try {
@@ -61,12 +69,7 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
 
   return (
     <Button
-      disabled={
-        !isAuthenticated ||
-        loading ||
-        branch.is_default ||
-        (!!taskData?.count && taskData.count > 0)
-      }
+      disabled={isDisabled}
       onClick={handleSubmit}
       variant={"warning"}
       className="flex items-center gap-2"
