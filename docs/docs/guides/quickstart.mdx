@@ -1,0 +1,145 @@
+---
+title: Quick Start
+description: A step-by-step guide to set up a local Infrahub development environment, load schemas, and start building automation solutions.
+---
+
+Set up a local development environment to build automation solutions with Infrahub. By the end of this guide, you will have a working Infrahub instance with a schema loaded and ready for customization.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- [Docker](https://docs.docker.com/get-docker/) (Docker Desktop or OrbStack)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
+- [Python 3.10+](https://www.python.org/downloads/)
+- A text editor (VS Code recommended)
+
+## Create a project from template
+
+Use the Infrahub project template to scaffold a new project with the recommended structure.
+
+1. Run the following command to create a new project:
+
+   ```bash
+   uv tool run --from 'copier' copier copy -r bgi-invoke-schema-library https://github.com/opsmill/infrahub-template <project-name>
+   ```
+
+   Replace `<project-name>` with your desired project directory name.
+
+2. Answer the prompts to configure your project settings.
+
+3. Navigate to your new project directory:
+
+   ```bash
+   cd <project-name>
+   ```
+
+4. Open the project in your text editor:
+
+   ```bash
+   code .
+   ```
+
+:::success Verification
+Your project directory should contain files like `pyproject.toml`, and a `schemas/` folder.
+:::
+
+## Start Infrahub
+
+Launch a local Infrahub instance using the project's built-in tasks.
+
+1. Start all services:
+
+   ```bash
+   uv run invoke start
+   ```
+
+2. Open your browser and navigate to [http://localhost:8000](http://localhost:8000).
+
+3. Log in with the default credentials:
+   - Username: `admin`
+   - Password: `infrahub`
+
+:::success Verification
+You should see the Infrahub web interface with a menu on the left side.
+:::
+
+## Get the schema library
+
+The schema library provides reusable schema definitions as a starting point. You can customize these later to match your organization's needs.
+
+1. Download the schema library:
+
+   ```bash
+   uv run invoke schema-library-get
+   ```
+
+2. Verify the schema files are available in your text editor under the `schema-library/` folder.
+
+:::info
+The schema defines the structure of your data in Infrahub. Start with the schema library and customize it as you learn more about your requirements.
+:::
+
+## Load a schema
+
+Load schema definitions into your Infrahub instance to define the data model.
+
+1. Copy the base schema from the schema library to your schemas folder:
+
+   ```bash
+   cp -r schema-library/base schemas/
+   ```
+
+2. Load the base schema:
+
+   ```bash
+   uv run infrahubctl schema load schemas/base
+   ```
+
+3. Copy the location extension schema:
+
+   ```bash
+   cp -r schema-library/extensions/location_minimal schemas/
+   ```
+
+4. Load the location schema:
+
+   ```bash
+   uv run infrahubctl schema load schemas/location_minimal
+   ```
+
+:::success Verification
+Return to [http://localhost:8000](http://localhost:8000) and refresh the page. The left-hand menu should now display additional options for the loaded schema types.
+:::
+
+## Use infrahubctl
+
+The `infrahubctl` command-line tool helps you interact with Infrahub during development. Use it to manage branches, load schemas, run Generators, and render Transformations.
+
+Create a test branch to experiment with changes:
+
+```bash
+uv run infrahubctl branch create test-branch
+```
+
+:::info
+Branches in Infrahub work similarly to Git branches. Use them to isolate changes and test modifications before merging to the main branch.
+:::
+
+## Development best practices
+
+Keep these principles in mind as you build with Infrahub:
+
+- **Treat your development instance as disposable**: Rebuild it frequently to test fresh installations.
+- **Experiment freely**: Use branches to try new ideas without affecting your main data.
+- **Start minimal**: Add complexity only when needed.
+
+## Next steps
+
+With your development environment ready, explore these guides to build your automation solution:
+
+- [Create a schema](./create-schema.mdx): Extend the existing schema to fit your organization's needs.
+- [Generate artifacts](./artifact.mdx): Use Transformations to create configuration files, documentation, and other outputs from your data.
+- [Build Generators](./generator.mdx): Automate the creation of infrastructure objects based on templates and inputs.
+
+When you're ready to share your work with your organization, see the [installation guide](./installation.mdx) for production deployment options.
