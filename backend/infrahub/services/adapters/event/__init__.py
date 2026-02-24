@@ -7,7 +7,7 @@ from prefect.events import emit_event
 
 if TYPE_CHECKING:
     from infrahub.events import InfrahubEvent
-    from infrahub.services import InfrahubMessageBus
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 
 class InfrahubEventService:

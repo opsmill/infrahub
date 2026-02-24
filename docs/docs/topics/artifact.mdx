@@ -27,7 +27,7 @@ The following MIME types or formats are supported and will be rendered properly 
 
 :::
 
-While it's always possible to generate [Transformations](./transformation.mdx) on demand via the API, having an Artifact provide some additional benefits:
+While it's always possible to generate [Transformations](./transformation.mdx) on demand via the API, having an artifact provide some additional benefits:
 
 - **Caching**: Generated artifacts are stored in the internal [object storage](./object-storage.mdx). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
@@ -59,9 +59,9 @@ From an **artifact definition** artifact nodes are created, for each target whic
 
 ## CoreArtifactTarget
 
-A node for which you want to generate an Artifact, must inherit from the `CoreArtifactTarget` generic.
+A node for which you want to generate an artifact, must inherit from the `CoreArtifactTarget` generic.
 
-As a result of this, an Artifacts tab will show up in the node's detailed view in the UI, which allows you to access all of the artifacts that have been generated for this node.
+As a result of this, an artifacts tab will show up in the node's detailed view in the UI, which allows you to access all of the artifacts that have been generated for this node.
 
 ![artifact tab](../media/topics/artifact/node_detail_view_artifact_tab.png)
 

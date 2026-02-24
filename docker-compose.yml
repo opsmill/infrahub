@@ -25,7 +25,6 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_API_CORS_ALLOW_ORIGINS:
   INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-localhost}
   INFRAHUB_BROKER_DRIVER: ${INFRAHUB_BROKER_DRIVER:-rabbitmq}
-  INFRAHUB_BROKER_ENABLE: ${INFRAHUB_BROKER_ENABLE:-true}
   INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES: ${INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES:-2}
   INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES: ${INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES:-10}
   INFRAHUB_BROKER_NAMESPACE: ${INFRAHUB_BROKER_NAMESPACE:-infrahub}
@@ -41,7 +40,6 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS: ${INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS:-15}
   INFRAHUB_CACHE_DATABASE: ${INFRAHUB_CACHE_DATABASE:-0}
   INFRAHUB_CACHE_DRIVER: ${INFRAHUB_CACHE_DRIVER:-redis}
-  INFRAHUB_CACHE_ENABLE: ${INFRAHUB_CACHE_ENABLE:-true}
   INFRAHUB_CACHE_PASSWORD: &cache_password ${INFRAHUB_CACHE_PASSWORD:-}
   INFRAHUB_CACHE_PORT:
   INFRAHUB_CACHE_TLS_CA_FILE:
@@ -124,7 +122,6 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-localhost}
   INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE: ${INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE:-infrahubasync}
   INFRAHUB_WORKFLOW_DRIVER: ${INFRAHUB_WORKFLOW_DRIVER:-worker}
-  INFRAHUB_WORKFLOW_ENABLE: ${INFRAHUB_WORKFLOW_ENABLE:-true}
   INFRAHUB_WORKFLOW_EXTRA_LOGGERS:
   INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL: ${INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL:-INFO}
   INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD: ${INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD:-100000}
@@ -206,7 +203,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.4}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.5}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -239,7 +236,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.4}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.5}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -285,7 +282,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.4}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.5}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

@@ -28,7 +28,7 @@ The targets point to a [group](./groups.mdx) that will consist of objects that a
 
 The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query [group](./groups.mdx) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
 
-The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [transforms](transformation) and [checks](check), the Generators are user defined.
+The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [Transformations](transformation) and [checks](check), the Generators are user defined.
 
 Generators can be executed in several ways, depending on your workflow and where you are in the lifecycle (local development vs. in Infrahub):
 

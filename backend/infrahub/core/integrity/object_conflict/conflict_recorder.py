@@ -1,5 +1,6 @@
 from typing import Sequence, cast
 
+from infrahub import lock
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.diff.model.diff import ObjectConflict
 from infrahub.core.manager import NodeManager
@@ -103,19 +104,21 @@ class ObjectConflictValidatorRecorder:
         return None
 
     async def get_or_create_validator(self, proposed_change: CoreProposedChange) -> Node:
-        validator_obj = await self.get_validator(proposed_change=proposed_change)
-        if validator_obj:
+        lock_name = f"{proposed_change.get_id()}__{self.validator_kind}"
+        async with lock.registry.get(name=lock_name, namespace="validator-create"):
+            validator_obj = await self.get_validator(proposed_change=proposed_change)
+            if validator_obj:
+                return validator_obj
+            validator_obj = await Node.init(db=self.db, schema=self.validator_kind)
+            await validator_obj.new(
+                db=self.db,
+                label=self.validator_label,
+                state=ValidatorState.QUEUED.value,
+                conclusion=ValidatorConclusion.UNKNOWN.value,
+                proposed_change=proposed_change.id,
+            )
+            await validator_obj.save(db=self.db)
             return validator_obj
-        validator_obj = await Node.init(db=self.db, schema=self.validator_kind)
-        await validator_obj.new(
-            db=self.db,
-            label=self.validator_label,
-            state=ValidatorState.QUEUED.value,
-            conclusion=ValidatorConclusion.UNKNOWN.value,
-            proposed_change=proposed_change.id,
-        )
-        await validator_obj.save(db=self.db)
-        return validator_obj
 
     async def initialize_validator(self, validator: Node) -> None:
         validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[attr-defined]

@@ -9,7 +9,7 @@ This guide provides best practices to help you develop robust, efficient, and ma
 
 The following features in Infrahub are based on user provided code :
 
-- [**Transforms** (Python and Jinja2)](./transformation.mdx): Used to generate [Artifacts](./artifact.mdx) and define [Computed Attributes](./computed-attributes.mdx).
+- [**Transformations** (Python and Jinja2)](./transformation.mdx): Used to generate [artifacts](./artifact.mdx) and define [Computed Attributes](./computed-attributes.mdx).
 - [**Generators**](./generator.mdx): Automate complex tasks by generating outputs dynamically.
 - [**Checks**](./check.mdx): Validate your infrastructure with custom rules.
 
@@ -25,6 +25,9 @@ To initialize a new Infrahub repository, run the following command (replace `<pr
 uv tool run --from 'copier' copier copy https://github.com/opsmill/infrahub-template <project-name>
 ```
 
+This uses [copier](https://copier.readthedocs.io/) to create a new Infrahub repository from the [Infrahub Template Repository](https://github.com/opsmill/infrahub-template). The command will guide you through interactive prompts to customize your repository (such as including example generators, Transformations, and scripts). No separate installation is needed as `uv tool run` handles everything automatically.
+
+Once complete, your new repository will be ready for you to add schemas, Transformations, and generators.
 This uses [copier](https://copier.readthedocs.io/) to create a new Infrahub repository from the [Infrahub Template Repository](https://github.com/opsmill/infrahub-template). The command will guide you through interactive prompts to customize your repository (such as including example Generators, transforms, and scripts). No separate installation is needed as `uv tool run` handles everything automatically.
 
 Once complete, your new repository will be ready for you to add schemas, transforms, and Generators.
@@ -81,8 +84,8 @@ Refer to the command documentation for details:
 
 | Command                        | Description                                                  |
 |--------------------------------|--------------------------------------------------------------|
-| [`infrahubctl transform`]($(base_url)infrahubctl/infrahubctl-transform) | Execute Python transforms locally.                          |
-| [`infrahubctl render`]($(base_url)infrahubctl/infrahubctl-render)       | Render Jinja2 transforms locally.                           |
+| [`infrahubctl transform`]($(base_url)infrahubctl/infrahubctl-transform) | Execute Python Transformations locally.                          |
+| [`infrahubctl render`]($(base_url)infrahubctl/infrahubctl-render)       | Render Jinja2 Transformations locally.                           |
 | [`infrahubctl generator`]($(base_url)infrahubctl/infrahubctl-generator) | Test custom generators.                                     |
 | [`infrahubctl check`]($(base_url)infrahubctl/infrahubctl-check)         | Run local checks                                            |
 
