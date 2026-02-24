@@ -18,6 +18,8 @@ title: Release 1.7.5
   </tbody>
 </table>
 
+<!-- vale off -->
+
 ### Removed
 
 - Removed unused `enable` configuration toggle from broker, cache, and workflow settings
@@ -33,3 +35,5 @@ title: Release 1.7.5
 - Allow generating Template schemas for both a generic schema and a node inheriting from that generic. Previously, schema validation would raise a validation error and prevent this.
 - Fixed an issue where Infrahub was calculating the wrong authentication signature caused by HTTPX v0.28.0 switching to compact JSON payload encoding.
 - Fixed issue where system user showed as the last user changing a proposed change after merge
+
+<!-- vale on -->
