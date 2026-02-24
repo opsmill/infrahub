@@ -35,13 +35,13 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
-  const isMerged = branch.status === BRANCH_STATUS.MERGED;
+  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
   const isDisabled =
     !isAuthenticated ||
     loading ||
     !!branch.is_default ||
-    isMerged ||
-    !!(taskData?.count && taskData.count > 0);
+    branch.status === BRANCH_STATUS.MERGED ||
+    hasOngoingTask;
 
   const handleSubmit = async () => {
     try {
@@ -56,13 +56,13 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merge requested!"} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch validation requested!" />, {
         toastId: "alert-success",
       });
     } catch (error) {
       console.error(error);
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occurred while merging the branch"} />
+        <Alert type={ALERT_TYPES.ERROR} message="An error occurred while validating the branch" />
       );
     }
   };
@@ -71,11 +71,11 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
     <Button
       disabled={isDisabled}
       onClick={handleSubmit}
-      variant={"warning"}
+      variant="warning"
       className="flex items-center gap-2"
     >
       Validate
-      <Icon icon={"mdi:shield-check-outline"} />
+      <Icon icon="mdi:shield-check-outline" />
     </Button>
   );
 };

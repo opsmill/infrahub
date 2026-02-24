@@ -32,13 +32,13 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
-  const isMerged = branch.status === BRANCH_STATUS.MERGED;
+  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
   const isDisabled =
     !isAuthenticated ||
     loading ||
     !!branch.is_default ||
-    isMerged ||
-    !!(taskData?.count && taskData.count > 0);
+    branch.status === BRANCH_STATUS.MERGED ||
+    hasOngoingTask;
 
   const handleRebase = () => {
     rebaseBranchMutation.mutate(
@@ -56,10 +56,7 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
         onError: (error) => {
           console.error("Error while rebasing branch: ", error);
           toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message={"An error occurred while merging the branch"}
-            />
+            <Alert type={ALERT_TYPES.ERROR} message="An error occurred while rebasing the branch" />
           );
         },
       }
@@ -70,11 +67,11 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
     <Button
       disabled={isDisabled}
       onClick={handleRebase}
-      variant={"outline"}
+      variant="outline"
       className="flex items-center gap-2"
     >
       Rebase
-      <Icon icon={"mdi:counterclockwise-arrows"} />
+      <Icon icon="mdi:counterclockwise-arrows" />
     </Button>
   );
 };

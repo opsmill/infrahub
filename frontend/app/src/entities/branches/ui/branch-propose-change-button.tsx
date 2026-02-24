@@ -16,8 +16,8 @@ type BranchProposeChangeButtonProps = {
 export const BranchProposeChangeButton = ({ branch }: BranchProposeChangeButtonProps) => {
   const { isAuthenticated } = useAuth();
 
-  const isMerged = branch.status === BRANCH_STATUS.MERGED;
-  const isDisabled = !isAuthenticated || !!branch.is_default || isMerged;
+  const isDisabled =
+    !isAuthenticated || !!branch.is_default || branch.status === BRANCH_STATUS.MERGED;
 
   return (
     <LinkButton

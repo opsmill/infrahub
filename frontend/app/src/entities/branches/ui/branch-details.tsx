@@ -1,3 +1,4 @@
+import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -36,40 +37,30 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <Col>
       <BranchAttributes branch={branch} />
 
       {!branch.is_default && (
-        <div className="flex flex-col gap-4">
-          <div>
-            {branch?.name && (
-              <div className="flex flex-1 flex-col gap-4 md:flex-row">
-                <BranchMergeButton branch={branch} />
-
-                <BranchProposeChangeButton branch={branch} />
-
-                <BranchRebaseButton branch={branch} />
-
-                <BranchValidateButton branch={branch} />
-
-                <BranchDeleteButton branch={branch} />
-              </div>
-            )}
-          </div>
+        <Col>
+          <Row className="flex-wrap">
+            <BranchMergeButton branch={branch} />
+            <BranchProposeChangeButton branch={branch} />
+            <BranchRebaseButton branch={branch} />
+            <BranchValidateButton branch={branch} />
+            <BranchDeleteButton branch={branch} />
+          </Row>
 
           <Accordion
-            title={<div className="font-normal text-xs">Tasks</div>}
+            title={<div className="py-2 font-normal text-xs">Tasks</div>}
             data-testid="tasks-accordion"
           >
-            <div className="mt-2">
-              <TaskDisplay
-                branch={branch.name}
-                workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
-              />
-            </div>
+            <TaskDisplay
+              branch={branch.name}
+              workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+            />
           </Accordion>
-        </div>
+        </Col>
       )}
-    </div>
+    </Col>
   );
 };

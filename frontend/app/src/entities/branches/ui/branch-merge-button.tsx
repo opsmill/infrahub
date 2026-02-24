@@ -46,10 +46,13 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     }
   }, [loading, hasOngoingTask]);
 
-  const hasMergeInProgress = isMergeRequested || hasOngoingTask;
-  const isMerged = branch.status === BRANCH_STATUS.MERGED;
   const isDisabled =
-    !isAuthenticated || loading || !!branch.is_default || isMerged || hasMergeInProgress;
+    !isAuthenticated ||
+    loading ||
+    !!branch.is_default ||
+    branch.status === BRANCH_STATUS.MERGED ||
+    isMergeRequested ||
+    hasOngoingTask;
 
   const handleSubmit = async () => {
     setIsMergeRequested(true);
@@ -66,7 +69,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merge requested!"} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch merge requested!" />, {
         toastId: "alert-success",
       });
 
@@ -75,7 +78,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       console.error(error);
       setIsMergeRequested(false);
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occurred while merging the branch"} />
+        <Alert type={ALERT_TYPES.ERROR} message="An error occurred while merging the branch" />
       );
     }
   };
@@ -84,11 +87,11 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     <Button
       disabled={isDisabled}
       onClick={handleSubmit}
-      variant={"active"}
+      variant="active"
       className="flex items-center gap-2"
     >
       Merge
-      <Icon icon={"mdi:check"} />
+      <Icon icon="mdi:check" />
     </Button>
   );
 };

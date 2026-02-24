@@ -22,12 +22,12 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
   const navigate = useNavigate();
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
-  const isMerged = branch.status === BRANCH_STATUS.MERGED;
-  const isDisabled = !isAuthenticated || !!branch.is_default || isMerged || isDeleting;
+  const isDisabled =
+    !isAuthenticated || !!branch.is_default || branch.status === BRANCH_STATUS.MERGED || isDeleting;
 
   return (
     <>
-      <Button disabled={isDisabled} onClick={() => setDisplayModal(true)} variant={"danger"}>
+      <Button disabled={isDisabled} onClick={() => setDisplayModal(true)} variant="danger">
         Delete
         <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
       </Button>
