@@ -2,7 +2,6 @@ import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { TableCell } from "@/shared/components/table/table-cell";
-import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
@@ -14,7 +13,6 @@ import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cel
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import { getAttributesVisibleInFileObject } from "@/entities/nodes/object/utils/get-attributes-visible-in-file-object";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
@@ -23,7 +21,7 @@ import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-r
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+
 
 const columnHelper = createColumnHelper<NodeObject>();
 
@@ -84,10 +82,7 @@ export function getObjectFieldsColumns(
   schema: ModelSchema,
   headerProps?: PopoverTriggerProps
 ): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
-  const listAttributes = getAttributesVisibleInListView(schema.attributes ?? []);
-  const attributes = isOfKind(FILE_OBJECT_KIND, schema)
-    ? getAttributesVisibleInFileObject(listAttributes)
-    : listAttributes;
+  const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []).filter(
     (rel) => !isFromResourcePoolRelationship(rel.name)
   );
