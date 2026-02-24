@@ -8,9 +8,10 @@ import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 export interface DiffEmptyProps {
   branchName: string;
   lastRefreshedAt: Date;
+  branchExists?: boolean;
 }
 
-export function DiffEmpty({ branchName, lastRefreshedAt }: DiffEmptyProps) {
+export function DiffEmpty({ branchName, lastRefreshedAt, branchExists = true }: DiffEmptyProps) {
   return (
     <div className="my-10 flex flex-col items-center gap-5">
       <div className="inline-flex rounded-full bg-white p-3">
@@ -26,10 +27,10 @@ export function DiffEmpty({ branchName, lastRefreshedAt }: DiffEmptyProps) {
           </Tooltip>
           .
         </p>
-        <p>If you have made any changes, please refresh the diff:</p>
+        {branchExists && <p>If you have made any changes, please refresh the diff:</p>}
       </div>
 
-      <DiffRefreshButton branchName={branchName} />
+      {branchExists && <DiffRefreshButton branchName={branchName} />}
     </div>
   );
 }
