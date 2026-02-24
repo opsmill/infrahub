@@ -63,7 +63,7 @@ dependencies = [
     "rich>=13,<14",
     "pyarrow>=14",
     "numpy>=1.26.2",
-    "dulwich==0.22.7",
+    "dulwich==0.24.7",
     "whenever==0.9.3",
     "netutils==1.12.0",
     "ariadne-codegen==0.15.3",
@@ -994,7 +994,6 @@ allow-dunder-method-names = [
 "backend/tests/component/core/test_manager_node.py" = ["ANN001"]              # 43 violations
 "backend/tests/component/core/test_node_query.py" = ["ANN001"]                # 31 violations
 "backend/tests/component/core/test_branch_diff.py" = ["ANN001"]               # 26 violations
-"backend/tests/component/git/**.py" = ["ANN001"]                               # 81 violations
 
 "backend/tests/query_benchmark/**.py" = [
     ##################################################################################################

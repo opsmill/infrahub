@@ -12,10 +12,10 @@ from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, RelationshipSchema
 from infrahub.exceptions import PoolExhaustedError, ValidationError
 from tests.constants import TestKind
-from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
+from tests.helpers.schema import DEVICE_SCHEMA
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -31,13 +31,13 @@ async def device_schema(
     register_ipam_schema: SchemaBranch,
     init_nodes_registry: None,
 ) -> None:
-    device = copy.deepcopy(DEVICE)
-    device.relationships = [
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    device = next(n for n in schema.nodes if n.kind == TestKind.DEVICE)
+    device.relationships.append(
         RelationshipSchema(
             name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
         )
-    ]
-    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
+    )
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
@@ -80,7 +80,7 @@ async def ip_address_pool(
 async def test_template_with_pool_relationship_does_not_allocate(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_address_pool: CoreIPAddressPool
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
@@ -101,7 +101,7 @@ async def test_template_with_pool_relationship_does_not_allocate(
 async def test_object_from_template_with_pool_allocates_address(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_address_pool: CoreIPAddressPool
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -135,6 +135,11 @@ async def test_object_from_template_with_pool_allocates_address(
     assert len(primary_ip_rel) == 1
     assert primary_ip_rel[0].source_id == ip_address_pool.id
 
+    assert device._creation_context is not None
+    assert len(device._creation_context.side_effect_nodes) == 1
+    assert device._creation_context.side_effect_nodes[0].get_kind() == "IpamIPAddress"
+    assert device._creation_context.side_effect_nodes[0].id == primary_ip.id
+
 
 async def test_object_from_template_with_explicit_address_uses_explicit(
     db: InfrahubDatabase,
@@ -144,7 +149,7 @@ async def test_object_from_template_with_explicit_address_uses_explicit(
     ip_namespace: Node,
     ip_prefix: Node,
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -185,7 +190,7 @@ async def test_object_from_template_with_explicit_address_uses_explicit(
 async def test_object_from_template_with_direct_address_inherits_address(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_namespace: Node, ip_prefix: Node
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -238,7 +243,7 @@ async def test_object_from_template_raises_validation_error_when_pool_exhausted(
     )
     await small_pool.save(db=db)
 
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -282,9 +287,9 @@ async def test_object_from_template_raises_validation_error_when_pool_exhausted(
 async def device_with_rack_unit_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, init_nodes_registry: None
 ) -> None:
-    device = copy.deepcopy(DEVICE)
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    device = next(n for n in schema.nodes if n.kind == TestKind.DEVICE)
     device.attributes.append(AttributeSchema(name="rack_unit", kind="Number", optional=True))
-    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await initialize_registry(db=db)
 
@@ -325,7 +330,7 @@ async def test_object_from_template_with_number_pool_allocates_value(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
     """Object created from template should allocate from the NumberPool."""
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -361,7 +366,7 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
     """Object created with explicit value should use it instead of pool allocation."""
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -400,7 +405,7 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
     )
     await small_pool.save(db=db)
 
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -438,3 +443,59 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
             branch=default_branch,
             schema=node_schema,
         )
+
+
+async def test_template_children_and_pool_recorded_as_side_effects(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    ip_namespace: Node,
+    ip_prefix: Node,
+    ip_address_pool: CoreIPAddressPool,
+) -> None:
+    """Template children and pool allocations are recorded in creation_context for event emission."""
+    device_template_schema = registry.schema.get_template_schema(
+        name=f"Template{TestKind.DEVICE}", branch=default_branch
+    )
+    device_template = await Node.init(schema=device_template_schema, db=db, branch=default_branch)
+    await device_template.new(
+        db=db,
+        template_name="device-template-side-effects",
+        manufacturer="Acme",
+        weight=10,
+        airflow="Front to rear",
+        primary_ip_from_resource_pool={"id": ip_address_pool.id},
+    )
+    await device_template.save(db=db)
+
+    intf_template_schema = registry.schema.get_template_schema(
+        name=f"Template{TestKind.PHYSICAL_INTERFACE}", branch=default_branch
+    )
+    intf_template = await Node.init(schema=intf_template_schema, db=db, branch=default_branch)
+    await intf_template.new(
+        db=db, template_name="intf-tpl", name="eth0", phys_type="SFP+ (10GE)", device=device_template
+    )
+    await intf_template.save(db=db)
+
+    node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    device = await create_node(
+        data={
+            "name": "device-side-effect-test",
+            "manufacturer": "Acme",
+            "weight": 10,
+            "airflow": "Front to rear",
+            "object_template": {"id": device_template.id},
+        },
+        db=db,
+        branch=default_branch,
+        schema=node_schema,
+    )
+
+    assert device._creation_context is not None
+    side_effects = device._creation_context.side_effect_nodes
+
+    intf_side_effects = [n for n in side_effects if n.get_kind() == TestKind.PHYSICAL_INTERFACE]
+    assert len(intf_side_effects) == 1
+
+    ip_side_effects = [n for n in side_effects if n.get_kind() == "IpamIPAddress"]
+    assert len(ip_side_effects) == 1

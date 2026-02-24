@@ -178,7 +178,6 @@ async def test_delete_events_with_cascade(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependent_generics_schema: SchemaBranch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     # set TestPerson.animals to be cascade delete

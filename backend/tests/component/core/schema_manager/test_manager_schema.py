@@ -45,7 +45,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
-from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema import CAR_SCHEMA, CHILD, DEVICE, DEVICE_SCHEMA, THING
 from tests.helpers.schema.device import LAG_INTERFACE
 
 from .conftest import _get_schema_by_kind
@@ -4621,3 +4621,41 @@ async def test_identify_object_templates_with_generics() -> None:
         TestKind.SFP,
         TestKind.VIRTUAL_INTERFACE,
     }
+
+
+async def test_manage_object_templates_component_relationship_to_excluded_kind() -> None:
+    """Template generation must not create subtemplates for excluded kinds like resource pools."""
+    car_schema = copy.deepcopy(CAR_SCHEMA)
+    car = car_schema.get(name=TestKind.CAR)
+    car.generate_template = True
+    car.relationships.append(
+        RelationshipSchema(
+            name="number_pools",
+            peer=InfrahubKind.NUMBERPOOL,
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+            kind=RelationshipKind.COMPONENT,
+        ),
+    )
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=car_schema))
+    schema_branch.process_inheritance()
+
+    # CoreNumberPool is a core node and should NOT be identified as needing a template, even though it is a COMPONENT peer
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.CAR, duplicate=False), identified=set()
+    )
+    identified_kinds = {n.kind for n in identified}
+    assert InfrahubKind.NUMBERPOOL not in identified_kinds
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    with pytest.raises(SchemaNotFoundError):
+        schema_branch.get(name="TemplateCoreNumberPool", duplicate=False)
+
+    # The template should still have the relationship, pointing to the original core node
+    template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
+    pool_rel = template.get_relationship(name="number_pools")
+    assert pool_rel.peer == InfrahubKind.NUMBERPOOL

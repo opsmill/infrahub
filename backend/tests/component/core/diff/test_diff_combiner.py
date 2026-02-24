@@ -1216,3 +1216,59 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_node}
 
         assert self.expected_combined == combined
+
+    async def test_added_removed_parent_with_surviving_child(self) -> None:
+        """Test an edge case where a parent relationship is removed from the schema and a parent object is deleted
+
+        The earlier diff includes a child node with a kind=Parent relationship to a parent node.
+        Then the parent relationship schema is removed from the diff, the parent node is deleted, and the child node
+        is updated, so the later diff includes the child node and no parent relationship.
+        """
+        # Earlier diff: parent ADDED, child ADDED with relationship pointing to parent
+        parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.ADDED, attributes=set(), relationships=set())
+        element_1 = EnrichedRelationshipElementFactory.build(action=DiffAction.ADDED)
+        attr_1 = EnrichedAttributeFactory.build(action=DiffAction.ADDED)
+        relationship_1 = EnrichedRelationshipGroupFactory.build(
+            name="parent",
+            label="Parent",
+            action=DiffAction.ADDED,
+            relationships={element_1},
+            nodes={parent_node_1},
+        )
+        child_node_1 = EnrichedNodeFactory.build(
+            action=DiffAction.ADDED, relationships={relationship_1}, attributes={attr_1}
+        )
+        self.diff_root_1.nodes = {parent_node_1, child_node_1}
+
+        # Later diff: parent REMOVED (no child ref), child UPDATED (no parent ref since parent is gone)
+        parent_node_2 = EnrichedNodeFactory.build(
+            identifier=parent_node_1.identifier, action=DiffAction.REMOVED, attributes=set(), relationships=set()
+        )
+        attr_2 = EnrichedAttributeFactory.build(action=DiffAction.UPDATED)
+        child_node_2 = EnrichedNodeFactory.build(
+            identifier=child_node_1.identifier,
+            action=DiffAction.UPDATED,
+            relationships=set(),
+            attributes={attr_2},
+            changed_at=Timestamp(),
+        )
+        self.diff_root_2.nodes = {parent_node_2, child_node_2}
+
+        # This should not raise a KeyError
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        # Both parent and child should be in combined output
+        assert len(combined.nodes) == 2
+        combined_nodes_by_id = {n.identifier: n for n in combined.nodes}
+
+        # Parent should be kept as UNCHANGED (ADDED+REMOVED cancels, but kept as structural anchor)
+        combined_parent = combined_nodes_by_id[parent_node_1.identifier]
+        assert combined_parent.action is DiffAction.UNCHANGED
+        assert combined_parent.attributes == set()
+        assert combined_parent.relationships == set()
+
+        # Child should survive with action=ADDED (ADDED+UPDATED=ADDED)
+        combined_child = combined_nodes_by_id[child_node_1.identifier]
+        assert combined_child.action is DiffAction.ADDED
+        assert attr_1 in combined_child.attributes
+        assert attr_2 in combined_child.attributes

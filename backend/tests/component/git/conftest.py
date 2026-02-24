@@ -24,6 +24,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
+from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -606,7 +607,7 @@ async def gql_query_data_02() -> dict:
 
 
 @pytest.fixture
-async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_schema_query_01(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
@@ -619,7 +620,7 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
@@ -627,7 +628,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_check_create(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
             f"{InfrahubKind.CHECKDEFINITION}Create": {
@@ -792,14 +793,14 @@ async def gql_query_data_03() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def schema_02(client, helper, car_data_01) -> ClientSchemaRoot:
+async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dict) -> ClientSchemaRoot:
     full_schema = ujson.loads((helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8"))
 
     return ClientSchemaRoot(**full_schema)
 
 
 @pytest.fixture
-async def gql_query_node_03(client, gql_query_data_03) -> InfrahubNode:
+async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
     schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
     node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
     return node
@@ -868,7 +869,9 @@ async def artifact_definition_data_01() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def artifact_definition_node_01(client, schema_02: ClientSchemaRoot, artifact_definition_data_01) -> InfrahubNode:
+async def artifact_definition_node_01(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_01: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
     return node
@@ -910,7 +913,9 @@ async def artifact_definition_data_02() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def artifact_definition_node_02(client, schema_02: ClientSchemaRoot, artifact_definition_data_02) -> InfrahubNode:
+async def artifact_definition_node_02(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_02: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
     return node
@@ -943,7 +948,9 @@ async def artifact_data_01() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def artifact_node_01(client, schema_02: ClientSchemaRoot, artifact_data_01) -> InfrahubNode:
+async def artifact_node_01(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_01: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_data_01)
     return node
@@ -978,7 +985,9 @@ async def artifact_data_02() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def artifact_node_02(client, schema_02: ClientSchemaRoot, artifact_data_02) -> InfrahubNode:
+async def artifact_node_02(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_02: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_data_02)
     return node
@@ -1059,7 +1068,9 @@ async def transformation_data_01() -> dict:
 
 
 @pytest.fixture
-async def transformation_node_01(client, schema_02, transformation_data_01) -> InfrahubNode:
+async def transformation_node_01(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_01: dict
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == "CoreTransformPython"][0]
     node = InfrahubNode(client=client, schema=schema, data=transformation_data_01)
     return node
@@ -1097,7 +1108,9 @@ async def transformation_data_02() -> dict:
 
 
 @pytest.fixture
-async def transformation_node_02(client, schema_02, transformation_data_02) -> InfrahubNode:
+async def transformation_node_02(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_02: dict
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2][0]
     node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
     return node
@@ -1147,7 +1160,7 @@ async def car_data_01() -> dict:
 
 
 @pytest.fixture
-async def car_node_01(client, schema_02, car_data_01) -> InfrahubNode:
+async def car_node_01(client: InfrahubClient, schema_02: ClientSchemaRoot, car_data_01: dict) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.name == "ElectricCar"][0]
     node = InfrahubNode(client=client, schema=schema, data=car_data_01)
     return node

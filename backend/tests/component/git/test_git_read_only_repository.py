@@ -115,7 +115,7 @@ async def test_import_read_only_repository_last_commit(
     mock_add_tags: MagicMock,
     mock_get_client: MagicMock,
     git_repo_01_read_only: InfrahubReadOnlyRepository,
-    git_upstream_repo_01,
+    git_upstream_repo_01: dict[str, str | Path],
 ) -> None:
     repo = git_repo_01_read_only
     repo.client = AsyncMock()
