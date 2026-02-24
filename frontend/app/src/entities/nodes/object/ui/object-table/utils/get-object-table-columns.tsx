@@ -22,7 +22,6 @@ import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nod
 import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
-
 const columnHelper = createColumnHelper<NodeObject>();
 
 export function getObjectIdentifierColumns(

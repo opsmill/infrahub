@@ -18,7 +18,6 @@ import type { NodeAttributeWithMetadata, NodeObjectWithMetadata } from "@/entiti
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
