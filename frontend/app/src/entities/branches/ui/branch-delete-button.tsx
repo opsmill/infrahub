@@ -23,7 +23,7 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
   const isMerged = branch.status === BRANCH_STATUS.MERGED;
-  const isDisabled = !isAuthenticated || !!branch.is_default || isMerged;
+  const isDisabled = !isAuthenticated || !!branch.is_default || isMerged || isDeleting;
 
   return (
     <>
