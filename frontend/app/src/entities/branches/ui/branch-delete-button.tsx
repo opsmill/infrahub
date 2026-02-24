@@ -8,7 +8,6 @@ import { Button } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
 
@@ -22,8 +21,7 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
   const navigate = useNavigate();
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
-  const isDisabled =
-    !isAuthenticated || !!branch.is_default || branch.status === BRANCH_STATUS.MERGED || isDeleting;
+  const isDisabled = !isAuthenticated || !!branch.is_default || isDeleting;
 
   return (
     <>
