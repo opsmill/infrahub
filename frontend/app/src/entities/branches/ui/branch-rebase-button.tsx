@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
@@ -31,6 +32,13 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
+  const isMerged = branch.status === BRANCH_STATUS.MERGED;
+  const isDisabled =
+    !isAuthenticated ||
+    loading ||
+    !!branch.is_default ||
+    isMerged ||
+    !!(taskData?.count && taskData.count > 0);
 
   const handleRebase = () => {
     rebaseBranchMutation.mutate(
@@ -60,12 +68,7 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
 
   return (
     <Button
-      disabled={
-        !isAuthenticated ||
-        loading ||
-        branch.is_default ||
-        (!!taskData?.count && taskData.count > 0)
-      }
+      disabled={isDisabled}
       onClick={handleRebase}
       variant={"outline"}
       className="flex items-center gap-2"
