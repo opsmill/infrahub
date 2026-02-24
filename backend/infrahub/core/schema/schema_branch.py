@@ -2262,6 +2262,7 @@ class SchemaBranch:
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                     label=relationship.label,
+                    order_weight=relationship.order_weight,
                     inherited=False,
                 )
             )
