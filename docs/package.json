@@ -37,7 +37,7 @@
     "@typescript-eslint/parser": "^6.20.0",
     "baseline-browser-mapping": "^2.9.14",
     "eslint": "^8.56.0",
-    "markdownlint-cli2": ">=0.17.0",
+    "markdownlint-cli2": ">=0.21.0",
     "typescript": "^5.9.2"
   },
   "browserslist": {
