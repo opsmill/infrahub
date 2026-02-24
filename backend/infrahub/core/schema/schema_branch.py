@@ -82,6 +82,7 @@ profiles_rel_settings: dict[str, Any] = {
     "kind": RelationshipKind.PROFILE,
     "cardinality": RelationshipCardinality.MANY,
     "branch": BranchSupportType.AWARE,
+    "order_weight": 99_000,
 }
 
 
@@ -617,7 +618,9 @@ class SchemaBranch:
         self.process_hierarchy()
         self.process_branch_support()
         self.manage_object_template_schemas()
+        self.manage_object_template_relationships()
         self.manage_profile_schemas()
+        self.manage_profile_relationships()
         self.add_hierarchy_generic()
         self.add_hierarchy_node()
 
@@ -644,8 +647,6 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
         self.add_groups()
-        self.manage_object_template_relationships()
-        self.manage_profile_relationships()
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
