@@ -87,9 +87,11 @@ export const ProposedChangeCreateForm = () => {
                 if (sourceBranches.some((b) => b.name === value)) {
                   return true;
                 }
+
                 if (branches.some((b) => b.name === value)) {
                   return "Branch is not available (merged or default)";
                 }
+
                 return "Branch does not exist";
               },
             },
