@@ -1,6 +1,5 @@
 import * as R from "remeda";
 
-import type { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
@@ -126,7 +125,7 @@ const getDefaultValueFromProfiles = (
     source: {
       type: "profile",
       id: profileWithDefaultValueForField.id,
-      label: profileWithDefaultValueForField.display_label,
+      label: getNodeLabel(profileWithDefaultValueForField),
       kind: profileWithDefaultValueForField.__typename,
     },
     value: (
@@ -148,7 +147,7 @@ const getDefaultValueFromPool = (
     return null;
   }
 
-  const pool = currentField.source as LineageSource;
+  const pool = currentField.source;
 
   if (!pool) return null;
   if (!pool.id) return null;
@@ -167,14 +166,30 @@ const getDefaultValueFromPool = (
 export const getDefaultValueFromTemplate = (
   fieldName: string,
   objectTemplate?: NodeObject | null
-): AttributeValueFromTemplate | null => {
+): AttributeValueFromTemplate | AttributeValueFromPool | null => {
   if (!objectTemplate) return null;
 
   const currentField = objectTemplate[fieldName] as NodeAttributeWithMetadata | undefined;
 
   if (!currentField) return null;
 
-  if (currentField.value === null) return null;
+  if (currentField.value === null) {
+    if (currentField.source?.__typename) {
+      const { schema: sourceSchema } = getSchema(currentField.source.__typename);
+      if (sourceSchema && isPoolSchema(sourceSchema)) {
+        return {
+          source: {
+            type: "pool",
+            id: currentField.source.id,
+            label: getNodeLabel(currentField.source),
+            kind: currentField.source.__typename,
+          },
+          value: { from_pool: { id: currentField.source.id } },
+        };
+      }
+    }
+    return null;
+  }
 
   if (currentField.is_from_profile) return null;
 
