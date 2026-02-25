@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.constants import BranchSupportType
+    from infrahub.core.models import HashableModel
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
 
@@ -99,6 +100,18 @@ class AttributeSchema(GeneratedAttributeSchema):
             if isinstance(value, Enum):
                 data[field_name] = value.value
         return data
+
+    def update(self, other: HashableModel) -> Self:
+        super().update(other=other)
+
+        if isinstance(other, AttributeSchema):
+            # Allow explicit clearing of default_value (setting it to None).
+            # The base update() skips None values, but for default_value,
+            # None means "remove the default" which is semantically meaningful.
+            if "default_value" in other.model_fields_set and other.default_value is None:
+                self.default_value = None
+
+        return self
 
     @field_validator("kind")
     @classmethod

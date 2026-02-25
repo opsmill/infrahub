@@ -388,6 +388,74 @@ async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
     assert criticality.get_attribute(name="color").optional is True
 
 
+async def test_schema_update_optional_with_default_to_mandatory(schema_criticality_tag) -> None:
+    """Load a schema with optional+default, update to mandatory without default."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
+    schema.process_default_values()
+
+    criticality = schema.get(name="TestingCriticality")
+    color_attr = criticality.get_attribute(name="color")
+    assert color_attr.optional is True
+    assert color_attr.default_value == "#444444"
+
+    # Update: make color mandatory with no default
+    updated_data = copy.deepcopy(schema_criticality_tag)
+    for node in updated_data["nodes"]:
+        if node["name"] == "Criticality":
+            for attr in node["attributes"]:
+                if attr["name"] == "color":
+                    attr["optional"] = False
+                    attr["default_value"] = None
+                    break
+            break
+
+    updated_branch = SchemaBranch(cache={}, name="test")
+    updated_branch.load_schema(schema=SchemaRoot(**updated_data))
+    updated_branch.process_default_values()
+
+    # Merge the update into the original schema
+    updated_criticality = updated_branch.get(name="TestingCriticality", duplicate=False)
+    criticality = schema.get(name="TestingCriticality")
+    for updated_attr in updated_criticality.attributes:
+        existing_attr = criticality.get_attribute(name=updated_attr.name)
+        existing_attr.update(updated_attr)
+
+    color_attr = criticality.get_attribute(name="color")
+    assert color_attr.optional is False
+    assert color_attr.default_value is None
+
+
+async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_tag) -> None:
+    """Verify default values processing respects explicit optional through schema updates."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
+    schema.process_default_values()
+
+    criticality = schema.get(name="TestingCriticality")
+    color = criticality.get_attribute(name="color")
+    assert color.optional is True
+
+    updated_data = copy.deepcopy(schema_criticality_tag)
+    for node in updated_data["nodes"]:
+        if node["name"] == "Criticality":
+            for attr in node["attributes"]:
+                if attr["name"] == "color":
+                    attr["optional"] = False
+                    attr["default_value"] = None
+                    break
+            break
+
+    updated_branch = SchemaBranch(cache={}, name="test")
+    updated_branch.load_schema(schema=SchemaRoot(**updated_data))
+    updated_branch.process_default_values()
+
+    updated_criticality = updated_branch.get(name="TestingCriticality")
+    updated_color = updated_criticality.get_attribute(name="color")
+    assert updated_color.optional is False
+    assert updated_color.default_value is None
+
+
 async def test_schema_branch_reconcile_legacy_attribute_parameters() -> None:
     """Test that SchemaBranch.load_schema() syncs top-level and parameters fields for attributes with legacy parameters."""
     regex = "abc"

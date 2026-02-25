@@ -541,7 +541,7 @@ async def test_query_filter_with_multiple_values_rel(
     assert len(nodes) == 4
 
 
-async def test_qeury_with_multiple_values_invalid_type(
+async def test_query_with_multiple_values_invalid_type(
     db: InfrahubDatabase,
     person_john_main: Node,
     person_jane_main: Node,
