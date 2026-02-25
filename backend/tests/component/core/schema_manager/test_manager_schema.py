@@ -464,8 +464,8 @@ async def test_schema_update_optional_with_default_to_mandatory_with_default(sch
     assert "optional" in diff.changed
 
 
-async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_tag) -> None:
-    """Verify schema processing respects explicit optional through schema updates."""
+async def test_schema_optional_to_mandatory_without_default(schema_criticality_tag) -> None:
+    """Verify schema processing correctly transitions an attribute from optional to mandatory without default."""
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
     schema.process()
@@ -492,6 +492,76 @@ async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_
     updated_color = updated_criticality.get_attribute(name="color")
     assert updated_color.optional is False
     assert updated_color.default_value is None
+
+
+async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_tag) -> None:
+    """Verify an attribute can go through mandatory -> optional -> mandatory via schema processing."""
+    # Start with color as optional (has default_value + optional=True in fixture)
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
+    schema.process()
+
+    criticality = schema.get(name="TestingCriticality")
+    color = criticality.get_attribute(name="color")
+    assert color.optional is True
+    assert color.default_value == "#444444"
+
+    # Step 2: Make color mandatory without default
+    mandatory_data = copy.deepcopy(schema_criticality_tag)
+    for node in mandatory_data["nodes"]:
+        if node["name"] == "Criticality":
+            for attr in node["attributes"]:
+                if attr["name"] == "color":
+                    attr["optional"] = False
+                    attr["default_value"] = None
+                    break
+            break
+
+    mandatory_branch = SchemaBranch(cache={}, name="test")
+    mandatory_branch.load_schema(schema=SchemaRoot(**mandatory_data))
+    mandatory_branch.process()
+
+    mandatory_color = mandatory_branch.get(name="TestingCriticality").get_attribute(name="color")
+    assert mandatory_color.optional is False
+    assert mandatory_color.default_value is None
+
+    # Back to optional with a new default
+    optional_again_data = copy.deepcopy(schema_criticality_tag)
+    for node in optional_again_data["nodes"]:
+        if node["name"] == "Criticality":
+            for attr in node["attributes"]:
+                if attr["name"] == "color":
+                    attr["optional"] = True
+                    attr["default_value"] = "#ffffff"
+                    break
+            break
+
+    optional_branch = SchemaBranch(cache={}, name="test")
+    optional_branch.load_schema(schema=SchemaRoot(**optional_again_data))
+    optional_branch.process()
+
+    optional_color = optional_branch.get(name="TestingCriticality").get_attribute(name="color")
+    assert optional_color.optional is True
+    assert optional_color.default_value == "#ffffff"
+
+    # Back to mandatory again, keeping the new default
+    mandatory_again_data = copy.deepcopy(schema_criticality_tag)
+    for node in mandatory_again_data["nodes"]:
+        if node["name"] == "Criticality":
+            for attr in node["attributes"]:
+                if attr["name"] == "color":
+                    attr["optional"] = False
+                    attr["default_value"] = "#ffffff"
+                    break
+            break
+
+    mandatory_again_branch = SchemaBranch(cache={}, name="test")
+    mandatory_again_branch.load_schema(schema=SchemaRoot(**mandatory_again_data))
+    mandatory_again_branch.process()
+
+    final_color = mandatory_again_branch.get(name="TestingCriticality").get_attribute(name="color")
+    assert final_color.optional is False
+    assert final_color.default_value == "#ffffff"
 
 
 async def test_schema_branch_reconcile_legacy_attribute_parameters() -> None:
