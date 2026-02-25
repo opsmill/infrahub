@@ -45,17 +45,17 @@ CONVERSION_RESPONSE_COMMON_FIELDS = {
         "relationship_cardinality": None,
     },
     "internal_status": {
-        "is_mandatory": False,
+        "is_mandatory": True,
         "source_field_name": "internal_status",
         "relationship_cardinality": None,
     },
     "operational_status": {
-        "is_mandatory": False,
+        "is_mandatory": True,
         "source_field_name": "operational_status",
         "relationship_cardinality": None,
     },
     "sync_status": {
-        "is_mandatory": False,
+        "is_mandatory": True,
         "source_field_name": "sync_status",
         "relationship_cardinality": None,
     },
@@ -163,7 +163,7 @@ class TestConvertRepository(TestInfrahubApp):
             "FieldsMappingTypeConversion": {
                 "mapping": {
                     **CONVERSION_RESPONSE_COMMON_FIELDS,
-                    "ref": {"is_mandatory": False, "source_field_name": None, "relationship_cardinality": None},
+                    "ref": {"is_mandatory": True, "source_field_name": None, "relationship_cardinality": None},
                     "commit": {"is_mandatory": False, "source_field_name": "commit", "relationship_cardinality": None},
                 }
             }
@@ -301,7 +301,7 @@ class TestConvertRepository(TestInfrahubApp):
                 "mapping": {
                     **CONVERSION_RESPONSE_COMMON_FIELDS,
                     "default_branch": {
-                        "is_mandatory": False,
+                        "is_mandatory": True,
                         "source_field_name": None,
                         "relationship_cardinality": None,
                     },
@@ -448,7 +448,7 @@ class TestConvertRepository(TestInfrahubApp):
                 "mapping": {
                     **CONVERSION_RESPONSE_COMMON_FIELDS,
                     "default_branch": {
-                        "is_mandatory": False,
+                        "is_mandatory": True,
                         "source_field_name": None,
                         "relationship_cardinality": None,
                     },

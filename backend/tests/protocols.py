@@ -626,7 +626,7 @@ class TestingCar(CoreNode):
 class TestingDevice(TestingInterfaceHolder):
     name: String
     manufacturer: String
-    height: Integer
+    height: IntegerOptional
     weight: Integer
     airflow: Enum
     part_number: StringOptional

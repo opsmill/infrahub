@@ -54,7 +54,7 @@ DEVICE = NodeSchema(
     attributes=[
         AttributeSchema(name="name", kind="Text", unique=True),
         AttributeSchema(name="manufacturer", kind="Text"),
-        AttributeSchema(name="height", kind="Number", default_value=1),
+        AttributeSchema(name="height", kind="Number", default_value=1, optional=True),
         AttributeSchema(name="weight", kind="Number"),
         AttributeSchema(
             name="airflow",
