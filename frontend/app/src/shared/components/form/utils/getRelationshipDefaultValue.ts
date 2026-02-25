@@ -213,9 +213,9 @@ export const getRelationshipDefaultValueFromTemplate = (
 
   const { node } = relationshipTemplate;
   if (!node) {
-    const poolRelationship = objectTemplate[
-      relationshipName + FROM_RESOURCE_POOL_SUFFIX
-    ] as NodeRelationshipOneWithMetadata | undefined;
+    const poolRelationship = objectTemplate[relationshipName + FROM_RESOURCE_POOL_SUFFIX] as
+      | NodeRelationshipOneWithMetadata
+      | undefined;
 
     if (!poolRelationship?.node) return null;
 
