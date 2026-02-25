@@ -20,6 +20,7 @@ from infrahub.core.constants import (
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
+    PROFILES_RELATIONSHIP_NAME,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -85,12 +86,13 @@ log = get_logger()
 
 
 profiles_rel_settings: dict[str, Any] = {
-    "name": "profiles",
+    "name": PROFILES_RELATIONSHIP_NAME,
     "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     "peer": InfrahubKind.PROFILE,
     "kind": RelationshipKind.PROFILE,
     "cardinality": RelationshipCardinality.MANY,
     "branch": BranchSupportType.AWARE,
+    "order_weight": 99_000,
 }
 
 
@@ -2203,32 +2205,30 @@ class SchemaBranch:
             node = node.duplicate()
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
-            if node.parent:
-                if "parent" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_parent_rel(
-                            peer=node.parent,
-                            hierarchical=node.hierarchy,
-                            read_only=read_only,
-                            optional=node.parent in [node_name] + self.generic_names,
-                        )
+            parent_peer = node.parent or node.hierarchy
+            if "parent" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_parent_rel(
+                        peer=parent_peer,
+                        hierarchical=node.hierarchy,
+                        read_only=read_only,
+                        optional=parent_peer in [node_name] + self.generic_names,
                     )
-                else:
-                    parent_rel = node.get_relationship(name="parent")
-                    if parent_rel.peer != node.parent:
-                        parent_rel.peer = node.parent
+                )
+            else:
+                parent_rel = node.get_relationship(name="parent")
+                if parent_rel.peer != parent_peer:
+                    parent_rel.peer = parent_peer
 
-            if node.children:
-                if "children" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_child_rel(
-                            peer=node.children, hierarchical=node.hierarchy, read_only=read_only
-                        )
-                    )
-                else:
-                    children_rel = node.get_relationship(name="children")
-                    if children_rel.peer != node.children:
-                        children_rel.peer = node.children
+            children_peer = node.children or node.hierarchy
+            if "children" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_child_rel(peer=children_peer, hierarchical=node.hierarchy, read_only=read_only)
+                )
+            else:
+                children_rel = node.get_relationship(name="children")
+                if children_rel.peer != children_peer:
+                    children_rel.peer = children_peer
 
             self.set(name=node_name, schema=node)
 
@@ -2267,6 +2267,7 @@ class SchemaBranch:
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                     label=relationship.label,
+                    order_weight=relationship.order_weight,
                     inherited=False,
                 )
             )
@@ -2339,14 +2340,14 @@ class SchemaBranch:
                 continue
 
             # Add relationship between node and profile
-            if "profiles" not in node.relationship_names:
+            if PROFILES_RELATIONSHIP_NAME not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
                 node_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
-                rel_profiles = node.get_relationship(name="profiles")
+                rel_profiles = node.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         has_changes = True
@@ -2355,7 +2356,7 @@ class SchemaBranch:
                     continue
 
                 node_schema = self.get(name=node_name, duplicate=True)
-                rel_profiles = node_schema.get_relationship(name="profiles")
+                rel_profiles = node_schema.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         setattr(rel_profiles, name, value)
@@ -2453,6 +2454,8 @@ class SchemaBranch:
                 "cardinality": RelationshipCardinality.ONE,
                 "branch": BranchSupportType.AWARE,
                 "order_weight": 1,
+                "max_count": 1,
+                "min_count": 0,
             }
 
             # Add relationship between node and template
@@ -2530,7 +2533,7 @@ class SchemaBranch:
         )
 
     def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
-        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=True)
 
         # Remove previous relationships to account for new ones
         template_schema.relationships = [
@@ -2601,7 +2604,7 @@ class SchemaBranch:
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
         if getattr(node, "generate_profile", False):
-            if "profiles" not in [r.name for r in template_schema.relationships]:
+            if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
                 settings = dict(profiles_rel_settings)
                 settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
                 template_schema.relationships.append(RelationshipSchema(**settings))
@@ -2752,7 +2755,12 @@ class SchemaBranch:
                 or node.state == HashableModelState.ABSENT
             ):
                 try:
-                    node.relationships = [r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME]
+                    if any(r.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME for r in node.relationships):
+                        node = self.get(name=node_name, duplicate=True)
+                        node.relationships = [
+                            r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME
+                        ]
+                        self.set(name=node_name, schema=node)
                     self.delete(name=self._get_object_template_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
                     ...

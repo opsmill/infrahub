@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m059_recompute_permission_display_labels import Migration059
+from infrahub.core.migrations.graph.m061_recompute_permission_display_labels import Migration061
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreObjectPermission
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class TestMigration059(TestInfrahubApp):
+class TestMigration061(TestInfrahubApp):
     async def get_display_label_from_db(
         self, db: InfrahubDatabase, branch: Branch, node_ids: list[str]
     ) -> dict[str, str | None]:
@@ -100,7 +100,7 @@ class TestMigration059(TestInfrahubApp):
 
         return permissions
 
-    async def test_migration_059_recomputes_display_labels(
+    async def test_migration_061_recomputes_display_labels(
         self, db: InfrahubDatabase, default_branch: Branch, permissions_dataset: dict[str, tuple[Node, str]]
     ) -> None:
         for perm_id in permissions_dataset:
@@ -112,7 +112,7 @@ class TestMigration059(TestInfrahubApp):
             assert initial_values[perm_id] == "old-value"
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
@@ -123,20 +123,20 @@ class TestMigration059(TestInfrahubApp):
         for perm_id, (_, expected) in permissions_dataset.items():
             assert final_values[perm_id] == expected, f"Expected {expected}, got {final_values[perm_id]}"
 
-    async def test_migration_059_idempotent(
+    async def test_migration_061_idempotent(
         self, db: InfrahubDatabase, default_branch: Branch, permissions_dataset: dict[str, tuple[Node, str]]
     ) -> None:
         all_ids = list(permissions_dataset)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
         first_values = await self.get_display_label_from_db(db=db, branch=default_branch, node_ids=all_ids)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 
@@ -144,7 +144,7 @@ class TestMigration059(TestInfrahubApp):
 
         assert first_values == second_values
 
-    async def test_migration_059_execute_against_branch(
+    async def test_migration_061_execute_against_branch(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
         obj_perm = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -158,7 +158,7 @@ class TestMigration059(TestInfrahubApp):
         await obj_perm.save(db=db)
         await self.set_display_label_value(db=db, node_uuid=obj_perm.id, value="old-branch-value")
 
-        test_branch = await create_branch(db=db, branch_name="test-branch-m059")
+        test_branch = await create_branch(db=db, branch_name="test-branch-m061")
 
         obj_perm_branch = await NodeManager.get_one(
             db=db, kind=CoreObjectPermission, id=obj_perm.id, branch=test_branch, raise_on_error=True
@@ -167,13 +167,13 @@ class TestMigration059(TestInfrahubApp):
         await obj_perm_branch.save(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             await migration.execute(migration_input=MigrationInput(db=dbs))
 
         await test_branch.rebase(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration059()
+            migration = Migration061()
             execution_result = await migration.execute_against_branch(
                 migration_input=MigrationInput(db=dbs), branch=test_branch
             )
