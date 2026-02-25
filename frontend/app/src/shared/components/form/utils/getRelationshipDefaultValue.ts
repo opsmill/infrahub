@@ -222,6 +222,7 @@ export const getRelationshipDefaultValueFromTemplate = (
     return {
       source: {
         type: "pool",
+        fromTemplate: true,
         label: getNodeLabel(poolRelationship.node),
         id: poolRelationship.node.id,
         kind: poolRelationship.node.__typename,

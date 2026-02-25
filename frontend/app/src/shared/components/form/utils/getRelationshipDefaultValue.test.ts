@@ -306,6 +306,7 @@ describe("getRelationshipDefaultValue", () => {
       expect(defaultValue).to.deep.equal({
         source: {
           type: "pool",
+          fromTemplate: true,
           label: "My IP Pool",
           id: "pool-id",
           kind: "CoreIPAddressPool",

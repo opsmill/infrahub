@@ -569,6 +569,7 @@ describe("getFieldDefaultValue", () => {
       expect(defaultValue).to.deep.equal({
         source: {
           type: "pool",
+          fromTemplate: true,
           id: "pool-id",
           label: "My Number Pool",
           kind: "CoreNumberPool",

@@ -180,6 +180,7 @@ export const getDefaultValueFromTemplate = (
         return {
           source: {
             type: "pool",
+            fromTemplate: true,
             id: currentField.source.id,
             label: getNodeLabel(currentField.source),
             kind: currentField.source.__typename,
