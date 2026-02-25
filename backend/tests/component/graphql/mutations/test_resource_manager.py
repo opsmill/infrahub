@@ -24,6 +24,102 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import SNOW_TICKET_SCHEMA, TICKET, load_schema
 
+FAKE_POOL_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+CREATE_PREFIX_FROM_POOL = """
+mutation CreatePrefixFromPool($name: String!, $pool_id: String!) {
+    TestMandatoryPrefixCreate(data: {
+        name: { value: $name }
+        prefix: {
+            from_pool: {
+                id: $pool_id
+            }
+        }
+    }) {
+        ok
+        object {
+            name {
+                value
+            }
+            prefix {
+                node {
+                    prefix {
+                        value
+                    }
+                }
+                properties {
+                    source {
+                        id
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+CREATE_ADDRESS_FROM_POOL = """
+mutation CreateAddressFromPool($name: String!, $pool_id: String!) {
+    TestMandatoryAddressCreate(data: {
+        name: { value: $name }
+        address: {
+            from_pool: {
+                id: $pool_id
+            }
+        }
+    }) {
+        ok
+        object {
+            name {
+                value
+            }
+            address {
+                node {
+                    address {
+                        value
+                    }
+                }
+                properties {
+                    source {
+                        id
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+CREATE_TICKET_WITH_POOL = """
+mutation CreateTicketWithPool($pool_id: String!) {
+    TestingTicketCreate(data: {
+        title: { value: "ticket-bad-pool" }
+        ticket_id: {
+            from_pool: {
+                id: $pool_id
+            }
+        }
+    }) {
+        ok
+    }
+}
+"""
+
+CREATE_TEMPLATE_TICKET_WITH_POOL = """
+mutation CreateTemplateTicketWithPool($pool_id: String!) {
+    TemplateTestingTicketCreate(data: {
+        template_name: { value: "bad-pool-template" }
+        ticket_id: {
+            from_pool: {
+                id: $pool_id
+            }
+        }
+    }) {
+        ok
+    }
+}
+"""
+
 
 @pytest.fixture
 async def prefix_pool_01(
@@ -60,41 +156,6 @@ async def test_create_object_and_assign_prefix_from_pool(
 ) -> None:
     pool = prefix_pool_01["pool"]
 
-    query = (
-        """
-    mutation {
-        TestMandatoryPrefixCreate(data: {
-            name: { value: "site1" }
-            prefix: {
-                from_pool: {
-                    id: "%s"
-                }
-            }
-        }) {
-            ok
-            object {
-                name {
-                    value
-                }
-                prefix {
-                    node {
-                        prefix {
-                            value
-                        }
-                    }
-                    properties {
-                        source {
-                            id
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
@@ -103,10 +164,10 @@ async def test_create_object_and_assign_prefix_from_pool(
     )
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=CREATE_PREFIX_FROM_POOL,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"name": "site1", "pool_id": pool.id},
     )
 
     assert not result.errors
@@ -134,6 +195,79 @@ async def test_create_object_and_assign_prefix_from_pool(
     assert parent_events[0].meta.account_id == session_first_account.account_id
     assert prefix_events[0].meta.account_id == session_first_account.account_id
     assert prefix_events[0].meta.parent == parent_events[0].meta.id
+
+
+@pytest.mark.parametrize(
+    "query,field,name",
+    [
+        pytest.param(CREATE_PREFIX_FROM_POOL, "prefix", "site-bad-pool", id="prefix"),
+        pytest.param(CREATE_ADDRESS_FROM_POOL, "address", "server-bad-pool", id="address"),
+    ],
+)
+async def test_create_object_with_invalid_ip_pool_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry: None,
+    query: str,
+    field: str,
+    name: str,
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": name, "pool_id": FAKE_POOL_ID},
+    )
+
+    assert result.errors
+    assert f"Unable to find the pool to generate a node for the relationship '{field}'" in str(result.errors[0])
+
+
+async def test_create_object_with_invalid_number_pool_id(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch.update_schema_hash()
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_TICKET_WITH_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": FAKE_POOL_ID},
+    )
+
+    assert result.errors
+    assert f"The pool requested {{'id': '{FAKE_POOL_ID}'}} was not found." in str(result.errors[0])
+
+
+async def test_create_template_with_invalid_number_pool_id(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Creating a template with from_pool referencing a nonexistent number pool should fail."""
+    ticket_with_template = TICKET.model_copy(deep=True)
+    ticket_with_template.generate_template = True
+    ticket_with_template.get_attribute(name="ticket_id").unique = False
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ticket_with_template]))
+    default_branch.update_schema_hash()
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_TEMPLATE_TICKET_WITH_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": FAKE_POOL_ID},
+    )
+
+    assert result.errors
+    assert FAKE_POOL_ID in str(result.errors[0])
 
 
 async def test_update_object_and_assign_prefix_from_pool(
@@ -228,41 +362,6 @@ async def test_create_object_and_assign_address_from_pool(
     )
     await pool.save(db=db)
 
-    query = (
-        """
-    mutation {
-        TestMandatoryAddressCreate(data: {
-            name: { value: "server1" }
-            address: {
-                from_pool: {
-                    id: "%s"
-                }
-            }
-        }) {
-            ok
-            object {
-                name {
-                    value
-                }
-                address {
-                    node {
-                        address {
-                            value
-                        }
-                    }
-                    properties {
-                        source {
-                            id
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
@@ -271,10 +370,10 @@ async def test_create_object_and_assign_address_from_pool(
     )
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=CREATE_ADDRESS_FROM_POOL,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"name": "server1", "pool_id": pool.id},
     )
 
     assert not result.errors

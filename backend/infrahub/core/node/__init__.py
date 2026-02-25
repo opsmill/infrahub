@@ -346,8 +346,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def handle_pool(
-        self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list, allocate_resources: bool = True
+    async def handle_pool(  # noqa: PLR0911
+        self,
+        db: InfrahubDatabase,
+        attribute: BaseAttribute,
+        errors: list,
+        allocate_resources: bool = True,
     ) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
@@ -358,19 +362,25 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
         2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
         """
+        number_pool_id: str | None = None
         # Templates should not allocate from pools - just store the reference
         # Actual allocation happens when creating objects from the template
         if isinstance(self._schema, TemplateSchema):
             if attribute.from_pool:
-                attribute.source = attribute.from_pool["id"]
+                number_pool_id = str(attribute.from_pool["id"])
+                attribute.source = number_pool_id
                 attribute.value = None
+                allocate_resources = False
             elif attribute.from_pool is None:
                 attribute.clear_source()
-            return
+                return
 
-        number_pool_id: str | None = None
         # Case 1: Schema-defined NumberPool attribute
-        if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
+        if (
+            not number_pool_id
+            and attribute.schema.kind == "NumberPool"
+            and isinstance(attribute.schema.parameters, NumberPoolParameters)
+        ):
             number_pool_id = attribute.schema.parameters.number_pool_id
             if not number_pool_id:
                 errors.append(
@@ -382,13 +392,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             attribute.from_pool = {"id": number_pool_id}
             attribute.is_default = False
         # Case 2: User-specified from_pool on a regular Number attribute
-        elif attribute.from_pool:
+        elif not number_pool_id and attribute.from_pool:
             number_pool_id = attribute.from_pool.get("id")
             if not number_pool_id:
                 errors.append(ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."}))
                 return
 
-        if not allocate_resources or not number_pool_id:
+        if not number_pool_id:
             # no pool allocation necessary
             return
 
@@ -402,6 +412,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
                 )
             )
+            return
+
+        if not allocate_resources:
             return
 
         if (
