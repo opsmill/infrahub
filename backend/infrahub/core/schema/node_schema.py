@@ -132,8 +132,6 @@ class NodeSchema(GeneratedNodeSchema):
                 continue
             if relationship.name in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME):
                 continue
-            if relationship.kind == RelationshipKind.HIERARCHY:
-                continue
 
             new_relationship = relationship.duplicate()
             new_relationship.id = None

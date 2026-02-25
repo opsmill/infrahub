@@ -2198,20 +2198,20 @@ class SchemaBranch:
             node = node.duplicate()
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
-            if node.parent:
-                if "parent" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_parent_rel(
-                            peer=node.parent,
-                            hierarchical=node.hierarchy,
-                            read_only=read_only,
-                            optional=node.parent in [node_name] + self.generic_names,
-                        )
+            parent_peer = node.parent or node.hierarchy
+            if "parent" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_parent_rel(
+                        peer=parent_peer,
+                        hierarchical=node.hierarchy,
+                        read_only=read_only,
+                        optional=parent_peer in [node_name] + self.generic_names,
                     )
-                else:
-                    parent_rel = node.get_relationship(name="parent")
-                    if parent_rel.peer != node.parent:
-                        parent_rel.peer = node.parent
+                )
+            else:
+                parent_rel = node.get_relationship(name="parent")
+                if parent_rel.peer != parent_peer:
+                    parent_rel.peer = parent_peer
 
             if node.children:
                 if "children" not in node.relationship_names:
