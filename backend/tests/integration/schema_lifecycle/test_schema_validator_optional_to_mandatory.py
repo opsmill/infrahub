@@ -60,7 +60,14 @@ class TestSchemaLifecycleOptionalToMandatory(TestSchemaLifecycleBase):
 
         return {"alice": alice.id, "bob": bob.id}
 
-    async def test_baseline(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
+    async def test_baseline(
+        self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset: dict[str, str]
+    ) -> None:
+        person_schema = registry.schema.get(name=TestKind.PERSON, duplicate=False)
+        height_attr = person_schema.get_attribute(name="height")
+        assert height_attr.optional is True
+        assert height_attr.default_value == 180
+
         persons = await registry.manager.query(db=db, schema=TestKind.PERSON)
         assert len(persons) == 2
 
@@ -89,6 +96,11 @@ class TestSchemaLifecycleOptionalToMandatory(TestSchemaLifecycleBase):
         )
         assert not response.errors
         assert response.schema_updated
+
+        person_schema = registry.schema.get(name=TestKind.PERSON, branch=branch.name, duplicate=False)
+        height_attr = person_schema.get_attribute(name="height")
+        assert height_attr.optional is False
+        assert height_attr.default_value is None
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
