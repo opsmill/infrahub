@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.protocols import TestingPerson
 
 from .shared import TestSchemaLifecycleBase
 
@@ -71,6 +72,14 @@ class TestSchemaLifecycleOptionalToMandatory(TestSchemaLifecycleBase):
         persons = await registry.manager.query(db=db, schema=TestKind.PERSON)
         assert len(persons) == 2
 
+        alice = await registry.manager.get_one(
+            db=db, id=initial_dataset["alice"], kind=TestingPerson, raise_on_error=True
+        )
+        assert alice.height.value == 170
+
+        bob = await registry.manager.get_one(db=db, id=initial_dataset["bob"], kind=TestingPerson, raise_on_error=True)
+        assert bob.height.value == 180
+
     async def test_check_mandatory_no_default_succeeds_when_all_have_values(
         self,
         client: InfrahubClient,
@@ -86,6 +95,7 @@ class TestSchemaLifecycleOptionalToMandatory(TestSchemaLifecycleBase):
     async def test_load_mandatory_no_default_succeeds(
         self,
         client: InfrahubClient,
+        db: InfrahubDatabase,
         initial_dataset: dict[str, str],
         schema_person_mandatory_height_no_default: SchemaRoot,
     ) -> None:
@@ -101,6 +111,17 @@ class TestSchemaLifecycleOptionalToMandatory(TestSchemaLifecycleBase):
         height_attr = person_schema.get_attribute(name="height")
         assert height_attr.optional is False
         assert height_attr.default_value is None
+
+        # Height values should be preserved after schema transition
+        alice = await registry.manager.get_one(
+            db=db, id=initial_dataset["alice"], kind=TestingPerson, branch=branch.name, raise_on_error=True
+        )
+        assert alice.height.value == 170
+
+        bob = await registry.manager.get_one(
+            db=db, id=initial_dataset["bob"], kind=TestingPerson, branch=branch.name, raise_on_error=True
+        )
+        assert bob.height.value == 180
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
@@ -157,6 +178,14 @@ class TestSchemaLifecycleOptionalToMandatoryWithDefault(TestSchemaLifecycleBase)
         persons = await registry.manager.query(db=db, schema=TestKind.PERSON)
         assert len(persons) == 2
 
+        alice = await registry.manager.get_one(
+            db=db, id=initial_dataset["alice"], kind=TestingPerson, raise_on_error=True
+        )
+        assert alice.height.value == 170
+
+        bob = await registry.manager.get_one(db=db, id=initial_dataset["bob"], kind=TestingPerson, raise_on_error=True)
+        assert bob.height.value == 180
+
     async def test_check_mandatory_with_default_succeeds(
         self,
         client: InfrahubClient,
@@ -172,6 +201,7 @@ class TestSchemaLifecycleOptionalToMandatoryWithDefault(TestSchemaLifecycleBase)
     async def test_load_mandatory_with_default_succeeds(
         self,
         client: InfrahubClient,
+        db: InfrahubDatabase,
         initial_dataset: dict[str, str],
         schema_person_mandatory_height_with_default: SchemaRoot,
     ) -> None:
@@ -187,6 +217,17 @@ class TestSchemaLifecycleOptionalToMandatoryWithDefault(TestSchemaLifecycleBase)
         height_attr = person_schema.get_attribute(name="height")
         assert height_attr.optional is False
         assert height_attr.default_value == 180
+
+        # Height values should be preserved after schema transition
+        alice = await registry.manager.get_one(
+            db=db, id=initial_dataset["alice"], kind=TestingPerson, branch=branch.name, raise_on_error=True
+        )
+        assert alice.height.value == 170
+
+        bob = await registry.manager.get_one(
+            db=db, id=initial_dataset["bob"], kind=TestingPerson, branch=branch.name, raise_on_error=True
+        )
+        assert bob.height.value == 180
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
