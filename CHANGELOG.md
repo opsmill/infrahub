@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.6) - 2026-02-24
+
+### Fixed
+
+- Pass order weights into Profile schema fields to prevent reordering causing a hash mismatch
+
 ## [Infrahub - v1.7.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.5) - 2026-02-23
 
 ### Removed
