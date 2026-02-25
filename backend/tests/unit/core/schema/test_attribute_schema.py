@@ -35,7 +35,7 @@ def test_attribute_schema_update_default_value_type_distinction() -> None:
 
     attr2 = AttributeSchema(name="val", kind="Text", default_value="hello")
     attr2.update(AttributeSchema(name="val", kind="Text", default_value=""))
-    assert not attr2.default_value
+    assert attr2.default_value == ""  # noqa: PLC1901
 
     attr3 = AttributeSchema(name="val", kind="Number", default_value=42)
     attr3.update(AttributeSchema(name="val", kind="Number", default_value=0))
