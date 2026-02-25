@@ -1,0 +1,69 @@
+# Enhanced Search API Contract
+# Changes to existing InfrahubSearchAnywhere query
+
+# Existing types (unchanged)
+type Node {
+  id: String!
+  kind: String!
+}
+
+type NodeEdge {
+  node: Node!
+}
+
+type NodeEdges {
+  count: Int!      # CHANGED: returns TRUE TOTAL count of all matching results,
+                   # independent of offset/limit. For permission-restricted users,
+                   # reflects only results they are authorized to see.
+  edges: [NodeEdge!]!
+}
+
+# Updated query signature
+type Query {
+  InfrahubSearchAnywhere(
+    q: String!                    # Required: search query string
+    limit: Int = 10               # Optional: max results to return (default 10)
+    offset: Int = 0               # NEW: skip first N results (default 0)
+    partial_match: Boolean = true # Optional: CONTAINS vs exact match
+    case_sensitive: Boolean = false # Optional: case sensitivity
+  ): NodeEdges!
+}
+
+# === Behavior Notes ===
+#
+# Pagination:
+#   - offset/limit map to native Cypher SKIP/LIMIT (not Python slicing)
+#   - count is always the true total, not the page size
+#   - Results are ordered by node UUID for deterministic pagination
+#
+# Case sensitivity:
+#   - case_sensitive=false (default): toLower(toString()) matching in Cypher
+#   - case_sensitive=true: 4-variation matching (original, lower, upper, title)
+#
+# Permissions:
+#   - Results are filtered by the requesting user's model-level read permissions
+#   - For super admin users: no permission filter applied (zero overhead)
+#   - For restricted users: only nodes of permitted schema kinds are returned
+#   - Count reflects only permitted results (filter applied pre-query in Cypher)
+
+# === Usage Examples ===
+
+# Dropdown: fetch up to 10 results (no offset)
+# query SearchDropdown($q: String!) {
+#   InfrahubSearchAnywhere(q: $q, limit: 10) {
+#     count    # True total matching results (for "View all X results")
+#     edges {
+#       node { id, kind }
+#     }
+#   }
+# }
+
+# Full results page: paginated fetch
+# query SearchFullPage($q: String!, $limit: Int!, $offset: Int!) {
+#   InfrahubSearchAnywhere(q: $q, limit: $limit, offset: $offset) {
+#     count    # True total (stable across all pages)
+#     edges {
+#       node { id, kind }
+#     }
+#   }
+# }

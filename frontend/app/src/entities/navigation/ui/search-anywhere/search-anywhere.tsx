@@ -8,6 +8,7 @@ import { SearchAnywhereTrigger } from "@/entities/navigation/ui/search-anywhere/
 
 import { SearchActions } from "./search-actions";
 import { SearchAnywhereContext } from "./search-anywhere-context";
+import { SearchAnywhereFooter } from "./search-anywhere-footer";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
 import { SearchParentPrefixes } from "./search-parent-prefixes";
@@ -54,13 +55,15 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
         <Command shouldFilter={false}>
           <SearchAnywhereInput />
 
-          <Command.List className="[&_[cmdk-group]]:mt-2">
+          <Command.List className="max-h-[60vh] overflow-y-auto [&_[cmdk-group]]:mt-2">
             <SearchAnywhereEmpty />
             <SearchActions />
             <SearchParentPrefixes />
             <SearchNodes />
             <SearchDocs />
           </Command.List>
+
+          <SearchAnywhereFooter />
         </Command>
       </SearchAnywhereDialog>
     </SearchAnywhereContext>

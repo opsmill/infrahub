@@ -316,6 +316,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         data: dict[str, Any] = {"is_default": self.is_default}
         if self.value is None:
             data["value"] = NULL_VALUE
+            data["value_lower"] = NULL_VALUE
         else:
             serialized_value = self.serialize_value()
             if isinstance(serialized_value, str) and not is_large_attribute_type(self.schema.kind):
@@ -323,6 +324,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 # Standard non-str attributes (integer, boolean) do not exceed limit size related to neo4j indexing.
                 validate_string_length(serialized_value)
             data["value"] = serialized_value
+            # Pre-compute lowercase value for indexed case-insensitive search
+            if isinstance(serialized_value, str):
+                data["value_lower"] = serialized_value.lower()
+            else:
+                data["value_lower"] = str(serialized_value).lower()
 
         return data
 

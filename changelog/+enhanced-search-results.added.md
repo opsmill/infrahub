@@ -1,0 +1,1 @@
+Enhanced search anywhere: scrollable dropdown with total match count and "View all results" link, and a new dedicated search results page at /search with results grouped by node type in sortable tables

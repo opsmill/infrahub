@@ -99,13 +99,14 @@ async def test_query_NodeGetListByAttributeValueQuery_case_insensitive(
     person_jim_main: Node,
     branch: Branch,
 ) -> None:
-    """Test search is case-insensitive."""
+    """Test search is case-insensitive when case_insensitive=True."""
     # Search with lowercase
     query = await NodeGetListByAttributeValueQuery.init(
         db=db,
         branch=branch,
         search_value="john",
         partial_match=True,
+        case_insensitive=True,
     )
     await query.execute(db=db)
     results = list(query.get_data())
@@ -118,6 +119,7 @@ async def test_query_NodeGetListByAttributeValueQuery_case_insensitive(
         branch=branch,
         search_value="JOHN",
         partial_match=True,
+        case_insensitive=True,
     )
     await query.execute(db=db)
     results = list(query.get_data())

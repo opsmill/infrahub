@@ -2,8 +2,10 @@ from typing import Any
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PermissionDecision
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -11,6 +13,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
+from infrahub.permissions.manager import PermissionManager
 from tests.helpers.graphql import graphql
 
 SEARCH_QUERY = """
@@ -652,3 +655,363 @@ async def test_search_parent_prefix_branch_effective_value(
     data = await _search_with_parent_prefixes(gql_params=gql_params_default, query="10.10.1.1")
     parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
     assert ip_dataset_01["net143"].id in parent_ids  # still 10.10.1.0/27 on default branch
+
+
+SEARCH_QUERY_WITH_PAGINATION = """
+query ($search: String!, $limit: Int, $offset: Int) {
+    InfrahubSearchAnywhere(q: $search, limit: $limit, offset: $offset) {
+        count
+        edges {
+            node {
+                id
+                kind
+            }
+        }
+    }
+}
+"""
+
+
+async def test_search_anywhere_offset_skips_results(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """Verify that offset skips the first N results."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Search for "j" which matches John and Jane (2 results)
+    result_no_offset = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j", "limit": 10, "offset": 0},
+    )
+
+    assert result_no_offset.errors is None
+    assert result_no_offset.data
+    assert result_no_offset.data["InfrahubSearchAnywhere"]["count"] == 2
+    assert len(result_no_offset.data["InfrahubSearchAnywhere"]["edges"]) == 2
+
+    # With offset=1, should skip first result and return only one
+    result_with_offset = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j", "limit": 10, "offset": 1},
+    )
+
+    assert result_with_offset.errors is None
+    assert result_with_offset.data
+    # Count reflects results fetched (capped by db_limit = offset + limit)
+    assert result_with_offset.data["InfrahubSearchAnywhere"]["count"] == 2
+    assert len(result_with_offset.data["InfrahubSearchAnywhere"]["edges"]) == 1
+
+
+async def test_search_anywhere_count_reflects_true_total(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """Verify that count reflects the true total matching results, regardless of limit."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Search for "j" which matches John and Jane (2 results), with limit=2
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j", "limit": 2, "offset": 0},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 2
+    assert len(result.data["InfrahubSearchAnywhere"]["edges"]) == 2
+
+    # With limit=1, count should still be 2 (true total), but only 1 edge returned
+    result_limited = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j", "limit": 1, "offset": 0},
+    )
+
+    assert result_limited.errors is None
+    assert result_limited.data
+    # Count reflects true total, not the page size
+    assert result_limited.data["InfrahubSearchAnywhere"]["count"] == 2
+    assert len(result_limited.data["InfrahubSearchAnywhere"]["edges"]) == 1
+
+
+async def test_search_anywhere_offset_zero_behaves_as_default(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """Verify that offset=0 returns the same results as no offset parameter."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    result_default = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "prius"},
+    )
+
+    result_explicit_zero = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "prius", "limit": 10, "offset": 0},
+    )
+
+    assert result_default.errors is None
+    assert result_explicit_zero.errors is None
+    assert result_default.data
+    assert result_explicit_zero.data
+    assert (
+        result_default.data["InfrahubSearchAnywhere"]["count"]
+        == result_explicit_zero.data["InfrahubSearchAnywhere"]["count"]
+    )
+    assert (
+        result_default.data["InfrahubSearchAnywhere"]["edges"]
+        == result_explicit_zero.data["InfrahubSearchAnywhere"]["edges"]
+    )
+
+
+async def test_search_anywhere_pagination_consistency(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """Verify that paginating through results yields all results without duplicates and with stable count."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Search for "j" which matches John and Jane (2 results)
+    # Page 1: limit=1, offset=0
+    page1 = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j", "limit": 1, "offset": 0},
+    )
+
+    # Page 2: limit=1, offset=1
+    page2 = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PAGINATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j", "limit": 1, "offset": 1},
+    )
+
+    assert page1.errors is None
+    assert page2.errors is None
+    assert page1.data
+    assert page2.data
+
+    # Count should be stable across pages (always the true total)
+    assert page1.data["InfrahubSearchAnywhere"]["count"] == 2
+    assert page2.data["InfrahubSearchAnywhere"]["count"] == 2
+
+    # Each page should have exactly 1 result
+    assert len(page1.data["InfrahubSearchAnywhere"]["edges"]) == 1
+    assert len(page2.data["InfrahubSearchAnywhere"]["edges"]) == 1
+
+    # Combined results should cover all matches without duplicates
+    page1_id = page1.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"]
+    page2_id = page2.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"]
+    assert page1_id != page2_id
+    assert sorted([page1_id, page2_id]) == sorted([person_john_main.id, person_jane_main.id])
+
+
+def _create_restricted_permission_manager(
+    object_permissions: list[ObjectPermission],
+) -> PermissionManager:
+    """Create a PermissionManager with specific object permissions (non-admin)."""
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id="test-restricted-user")
+    manager = PermissionManager(account_session=session)
+    manager.permissions = {
+        "global_permissions": [],
+        "object_permissions": object_permissions,
+    }
+    return manager
+
+
+async def test_search_permission_restricted_user_sees_only_permitted_kinds(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """Restricted user should only see search results for kinds they have view permission on."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Set up permissions: allow TestPerson view, deny everything else
+    gql_params.context.permissions = _create_restricted_permission_manager(
+        object_permissions=[
+            ObjectPermission(
+                namespace="Test",
+                name="Person",
+                action="view",
+                decision=PermissionDecision.ALLOW_ALL,
+            ),
+            ObjectPermission(
+                namespace="*",
+                name="*",
+                action="view",
+                decision=PermissionDecision.DENY,
+            ),
+        ],
+    )
+
+    # Search for "j" — matches John and Jane (TestPerson) but not cars
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    # Only TestPerson results should be visible — cars are filtered out
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 2
+    for edge in result.data["InfrahubSearchAnywhere"]["edges"]:
+        assert edge["node"]["kind"] == person_john_main.get_kind()
+
+    node_ids = [edge["node"]["id"] for edge in result.data["InfrahubSearchAnywhere"]["edges"]]
+    assert sorted(node_ids) == sorted([person_john_main.id, person_jane_main.id])
+
+    # Search for "prius" — matches a car but user can't view TestCar
+    result_car = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "prius"},
+    )
+
+    assert result_car.errors is None
+    assert result_car.data
+    assert result_car.data["InfrahubSearchAnywhere"]["count"] == 0
+    assert result_car.data["InfrahubSearchAnywhere"]["edges"] == []
+
+
+async def test_search_permission_admin_sees_all_results(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """Admin user (permissions=None) should see all results with no filtering overhead."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Default: permissions is None (admin/no-auth context) — no filtering applied
+    assert gql_params.context.permissions is None
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    # Both John and Jane should be found (no filtering)
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 2
+    node_ids = [edge["node"]["id"] for edge in result.data["InfrahubSearchAnywhere"]["edges"]]
+    assert sorted(node_ids) == sorted([person_john_main.id, person_jane_main.id])
+
+
+async def test_search_permission_no_permissions_returns_empty(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
+) -> None:
+    """User with no view permissions for any type should get empty results."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Set up permissions: deny all kinds
+    gql_params.context.permissions = _create_restricted_permission_manager(
+        object_permissions=[
+            ObjectPermission(
+                namespace="*",
+                name="*",
+                action="view",
+                decision=PermissionDecision.DENY,
+            ),
+        ],
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "j"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    # Short-circuit: empty allowed_kinds list → count=0, no edges
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 0
+    assert result.data["InfrahubSearchAnywhere"]["edges"] == []
