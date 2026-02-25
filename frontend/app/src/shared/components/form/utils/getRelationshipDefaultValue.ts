@@ -179,7 +179,7 @@ const getRelationshipValueFromParent = (
 export const getRelationshipDefaultValueFromTemplate = (
   objectTemplate: NodeObject | null | undefined,
   relationshipName: string | undefined
-): RelationshipValueFromTemplate | null => {
+): RelationshipValueFromTemplate | RelationshipValueFromPool | null => {
   if (!objectTemplate || !relationshipName) return null;
 
   const relationshipTemplate = objectTemplate[relationshipName] as NodeRelationship | undefined;
@@ -212,7 +212,23 @@ export const getRelationshipDefaultValueFromTemplate = (
   }
 
   const { node } = relationshipTemplate;
-  if (!node) return null;
+  if (!node) {
+    const poolRelationship = objectTemplate[
+      relationshipName + FROM_RESOURCE_POOL_SUFFIX
+    ] as NodeRelationshipOneWithMetadata | undefined;
+
+    if (!poolRelationship?.node) return null;
+
+    return {
+      source: {
+        type: "pool",
+        label: getNodeLabel(poolRelationship.node),
+        id: poolRelationship.node.id,
+        kind: poolRelationship.node.__typename,
+      },
+      value: poolRelationship.node,
+    };
+  }
 
   return {
     source,
