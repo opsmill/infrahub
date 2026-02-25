@@ -145,4 +145,4 @@ refactor(backend): extract validation logic into shared utils
 - Never commit secrets, API keys, credentials, or `.env` files
 - If you see suspicious files (`.env`, credentials, tokens), warn the user and exclude them
 - Use `--force-with-lease` (never `--force`) when pushing amended commits
-- Never force push to `stable` or `develop` branches
+- Never force push to `stable`, `develop` or any `release-*` branches
