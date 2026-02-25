@@ -277,6 +277,80 @@ describe("getCreateMutationFromFormData", () => {
       });
     });
 
+    it("excludes pool value when it comes from template", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "InfraIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: {
+            type: "pool",
+            fromTemplate: true,
+            label: "Loopbacks pool",
+            id: "pool-id",
+            kind: "CoreIPAddressPool",
+          },
+          value: {
+            id: "pool-id",
+            display_label: "Loopbacks pool",
+            __typename: "CoreIPAddressPool",
+          },
+        },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        object_template: { id: "template-id" },
+      });
+    });
+
+    it("includes pool value when user selects pool manually", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "InfraIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: {
+            type: "pool",
+            label: "User selected pool",
+            id: "user-pool-id",
+            kind: "CoreIPAddressPool",
+          },
+          value: { from_pool: { id: "user-pool-id" } },
+        },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData, "template-id");
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        object_template: { id: "template-id" },
+        ip_address_from_resource_pool: { id: "user-pool-id" },
+      });
+    });
+
     it("only sends null on direct field when value is null", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [
@@ -569,6 +643,30 @@ describe("getCreateMutationFromFormDataOnly", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       field1: { from_pool: { id: "pool-id" } },
+    });
+  });
+
+  it("excludes pool values from template", () => {
+    // GIVEN
+    const formData: Record<string, FormFieldValue> = {
+      field1: {
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          label: "Pool 1",
+          id: "pool-id",
+          kind: "ResourcePool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormDataOnly(formData, undefined, "template-id");
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      object_template: { id: "template-id" },
     });
   });
 

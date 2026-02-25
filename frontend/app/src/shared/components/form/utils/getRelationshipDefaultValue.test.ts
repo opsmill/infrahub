@@ -269,6 +269,85 @@ describe("getRelationshipDefaultValue", () => {
       });
     });
 
+    it("returns pool value from template when template relationship node is null and _from_resource_pool exists", () => {
+      // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({ kind: "TemplateType", display_labels: ["label"] }),
+        generateNodeSchema({
+          kind: "CoreIPAddressPool",
+          display_labels: ["name__value"],
+        }),
+      ]);
+
+      const relationshipName = "ip_address";
+      const objectTemplate: NodeObject = {
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
+        ip_address: {
+          node: null,
+        },
+        ip_address_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My IP Pool",
+            __typename: "CoreIPAddressPool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectTemplate,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          label: "My IP Pool",
+          id: "pool-id",
+          kind: "CoreIPAddressPool",
+        },
+        value: {
+          id: "pool-id",
+          display_label: "My IP Pool",
+          __typename: "CoreIPAddressPool",
+        },
+      });
+    });
+
+    it("returns null from template when template relationship node is null and _from_resource_pool node is also null", () => {
+      // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({ kind: "TemplateType", display_labels: ["label"] }),
+      ]);
+
+      const relationshipName = "ip_address";
+      const objectTemplate: NodeObject = {
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
+        ip_address: {
+          node: null,
+        },
+        ip_address_from_resource_pool: {
+          node: null,
+        },
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectTemplate,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
+
     it("returns default form field value when template exists but relationship name is not found", () => {
       // GIVEN
       const relationshipName = "nonExistentRelationship";
