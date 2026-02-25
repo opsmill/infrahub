@@ -195,7 +195,7 @@ class TestMigration063(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def test_branch(self, db: InfrahubDatabase, template_with_pool_source: Node) -> Branch:
-        return await create_branch(db=db, branch_name="test-branch-m061")
+        return await create_branch(db=db, branch_name="test-branch-m063")
 
     @pytest.fixture(scope="class")
     async def branch_template_with_pool_source(

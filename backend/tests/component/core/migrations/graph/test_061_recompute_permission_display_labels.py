@@ -100,7 +100,7 @@ class TestMigration061(TestInfrahubApp):
 
         return permissions
 
-    async def test_migration_059_recomputes_display_labels(
+    async def test_migration_061_recomputes_display_labels(
         self, db: InfrahubDatabase, default_branch: Branch, permissions_dataset: dict[str, tuple[Node, str]]
     ) -> None:
         for perm_id in permissions_dataset:
@@ -123,7 +123,7 @@ class TestMigration061(TestInfrahubApp):
         for perm_id, (_, expected) in permissions_dataset.items():
             assert final_values[perm_id] == expected, f"Expected {expected}, got {final_values[perm_id]}"
 
-    async def test_migration_059_idempotent(
+    async def test_migration_061_idempotent(
         self, db: InfrahubDatabase, default_branch: Branch, permissions_dataset: dict[str, tuple[Node, str]]
     ) -> None:
         all_ids = list(permissions_dataset)
@@ -144,7 +144,7 @@ class TestMigration061(TestInfrahubApp):
 
         assert first_values == second_values
 
-    async def test_migration_059_execute_against_branch(
+    async def test_migration_061_execute_against_branch(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
     ) -> None:
         obj_perm = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
@@ -158,7 +158,7 @@ class TestMigration061(TestInfrahubApp):
         await obj_perm.save(db=db)
         await self.set_display_label_value(db=db, node_uuid=obj_perm.id, value="old-branch-value")
 
-        test_branch = await create_branch(db=db, branch_name="test-branch-m059")
+        test_branch = await create_branch(db=db, branch_name="test-branch-m061")
 
         obj_perm_branch = await NodeManager.get_one(
             db=db, kind=CoreObjectPermission, id=obj_perm.id, branch=test_branch, raise_on_error=True

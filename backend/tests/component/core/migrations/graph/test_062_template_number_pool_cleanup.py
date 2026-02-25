@@ -197,7 +197,7 @@ class TestMigration062(TestInfrahubApp):
         device_schema: NodeSchema,
         number_pool: Node,
     ) -> None:
-        test_branch = await create_branch(db=db, branch_name="test-branch-m060")
+        test_branch = await create_branch(db=db, branch_name="test-branch-m062")
 
         template = await Node.init(db=db, schema="TemplateTestDevice", branch=test_branch)
         await template.new(
