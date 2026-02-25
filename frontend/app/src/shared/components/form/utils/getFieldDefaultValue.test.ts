@@ -592,9 +592,9 @@ describe("getFieldDefaultValue", () => {
           owner: null,
           updated_at: new Date().toISOString(),
           source: {
-            id: "pool-id",
-            display_label: "My Number Pool",
-            __typename: "CoreNumberPool",
+            id: "some-id",
+            display_label: "Some Source",
+            __typename: "TestNode",
           },
         },
       };
