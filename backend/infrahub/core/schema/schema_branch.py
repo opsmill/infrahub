@@ -2444,6 +2444,8 @@ class SchemaBranch:
                 "cardinality": RelationshipCardinality.ONE,
                 "branch": BranchSupportType.AWARE,
                 "order_weight": 1,
+                "max_count": 1,
+                "min_count": 0,
             }
 
             # Add relationship between node and template
