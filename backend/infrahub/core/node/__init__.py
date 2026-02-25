@@ -766,11 +766,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
         extra_filters: dict[str, set[str]] = {}
+        schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
 
-        if not self._existing:
-            # If we are creating a new node, we need to resolve extra filters from HFID and Display Labels,
-            # if we don't do this the fields might be blank
-            schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
+        # If we are creating a new node, we need to resolve extra filters from HFID,
+        # if we don't do this the fields might be blank.
+        # We could also need it when we need to recompute the HFID
+        if not self._existing or self._human_friendly_id:
             try:
                 hfid_identifier = schema_branch.hfids.get_node_definition(kind=self._schema.kind)
                 for rel_name, attrs in hfid_identifier.relationship_fields.items():
@@ -778,6 +779,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             except KeyError:
                 # No HFID defined for this kind
                 ...
+        # If we are creating a new node, we need to resolve extra filters from Display Labels,
+        # if we don't do this the fields might be blank.
+        # We could also need it when we need to recompute the Display Labels
+        if not self._existing or self._display_label:
             try:
                 display_label_identifier = schema_branch.display_labels.get_template_node(kind=self._schema.kind)
                 for rel_name, attrs in display_label_identifier.relationship_fields.items():
