@@ -32,7 +32,7 @@ class BranchState:
     def branch(self) -> Branch:
         if self._branch:
             return self._branch
-        raise InitializationError
+        raise InitializationError("No branch set")
 
     @branch.setter
     def branch(self, value: Branch) -> None:
@@ -62,6 +62,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
 
     @pytest.fixture(scope="class")
     def schema_category_base(self) -> dict[str, Any]:
+        """TestingCategory with generate_template enabled."""
         return {
             "name": "Category",
             "namespace": "Testing",
@@ -73,6 +74,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
 
     @pytest.fixture(scope="class")
     def schema_tag_base(self) -> dict[str, Any]:
+        """TestingTag with template+profile, Generic rels (cars, persons), and Component rel (categories)."""
         return {
             "name": "Tag",
             "namespace": "Testing",
@@ -109,6 +111,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
         schema_tag_base: dict[str, Any],
         schema_category_base: dict[str, Any],
     ) -> dict[str, Any]:
+        """Initial schema with all node types including Category."""
         return {
             "version": "1.0",
             "nodes": [
@@ -122,6 +125,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
 
     @pytest.fixture(scope="class")
     def schema_tag_rels_removed(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
+        """TestingTag with persons and categories marked as absent."""
         schema = copy.deepcopy(schema_tag_base)
         for rel in schema["relationships"]:
             if rel["name"] in ("persons", "categories"):
@@ -137,6 +141,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
         schema_tag_rels_removed: dict[str, Any],
         schema_category_base: dict[str, Any],
     ) -> dict[str, Any]:
+        """Full schema with persons and categories removed from Tag."""
         return {
             "version": "1.0",
             "nodes": [
