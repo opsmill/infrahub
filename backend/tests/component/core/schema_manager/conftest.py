@@ -104,7 +104,7 @@ def schema_all_in_one() -> dict[str, Any]:
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "level", "kind": "Number", "branch": BranchSupportType.AWARE.value},
-                    {"name": "color", "kind": "Text", "default_value": "#444444"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "optional": True},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
@@ -253,7 +253,7 @@ def schema_criticality_tag() -> dict[str, Any]:
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444", "optional": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
@@ -309,7 +309,7 @@ def schema_parent_component() -> dict:
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444", "optional": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [

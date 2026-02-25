@@ -631,7 +631,6 @@ class SchemaBranch:
         self.process_attributes_state()
         self.process_relationships_state()
         self.generate_identifiers()
-        self.process_default_values()
         self.process_deprecations()
         self._reconcile_legacy_attribute_parameters()
         self.process_cardinality_counts()
@@ -1821,24 +1820,6 @@ class SchemaBranch:
             for node_rel in node.relationships:
                 if node_rel.name in rels_to_update:
                     node_rel.branch = rels_to_update[node_rel.name]
-
-            self.set(name=name, schema=node)
-
-    def process_default_values(self) -> None:
-        """Ensure that all attributes with a default value are flagged as optional: True."""
-        for name in self.all_names:
-            node = self.get(name=name, duplicate=False)
-
-            attr_names_to_update = [
-                attr.name for attr in node.attributes if attr.default_value is not None and not attr.optional
-            ]
-            if not attr_names_to_update:
-                continue
-
-            node = node.duplicate()
-            for attr_name in attr_names_to_update:
-                attr = node.get_attribute(name=attr_name)
-                attr.optional = True
 
             self.set(name=name, schema=node)
 

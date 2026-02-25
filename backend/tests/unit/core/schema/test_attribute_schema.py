@@ -78,3 +78,28 @@ def test_attribute_schema_roundtrip_mandatory_optional_mandatory() -> None:
     attr.update(AttributeSchema(name="role", kind="Text", optional=False, default_value=None))
     assert attr.optional is False
     assert attr.default_value is None
+
+
+def test_attribute_schema_mandatory_with_default_value() -> None:
+    """Verify that an AttributeSchema can be created with optional=False and a default_value."""
+    attr = AttributeSchema(name="timeout", kind="Number", optional=False, default_value=180)
+    assert attr.optional is False
+    assert attr.default_value == 180
+
+
+def test_attribute_schema_update_optional_default_to_mandatory_with_default() -> None:
+    """Verify updating from optional+default to mandatory+default detects optional change in diff."""
+    existing = AttributeSchema(name="timeout", kind="Number", optional=True, default_value=180)
+    assert existing.optional is True
+    assert existing.default_value == 180
+
+    update_source = AttributeSchema(name="timeout", kind="Number", optional=False, default_value=180)
+    existing.update(update_source)
+
+    assert existing.optional is False
+    assert existing.default_value == 180
+
+    original = AttributeSchema(name="timeout", kind="Number", optional=True, default_value=180)
+    diff = original.diff(existing)
+    assert "optional" in diff.changed
+    assert "default_value" not in diff.changed

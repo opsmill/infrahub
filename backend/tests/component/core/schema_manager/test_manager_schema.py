@@ -374,16 +374,17 @@ async def test_schema_branch_process_branch_support(schema_all_in_one) -> None:
     assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
 
-async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
+async def test_schema_branch_mandatory_with_default_value(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process()
 
-    schema.process_default_values()
-
+    # Attribute with default_value AND explicit optional=True stays optional
     generic = schema.get(name="InfraGenericInterface")
     assert generic.get_attribute(name="mybool").optional is True
     assert generic.get_attribute(name="my_generic_name").optional is False
 
+    # Attribute with default_value AND explicit optional=True stays optional
     criticality = schema.get(name="TestingCriticality")
     assert criticality.get_attribute(name="color").optional is True
 
@@ -392,7 +393,7 @@ async def test_schema_update_optional_with_default_to_mandatory(schema_criticali
     """Load a schema with optional+default, update to mandatory without default."""
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
-    schema.process_default_values()
+    schema.process()
 
     criticality = schema.get(name="TestingCriticality")
     color_attr = criticality.get_attribute(name="color")
@@ -412,7 +413,7 @@ async def test_schema_update_optional_with_default_to_mandatory(schema_criticali
 
     updated_branch = SchemaBranch(cache={}, name="test")
     updated_branch.load_schema(schema=SchemaRoot(**updated_data))
-    updated_branch.process_default_values()
+    updated_branch.process()
 
     # Merge the update into the original schema
     updated_criticality = updated_branch.get(name="TestingCriticality", duplicate=False)
@@ -426,11 +427,48 @@ async def test_schema_update_optional_with_default_to_mandatory(schema_criticali
     assert color_attr.default_value is None
 
 
-async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_tag) -> None:
-    """Verify default values processing respects explicit optional through schema updates."""
+async def test_schema_update_optional_with_default_to_mandatory_with_default(schema_criticality_tag) -> None:
+    """Load a schema with optional+default, update to mandatory while keeping the default."""
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
-    schema.process_default_values()
+    schema.process()
+
+    criticality = schema.get(name="TestingCriticality")
+    color_attr = criticality.get_attribute(name="color")
+    assert color_attr.optional is True
+    assert color_attr.default_value == "#444444"
+
+    # Update: make color mandatory but keep the default value
+    updated_data = copy.deepcopy(schema_criticality_tag)
+    for node in updated_data["nodes"]:
+        if node["name"] == "Criticality":
+            for attr in node["attributes"]:
+                if attr["name"] == "color":
+                    attr["optional"] = False
+                    break
+            break
+
+    updated_branch = SchemaBranch(cache={}, name="test")
+    updated_branch.load_schema(schema=SchemaRoot(**updated_data))
+    updated_branch.process()
+
+    updated_criticality = updated_branch.get(name="TestingCriticality")
+    updated_color = updated_criticality.get_attribute(name="color")
+    assert updated_color.optional is False
+    assert updated_color.default_value == "#444444"
+
+    # Verify the diff detects the optional change
+    original_criticality = schema.get(name="TestingCriticality")
+    original_color = original_criticality.get_attribute(name="color")
+    diff = original_color.diff(updated_color)
+    assert "optional" in diff.changed
+
+
+async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_tag) -> None:
+    """Verify schema processing respects explicit optional through schema updates."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_criticality_tag))
+    schema.process()
 
     criticality = schema.get(name="TestingCriticality")
     color = criticality.get_attribute(name="color")
@@ -448,7 +486,7 @@ async def test_schema_roundtrip_mandatory_optional_mandatory(schema_criticality_
 
     updated_branch = SchemaBranch(cache={}, name="test")
     updated_branch.load_schema(schema=SchemaRoot(**updated_data))
-    updated_branch.process_default_values()
+    updated_branch.process()
 
     updated_criticality = updated_branch.get(name="TestingCriticality")
     updated_color = updated_criticality.get_attribute(name="color")

@@ -105,3 +105,89 @@ class TestSchemaLifecycleOptionalToMandatory(TestSchemaLifecycleBase):
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
+
+
+class TestSchemaLifecycleOptionalToMandatoryWithDefault(TestSchemaLifecycleBase):
+    @pytest.fixture(scope="class")
+    def schema_person_with_default_height(self) -> SchemaRoot:
+        schema = copy.deepcopy(CAR_SCHEMA)
+        schema.version = "1.0"
+
+        person = schema.get(name=TestKind.PERSON)
+        person.get_attribute(name="height").default_value = 180
+
+        return schema
+
+    @pytest.fixture(scope="class")
+    def schema_person_mandatory_height_with_default(self, schema_person_with_default_height: SchemaRoot) -> SchemaRoot:
+        """Height becomes mandatory (optional=False) while keeping default_value=180."""
+        schema = copy.deepcopy(schema_person_with_default_height)
+        person = schema.get(name=TestKind.PERSON)
+
+        height_attr = person.get_attribute(name="height")
+        height_attr.optional = False
+
+        return schema
+
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_person_with_default_height: SchemaRoot
+    ) -> dict[str, str]:
+        await load_schema(db=db, schema=schema_person_with_default_height, update_db=True)
+
+        alice = await Node.init(schema=TestKind.PERSON, db=db)
+        await alice.new(db=db, name="Alice", height=170)
+        await alice.save(db=db)
+
+        # Bob gets the default height (180)
+        bob = await Node.init(schema=TestKind.PERSON, db=db)
+        await bob.new(db=db, name="Bob")
+        await bob.save(db=db)
+
+        return {"alice": alice.id, "bob": bob.id}
+
+    async def test_baseline(
+        self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset: dict[str, str]
+    ) -> None:
+        person_schema = registry.schema.get(name=TestKind.PERSON, duplicate=False)
+        height_attr = person_schema.get_attribute(name="height")
+        assert height_attr.optional is True
+        assert height_attr.default_value == 180
+
+        persons = await registry.manager.query(db=db, schema=TestKind.PERSON)
+        assert len(persons) == 2
+
+    async def test_check_mandatory_with_default_succeeds(
+        self,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_person_mandatory_height_with_default: SchemaRoot,
+    ) -> None:
+        """Making height mandatory while keeping default_value should pass."""
+        success, _ = await client.schema.check(
+            schemas=[schema_person_mandatory_height_with_default.model_dump(mode="json")]
+        )
+        assert success
+
+    async def test_load_mandatory_with_default_succeeds(
+        self,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_person_mandatory_height_with_default: SchemaRoot,
+    ) -> None:
+        """Loading the mandatory+default schema should succeed."""
+        branch = await client.branch.create(branch_name="mandatory-height-with-default")
+        response = await client.schema.load(
+            schemas=[schema_person_mandatory_height_with_default.model_dump(mode="json")], branch=branch.name
+        )
+        assert not response.errors
+        assert response.schema_updated
+
+        person_schema = registry.schema.get(name=TestKind.PERSON, branch=branch.name, duplicate=False)
+        height_attr = person_schema.get_attribute(name="height")
+        assert height_attr.optional is False
+        assert height_attr.default_value == 180
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

@@ -1786,7 +1786,9 @@ type CoreCheckDefinition implements CoreNode & CoreTaskTarget {
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
   targets: NestedEdgedCoreGroup!
-  """Maximum execution time in seconds before the check times out"""
+  """
+  Maximum execution time in seconds before the check times out (required)
+  """
   timeout: NumberAttribute
 }
 
@@ -3410,7 +3412,7 @@ type CoreGlobalPermission implements CoreBasePermission & CoreNode {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   """The global action this permission grants or denies (required)"""
   action: Dropdown
-  """Decide to deny or allow the action at a global level"""
+  """Decide to deny or allow the action at a global level (required)"""
   decision: NumberAttribute
   description: TextAttribute
   display_label: String
@@ -3710,7 +3712,7 @@ type CoreGroupAction implements CoreAction & CoreNode {
   """Unique identifier"""
   id: String!
   """
-  Defines if the action should add or remove members from a group when triggered
+  Defines if the action should add or remove members from a group when triggered (required)
   """
   member_action: Dropdown
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -3836,7 +3838,9 @@ type CoreGroupTriggerRule implements CoreNode & CoreTriggerRule {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  """Indicate if the match should be for when members are added or removed"""
+  """
+  Indicate if the match should be for when members are added or removed (required)
+  """
   member_update: Dropdown
   """The name of the trigger rule"""
   name: TextAttribute
@@ -4396,7 +4400,7 @@ type CoreNodeTriggerAttributeMatch implements CoreNode & CoreNodeTriggerMatch {
   """The value the attribute is updated to"""
   value: TextAttribute
   """
-  The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both
+  The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both (required)
   """
   value_match: Dropdown
   """The previous value of the targeted attribute"""
@@ -4523,7 +4527,7 @@ type CoreNodeTriggerRelationshipMatch implements CoreNode & CoreNodeTriggerMatch
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """
-  Indicates if the relationship was added or removed or just updated in any way
+  Indicates if the relationship was added or removed or just updated in any way (required)
   """
   modification_type: Dropdown
   """The node_id of the relationship peer to match against"""
@@ -4788,7 +4792,7 @@ type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   node: TextAttribute
   """The attribute of the selected model (required)"""
   node_attribute: TextAttribute
-  """Defines how this number pool was created"""
+  """Defines how this number pool was created (required)"""
   pool_type: TextAttribute
   """The start range for the pool (required)"""
   start_range: NumberAttribute
@@ -4899,10 +4903,10 @@ input CoreObjectComponentTemplateUpdateInput {
 """A permission that grants rights to perform actions on objects"""
 type CoreObjectPermission implements CoreBasePermission & CoreNode {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
-  """The action this permission grants or denies"""
+  """The action this permission grants or denies (required)"""
   action: TextAttribute
   """
-  Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches
+  Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches (required)
   """
   decision: NumberAttribute
   description: TextAttribute
@@ -5248,7 +5252,7 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   hfid: [String!]
   """Unique identifier"""
   id: String!
-  """Whether the proposed change is still a draft"""
+  """Whether the proposed change is still a draft (required)"""
   is_draft: CheckboxAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
@@ -5379,7 +5383,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   """Connectivity status of the repository"""
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
-  """Git reference (branch or tag) to track"""
+  """Git reference (branch or tag) to track (required)"""
   ref: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
@@ -5515,7 +5519,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Current commit hash being tracked"""
   commit: TextAttribute
   credential: NestedEdgedCoreCredential!
-  """Default branch name in the Git repository"""
+  """Default branch name in the Git repository (required)"""
   default_branch: TextAttribute
   """Description of the repository"""
   description: TextAttribute
