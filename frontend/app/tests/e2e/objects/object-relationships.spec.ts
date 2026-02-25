@@ -6,7 +6,6 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
   test.describe.configure({ mode: "serial" });
-  test.slow();
   const BRANCH_NAME = generateRandomBranchName("object-relationships");
 
   test.beforeAll(async ({ request }) => {
@@ -26,8 +25,17 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("all buttons are disabled", async () => {
         await expect(page.getByTestId("edit-button")).toBeDisabled();
-        await expect(page.getByTestId("manage-groups")).toBeDisabled();
-        await expect(page.getByTestId("delete-button")).toBeDisabled();
+
+        await page.getByTestId("object-details-menu").click();
+        await expect(page.getByRole("menuitem", { name: "Groups" })).toHaveAttribute(
+          "aria-disabled",
+          "true"
+        );
+        await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveAttribute(
+          "aria-disabled",
+          "true"
+        );
+        await page.keyboard.press("Escape");
 
         await page.getByRole("link", { name: "Devices 10" }).click();
         await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
@@ -95,6 +103,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Edit a relationship", async () => {
         await page.getByRole("link", { name: "Loopback0", exact: true }).click();
+        await expect(page.getByText("NameLoopback0")).toBeVisible();
 
         await page.getByTestId("edit-button").click();
         await expect(page.getByText("Device *")).toBeVisible();
@@ -139,7 +148,10 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.getByText("Ip Addresses0").click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByTestId("select-open-pool-option-button").click();
-      await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();
+      await page.getByRole("option", { name: "Loopbacks pool" }).click();
+      await expect(page.getByTestId("source-pool-badge")).toContainText("Loopbacks pool");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Association with IpamIPAddress added")).toBeVisible();
     });
   });
 
@@ -150,7 +162,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.getByRole("link", { name: "Devices 10" }).click();
     });
     await page.getByRole("link", { name: "atl1", exact: true }).first().click();
-    await expect(page.getByText("Nameatl1")).toBeVisible();
+    await expect(page.getByTestId("object-details").getByText("Nameatl1")).toBeVisible();
     expect(page.url()).toContain("/objects/LocationSite/");
   });
 });

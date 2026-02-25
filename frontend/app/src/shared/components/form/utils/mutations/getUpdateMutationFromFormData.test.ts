@@ -209,6 +209,119 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  describe("Resource pool from-pool relationship", () => {
+    it("splits pool value to from-pool relationship when fromPoolRelationshipName is set", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          defaultValue: {
+            source: { type: "user" },
+            value: { id: "old-ip", display_label: "10.0.0.1", __typename: "InfraIPAddress" },
+          },
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "InfraIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, RelationshipValueFromPool> = {
+        ip_address: {
+          source: {
+            type: "pool",
+            label: "test pool",
+            id: "pool-id",
+            kind: "CoreIPAddressPool",
+          },
+          value: { from_pool: { id: "pool-id" } },
+        },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        ip_address: null,
+        ip_address_from_resource_pool: { id: "pool-id" },
+      });
+    });
+
+    it("sets from-pool relationship to null when user selects a direct value", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          defaultValue: {
+            source: { type: "user" },
+            value: { id: "old-ip", display_label: "10.0.0.1", __typename: "InfraIPAddress" },
+          },
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "InfraIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: { type: "user" },
+          value: {
+            id: "new-ip",
+            display_label: "10.0.0.2",
+            __typename: "InfraIPAddress",
+          },
+        },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        ip_address: { id: "new-ip" },
+        ip_address_from_resource_pool: null,
+      });
+    });
+
+    it("sets both to null when value is null", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          defaultValue: {
+            source: { type: "user" },
+            value: { id: "old-ip", display_label: "10.0.0.1", __typename: "InfraIPAddress" },
+          },
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "InfraIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: { type: "user" },
+          value: null,
+        },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        ip_address: null,
+        ip_address_from_resource_pool: null,
+      });
+    });
+  });
+
   it("set is_default: true if field if value is from profile", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [

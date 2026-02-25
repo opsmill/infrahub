@@ -6,16 +6,17 @@ import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { shouldAllowEmptySubmission } from "@/shared/components/form/utils/shouldAllowEmptySubmission";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import type { NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -27,7 +28,7 @@ export type NodeFormProps = {
   className?: string;
   schema: NodeSchema | ProfileSchema;
   profiles?: ProfileData[];
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;
@@ -55,7 +56,11 @@ export const NodeForm = ({
   const createObject = useCreateObjectMutation();
 
   const { data: numberPools, isPending } = useGetNumberPools({
-    objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
+    objectKinds: [
+      schema.kind!,
+      ...(schema.inherit_from ?? []),
+      ...(isTemplateSchema(schema) ? [schema.name] : []),
+    ],
   });
 
   if (isPending) return <LoadingIndicator className="my-4" />;
@@ -79,7 +84,7 @@ export const NodeForm = ({
     const isObjectEmpty = Object.keys(newObject).length === 0;
     const isProfilesEmpty = !profiles || profiles.length === 0;
 
-    if (isObjectEmpty && isProfilesEmpty) {
+    if (isObjectEmpty && isProfilesEmpty && !shouldAllowEmptySubmission(schema)) {
       return;
     }
 

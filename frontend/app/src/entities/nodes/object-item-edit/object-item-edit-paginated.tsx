@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -14,7 +14,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
@@ -46,7 +46,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const { loading, error, data } = useQuery(query, { skip: !schema });
 
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
 
   if (error) {
@@ -90,7 +90,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
         await graphqlClient.mutate({
           mutation,
-          context: { branch: branch?.name, date },
+          context: { branch: currentBranch.name, date },
         });
 
         toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {

@@ -4,7 +4,7 @@ import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
-import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeCore } from "@/entities/nodes/types";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
 import type {
   AttributeKind,
@@ -81,29 +81,39 @@ export type RelationshipOneValueFromUser = {
   source: {
     type: SourceType;
   };
-  value: Node | null;
+  value: NodeCore | null;
 };
 
 export type RelationshipManyValueFromUser = {
   source: {
     type: SourceType;
   };
-  value: Array<Node> | null;
+  value: Array<NodeCore> | null;
 };
 
 export type RelationshipOneValueFromTemplate = {
   source: TemplateSource;
-  value: Node | null;
+  value: NodeCore | null;
 };
 
 export type RelationshipManyValueFromTemplate = {
   source: TemplateSource;
-  value: Array<Node> | null;
+  value: Array<NodeCore> | null;
 };
 
 export type RelationshipValueFromPool = {
   source: PoolSource;
-  value: Node | { from_pool: { id: string } };
+  value: NodeCore | { from_pool: { id: string } };
+};
+
+export type RelationshipOneValueFromProfile = {
+  source: ProfileSource;
+  value: NodeCore | null;
+};
+
+export type RelationshipManyValueFromProfile = {
+  source: ProfileSource;
+  value: Array<NodeCore> | null;
 };
 
 export type RelationshipValueFromUser =
@@ -114,10 +124,15 @@ export type RelationshipValueFromTemplate =
   | RelationshipOneValueFromTemplate
   | RelationshipManyValueFromTemplate;
 
+export type RelationshipValueFromProfile =
+  | RelationshipOneValueFromProfile
+  | RelationshipManyValueFromProfile;
+
 export type FormRelationshipValue =
   | RelationshipValueFromUser
   | RelationshipValueFromPool
   | RelationshipValueFromTemplate
+  | RelationshipValueFromProfile
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -138,6 +153,7 @@ export type FormFieldProps = {
   pool?: {
     kind: string;
     defaultAllocatedObjectKind: string;
+    fromPoolRelationshipName?: string;
   };
   shouldUnregister?: boolean;
 };
@@ -190,7 +206,6 @@ export interface DynamicRelationshipFieldProps
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  schema: ModelSchema;
   peerField?: string;
 }
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -70,11 +70,6 @@ mutation($branch: String!) {
 
 class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
-    def configure_settings(self) -> None:
-        config.SETTINGS.broker.enable = True
-        config.SETTINGS.cache.enable = False
-
-    @pytest.fixture(scope="class", autouse=True)
     def initialize_lock(self) -> None:
         lock.initialize_lock(local_only=True)
 
@@ -103,7 +98,7 @@ class TestDiffRebase(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         main_schema_root: SchemaRoot,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
@@ -198,7 +193,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_1_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_1: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_1: Branch,
     ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_1 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_1)
@@ -215,7 +215,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_2_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_2: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_2: Branch,
     ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_2 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_2)
@@ -232,7 +237,12 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def add_branch_3_changes(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_3: Branch
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        branch_3: Branch,
     ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
         antarctica_branch_1 = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
@@ -259,9 +269,9 @@ class TestDiffRebase(TestInfrahubApp):
     async def test_no_conflicts_before_merge(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
-        add_branch_1_changes,
-        add_branch_2_changes,
+        initial_dataset: dict[str, Node],
+        add_branch_1_changes: None,
+        add_branch_2_changes: None,
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
@@ -308,7 +318,6 @@ class TestDiffRebase(TestInfrahubApp):
             properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
-                DatabaseEdgeType.IS_VISIBLE,
                 DatabaseEdgeType.IS_PROTECTED,
             }
             related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -316,10 +325,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert related_prop.previous_value == koenigsegg_id
             assert related_prop.new_value == new_peer_id
             assert related_prop.conflict is None
-            for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
-                diff_prop = properties_by_type[prop_type]
-                assert diff_prop.action is DiffAction.UNCHANGED
-                assert diff_prop.previous_value == diff_prop.new_value == value
+            prop_type, value = (DatabaseEdgeType.IS_PROTECTED, "False")
+            diff_prop = properties_by_type[prop_type]
+            assert diff_prop.action is DiffAction.UNCHANGED
+            assert diff_prop.previous_value == diff_prop.new_value == value
             for manufacturer_id, expected_action in (
                 (koenigsegg_id, DiffAction.REMOVED),
                 (new_peer_id, DiffAction.ADDED),
@@ -338,12 +347,10 @@ class TestDiffRebase(TestInfrahubApp):
                 assert set(properties_by_type.keys()) == {
                     DatabaseEdgeType.IS_RELATED,
                     DatabaseEdgeType.IS_PROTECTED,
-                    DatabaseEdgeType.IS_VISIBLE,
                 }
                 for property_type, check_value in (
                     (DatabaseEdgeType.IS_RELATED, jesko_id),
                     (DatabaseEdgeType.IS_PROTECTED, "False"),
-                    (DatabaseEdgeType.IS_VISIBLE, "True"),
                 ):
                     prop_diff = properties_by_type[property_type]
                     assert prop_diff.action is expected_action
@@ -355,8 +362,8 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
-        add_branch_1_changes,
+        initial_dataset: dict[str, Node],
+        add_branch_1_changes: None,
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
@@ -408,7 +415,6 @@ class TestDiffRebase(TestInfrahubApp):
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
-            DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -417,7 +423,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == omnicorp_id
         assert related_prop.conflict is None
-        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+        for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
             diff_prop = properties_by_type[prop_type]
             assert diff_prop.action is DiffAction.UNCHANGED
             assert diff_prop.previous_value == diff_prop.new_value == value
@@ -436,12 +442,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for property_type, check_value in (
                 (DatabaseEdgeType.IS_RELATED, jesko_id),
                 (DatabaseEdgeType.IS_PROTECTED, "False"),
-                (DatabaseEdgeType.IS_VISIBLE, "True"),
             ):
                 prop_diff = properties_by_type[property_type]
                 assert prop_diff.action is expected_action
@@ -453,7 +457,7 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         branch_2: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
     ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
@@ -471,7 +475,7 @@ class TestDiffRebase(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_2: Branch,
         diff_repository: DiffRepository,
     ) -> None:
@@ -503,7 +507,6 @@ class TestDiffRebase(TestInfrahubApp):
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
-            DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -512,7 +515,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == cyberdyne_id
         assert related_prop.conflict is None
-        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+        for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
             diff_prop = properties_by_type[prop_type]
             assert diff_prop.action is DiffAction.UNCHANGED
             assert diff_prop.previous_value == diff_prop.new_value == value
@@ -531,12 +534,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for property_type, check_value in (
                 (DatabaseEdgeType.IS_RELATED, jesko_id),
                 (DatabaseEdgeType.IS_PROTECTED, "False"),
-                (DatabaseEdgeType.IS_VISIBLE, "True"),
             ):
                 prop_diff = properties_by_type[property_type]
                 assert prop_diff.action is expected_action
@@ -544,14 +545,14 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
                 assert prop_diff.conflict is None
 
-    async def test_merge_and_rebase(
+    async def test_merge_branch(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
         branch_3: Branch,
-        add_branch_3_changes,
+        add_branch_3_changes: None,
     ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
 
@@ -578,14 +579,31 @@ class TestDiffRebase(TestInfrahubApp):
         no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=default_branch)
         assert no_antartica is None
 
-        # rebase branch_3
-        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": branch_3.name})
+    async def test_rebase_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        client: InfrahubClient,
+    ) -> None:
+        rebase_branch = await create_branch(branch_name="rebase_test_branch", db=db)
+
+        # add a node on main after branch creation
+        main_person = await Node.init(db=db, branch=default_branch, schema=TestKind.PERSON)
+        await main_person.new(db=db, name="RebaseTestPerson", height=170)
+        await main_person.save(db=db)
+
+        # verify the node is NOT on the branch yet
+        branch_person_before = await NodeManager.get_one(db=db, id=main_person.id, branch=rebase_branch)
+        assert branch_person_before is None
+
+        # rebase the branch
+        result = await client.execute_graphql(query=BRANCH_REBASE, variables={"branch": rebase_branch.name})
         assert result["BranchRebase"]["ok"]
 
-        # check branch_3 is updated
-        branch_3 = await Branch.get_by_name(db=db, name=branch_3.name)
-        no_antartica = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
-        assert no_antartica is None
-        branch_3_jeb = await NodeManager.get_one(db=db, id=main_jeb.id, branch=branch_3)
-        assert branch_3_jeb.name.value == "Jeb"
-        assert branch_3_jeb.height.value == 160
+        # check the branch is updated with the new node
+        rebase_branch = await Branch.get_by_name(db=db, name=rebase_branch.name)
+        branch_person_after = await NodeManager.get_one(db=db, id=main_person.id, branch=rebase_branch)
+        assert branch_person_after is not None
+        assert branch_person_after.name.value == "RebaseTestPerson"
+        assert branch_person_after.height.value == 170

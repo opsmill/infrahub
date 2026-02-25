@@ -218,6 +218,19 @@ It's possible to deploy Infrahub on Kubernetes using Helm charts. This method is
 - A Kubernetes cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your system
 
+:::warning Storage persistence for testing and lab environments
+
+By default, the Helm chart disables storage persistence on all components (Neo4j, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
+
+However, if pods get rescheduled on the Kubernetes cluster for any reason, all data will be lost. This can happen unexpectedly due to node maintenance, resource pressure, or cluster updates.
+
+For long-running tests or lab environments, you should either:
+
+- Enable storage persistence for the Neo4j database at minimum (but also on the other components if possible)
+- Use Docker Compose instead, which provides more predictable behavior for non-production environments
+
+:::
+
 #### Production deployment requirements
 
 The following are required for production deployments using Helm:
@@ -297,7 +310,7 @@ neo4j:
 
 :::warning
 
-Be sure to replace the placeholder values with your actual values.
+Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
 
 :::
 
@@ -442,6 +455,19 @@ They are present to ease deployment on non-production environments.
 - A Kubernetes cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your system
 
+:::warning Storage persistence for testing and lab environments
+
+By default, the Helm chart disables storage persistence on all components (Neo4j, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
+
+However, if pods get rescheduled on the Kubernetes cluster for any reason, all data will be lost. This can happen unexpectedly due to node maintenance, resource pressure, or cluster updates.
+
+For long-running tests or lab environments, you should either:
+
+- Enable storage persistence for the Neo4j database at minimum (but also on the other components if possible)
+- Use Docker Compose instead, which provides more predictable behavior for non-production environments
+
+:::
+
 #### Step 1: Fill in the values file
 
 Create a `values.yml` file with the following configuration:
@@ -506,30 +532,79 @@ infrahub:
 ```
 
 :::warning
-Be sure to replace the placeholder values with your actual values.
+Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
 :::
 
-You can also use the configuration preset values.yaml file. This will automatically configure replica count for each component according to your sizing plan.
-They are available here:
+Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
 
-<ReferenceLink title="Small size config preset (requires 16 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
-<ReferenceLink title="Medium size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
-<ReferenceLink title="Medium (data) size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
-<ReferenceLink title="Large size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
-<ReferenceLink title="Large (data) size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+| Flavor | Chart version example | Required memory |
+| ----------- | --------------------- | --------------- |
+| small       | 4.0.0-small           | 16 GB           |
+| medium      | 4.0.0-medium          | 32 GB           |
+| medium-data | 4.0.0-medium-data     | 32 GB           |
+| large       | 4.0.0-large           | 64 GB           |
+| large-data  | 4.0.0-large-data      | 64 GB           |
+
+You can review the configuration values for each sizing preset here:
+
+<ReferenceLink title="Small size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Medium (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
+<ReferenceLink title="Large size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
+<ReferenceLink title="Large (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+
+:::info Redis host configuration for flavored charts
+
+When using a flavored chart (sizing preset), you must also configure the Redis host for the Prefect background services. Add the following to your `values.yml`:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master"
+```
+
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (e.g. `4.0.0`) does not require it.
+
+:::
+
+##### Migrating from chart versions before 4.0.0
+
+If you are upgrading from a Helm chart version earlier than 4.0.0, update your `values.yml` file:
+
+1. **Remove old configuration preset values:** Delete any environment variables and settings that were previously copied from sizing presets (i.e., `INFRAHUB_CACHE_ADDRESS`, `PREFECT_REDIS_MESSAGING_HOST`, replica counts, resource limits). The flavored charts now handle these automatically.
+
+2. **Add the Redis host configuration:** Add the following to your `values.yml` file:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master" # Use the value previously set in INFRAHUB_CACHE_ADDRESS or PREFECT_REDIS_MESSAGING_HOST
+```
 
 #### Step 2: install the chart
+
+Install using a flavored chart from the OpsMill registry (recommended for production):
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0-medium
+```
+
+Or install the base chart and provide your own sizing configuration:
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0
+```
 
 Install using a local chart:
 
 ```bash
 helm install infrahub -f values.yml path/to/infrahub-enterprise/chart
-```
-
-Or install using the OpsMill registry:
-
-```bash
-helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise
 ```
 
 :::success
@@ -596,9 +671,9 @@ These examples are for reference purposes and may require customization for your
   helm repo add neo4j https://helm.neo4j.com/neo4j/
   helm repo update
   kubectl create secret generic neo4j-user --namespace infrahub --from-literal=NEO4J_AUTH=neo4j/admin
-  helm install database-0 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-1 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-2 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-0 neo4j/neo4j --version 2025.10.1-4 --namespace infrahub --values neo4j-values.yaml
+  helm install database-1 neo4j/neo4j --version 2025.10.1-4 --namespace infrahub --values neo4j-values.yaml
+  helm install database-2 neo4j/neo4j --version 2025.10.1-4 --namespace infrahub --values neo4j-values.yaml
   ```
 
   Once all instances are running, install the headless service:
@@ -606,7 +681,7 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
 
   ```bash
-  helm install database-service neo4j/neo4j-headless-service --version 2025.03.0 --namespace infrahub --values service-values.yaml
+  helm install database-service neo4j/neo4j-headless-service --version 2025.10.1-4 --namespace infrahub --values service-values.yaml
   ```
 
   <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
@@ -631,13 +706,13 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="prefect-values.yaml">{import_prefectValuesYaml}</CodeBlock>
 
   ```bash
-  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.7.31204438 --namespace infrahub --create-namespace --values prefect-values.yaml
+  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.12.11201923 --namespace infrahub --create-namespace --values prefect-values.yaml
   ```
 
   <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
 
   ```bash
-  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.9.4 --namespace infrahub --create-namespace --values infrahub-values.yaml
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.13.0 --namespace infrahub --create-namespace --values infrahub-values.yaml
   ```
 
 </details>

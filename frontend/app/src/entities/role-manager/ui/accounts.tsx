@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -12,15 +11,16 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Table, type tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/entities/role-manager/api/getAccounts";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -182,10 +182,8 @@ function Accounts() {
       <ModalDeleteObject
         label={schemaKindName[ACCOUNT_GENERIC_OBJECT]}
         rowToDelete={rowToDelete}
-        open={!!rowToDelete}
-        close={() => {
-          setRowToDelete(null);
-        }}
+        isOpen={!!rowToDelete}
+        onOpenChange={(open) => !open && setRowToDelete(null)}
         onDelete={() => globalRefetch()}
       />
 

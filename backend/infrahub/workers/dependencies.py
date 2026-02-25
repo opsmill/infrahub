@@ -60,9 +60,15 @@ def get_installation_type(installation_type: str = Depends(build_installation_ty
     return installation_type
 
 
-async def build_database() -> InfrahubDatabase:
-    if "database" not in _singletons:
-        _singletons["database"] = InfrahubDatabase(driver=await get_db(retry=5))
+async def build_database(singleton: bool = True) -> InfrahubDatabase:
+    if not singleton or "database" not in _singletons:
+        db = InfrahubDatabase(driver=await get_db(retry=5))
+
+        if singleton:
+            _singletons["database"] = db
+
+        return db
+
     return _singletons["database"]
 
 

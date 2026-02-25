@@ -90,7 +90,7 @@ export const ContentCardTitle = ({
   );
 };
 
-export const Content = Object.assign(ContentRoot, {
+const Content = Object.assign(ContentRoot, {
   Title: ContentTitle,
   Root: ContentRoot,
   Card: ContentCard,

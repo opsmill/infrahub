@@ -1,5 +1,5 @@
 import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 
 import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";

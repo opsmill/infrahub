@@ -1,9 +1,9 @@
 [project]
 name = "infrahub-server"
-version = "1.6.0"
+version = "1.8.0b0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.15"
 readme = "README.md"
 license = "Apache-2.0"
 
@@ -11,14 +11,16 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [
-    "neo4j>=5.28,<5.29",
-    "neo4j-rust-ext>=5.28,<5.29",
-    "pydantic>=2.10,<2.11",
+    "neo4j==6.0.3",
+    "neo4j-rust-ext==6.0.3.0",
+    "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
-    "pytest>=7.4,<7.5",
+    "pytest>=9.0,<9.1",
     "aio-pika>=9.4,<9.5",
     "structlog==24.1.0",
     "boto3==1.34.129",
@@ -26,15 +28,14 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click==8.1.7",
-    "prefect==3.5.0",
-    "prefect-redis==0.2.6",
+    "prefect==3.6.13",
+    "prefect-redis==0.2.8",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3,<4",
     "pyyaml>=6,<7",
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.1",
-
     # Dependencies specific to the API Server
     "fastapi==0.121.1",
     "fastapi-storages>=0.3,<0.4",
@@ -42,30 +43,29 @@ dependencies = [
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.18",                            # Required by FastAPI to upload large files
-    "asgi-correlation-id==4.2.0",                          # Middleware for FastAPI to generate ID per request
-    "bcrypt>=4.1,<4.2",                                    # Used to hash and validate password
-    "pyjwt>=2.8,<2.9",                                     # Used to manage JWT tokens
+    "python-multipart==0.0.22", # Required by FastAPI to upload large files
+    "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
+    "bcrypt>=4.1,<4.2", # Used to hash and validate password
+    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
-    "opentelemetry-instrumentation-aio-pika==0.49b1",
-    "opentelemetry-instrumentation-fastapi==0.49b1",
-    "opentelemetry-exporter-otlp-proto-grpc==1.28.1",
-    "opentelemetry-exporter-otlp-proto-http==1.28.1",
+    "opentelemetry-instrumentation-aio-pika==0.60b0",
+    "opentelemetry-instrumentation-fastapi==0.60b0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+    "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.5",
-    "aiodataloader==0.4.0",
-    "fast-depends==2.4.12",
+    "authlib==1.6.6",
+    "aiodataloader==0.4.3",
+    "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
-
+    "puremagic>=1.30,<2",
     # Dependencies specific to the SDK
     "rich>=13,<14",
-    "pyarrow>=14,<15",
-    "numpy==1.26.2",
-    "dulwich==0.22.7",
-    "whenever==0.7.3",
+    "pyarrow>=14",
+    "numpy>=1.26.2",
+    "dulwich==0.24.7",
+    "whenever==0.9.3",
     "netutils==1.12.0",
-    "copier==9.8.0",
     "ariadne-codegen==0.15.3",
 ]
 
@@ -84,32 +84,33 @@ dev = [
     "yamllint",
     "mypy>=1.15,<1.16",
     "ipython>=8,<9",
-    "pytest-asyncio>=0.21.1,<0.22",
+    "pytest-asyncio>=1.3,<1.4",
     "pytest-clarity>=1.0,<1.1",
     "pytest-cov==7.0.0",
     "pytest-xdist>=3.4,<3.5",
     "types-python-slugify>=8.0.0.3,<9",
-    "pre-commit>=2.20.0,<3",
     "types-ujson",
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
-    "ruff==0.14.5",
+    "ruff==0.15.0",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
-    "pytest-codspeed>=2.2.0,<3",
+    "pytest-codspeed>=4.2.0,<5",
     "polyfactory==2.16.2",
     "towncrier>=24.8,<25",
     "pytest-env>=1.1.3,<2",
     "testcontainers==4.8.1",
     "pytest-timeout==2.3.1",
-    "matplotlib==3.9.2",
-    "pandas==2.2.3",
+    "matplotlib==3.10.7",
+    "pandas==2.3.3",
     "semver>=3.0.2,<4",
     "ruamel-yaml==0.18.6",
     "pytest-httpx>=0.30",
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.6",
+    "ty==0.0.14",
+    "prek>=0.3.0",
 ]
 
 # test-scale = [
@@ -127,7 +128,6 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [project.entry-points.pytest11]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
-"pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
 [project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
@@ -140,6 +140,7 @@ exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 timeout = 300 # 5 minutes
 session_timeout = 1800 # 30 minutes
 testpaths = ["tests"]
@@ -164,7 +165,7 @@ disable_error_code = ["type-abstract"]
 exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
-    "^backend/tests/unit",
+    "^backend/tests/component",
     "^backend/tests/test_data/dataset03.py",
     "^backend/tests/query_benchmark"
 ]
@@ -174,8 +175,8 @@ module = "infrahub.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "tests.benchmark.*"
-disallow_untyped_defs = false
+module = "infrahub_sdk.*"
+follow_imports = "skip" # Added to ignore typing issues from the SDK when introducing a py.typed file
 
 [[tool.mypy.overrides]]
 module = "tests.conftest"
@@ -336,7 +337,6 @@ disable_error_code = [
     "operator",
     "union-attr",
     "valid-type",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
@@ -389,7 +389,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
 disable_error_code = [
-    "arg-type",
     "attr-defined",
     "list-item",
     "union-attr",
@@ -419,8 +418,6 @@ module = "infrahub.graphql.mutations.repository"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "no-redef",
-    "no-untyped-def",
     "union-attr",
 ]
 
@@ -508,78 +505,12 @@ ignore = [
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
-    "FA",       # flake8-future-annotations
-    "PGH",      # pygrep-hooks
-    "ERA",      # eradicate commented-out code
-    "SLF001",   # flake8-self
     "EM",       # flake8-errmsg
     "TRY",      # tryceratops
-    "TD",       # flake8-todos
-    "FIX",      # flake8-fixme
-    "TID",      # flake8-tidy-imports
     "FBT",      # flake8-boolean-trap
     "G",        # flake8-logging-format
     "RSE",      # flake8-raise
     "BLE",      # flake8-blind-except (BLE)
-    "PD",       # pandas-vet
-    "FAST002",  # FastAPI dependency without `Annotated`
-
-    ##################################################################################################
-    # The ignored rules below should be removed once the code has been updated, they are included    #
-    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
-    # investigation if they are deemed to not make sense.                                            #
-    ##################################################################################################
-    "ASYNC240", # Async functions should not use pathlib.Path methods, use trio.Path or anyio.path
-    "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
-    "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
-    "FURB140", # Use `itertools.starmap` instead of the generator
-    "FURB192", # Prefer `min` over `sorted()` to compute the minimum value in a sequence
-    "INP001",  # File declares a package, but is nested under an implicit namespace package.
-    "LOG015",  # `info()` call on root logger
-    "N801",    # Class name should use CapWords convention
-    "N802",    # Function name should be lowercase
-    "N806",    # Variable in function should be lowercase
-    "PERF203", # `try`-`except` within a loop incurs performance overhead
-    "PERF401", # Use a list comprehension to create a transformed list
-    "PERF403", # Use a dictionary comprehension instead of a for-loop
-    "PLC0415", # `import` should be at the top-level of a file
-    "PLC2701", # Private name import from external module
-    "PLR0904", # Too many public methods
-    "PLR0912", # Too many branches
-    "PLR0913", # Too many arguments in function definition
-    "PLR0914", # Too many local variables
-    "PLR0916", # Too many Boolean expressions
-    "PLR0917", # Too many positional arguments
-    "PLR2004", # Magic value used in comparison this could possibly be fine in the tests folders
-    "PLR6201", # Use a `set` literal when testing for membership
-    "PLR6301", # Method could be a function, class method, or static method
-    "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
-    "PLW1514", # `pathlib.Path(...).open` in text mode without explicit `encoding` argument
-    "RET504",  # Unnecessary assignment before `return` statement
-    "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
-    "RUF010",  # Use explicit conversion flag
-    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
-    "RUF015",  # Prefer `next(...)` over single element slice
-    "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
-    "RUF052",  # Local dummy variable `_meta` is accessed
-    "S101",    # Use of `assert` detected
-    "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
-    "S108",    # Probable insecure usage of temporary file or directory
-    "S202",    # Uses of `tarfile.extractall()`
-    "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
-    "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
-    "SIM108",  # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
-    "SIM102",  # Use a single `if` statement instead of nested `if` statements
-    "SIM103",  # Return the condition `identifier in self.sub_by_id.keys()` directly
-    "SIM110",  # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
-    "SIM113",  # Use `enumerate()` for index variable `color` in `for` loop
-    "SIM114",  # Combine `if` branches using logical `or` operator
-    "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
-    "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
-    "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
-    "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
-    "UP031",   # Use format specifiers instead of percent format
-    "UP035",   # `typing.List` is deprecated, use `list` instead
 ]
 
 [tool.ruff.lint.flake8-bugbear]
@@ -631,12 +562,60 @@ allow-dunder-method-names = [
 
 "backend/infrahub/**.py" = [
     ##################################################################################################
-    # Review and change the below later                                                              #
+    # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
-    "ANN003", # Missing type annotation for `**kwargs`
-    "ANN204", # Missing return type annotation for special method
-    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ASYNC240", # Async functions should not use pathlib.Path methods
+    "ERA001",   # Found commented-out code
+    "FAST002",  # FastAPI dependency without `Annotated`
+    "FIX",      # flake8-fixme
+    "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
+    "INP001",   # File is part of an implicit namespace package
+    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
+    "FURB140",  # Use `itertools.starmap` instead of the generator
+    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value
+    "N801",     # Class name should use CapWords convention
+    "N806",     # Variable in function should be lowercase
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PERF403",  # Use a dictionary comprehension instead of a for-loop
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "PGH004",   # Use specific rule codes when using `noqa`
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLR0904",  # Too many public methods
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
+    "PLR0916",  # Too many Boolean expressions
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
+    "PLW0603",  # Using the global statement is discouraged
+    "PLW1514",  # `pathlib.Path(...).open` without explicit `encoding` argument
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF005",   # Consider spread operator instead of concatenation
+    "RUF010",   # Use explicit conversion flag
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "RUF052",   # Local dummy variable is accessed
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
+    "S101",     # Use of `assert` detected
+    "S105",     # Possible hardcoded password
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "SIM102",   # Use a single `if` statement instead of nested `if` statements
+    "SIM103",   # Return the condition directly
+    "SIM108",   # Use ternary operator instead of `if`-`else`-block
+    "SIM110",   # Use `return any(...)` instead of `for` loop
+    "SIM113",   # Use `enumerate()` for index variable in `for` loop
+    "SIM114",   # Combine `if` branches using logical `or` operator
+    "SIM117",   # Use a single `with` statement with multiple contexts
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "SLF001",   # Private member accessed
+    "TD",       # flake8-todos
+    "TID252",   # Replace relative imports from parent modules with absolute imports
+    "UP031",    # Use format specifiers instead of percent format
+    "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
 "backend/infrahub/cli/db.py" = [
@@ -735,32 +714,326 @@ allow-dunder-method-names = [
     "LOG004",  # `.exception()` call outside exception handlers
 ]
 
-"backend/tests/**.py" = [
-    "S101",    # Use of assert detected
-    "S105",    # Possible hardcoded password assigned to variable
-    "S106",    # Possible hardcoded password assigned to argument
-    "ARG001",  # Unused function argument
-    "ARG002",  # Unused method argument
-    "ARG003",  # Unused class method argument
+"tasks/__init__.py" = [
     ##################################################################################################
     # Review and change the below later                                                              #
+    ##################################################################################################
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
+]
+
+
+"tasks/container_ops.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "PGH004",  # Use specific rule codes when using `ruff: noqa`
+]
+
+"backend/tests/**.py" = [
+    "ARG001",   # Unused function argument
+    "ARG002",   # Unused method argument
+    "ARG003",   # Unused class method argument
+    "S101",     # Use of assert detected
+    "S105",     # Possible hardcoded password assigned to variable
+    "S106",     # Possible hardcoded password assigned to argument
+]
+
+"backend/tests/*.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "N806",     # Variable in function should be lowercase
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "PLR0912",  # Too many branches
+    "PLR0914",  # Too many local variables
+    "PLR6301",  # Method could be a function, class method, or static method
+    "PT021",    # Use `yield` instead of `request.addfinalizer`
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
+    "SIM108",   # Use ternary operator instead of `if`-`else`-block
+    "SLF001",   # Private member accessed
+    "UP031",    # Use format specifiers instead of percent format
+    "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+"backend/tests/adapters/**.py" = [
+    ##################################################################################################
+    # Rules with violations in adapters tests                                                        #
+    ##################################################################################################
+    "PLR6301",  # Method could be a function, class method, or static method
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+]
+
+"backend/tests/benchmark/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ERA001",   # Found commented-out code
+    "N802",     # Function name should be lowercase
+    "N806",     # Variable in function should be lowercase
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
+    "PLR6301",  # Method could be a function, class method, or static method
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+]
+
+"backend/tests/db_snapshot.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915",  # Too many statements
+]
+
+"backend/tests/helpers/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ASYNC109", # Async function definition with a `timeout` parameter
+    "ERA001",   # Found commented-out code
+    "FIX",      # flake8-fixme
+    "PD011",    # Use `.to_numpy()` instead of `.values`
+    "PLC2701",  # Private name import from external module
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6301",  # Method could be a function, class method, or static method
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "RUF067",  # `__init__` module should only contain docstrings and re-exports
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "SLF001",   # Private member accessed
+    "TD",       # flake8-todos
+    "UP031",    # Use format specifiers instead of percent format
+    "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+"backend/tests/fixtures/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "INP001",   # File is part of an implicit namespace package
+    "PLR2004",  # Magic value used in comparison
+    "RUF010",   # Use explicit conversion flag
+    "SIM102",   # Use a single `if` statement instead of nested `if` statements
+]
+
+"backend/tests/functional/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN202",   # Missing return type annotation for private function
+    "ASYNC109", # Async function definition with a `timeout` parameter
+    "ERA001",   # Found commented-out code
+    "INP001",   # File is part of an implicit namespace package
+    "N806",     # Variable in function should be lowercase
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLC2701",  # Private name import from external module
+    "PLR0904",  # Too many public methods
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
+    "PLR0915",  # Too many statements
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6301",  # Method could be a function, class method, or static method
+    "PT011",    # `pytest.raises(ValueError)` is too broad
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF005",   # Consider spread operator instead of concatenation
+    "RUF015",   # Prefer `next(...)` over single element slice
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "SLF001",   # Private member accessed
+    "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+"backend/tests/integration/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN202",   # Missing return type annotation for private function
+    "ERA001",   # Found commented-out code
+    "FIX",      # flake8-fixme
+    "INP001",   # File is part of an implicit namespace package
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLR0904",  # Too many public methods
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
+    "PLR0915",  # Too many statements
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF015",   # Prefer `next(...)` over single element slice
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "SIM117",   # Use a single `with` statement with multiple contexts
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "SLF001",   # Private member accessed
+    "TD",       # flake8-todos
+    "TID252",   # Replace relative imports from parent modules with absolute imports
+    "UP031",    # Use format specifiers instead of percent format
+    "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+"backend/tests/scale/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
     ##################################################################################################
     "ANN001",   # Missing type annotation for function argument
     "ANN002",   # Missing type annotation for `*args`
     "ANN003",   # Missing type annotation for `**kwargs`
-    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+    "LOG015",   # `info()` call on root logger
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLW1514",  # `pathlib.Path(...).open` without explicit `encoding` argument
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "SLF001",   # Private member accessed
+]
+
+"backend/tests/test_data/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ERA001",   # Found commented-out code
+    "N806",     # Variable in function should be lowercase
+    "PGH004",   # Use specific rule codes when using `ruff: noqa`
+    "PLR0914",  # Too many local variables
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "UP031",    # Use format specifiers instead of percent format
+]
+
+
+"backend/tests/component/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
     "ANN202",   # Missing return type annotation for private function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
-    "ASYNC109", # Async function definition with a `timeout` parameter
+    "ASYNC240", # Async functions should not use pathlib.Path methods
+    "ERA001",   # Found commented-out code
+    "FIX",      # flake8-fixme
+    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
+    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value
+    "INP001",   # File is part of an implicit namespace package
+    "N802",     # Function name should be lowercase
+    "N806",     # Variable in function should be lowercase
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "PGH004",   # Use specific rule codes when using `noqa`
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLC2701",  # Private name import from external module
+    "PLR0904",  # Too many public methods
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
     "PLR0915",  # Too many statements
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
     "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
-    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
-    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
-    "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize`
+    "PT011",    # `pytest.raises(ValueError)` is too broad
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
-    "PT018",    # Assertion should be broken down into multiple parts
-    "PT021",    # Use `yield` instead of `request.addfinalizer`
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF005",   # Consider spread operator instead of concatenation
+    "RUF010",   # Use explicit conversion flag
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF015",   # Prefer `next(...)` over single element slice
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "S108",     # Probable insecure usage of temporary file or directory
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "SIM108",   # Use ternary operator instead of `if`-`else`-block
+    "SIM113",   # Use `enumerate()` for index variable in `for` loop
+    "SIM117",   # Use a single `with` statement with multiple contexts
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "SLF001",   # Private member accessed
+    "TD",       # flake8-todos
+    "TID252",   # Replace relative imports from parent modules with absolute imports
+    "UP031",    # Use format specifiers instead of percent format
+    "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+##################################################################################################
+# ANN001 (Missing type annotation for function argument) granular ignores for                    #
+# backend/tests/component/. Split from the broad section above to allow incremental fixes.       #
+# Remove each entry below once all ANN001 violations in that path have been resolved.            #
+##################################################################################################
+"backend/tests/component/api/**.py" = ["ANN001"]                               # 271 violations
+"backend/tests/component/core/constraint_validators/**.py" = ["ANN001"]        # 321 violations
+"backend/tests/component/core/diff/**.py" = ["ANN001"]                         # 238 violations
+"backend/tests/component/core/ipam/**.py" = ["ANN001"]                         # 42 violations
+"backend/tests/component/core/migrations/**.py" = ["ANN001"]                   # 175 violations
+"backend/tests/component/core/schema_manager/**.py" = ["ANN001"]               # 113 violations
+"backend/tests/component/core/test_node_get_list_query.py" = ["ANN001"]        # 96 violations
+"backend/tests/component/core/test_relationship_query.py" = ["ANN001"]        # 59 violations
+"backend/tests/component/core/test_node.py" = ["ANN001"]                      # 53 violations
+"backend/tests/component/core/test_node_manager_delete.py" = ["ANN001"]       # 52 violations
+
+"backend/tests/query_benchmark/**.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "ANN202",   # Missing return type annotation for private function
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
+    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+]
+
+"backend/tests/integration_docker/**.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ASYNC240", # Async functions should not use pathlib.Path methods, use trio.Path or anyio.path
+    "INP001",   # File is part of an implicit namespace package
+    "N806",     # Variable in function should be lowercase
+    "PLR0904",  # Too many public methods
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
+    "SLF001",   # Private member accessed
+]
+
+"backend/tests/unit/**.py" = [
+    ##################################################################################################
+    # Rules with violations in unit tests                                                            #
+    ##################################################################################################
+    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PLC2701",  # Private name import from external module
+    "PLR2004",  # Magic value used in comparison
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -770,8 +1043,31 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
-"backend/tests/unit/graphql/test_schema_sort.py" = [
+"backend/tests/component/graphql/test_schema_sort.py" = [
     "W293", # Blank line contains whitespace
+]
+
+"models/**.py" = [
+    ##################################################################################################
+    # Rules that have violations in models/ directory                                                #
+    ##################################################################################################
+    "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
+    "INP001",   # File is part of an implicit namespace package
+    "N806",     # Variable in function should be lowercase
+    "PERF401",  # Use a list comprehension to create a transformed list
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF010",   # Use explicit conversion flag
+    "RUF029",   # Function is declared `async`, but doesn't `await`
+    "S101",     # Use of `assert` detected
+    "SIM102",   # Use a single `if` statement instead of nested `if` statements
+    "UP031",    # Use format specifiers instead of percent format
 ]
 
 "models/infrastructure_edge.py" = [
@@ -781,9 +1077,34 @@ allow-dunder-method-names = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "C901",   # `generate_site` is too complex (34 > 33)"
-    "E501",   # Line too long
+    "C901",    # `generate_site` is too complex (34 > 33)"
+    "E501",    # Line too long
+    "ERA001",  # Found commented-out code
+    "FIX",      # flake8-fixme
     "PLR0915", # Too many statements
+    "SLF001",  # Private member accessed
+    "TD",      # flake8-todos
+]
+
+"models/examples/**.py" = [
+    ##################################################################################################
+    # The ignored rules below should be removed once the code has been updated, they are included    #
+    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
+    # investigation if they are deemed to not make sense.                                            #
+    ##################################################################################################
+    "PGH004", #Use specific rule codes when using `ruff: noqa`
+]
+
+"python_testcontainers/**.py" = [
+    ##################################################################################################
+    # Rules that have violations in python_testcontainers/ directory                                 #
+    ##################################################################################################
+    "PERF203",  # `try`-`except` within a loop incurs performance overhead
+    "PLR0912",  # Too many branches
+    "PLR6301",  # Method could be a function, class method, or static method
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF010",   # Use explicit conversion flag
+    "S101",     # Use of `assert` detected
 ]
 
 "python_testcontainers/infrahub_testcontainers/helpers.py" = [
@@ -794,7 +1115,24 @@ allow-dunder-method-names = [
 ]
 
 "tasks/**.py" = [
-    "PT028", # Test function parameter has default argument (these are not tests)
+    "ERA001",   # Found commented-out code
+    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
+    "N806",     # Variable in function should be lowercase
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0914",  # Too many local variables
+    "PLR0916",  # Too many Boolean expressions
+    "PLR0917",  # Too many positional arguments
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PT028",    # Test function parameter has default argument (these are not tests)
+    "RET504",   # Unnecessary assignment before `return` statement
+    "RUF010",   # Use explicit conversion flag
+    "S701",     # Jinja2 sets `autoescape` to `False`
+    "SIM108",   # Use ternary operator instead of `if`-`else`-block
+    "SIM401",   # Use `dict.get(key, default)` instead of an `if` block
+    "SLF001",   # Private member accessed
+    "UP031",    # Use format specifiers instead of percent format
 ]
 
 "tasks/release.py" = [
@@ -809,7 +1147,21 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ERA001",   # Found commented-out code
+    "LOG015",   # `info()` call on root logger
+    "N806",     # Variable in function should be lowercase
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
+    "RUF010",   # Use explicit conversion flag
+    "S311",     # Standard pseudo-random generators are not suitable for crypto
+    "SIM108",   # Use ternary operator instead of `if`-`else`-block
+    "SIM117",   # Use a single `with` statement with multiple contexts
+    "UP031",    # Use format specifiers instead of percent format
+    "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
 [tool.towncrier]
@@ -858,6 +1210,641 @@ showcontent = true
 directory = "housekeeping"
 name = "Housekeeping"
 showcontent = true
+
+[tool.ty]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+exclude = [
+    "python_sdk/**",
+]
+
+[[tool.ty.overrides]]
+include = ["tasks/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unresolved-import = "ignore"
+unresolved-reference = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["utilities/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["models/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+missing-argument = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-import = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["python_testcontainers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/core/query/standard_node.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+type-assertion-failure = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/core/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+call-non-callable = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/graphql/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+conflicting-declarations = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-context-manager = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/database/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/services/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+deprecated = "ignore"
+unresolved-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/services/adapters/**/nats.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/proposed_change/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/generators/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-await = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git_credential/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/webhook/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/cli/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/telemetry/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/computed_attribute/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/workers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/trigger/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/workflows/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/message_bus/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+call-non-callable = "ignore"
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/artifacts/tasks.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-assignment = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/artifacts/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/tasks/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/transformations/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/profiles/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/api/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-return-type = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/actions/tasks.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-assignment = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/actions/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/branch/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/schema/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/*.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/display_labels/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/hfid/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/prefect_server/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/task_manager/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/tests/component/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+invalid-type-arguments = "ignore"
+missing-argument = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/tests/helpers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/tests/integration/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/tests/functional/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/tests/integration_docker/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/scale/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-assignment = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/fixtures/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/unit/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/tests/test_data/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/query_benchmark/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
 
 [tool.hatch.build.targets.sdist]
 include = [

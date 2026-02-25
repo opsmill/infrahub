@@ -8,11 +8,16 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { useBranchExists } from "@/entities/branches/domain/use-branch-exists";
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";
 import { DiffNode } from "@/entities/diff/node-diff/node";
 import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { buildFilters } from "@/entities/diff/node-diff/utils";
+import {
+  DiffBranchNotFound,
+  isBranchNotFoundError,
+} from "@/entities/diff/ui/diff-branch-not-found";
 import { DiffComputing } from "@/entities/diff/ui/diff-computing";
 import { DiffEmpty } from "@/entities/diff/ui/diff-empty";
 import { DiffNoFound } from "@/entities/diff/ui/diff-no-found";
@@ -30,7 +35,10 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   const [qspStatus] = useQueryState(QSP.STATUS);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const branchName: string = proposedChangesDetails?.source_branch?.value || branch; // Used in proposed changes view and branch view
+  // When branch prop is provided, we're in branch diff view - use only the branch prop
+  // When no branch prop, we're in proposed change view - use source_branch from proposedChangesDetails
+  const branchName: string = branch || proposedChangesDetails?.source_branch?.value;
+  const branchExists = useBranchExists(branchName);
 
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
@@ -39,19 +47,24 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     useDiffTreeInfiniteQuery({
       branchName,
       filters: finalFilters,
+      // Only include proposedChangeId when in proposed change view (no branch prop passed)
+      proposedChangeId: branch ? undefined : proposedChangesDetails?.id,
     });
 
   useEffect(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   if (isPending) {
     return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {
+    if (isBranchNotFoundError(error)) {
+      return <DiffBranchNotFound branchName={branchName} />;
+    }
     return <ErrorScreen message={error?.message} className="m-auto max-w-lg" />;
   }
 
@@ -69,7 +82,13 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   }
 
   if (!qspStatus && firstPageNodes.nodes?.length === 0) {
-    return <DiffEmpty branchName={branchName} lastRefreshedAt={firstPageNodes.to_time} />;
+    return (
+      <DiffEmpty
+        branchName={branchName}
+        lastRefreshedAt={firstPageNodes.to_time}
+        branchExists={branchExists}
+      />
+    );
   }
 
   const nodes =
@@ -89,8 +108,12 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
         <span className="ml-auto inline-flex gap-1 text-xs">
           Updated <DateDisplay date={firstPageNodes?.to_time} />
         </span>
-        <DiffRefreshButton size="sm" variant="primary" branchName={branchName} />
-        <DiffRebaseButton branchName={branchName} />
+        {branchExists && (
+          <>
+            <DiffRefreshButton size="sm" variant="primary" branchName={branchName} />
+            <DiffRebaseButton branchName={branchName} />
+          </>
+        )}
       </header>
 
       <div className="grid grow grid-cols-4 overflow-hidden">

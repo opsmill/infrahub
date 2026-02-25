@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
-from infrahub_sdk.template import Jinja2Template
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
@@ -26,6 +25,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
+from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
@@ -105,7 +105,7 @@ async def process_transform(
             name=transform.repository.peer.name.value,
             repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
-        )  # type: ignore[misc]
+        )
 
         data = await client.query_gql_query(
             name=transform.query.id,
@@ -122,7 +122,7 @@ async def process_transform(
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
             convert_query_response=transform.convert_query_response.value,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
 
         await client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
@@ -175,7 +175,7 @@ async def computed_attribute_jinja2_update_value(
     obj: ComputedAttrJinja2GraphQLResponse,
     node_kind: str,
     attribute_name: str,
-    template: Jinja2Template,
+    template: InfrahubJinja2Template,
     context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
@@ -242,7 +242,7 @@ async def process_jinja2(
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
             template_string = computed_macro.attribute.computed_attribute.jinja2_template
 
-        jinja_template = Jinja2Template(template=template_string)
+        jinja_template = InfrahubJinja2Template(template=template_string)
         variables = jinja_template.get_variables()
 
         attribute_graphql = ComputedAttrJinja2GraphQL(

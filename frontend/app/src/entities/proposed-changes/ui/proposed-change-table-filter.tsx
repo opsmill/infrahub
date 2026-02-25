@@ -9,8 +9,8 @@ import { classNames } from "@/shared/utils/common";
 
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
-import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
   schema: ModelSchema;
@@ -38,7 +38,7 @@ export function ProposedChangeTableFilter({
         className={classNames(cellsStyle, cellHeaderStyle, "rounded-sm border-0 transition-all")}
         {...props}
       >
-        <TableColumnHeaderIcon fieldSchema={columnSchema} />
+        <FieldSchemaIcon fieldSchema={columnSchema} />
 
         <span className="mr-1 truncate">
           {customLabel ?? columnSchema.label ?? columnSchema.name}
@@ -53,7 +53,7 @@ export function ProposedChangeTableFilter({
       </PopoverTrigger>
 
       <PopoverContent className="relative rounded-tl-none p-0" align="start">
-        <div className="-top-[1.8rem] -left-px absolute rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
+        <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
         {"peer" in columnSchema ? (

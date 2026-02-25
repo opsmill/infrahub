@@ -271,6 +271,7 @@ class StorageSettings(BaseSettings):
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
+    max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
 
 
 class DatabaseSettings(BaseSettings):
@@ -344,7 +345,6 @@ class BrokerSettings(BaseSettings):
     """Configuration settings for the message bus."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
-    enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -373,7 +373,6 @@ class BrokerSettings(BaseSettings):
 
 class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
-    enable: bool = True
     address: str = "localhost"
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
@@ -401,7 +400,6 @@ class CacheSettings(BaseSettings):
 
 class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
-    enable: bool = True
     address: str = "localhost"
     port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -532,8 +530,8 @@ class HTTPSettings(BaseSettings):
 
         return self
 
-    def get_tls_context(self) -> ssl.SSLContext:
-        if self.tls_insecure:
+    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
+        if self.tls_insecure and not force_verify:
             return ssl._create_unverified_context()
 
         if not self.tls_ca_bundle:
@@ -593,11 +591,14 @@ class SecurityOIDCBaseSettings(BaseSettings):
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
+    pkce_enabled: bool = Field(
+        default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
+    )
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
-    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
     discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
     scopes: list[str] = Field(default_factory=_default_scopes)
 
@@ -645,13 +646,16 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
+    pkce_enabled: bool = Field(
+        default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
+    )
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
     """Common base for Oauth2 providers"""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
-    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
     authorization_url: str = Field(...)
     token_url: str = Field(...)
     userinfo_url: str = Field(...)

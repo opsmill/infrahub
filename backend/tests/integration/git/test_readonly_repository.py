@@ -48,15 +48,19 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         await load_schema(db=db, schema=CAR_SCHEMA)
 
     @pytest.fixture(scope="class")
-    async def context(self) -> InfrahubContext:
+    async def context(self, db: InfrahubDatabase) -> InfrahubContext:
         """Placeholder context for now, would be good to implement some auth and permissions here"""
+        admin_account = await NodeManager.get_one_by_hfid(
+            db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
+        )
+
         return InfrahubContext(
-            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            account=AccountSession(authenticated=True, account_id=admin_account.id, auth_type=AuthType.API),
             branch=BranchContext(name="main", id="d18808fe-70c8-4782-bd55-144d6980036f"),
         )
 
     @pytest.fixture(scope="class")
-    async def person_john(self, db: InfrahubDatabase, load_car_schema) -> Node:
+    async def person_john(self, db: InfrahubDatabase, load_car_schema: None) -> Node:
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, age=25)
         await john.save(db=db)
@@ -69,7 +73,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         initialize_registry: None,
         git_repos_dir_module_scope: Path,
         git_repos_source_dir_module_scope: Path,
-        load_car_schema,
+        load_car_schema: None,
         person_john: Node,
     ) -> None:
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
@@ -183,7 +187,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     async def test_step04_new_branch_with_artifact(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
         helper: TestHelper,
         person_john: Node,

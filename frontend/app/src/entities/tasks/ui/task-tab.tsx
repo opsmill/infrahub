@@ -11,10 +11,9 @@ import { ObjectDetailsTab, type TaskTabProps } from "@/entities/nodes/object/ui/
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 
 export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
-  const { isPending, data: taskCount } = useGetTaskCount({ nodeId: objectId });
-  const [qspTab] = useQueryState(QSP.TAB);
-
   const { pathname } = useLocation();
+  const [qspTab] = useQueryState(QSP.TAB);
+  const { isPending, data: taskCount } = useGetTaskCount({ relatedNodeIds: [objectId] });
 
   return (
     <ObjectDetailsTab
@@ -23,8 +22,11 @@ export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
       {...props}
     >
       Tasks
-      {isPending && <Spinner />}
-      {!isPending && <Badge className="rounded-full font-medium text-gray-80">{taskCount}</Badge>}
+      {isPending ? (
+        <Spinner />
+      ) : (
+        <Badge className="rounded-full font-medium text-gray-80">{taskCount}</Badge>
+      )}
     </ObjectDetailsTab>
   );
 }

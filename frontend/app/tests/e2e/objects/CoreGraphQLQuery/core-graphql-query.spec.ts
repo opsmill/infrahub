@@ -1,14 +1,26 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { generateRandomBranchName } from "../../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
 test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  const BRANCH_NAME = generateRandomBranchName("core-graphql-query");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test("should create a new graphql successfully", async ({ page }) => {
     await test.step("Navigate to CoreGraphQLQuery page", async () => {
-      await page.goto("/objects/CoreGraphQLQuery");
+      await page.goto(`/objects/CoreGraphQLQuery?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading", { name: "GraphQL Query" })).toBeVisible();
       await expect(
         page.getByRole("link", { name: "check_backbone_link_redundancy" })
@@ -53,7 +65,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
 
   test("access the created graphql query, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreGraphQLQuery page", async () => {
-      await page.goto("/objects/CoreGraphQLQuery");
+      await page.goto(`/objects/CoreGraphQLQuery?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "test-graphql-query" }).click();
     });
 
@@ -62,7 +74,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     ).toBeVisible();
     await expect(page.getByText("1query GET_TAGS {")).toBeVisible();
 
-    await page.getByTestId("edit-button").click();
+    await page.getByTestId("object-header").getByTestId("edit-button").click();
     await page.getByLabel("Description").fill("A profile for E2E test updated");
     await page.getByRole("button", { name: "Save" }).click();
 
@@ -72,10 +84,11 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     ).toBeVisible();
 
     await page
-      .getByRole("cell", { name: "test-graphql-query" })
+      .getByRole("definition")
+      .filter({ hasText: "test-graphql-query" })
       .getByTestId("view-metadata-button")
       .click();
-    await page.getByTestId("properties-edit-button").click();
+    await page.getByTestId("edit-metadata-button").click();
     await page.getByLabel("is protected *").check();
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Metadata updated")).toBeVisible();
@@ -90,7 +103,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
   });
 
   test("delete a graphql query", async ({ page }) => {
-    await page.goto("/objects/CoreGraphQLQuery");
+    await page.goto(`/objects/CoreGraphQLQuery?branch=${BRANCH_NAME}`);
 
     await test.step("Delete the graphql query", async () => {
       await page.getByTestId("actions-cell-test-graphql-query").click();

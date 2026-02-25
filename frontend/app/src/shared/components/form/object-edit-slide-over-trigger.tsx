@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";

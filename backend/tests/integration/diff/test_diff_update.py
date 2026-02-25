@@ -7,7 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
+from infrahub.core.constants import NULL_VALUE, BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -110,10 +110,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
         john = await Node.init(schema=TestKind.PERSON, db=db)
@@ -183,7 +183,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    async def create_diff(self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient) -> None:
+    async def create_diff(self, db: InfrahubDatabase, initial_dataset: dict[str, Node], client: InfrahubClient) -> None:
         branch1 = await create_branch(db=db, branch_name=BRANCH_NAME)
 
         richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
@@ -202,7 +202,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def diff_on_deleted_branch(
-        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, deleted_branch: Branch
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], client: InfrahubClient, deleted_branch: Branch
     ) -> EnrichedDiffRoot:
         kara = await NodeManager.get_one(db=db, branch=deleted_branch, id=initial_dataset["kara"].id)
         kara.description.value = "I think she's an angel now"
@@ -228,7 +228,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch_name=branch.name,
         )
 
-    async def _get_proposed_change_and_data_validator(self, db) -> tuple[Node, Node]:
+    async def _get_proposed_change_and_data_validator(self, db: InfrahubDatabase) -> tuple[Node, Node]:
         pcs = await NodeManager.query(
             db=db, schema=InfrahubKind.PROPOSEDCHANGE, filters={"name__value": PROPOSED_CHANGE_NAME}
         )
@@ -244,7 +244,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         return (pc, data_validator)
 
     async def test_diff_first_update(
-        self, db: InfrahubDatabase, initial_dataset, create_diff, diff_on_deleted_branch, client: InfrahubClient
+        self,
+        db: InfrahubDatabase,
+        initial_dataset: dict[str, Node],
+        create_diff: None,
+        diff_on_deleted_branch: EnrichedDiffRoot,
+        client: InfrahubClient,
     ) -> None:
         """Validate if the diff is properly created the first time"""
 
@@ -258,7 +263,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(diff.nodes) == 2
 
     async def test_diff_second_update(
-        self, db: InfrahubDatabase, initial_dataset, create_diff, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], create_diff: None, client: InfrahubClient
     ) -> None:
         """Validate if the diff is properly updated the second time"""
 
@@ -278,7 +283,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(diff.nodes) == 3
 
     async def test_diff_deleted_ed_209(
-        self, db: InfrahubDatabase, initial_dataset, create_diff, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], create_diff: None, client: InfrahubClient
     ) -> None:
         branch1 = registry.get_branch_from_registry(branch=BRANCH_NAME)
 
@@ -307,7 +312,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert ed_209_node.action is DiffAction.REMOVED
         assert ed_209_node.label == ed_209_label
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label"}
+        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label", "human_friendly_id"}
         for attr_node in attributes_by_name.values():
             assert attr_node.action is DiffAction.REMOVED
             assert attr_node.contains_conflict is False
@@ -315,11 +320,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.HAS_VALUE,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for prop_diff in properties_by_type.values():
                 assert prop_diff.action is DiffAction.REMOVED
-                assert prop_diff.new_value is None
+                assert prop_diff.new_value in [None, NULL_VALUE]
         relationships_by_name = {r.name: r for r in ed_209_node.relationships}
         assert set(relationships_by_name.keys()) == {"manufacturer", "owner"}
         manufacturer_rel = relationships_by_name["manufacturer"]
@@ -335,7 +339,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -356,7 +359,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -384,7 +386,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -411,7 +412,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -421,7 +421,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert related_prop.new_label is None
 
     async def test_diff_add_attribute_value_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         john_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=default_branch
@@ -467,7 +467,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
 
     async def test_add_cardinality_one_peer_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         jesko_id = initial_dataset["jesko"].get_id()
@@ -529,7 +529,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
 
     async def test_add_cardinality_one_peer_property_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         t_800_id = initial_dataset["t_800"].get_id()
@@ -653,7 +653,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
 
     async def test_add_cardinality_many_peer_property_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
@@ -721,7 +721,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
 
     async def test_diff_add_node_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         kara_id = initial_dataset["kara"].get_id()
         kara_main = await NodeManager.get_one(db=db, id=kara_id, kind=TestKind.PERSON, branch=default_branch)
@@ -768,7 +768,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert not value_property.conflict
 
     async def test_diff_resolve_attribute_value_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         john_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=default_branch
@@ -803,7 +803,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert conflict.selected_branch is attribute_value_conflict.conflict_selection
 
     async def test_create_proposed_change_data_checks_created(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         result = await client.execute_graphql(
             query=PROPOSED_CHANGE_CREATE,
@@ -852,7 +852,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert node_removed_data_check.keep_branch.value is None
 
     async def test_resolve_peer_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         peer_conflict = self.retrieve_item("peer_conflict")
         result = await client.execute_graphql(
@@ -901,7 +901,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert peer_data_check.keep_branch.value.value is peer_conflict.keep_branch.value
 
     async def test_resolve_peer_property_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
         result = await client.execute_graphql(
@@ -997,7 +997,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert data_check_b.keep_branch.value.value == cardinality_one_property_conflict_b.keep_branch.value
 
     async def test_resolve_cardinality_many_property_conflict(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
         result = await client.execute_graphql(
@@ -1055,7 +1055,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert peer_data_check.keep_branch.value.value is cardinality_many_property_conflict.keep_branch.value
 
     async def test_merge_fails_with_conflicts(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         pc, _ = await self._get_proposed_change_and_data_validator(db=db)
         with pytest.raises(GraphQLError, match=r"Data conflicts found"):
@@ -1068,7 +1068,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             )
 
     async def test_diff_resolve_node_removed_conflicts(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         node_removed_conflict = self.retrieve_item("node_removed")
         with pytest.raises(GraphQLError) as exc:
@@ -1106,7 +1106,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert node_removed_conflict.conflict_id not in set(data_checks_by_conflict_id.keys())
 
     async def test_expected_core_data_checks(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], default_branch: Branch, client: InfrahubClient
     ) -> None:
         attribute_value_conflict = self.retrieve_item("attribute_value")
         peer_conflict = self.retrieve_item("peer_conflict")
@@ -1130,49 +1130,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             data_check = data_checks_by_conflict_id[tracked_conflict.conflict_id]
             assert data_check.keep_branch.value.value == tracked_conflict.keep_branch.value
 
-    async def test_create_another_proposed_change_data_checks_created(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
-    ) -> None:
-        # verify duplicate data checks can be created
-        result = await client.execute_graphql(
-            query=PROPOSED_CHANGE_CREATE,
-            variables={
-                "name": PROPOSED_CHANGE_NAME + "2",
-                "source_branch": BRANCH_NAME,
-                "destination_branch": default_branch.name,
-            },
-        )
-        assert result["CoreProposedChangeCreate"]["object"]["id"]
-        pc_id = result["CoreProposedChangeCreate"]["object"]["id"]
-        attribute_value_conflict = self.retrieve_item("attribute_value")
-        peer_conflict = self.retrieve_item("peer_conflict")
-        cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
-        cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
-        cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
-
-        pc = await NodeManager.get_one(db=db, id=pc_id)
-        validators = await pc.validations.get_peers(db=db)
-        data_validator = None
-        for v in validators.values():
-            if v.get_kind() == InfrahubKind.DATAVALIDATOR:
-                data_validator = v
-        assert data_validator
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
-        data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
-        assert set(data_checks_by_conflict_id.keys()) == {
-            attribute_value_conflict.conflict_id,
-            peer_conflict.conflict_id,
-            cardinality_one_property_conflict_a.conflict_id,
-            cardinality_one_property_conflict_b.conflict_id,
-            cardinality_many_property_conflict.conflict_id,
-        }
-        assert len(core_data_checks) == len(data_checks_by_conflict_id)
-
     async def test_merge_proposed_change(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
-        default_branch,
+        initial_dataset: dict[str, Node],
+        default_branch: Branch,
         diff_on_deleted_branch: EnrichedDiffRoot,
         deleted_branch: Branch,
         client: InfrahubClient,

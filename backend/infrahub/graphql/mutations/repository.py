@@ -7,10 +7,13 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreReadOnlyRepository
+from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.git.models import (
+    GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
     GitRepositoryPullReadOnly,
 )
@@ -18,8 +21,10 @@ from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
+from infrahub.permissions.types import define_object_permission_from_branch
 from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workflows.catalogue import (
+    GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
 )
@@ -33,7 +38,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+    from infrahub.core.protocols import CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -42,7 +47,9 @@ log = get_logger()
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema | None = None, _meta=None, **options) -> None:
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema | None = None, _meta: InfrahubMutationOptions | None = None, **options: Any
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -95,20 +102,21 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
-        if not node:
-            node: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
+        repo_node: CoreReadOnlyRepository | CoreRepository | Node | None = node
+        if not repo_node:
+            repo_node = await NodeManager.get_one_by_id_or_default_filter(
                 db=graphql_context.db,
                 kind=cls._meta.schema.kind,
                 id=data.get("id"),
                 branch=branch,
                 include_metadata=MetadataOptions.LINKED_NODES,
             )
-        if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
+        if repo_node.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
 
-        node = cast("CoreReadOnlyRepository", node)
-        current_commit = node.commit.value
-        current_ref = node.ref.value
+        repo_node = cast("CoreReadOnlyRepository", repo_node)
+        current_commit = repo_node.commit.value
+        current_ref = repo_node.ref.value
         new_commit = None
         if data.commit and data.commit.value:
             new_commit = data.commit.value
@@ -116,7 +124,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if data.ref and data.ref.value:
             new_ref = data.ref.value
 
-        obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
+        obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
         obj = cast("CoreReadOnlyRepository", obj)
 
         send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
@@ -139,11 +147,23 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             infrahub_branch_name=branch.name,
             infrahub_branch_id=str(branch.get_uuid()),
         )
+        git_read_only_repo_import_commit_model = GitReadOnlyRepositoryImportCommit(
+            repository_id=obj.id,
+            repository_name=str(obj.name.value),
+            repository_kind=obj.get_kind(),
+            infrahub_branch_name=branch.name,
+            ref=str(obj.ref.value),
+        )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_PULL_READ_ONLY,
                 context=graphql_context.get_context(),
                 parameters={"model": model},
+            )
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+                context=graphql_context.get_context(),
+                parameters={"model": git_read_only_repo_import_commit_model},
             )
         return obj, result
 
@@ -194,6 +214,53 @@ class ProcessRepository(Mutation):
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
+        )
+        task = {"id": workflow.id}
+        return cls(ok=True, task=task)
+
+
+class ReadOnlyRepositoryImportLastCommit(Mutation):
+    class Arguments:
+        data = IdentifierInput(required=True)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: IdentifierInput,
+    ) -> Self:
+        graphql_context: GraphqlContext = info.context
+        branch = graphql_context.branch
+        repository_id = str(data.id)
+
+        schema = registry.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=branch.name, duplicate=False)
+        permission = define_object_permission_from_branch(
+            schema=schema, action=PermissionAction.UPDATE, branch_name=branch.name
+        )
+        graphql_context.active_permissions.raise_for_permission(permission=permission)
+
+        repo = await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db,
+            kind=CoreReadOnlyRepository,
+            id=str(data.id),
+            branch=branch,
+        )
+
+        model = GitReadOnlyRepositoryImportCommit(
+            repository_id=repository_id,
+            repository_name=str(repo.name.value),
+            repository_kind=repo.get_kind(),
+            infrahub_branch_name=branch.name,
+            ref=str(repo.ref.value),
+        )
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)

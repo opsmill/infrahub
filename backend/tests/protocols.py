@@ -102,6 +102,14 @@ class CoreCredential(CoreNode):
     description: StringOptional
 
 
+class CoreFileObject(CoreNode):
+    file_name: String
+    checksum: String
+    file_size: Integer
+    file_type: String
+    storage_id: String
+
+
 class CoreGenericAccount(CoreNode):
     name: String
     password: HashedPassword
@@ -221,6 +229,7 @@ class CoreValidator(CoreNode):
 class CoreWebhook(CoreNode):
     name: String
     event_type: Enum
+    active: Boolean
     branch_scope: Dropdown
     node_kind: StringOptional
     description: StringOptional
@@ -509,7 +518,6 @@ class CoreProposedChange(CoreTaskTarget):
     approved_by: RelationshipManager
     rejected_by: RelationshipManager
     reviewers: RelationshipManager
-    created_by: RelationshipManager
     comments: RelationshipManager
     threads: RelationshipManager
     validations: RelationshipManager

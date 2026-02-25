@@ -6,9 +6,9 @@ import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { QSP } from "@/shared/config/qsp";
@@ -23,9 +23,16 @@ import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/rela
 export interface RunGeneratorActionProps {
   generatorId: string;
   groupId: string;
+  size?: ButtonProps["size"];
+  variant?: ButtonProps["variant"];
 }
 
-export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGeneratorActionProps) {
+export function GeneratorDefinitionRunButton({
+  generatorId,
+  groupId,
+  size,
+  variant = "active",
+}: RunGeneratorActionProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showTargetForm, setShowTargetForm] = useState(false);
   const { isPending, mutate } = useRunGeneratorMutation();
@@ -69,7 +76,12 @@ export function GeneratorDefinitionRunButton({ generatorId, groupId }: RunGenera
   return (
     <Popover open={isPopoverOpen} onOpenChange={handlePopoverOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="active" isLoading={isPending} disabled={isPending || !isAuthenticated}>
+        <Button
+          variant={variant}
+          size={size}
+          isLoading={isPending}
+          disabled={isPending || !isAuthenticated}
+        >
           {!isPending && <PlayIcon className="mr-2 size-4" />}
           Run
         </Button>

@@ -1,6 +1,4 @@
-# AGENTS.md
-
-## Project Overview
+# Infrahub
 
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
@@ -22,6 +20,7 @@ Infrahub is a graph-based infrastructure data management platform by OpsMill. It
 - `tasks/` – Invoke task definitions
 - `schema/` – JSON/GraphQL schema definitions
 - `changelog/` – Towncrier changelog fragments
+- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
 ## Commands
 
@@ -58,6 +57,13 @@ cd frontend/app && npm run build      # Build frontend
 cd docs && npm run build              # Build documentation
 ```
 
+## Coding Standards
+
+- Backend: `dev/guidelines/backend/python.md`
+- Frontend: `frontend/app/AGENTS.md`
+- Git workflow: `dev/guidelines/git-workflow.md`
+- Markdown: `dev/guidelines/markdown.md`
+
 ## Generated Files (Do Not Edit)
 
 - `backend/infrahub/core/schema/generated/` – Schema definitions
@@ -68,39 +74,6 @@ cd docs && npm run build              # Build documentation
 - `schema/openapi.json` - OpenAPI schema for the REST API
 
 Regenerate with: `uv run invoke backend.generate` or `cd frontend/app && npm run codegen`
-
-## Markdown Formatting
-
-When editing markdown files (enforced by markdownlint):
-
-- Use `-` for unordered lists
-- Add blank line before/after headings, code blocks, and lists
-- Use fenced code blocks with language identifier
-- No trailing spaces or multiple consecutive blank lines
-- No bare URLs (use `[text](url)` format)
-
-## Towncrier for changelog
-
-Towncrier is used to manage the changelog which is being published with every release.
-Every issue that is being fixed, or new feature that gets implemented should be accompanied by a proper changelog entry.
-
-The changelog message should be a short and user-facing. It should describe what has been fixed or implemented without focusing on the technical aspects of the implementation.
-
-To create a new changelog entry use the following command.
-The filename should be in the format `${ISSUE}.{ACTION}.md`:
-
-- ${ISSUE}: the id of the GitHub issue or feature request, if you are not working on an issue or feature request use `+`.
-- ${ACTION}: one of added, fixed, housekeeping
-
-```bash
-uv run towncrier -c "content of changelog entry" ${ISSUE}.{ACTION}.md
-```
-
-## Git Workflow
-
-- **Main branches:** `stable` (production), `develop` (development), `release-*` (releases)
-- **Commit messages:** Conventional commits; include issue references
-- **Changelog:** Add fragment to `changelog/` using Towncrier format
 
 ## Boundaries
 
@@ -124,3 +97,21 @@ uv run towncrier -c "content of changelog entry" ${ISSUE}.{ACTION}.md
 - Edit generated files manually
 - Skip linting in CI
 - Force push to `stable` or `develop`
+
+## Navigation
+
+| Question | Location |
+|----------|----------|
+| How does the system work? | `dev/knowledge/` |
+| How do I do X? | `dev/guides/` |
+| Why was this decided? | `dev/adr/` |
+| What are we building? | `dev/specs/` |
+| How should I write code? | `dev/guidelines/` |
+| What commands are available? | `dev/commands/` |
+
+## Component Maps
+
+- Backend: `backend/AGENTS.md`
+- Frontend: `frontend/app/AGENTS.md`
+- Documentation: `docs/AGENTS.md`
+- Python SDK: `python_sdk/AGENTS.md`

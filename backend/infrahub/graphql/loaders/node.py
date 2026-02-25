@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from aiodataloader import DataLoader
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -18,7 +18,7 @@ class GetManyParams:
     branch: Branch | str
     fields: dict | None = None
     at: Timestamp | str | None = None
-    include_metadata: MetadataOptions = MetadataOptions.NONE
+    include_metadata: MetadataQueryOptions = field(default_factory=MetadataQueryOptions)
     prefetch_relationships: bool = False
     branch_agnostic: bool = False
 
@@ -33,7 +33,7 @@ class GetManyParams:
                 str(hash(frozen_fields)),
                 timestamp.to_string(),
                 branch,
-                str(self.include_metadata.value),
+                str(hash(self.include_metadata)),
                 str(self.prefetch_relationships),
                 str(self.branch_agnostic),
             ]

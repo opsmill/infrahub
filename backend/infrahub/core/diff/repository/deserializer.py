@@ -53,7 +53,9 @@ class EnrichedDiffDeserializer:
         self._parents_path_map[enriched_root].append((node_identifier, parents_path))
 
     async def read_result(self, result: QueryResult, include_parents: bool) -> None:
-        enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
+        enriched_root = self._deserialize_diff_root(
+            root_node=result.get_node("diff_root"), proposed_change_id=result.get_as_str("proposed_change_id")
+        )
         node_node = result.get(label="diff_node")
         if not isinstance(node_node, Neo4jNode):
             return
@@ -166,22 +168,25 @@ class EnrichedDiffDeserializer:
         value_raw = node.get(property_name)
         return str(value_raw) if value_raw is not None else None
 
-    def _deserialize_diff_root(self, root_node: Neo4jNode) -> EnrichedDiffRoot:
+    def _deserialize_diff_root(self, root_node: Neo4jNode, proposed_change_id: str | None = None) -> EnrichedDiffRoot:
         root_uuid = str(root_node.get("uuid"))
         if root_uuid in self._diff_root_map:
             return self._diff_root_map[root_uuid]
-        root_empty = self.build_diff_root_metadata(root_node=root_node)
+        root_empty = self.build_diff_root_metadata(root_node=root_node, proposed_change_id=proposed_change_id)
         enriched_root = EnrichedDiffRoot.from_root_metadata(empty_root=root_empty)
         self._diff_root_map[root_uuid] = enriched_root
         return enriched_root
 
     @classmethod
-    def build_diff_root_metadata(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
+    def build_diff_root_metadata(
+        cls, root_node: Neo4jNode, proposed_change_id: str | None = None
+    ) -> EnrichedDiffRootMetadata:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
         partner_uuid = cls._get_str_or_none_property_value(node=root_node, property_name="partner_uuid")
         tracking_id_str = str(root_node.get("tracking_id"))
         tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
+        is_frozen = str(root_node.get("is_frozen", False)).lower() == "true"
         return EnrichedDiffRootMetadata(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
@@ -196,6 +201,8 @@ class EnrichedDiffDeserializer:
             num_conflicts=int(root_node.get("num_conflicts", 0)),
             contains_conflict=str(root_node.get("contains_conflict")).lower() == "true",
             exists_on_database=True,
+            proposed_change_id=proposed_change_id,
+            is_frozen=is_frozen,
         )
 
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:

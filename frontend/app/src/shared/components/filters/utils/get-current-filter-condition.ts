@@ -15,7 +15,7 @@ export function getCurrentFilterCondition(filter?: Filter): FilterCondition | un
   if (!filter) return;
 
   const parts = filter.name.split("__");
-  const condition = parts.length > 1 ? parts[1] : "";
+  const condition = parts.length > 1 ? parts.at(-1) : "";
 
   switch (condition) {
     case "value":
@@ -25,6 +25,10 @@ export function getCurrentFilterCondition(filter?: Filter): FilterCondition | un
       return FILTER_CONDITION.IS_ANY_OF;
     case "isnull":
       return filter.value ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.IS_NOT_EMPTY;
+    case "before":
+      return FILTER_CONDITION.BEFORE;
+    case "after":
+      return FILTER_CONDITION.AFTER;
     default:
       return;
   }

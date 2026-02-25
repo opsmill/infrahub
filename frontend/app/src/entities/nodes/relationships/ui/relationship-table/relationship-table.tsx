@@ -1,5 +1,4 @@
-import React from "react";
-
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
@@ -10,10 +9,11 @@ import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
+import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
-import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
+import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
@@ -26,8 +26,15 @@ export function RelationshipTable({
   ...props
 }: RelationshipTableProps) {
   const { schema: parentSchema } = useSchema(parentKind);
+  const { data: permission } = useGetObjectPermissions(parentKind);
   const [filters] = useFilters();
-  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } =
+  const { data: count } = useGetRelationshipCount({
+    objectKind: parentKind,
+    objectId: parentId,
+    relationshipName,
+  });
+
+  const { data, fetchNextPage, error, hasNextPage, isPending, isFetchingNextPage } =
     useObjectRelationships({
       relationshipSchema,
       parentId,
@@ -37,21 +44,21 @@ export function RelationshipTable({
       ...props,
     });
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
 
-  const columns = React.useMemo(() => {
-    return [
-      ...getObjectTableColumns(relationshipSchema, { disabled: true }),
-      getRelationshipActionsColumn({
-        parentId,
-        parentKind,
-        relationshipName,
-        permission: PERMISSION_ALLOW_ALL,
-        relationshipsCount: flatData.length,
-      }),
-    ];
-  }, [relationshipSchema.hash, flatData.length]);
-
+  const flatData = data?.pages?.flat() ?? [];
+  const columns = [
+    ...getObjectTableColumns(relationshipSchema, { disabled: true }),
+    getRelationshipActionsColumn({
+      parentId,
+      parentKind,
+      relationshipName,
+      permission,
+      relationshipsCount: flatData.length,
+    }),
+  ];
   const isLoading = isPending || isFetchingNextPage;
 
   const isDissociateAllowed =
@@ -66,6 +73,7 @@ export function RelationshipTable({
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columns={columns}
+        count={count}
         data={flatData}
         isLoading={isLoading}
         renderEmpty={() => <ObjectTableEmpty schema={relationshipSchema} />}
@@ -75,6 +83,7 @@ export function RelationshipTable({
                 return (
                   <ToolbarDissociateAction
                     objectId={parentId}
+                    parentKind={parentKind}
                     relationshipIds={selectedRows.map((row) => row.id)}
                     relationshipName={relationshipName}
                     relationshipLabel="all selected rows"

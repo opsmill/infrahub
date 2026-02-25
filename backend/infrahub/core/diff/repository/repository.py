@@ -36,8 +36,10 @@ from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
+from ..query.freeze_by_proposed_change import EnrichedDiffFreezeByProposedChangeQuery
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
+from ..query.link_proposed_change import EnrichedDiffLinkProposedChangeQuery
 from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
 from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
@@ -49,7 +51,9 @@ log = get_logger()
 
 
 class DiffRepository:
-    def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000):
+    def __init__(
+        self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000
+    ) -> None:
         self.db = db
         self.deserializer = deserializer
         self.max_save_batch_size = max_save_batch_size
@@ -68,6 +72,8 @@ class DiffRepository:
         max_depth: int | None = None,
         tracking_id: TrackingId | None = None,
         diff_ids: list[str] | None = None,
+        proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> list[EnrichedDiffRoot]:
         self.deserializer.initialize()
         final_row_number = None
@@ -89,6 +95,8 @@ class DiffRepository:
                 offset=offset,
                 tracking_id=tracking_id,
                 diff_ids=diff_ids,
+                proposed_change_id=proposed_change_id,
+                exclude_merged=exclude_merged,
             )
             log.info(f"Beginning enriched diff get query {batch_size_limit=}, {offset=}")
             await get_query.execute(db=self.db)
@@ -116,6 +124,8 @@ class DiffRepository:
         tracking_id: TrackingId | None = None,
         diff_ids: list[str] | None = None,
         include_empty: bool = False,
+        proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
         batch_size_limit = int(config.SETTINGS.database.query_size_limit / 10)
@@ -132,6 +142,8 @@ class DiffRepository:
             offset=offset or 0,
             tracking_id=tracking_id,
             diff_ids=diff_ids,
+            proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         if not include_empty:
             diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
@@ -363,6 +375,8 @@ class DiffRepository:
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         filters: dict | None = None,
+        proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
@@ -372,16 +386,36 @@ class DiffRepository:
             from_time=from_time,
             to_time=to_time,
             tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
         return query.get_summary()
 
     async def delete_all_diff_roots(self) -> None:
-        query = await EnrichedDiffDeleteQuery.init(db=self.db)
+        query = await EnrichedDiffDeleteQuery.init(db=self.db, include_frozen=True)
         await query.execute(db=self.db)
 
-    async def delete_diff_roots(self, diff_root_uuids: list[str]) -> None:
-        query = await EnrichedDiffDeleteQuery.init(db=self.db, enriched_diff_root_uuids=diff_root_uuids)
+    async def delete_diff_roots(self, diff_root_uuids: list[str], include_frozen: bool = False) -> None:
+        query = await EnrichedDiffDeleteQuery.init(
+            db=self.db, enriched_diff_root_uuids=diff_root_uuids, include_frozen=include_frozen
+        )
+        await query.execute(db=self.db)
+
+    async def link_to_proposed_change(self, diff_uuids: list[str], proposed_change_id: str) -> None:
+        query = await EnrichedDiffLinkProposedChangeQuery.init(
+            db=self.db,
+            diff_uuids=diff_uuids,
+            proposed_change_id=proposed_change_id,
+        )
+        await query.execute(db=self.db)
+
+    async def freeze_diffs_for_proposed_change(self, proposed_change_id: str) -> None:
+        """Freeze diffs linked to a PC by setting is_frozen and updating tracking_id to FrozenTrackingId."""
+        query = await EnrichedDiffFreezeByProposedChangeQuery.init(
+            db=self.db,
+            proposed_change_id=proposed_change_id,
+        )
         await query.execute(db=self.db)
 
     async def get_time_ranges(
@@ -441,6 +475,8 @@ class DiffRepository:
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
+        proposed_change_id: str | None = None,
+        exclude_merged: bool = True,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
             db=self.db,
@@ -449,11 +485,15 @@ class DiffRepository:
             from_time=from_time,
             to_time=to_time,
             tracking_id=tracking_id,
+            proposed_change_id=proposed_change_id,
+            exclude_merged=exclude_merged,
         )
         await query.execute(db=self.db)
         diff_roots = []
-        for neo4j_node in query.get_root_nodes_metadata():
-            diff_roots.append(self.deserializer.build_diff_root_metadata(root_node=neo4j_node))
+        for neo4j_node, pc_id in query.get_root_nodes_metadata():
+            diff_roots.append(
+                self.deserializer.build_diff_root_metadata(root_node=neo4j_node, proposed_change_id=pc_id)
+            )
         return diff_roots
 
     async def diff_has_conflicts(

@@ -1,7 +1,7 @@
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
-ARG PYTHON_VER=3.12
+ARG PYTHON_VER=3.13.11
 ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
@@ -92,7 +92,8 @@ WORKDIR /source
 
 ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
-    PREFECT_API_DATABASE_TIMEOUT=60
+    PREFECT_API_DATABASE_TIMEOUT=60 \
+    PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30
 
 # --------------------------------------------
 # Import Frontend Build

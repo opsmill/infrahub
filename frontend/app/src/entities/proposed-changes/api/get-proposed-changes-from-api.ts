@@ -9,17 +9,12 @@ import {
 } from "@/shared/api/graphql/utils";
 import type { PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const OBJECTS_PER_PAGE = 40;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export interface ProposedChangesFromApiParams extends PaginationParams {
   schema: ModelSchema;
@@ -30,7 +25,7 @@ export interface ProposedChangesFromApiParams extends PaginationParams {
 
 export const getProposedChangesFromApi = async ({
   schema,
-  limit = OBJECTS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   offset,
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
@@ -50,7 +45,24 @@ export const getProposedChangesFromApi = async ({
           offset,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
+        count: true,
         edges: {
+          node_metadata: {
+            created_at: true,
+            created_by: {
+              id: true,
+              hfid: true,
+              display_label: true,
+              __typename: true,
+            },
+            updated_at: true,
+            updated_by: {
+              id: true,
+              hfid: true,
+              display_label: true,
+              __typename: true,
+            },
+          },
           node: {
             id: true,
             display_label: true,

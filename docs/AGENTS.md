@@ -33,7 +33,8 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots
   - `development/` – Developer documentation
-    - `docs.mdx` – Full documentation guide with linting rules
+    - `docs.mdx` – Documentation guide with linting rules
+    - `style-guide.mdx` – **Writing style and terminology rules**
 - `sidebars.ts` – Navigation configuration
 
 ## Commands
@@ -56,7 +57,18 @@ uv run invoke docs.format        # Auto-format markdown files
 - **Assumed knowledge:** Git, CI/CD, YAML/JSON, infrastructure-as-code
 - **Not assumed:** Prior Infrahub experience
 
+## Writing Guides
+
+For step-by-step instructions on writing documentation:
+
+- `dev/guides/docs/writing-a-guide.md` - How to write how-to guides
+- `dev/guides/docs/writing-a-topic.md` - How to write topic/explanation documentation
+
 ## Essential Style Guidelines
+
+For detailed markdown formatting rules, see `dev/guidelines/markdown.md`.
+For documentation writing guidelines, see `dev/guidelines/documentation.md`.
+For the complete style guide including terminology, see `docs/development/style-guide.mdx`.
 
 ### Voice and Tone
 
@@ -65,26 +77,20 @@ uv run invoke docs.format        # Auto-format markdown files
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Professional but approachable**: Avoid "simple", "easy", or "just"
 
-### Formatting Standards
+### Infrahub Terminology
 
-**Code blocks** - Always specify language:
+Capitalize these Infrahub-specific terms when referring to the feature:
 
-````markdown
-```python
-from infrahub_sdk import InfrahubClient
-```
-````
+| Term | Capitalize? | Example |
+|------|-------------|---------|
+| Generator(s) | Yes | "Infrahub **Generators** convert service models into objects." |
+| Transformation(s) | Yes | "**Transformations** convert graph data into artifacts." |
+| Profile(s) | Yes | "Create **Profiles** for your devices." |
+| Resource Manager | Yes (singular) | "Use **Resource Manager** to allocate IPs." |
+| artifact(s) | No | "The **artifact** is stored in object storage." |
+| transform (verb) | No | "Use this to **transform** data into vendor formats." |
 
-**Images** - Include descriptive alt text:
-
-```markdown
-![Screenshot showing the branch creation dialog](./media/branch-creation.png)
-```
-
-**Headings** - Use sentence case:
-
-- ✅ "Creating a new branch"
-- ❌ "Creating A New Branch"
+**Never use "transform" or "transforms" as a noun.** Always use "Transformation" or "Transformations".
 
 ## Documentation Workflow
 

@@ -14,8 +14,8 @@ import {
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
+import { Button } from "@/shared/components/ui/button";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -24,16 +24,16 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbResourceManager() {
   const { resourcePoolId, resourceId } = useParams();
-  const { schema } = useSchema(RESOURCE_GENERIC_KIND);
+  const { schema } = useSchema(RESOURCE_GENERIC_KIND, { throwIfNotFound: true });
 
   return (
     <Breadcrumbs data-testid="breadcrumb-resource-manager">
       <BreadcrumbItem href={constructPath("/resource-manager")}>Resource manager</BreadcrumbItem>
-      {schema && resourcePoolId && (
+      {resourcePoolId && (
         <BreadcrumbObjectDetails
           objectSchema={schema}
           objectId={resourcePoolId}
-          autocompleteObjectKind={schema.kind!}
+          autocompleteObjectKind={RESOURCE_GENERIC_KIND}
         />
       )}
       {resourceId && resourcePoolId && (

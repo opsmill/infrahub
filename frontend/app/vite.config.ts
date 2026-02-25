@@ -18,7 +18,11 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    react(),
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
     svgr(),
     tsconfigPaths(),
     monacoEditorPlugin({

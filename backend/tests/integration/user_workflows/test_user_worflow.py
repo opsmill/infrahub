@@ -384,7 +384,7 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-        state.data["time_after_intf_update_branch1"] = Instant.now().format_common_iso()
+        state.data["time_after_intf_update_branch1"] = Instant.now().format_iso()
 
     async def test_update_intf_description_main(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
@@ -805,7 +805,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                     "intf_name": intf_name,
                 },
             },
-            params={"at": state.data["time_start"].format_common_iso()},
+            params={"at": state.data["time_start"].format_iso()},
             headers=headers,
         )
         assert response.status_code == 200
@@ -973,15 +973,6 @@ class TestUserWorkflow01(TestInfrahubApp):
                                     "status": "ADDED",
                                     "conflict": None,
                                 },
-                                {
-                                    "property_type": "IS_VISIBLE",
-                                    "previous_value": None,
-                                    "new_value": "True",
-                                    "previous_label": None,
-                                    "new_label": None,
-                                    "status": "ADDED",
-                                    "conflict": None,
-                                },
                             ],
                         }
                     ],
@@ -1022,7 +1013,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                 {
                     "name": name,
                     "status": "ADDED",
-                    "num_added": 3,
+                    "num_added": 2,
                     "num_removed": 0,
                     "num_updated": 0,
                     "num_conflicts": 0,
@@ -1042,15 +1033,6 @@ class TestUserWorkflow01(TestInfrahubApp):
                             "property_type": "IS_PROTECTED",
                             "previous_value": None,
                             "new_value": "False",
-                            "previous_label": None,
-                            "new_label": None,
-                            "status": "ADDED",
-                            "conflict": None,
-                        },
-                        {
-                            "property_type": "IS_VISIBLE",
-                            "previous_value": None,
-                            "new_value": "True",
                             "previous_label": None,
                             "new_label": None,
                             "status": "ADDED",
@@ -1085,7 +1067,6 @@ class TestUserWorkflow01(TestInfrahubApp):
                                 for property_type, new_value, new_label in [
                                     ("IS_RELATED", state.data["spine1_id"], "spine1"),
                                     ("IS_PROTECTED", "False", None),
-                                    ("IS_VISIBLE", "True", None),
                                 ]
                             ],
                         }

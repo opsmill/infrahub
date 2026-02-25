@@ -1,13 +1,13 @@
 <h1 align="center">
-  <a href=""><img src="docs/static/img/infrahub-hori.svg" alt="Infrahub" width="350"></a>
+  <a href="https://docs.infrahub.app"><img src="docs/static/img/infrahub-hori.svg" alt="Infrahub logo" width="350"></a>
 </h1>
 
 <p align="center">
 <a href="https://www.linkedin.com/company/opsmill">
-<img src="https://img.shields.io/badge/linkedin-blue?logo=LinkedIn"/>
+<img src="https://img.shields.io/badge/linkedin-blue?logo=LinkedIn" alt="LinkedIn badge"/>
 </a>
 <a href="https://discord.gg/opsmill">
-<img src="https://img.shields.io/badge/Discord-7289DA?&logo=discord&logoColor=white"/>
+<img src="https://img.shields.io/badge/Discord-7289DA?&logo=discord&logoColor=white" alt="Discord badge"/>
 </a>
 </p>
 
@@ -66,7 +66,7 @@ If you need help, support for the community version of Infrahub is provided on [
 To help our community with the creation of contributions, please view our [CONTRIBUTING](./CONTRIBUTING.md) page.
 
 <a  href="https://github.com/opsmill/infrahub/graphs/contributors">
-<img  src="https://contrib.rocks/image?repo=opsmill/infrahub" />
+<img src="https://contrib.rocks/image?repo=opsmill/infrahub" alt="Contributors"/>
 </a>
 
 ## Security

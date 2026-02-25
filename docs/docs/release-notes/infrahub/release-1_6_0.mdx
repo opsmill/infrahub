@@ -39,7 +39,7 @@ We've replaced the static landing page with an interactive dashboard so you can 
 
 ## Use Profiles in Object Templates
 
-You can now define profiles in Object Templates so they're automatically applied when objects are created, ensuring consistency without manual post-creation steps.
+You can now define Profiles in Object Templates so they're automatically applied when objects are created, ensuring consistency without manual post-creation steps.
 
 ## Selective branch synchronization filter for Git repositories
 
@@ -49,7 +49,7 @@ With this change you can now configure Infrahub to instead consult a list of bra
 
 ## Explicit merge commits
 
-Infrahub now optionally creates three-way merge commits instead of fast-forward merges, making it easy to trace Infrahub-originated merges in your Git repository history. You also have an option to configure the Git username and email that Infrahub will use to create the merge commit.
+Infrahub now optionally creates three-way merge commits instead of fast-forward merges, making it possible to trace Infrahub-originated merges in your Git repository history. You also have an option to configure the Git username and email that Infrahub will use to create the merge commit.
 
 ## `infrahubctl branch report` command
 
@@ -104,7 +104,7 @@ See which Infrahub edition you're using in the account menu alongside the versio
 
 ⚠ **BREAKING CHANGE**
 
-When using `convert_query_response` with nested relationships in Python transforms and generators, queries must now include `id` and `__typename` fields on all nodes. This fixes a bug where objects were only converted one level deep.
+When using `convert_query_response` with nested relationships in Python transforms and Generators, queries must now include `id` and `__typename` fields on all nodes. This fixes a bug where objects were only converted one level deep.
 
 If you are not using `convert_query_response` or if the queries that you are using with this feature aren't deeply nested, then you don't have to change anything.
 

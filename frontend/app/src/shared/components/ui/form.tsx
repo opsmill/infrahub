@@ -17,10 +17,11 @@ import {
   useFormContext,
 } from "react-hook-form";
 
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { SlideOverContext } from "@/shared/components/display/slide-over";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
@@ -47,9 +48,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
       // Stop logic if there is no context to prevent the slide over close
       if (!slideOverContext?.setPreventClose) return;
 
-      if (!currentForm.formState.isDirty) return;
-
-      slideOverContext?.setPreventClose(true);
+      slideOverContext.setPreventClose(currentForm.formState.isDirty);
     }, [currentForm.formState.isDirty]);
 
     return (
@@ -60,10 +59,11 @@ export const Form = React.forwardRef<FormRef, FormProps>(
               event.stopPropagation();
             }
 
-            if (onSubmit) currentForm.handleSubmit(onSubmit)(event);
-
-            if (slideOverContext?.setPreventClose) {
-              slideOverContext?.setPreventClose(false);
+            if (onSubmit) {
+              currentForm.handleSubmit(async (data) => {
+                await onSubmit(data);
+                currentForm.reset(data);
+              })(event);
             }
           }}
           className={classNames("space-y-4", className)}
@@ -108,11 +108,7 @@ export const FormInput = React.forwardRef<
     <Slot
       ref={ref}
       id={id}
-      className={classNames(
-        error &&
-          "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/25 focus:border-red-500 focus:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
-        className
-      )}
+      className={classNames(error && inputErrorStyle, className)}
       aria-invalid={!!error}
       {...props}
     />
@@ -136,7 +132,6 @@ export const FormMessage = ({
   return (
     <p
       className={classNames("text-gray-600 text-sm", error && "text-red-600", className)}
-      data-cy={error && "field-error-message"}
       {...props}
     >
       {message}

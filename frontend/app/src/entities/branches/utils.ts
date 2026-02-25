@@ -1,12 +1,17 @@
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 
-export const findSelectedBranch = (branches: Branch[], branchName?: string | null) => {
-  const filter = branchName ? (b: Branch) => branchName === b.name : (b: Branch) => b.is_default;
+export const findSelectedBranch = (
+  branches: BranchListItem[],
+  branchName?: string | null
+): BranchListItem | null => {
+  const filter = branchName
+    ? (b: BranchListItem) => branchName === b.name
+    : (b: BranchListItem) => b.is_default;
 
   return branches.find(filter) ?? null;
 };
 
-export const branchesToSelectOptions = (branches: Branch[]) =>
+export const branchesToSelectOptions = (branches: BranchListItem[]) =>
   branches
     .map((branch) => ({
       id: branch.name,

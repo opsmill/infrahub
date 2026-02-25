@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: Manufacturer
+    namespace: Testing
+    description: "A device manufacturer"
+    icon: "mdi:factory"
+    order_by:
+      - "name__value"
+    display_label: "name__value"
+    human_friendly_id:
+      - name__value
+    generate_profile: false
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: country
+        kind: Text
+        optional: true
+
+  - name: Tenant
+    namespace: Testing
+    description: "A tenant organization"
+    icon: "mdi:account-group"
+    order_by:
+      - "name__value"
+    display_label: "name__value"
+    human_friendly_id:
+      - name__value
+    generate_profile: false
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+
+  - name: Device
+    namespace: Testing
+    description: "A network device"
+    icon: "mdi:server"
+    order_by:
+      - "name__value"
+    display_label: "name__value"
+    human_friendly_id:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: height
+        kind: Number
+        optional: true
+      - name: weight
+        kind: Number
+        optional: true
+      - name: part_number
+        kind: Text
+        optional: false
+    relationships:
+      - name: manufacturer
+        peer: TestingManufacturer
+        kind: Attribute
+        cardinality: one
+        optional: false
+      - name: tenants
+        peer: TestingTenant
+        cardinality: many
+        optional: true

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 import yaml
+from dulwich.objects import Commit
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
@@ -34,8 +35,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
     @pytest.fixture(scope="class")
     def schema_computed_tshirt(self) -> dict:
-        with Path(CURRENT_DIRECTORY / "test_files/computed_tshirt.yml").open(encoding="utf-8") as file:
-            return yaml.safe_load(file.read())
+        return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/computed_tshirt.yml").read_text(encoding="utf-8"))
 
     async def test_load_schema(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
         """Prepare the schema"""
@@ -137,6 +137,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         repo = GitRepo(name="computed_attribute", src_directory=src_directory, dst_directory=remote_repos_dir)
         commit = repo._repo.git[repo._repo.git.head()]
         assert len(list(repo._repo.git.get_walker())) == 1
+        assert isinstance(commit, Commit)
         assert commit.message.decode("utf-8") == "First commit"
 
         response = await repo.add_to_infrahub(client=client)

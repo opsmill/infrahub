@@ -2,6 +2,8 @@
 applyTo: '**/*.py'
 ---
 
+# Python Docstring Guidelines
+
 Follow these guidelines for writing clear and consistent Python docstrings:
 
 - Always use triple quotes (""") for docstrings

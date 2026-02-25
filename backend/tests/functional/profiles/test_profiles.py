@@ -1,18 +1,31 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from attr import dataclass
-from infrahub_sdk.branch import BranchData
-from infrahub_sdk.client import InfrahubClient
 from infrahub_sdk.exceptions import BranchNotFoundError, NodeNotFoundError
-from infrahub_sdk.node.node import InfrahubNode
 
-from infrahub.core.branch import Branch
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 from tests.helpers.test_app import TestInfrahubApp
 
+if TYPE_CHECKING:
+    from infrahub_sdk.branch import BranchData
+    from infrahub_sdk.client import InfrahubClient
+    from infrahub_sdk.node.node import InfrahubNode
+
+    from infrahub.core.branch import Branch
+
 BRANCH_NAMES = ["main", "branch2"]
+
+REFRESH_PROFILES_MUTATION = """
+mutation RefreshProfiles($id: String!) {
+  InfrahubProfilesRefresh(data: {id: $id}) {
+    ok
+  }
+}
+"""
 
 
 @dataclass
@@ -33,8 +46,15 @@ class AttributeProfileDetails:
 
 
 class TestProfiles(TestInfrahubApp):
+    async def refresh_profiles(self, client: InfrahubClient, branch_name: str, node_id: str) -> None:
+        # This should be done using a trigger but for test purpose we do it manually
+        response = await client.execute_graphql(
+            query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name
+        )
+        assert response["InfrahubProfilesRefresh"]["ok"]
+
     @pytest.fixture(params=BRANCH_NAMES)
-    async def branch(self, request, client: InfrahubClient) -> BranchData:
+    async def branch(self, request: pytest.FixtureRequest, client: InfrahubClient) -> BranchData:
         branch_name = request.param
         try:
             return await client.branch.get(branch_name=branch_name)
@@ -256,6 +276,8 @@ class TestProfiles(TestInfrahubApp):
         client: InfrahubClient,
         branch: BranchData,
     ) -> None:
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_2_empty_attribute.id)
+
         updated_device_2 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id, property=True
         )
@@ -390,6 +412,10 @@ class TestProfiles(TestInfrahubApp):
         )
         device_profile_3.profile_priority.value = 999
         await device_profile_3.save()
+
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_1_full_attributes.id)
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_2_empty_attribute.id)
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_3.id)
 
         updated_device_1 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_1_full_attributes.id, property=True
@@ -663,7 +689,7 @@ class TestProfiles(TestInfrahubApp):
             kind=f"Profile{TestKind.DEVICE}",
             profile_name=f"high-priority-profile-{branch.name}",
             profile_priority=500,  # Lower priority number than device_profile_1 (1001)
-            airflow="High priority airflow",
+            airflow="Mixed",
             weight=999,
         )
         await profile_2.save()

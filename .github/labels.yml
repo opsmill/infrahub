@@ -182,3 +182,7 @@
 - name: "cd/preview"
   description: "Deploy preview branch"
   color: "d77e96"
+
+- name: "stale"
+  description: "Marks stale issues and pull requests"
+  color: "ffffff"

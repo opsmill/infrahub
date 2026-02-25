@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 
-import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-header";
+import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
 import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";

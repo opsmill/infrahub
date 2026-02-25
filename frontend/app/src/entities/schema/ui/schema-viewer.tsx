@@ -4,8 +4,8 @@ import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -19,7 +19,6 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
@@ -70,11 +69,15 @@ export const SchemaViewer = ({
   schema,
   onClose,
   style,
+  defaultTab = "properties",
+  targetField,
 }: {
   className?: string;
   schema: ModelSchema;
   onClose: () => void;
   style?: CSSProperties;
+  defaultTab?: "properties" | "attributes" | "relationships";
+  targetField?: string;
 }) => {
   return (
     <section
@@ -95,15 +98,15 @@ export const SchemaViewer = ({
         <div className="flex items-center gap-2 text-gray-600">
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost">
-            <Icon icon="mdi:close" className="text-xl" onClick={onClose} />
+          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>
+            <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>
       </div>
 
       <SchemaViewerTitle schema={schema} />
 
-      <SchemaViewerDetails schema={schema} />
+      <SchemaViewerDetails schema={schema} defaultTab={defaultTab} targetField={targetField} />
     </section>
   );
 };
@@ -126,9 +129,17 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
   );
 };
 
-const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
+const SchemaViewerDetails = ({
+  schema,
+  defaultTab,
+  targetField,
+}: {
+  schema: ModelSchema;
+  defaultTab: "properties" | "attributes" | "relationships";
+  targetField?: string;
+}) => {
   return (
-    <Tabs className="flex flex-col overflow-y-hidden">
+    <Tabs defaultSelectedKey={defaultTab} className="flex flex-col overflow-y-hidden">
       <TabList className="flex">
         <TabStyled id="properties">Properties</TabStyled>
         <TabStyled id="attributes">Attributes</TabStyled>
@@ -142,7 +153,11 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
       <TabPanelStyled id="attributes">
         {schema.attributes && schema.attributes.length > 0 ? (
           schema.attributes?.map((attribute) => (
-            <AttributeDisplay key={attribute.id} attribute={attribute} />
+            <AttributeDisplay
+              key={attribute.id}
+              attribute={attribute}
+              defaultOpen={attribute.name === targetField}
+            />
           ))
         ) : (
           <div className="flex h-32 items-center justify-center">No attribute</div>
@@ -152,7 +167,11 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
       <TabPanelStyled id="relationships">
         {schema.relationships && schema.relationships.length > 0
           ? schema.relationships?.map((relationship) => (
-              <RelationshipDisplay key={relationship.id} relationship={relationship} />
+              <RelationshipDisplay
+                key={relationship.id}
+                relationship={relationship}
+                defaultOpen={relationship.name === targetField}
+              />
             ))
           : "No relationship"}
       </TabPanelStyled>
@@ -219,7 +238,7 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
         {!isProfileSchema(schema) && (
           <PropertyRow title="Generate profile" value={schema.generate_profile} />
         )}
-        {!isTemplateSchema(schema) && (
+        {isNodeSchema(schema) && (
           <PropertyRow title="Generate template" value={schema.generate_template} />
         )}
       </div>

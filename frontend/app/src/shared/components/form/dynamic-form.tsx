@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
@@ -15,10 +14,10 @@ import PasswordInputField from "@/shared/components/form/fields/password-input.f
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import RelationshipHierarchicalField from "@/shared/components/form/fields/relationships/relationship-hierarchical.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
-import RelationshipParentConstraintField from "@/shared/components/form/fields/relationships/relationship-parent-constraint.field";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
@@ -133,10 +132,6 @@ export const DynamicField = (props: DynamicFieldProps) => {
 
       if (props.relationship.cardinality === "many") {
         return <RelationshipManyField {...props} />;
-      }
-
-      if (props.relationship.common_parent) {
-        return <RelationshipParentConstraintField {...props} />;
       }
 
       return <RelationshipField {...props} />;

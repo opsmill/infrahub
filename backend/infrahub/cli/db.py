@@ -38,12 +38,12 @@ from infrahub.core.graph.schema import (
 from infrahub.core.initialization import get_root_node, initialize_registry
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
-from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
-from infrahub.core.migrations.schema.tasks import schema_apply_migrations
-from infrahub.core.migrations.shared import get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, get_migration_console
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
@@ -65,6 +65,7 @@ def get_timestamp_string() -> str:
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
     from infrahub.core.migrations.shared import MigrationTypes
+    from infrahub.core.root import Root
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
@@ -93,12 +94,40 @@ def callback() -> None:
     """
 
 
+async def do_migrate(
+    db: InfrahubDatabase,
+    root_node: Root,
+    check: bool = False,
+    migration_number: int | None = None,
+) -> None:
+    """Core migration logic that can be called independently of CLI.
+
+    Args:
+        db: The database connection.
+        root_node: The root node containing the current graph version.
+        check: If True, only check which migrations need to run without applying them.
+        migration_number: If provided, run only this specific migration.
+    """
+    migrations = await detect_migration_to_run(
+        current_graph_version=root_node.graph_version, migration_number=migration_number
+    )
+
+    if check or not migrations:
+        return
+
+    await migrate_database(
+        db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None)
+    )
+
+
 @app.command(name="migrate")
 async def migrate_cmd(
     ctx: typer.Context,
     check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-    migration_number: int | None = typer.Option(None, help="Apply a specific migration by number"),
+    migration_number: int | None = typer.Option(
+        None, help="Apply a specific migration by number, regardless of current database version"
+    ),
 ) -> None:
     """Check the current format of the internal graph and apply the necessary migrations"""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
@@ -111,14 +140,7 @@ async def migrate_cmd(
     dbdriver = await context.init_db(retry=1)
 
     root_node = await get_root_node(db=dbdriver)
-    migrations = await detect_migration_to_run(
-        current_graph_version=root_node.graph_version, migration_number=migration_number
-    )
-
-    if check or not migrations:
-        return
-
-    await migrate_database(db=dbdriver, migrations=migrations, initialize=True)
+    await do_migrate(db=dbdriver, root_node=root_node, check=check, migration_number=migration_number)
 
     await dbdriver.close()
 
@@ -292,18 +314,17 @@ async def detect_migration_to_run(
         migration = get_migration_by_number(migration_number)
         migrations.append(migration)
         if current_graph_version > migration.minimum_version:
+            get_migration_console().log(f"Migration {migration_number} will be re-applied.")
+        else:
             get_migration_console().log(
-                f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
+                f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
             )
-            return []
-        get_migration_console().log(
-            f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
-        )
-    else:
-        migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
-        if not migrations:
-            get_migration_console().log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
-            return []
+            return migrations
+
+    migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
+    if not migrations:
+        get_migration_console().log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
+        return []
 
     get_migration_console().log(
         f"Database needs to be updated (v{current_graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
@@ -312,7 +333,10 @@ async def detect_migration_to_run(
 
 
 async def migrate_database(
-    db: InfrahubDatabase, migrations: Sequence[MigrationTypes], initialize: bool = False
+    db: InfrahubDatabase,
+    migrations: Sequence[MigrationTypes],
+    initialize: bool = False,
+    update_graph_version: bool = True,
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
@@ -322,6 +346,7 @@ async def migrate_database(
         db: The database object.
         migrations: Sequence of migrations to apply.
         initialize: Whether to initialize the registry before running migrations.
+        update_graph_version: Whether to update the graph version after each migration.
     """
     if not migrations:
         return True
@@ -332,15 +357,16 @@ async def migrate_database(
     root_node = await get_root_node(db=db)
 
     for migration in migrations:
-        execution_result = await migration.execute(db=db)
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         validation_result = None
 
         if execution_result.success:
             validation_result = await migration.validate_migration(db=db)
             if validation_result.success:
                 get_migration_console().log(f"Migration: {migration.name} {SUCCESS_BADGE}")
-                root_node.graph_version = migration.minimum_version + 1
-                await root_node.save(db=db)
+                if update_graph_version:
+                    root_node.graph_version = migration.minimum_version + 1
+                    await root_node.save(db=db)
 
         if not execution_result.success or (validation_result and not validation_result.success):
             get_migration_console().log(f"Migration: {migration.name} {FAILED_BADGE}")
@@ -467,7 +493,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         raise typer.Exit(1)
 
     # ----------------------------------------------------------
-    # Update the schema
+    # Update the schema and run migrations
     # ----------------------------------------------------------
     origin_schema = branch_schema.duplicate()
 
@@ -476,39 +502,33 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     schema_default_branch.process()
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
-    async with db.start_transaction() as dbt:
-        await registry.schema.update_schema_branch(
-            schema=candidate_schema,
-            db=dbt,
-            branch=default_branch.name,
+    coordinator = SchemaUpdateCoordinator(
+        db=db,
+        branch=default_branch,
+        schema_manager=registry.schema,
+        origin_schema=origin_schema,
+        migration_executor=MigrationExecutor.DIRECT,
+    )
+
+    try:
+        await coordinator.execute(
+            candidate_schema=candidate_schema,
+            at=Timestamp(),
             diff=result.diff,
+            migrations=result.migrations,
             limit=result.diff.all,
             update_db=True,
+            update_registry=True,
         )
-        default_branch.update_schema_hash()
-        get_migration_console().log(
-            "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
-        )
-        if debug:
-            get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
-        await default_branch.save(db=dbt)
+    except Exception as exc:
+        get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
+        raise typer.Exit(1) from exc
 
-    # ----------------------------------------------------------
-    # Run the migrations
-    # ----------------------------------------------------------
-    apply_migration_data = SchemaApplyMigrationData(
-        branch=default_branch,
-        new_schema=candidate_schema,
-        previous_schema=origin_schema,
-        migrations=result.migrations,
+    get_migration_console().log(
+        "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
     )
-    migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
-
-    if migration_error_msgs:
-        get_migration_console().log(f"{ERROR_BADGE} | Some error(s) happened while running the schema migrations")
-        for message in migration_error_msgs:
-            get_migration_console().log(message)
-        raise typer.Exit(1)
+    if debug:
+        get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
 
 
 @app.command(name="selected-export")
@@ -603,17 +623,17 @@ RETURN vertices, edges
     edge_path = export_dir / Path("edges.csv")
     edge_path.touch(exist_ok=True)
 
-    graph_node_schemas = [GraphNodeProperties, GraphRelationshipProperties, GraphAttributeProperties]
+    graph_node_schemas = (GraphNodeProperties, GraphRelationshipProperties, GraphAttributeProperties)
     graph_vertex_properties = set()
-    for graph_schema in graph_node_schemas:
-        for field_name, field_info in graph_schema.model_fields.items():
+    for graph_node_schema in graph_node_schemas:
+        for field_name, field_info in graph_node_schema.model_fields.items():
             property_name = field_info.alias or field_name
             graph_vertex_properties.add(property_name)
 
-    graph_edge_schemas = [GraphRelationshipIsPartOf, GraphRelationshipDefault]
+    graph_edge_schemas = (GraphRelationshipIsPartOf, GraphRelationshipDefault)
     graph_edge_properties = set()
-    for graph_schema in graph_edge_schemas:
-        for field_name, field_info in graph_schema.model_fields.items():
+    for graph_edge_schema in graph_edge_schemas:
+        for field_name, field_info in graph_edge_schema.model_fields.items():
             property_name = field_info.alias or field_name
             graph_edge_properties.add(property_name)
 

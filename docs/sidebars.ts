@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/installation',
             'guides/production-deployment',
+            'guides/configuration-changes',
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
@@ -184,12 +185,13 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'category',
-              label: 'Transforms',
+              label: 'Transforms & Artifacts',
               link: {
                 type: 'generated-index',
               },
               items: [
                 'topics/transformation',
+                'topics/artifact',
               ],
             },
             {
@@ -216,12 +218,12 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'category',
-              label: 'Artifacts',
+              label: 'File Storage',
               link: {
                 type: 'generated-index',
               },
               items: [
-                'topics/artifact',
+                'topics/file-object',
                 'topics/object-storage',
               ],
             },
@@ -236,6 +238,7 @@ const sidebars: SidebarsConfig = {
                 'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
+                'topics/schema-extensions',
                 'topics/labels',
               ],
             },
@@ -401,7 +404,8 @@ const sidebars: SidebarsConfig = {
             'development/frontend/testing-guidelines',
           ],
         },
-        'development/docs'
+        'development/docs',
+        'development/style-guide'
       ],
     },
     {
@@ -420,6 +424,14 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_7_4',
+            'release-notes/infrahub/release-1_7_3',
+            'release-notes/infrahub/release-1_7_2',
+            'release-notes/infrahub/release-1_7_1',
+            'release-notes/infrahub/release-1_7_0',
+            'release-notes/infrahub/release-1_6_3',
+            'release-notes/infrahub/release-1_6_2',
+            'release-notes/infrahub/release-1_6_1',
             'release-notes/infrahub/release-1_6_0',
             'release-notes/infrahub/release-1_5_3',
             'release-notes/infrahub/release-1_5_2',

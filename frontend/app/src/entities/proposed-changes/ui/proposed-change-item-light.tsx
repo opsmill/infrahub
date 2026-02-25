@@ -14,13 +14,15 @@ import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-s
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type ProposedChangesItemLightProps = {
-  node: ProposedChangeItem;
+  proposedChange: ProposedChangeItem;
 };
 
-export const ProposedChangesItemLight = ({ node }: ProposedChangesItemLightProps) => {
+export const ProposedChangesItemLight = ({ proposedChange }: ProposedChangesItemLightProps) => {
+  const { node } = proposedChange;
+
   return (
     <ListBoxItem className="flex items-center p-4">
-      <div className="grid flex-grow grid-cols-2 items-center">
+      <div className="grid grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
@@ -57,7 +59,7 @@ const ProposedChangesInfo = ({ id, name, isDraft, isApproved }: ProposedChangesI
         {name}
       </Link>
 
-      <div className="flex-shrink-0 space-x-2">
+      <div className="shrink-0 space-x-2">
         {isDraft && <Badge variant={"gray-outline"}>draft</Badge>}
         {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
       </div>

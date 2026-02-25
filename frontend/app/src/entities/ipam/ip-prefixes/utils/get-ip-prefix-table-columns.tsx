@@ -54,7 +54,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
+              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
                 {schema.label} available
               </TableCell>
             </>
@@ -82,7 +82,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
     ...getObjectGenericColumns(schema),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
-        header: () => <TableColumnHeader columnSchema={attribute} schema={schema} />,
+        header: () => <TableColumnHeader columnSchema={attribute} />,
         cell: ({ cell, row }) => {
           const attributeData = cell.getValue() as NodeAttribute | undefined;
           if (!attributeData) return null;
@@ -121,7 +121,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
     }),
     ...relationships.map((relationship) => {
       return columnHelper.accessor(relationship.name, {
-        header: () => <TableColumnHeader columnSchema={relationship} schema={schema} />,
+        header: () => <TableColumnHeader columnSchema={relationship} />,
         cell: ({ cell, row }) => {
           const relationshipData = cell.getValue() as NodeRelationship | undefined;
           if (!relationshipData) return null;

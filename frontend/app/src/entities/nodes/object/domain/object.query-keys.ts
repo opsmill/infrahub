@@ -41,9 +41,12 @@ export const objectQueryKeys = {
       "fields-mapping-type-conversion",
       params.targetKind,
     ] as const,
-  count: (params: ObjectKeysBaseParams) => [...objectQueryKeys.lists(params), "count"] as const,
+  count: (params: ObjectListKeysParams) =>
+    [...objectQueryKeys.lists(params), "count", params.filters] as const,
   list: (params: ObjectListKeysParams) =>
     [...objectQueryKeys.lists(params), params.filters] as const,
+  profiles: (params: ObjectKeysBaseParams) =>
+    [...objectQueryKeys.lists(params), "profiles"] as const,
   detail: (params: ObjectDetailKeysParams) =>
     [
       ...objectQueryKeys.lists(params),
@@ -53,6 +56,8 @@ export const objectQueryKeys = {
     ] as const,
   ancestors: (params: ObjectDetailKeysParams) =>
     [...objectQueryKeys.detail(params), "ancestors"] as const,
+  metadata: (params: ObjectDetailKeysParams) =>
+    [...objectQueryKeys.lists(params), params.objectId, "metadata"] as const,
   tree: ({ parentObjectId, ...params }: ObjectTreeKeysParams) =>
     [...objectQueryKeys.lists(params), "tree", parentObjectId] as const,
 };

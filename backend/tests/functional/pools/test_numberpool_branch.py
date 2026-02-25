@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.graphql import Query
 
+from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.graphql.manager import registry as graphql_registry
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -48,6 +52,12 @@ BRANCH2 = "branch2"
 
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
+    async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
+        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        await snps.run()
+        graphql_registry.clear_cache()
+
     @pytest.fixture(scope="class")
     def initial_schema(self) -> SchemaRoot:
         schema = SchemaRoot(
@@ -63,7 +73,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         initialize_registry: None,
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
         initial_schema: SchemaRoot,
         default_branch: Branch,
     ) -> None:
@@ -71,6 +81,8 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             schemas=[initial_schema.model_dump()], wait_until_converged=True
         )
         assert not schema_load_response.errors
+
+        await self._run_number_pool_validator(db)
 
         # Create incidents/requests to ensure there are some data into the database
         for idx in range(1, 4):

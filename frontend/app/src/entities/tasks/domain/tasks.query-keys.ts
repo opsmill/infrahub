@@ -1,14 +1,9 @@
-import type { GetTasksParams } from "./get-tasks/get-tasks.query";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import type { GetTaskListParams } from "@/entities/tasks/domain/get-task-list/get-task-list";
 
 export const tasksQueryKeys = {
-  all: ["tasks"] as const,
-  filters: (filters: GetTasksParams) => [
-    ...tasksQueryKeys.all,
-    filters?.branchName,
-    filters?.states,
-    filters?.search,
-    filters?.relatedNodes,
-    filters?.offset,
-    filters?.limit,
-  ],
+  all: [...objectQueryKeys.all, "tasks"] as const,
+  list: (filters?: GetTaskListParams) => [...tasksQueryKeys.all, filters],
+  count: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "count"],
+  homepage: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "homepage"],
 };

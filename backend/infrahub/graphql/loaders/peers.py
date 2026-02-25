@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from aiodataloader import DataLoader
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.relationship.model import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -23,7 +23,7 @@ class QueryPeerParams:
     fields: dict | None = None
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
-    include_metadata: MetadataOptions = MetadataOptions.NONE
+    include_metadata: MetadataQueryOptions = field(default_factory=MetadataQueryOptions)
 
     def __hash__(self) -> int:
         frozen_fields: frozenset | None = None
@@ -41,7 +41,7 @@ class QueryPeerParams:
                 self.schema.name,
                 str(self.source_kind),
                 str(self.branch_agnostic),
-                str(self.include_metadata.value),
+                str(hash(self.include_metadata)),
             ]
         )
         return hash(hash_str)
@@ -53,7 +53,7 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
         self.query_params = query_params
         self.db = db
 
-    async def batch_load_fn(self, keys: list[Any]) -> list[list[Relationship]]:  # pylint: disable=method-hidden
+    async def batch_load_fn(self, keys: list[Any]) -> list[list[Relationship]]:
         async with self.db.start_session(read_only=True) as db:
             peer_rels = await NodeManager.query_peers(
                 db=db,

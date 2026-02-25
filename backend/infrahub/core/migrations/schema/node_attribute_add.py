@@ -3,24 +3,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
-from infrahub.core.node import Node
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
-from infrahub.exceptions import PoolExhaustedError
+from infrahub.log import get_logger
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
 from ..query.attribute_add import AttributeAddQuery
-from ..shared import AttributeSchemaMigration, MigrationResult
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
-    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+    from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
-    from ...timestamp import Timestamp
+
+log = get_logger()
 
 
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuery):
@@ -34,13 +35,17 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
             schema_kinds.append(f"Profile{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
                 schema_kinds.extend([f"Profile{kind}" for kind in schema.used_by])
+        if new_attribute_schema.support_templates:
+            schema_kinds.append(f"Template{schema.kind}")
+            if isinstance(schema, GenericSchema) and schema.used_by:
+                schema_kinds.extend([f"Template{kind}" for kind in schema.used_by])
         return schema_kinds
 
     def __init__(
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         node_kinds = self._get_node_kinds(
             schema=migration.new_schema, new_attribute_schema=migration.new_attribute_schema
         )
@@ -61,30 +66,36 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
         if self.new_attribute_schema.inherited is True:
             return MigrationResult()
-        return await super().execute(db=db, branch=branch, at=at, queries=queries)
+        return await super().execute(migration_input=migration_input, branch=branch, queries=queries)
 
     async def execute_post_queries(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         result: MigrationResult,
         branch: Branch,
-        at: Timestamp,  # noqa: ARG002
     ) -> MigrationResult:
         if self.new_attribute_schema.kind != "NumberPool":
             return result
 
-        number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(
+        db = migration_input.db
+        at = migration_input.at
+
+        upserter = SchemaNumberPoolUpserter(
             db=db,
-            branch=branch,
-            schema_node=self.new_schema,  # type: ignore
-            schema_attribute=self.new_attribute_schema,
+            schema_manager=registry.schema,
+        )
+        number_pool = await upserter.upsert_number_pool(
+            schema_node=self.new_schema,
+            attribute=self.new_attribute_schema,
+            branch_name=branch.name,
+            at=at,
+            user_id=migration_input.user_id,
         )
 
         await update_branch_registry(db=db, branch=branch)
@@ -93,23 +104,21 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             db=db, branch=branch, schema=self.new_schema, fields={"id": True, self.new_attribute_schema.name: True}
         )
 
-        try:
-            numbers = await number_pool.get_next_many(
-                db=db,
-                branch=branch,
-                quantity=len(nodes),
-                attribute=self.new_attribute_schema,
-            )
-        except PoolExhaustedError as exc:
-            result.errors.append(str(exc))
-            return result
+        async def allocate_numbers(db: InfrahubDatabase) -> None:
+            for node in nodes:
+                number = await number_pool.get_resource(  # type: ignore[attr-defined]
+                    db=db, branch=branch, node=node, attribute=self.new_attribute_schema, at=at
+                )
+                attr = node.get_attribute(name=self.new_attribute_schema.name)
+                attr.value = number
+                attr.set_source(number_pool.get_id())
 
-        for node, number in zip(nodes, numbers, strict=True):
-            await number_pool.reserve(db=db, number=number, identifier=node.get_id())
-            attr = getattr(node, self.new_attribute_schema.name)
-            attr.value = number
-            attr.source = number_pool.id
+                await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
 
-            await node.save(db=db, fields=[self.new_attribute_schema.name])
+        if db.is_transaction:
+            await allocate_numbers(db=db)
+        else:
+            async with db.start_transaction() as dbt:
+                await allocate_numbers(db=dbt)
 
         return result

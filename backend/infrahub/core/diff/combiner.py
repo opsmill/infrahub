@@ -80,7 +80,11 @@ class DiffCombiner:
                 filtered_node_pairs.append(NodePair(earlier=earlier_node))
                 continue
             # if node was added and removed or vice-versa, remove it from the diff
-            if {earlier_node.action, later_node.action} == {DiffAction.ADDED, DiffAction.REMOVED}:
+            # unless it's still needed as a parent by a surviving child node
+            if {earlier_node.action, later_node.action} == {
+                DiffAction.ADDED,
+                DiffAction.REMOVED,
+            } and earlier_node.identifier not in self._parent_node_identifiers:
                 continue
             filtered_node_pairs.append(NodePair(earlier=earlier_node, later=later_node))
         for later_node in later_diff.nodes:
@@ -410,7 +414,9 @@ class DiffCombiner:
             if child_node.identifier not in self._child_parent_identifier_map:
                 continue
             parent_identifier, parent_rel_name = self._child_parent_identifier_map[child_node.identifier]
-            parent_node = nodes_by_identifier[parent_identifier]
+            parent_node = nodes_by_identifier.get(parent_identifier)
+            if not parent_node:
+                continue
             parent_rel = child_node.get_relationship(name=parent_rel_name)
             parent_rel.nodes.add(parent_node)
 
@@ -440,6 +446,7 @@ class DiffCombiner:
                     to_time=later.to_time,
                     tracking_id=later.tracking_id,
                     nodes=combined_nodes,
+                    proposed_change_id=later.proposed_change_id or earlier.proposed_change_id,
                 )
             )
         base_branch_diff, diff_branch_diff = combined_diffs

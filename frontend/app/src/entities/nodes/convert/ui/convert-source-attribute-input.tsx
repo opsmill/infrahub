@@ -19,6 +19,7 @@ import {
   SourceOptionValue,
 } from "@/entities/nodes/convert/ui/source-option-item";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeAttribute } from "@/entities/nodes/types";
 import type { AttributeSchema } from "@/entities/schema/types";
 
 interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
@@ -49,9 +50,9 @@ export const ConvertSourceAttributeInput = ({
       return sourceAttribute.kind === attribute.kind && !sourceAttribute.enum;
     })
     .map((attribute) => {
-      const attrData = sourceObject[attribute.name];
+      const attrData = sourceObject[attribute.name] as NodeAttribute | undefined;
       return {
-        value: attrData && "value" in attrData ? attrData.value : null,
+        value: attrData ? attrData.value : null,
         label: getDisplayValue(sourceObject, attribute) || "-",
         source: {
           type: "source",

@@ -10,6 +10,7 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -21,7 +22,7 @@ from infrahub.log import get_logger
 
 from ...core.node.create import create_node
 from ...core.node.lock_utils import build_object_lock_name, get_lock_names_on_object_mutation
-from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, UpsertResult, build_graphql_response
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -234,16 +235,20 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
-    ) -> tuple[Node, Self, bool]:
+        file_processor: FileUploadProcessor | None = None,
+    ) -> UpsertResult:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
-        prefix, result, created = await super().mutate_upsert(
-            info=info, data=data, branch=branch, node_getter_default_filter=node_getter_default_filter, database=db
+        return await super().mutate_upsert(
+            info=info,
+            data=data,
+            branch=branch,
+            node_getter_default_filter=node_getter_default_filter,
+            database=db,
+            file_processor=file_processor,
         )
-
-        return prefix, result, created
 
     @classmethod
     async def mutate_delete(
@@ -391,16 +396,20 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         database: InfrahubDatabase | None = None,
-    ) -> tuple[Node, Self, bool]:
+        file_processor: FileUploadProcessor | None = None,
+    ) -> UpsertResult:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
         await validate_namespace(db=db, branch=branch, data=data)
-        prefix, result, created = await super().mutate_upsert(
-            info=info, data=data, branch=branch, node_getter_default_filter=node_getter_default_filter, database=db
+        return await super().mutate_upsert(
+            info=info,
+            data=data,
+            branch=branch,
+            node_getter_default_filter=node_getter_default_filter,
+            database=db,
+            file_processor=file_processor,
         )
-
-        return prefix, result, created
 
     @classmethod
     async def _reconcile_prefix(
@@ -433,7 +442,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             data.get("id"), graphql_context.db, branch=branch, prefetch_relationships=True
         )
         if not prefix:
-            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
+            raise NodeNotFoundError(node_type=cls._meta.schema.kind, identifier=data.get("id"), branch_name=branch.name)
 
         namespace_rels = await prefix.ip_namespace.get_relationships(db=db)
         namespace_id = namespace_rels[0].peer_id

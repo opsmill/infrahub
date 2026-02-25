@@ -1,44 +1,54 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
-import type { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import type { PaginationParams } from "@/shared/api/types";
 
-import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
-
-import { treeQueryKeys } from "./diff.query-keys";
+import {
+  type DiffTreeFilters,
+  getDiffTreeFromApi,
+} from "@/entities/diff/api/get-diff-tree-from-api";
+import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
 
 export const DIFF_TREE_PER_PAGE = 300;
 
-export type GetDiffTreeParams = PaginationParams & {
+export type GetDiffTreeInfiniteQueryOptionsParams = {
   branchName: string;
-  filters?: DiffTreeQueryFilters;
+  filters?: DiffTreeFilters;
+  proposedChangeId?: string;
 };
 
-export type GetDiffTree = (params: GetDiffTreeParams) => Promise<DiffTree>;
+export interface GetDiffTreeParams
+  extends PaginationParams,
+    GetDiffTreeInfiniteQueryOptionsParams {}
 
-export const getDiffTree: GetDiffTree = async ({
+type GetDiffTreeResult = Awaited<ReturnType<typeof getDiffTreeFromApi>>["data"]["DiffTree"];
+
+export const getDiffTree = async ({
   branchName,
   limit = DIFF_TREE_PER_PAGE,
   offset,
   filters,
-}) => {
-  const { data } = await getDiffTreeFromApi({ branchName, limit, offset, filters });
+  proposedChangeId,
+}: GetDiffTreeParams): Promise<GetDiffTreeResult> => {
+  const { data } = await getDiffTreeFromApi({
+    branchName,
+    limit,
+    offset,
+    filters,
+    proposedChangeId,
+  });
 
   return data.DiffTree;
-};
-
-export type GetDiffTreeInfiniteQueryOptionsParams = {
-  branchName: string;
-  filters?: DiffTreeQueryFilters;
 };
 
 export const getDiffTreeInfiniteQueryOptions = ({
   branchName,
   filters,
+  proposedChangeId,
 }: GetDiffTreeInfiniteQueryOptionsParams) => {
   return infiniteQueryOptions({
-    queryKey: treeQueryKeys.allWithContext({ branchName, filters }),
-    queryFn: ({ pageParam }) => getDiffTree({ branchName, filters, offset: pageParam }),
+    queryKey: treeQueryKeys.allWithContext({ branchName, filters, proposedChangeId }),
+    queryFn: ({ pageParam }) =>
+      getDiffTree({ branchName, filters, offset: pageParam, proposedChangeId }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage === null || (lastPage?.nodes && lastPage.nodes.length < DIFF_TREE_PER_PAGE)) {

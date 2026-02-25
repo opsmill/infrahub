@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
 from infrahub.core.property import (
@@ -70,7 +71,6 @@ class RelationshipCreateData(BaseModel):
     direction: str
     status: str
     is_protected: bool
-    is_visible: bool
     hierarchical: str | None = None
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
@@ -94,7 +94,6 @@ class PeerWithRelationshipMetadata:
     owner_id: str | None = None
     source_id: str | None = None
     is_protected: bool | None = None
-    is_visible: bool | None = None
 
 
 def _use_global_branch(schema: MainSchemaTypes) -> bool:
@@ -114,6 +113,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         at: Timestamp | None = None,
         node: Node | None = None,
         node_id: str | None = None,
+        is_from_profile: bool = False,
+        profile_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         if not node and not node_id:
@@ -131,6 +132,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         self.id: UUID | None = None
         self.db_id: str | None = None
+        self.is_from_profile: bool = is_from_profile
+        self.profile_id: UUID | None = profile_id
 
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
@@ -263,8 +266,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._set_updated_by(data.updated_by)
         if data.is_protected is not None:
             self.is_protected = data.is_protected
-        if data.is_visible is not None:
-            self.is_visible = data.is_visible
         if data.owner_id is not None:
             self.set_owner(value=data.owner_id)
         if data.source_id is not None:
@@ -518,7 +519,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         )
         await delete_query.execute(db=db)
 
-    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> None:
+    async def resolve(
+        self,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+        fields: list[str] | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         """Resolve the peer of the relationship."""
 
         fields = fields or []
@@ -573,9 +580,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, at=at, **data_from_pool)  # type: ignore[attr-defined]
+            assigned_peer: Node = await pool.get_resource(  # type: ignore[attr-defined]
+                db=db, branch=self.branch, at=at, user_id=user_id, **data_from_pool
+            )
             self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
+            NodeCreationContext.record_if_active(node=assigned_peer)
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""
@@ -652,11 +662,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             destination_id=peer.id,
             status="active",
             direction=self.schema.direction.value,
-            branch_level=self.branch.hierarchy_level,
+            branch_level=branch.hierarchy_level,
             branch_support=self.schema.branch.value if self.schema.branch else None,
             hierarchical=self.schema.hierarchical,
             is_protected=self.is_protected,
-            is_visible=self.is_visible,
         )
         if hasattr(self, "source_id") and self.source_id:
             data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))
@@ -795,6 +804,10 @@ class RelationshipValidatorList:
         self._relationships_count -= 1
         return result
 
+    def replace(self, rel_to_insert: Relationship, rel_to_remove: Relationship) -> None:
+        self._relationships.remove(rel_to_remove)
+        self._relationships.append(rel_to_insert)
+
     def remove(self, value: Relationship) -> None:
         if self.min_count and self._relationships_count - 1 < self.min_count:
             self._raise_too_few()
@@ -828,12 +841,15 @@ class RelationshipValidatorList:
 
 
 class RelationshipManager:
-    def __init__(self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node) -> None:
+    def __init__(
+        self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node, is_from_profile: bool = False
+    ) -> None:
         self.schema: RelationshipSchema = schema
         self.name: str = schema.name
         self.node: Node = node
         self.branch: Branch = branch
         self.at = at
+        self.is_from_profile = is_from_profile
 
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
@@ -1048,7 +1064,7 @@ class RelationshipManager:
                 schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), node=self.node
             ),
             branch_agnostic=branch_agnostic,
-            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
         return list(query.get_peers())
@@ -1072,7 +1088,9 @@ class RelationshipManager:
 
         peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
 
-        peers_database: dict = {str(peer.peer_id): peer for peer in peers}
+        self.is_from_profile = bool(peers) and all(peer.is_from_profile for peer in peers)
+
+        peers_database = {str(peer.peer_id): peer for peer in peers}
         peer_ids = list(peers_database.keys())
 
         # Calculate which peer should be added or removed
@@ -1109,6 +1127,8 @@ class RelationshipManager:
                     source_kind=self.node.get_kind(),
                     at=at or self.at,
                     node=self.node,
+                    is_from_profile=details.peers_database[peer_id].is_from_profile,
+                    profile_id=details.peers_database[peer_id].profile_id,
                 ).load(db=db, data=details.peers_database[peer_id])
             )
 
@@ -1154,6 +1174,12 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
+    async def get_relationship(self, db: InfrahubDatabase, peer_id: str) -> Relationship | None:
+        for rel in await self.get_relationships(db=db):
+            if rel.peer_id == peer_id:
+                return rel
+        return None
+
     async def update(
         self,
         data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
@@ -1163,6 +1189,9 @@ class RelationshipManager:
         | PeerWithRelationshipMetadata
         | None,
         db: InfrahubDatabase,
+        process_delete: bool = True,
+        user_id: str = SYSTEM_USER_ID,
+        at: Timestamp | None = None,
     ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
@@ -1171,6 +1200,7 @@ class RelationshipManager:
             list_data = data
 
         await self._validate_hierarchy()
+        update_at = Timestamp(at)
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(db=db) if rel.peer_id}
@@ -1191,8 +1221,9 @@ class RelationshipManager:
 
             if item is None:
                 if previous_relationships:
-                    for rel in previous_relationships.values():
-                        await rel.delete(db=db)
+                    if process_delete:
+                        for rel in previous_relationships.values():
+                            await rel.delete(db=db, at=update_at, user_id=user_id)
                     changed = True
                 continue
 
@@ -1212,7 +1243,11 @@ class RelationshipManager:
             # If the item is not present in the previous list of relationship, we create a new one.
             self._relationships.append(
                 await self.rel_class(
-                    schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), at=self.at, node=self.node
+                    schema=self.schema,
+                    branch=self.branch,
+                    source_kind=self.node.get_kind(),
+                    at=update_at,
+                    node=self.node,
                 ).new(db=db, data=item)
             )
             changed = True
@@ -1251,9 +1286,11 @@ class RelationshipManager:
 
         return True
 
-    async def resolve(self, db: InfrahubDatabase, fields: list[str] | None = None) -> None:
+    async def resolve(
+        self, db: InfrahubDatabase, fields: list[str] | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
         for rel in self._relationships:
-            await rel.resolve(db=db, fields=fields)
+            await rel.resolve(db=db, fields=fields, user_id=user_id)
 
     async def remove_locally(
         self,
@@ -1311,7 +1348,7 @@ class RelationshipManager:
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
 
-        await self.resolve(db=db)
+        await self.resolve(db=db, user_id=user_id)
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)
@@ -1395,3 +1432,45 @@ class RelationshipManager:
 
         if self.name == "children" and not schema.children:  # type: ignore[union-attr]
             raise ValidationError({self.name: f"Not supported to assign some children for {schema.kind}"})
+
+    async def update_relationships(
+        self,
+        db: InfrahubDatabase,
+        relationships_to_remove: list[Relationship],
+        relationships_to_insert: list[Relationship],
+    ) -> bool:
+        is_changed = False
+        len_rels_to_remove = len(relationships_to_remove)
+        len_rels_to_insert = len(relationships_to_insert)
+
+        if len_rels_to_remove and not len_rels_to_insert:
+            for rel_to_remove in relationships_to_remove:
+                if rel_to_remove.peer_id:
+                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=db)
+            is_changed = True
+        elif len_rels_to_insert and not len_rels_to_remove:
+            for rel_to_insert in relationships_to_insert:
+                self._relationships.append(rel_to_insert)
+            is_changed = True
+        elif len_rels_to_remove == len_rels_to_insert:
+            for rel_to_remove, rel_to_insert in zip(relationships_to_remove, relationships_to_insert, strict=True):
+                self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
+            is_changed = True
+        elif len_rels_to_remove > len_rels_to_insert:
+            for rel_to_remove, rel_to_insert in zip(
+                relationships_to_remove[:len_rels_to_insert], relationships_to_insert, strict=True
+            ):
+                self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
+            for rel_to_remove in relationships_to_remove[len_rels_to_insert:]:
+                if rel_to_remove.peer_id:
+                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=db)
+            is_changed = True
+        elif len_rels_to_insert > len_rels_to_remove:
+            for rel_to_insert, rel_to_remove in zip(
+                relationships_to_insert[:len_rels_to_remove], relationships_to_remove, strict=True
+            ):
+                self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
+            for rel_to_insert in relationships_to_insert[len_rels_to_remove:]:
+                self._relationships.append(rel_to_insert)
+            is_changed = True
+        return is_changed

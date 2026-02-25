@@ -2,32 +2,31 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
-import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
+import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
+import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
-  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
+  objectDetailsData: NodeObject;
 }
 
 export function RelationshipsButtons({
@@ -35,8 +34,9 @@ export function RelationshipsButtons({
   schema: parentSchema,
   objectDetailsData,
 }: RelationshipsButtonsProps) {
-  const { objectKind, objectId } = useParams();
-  const [addRelationship] = useMutation(ADD_RELATIONSHIP);
+  const objectKind = objectDetailsData.__typename;
+  const objectId = objectDetailsData.id;
+  const { mutateAsync: addRelationship } = useAddRelationships();
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
   const [relationshipTab] = useQueryState(QSP.TAB);
@@ -52,6 +52,8 @@ export function RelationshipsButtons({
   const peerRelationshipSchema = peerSchema.schema?.relationships?.find((r) => {
     return r.peer === objectKind;
   });
+
+  const poolKind = peerSchema.schema ? getPoolKindFromSchema(peerSchema.schema) : null;
 
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
@@ -87,12 +89,14 @@ export function RelationshipsButtons({
     const { relation } = data;
 
     if (relation?.id || relation?.from_pool) {
+      const relationshipId = relation.from_pool
+        ? { from_pool: { id: relation.from_pool.id } }
+        : relation.id;
+
       await addRelationship({
-        variables: {
-          objectId,
-          relationshipIds: [{ id: relation.id }],
-          relationshipName: relationshipSchema?.name,
-        },
+        objectId,
+        relationshipIds: [relationshipId],
+        relationshipName: relationshipSchema!.name,
       });
 
       await handleRefetch();
@@ -108,14 +112,17 @@ export function RelationshipsButtons({
     }
   };
 
+  const { isAllowed: isAddAllowed, message: addTooltipMessage } = permission.create;
+
   return (
     <>
       <ButtonWithTooltip
-        disabled={!permission.create.isAllowed}
+        disabled={!isAddAllowed}
         tooltipEnabled
-        tooltipContent={permission.create.message ?? "Add relationship"}
+        tooltipContent={addTooltipMessage ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
         data-testid="open-relationship-form-button"
+        size="sm"
       >
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
         {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
@@ -157,9 +164,19 @@ export function RelationshipsButtons({
                   name: "relation",
                   label: relationshipSchema?.label!,
                   type: "relationship",
-                  relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-                  schema: relationshipSchemaData,
+                  relationship: {
+                    ...relationshipSchema,
+                    cardinality: "one",
+                    inherited: true,
+                  } as RelationshipSchema,
                   options,
+                  pool:
+                    poolKind && peerSchema.schema
+                      ? {
+                          kind: poolKind,
+                          defaultAllocatedObjectKind: peerSchema.schema.kind as string,
+                        }
+                      : undefined,
                 },
               ]}
               onSubmit={async ({ relation }) => {

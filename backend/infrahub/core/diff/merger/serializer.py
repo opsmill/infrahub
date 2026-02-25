@@ -93,9 +93,7 @@ class DiffMergeSerializer:
         if property_type in (DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED):
             return raw_value
         # these are boolean
-        if (property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED)) and isinstance(
-            raw_value, str
-        ):
+        if property_type == DatabaseEdgeType.IS_PROTECTED and isinstance(raw_value, str):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
         if raw_value in (None, NULL_VALUE):
@@ -249,13 +247,8 @@ class DiffMergeSerializer:
         return attr_dict, attr_prop_dict
 
     def _get_default_property_merge_dicts(self, action: DiffAction) -> dict[DatabaseEdgeType, PropertyMergeDict]:
-        # start with default values for IS_VISIBLE and IS_PROTECTED b/c we always want to update them during a merge
+        # start with default values for IS_PROTECTED b/c we always want to update them during a merge
         return {
-            DatabaseEdgeType.IS_VISIBLE: PropertyMergeDict(
-                property_type=DatabaseEdgeType.IS_VISIBLE.value,
-                action=self._to_action_str(action),
-                value=None,
-            ),
             DatabaseEdgeType.IS_PROTECTED: PropertyMergeDict(
                 property_type=DatabaseEdgeType.IS_PROTECTED.value,
                 action=self._to_action_str(action),
@@ -264,7 +257,9 @@ class DiffMergeSerializer:
         }
 
     def _get_actions_and_peers(self, relationship_diff: EnrichedDiffSingleRelationship) -> list[tuple[DiffAction, str]]:
-        is_related_prop = [p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED][0]
+        is_related_prop = next(
+            p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED
+        )
         actions_and_values = self._get_property_actions_and_values(property_diff=is_related_prop, python_value_type=str)
         actions_and_peers: list[tuple[DiffAction, str]] = []
         for action, peer_id in actions_and_values:
@@ -335,7 +330,7 @@ class DiffMergeSerializer:
                 # handled above
                 continue
             python_value_type: type = str
-            if property_diff.property_type in (DatabaseEdgeType.IS_VISIBLE, DatabaseEdgeType.IS_PROTECTED):
+            if property_diff.property_type is DatabaseEdgeType.IS_PROTECTED:
                 python_value_type = bool
             actions_and_values = self._get_property_actions_and_values(
                 property_diff=property_diff, python_value_type=python_value_type

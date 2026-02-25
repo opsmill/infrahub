@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { NodeObject } from "@/entities/nodes/types";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 
 import { render } from "../../../../../../../tests/components/render";
+import { generateNodeSchema } from "../../../../../../../tests/fake/schema";
 import { ObjectTableToolbar } from "./object-table-toolbar";
+
+const schema = generateNodeSchema();
 
 describe("ObjectTableToolbar Component", () => {
   const mockNodeObjects = [
@@ -20,7 +25,17 @@ describe("ObjectTableToolbar Component", () => {
   test("renders correctly with selected rows", async () => {
     // GIVEN
     const component = await render(
-      <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
+      <ObjectTableContext
+        value={{
+          filters: [],
+          setFilters: vi.fn(),
+          baseSchema: schema,
+          selectedSchema: schema,
+          permission: PERMISSION_ALLOW_ALL,
+        }}
+      >
+        <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
+      </ObjectTableContext>
     );
 
     // THEN
@@ -31,7 +46,17 @@ describe("ObjectTableToolbar Component", () => {
   test("calls onClose when close button is clicked", async () => {
     // GIVEN
     const component = await render(
-      <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
+      <ObjectTableContext
+        value={{
+          filters: [],
+          setFilters: vi.fn(),
+          baseSchema: schema,
+          selectedSchema: schema,
+          permission: PERMISSION_ALLOW_ALL,
+        }}
+      >
+        <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
+      </ObjectTableContext>
     );
 
     // WHEN

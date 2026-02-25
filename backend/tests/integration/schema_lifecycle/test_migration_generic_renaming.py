@@ -40,7 +40,7 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
-        self, db: InfrahubDatabase, initialize_registry, schema_step_01: SchemaRoot
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step_01: SchemaRoot
     ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step_01, update_db=True)
 

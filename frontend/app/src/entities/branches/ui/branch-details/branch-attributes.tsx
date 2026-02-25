@@ -1,6 +1,5 @@
 import {
   BoxIcon,
-  CalendarIcon,
   CheckIcon,
   CircleIcon,
   GitCommitIcon,
@@ -9,13 +8,16 @@ import {
   XIcon,
 } from "lucide-react";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
+import { BRANCH_STATUS } from "@/entities/branches/constants";
+import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
+
 interface BranchAttributesProps {
-  branch: Branch;
+  branch: BranchDetail;
 }
 
 export function BranchAttributes({ branch }: BranchAttributesProps) {
@@ -26,12 +28,14 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
       </BranchAttributeLabel>
       <BranchAttributeValue>{branch.name}</BranchAttributeValue>
 
-      {branch.status !== "OPEN" && (
+      {branch.status !== BRANCH_STATUS.OPEN && (
         <>
           <BranchAttributeLabel>
             <CircleIcon className="size-3.5" /> Status
           </BranchAttributeLabel>
-          <BranchAttributeValue>{branch.status}</BranchAttributeValue>
+          <BranchAttributeValue>
+            <BranchStatusBadge status={branch.status} showOpen />
+          </BranchAttributeValue>
         </>
       )}
 
@@ -64,14 +68,6 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
           </BranchAttributeValue>
         </>
       )}
-
-      <BranchAttributeLabel>
-        <CalendarIcon className="size-3.5" /> Created at
-      </BranchAttributeLabel>
-
-      <BranchAttributeValue>
-        <DateDisplay date={branch.created_at} className="text-sm" />
-      </BranchAttributeValue>
     </Card>
   );
 }

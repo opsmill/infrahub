@@ -3,15 +3,15 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemWithTooltip,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
@@ -37,8 +37,9 @@ export function ObjectActionsCell({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const { schema } = useSchema(objectKind);
-  const isEditAllowed = permission.update.isAllowed;
-  const isDeleteAllowed = permission.delete.isAllowed;
+
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
+  const { isAllowed: isDeleteAllowed, message: deleteTooltipMessage } = permission.delete;
 
   if (!schema) {
     return <StickyRightCell isMuted />;
@@ -67,29 +68,25 @@ export function ObjectActionsCell({
               </Link>
             </DropdownMenuItem>
 
-            <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isEditAllowed}
-                  onClick={() => isEditAllowed && setShowEditForm(true)}
-                >
-                  <Icon icon="mdi:edit-outline" className="text-base" />
-                  Edit
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            <DropdownMenuItemWithTooltip
+              disabled={!isEditAllowed}
+              tooltipEnabled={!isEditAllowed}
+              tooltipContent={editTooltipMessage}
+              onClick={() => isEditAllowed && setShowEditForm(true)}
+            >
+              <Icon icon="mdi:edit-outline" className="text-base" />
+              Edit
+            </DropdownMenuItemWithTooltip>
 
-            <Tooltip enabled={!isDeleteAllowed} content={permission.delete.message} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isDeleteAllowed}
-                  onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-                >
-                  <Icon icon="mdi:delete-outline" className="text-base" />
-                  Delete
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            <DropdownMenuItemWithTooltip
+              disabled={!isDeleteAllowed}
+              tooltipEnabled={!isDeleteAllowed}
+              tooltipContent={deleteTooltipMessage}
+              onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
+            >
+              <Icon icon="mdi:delete-outline" className="text-base" />
+              Delete
+            </DropdownMenuItemWithTooltip>
           </DropdownMenuContent>
         </DropdownMenu>
       </StickyRightCell>
@@ -118,15 +115,13 @@ export function ObjectActionsCell({
         </SlideOver>
       )}
 
-      {showDeleteModal && (
-        <DeleteObjectModal
-          objectKind={objectKind}
-          objectId={objectId}
-          objectLabel={objectLabel}
-          open={true}
-          setOpen={() => setShowDeleteModal(false)}
-        />
-      )}
+      <DeleteObjectModal
+        objectKind={objectKind}
+        objectId={objectId}
+        objectLabel={objectLabel}
+        isOpen={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+      />
     </>
   );
 }

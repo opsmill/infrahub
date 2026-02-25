@@ -16,6 +16,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
     await page.getByRole("menuitem", { name: "Tenant" }).click();
+    await expect(page.getByRole("heading", { name: "Tenant" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
 
     dateBeforeTest = new Date();
@@ -82,15 +83,13 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("Update confirmation and update UI", async () => {
       await expect(page.getByText("Tenant updated")).toBeVisible();
-      await expect(
-        page.getByTestId("object-header").getByText("Changes from branch cr1234")
-      ).toBeVisible();
+      await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
     await test.step("See initial value on main branch", async () => {
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("option", { name: "main default" }).click();
-      await expect(page.getByTestId("object-header").getByText("Testing Infrahub")).toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("Testing Infrahub")).toBeVisible();
     });
   });
 
@@ -99,8 +98,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.goto("/?branch=cr1234");
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("link", { name: "View all branches" }).click();
+      await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
-      await page.getByLabel("Branches list").getByText("cr1234").click();
+      await page.getByRole("link", { name: "cr1234" }).click();
       await expect(page.getByRole("heading", { name: "cr1234" })).toBeVisible();
     });
 
@@ -152,7 +152,10 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
       await page
-        .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
+        .getByRole("option", {
+          name: format(dateBeforeTest, "h:mm aa"),
+          exact: true,
+        })
         .click();
       await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
       await expect(

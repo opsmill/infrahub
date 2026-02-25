@@ -130,12 +130,15 @@ def vale(context: Context) -> None:
 
 @task
 def markdownlint(context: Context) -> None:
+    """Lint markdown files with markdownlint-cli2.
+
+    Uses .markdownlint-cli2.yaml for configuration, globs, and ignore patterns.
+    """
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
-        print("Warning, markdownlint-cli2 is not installed")
-        return
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} '#**/node_modules/**'"
+        raise SystemExit("Error: markdownlint-cli2 is not installed. Run: cd docs && npm install")
+    exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -143,10 +146,12 @@ def markdownlint(context: Context) -> None:
 
 @task
 def format_markdownlint(context: Context) -> None:
-    """Run markdownlint-cli2 to format all .md/mdx files."""
+    """Run markdownlint-cli2 to format all .md/mdx files.
 
+    Uses .markdownlint-cli2.yaml for configuration and ignore patterns.
+    """
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} --fix"
+    exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx' --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -204,7 +209,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
         if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
             params = {
                 param: info
-                for param, info in init_schema.parameters.model_fields.items()
+                for param, info in init_schema.parameters.__class__.model_fields.items()
                 if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
             }
             kind_ap_parameters[kind] = params
@@ -498,7 +503,7 @@ def _get_env_vars() -> dict[str, str]:
     settings = ConfigBase()
     env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
 
-    for field_name, model_field in settings.model_fields.items():
+    for field_name, model_field in settings.__class__.model_fields.items():
         for field_key, field_env_name, _ in env_settings._extract_field_info(model_field, field_name):
             env_vars[field_key].append(field_env_name.upper())
 

@@ -15,7 +15,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery, AttributeRemo
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(
             migration=migration,
             attribute_name=migration.previous_attribute_schema.name,

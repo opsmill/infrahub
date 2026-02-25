@@ -5,10 +5,10 @@ import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
 import { Separator } from "@/shared/components/aria/separator";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
+import { Button } from "@/shared/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -28,15 +28,14 @@ export const Component = () => {
 
   return (
     <IpNamespaceProvider>
-      <ResizablePanelGroup direction="horizontal" className="items-stretch">
+      <ResizablePanelGroup orientation="horizontal" className="overflow-hidden">
         {!ipamTreeCollapsed && (
           <>
             <ResizablePanel
               id="tree-panel"
-              order={0}
-              defaultSize={20}
-              minSize={10}
-              maxSize={50}
+              defaultSize={300}
+              minSize={40}
+              maxSize="90%"
               className="flex grow flex-col"
             >
               <Content.Card className="flex grow flex-col">
@@ -54,9 +53,9 @@ export const Component = () => {
           </>
         )}
 
-        <ResizablePanel id="main-panel" order={1} className="flex grow flex-col">
+        <ResizablePanel id="main-panel" className="flex grow flex-col">
           <Content.Card className="flex grow flex-col">
-            {ipamTreeCollapsed && <IpamToolbar />}
+            {ipamTreeCollapsed && <IpamToolbar className="max-w-74.5" />}
             <Outlet />
           </Content.Card>
         </ResizablePanel>
@@ -65,12 +64,12 @@ export const Component = () => {
   );
 };
 
-function IpamToolbar() {
+function IpamToolbar({ className }: { className?: string }) {
   const [collapsed, setCollapsed] = useAtom(ipamTreeCollapsedAtom);
 
   return (
     <>
-      <Row className="h-11 gap-0">
+      <Row className={classNames("h-11 gap-0", className)}>
         <Button
           variant="ghost"
           size="square"
@@ -83,7 +82,7 @@ function IpamToolbar() {
 
         <Separator orientation="vertical" />
 
-        <IpNamespaceSelector className={classNames("m-0.5 grow", collapsed && "max-w-60")} />
+        <IpNamespaceSelector className="m-0.5 grow" />
       </Row>
 
       <Separator />

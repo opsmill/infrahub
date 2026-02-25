@@ -6,10 +6,10 @@ import os
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, NoReturn, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict, ValidationError, field_validator
 
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
@@ -73,6 +73,19 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     model_config = ConfigDict(extra="forbid", json_schema_extra=_json_schema_extra)
 
+    @staticmethod
+    def _enhance_attribute_validation_error(exc: ValidationError, attr_name: str, idx: int) -> NoReturn:
+        """Enhance validation error with attribute name and correct index in location path."""
+        errors = []
+        for error in exc.errors():
+            error_copy = error.copy()
+            # Insert the correct list index at the start of the location path
+            error_copy["loc"] = (idx,) + error["loc"]
+            nested_path = ".".join(str(item) for item in error["loc"])
+            error_copy["input"] = f"[{attr_name}.{nested_path}]: {error.get('input', 'N/A')}"
+            errors.append(error_copy)
+        raise ValidationError.from_exception_data(title=exc.title, line_errors=errors) from exc
+
     @property
     def is_schema_node(self) -> bool:
         """Tell if this node represent a part of the schema. Not to confuse this with `is_node_schema`."""
@@ -96,6 +109,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @property
     def is_ip_address(self) -> bool:
+        return False
+
+    @property
+    def is_file_object(self) -> bool:
         return False
 
     @property
@@ -124,19 +141,27 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not isinstance(raw_attributes, list):
             return raw_attributes
         attribute_schemas_with_types: list[Any] = []
-        for raw_attr in raw_attributes:
+        for idx, raw_attr in enumerate(raw_attributes):
             if not isinstance(raw_attr, (dict, AttributeSchema)):
                 attribute_schemas_with_types.append(raw_attr)
                 continue
             if isinstance(raw_attr, dict):
-                kind = raw_attr.get("kind")
+                kind = raw_attr["kind"]
+                attr_name = raw_attr["name"]
                 attribute_type_class = get_attribute_schema_class_for_kind(kind=kind)
-                attribute_schemas_with_types.append(attribute_type_class(**raw_attr))
+                try:
+                    attribute_schemas_with_types.append(attribute_type_class(**raw_attr))
+                except ValidationError as exc:
+                    cls._enhance_attribute_validation_error(exc, attr_name, idx)
                 continue
 
+            attr_name = raw_attr.name
             expected_attr_schema_class = get_attribute_schema_class_for_kind(kind=raw_attr.kind)
             if not isinstance(raw_attr, expected_attr_schema_class):
-                final_attr = expected_attr_schema_class(**raw_attr.model_dump())
+                try:
+                    final_attr = expected_attr_schema_class(**raw_attr.model_dump())
+                except ValidationError as exc:
+                    cls._enhance_attribute_validation_error(exc, attr_name, idx)
             else:
                 final_attr = raw_attr
             attribute_schemas_with_types.append(final_attr)
@@ -263,6 +288,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     ) -> AttributeSchema | RelationshipSchema | None: ...
 
     def get_field(self, name: str, raise_on_error: bool = True) -> AttributeSchema | RelationshipSchema | None:
+        if name in NODE_PROPERTY_ATTRIBUTES:
+            return self.get_attribute(name=name)
+
         if field := self.get_attribute_or_none(name=name):
             return field
 
@@ -295,6 +323,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_attribute_by_id(self, id: str) -> AttributeSchema:
         for item in self.attributes:
             if item.id == id:
+                return item
+            # Also check source_attribute_id for inherited attributes
+            if item.inherited and item.source_attribute_id == id:
                 return item
 
         raise ValueError(f"Unable to find the attribute with the ID: {id}")
@@ -351,7 +382,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_attributes_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for attr in self.attributes:
-            name_id_map[attr.name] = INHERITED if attr.inherited else attr.id
+            if attr.inherited:
+                # Use source_attribute_id for rename detection if available
+                name_id_map[attr.name] = attr.source_attribute_id or INHERITED
+            else:
+                name_id_map[attr.name] = attr.id
         return name_id_map
 
     def get_relationship_name_id_map(self) -> dict[str, str]:

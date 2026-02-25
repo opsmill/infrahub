@@ -11,6 +11,237 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.4) - 2026-02-03
+
+### Removed
+
+- Removed references to the deprecated `is_visible` metadata property from documentation.
+
+### Fixed
+
+- Fix bug in computed attribute calculation that prevented having a computed attribute on a branch if there were no computed attributes on the default branch ([#8270](https://github.com/opsmill/infrahub/issues/8270))
+- Add migration to allow rebasing branches created before #8221 was fixed so that the uniqueness constraint on SchemaNode.name and SchemaGeneric.name is removed
+- Fixed branch merge failing to include relationships to AGNOSTIC nodes (e.g., CoreIPAddressPool) by including the global branch in the peer node lookup query.
+- Fixed confusing issue when "off" was converted to boolean 'false' due to issues with Yaml. The bug was that if "off" or something that Yaml parses as a boolean was used as the name of a Dropdown the incorrect attribute was highlighted in the schema error. When this happened troubleshooting was harder due to misleading errors pointing to another attribute.
+
+## [Infrahub - v1.7.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.3) - 2026-01-28
+
+### Security
+
+- Update system dependencies: OpenSSL patch for CVE-2025-15467
+
+### Fixed
+
+- Single line breaks in text fields are now rendered correctly.
+
+## [Infrahub - v1.7.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.2) - 2026-01-27
+
+### Added
+
+- Added "parallel mode" plugin to the GraphQL web sandbox.
+- GraphQL query parsing and validation is now leveraging a cache to improve performance and CPU consumption.
+
+### Changed
+
+- Infinite scrolling now fetches more entries per page when having a lot of objects. ([#8057](https://github.com/opsmill/infrahub/issues/8057))
+
+### Fixed
+
+- Fixed issue around the use of the validate_certificates attribute on webhooks. This change also modifies this attribute so that it no longer has a default value, instead the Infrahub default configuration for HTTP is used and the attribute is only to override the default. ([#6308](https://github.com/opsmill/infrahub/issues/6308))
+- Fixed a bug that caused branch-agnostic attributes on branch-aware objects to be deleted globally when the object was deleted. Now branch-agnostic attributes on branch-aware objects are only deleted on the branch where the object was deleted. ([#7513](https://github.com/opsmill/infrahub/issues/7513))
+- Figure number and IPAM resources to allocate from a pool by using Cypher queries instead of iterating logic, this should fix timeout observed when allocating resources within large pools ([#7897](https://github.com/opsmill/infrahub/issues/7897))
+- Fixed an issue where parallel create or update operations would attach multiple peers to a cardinality one relationship. ([#7972](https://github.com/opsmill/infrahub/issues/7972))
+- Search anywhere bar now scale with the number of objects within Infrahub.
+  Cardinality many relationships are now ignored and not shown in search results. ([#8059](https://github.com/opsmill/infrahub/issues/8059))
+- Prevent opening a proposed change if there is already an open proposed change for the branch. ([#8123](https://github.com/opsmill/infrahub/issues/8123))
+- Fix bug in node create logic that could cause edges to be added to the database with the wrong hierarchy level on the global branch. Includes a migration to fix existing problem edges. ([#8158](https://github.com/opsmill/infrahub/issues/8158))
+- Fix bug in node create logic that could cause branch-local edges to be added to the database with the wrong hierarchy level. Includes a migration to fix existing problem edges. ([#8159](https://github.com/opsmill/infrahub/issues/8159))
+- Fix diff update logic to prevent crash when copying a diff with recursive relationships ([#8165](https://github.com/opsmill/infrahub/issues/8165))
+- Update branch delete logic to correctly delete branch-agnostic attributes from objects being deleted with the branch. Includes a migration to clean up any orphaned objects with branch-agnostic attributes left in the database. ([#8211](https://github.com/opsmill/infrahub/issues/8211))
+- Prevent creating duplicate schemas on branches and merging them into the default branch ([#8221](https://github.com/opsmill/infrahub/issues/8221))
+- Fixed an issue where unexpected restarts of tasks workers would result in tasks being in "Running" state forever.
+  As a side effect, this would block Git repositories sync tasks to be launched. ([#8227](https://github.com/opsmill/infrahub/issues/8227))
+- Fixed an issue causing overfetching in IPAM tree
+- When using local docs, icons and images are correctly loaded.
+
+## [Infrahub - v1.7.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.1) - 2026-01-12
+
+### Added
+
+- Added option to use username/password authentication on Redis connections ([#7994](https://github.com/opsmill/infrahub/issues/7994))
+
+### Fixed
+
+- Fix failing execution of unit tests within a proposed change pipeline. ([#8075](https://github.com/opsmill/infrahub/issues/8075))
+
+## [Infrahub - v1.7.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.0) - 2026-01-08
+
+We're excited to announce the release of Infrahub, v1.7.0! This release focuses on enhancing data governance and strengthening the platform foundation for enterprise deployments.
+
+Version 1.7 introduces comprehensive audit capabilities with immutable metadata tracking, expands profile functionality to support relationships. Under the hood, we've upgraded critical backend dependencies to ensure optimal performance, security, and long-term maintainability.
+
+### Main changes
+
+#### Object level meta data
+
+Infrahub now automatically tracks who created and last modified every object in your infrastructure data. This foundational capability enables complete audit trails and accountability across your entire automation stack.
+
+Every object now includes:
+
+- **Created by** and **updated by** — user attribution for all changes
+- **Created at** and **updated at** — precise timestamps for data lifecycle tracking
+
+This metadata is available through the UI, GraphQL API and Python SDK, enabling you to determine who created or updated an object and at which time.
+
+The metadata is read-only and survives across branch operations, ensuring you have a reliable audit trail even in complex version control workflows.
+
+This positions Infrahub as enterprise-ready for organizations requiring detailed data provenance and accountability.
+
+The `created_at` and `updated_at` metadata will be set for all objects, even those that were create before this feature.
+The `created_by` and `updated_by` metadata will be set for objects that have been created or updated after this release, existing objects will not be backfilled.
+
+#### Relationships in Profiles
+
+Profiles now support relationships in addition to attributes, enabling you to define complete, reusable templates for entire classes of objects.
+
+Previously, profiles could only set attribute values, limiting their usefulness and adoption. Now you can:
+
+- Define relationships within a profile alongside attributes
+- Create comprehensive templates that capture both data and connections
+- Enforce data consistency across large inventories with less manual work
+- Apply complete object configurations at scale
+
+Additionally profiles now support required attributes and relationships, as long as they are not part of a uniqueness constraint.
+
+For example, you can now create a "Production Server Interface" profile that captures configurations, such as the speed and MTU and mode, but also automatically connect it to a specific VLAN.
+
+This reduces manual configuration, minimizes errors when scaling automation projects, and ensures that relationships are consistently applied across your infrastructure data model.
+
+#### Branch list page scaling
+
+Several users of Infrahub, have a requirement to have a large number of branches active at any given time in Infrahub. The branch list page has been updated to provide a better user experience when you have a large number of branches.
+
+The branch list page now uses the previously introduced `InfrahubBranch` GraphQL query, which provides pagination functionality for the branch query. In this release we have also introduced a `partial_match` filter, which allows a user to search for a branch by a partial name.
+
+Additionally the branch list page displays the new object level metadata, which allows you to more easily find the branch that you are looking for.
+
+#### Redesigned object detail view
+
+The object detail page has been significantly improved to provide better access to key information and actions.
+
+Header improvements:
+
+- New info icon provides quick access to the new object-level metadata
+- Action button was redesigned and relocated for better accessibility
+- New dedicated button to navigate directly to the object's schema definition
+- Refreshed button styling
+
+Groups management:
+
+- New dedicated section displays all groups the object belongs to
+- Easily add or remove the object from groups without navigating away
+
+Profiles management:
+
+- New section shows all profiles currently applied to the object
+- Manage profile assignments directly from the object detail view
+
+These changes make it faster to understand an object's context (its metadata, groups, and profiles) without switching between multiple views.
+
+#### Upgraded backend dependencies
+
+The platform foundation has been strengthened with major version upgrades across all core backend components:
+
+- **Python**: 3.12 → 3.13
+- **Neo4j**: 2025.03 → 2025.10/11
+- **RabbitMQ**: 3.13 → 4.2
+- **Redis**: 7.2 → 8.x
+- **PostgreSQL**: 14 → 18
+
+These upgrades deliver:
+
+- Enhanced performance across the platform
+- Improved security with the latest patches
+- Access to new features in underlying technologies
+- Better long-term maintainability and support
+
+The upgrades have been thoroughly tested to ensure compatibility and performance regression has been validated to maintain Infrahub's reliability standards.
+
+### Infrahub Python SDK
+
+Infrahub v1.7.0 requires the usage of [infrahub-sdk v1.18.0](https://github.com/opsmill/infrahub-sdk-python/releases/tag/v1.18.0), please update the `infrahub-sdk` package accordingly.
+
+### Full changelog
+
+#### Deprecated
+
+- Deprecated the '_updated_at' query field for GraphQL queries. The new node metadata field should be used instead. The '_updated_at' field will be completely removed in Infrahub 1.9.
+
+#### Added
+
+- Add search functionality to the branches list view, allowing users to filter branches by name. ([#2107](https://github.com/opsmill/infrahub/issues/2107))
+- Added ability to enable and disable webhooks ([#6761](https://github.com/opsmill/infrahub/issues/6761))
+- Added option to use username/password authentication on Redis connections ([#7994](https://github.com/opsmill/infrahub/issues/7994))
+- Add display label based GraphQL filters `display_label__isnull`, `display_label__value` and `display_label__values`
+- Added metadata display in branch list view showing last rebase, last update, created at, and created by information
+- Added partial_match parameter to InfrahubBranch query for case-insensitive substring filtering on branch names
+- Display "No task" on branch details when task are empty.
+- Improved menu in IPAM details view:
+
+  - Replaced the three-dot menu with a clearly labeled Actions button to open menu
+  - Added quick navigation to related tasks
+  - Added convert object type action
+  - Added icons for all menu items
+
+#### Changed
+
+- This refactors timestamp handling across query and relationship functions to accept only Timestamp types, updates all dependent code and tests accordingly, refreshes development environment files, and includes no user-facing changes. ([#63](https://github.com/opsmill/infrahub/issues/63))
+- Improve branches list and details views to use the updated GraphQL API structure. ([#2108](https://github.com/opsmill/infrahub/issues/2108))
+- Upgraded backend dependencies: Neo4j to 2025.10.1, Redis to 8.4.0, RabbitMQ to 4.2.1, PostgreSQL to 18
+
+#### Fixed
+
+- Fixed issue with creating and deleting webhook automations for installations with a high number of automations in Prefect.
+- Fixed relationship fields not being cleared when removing a profile from a node
+- Fixed the display order of attributes and relationships in detail views.
+- Re-enable running a single migration in `infrahub db migrate` using the `--migration-number` option
+- Updating your account information now correctly refreshes the visible data, preventing outdated data from being shown.
+
+## [Infrahub - v1.6.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.3) - 2026-01-07
+
+### Changed
+
+- Changed DiffTreeSummary GraphQL type count fields to be non-optional ([#7778](https://github.com/opsmill/infrahub/issues/7778))
+
+### Fixed
+
+- Stop showing warnings for deprecated attribute schema fields (regex, min_length, max_length) when they are not used ([#7995](https://github.com/opsmill/infrahub/issues/7995))
+
+## [Infrahub - v1.6.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.2) - 2025-12-22
+
+### Fixed
+
+- Fix Migration041 to determine edge uniqueness correctly and  account for incoming Relationship edges. Add new migration to un-delete improperly deleted Relationship metadata. This would only be a problem for Relationships between schemas that have both had their name, namespace, or kind updated multiple times. ([#7916](https://github.com/opsmill/infrahub/issues/7916))
+
+## [Infrahub - v1.6.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.1) - 2025-12-11
+
+### Added
+
+- Add support for PKCE within Oauth2 and OIDC authentications. With this change the client_secret for Oauth2 and OIDC have been switched to being optional. PKCE is enabled by default but can be switched off in the configuration if required. ([#7400](https://github.com/opsmill/infrahub/issues/7400))
+
+### Changed
+
+- Upgrade infrahub-sdk to v1.17.0 ([#7870](https://github.com/opsmill/infrahub/pull/7870))
+
+### Fixed
+
+- Fix `display_label` not having a NULL value in the database when not set in the schema ([#7704](https://github.com/opsmill/infrahub/issues/7704))
+- Fixed schema cache issue when adding or removing dropdown/enum options via the UI, which causes intermittent "incorrect hash" errors after page refreshes. ([#7780](https://github.com/opsmill/infrahub/issues/7780))
+- Fix an issue where removing a mandatory relationship was allowed. ([#7853](https://github.com/opsmill/infrahub/issues/7853))
+- Fix breadcrumb display on CoreArtifactDefinition details page.
+- Fixed form submission for schemas with only read-only attributes
+- Improve branch creation and repository sync performance when having a lot of branches.
+
 ## [Infrahub - v1.6.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.0) - 2025-12-01
 
 We're excited to announce the release of Infrahub v1.6.0! This release brings significant improvements to Git integration, UI navigation, branch management, Profiles in Object Templates and introduces a new dashboard landing page.
@@ -259,7 +490,7 @@ You can review the result on each schema node’s detail page (Menu > Object Man
 
 Update your schema files to use the new `display_label` property and remove deprecated `display_labels` after verifying the automatic migration.
 
-In the documentation you can find specific instructions to migrate existing schema nodes to the new `display_label`. https://docs.infrahub.app/release-notes/deprecation-guides/display_labels/
+In the documentation you can find specific instructions to migrate existing schema nodes to the new `display_label`: <https://docs.infrahub.app/release-notes/deprecation-guides/display_labels/>
 
 Today, in some places in the UI, we are using the HFID of objects to display them with useful context. This was mostly done to overcome the restriction of not supporting relationships in the `display_label`. In a future release we will use the `display_label` for this instead.
 
@@ -545,7 +776,7 @@ git checkout infrahub-v1.5.0
 invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
-The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
+The repository <https://github.com/opsmill/infrahub-demo-edge> has also been updated, it's recommended to pull the latest changes into your fork.
 
 ## [Infrahub - v1.4.13](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.13) - 2025-11-06
 
@@ -795,7 +1026,7 @@ With this change multiple improvements have been made to the overall proposed ch
 - Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change
 - The overview tab of a proposed change now contains a more detailed timeline of all the actions/state changes that happened in a proposed change.
 
-Please refer to the documentation for a guide that explains how to setup a change approval workflow: https://develop.infrahub.pages.dev/guides/change-approval-workflow
+Please refer to the documentation for a guide that explains how to setup a change approval workflow: <https://develop.infrahub.pages.dev/guides/change-approval-workflow>
 
 #### Bulk edit capabilities
 

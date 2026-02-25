@@ -47,6 +47,7 @@ from .models import (
     CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
+    GitReadOnlyRepositoryImportCommit,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
     GitRepositoryImportObjects,
@@ -588,6 +589,28 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
 
 
 @flow(
+    name="git-read-only-repository-import-last-commit", flow_run_name="Import last commit from read only git repository"
+)
+async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryImportCommit) -> None:
+    await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
+
+    if not model.repository_kind == InfrahubKind.READONLYREPOSITORY:
+        raise RepositoryError(identifier=model.repository_name, message="Repository is not a read only repository")
+
+    client = get_client()
+
+    async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        repo = await InfrahubReadOnlyRepository.init(
+            id=model.repository_id,
+            name=model.repository_name,
+            client=client,
+            infrahub_branch_name=model.infrahub_branch_name,
+            ref=model.ref,
+        )
+        await repo.update_latest_commit()
+
+
+@flow(
     name="git-repository-diff-names-only",
     flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",
     persist_result=True,
@@ -950,7 +973,7 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
             client=client,
             commit=model.commit,
             params=model.variables,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
         if check_run.passed:
             conclusion = ValidatorConclusion.SUCCESS
             severity = "info"

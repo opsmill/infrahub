@@ -30,7 +30,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
@@ -69,7 +69,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
 
-    @pytest.mark.xfail(reason="FIXME Works locally but it's failling in Github Actions")
+    @pytest.mark.xfail(reason="FIXME Works locally but it's failling in GitHub Actions")
     async def test_create_proposed_change(
         self,
         db: InfrahubDatabase,

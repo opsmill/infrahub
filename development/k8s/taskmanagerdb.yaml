@@ -4,8 +4,13 @@ kind: Cluster
 metadata:
   name: taskmanagerdb
   namespace: infrahub
+  labels:
+    infrahub/service: task-manager-db
 spec:
   instances: 3
+  inheritedMetadata:
+    labels:
+      infrahub/service: task-manager-db
   storage:
     size: 10Gi
   postgresql:

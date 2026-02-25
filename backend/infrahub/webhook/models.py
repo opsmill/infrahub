@@ -118,7 +118,7 @@ class Webhook(BaseModel):
     name: str = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
-    validate_certificates: bool = Field(...)
+    validate_certificates: bool | None = Field(...)
     _payload: Any = None
     _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
@@ -135,7 +135,7 @@ class Webhook(BaseModel):
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
             timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-            payload = json.dumps(self._payload or {})
+            payload = json.dumps(self._payload or {}, separators=(",", ":"))
             unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
             signature = self._sign(data=unsigned_data)
             self._headers["webhook-id"] = message_id
@@ -162,7 +162,9 @@ class Webhook(BaseModel):
         self, data: dict[str, Any], context: EventContext, http_service: InfrahubHTTP, client: InfrahubClient
     ) -> Response:
         await self.prepare(data=data, context=context, client=client)
-        return await http_service.post(url=self.url, json=self.get_payload(), headers=self._headers)
+        return await http_service.post(
+            url=self.url, json=self.get_payload(), headers=self._headers, verify=self.validate_certificates
+        )
 
     def get_payload(self) -> dict[str, Any]:
         return self._payload
@@ -233,7 +235,7 @@ class TransformWebhook(Webhook):
             convert_query_response=self.convert_query_response,
             data={"data": {"data": data, **context.model_dump()}},
             client=client,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
 
     @classmethod
     def from_object(cls, obj: CoreCustomWebhook, transform: CoreTransformPython) -> Self:
