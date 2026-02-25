@@ -10,7 +10,7 @@ handoffs:
     send: true
 ---
 
-## User Input
+## User input
 
 ```text
 $ARGUMENTS
@@ -36,35 +36,26 @@ Given that feature description, do this:
      - "Create a dashboard for analytics" → "analytics-dashboard"
      - "Fix payment processing timeout bug" → "fix-payment-timeout"
 
-2. **Check for existing branches before creating new one**:
+2. **Determine the Jira/JPD reference and create the feature branch**:
 
-   a. First, fetch all remote branches to ensure we have the latest information:
+   a. Determine the Jira/JPD reference for this feature:
+      - Parse `$ARGUMENTS` for a ticket ID matching:
+        - JPD format: `infp-[0-9]+` (e.g., `infp-460`)
+        - Jira epic format: `ifc-[0-9]+` (e.g., `ifc-2140`)
+      - If no ticket ID is found in the arguments, prompt the user:
 
-      ```bash
-      git fetch --all --prune
-      ```
+        > "Please provide a Jira or JPD reference for this feature (e.g., `infp-460` for a JPD item or `ifc-2140` for a Jira epic):"
 
-   b. Find the highest feature number across all sources for the short-name:
-      - Remote branches: `git ls-remote --heads origin | grep -E 'refs/heads/([a-z]{2,4}-)?[0-9]+-<short-name>$'`
-      - Local branches: `git branch | grep -E '^[* ]*([a-z]{2,4}-)?[0-9]+-<short-name>$'`
-      - Specs directories: Check for directories matching `specs/([a-z]{2,4}-)?[0-9]+-<short-name>`
+      - Do not proceed until a valid ticket ID is provided.
 
-   c. Determine the next available number:
-      - Extract all numbers from all three sources
-      - Find the highest number N
-      - Use N+1 for the new branch number
-
-   d. Run the script `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` with the calculated number and short-name:
-      - Pass `--number N+1` and `--short-name "your-short-name"` along with the feature description
-      - The `--initials` flag is optional; initials are auto-detected from `git config user.name` (first letter of first name + first two letters of last name, lowercased)
-      - Bash example: `.specify/scripts/bash/create-new-feature.sh --json --number 5 --short-name "user-auth" "Add user authentication"`
-      - PowerShell example: `.specify/scripts/bash/create-new-feature.sh --json -Number 5 -ShortName "user-auth" "Add user authentication"`
+   b. Run the script `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` with the ticket ID and short-name:
+      - Pass `--number <ticket-id>` and `--short-name "your-short-name"` along with the feature description
+      - Bash example: `.specify/scripts/bash/create-new-feature.sh --json --number infp-460 --short-name "user-auth" "Add user authentication"`
+      - PowerShell example: `.specify/scripts/bash/create-new-feature.sh --json -Number infp-460 -ShortName "user-auth" "Add user authentication"`
 
    **IMPORTANT**:
-   - Check all three sources (remote branches, local branches, specs directories) to find the highest number
-   - Numbers are global across all developers -- scan ALL branches regardless of initials prefix
-   - Only match branches/directories with the exact short-name pattern
-   - If no existing branches/directories found with this short-name, start with number 1
+   - A valid ticket ID is required — never invent or skip it
+   - Ticket IDs are unique identifiers; no branch scanning is needed
    - You must only ever run this script once per feature
    - The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for
    - The JSON output will contain BRANCH_NAME and SPEC_FILE paths
