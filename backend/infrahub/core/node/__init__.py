@@ -350,7 +350,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self,
         db: InfrahubDatabase,
         attribute: BaseAttribute,
-        errors: list,
+        errors: list[ValidationError],
         allocate_resources: bool = True,
     ) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
