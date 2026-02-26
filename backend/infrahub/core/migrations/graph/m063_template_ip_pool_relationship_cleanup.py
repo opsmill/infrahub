@@ -25,11 +25,11 @@ console = get_migration_console()
 IP_POOL_KINDS = {InfrahubKind.IPADDRESSPOOL, InfrahubKind.IPPREFIXPOOL}
 
 
-class Migration061(MigrationRequiringRebase):
+class Migration063(MigrationRequiringRebase):
     """Migrate IP pool-sourced relationships on templates to _from_resource_pool relationships."""
 
-    name: str = "061_template_ip_pool_relationship_cleanup"
-    minimum_version: int = 60
+    name: str = "063_template_ip_pool_relationship_cleanup"
+    minimum_version: int = 62
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

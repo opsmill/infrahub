@@ -7,7 +7,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME, HashableModelState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.relationship.model import RelationshipManager
@@ -25,6 +25,7 @@ SPECIFIC_ONE_KIND = "TestingSpecificOne"
 SPECIFIC_TWO_KIND = "TestingSpecificTwo"
 SPECIFIC_THREE_KIND = "TestingSpecificThree"
 THING_KIND = "TestingThing"
+VIRTUAL_RELATIONSHIP_NAMES = {OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME}
 
 
 class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
@@ -1768,7 +1769,9 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
             db_relationship_names = set(result.get("relationship_names"))
             db_attribute_names = set(result.get("attribute_names"))
             node_schema = schema_by_kind[node_kind]
-            expected_local_rels = set(node_schema.local_relationship_names)
+            expected_local_rels = {
+                name for name in node_schema.local_relationship_names if name not in VIRTUAL_RELATIONSHIP_NAMES
+            }
             expected_local_attrs = set(node_schema.local_attribute_names)
             for extra_generic_rel in db_relationship_names - expected_local_rels:
                 errors.append(

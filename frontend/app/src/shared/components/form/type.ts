@@ -25,6 +25,7 @@ export type PoolSource = {
   label: string | null;
   kind: string;
   id: string;
+  fromTemplate?: boolean;
 };
 
 export type ProfileSource = {

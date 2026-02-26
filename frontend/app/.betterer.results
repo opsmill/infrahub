@@ -586,10 +586,6 @@ exports[`fix ts error`] = {
     "src/shared/components/form/pool-selector.tsx:952651893": [
       [72, 46, 2, "tsc: Property \'id\' does not exist on type \'PoolSource | ProfileSource | TemplateSource | { type: SourceType; } | { type: SourceType; } | { type: SourceType; }\'.\\n  Property \'id\' does not exist on type \'{ type: SourceType; }\'.", "5861160"]
     ],
-    "src/shared/components/form/utils/getFieldDefaultValue.ts:4119882594": [
-      [2, 35, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"],
-      [128, 6, 5, "tsc: Type \'null | string | undefined\' is not assignable to type \'null | string\'.\\n  Type \'undefined\' is not assignable to type \'null | string\'.", "173467459"]
-    ],
     "src/shared/components/form/utils/isFieldDisabled.test.ts:1750380810": [
       [14, 6, 4, "tsc: Type \'null\' is not assignable to type \'AuthContextType | undefined\'.", "2087565485"],
       [30, 6, 4, "tsc: Type \'null\' is not assignable to type \'AuthContextType | undefined\'.", "2087565485"],

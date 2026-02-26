@@ -63,9 +63,9 @@ DELETE val
         self.add_to_query(query)
 
 
-class Migration062(GraphMigration):
-    name: str = "062_remove_generic_generate_template"
-    minimum_version: int = 61
+class Migration064(GraphMigration):
+    name: str = "064_remove_generic_generate_template"
+    minimum_version: int = 63
     queries: Sequence[type[Query]] = [
         RemoveGenericGenerateTemplateQuery,
         RemoveGenericGenerateTemplateSchemaAttributeQuery,
