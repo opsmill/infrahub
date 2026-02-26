@@ -507,7 +507,7 @@ class DiffTreeResolver:
         proposed_change_id: str | None = None,
     ) -> DiffQueryParams:
         # For terminal branches with no explicit time filters,
-        # return the latest stored diff instead of trying to compute a new one
+        # return the latest stored diff for the branch regardless of time
         if branch_info.is_terminal and not from_time and not to_time:
             return DiffQueryParams(
                 from_time=None,
