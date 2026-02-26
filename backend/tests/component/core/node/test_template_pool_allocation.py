@@ -229,7 +229,7 @@ async def test_object_from_template_raises_validation_error_when_pool_exhausted(
     """Creating object from template should raise ValidationError when pool is exhausted."""
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     small_prefix = await Node.init(db=db, schema=prefix_schema)
-    await small_prefix.new(db=db, prefix="10.10.3.8/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=True)
+    await small_prefix.new(db=db, prefix="10.10.3.8/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=False)
     await small_prefix.save(db=db)
 
     pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)

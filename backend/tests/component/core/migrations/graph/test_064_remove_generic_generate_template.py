@@ -3,7 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
-from infrahub.core.migrations.graph.m062_remove_generic_generate_template import Migration062
+from infrahub.core.migrations.graph.m064_remove_generic_generate_template import Migration064
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput
 from infrahub.core.path import SchemaPath
@@ -35,7 +35,7 @@ RETURN count(sa) AS count
 
 
 @pytest.fixture
-async def migration_062_data(
+async def migration_064_data(
     db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_core_schema_db: None
 ) -> None:
     """Add generate_template attribute to SchemaGeneric nodes, simulating the old DB state."""
@@ -68,8 +68,8 @@ async def migration_062_data(
     )
 
 
-async def test_migration_062(
-    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, migration_062_data: None
+async def test_migration_064(
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, migration_064_data: None
 ) -> None:
     result_before = await db.execute_query(query=COUNT_GENERATE_TEMPLATE_ON_GENERICS)
     assert result_before[0].get("count") > 0
@@ -77,7 +77,7 @@ async def test_migration_062(
     schema_attr_before = await db.execute_query(query=COUNT_GENERATE_TEMPLATE_SCHEMA_ATTRIBUTE)
     assert schema_attr_before[0].get("count") > 0
 
-    migration = Migration062.init()
+    migration = Migration064.init()
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors
 

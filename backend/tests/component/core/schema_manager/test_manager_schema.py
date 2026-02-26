@@ -4365,13 +4365,16 @@ async def test_hierarchical_validate_parent_children(
 
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
-    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
-        region_schema = schema_branch.get(name="LocationRegion", duplicate=False)
-        region_schema.get_relationship(name="parent")
+    # Nodes at the edges of a hierarchy (parent="" or children="") get a
+    # relationship pointing to the hierarchy generic
+    region_schema = schema_branch.get(name="LocationRegion", duplicate=False)
+    region_parent_rel = region_schema.get_relationship(name="parent")
+    assert region_parent_rel.peer == "LocationGeneric"
+    assert region_parent_rel.optional is True
 
-    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
-        rack_schema = schema_branch.get(name="LocationRack", duplicate=False)
-        rack_schema.get_relationship(name="children")
+    rack_schema = schema_branch.get(name="LocationRack", duplicate=False)
+    rack_children_rel = rack_schema.get_relationship(name="children")
+    assert rack_children_rel.peer == "LocationGeneric"
 
     eu: Node = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
     await eu.new(db=db, name="Europe")

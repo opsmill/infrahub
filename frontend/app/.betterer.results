@@ -63,9 +63,9 @@ exports[`fix ts error`] = {
     "src/entities/diff/node-diff/conflict.tsx:1915762184": [
       [4, 39, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/diff/node-diff/index.tsx:2918900447": [
-      [75, 46, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
-      [93, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+    "src/entities/diff/node-diff/index.tsx:331347187": [
+      [87, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
+      [108, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/diff/node-diff/node-property.tsx:2777655921": [
       [27, 22, 17, "tsc: Property \'base_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'base_branch_value\'?", "1959743778"],
@@ -238,8 +238,8 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2093276488": [
       [19, 10, 8, "tsc: Type \'(null | string | undefined)[]\' is not assignable to type \'string[]\'.\\n  Type \'string | null | undefined\' is not assignable to type \'string\'.\\n    Type \'undefined\' is not assignable to type \'string\'.", "3441362927"]
     ],
-    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:2839510389": [
-      [124, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
+    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:483053447": [
+      [120, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
     ],
     "src/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row.test.tsx:3986220632": [
       [81, 9, 21, "tsc: Property \'objectKind\' is missing in type \'\\"Attribute\\" | \\"Component\\" | \\"Group\\" | \\"Hierarchy\\" | \\"Parent\\" | \\"Profile\\" | \\"Template\\"; label?: string | \\"absent\\"; name: string; peer: string; kind: \\"Generic\\" | \\"agnostic\\" | \\"any\\"; read_only: boolean; deprecation?: string | \\"cascade\\" | \\"inbound\\"; hierarchical?: string | \\"local\\" | \\"many\\"; min_count: number; max_count: number; common_parent?: string | \\"outbound\\" | null | null | null | null | null | null | null | null | null | null | null | undefined; allow_override: \\"none\\" | undefined; cardinality: \\"one\\" | undefined; common_relatives?: string[] | undefined; description?: string | undefined; identifier?: string | undefined; inherited: boolean; direction: \\"bidirectional\\" | undefined; on_delete?: \\"no-action\\" | undefined; optional: boolean; branch?: \\"aware\\" | undefined; order_weight?: number | undefined; state: \\"present\\" | undefined; }; relationshipData: NodeRelationshipOneWithMetadata; permission: Permission; } | { relationshipSchema: { id?: string\' but required in type \'ObjectRelationshipRowProps\'.", "417292446"],
@@ -585,10 +585,6 @@ exports[`fix ts error`] = {
     ],
     "src/shared/components/form/pool-selector.tsx:952651893": [
       [72, 46, 2, "tsc: Property \'id\' does not exist on type \'PoolSource | ProfileSource | TemplateSource | { type: SourceType; } | { type: SourceType; } | { type: SourceType; }\'.\\n  Property \'id\' does not exist on type \'{ type: SourceType; }\'.", "5861160"]
-    ],
-    "src/shared/components/form/utils/getFieldDefaultValue.ts:4119882594": [
-      [2, 35, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"],
-      [128, 6, 5, "tsc: Type \'null | string | undefined\' is not assignable to type \'null | string\'.\\n  Type \'undefined\' is not assignable to type \'null | string\'.", "173467459"]
     ],
     "src/shared/components/form/utils/isFieldDisabled.test.ts:1750380810": [
       [14, 6, 4, "tsc: Type \'null\' is not assignable to type \'AuthContextType | undefined\'.", "2087565485"],

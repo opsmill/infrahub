@@ -1,13 +1,14 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.validators.query import NodeNotPresentValidatorQuery
 from infrahub.database import InfrahubDatabase
 
 
 async def test_query_node_present_with_data(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
 
@@ -24,7 +25,7 @@ async def test_query_node_present_with_data(
 
 
 async def test_query_node_present_with_data_rel(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
 
@@ -41,7 +42,7 @@ async def test_query_node_present_with_data_rel(
 
 
 async def test_query_node_present_no_data(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     car_schema = registry.schema.get(name="TestCar")
 

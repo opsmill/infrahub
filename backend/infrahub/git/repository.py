@@ -265,7 +265,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             except GitCommandError as err:
                 log.error(f"No object found for ref {self.ref} on repository {self.name}")
                 raise ValueError(f"Ref {self.ref} not found.") from err
-        git_repo.commit(latest_commit)
+        latest_commit = str(git_repo.commit(latest_commit))
         await self.sync_from_remote(commit=latest_commit)
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
 

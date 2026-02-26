@@ -1,4 +1,4 @@
-from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME
+from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME
 
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
@@ -73,7 +73,7 @@ class NodeInheritanceHandler:
         for relationship in interface.relationships:
             if relationship.name in node.valid_local_names:
                 continue
-            if relationship.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME:
+            if relationship.name in (PROFILES_RELATIONSHIP_NAME, OBJECT_TEMPLATE_RELATIONSHIP_NAME):
                 continue
 
             new_relationship = relationship.duplicate()

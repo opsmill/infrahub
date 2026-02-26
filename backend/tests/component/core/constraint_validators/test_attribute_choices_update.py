@@ -13,7 +13,7 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-async def test_new_choice_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
+async def test_new_choice_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     crit_low = await Node.init(db=db, schema=criticality_schema)
     await crit_low.new(db=db, name="low", level=4, status="active")
     await crit_low.save(db=db)
@@ -41,7 +41,7 @@ async def test_new_choice_value(db: InfrahubDatabase, default_branch: Branch, cr
     assert len(all_data_paths) == 0
 
 
-async def test_remove_choice(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
+async def test_remove_choice(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     crit_low = await Node.init(db=db, schema=criticality_schema)
     await crit_low.new(db=db, name="low", level=4, status="active")
     await crit_low.save(db=db)
@@ -78,7 +78,7 @@ async def test_remove_choice(db: InfrahubDatabase, default_branch: Branch, criti
     ]
 
 
-async def test_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticality_schema) -> None:
+async def test_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticality_schema: NodeSchema) -> None:
     crit_low = await Node.init(db=db, schema=criticality_schema, branch=branch)
     await crit_low.new(db=db, name="low", level=4, status="active")
     await crit_low.save(db=db)
@@ -130,7 +130,11 @@ async def test_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticali
 
 
 async def test_attribute_update_on_branch(
-    db: InfrahubDatabase, branch: Branch, criticality_schema, criticality_low, criticality_medium
+    db: InfrahubDatabase,
+    branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
 ) -> None:
     criticality_low.status.value = "passive"
     await criticality_low.save(db=db)
@@ -189,7 +193,11 @@ async def test_attribute_update_on_branch(
 
 
 async def test_node_delete_on_branch(
-    db: InfrahubDatabase, branch: Branch, criticality_schema, criticality_low, criticality_medium
+    db: InfrahubDatabase,
+    branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
 ) -> None:
     criticality_low.status.value = "passive"
     await criticality_low.save(db=db)
@@ -247,7 +255,11 @@ async def test_node_delete_on_branch(
 
 
 async def test_validator(
-    db: InfrahubDatabase, branch: Branch, criticality_schema, criticality_low, criticality_medium
+    db: InfrahubDatabase,
+    branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
 ) -> None:
     await branch.rebase(db=db)
     crit_low = await NodeManager.get_one(id=criticality_low.id, db=db, branch=branch)

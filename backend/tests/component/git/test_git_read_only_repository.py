@@ -107,6 +107,37 @@ async def test_sync_from_remote_existing_ref(git_repo_01_read_only: InfrahubRead
     mock_client.repository_update_commit.assert_not_awaited()
 
 
+@patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock)
+async def test_update_latest_commit_with_annotated_tag(
+    mock_import_objects: AsyncMock,
+    git_upstream_repo_01: dict[str, str | Path],
+    git_repos_dir: Path,
+) -> None:
+    """Verify that update_latest_commit stores the commit SHA, not the tag object SHA, for annotated tags."""
+    upstream = Repo(git_upstream_repo_01["path"])
+    tag_name = "v1.0.0"
+    expected_commit = str(upstream.commit("main"))
+    upstream.create_tag(tag_name, ref="main", message="Release v1.0.0")
+
+    repo = await InfrahubReadOnlyRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        ref=tag_name,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
+    )
+    mock_client = AsyncMock(InfrahubClient)
+    repo.client = mock_client
+
+    await repo.update_latest_commit()
+
+    mock_client.repository_update_commit.assert_awaited_with(
+        branch_name="main", repository_id=repo.id, commit=expected_commit, is_read_only=True
+    )
+
+
 @patch("infrahub.git.tasks.get_client")
 @patch("infrahub.git.tasks.add_tags")
 @patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock)

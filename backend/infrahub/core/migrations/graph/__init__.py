@@ -58,13 +58,15 @@ from .m053_fix_branch_level_zero import Migration053
 from .m054_cleanup_orphaned_nodes import Migration054
 from .m055_remove_webhook_validate_certificates_default import Migration055
 from .m056_update_schema_node_generic_constraints import Migration056
-from .m057_set_coreproposedchange_created_by_on_node import Migration057
-from .m058_link_proposed_changes_to_diff_roots import Migration058
-from .m059_recompute_permission_display_labels import Migration059
-from .m060_template_number_pool_cleanup import Migration060
-from .m061_template_ip_pool_relationship_cleanup import Migration061
-from .m062_remove_generic_generate_template import Migration062
-from .m063_consolidate_duplicate_number_pools import Migration063
+from .m057_deduplicate_schema_nodes import Migration057
+from .m058_remove_profiles_schema_relationships import Migration058
+from .m059_set_coreproposedchange_created_by_on_node import Migration059
+from .m060_link_proposed_changes_to_diff_roots import Migration060
+from .m061_recompute_permission_display_labels import Migration061
+from .m062_template_number_pool_cleanup import Migration062
+from .m063_template_ip_pool_relationship_cleanup import Migration063
+from .m064_remove_generic_generate_template import Migration064
+from .m065_consolidate_duplicate_number_pools import Migration065
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -134,6 +136,8 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration061,
     Migration062,
     Migration063,
+    Migration064,
+    Migration065,
 ]
 
 

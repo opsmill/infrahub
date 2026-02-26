@@ -8,6 +8,7 @@ from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
@@ -20,7 +21,7 @@ from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 
 
-async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
+async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -56,7 +57,11 @@ async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, c
 
 
 async def test_get_one_attribute_with_node_property(
-    db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4, _source=first_account)
@@ -91,7 +96,11 @@ async def test_get_one_attribute_with_node_property(
 
 
 async def test_get_one_attribute_with_flag_property(
-    db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name={"value": "low", "is_protected": True}, level={"value": 4})
@@ -114,7 +123,9 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.color.is_protected is False
 
 
-async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
+async def test_get_one_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -150,7 +161,7 @@ async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_get_one_relationship_with_flag_property(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
@@ -269,7 +280,9 @@ async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branc
         await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.DEVICE, hfid=device_hfid + ["foo"])
 
 
-async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium) -> None:
+async def test_get_many(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low: Node, criticality_medium: Node
+) -> None:
     nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(nodes) == 2
 
@@ -300,7 +313,7 @@ async def test_get_many_with_pagination(
 
 
 async def test_get_many_prefetch(
-    db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch
+    db: InfrahubDatabase, person_jack_tags_main: Node, tag_blue_main: Node, tag_red_main: Node, branch: Branch
 ) -> None:
     nodes = await NodeManager.get_many(
         db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
@@ -361,7 +374,7 @@ async def test_get_many_prefetch_hierarchical(
 
 
 async def test_get_many_branch_agnostic(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+    db: InfrahubDatabase, default_branch: Branch, criticality_low: Node, criticality_medium: Node
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     crit_schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
@@ -447,7 +460,7 @@ async def test_query_no_filter(
 async def test_query_protocol(
     db: InfrahubDatabase,
     default_branch: Branch,
-    criticality_protocol,
+    criticality_protocol: type[CoreNode],
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
@@ -459,7 +472,7 @@ async def test_query_protocol(
 async def test_query_with_filter_string_int(
     db: InfrahubDatabase,
     default_branch: Branch,
-    criticality_schema,
+    criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
@@ -479,7 +492,7 @@ async def test_query_with_filter_string_int(
 async def test_query_filter_with_multiple_values_string_int(
     db: InfrahubDatabase,
     default_branch: Branch,
-    criticality_schema,
+    criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
@@ -493,12 +506,12 @@ async def test_query_filter_with_multiple_values_string_int(
 
 async def test_query_with_filter_bool_rel(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_volt_main,
-    car_yaris_main,
-    car_camry_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    car_camry_main: Node,
     branch: Branch,
 ) -> None:
     car = registry.schema.get(name="TestCar")
@@ -514,12 +527,12 @@ async def test_query_with_filter_bool_rel(
 
 async def test_query_filter_with_multiple_values_rel(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_volt_main,
-    car_yaris_main,
-    car_camry_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    car_camry_main: Node,
     branch: Branch,
 ) -> None:
     car = registry.schema.get(name="TestCar")
@@ -530,12 +543,12 @@ async def test_query_filter_with_multiple_values_rel(
 
 async def test_qeury_with_multiple_values_invalid_type(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_volt_main,
-    car_yaris_main,
-    car_camry_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    car_camry_main: Node,
     branch: Branch,
 ) -> None:
     car = registry.schema.get(name="TestCar")
@@ -577,7 +590,7 @@ async def test_query_class_name(
     assert len(nodes) == 2
 
 
-async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_branch) -> None:
+async def test_identify_node_class(db: InfrahubDatabase, car_schema: NodeSchema, default_branch: Branch) -> None:
     node = NodeToProcess(
         schema=car_schema,
         node_id=33,
@@ -608,7 +621,7 @@ async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_bra
 
 
 async def test_get_one_local_attribute_with_branch(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
@@ -652,7 +665,7 @@ async def test_get_one_local_attribute_with_branch(
 # ------------------------------------------------------------------------
 
 
-async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12) -> None:
+async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12: dict) -> None:
     branch1 = await registry.get_branch(db=db, branch="branch1")
 
     obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)

@@ -96,7 +96,7 @@ async def data_invalid_lag(db: InfrahubDatabase, device_schema: SchemaRoot, defa
 
 @pytest.fixture
 async def expected_invalid_lag_data_paths(
-    db: InfrahubDatabase, default_branch: Branch, data_invalid_lag, branch: Branch
+    db: InfrahubDatabase, default_branch: Branch, data_invalid_lag: dict[str, Node], branch: Branch
 ) -> set[DataPath]:
     branch_d2_lag = await NodeManager.get_one(db=db, branch=branch, id=data_invalid_lag["d_2_lag"].id)
     d2_lag_members = await branch_d2_lag.members.get_peers(db=db)

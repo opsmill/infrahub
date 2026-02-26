@@ -36,6 +36,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.default_allocator import DefaultPoolAllocator
+from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.templates.node_applier import NodeTemplateApplier
 from infrahub.types import ATTRIBUTE_TYPES
@@ -429,7 +430,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
             )
 
-    async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
+    async def handle_object_template(
+        self, fields: dict, db: InfrahubDatabase, errors: list, process_pools: bool = True
+    ) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
         object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
         if not object_template_field:
@@ -456,7 +459,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             )
             return
 
-        pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch)
+        pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
         applied_fields = await applier.apply(
             template=template, target_schema=self._schema, target_id=self.id, user_fields=fields
@@ -506,7 +509,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         # Backfill fields with the ones from the template if there's one
-        await self.handle_object_template(fields=fields, db=db, errors=errors)
+        await self.handle_object_template(fields=fields, db=db, errors=errors, process_pools=process_pools)
 
         if not self._existing:
             (
