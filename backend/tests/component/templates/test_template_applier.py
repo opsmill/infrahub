@@ -13,8 +13,8 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
-from infrahub.pools.allocator import PoolAllocator
 from infrahub.pools.default_allocator import DefaultPoolAllocator
+from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.templates.node_applier import NodeTemplateApplier
 from tests.constants import TestKind
 from tests.helpers.schema import TAG, load_schema
@@ -24,16 +24,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-
-class NoOpPoolAllocator(PoolAllocator):
-    """Test pool allocator that skips all allocations (because we don't care here)."""
-
-    async def allocate_for_attribute(self, *args: Any, **kwargs: Any) -> Any | None:
-        return None
-
-    async def allocate_for_relationship(self, *args: Any, **kwargs: Any) -> Node | None:
-        return None
 
 
 @dataclass

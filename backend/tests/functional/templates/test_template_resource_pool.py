@@ -415,6 +415,59 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         assert updated["primary_address"]["node"] is None
         assert updated["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
 
+    @pytest.fixture(scope="class")
+    async def small_prefix(self, db: InfrahubDatabase, ip_namespace: Node, ip_prefix: Node) -> Node:
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="10.20.30.0/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=False)
+        await prefix.save(db=db)
+        return prefix
+
+    @pytest.fixture(scope="class")
+    async def small_pool(self, db: InfrahubDatabase, ip_namespace: Node, small_prefix: Node) -> Node:
+        pool = await Node.init(db=db, schema=InfrahubKind.IPADDRESSPOOL)
+        await pool.new(
+            db=db,
+            name="small-address-pool",
+            resources=[small_prefix],
+            ip_namespace=ip_namespace,
+            default_address_type="IpamIPAddress",
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture(scope="class")
+    async def template_with_small_pool(self, db: InfrahubDatabase, small_pool: Node, device_schema: None) -> Node:
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(db=db, template_name="device-small-pool", primary_address_from_resource_pool=small_pool)
+        await template.save(db=db)
+        return template
+
+    async def test_pool_template_performs_correct_allocations(
+        self, db: InfrahubDatabase, template_with_small_pool: Node, small_prefix: Node, client: InfrahubClient
+    ) -> None:
+        """With an IPv4 /30 creating 2 devices must both succeed."""
+        addresses = list(small_prefix.prefix.obj.hosts())
+        for i in range(2):
+            result = await client.execute_graphql(
+                query=CREATE_DEVICE_FROM_TEMPLATE,
+                variables={"name": f"device-small-pool-{i}", "template_id": template_with_small_pool.id},
+            )
+            device_id = result["InfraDeviceCreate"]["object"]["id"]
+            device = await NodeManager.get_one(id=device_id, db=db)
+            addr_peer = await device.primary_address.get_peer(db=db)
+            assert addr_peer is not None
+            assert addr_peer.address.obj.ip == addresses[i]
+
+    async def test_small_pool_exhausts_after_exact_capacity(
+        self, template_with_small_pool: Node, client: InfrahubClient
+    ) -> None:
+        """After 2 allocations from an IPv4 /30, the pool should be exhausted."""
+        with pytest.raises(GraphQLError, match=r"no more addresses available"):
+            await client.execute_graphql(
+                query=CREATE_DEVICE_FROM_TEMPLATE,
+                variables={"name": "device-small-pool-overflow", "template_id": template_with_small_pool.id},
+            )
+
 
 class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     @pytest.fixture(scope="class")
