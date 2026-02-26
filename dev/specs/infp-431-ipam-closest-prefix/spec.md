@@ -17,9 +17,10 @@ A network engineer needs to create a new IP address (e.g., 10.1.2.45) in Infrahu
 
 **Acceptance Scenarios**:
 
-1. **Given** prefixes 10.0.0.0/8, 10.1.0.0/16, and 10.1.2.0/24 exist in the system, **When** the user searches for "10.1.2.45" in search anywhere, **Then** all three containing prefixes are returned, ordered from most specific (10.1.2.0/24) to least specific (10.0.0.0/8), each showing its namespace.
-2. **Given** no prefix contains the searched IP address, **When** the user searches for "192.168.1.1" and no matching prefix exists, **Then** the system returns no results (empty state) with an appropriate message.
-3. **Given** the same IP address exists within prefixes in multiple namespaces, **When** the user searches for that IP address, **Then** results from all namespaces are returned, each clearly labeled with its namespace.
+1. **Given** prefixes 10.0.0.0/8, 10.1.0.0/16, and 10.1.2.0/24 exist in the system, **When** the user searches for "10.1.2.45" in search anywhere, **Then** all three containing prefixes are returned in a dedicated "Parent Prefixes" section, ordered from most specific (10.1.2.0/24) to least specific (10.0.0.0/8), each showing its namespace.
+2. **Given** an IP address object 10.1.2.45 already exists in the system within prefix 10.1.2.0/24, **When** the user searches for "10.1.2.45" in search anywhere, **Then** the existing IP address object is returned in the regular search results (existing behavior, unchanged) AND the containing parent prefixes are returned in the dedicated "Parent Prefixes" section.
+3. **Given** no prefix contains the searched IP address, **When** the user searches for "192.168.1.1" and no matching prefix exists, **Then** the "Parent Prefixes" section shows no results (empty state) with an appropriate message. Regular search results may still appear if there are text matches.
+4. **Given** the same IP address exists within prefixes in multiple namespaces, **When** the user searches for that IP address, **Then** results from all namespaces are returned, each clearly labeled with its namespace.
 
 ---
 
@@ -79,7 +80,7 @@ After finding the parent prefix via search, the user clicks on the prefix result
 
 ### Functional Requirements
 
-- **FR-001**: System MUST detect when a search query is a valid IP address (IPv4 or IPv6) or CIDR prefix notation and route it exclusively to the parent prefix lookup, replacing text search entirely for that query.
+- **FR-001**: System MUST detect when a search query is a valid IP address (IPv4 or IPv6) or CIDR prefix notation and trigger the parent prefix lookup in addition to the existing text search. Both the regular search results and the parent prefix results are displayed.
 - **FR-002**: System MUST return all prefixes that contain the searched IP address or prefix, across all IP namespaces, with no cap on result count.
 - **FR-003**: System MUST order results by prefix specificity, with the most specific (longest) prefix first.
 - **FR-004**: System MUST display the namespace for each returned prefix result so users can distinguish between overlapping IP spaces.
@@ -90,6 +91,7 @@ After finding the parent prefix via search, the user clicks on the prefix result
 - **FR-009**: System MUST allow users to click on a prefix result to navigate to the prefix detail page.
 - **FR-010**: The parent prefix lookup MUST NOT degrade the performance of existing text search queries. Non-IP search queries must follow the same execution path as before.
 - **FR-011**: The parent prefix lookup MUST respect the user's currently active branch context, returning only prefixes visible on that branch (consistent with existing search behavior).
+- **FR-012**: All existing search anywhere behavior MUST remain unchanged. The parent prefix lookup is purely additive — it adds a new results section when an IP/prefix is detected but MUST NOT alter, remove, or interfere with any other search results, result ordering, or UI behavior.
 
 ### Key Entities
 
@@ -115,7 +117,9 @@ After finding the parent prefix via search, the user clicks on the prefix result
 
 - Q: Should the parent prefix lookup respect the user's current branch context? → A: Yes, lookup searches prefixes on the active branch only (same as existing search behavior).
 - Q: Should there be a maximum number of parent prefixes returned? → A: No cap; return all containing prefixes, ordered most specific first.
-- Q: When an IP is detected, should text search results also be shown alongside prefix lookup results? → A: No; prefix lookup replaces text search entirely when an IP/prefix is detected.
+- Q: When an IP is detected, should text search results also be shown alongside prefix lookup results? → A: Yes; regular text search results (including existing IP address object matches) remain unchanged. The parent prefix lookup adds a dedicated section alongside the existing results.
+- Q: What happens when a user searches for a valid IP address that already exists as an IP address object in the system? → A: The existing IP address object appears in the regular search results (existing behavior, unchanged), and the containing parent prefixes appear in the new dedicated "Parent Prefixes" section.
+- Q: Should any other existing search anywhere behavior be altered by this feature? → A: No. This feature is purely additive. All existing search behavior, result types, ordering, and UI must remain unchanged.
 
 ## Assumptions
 
