@@ -81,6 +81,17 @@ query GetDiffTreeSummary($branch: String){
 }
 """
 
+DIFF_UPDATE_MUTATION = """
+mutation($branch: String!) {
+    DiffUpdate(
+        data: { branch: $branch },
+        wait_until_completion: true
+    ) {
+        ok
+    }
+}
+"""
+
 
 @pytest.fixture
 async def diff_branch(db: InfrahubDatabase, default_branch: Branch) -> Branch:
@@ -224,3 +235,53 @@ async def test_diff_tree_summary_merged_branch(
     assert summary["base_branch"] == default_branch.name
     assert summary["diff_branch"] == diff_branch.name
     assert summary["num_updated"] == 1
+
+
+async def test_diff_update_mutation_on_merged_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_low: Node,
+    diff_branch: Branch,
+    diff_coordinator: DiffCoordinator,
+    diff_repository: DiffRepository,
+) -> None:
+    """DiffUpdate mutation on a merged branch should succeed without recalculating."""
+    branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
+    branch_crit.color.value = "#abcdef"
+    await branch_crit.save(db=db)
+
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+    await _merge_branch(db=db, diff_branch=diff_branch, diff_repository=diff_repository)
+
+    # capture diff metadata before the mutation
+    pre_metadata = await diff_repository.get_roots_metadata(
+        diff_branch_names=[diff_branch.name],
+        tracking_id=BranchTrackingId(name=diff_branch.name),
+        exclude_merged=False,
+    )
+    assert len(pre_metadata) == 1
+
+    default_branch.update_schema_hash()
+    params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=params.schema,
+        source=DIFF_UPDATE_MUTATION,
+        context_value=params.context,
+        root_value=None,
+        variable_values={"branch": diff_branch.name},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["DiffUpdate"]["ok"] is True
+
+    # verify diff timestamps are unchanged after update
+    post_metadata = await diff_repository.get_roots_metadata(
+        diff_branch_names=[diff_branch.name],
+        tracking_id=BranchTrackingId(name=diff_branch.name),
+        exclude_merged=False,
+    )
+    assert len(post_metadata) == 1
+    assert post_metadata[0].uuid == pre_metadata[0].uuid
+    assert post_metadata[0].from_time == pre_metadata[0].from_time
+    assert post_metadata[0].to_time == pre_metadata[0].to_time
