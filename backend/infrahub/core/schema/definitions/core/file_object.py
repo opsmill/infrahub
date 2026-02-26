@@ -16,6 +16,7 @@ core_file_object = GenericSchema(
             description="The name of the file as uploaded by the user",
             read_only=True,
             optional=False,
+            order_weight=99990,
             allow_override=AllowOverrideType.NONE,
         ),
         Attr(
@@ -24,6 +25,7 @@ core_file_object = GenericSchema(
             description="SHA-1 checksum calculated on the uploaded file",
             read_only=True,
             optional=False,
+            order_weight=99991,
             allow_override=AllowOverrideType.NONE,
         ),
         Attr(
@@ -32,6 +34,7 @@ core_file_object = GenericSchema(
             description="The size of the file in bytes",
             read_only=True,
             optional=False,
+            order_weight=99992,
             allow_override=AllowOverrideType.NONE,
         ),
         Attr(
@@ -40,6 +43,7 @@ core_file_object = GenericSchema(
             description="The MIME type of the file",
             read_only=True,
             optional=False,
+            order_weight=99993,
             allow_override=AllowOverrideType.NONE,
         ),
         Attr(
@@ -48,6 +52,7 @@ core_file_object = GenericSchema(
             description="The ID of the uploaded file in Infrahub's storage",
             read_only=True,
             optional=False,
+            order_weight=99994,
             allow_override=AllowOverrideType.NONE,
         ),
     ],
