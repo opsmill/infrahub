@@ -13,7 +13,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query(
-    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=branch)
     await person.new(db=db, name="Alfred", height=160)
@@ -43,7 +43,7 @@ async def test_query(
 
 
 async def test_validator(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Alfred", height=160)
