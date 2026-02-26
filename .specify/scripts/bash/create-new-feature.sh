@@ -306,33 +306,23 @@ if [ -z "$BRANCH_NUMBER" ]; then
     fi
 fi
 
-# Determine initials
-if [ -z "$INITIALS" ]; then
-    if [ "$HAS_GIT" = true ]; then
-        INITIALS=$(get_git_initials)
-        if [ -z "$INITIALS" ]; then
-            echo "Error: Could not determine initials." >&2
-            echo "Set OPSMILL_GIT_USER_SHORT, git config user.name, or use --initials <initials>" >&2
-            exit 1
-        fi
-    else
-        echo "Error: No git available and --initials not provided." >&2
-        echo "Use --initials <initials> to specify manually." >&2
-        exit 1
-    fi
+# If BRANCH_NUMBER is a ticket ID (e.g., infp-460, ifc-2140), use it as-is.
+# Otherwise zero-pad as a 3-digit integer (legacy numeric mode).
+if [[ "$BRANCH_NUMBER" =~ ^[a-z]+-[0-9]+$ ]]; then
+    FEATURE_NUM="$BRANCH_NUMBER"
+else
+    # Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)
+    FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
 fi
-
-# Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)
-FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
-BRANCH_NAME="${INITIALS}-${FEATURE_NUM}-${BRANCH_SUFFIX}"
+BRANCH_NAME="${FEATURE_NUM}-${BRANCH_SUFFIX}"
 
 # GitHub enforces a 244-byte limit on branch names
 # Validate and truncate if necessary
 MAX_BRANCH_LENGTH=244
 if [ ${#BRANCH_NAME} -gt $MAX_BRANCH_LENGTH ]; then
     # Calculate how much we need to trim from suffix
-    # Account for: initials (variable) + hyphen (1) + feature number (3) + hyphen (1)
-    PREFIX_LENGTH=$(( ${#INITIALS} + 1 + 3 + 1 ))
+    # Account for: feature number (variable) + hyphen (1)
+    PREFIX_LENGTH=$(( ${#FEATURE_NUM} + 1 ))
     MAX_SUFFIX_LENGTH=$((MAX_BRANCH_LENGTH - PREFIX_LENGTH))
 
     # Truncate suffix at word boundary if possible
@@ -341,7 +331,7 @@ if [ ${#BRANCH_NAME} -gt $MAX_BRANCH_LENGTH ]; then
     TRUNCATED_SUFFIX=$(echo "$TRUNCATED_SUFFIX" | sed 's/-$//')
 
     ORIGINAL_BRANCH_NAME="$BRANCH_NAME"
-    BRANCH_NAME="${INITIALS}-${FEATURE_NUM}-${TRUNCATED_SUFFIX}"
+    BRANCH_NAME="${FEATURE_NUM}-${TRUNCATED_SUFFIX}"
 
     >&2 echo "[specify] Warning: Branch name exceeded GitHub's 244-byte limit"
     >&2 echo "[specify] Original: $ORIGINAL_BRANCH_NAME (${#ORIGINAL_BRANCH_NAME} bytes)"
@@ -365,11 +355,10 @@ if [ -f "$TEMPLATE" ]; then cp "$TEMPLATE" "$SPEC_FILE"; else touch "$SPEC_FILE"
 export SPECIFY_FEATURE="$BRANCH_NAME"
 
 if $JSON_MODE; then
-    printf '{"BRANCH_NAME":"%s","SPEC_FILE":"%s","FEATURE_NUM":"%s","INITIALS":"%s"}\n' "$BRANCH_NAME" "$SPEC_FILE" "$FEATURE_NUM" "$INITIALS"
+    printf '{"BRANCH_NAME":"%s","SPEC_FILE":"%s","FEATURE_NUM":"%s"}\n' "$BRANCH_NAME" "$SPEC_FILE" "$FEATURE_NUM"
 else
     echo "BRANCH_NAME: $BRANCH_NAME"
     echo "SPEC_FILE: $SPEC_FILE"
     echo "FEATURE_NUM: $FEATURE_NUM"
-    echo "INITIALS: $INITIALS"
     echo "SPECIFY_FEATURE environment variable set to: $BRANCH_NAME"
 fi
