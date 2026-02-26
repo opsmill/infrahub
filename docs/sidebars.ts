@@ -59,7 +59,6 @@ const sidebars: SidebarsConfig = {
             type: 'generated-index',
           },
           items: [
-            // 'guides/development-setup', // TODO: file was deleted, needs to be restored or removed
             'guides/installation',
             'guides/production-deployment',
             'guides/configuration-changes',
