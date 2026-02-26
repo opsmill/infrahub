@@ -24,7 +24,9 @@ class Migration070(ArbitraryMigration):
             query="""
             MATCH (av:AttributeValueIndexed)
             WHERE av.value_lower IS NULL
-            SET av.value_lower = toLower(toString(av.value))
+            CALL (av) {
+                SET av.value_lower = toLower(toString(av.value))
+            } IN TRANSACTIONS
             """,
             name="backfill_value_lower",
         )

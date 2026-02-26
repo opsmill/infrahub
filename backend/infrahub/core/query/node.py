@@ -337,20 +337,14 @@ class NodeCreateAllQuery(NodeQuery):
             )
         }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
 
-        indexed_prop = {
-            "value": "attr.content.value",
-            "is_default": "attr.content.is_default",
-            "value_lower": "attr.content.value_lower",
-        }
-        indexed_prop_list = [f"{key}: {value}" for key, value in indexed_prop.items()]
-
         attrs_indexed_query = """
         WITH distinct n
         UNWIND $attrs_indexed AS attr
         CALL (n, attr) {
             CREATE (a:Attribute %(attr_vertex)s)
             CREATE (n)-[:HAS_ATTRIBUTE %(attr_edge)s]->(a)
-            MERGE (av:AttributeValue:AttributeValueIndexed { %(indexed_prop)s })
+            MERGE (av:AttributeValue:AttributeValueIndexed {
+                value: attr.content.value, is_default: attr.content.is_default, value_lower: attr.content.value_lower })
             WITH av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
@@ -364,11 +358,7 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {
-            "attr_edge": attr_edge_prop_str,
-            "attr_vertex": attr_vertex_prop_str,
-            "indexed_prop": ", ".join(indexed_prop_list),
-        }
+        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
 
         attrs_iphost_query = """
         WITH distinct n
@@ -2271,19 +2261,12 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params.update(branch_params)
 
         if self.case_insensitive:
-            # Case-insensitive matching using pre-computed value_lower property (TEXT indexed).
-            # Falls back to toLower(toString(av.value)) for nodes not yet migrated (value_lower IS NULL).
+            # Case-insensitive matching using pre-computed value_lower property (TEXT indexed)
             self.params["search_value"] = self.search_value.lower()
             if self.partial_match:
-                search_predicate = (
-                    "(av.value_lower CONTAINS $search_value"
-                    " OR (av.value_lower IS NULL AND toLower(toString(av.value)) CONTAINS $search_value))"
-                )
+                search_predicate = "av.value_lower CONTAINS $search_value"
             else:
-                search_predicate = (
-                    "(av.value_lower = $search_value"
-                    " OR (av.value_lower IS NULL AND toLower(toString(av.value)) = $search_value))"
-                )
+                search_predicate = "av.value_lower = $search_value"
         else:
             # Case-sensitive: exact match on the original value only
             self.params["search_value"] = self.search_value

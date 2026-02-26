@@ -127,6 +127,73 @@ async def test_query_NodeGetListByAttributeValueQuery_case_insensitive(
     assert results[0].uuid == person_john_main.id
 
 
+async def test_query_NodeGetListByAttributeValueQuery_case_sensitive(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    branch: Branch,
+) -> None:
+    """Test case-sensitive search only matches exact casing."""
+    # "john" should NOT match "John" in case-sensitive mode
+    query = await NodeGetListByAttributeValueQuery.init(
+        db=db,
+        branch=branch,
+        search_value="john",
+        partial_match=True,
+        case_insensitive=False,
+    )
+    await query.execute(db=db)
+    results = list(query.get_data())
+    assert len(results) == 0
+
+    # "John" should match "John" in case-sensitive mode
+    query = await NodeGetListByAttributeValueQuery.init(
+        db=db,
+        branch=branch,
+        search_value="John",
+        partial_match=True,
+        case_insensitive=False,
+    )
+    await query.execute(db=db)
+    results = list(query.get_data())
+    assert len(results) == 1
+    assert results[0].uuid == person_john_main.id
+
+
+async def test_query_NodeGetListByAttributeValueQuery_case_insensitive_exact(
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    branch: Branch,
+) -> None:
+    """Test case-insensitive exact match."""
+    # "john" should match "John" exactly in case-insensitive mode
+    query = await NodeGetListByAttributeValueQuery.init(
+        db=db,
+        branch=branch,
+        search_value="john",
+        partial_match=False,
+        case_insensitive=True,
+    )
+    await query.execute(db=db)
+    results = list(query.get_data())
+    assert len(results) == 1
+    assert results[0].uuid == person_john_main.id
+
+    # "JOHN" should also match
+    query = await NodeGetListByAttributeValueQuery.init(
+        db=db,
+        branch=branch,
+        search_value="JOHN",
+        partial_match=False,
+        case_insensitive=True,
+    )
+    await query.execute(db=db)
+    results = list(query.get_data())
+    assert len(results) == 1
+    assert results[0].uuid == person_john_main.id
+
+
 async def test_query_NodeGetListByAttributeValueQuery_filter_by_kind(
     db: InfrahubDatabase,
     person_john_main: Node,
