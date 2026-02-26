@@ -25,7 +25,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
         return registry.schema.register_schema(schema=schema_with_lag, branch=registry.default_branch)
 
     @pytest.fixture
-    async def device_1(self, db: InfrahubDatabase, schema) -> Node:
+    async def device_1(self, db: InfrahubDatabase, schema: None) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
         await device.save(db=db)
@@ -42,7 +42,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
         return device
 
     @pytest.fixture
-    async def device_2(self, db: InfrahubDatabase, schema) -> Node:
+    async def device_2(self, db: InfrahubDatabase, schema: None) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
         await device.save(db=db)
@@ -101,7 +101,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
         return registry.schema.register_schema(schema=schema_with_lag, branch=registry.default_branch)
 
     @pytest.fixture
-    async def device_1(self, db: InfrahubDatabase, schema) -> Node:
+    async def device_1(self, db: InfrahubDatabase, schema: None) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Foo", manufacturer="Foo Inc.", weight=10, airflow="Front to rear")
         await device.save(db=db)
@@ -118,7 +118,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
         return device
 
     @pytest.fixture
-    async def device_2(self, db: InfrahubDatabase, schema) -> Node:
+    async def device_2(self, db: InfrahubDatabase, schema: None) -> Node:
         device = await Node.init(db=db, schema=TestKind.DEVICE)
         await device.new(db=db, name="Bar", manufacturer="Bar Inc.", weight=10, airflow="Front to rear")
         await device.save(db=db)
