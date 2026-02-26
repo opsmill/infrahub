@@ -4666,10 +4666,11 @@ async def test_manage_object_templates_component_relationship_to_excluded_kind()
 
 
 async def test_generic_schema_with_restricted_namespace_fails_if_required(
-    incorrect_schema_generic_with_namespace_restriction,
-):
-    # Arrange
-    test_schema: SchemaRoot = copy.deepcopy(incorrect_schema_generic_with_namespace_restriction)
+    correct_schema_generic_with_namespace_restriction,
+) -> None:
+    # Retrieve the schema and make it incorrect
+    test_schema: SchemaRoot = correct_schema_generic_with_namespace_restriction
+    test_schema.nodes[0].namespace = "NotACorrectNamespace"
 
     schema: SchemaBranch = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=test_schema)
@@ -4678,16 +4679,15 @@ async def test_generic_schema_with_restricted_namespace_fails_if_required(
     with pytest.raises(ValueError) as error:
         schema.validate_restricted_namespaces_from_generic()
 
-    # Assert
-    assert error.type is ValueError
     assert "does not comply with this restriction as its namespace" in str(error.value)
 
 
 async def test_generic_schema_with_empty_restricted_namespace_is_failing(
-    incorrect_schema_generic_with_empty_namespace_restriction,
-):
-    # Arrange
-    test_schema: SchemaRoot = copy.deepcopy(incorrect_schema_generic_with_empty_namespace_restriction)
+    correct_schema_generic_with_namespace_restriction,
+) -> None:
+    # Retrieve the schema and make the namespaces allowed list empty
+    test_schema: SchemaRoot = correct_schema_generic_with_namespace_restriction
+    test_schema.generics[0].restricted_namespaces = []
 
     schema: SchemaBranch = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=test_schema)
@@ -4696,19 +4696,14 @@ async def test_generic_schema_with_empty_restricted_namespace_is_failing(
     with pytest.raises(ValueError) as error:
         schema.validate_restricted_namespaces_from_generic()
 
-    # Assert
-    assert error.type is ValueError
     assert "does not comply with this restriction as its namespace" in str(error.value)
 
 
 async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
     correct_schema_generic_with_namespace_restriction,
-):
-    # Arrange
-    test_schema: SchemaRoot = copy.deepcopy(correct_schema_generic_with_namespace_restriction)
-
+) -> None:
     schema: SchemaBranch = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=test_schema)
+    schema.load_schema(schema=correct_schema_generic_with_namespace_restriction)
 
     # Act
     try:
@@ -4727,8 +4722,7 @@ async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
 
 async def test_schema_loading_when_node_inherits_from_core_repository(
     incorrect_schema_inherits_from_generic_core_repository,
-):
-    # Arrange
+) -> None:
     test_schema: SchemaRoot = copy.deepcopy(incorrect_schema_inherits_from_generic_core_repository)
     generic_schemas: list[GenericSchema] = core_models_mixed["generics"]
 
@@ -4747,8 +4741,4 @@ async def test_schema_loading_when_node_inherits_from_core_repository(
     with pytest.raises(ValueError) as error:
         schema.validate_restricted_namespaces_from_generic()
 
-    # Assert
-    assert error.type is ValueError
-    assert "Generic node 'CoreGenericRepository' on branch 'test' has restricted namespaces: ['Core']" in str(
-        error.value
-    )
+    assert "Generic node 'CoreGenericRepository' has restricted namespaces: ['Core']" in str(error.value)

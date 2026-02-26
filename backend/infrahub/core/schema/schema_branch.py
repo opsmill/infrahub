@@ -1165,16 +1165,16 @@ class SchemaBranch:
         """Ensure that every node which inherit from a generic node containing restricted namespaces are following on
         the rules"""
         for name in self.nodes:
-            node: MainSchemaTypes = self.get(name=name, duplicate=False)
+            node = self.get_node(name=name, duplicate=False)
 
             for generic_name in node.inherit_from:
-                generic_name_node: MainSchemaTypes = self.get(name=generic_name, duplicate=False)
+                generic_name_node = self.get_generic(name=generic_name, duplicate=False)
                 if (
                     generic_name_node.restricted_namespaces is not None
                     and node.namespace not in generic_name_node.restricted_namespaces
                 ):
                     raise ValueError(
-                        f"Generic node '{generic_name}' on branch '{self.name}' has restricted namespaces: "
+                        f"Generic node '{generic_name}' has restricted namespaces: "
                         f"{generic_name_node.restricted_namespaces}. The node '{name}' does not comply "
                         f"with this restriction as its namespace is '{node.namespace}'."
                     )
