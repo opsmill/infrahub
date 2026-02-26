@@ -415,9 +415,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if not allocate_resources:
             return
 
-        if not allocate_resources:
-            return
-
         if (
             number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
             and number_pool.node_attribute.value == attribute.name
