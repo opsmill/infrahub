@@ -1,9 +1,8 @@
-# Display Labels and Human Friendly IDs
+# Display Labels and Human-Friendly IDs
 
 > Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [architecture.md](architecture.md)
 
-Display labels and HFIDs are computed node properties backed by Jinja2 templates (display labels) or schema path lists (HFIDs). They depend on attributes and relationship peer attributes, requiring special handling during relationship resolution.
-
+Display labels and HFIDs are computed node properties. Display labels use Jinja2 templates; HFIDs use schema path lists.
 ## Schema Definition
 
 On `BaseNodeSchema`:

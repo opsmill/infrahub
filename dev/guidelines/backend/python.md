@@ -63,6 +63,8 @@ def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 
 # ✅ Good - deferred under TYPE_CHECKING
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 

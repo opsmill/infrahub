@@ -827,7 +827,7 @@ async def test_upsert_preserves_relationship_display_label(
         root_value=None,
         variable_values={},
     )
-    await _basic_asserts(result_create)
+    _basic_asserts(result_create)
     assert result_create.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
     tshirt_id = result_create.data["TestingTShirtUpsert"]["object"]["id"]
 
@@ -843,13 +843,13 @@ async def test_upsert_preserves_relationship_display_label(
         root_value=None,
         variable_values={},
     )
-    await _basic_asserts(result_upsert)
+    _basic_asserts(result_upsert)
     assert result_upsert.data["TestingTShirtUpsert"]["object"]["id"] == tshirt_id
     # display_label should still be "Classic Red"
     assert result_upsert.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
 
 
-async def _basic_asserts(result_upsert: ExecutionResult):
+def _basic_asserts(result_upsert: ExecutionResult) -> None:
     assert result_upsert.errors is None
     assert result_upsert.data
     assert result_upsert.data["TestingTShirtUpsert"]["ok"] is True
