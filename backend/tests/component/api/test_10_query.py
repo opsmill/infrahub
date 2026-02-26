@@ -17,12 +17,13 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
 async def base_authentication(
-    db: InfrahubDatabase, default_branch: Branch, create_test_admin, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, create_test_admin: Node, register_core_models_schema: SchemaBranch
 ) -> None:
     pass
 
@@ -30,10 +31,10 @@ async def base_authentication(
 async def test_query_endpoint_group_no_params(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     create_test_admin: Node,
     default_branch: Branch,
-    car_person_data,
+    car_person_data: dict[str, Node],
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with (
@@ -88,10 +89,10 @@ async def test_query_endpoint_group_no_params(
 async def test_query_endpoint_group_params(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
     create_test_admin: Node,
-    car_person_data,
+    car_person_data: dict[str, Node],
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with (
@@ -135,7 +136,12 @@ async def test_query_endpoint_group_params(
 
 
 async def test_query_endpoint_get_default_branch(
-    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch, create_test_admin, car_person_data
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data: dict[str, Node],
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -155,10 +161,10 @@ async def test_query_endpoint_get_default_branch(
 async def test_query_endpoint_post_no_payload(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
-    default_branch,
-    car_person_data,
-    base_authentication,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_data: dict[str, Node],
+    base_authentication: None,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -181,10 +187,10 @@ async def test_query_endpoint_post_no_payload(
 async def test_query_endpoint_post_with_params(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
-    default_branch,
-    car_person_data,
-    base_authentication,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_data: dict[str, Node],
+    base_authentication: None,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -202,11 +208,11 @@ async def test_query_endpoint_post_with_params(
 async def test_query_endpoint_branch1(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
-    default_branch,
-    create_test_admin,
-    car_person_data,
-    authentication_base,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data: dict[str, Node],
+    authentication_base: Node,
 ) -> None:
     await create_branch(branch_name="branch1", db=db)
 
@@ -228,10 +234,10 @@ async def test_query_endpoint_branch1(
 async def test_query_endpoint_wrong_query(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
-    default_branch,
-    car_person_schema,
-    register_core_models_schema,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -246,10 +252,10 @@ async def test_query_endpoint_wrong_query(
 async def test_query_endpoint_wrong_branch(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
-    default_branch,
-    car_person_schema,
-    register_core_models_schema,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -289,7 +295,11 @@ async def test_query_endpoint_missing_privs(
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_query_endpoint_anonymous_account(
-    db: InfrahubDatabase, client: TestClient, default_branch, car_person_data, allow_anonymous_access: bool
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    car_person_data: dict[str, Node],
+    allow_anonymous_access: bool,
 ) -> None:
     config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 

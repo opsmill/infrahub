@@ -981,19 +981,7 @@ allow-dunder-method-names = [
 # backend/tests/component/. Split from the broad section above to allow incremental fixes.       #
 # Remove each entry below once all ANN001 violations in that path have been resolved.            #
 ##################################################################################################
-# backend/tests/component/api/ (271 violations)
 "backend/tests/component/api/test_40_schema.py" = ["ANN001"]                   # 77 violations
-"backend/tests/component/api/test_10_query.py" = ["ANN001"]                    # 33 violations
-"backend/tests/component/api/test_11_artifact.py" = ["ANN001"]                 # 32 violations
-"backend/tests/component/api/test_00_auth.py" = ["ANN001"]                     # 27 violations
-"backend/tests/component/api/test_20_graphql.py" = ["ANN001"]                  # 21 violations
-"backend/tests/component/api/test_15_diff.py" = ["ANN001"]                     # 18 violations
-"backend/tests/component/api/conftest.py" = ["ANN001"]                         # 16 violations
-"backend/tests/component/api/test_50_internals.py" = ["ANN001"]                # 13 violations
-"backend/tests/component/api/test_01_auth_cookies.py" = ["ANN001"]             # 12 violations
-"backend/tests/component/api/test_12_file.py" = ["ANN001"]                     # 9 violations
-"backend/tests/component/api/test_03_menu.py" = ["ANN001"]                     # 7 violations
-"backend/tests/component/api/test_60_storage.py" = ["ANN001"]                  # 6 violations
 # backend/tests/component/core/constraint_validators/ (320 violations)
 "backend/tests/component/core/constraint_validators/test_uniqueness_checker.py" = ["ANN001"]              # 47 violations
 "backend/tests/component/core/constraint_validators/test_uniqueness_constraint_query.py" = ["ANN001"]     # 42 violations

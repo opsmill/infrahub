@@ -5,12 +5,17 @@ from fastapi.testclient import TestClient
 
 from infrahub import config
 from infrahub.api import internal
+from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from tests.helpers.fixtures import get_fixtures_dir
 
 
 async def test_config_endpoint(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, register_core_models_schema: None
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: None,
 ) -> None:
     with client:
         response = client.get("/api/config", headers=client_headers)
@@ -35,7 +40,7 @@ async def test_config_endpoint(
 async def test_config_endpoint_anonymous_account(
     db: InfrahubDatabase,
     client: TestClient,
-    default_branch,
+    default_branch: Branch,
     register_core_models_schema: None,
     allow_anonymous_access: bool,
 ) -> None:
@@ -48,7 +53,11 @@ async def test_config_endpoint_anonymous_account(
 
 
 async def test_info_endpoint(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch, register_core_models_schema: None
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: None,
 ) -> None:
     with client:
         response = client.get("/api/info", headers=client_headers)
@@ -63,7 +72,11 @@ async def test_info_endpoint(
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_info_endpoint_anonymous_account(
-    db: InfrahubDatabase, client, default_branch, register_core_models_schema: None, allow_anonymous_access: bool
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    allow_anonymous_access: bool,
 ) -> None:
     config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 
@@ -95,7 +108,7 @@ def no_search_index_path() -> Generator[None, None, None]:
     internal.search_docs_loader = old_search_docs_loader
 
 
-async def test_search_docs(client, override_search_index_path) -> None:
+async def test_search_docs(client: TestClient, override_search_index_path: None) -> None:
     with client:
         response = client.get("/api/search/docs?query=guid")
 
@@ -106,7 +119,7 @@ async def test_search_docs(client, override_search_index_path) -> None:
     assert response_json[0]["title"] == "Guides"
 
 
-async def test_search_docs_limit(client, override_search_index_path) -> None:
+async def test_search_docs_limit(client: TestClient, override_search_index_path: None) -> None:
     with client:
         response = client.get("/api/search/docs?query=a&limit=1")
 
@@ -117,7 +130,7 @@ async def test_search_docs_limit(client, override_search_index_path) -> None:
     assert len(response_json) == 1
 
 
-async def test_no_search_docs(client, no_search_index_path) -> None:
+async def test_no_search_docs(client: TestClient, no_search_index_path: None) -> None:
     with client:
         response = client.get("/api/search/docs?query=guid")
 
