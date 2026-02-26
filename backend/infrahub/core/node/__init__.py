@@ -346,11 +346,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def handle_pool(  # noqa: PLR0911
+    async def handle_pool(
         self,
         db: InfrahubDatabase,
         attribute: BaseAttribute,
-        errors: list[ValidationError],
         allocate_resources: bool = True,
     ) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
@@ -367,7 +366,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Actual allocation happens when creating objects from the template
         if isinstance(self._schema, TemplateSchema):
             if attribute.from_pool:
-                number_pool_id = str(attribute.from_pool["id"])
+                try:
+                    number_pool_id = str(attribute.from_pool["id"])
+                except KeyError as exc:
+                    raise ValidationError(
+                        {f"{attribute.name}.from_pool": "Missing 'id' in from_pool reference."}
+                    ) from exc
                 attribute.source = number_pool_id
                 attribute.value = None
                 allocate_resources = False
@@ -383,20 +387,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         ):
             number_pool_id = attribute.schema.parameters.number_pool_id
             if not number_pool_id:
-                errors.append(
-                    ValidationError(
-                        {f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."}
-                    )
+                raise ValidationError(
+                    {f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."}
                 )
-                return
             attribute.from_pool = {"id": number_pool_id}
             attribute.is_default = False
         # Case 2: User-specified from_pool on a regular Number attribute
         elif not number_pool_id and attribute.from_pool:
             number_pool_id = attribute.from_pool.get("id")
             if not number_pool_id:
-                errors.append(ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."}))
-                return
+                raise ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."})
 
         if not number_pool_id:
             # no pool allocation necessary
@@ -406,13 +406,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             number_pool = await registry.manager.get_one(
                 db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
             )
-        except NodeNotFoundError:
-            errors.append(
-                ValidationError(
-                    {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
-                )
-            )
-            return
+        except NodeNotFoundError as exc:
+            raise ValidationError(
+                {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
+            ) from exc
 
         if not allocate_resources:
             return
@@ -425,21 +422,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 next_free = await number_pool.get_resource(
                     db=db, branch=self._branch, node=self, attribute=attribute.schema
                 )
-            except PoolExhaustedError:
-                errors.append(
-                    ValidationError({f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."})
-                )
-                return
+            except PoolExhaustedError as exc:
+                raise ValidationError(
+                    {f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."}
+                ) from exc
 
             attribute.value = next_free
             attribute.source = number_pool.id
         else:
-            errors.append(
-                ValidationError(
-                    {
-                        f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
-                    }
-                )
+            raise ValidationError(
+                {
+                    f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
+                }
             )
 
     async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
@@ -622,7 +616,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.handle_pool(db=db, attribute=attribute, errors=errors, allocate_resources=process_pools)
+                    await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
 
                     if attr_schema.name in self._profile_provided_attrs:
                         continue

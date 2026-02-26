@@ -120,6 +120,21 @@ mutation CreateTemplateTicketWithPool($pool_id: String!) {
 }
 """
 
+UPDATE_TICKET_WITH_POOL = """
+mutation UpdateTicketWithPool($ticket_id: String!, $pool_id: String!) {
+    TestingTicketUpdate(data: {
+        id: $ticket_id
+        ticket_id: {
+            from_pool: {
+                id: $pool_id
+            }
+        }
+    }) {
+        ok
+    }
+}
+"""
+
 
 @pytest.fixture
 async def prefix_pool_01(
@@ -267,7 +282,32 @@ async def test_create_template_with_invalid_number_pool_id(
     )
 
     assert result.errors
-    assert FAKE_POOL_ID in str(result.errors[0])
+    assert f"The pool requested {{'id': '{FAKE_POOL_ID}'}} was not found." in str(result.errors[0])
+
+
+async def test_update_object_with_invalid_number_pool_id(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Updating an existing node's Number attribute with from_pool referencing a nonexistent pool should fail."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch.update_schema_hash()
+
+    schema = registry.schema.get_node_schema(name="TestingTicket", branch=default_branch)
+    ticket = await Node.init(db=db, schema=schema, branch=default_branch)
+    await ticket.new(db=db, title="existing-ticket", ticket_id=42)
+    await ticket.save(db=db)
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_TICKET_WITH_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"ticket_id": ticket.id, "pool_id": FAKE_POOL_ID},
+    )
+
+    assert result.errors
+    assert f"The pool requested {{'id': '{FAKE_POOL_ID}'}} was not found." in str(result.errors[0])
 
 
 async def test_update_object_and_assign_prefix_from_pool(
