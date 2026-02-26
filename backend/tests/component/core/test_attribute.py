@@ -176,6 +176,7 @@ async def test_validate_iphost_returns(
         "is_default": False,
         "prefixlen": 31,
         "value": "10.0.2.1/31",
+        "value_lower": "10.0.2.1/31",
         "version": 4,
     }
 
@@ -200,6 +201,7 @@ async def test_validate_iphost_returns(
         "is_default": False,
         "prefixlen": 32,
         "value": "2001:db8::/32",
+        "value_lower": "2001:db8::/32",
         "version": 6,
     }
 
@@ -235,6 +237,7 @@ async def test_validate_ipnetwork_returns(
         # "num_addresses": 2,
         "prefixlen": 31,
         "value": "10.0.2.0/31",
+        "value_lower": "10.0.2.0/31",
         "version": 4,
     }
 
@@ -260,6 +263,7 @@ async def test_validate_ipnetwork_returns(
         # "num_addresses": 79228162514264337593543950336,
         "prefixlen": 32,
         "value": "2001:db8::/32",
+        "value_lower": "2001:db8::/32",
         "version": 6,
     }
 
@@ -283,7 +287,7 @@ async def test_validate_mac_address_returns(
     assert test_mac.dot_notation == "6023.6cc4.9f7e"
     assert test_mac.semicolon_notation == "60:23:6c:c4:9f:7e"
     assert test_mac.split_notation == "60236c:c49f7e"
-    assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E"}
+    assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E", "value_lower": "60-23-6c-c4-9f-7e"}
 
     test_mac = MacAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=None)
 

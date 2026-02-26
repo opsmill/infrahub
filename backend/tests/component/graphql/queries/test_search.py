@@ -439,12 +439,12 @@ async def test_search_anywhere_case_sensitive_enabled(
     person_luffy_main: Node,
     branch: Branch,
 ) -> None:
-    """Test search with case_sensitive=True uses the optimized query with case variations."""
+    """Test search with case_sensitive=True does exact case matching on av.value."""
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
 
-    # Search with lowercase "john" when case_sensitive=True still finds "John"
-    # because the query uses case variations (lowercase, UPPERCASE, Title Case)
+    # Search with lowercase "john" when case_sensitive=True should NOT find "John"
+    # because case_sensitive=True uses exact match on av.value
     result_lowercase = await graphql(
         schema=gql_params.schema,
         source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
@@ -455,11 +455,9 @@ async def test_search_anywhere_case_sensitive_enabled(
 
     assert result_lowercase.errors is None
     assert result_lowercase.data
-    assert result_lowercase.data["InfrahubSearchAnywhere"]["count"] == 1
-    assert result_lowercase.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id
+    assert result_lowercase.data["InfrahubSearchAnywhere"]["count"] == 0
 
     # Search with lowercase "luffy" when case_sensitive=True should NOT find "lUffy"
-    # because "lUffy" doesn't match any standard case variation (luffy, LUFFY, Luffy)
     result_luffy = await graphql(
         schema=gql_params.schema,
         source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
@@ -486,7 +484,7 @@ async def test_search_anywhere_case_sensitive_enabled(
     assert result_exact.data["InfrahubSearchAnywhere"]["count"] == 1
     assert result_exact.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_luffy_main.id
 
-    # Search with exact case "John" when case_sensitive=True should also find "John"
+    # Search with exact case "John" when case_sensitive=True should find "John"
     result_exact = await graphql(
         schema=gql_params.schema,
         source=SEARCH_QUERY_WITH_CASE_SENSITIVE,
