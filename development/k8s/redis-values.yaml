@@ -14,7 +14,7 @@ master:
     enabled: true
   service:
     ports:
-      redis: 6379
+      redis: 26379
 replicas:
   replicaCount: 3
   podAntiAffinityPreset: hard

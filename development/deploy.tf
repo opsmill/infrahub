@@ -408,7 +408,7 @@ resource "kubernetes_deployment_v1" "redis_sentinel_proxy_deployment" {
             "-listen",
             ":6379",
             "-sentinel",
-            "redis:26379",
+            "cache-redis:26379",
           ]
           port {
             container_port = 6379
@@ -446,7 +446,7 @@ master:
     enabled: true
   service:
     ports:
-      redis: 6379
+      redis: 26379
 replicas:
   replicaCount: 3
   podAntiAffinityPreset: hard
