@@ -714,6 +714,7 @@ async def test_upsert_with_required_relationship_from_template(
       - Upsert a Tshirt specifying the template (should succeed and apply the color from the template).
     """
     registry.schema.register_schema(schema=SchemaRoot(nodes=[TSHIRT, COLOR]), branch=default_branch.name)
+    default_branch.update_schema_hash()
 
     # Create a color node
     color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)

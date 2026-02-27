@@ -25,6 +25,7 @@ from tests.helpers.graphql import graphql
 from tests.helpers.schema import SNOW_TICKET_SCHEMA, TICKET, load_schema
 
 FAKE_POOL_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+FAKE_POOL_NAME = "nonexistent-pool"
 
 CREATE_PREFIX_FROM_POOL = """
 mutation CreatePrefixFromPool($name: String!, $pool_id: String!) {
@@ -132,6 +133,210 @@ mutation UpdateTicketWithPool($ticket_id: String!, $pool_id: String!) {
     }) {
         ok
     }
+}
+"""
+
+UPDATE_PREFIX_FROM_POOL = """
+mutation UpdatePrefixFromPool($id: String!, $pool_id: String!) {
+    TestMandatoryPrefixUpdate(data: {
+        id: $id
+        prefix: {
+            from_pool: {
+                id: $pool_id
+            }
+        }
+    }) {
+        ok
+        object {
+            name {
+                value
+            }
+            prefix {
+                node {
+                    prefix {
+                        value
+                    }
+                }
+                properties {
+                    source {
+                        id
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+PREFIX_POOL_GET_RESOURCE = """
+mutation PrefixPoolGetResource($pool_id: String!) {
+    InfrahubIPPrefixPoolGetResource(data: {
+        id: $pool_id
+    }) {
+        ok
+        node {
+            kind
+            display_label
+        }
+    }
+}
+"""
+
+PREFIX_POOL_GET_RESOURCE_WITH_IDENTIFIER = """
+mutation PrefixPoolGetResourceWithIdentifier($pool_id: String!, $identifier: String!) {
+    InfrahubIPPrefixPoolGetResource(data: {
+        id: $pool_id
+        identifier: $identifier
+    }) {
+        ok
+        node {
+            id
+            kind
+            display_label
+            identifier
+        }
+    }
+}
+"""
+
+PREFIX_POOL_GET_RESOURCE_WITH_PREFIX_LENGTH = """
+mutation PrefixPoolGetResourceWithPrefixLength($pool_id: String!, $prefix_length: Int!) {
+    InfrahubIPPrefixPoolGetResource(data: {
+        id: $pool_id
+        prefix_length: $prefix_length
+    }) {
+        ok
+        node {
+            kind
+            display_label
+        }
+    }
+}
+"""
+
+ADDRESS_POOL_GET_RESOURCE = """
+mutation AddressPoolGetResource($pool_id: String!) {
+    InfrahubIPAddressPoolGetResource(data: {
+        id: $pool_id
+    }) {
+        ok
+        node {
+            kind
+            display_label
+        }
+    }
+}
+"""
+
+ADDRESS_POOL_GET_RESOURCE_WITH_IDENTIFIER = """
+mutation AddressPoolGetResourceWithIdentifier($pool_id: String!, $identifier: String!) {
+    InfrahubIPAddressPoolGetResource(data: {
+        id: $pool_id
+        identifier: $identifier
+    }) {
+        ok
+        node {
+            id
+            kind
+            display_label
+            identifier
+        }
+    }
+}
+"""
+
+ADDRESS_POOL_GET_RESOURCE_WITH_PREFIX_LENGTH = """
+mutation AddressPoolGetResourceWithPrefixLength($pool_id: String!, $prefix_length: Int!) {
+    InfrahubIPAddressPoolGetResource(data: {
+        id: $pool_id
+        prefix_length: $prefix_length
+    }) {
+        ok
+        node {
+            kind
+            display_label
+        }
+    }
+}
+"""
+
+CREATE_NUMBER_POOL = """
+mutation CreateNumberPool(
+    $name: String!,
+    $node: String!,
+    $node_attribute: String!,
+    $start_range: BigInt!,
+    $end_range: BigInt!
+  ) {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: $name},
+      node:{value: $node},
+      node_attribute: {value: $node_attribute},
+      start_range: {value: $start_range},
+      end_range: {value: $end_range}
+    }
+  ) {
+    object {
+      display_label
+      id
+    }
+  }
+}
+"""
+
+UPDATE_NUMBER_POOL = """
+mutation UpdateNumberPool(
+    $id: String!,
+    $name: String,
+    $node: String,
+    $node_attribute: String,
+    $start_range: BigInt,
+    $end_range: BigInt
+  ) {
+  CoreNumberPoolUpdate(
+    data: {
+      id: $id,
+      name: {value: $name},
+      node:{value: $node},
+      node_attribute: {value: $node_attribute},
+      start_range: {value: $start_range},
+      end_range: {value: $end_range}
+    }
+  ) {
+    object {
+      display_label
+      id
+    }
+  }
+}
+"""
+
+
+DELETE_NUMBER_POOL = """
+mutation DeleteNumberPool(
+    $id: String!,
+  ) {
+  CoreNumberPoolDelete(
+    data: {
+      id: $id,
+    }
+  ) {
+    ok
+  }
+}
+"""
+
+
+QUERY_NUMBER_POOL = """
+query NumberPool(
+    $id: ID!,
+  ) {
+  CoreNumberPool(
+    ids: [$id]
+  ) {
+    count
+  }
 }
 """
 
@@ -322,46 +527,14 @@ async def test_update_object_and_assign_prefix_from_pool(
     await obj.new(db=db, name="site1", prefix=net142)
     await obj.save(db=db)
 
-    query = """
-    mutation {
-        TestMandatoryPrefixUpdate(data: {
-            id: "%s"
-            prefix: {
-                from_pool: {
-                    id: "%s"
-                }
-            }
-        }) {
-            ok
-            object {
-                name {
-                    value
-                }
-                prefix {
-                    node {
-                        prefix {
-                            value
-                        }
-                    }
-                    properties {
-                        source {
-                            id
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """ % (obj.id, pool.id)
-
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=UPDATE_PREFIX_FROM_POOL,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"id": obj.id, "pool_id": pool.id},
     )
 
     assert not result.errors
@@ -468,23 +641,6 @@ async def test_prefix_pool_get_resource(
     )
     await pool.save(db=db)
 
-    query = (
-        """
-    mutation {
-        InfrahubIPPrefixPoolGetResource(data: {
-            id: "%s"
-        }) {
-            ok
-            node {
-                kind
-                display_label
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
@@ -493,10 +649,10 @@ async def test_prefix_pool_get_resource(
     )
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=PREFIX_POOL_GET_RESOURCE,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"pool_id": pool.id},
     )
 
     assert not result.errors
@@ -544,36 +700,16 @@ async def test_prefix_pool_get_resource_with_identifier(
 
     resource = await pool.get_resource(db=db, identifier="myidentifier", branch=default_branch)
 
-    query = (
-        """
-    mutation {
-        InfrahubIPPrefixPoolGetResource(data: {
-            id: "%s"
-            identifier: "myidentifier"
-        }) {
-            ok
-            node {
-                id
-                kind
-                display_label
-                identifier
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=PREFIX_POOL_GET_RESOURCE_WITH_IDENTIFIER,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"pool_id": pool.id, "identifier": "myidentifier"},
     )
 
     assert not result.errors
@@ -617,32 +753,14 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     )
     await pool.save(db=db)
 
-    query = (
-        """
-    mutation {
-        InfrahubIPPrefixPoolGetResource(data: {
-            id: "%s"
-            prefix_length: 31
-        }) {
-            ok
-            node {
-                kind
-                display_label
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=PREFIX_POOL_GET_RESOURCE_WITH_PREFIX_LENGTH,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"pool_id": pool.id, "prefix_length": 31},
     )
 
     assert not result.errors
@@ -678,23 +796,6 @@ async def test_address_pool_get_resource(
     )
     await pool.save(db=db)
 
-    query = (
-        """
-    mutation {
-        InfrahubIPAddressPoolGetResource(data: {
-            id: "%s"
-        }) {
-            ok
-            node {
-                kind
-                display_label
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
@@ -703,10 +804,10 @@ async def test_address_pool_get_resource(
     )
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=ADDRESS_POOL_GET_RESOURCE,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"pool_id": pool.id},
     )
 
     assert not result.errors
@@ -753,34 +854,14 @@ async def test_address_pool_get_resource_with_identifier(
 
     resource = await pool.get_resource(db=db, identifier="myidentifier", branch=default_branch)
 
-    query = (
-        """
-    mutation {
-        InfrahubIPAddressPoolGetResource(data: {
-            id: "%s"
-            identifier: "myidentifier"
-        }) {
-            ok
-            node {
-                id
-                kind
-                display_label
-                identifier
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=ADDRESS_POOL_GET_RESOURCE_WITH_IDENTIFIER,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"pool_id": pool.id, "identifier": "myidentifier"},
     )
 
     assert not result.errors
@@ -817,32 +898,14 @@ async def test_address_pool_get_resource_with_prefix_length(
     )
     await pool.save(db=db)
 
-    query = (
-        """
-    mutation {
-        InfrahubIPAddressPoolGetResource(data: {
-            id: "%s"
-            prefix_length: 32
-        }) {
-            ok
-            node {
-                kind
-                display_label
-            }
-        }
-    }
-    """
-        % pool.id
-    )
-
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=ADDRESS_POOL_GET_RESOURCE_WITH_PREFIX_LENGTH,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"pool_id": pool.id, "prefix_length": 32},
     )
 
     assert not result.errors
@@ -852,87 +915,6 @@ async def test_address_pool_get_resource_with_prefix_length(
         "display_label": "10.10.3.2/32",
         "kind": "IpamIPAddress",
     }
-
-
-CREATE_NUMBER_POOL = """
-mutation CreateNumberPool(
-    $name: String!,
-    $node: String!,
-    $node_attribute: String!,
-    $start_range: BigInt!,
-    $end_range: BigInt!
-  ) {
-  CoreNumberPoolCreate(
-    data: {
-      name: {value: $name},
-      node:{value: $node},
-      node_attribute: {value: $node_attribute},
-      start_range: {value: $start_range},
-      end_range: {value: $end_range}
-    }
-  ) {
-    object {
-      display_label
-      id
-    }
-  }
-}
-"""
-
-UPDATE_NUMBER_POOL = """
-mutation UpdateNumberPool(
-    $id: String!,
-    $name: String,
-    $node: String,
-    $node_attribute: String,
-    $start_range: BigInt,
-    $end_range: BigInt
-  ) {
-  CoreNumberPoolUpdate(
-    data: {
-      id: $id,
-      name: {value: $name},
-      node:{value: $node},
-      node_attribute: {value: $node_attribute},
-      start_range: {value: $start_range},
-      end_range: {value: $end_range}
-    }
-  ) {
-    object {
-      display_label
-      id
-    }
-  }
-}
-"""
-
-
-DELETE_NUMBER_POOL = """
-mutation DeleteNumberPool(
-    $id: String!,
-  ) {
-  CoreNumberPoolDelete(
-    data: {
-      id: $id,
-    }
-  ) {
-    ok
-  }
-}
-"""
-
-
-QUERY_NUMBER_POOL = """
-query NumberPool(
-    $id: ID!,
-  ) {
-  CoreNumberPool(
-    ids: [$id]
-  ) {
-    count
-  }
-}
-"""
 
 
 async def test_test_number_pool_creation_errors(

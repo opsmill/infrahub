@@ -404,9 +404,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return
 
         try:
-            number_pool = await registry.manager.get_one(
-                db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
-            )
+            if is_valid_uuid(number_pool_id):
+                number_pool = await registry.manager.get_one(
+                    db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
+                )
+            else:
+                results = await registry.manager.query(
+                    db=db, schema=InfrahubKind.NUMBERPOOL, filters={"name__value": number_pool_id}
+                )
+                if not results:
+                    raise NodeNotFoundError(node_type=InfrahubKind.NUMBERPOOL, identifier=number_pool_id)
+                number_pool = results[0]
         except NodeNotFoundError as exc:
             raise ValidationError(
                 {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
