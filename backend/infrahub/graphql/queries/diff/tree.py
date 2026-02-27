@@ -490,12 +490,12 @@ class DiffTreeResolver:
                 is_terminal=diff_branch.is_terminal,
             )
         except BranchNotFoundError:
-            # case for a request with a deleted branch and a proposed change ID
-            if not proposed_change_id:
-                raise
-            if not branch:
+            if not branch and not proposed_change_id:
                 raise ValidationError("Must include the branch or proposed_change_id argument") from None
-            return DiffBranchInfo(name=branch, branch_start_timestamp=None, is_terminal=False)
+            # case for deleted branch with an input proposed_change_id
+            if branch:
+                return DiffBranchInfo(name=branch, branch_start_timestamp=None, is_terminal=False)
+            raise
 
     def _get_diff_query_params(
         self,
