@@ -39,6 +39,17 @@ describe("getRelationshipsVisibleInTab", () => {
     expect(result).toEqual(relationships);
   });
 
+  it("should return relationships with kind Profile and cardinality many", () => {
+    // GIVEN
+    const relationships = [generateRelationshipSchema({ kind: "Profile", cardinality: "many" })];
+
+    // WHEN
+    const result = getRelationshipsVisibleInTab(relationships);
+
+    // THEN
+    expect(result).toEqual(relationships);
+  });
+
   it("should return relationships with kind Template and cardinality many", () => {
     // GIVEN
     const relationships = [generateRelationshipSchema({ kind: "Template", cardinality: "many" })];
@@ -76,7 +87,6 @@ describe("getRelationshipsVisibleInTab", () => {
       generateRelationshipSchema({ kind: "Attribute", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Parent", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Group", cardinality: "many" }),
-      generateRelationshipSchema({ kind: "Profile", cardinality: "many" }),
     ];
 
     // WHEN

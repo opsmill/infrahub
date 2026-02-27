@@ -3,9 +3,10 @@ import type { RelationshipKind } from "@/entities/nodes/types";
 import type { RelationshipSchema } from "@/entities/schema/types";
 
 const RELATIONSHIP_KIND_VISIBLE_IN_TAB: Array<RelationshipKind> = [
-  "Generic",
   "Component",
+  "Generic",
   "Hierarchy",
+  "Profile",
   "Template",
 ];
 
