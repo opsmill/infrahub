@@ -68,8 +68,8 @@ class TestMetadataQueries(TestInfrahubApp):
         await jesko.save()
 
         # Get display labels via db since they may be title-cased or formatted differently
-        admin_display_label = await admin_account.get_display_label(db=db)
-        bot_display_label = await bot_account.get_display_label(db=db)
+        admin_display_label = await admin_account.get_display_label()
+        bot_display_label = await bot_account.get_display_label()
 
         return {
             "john_id": john.id,

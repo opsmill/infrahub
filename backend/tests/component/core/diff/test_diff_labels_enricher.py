@@ -20,11 +20,11 @@ async def test_labels_added(
     db: InfrahubDatabase, default_branch, car_yaris_main, person_jane_main, person_alfred_main, person_john_main
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
-    yaris_label_main = await car_yaris_main.get_display_label(db=db)
+    yaris_label_main = await car_yaris_main.get_display_label()
     yaris_branch = await NodeManager.get_one(db=db, branch=branch, id=car_yaris_main.get_id())
     yaris_branch.color.value = "purple"
     await yaris_branch.save(db=db)
-    yaris_label_branch = await yaris_branch.get_display_label(db=db)
+    yaris_label_branch = await yaris_branch.get_display_label()
     alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.get_id())
     await alfred_branch.delete(db=db)
 
@@ -144,7 +144,7 @@ async def test_labels_added(
     assert related_prop_conflict.diff_branch_label == "Jane"
 
     deleted_node = nodes_by_id[person_alfred_main.get_id()]
-    assert deleted_node.label == await person_alfred_main.get_display_label(db=db)
+    assert deleted_node.label == await person_alfred_main.get_display_label()
 
 
 async def test_labels_skipped(db: InfrahubDatabase, default_branch, car_person_schema) -> None:

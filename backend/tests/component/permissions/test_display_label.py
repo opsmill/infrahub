@@ -47,7 +47,7 @@ async def test_global_permission_display_label(
     await permission.new(db=db, action=action.value, decision=decision.value)
     await permission.save(db=db)
 
-    assert await permission.get_display_label(db=db) == expected_label
+    assert await permission.get_display_label() == expected_label
 
 
 @pytest.mark.parametrize(
@@ -109,4 +109,4 @@ async def test_object_permission_display_label(
     await permission.new(db=db, namespace=namespace, name=name, action=action.value, decision=decision.value)
     await permission.save(db=db)
 
-    assert await permission.get_display_label(db=db) == expected_label
+    assert await permission.get_display_label() == expected_label

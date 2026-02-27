@@ -28,7 +28,7 @@ class CoreGlobalPermission(Node):
         )
 
         if fields and "identifier" in fields:
-            response["identifier"] = {"value": await self.get_display_label(db=db)}
+            response["identifier"] = {"value": await self.get_display_label()}
 
         return response
 
@@ -53,6 +53,6 @@ class CoreObjectPermission(Node):
         )
 
         if fields and "identifier" in fields:
-            response["identifier"] = {"value": await self.get_display_label(db=db)}
+            response["identifier"] = {"value": await self.get_display_label()}
 
         return response

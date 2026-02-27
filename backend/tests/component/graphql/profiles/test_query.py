@@ -573,7 +573,7 @@ async def test_is_profile_source_set_correctly(
             "is_from_profile": True,
             "source": {
                 "id": prof_1.id,
-                "display_label": await prof_1.get_display_label(db=db),
+                "display_label": await prof_1.get_display_label(),
                 "__typename": "ProfileTestCriticality",
             },
         },
@@ -589,7 +589,7 @@ async def test_is_profile_source_set_correctly(
             "is_from_profile": True,
             "source": {
                 "id": prof_2.id,
-                "display_label": await prof_2.get_display_label(db=db),
+                "display_label": await prof_2.get_display_label(),
                 "__typename": "ProfileTestCriticality",
             },
         },

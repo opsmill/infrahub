@@ -163,7 +163,7 @@ async def test_display_hfid(db: InfrahubDatabase, default_branch: Branch, animal
     assert len(result.data["TestDog"]["edges"]) == 1
     assert result.data["TestDog"]["edges"][0] == {
         "node": {
-            "display_label": await dog1.get_display_label(db=db),
+            "display_label": await dog1.get_display_label(),
             "hfid": ["Jack", "Rocky"],
             "id": dog1.id,
         },
@@ -2116,7 +2116,7 @@ async def test_query_attribute_node_property_owner(
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]["id"] == first_account.id
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"][
         "display_label"
-    ] == await first_account.get_display_label(db=db)
+    ] == await first_account.get_display_label()
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
 
@@ -2163,7 +2163,7 @@ async def test_query_attribute_node_property_owner(
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]["id"] == first_account.id
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"][
         "display_label"
-    ] == await first_account.get_display_label(db=db)
+    ] == await first_account.get_display_label()
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {c1.id, p1.id, first_account.id}
 
