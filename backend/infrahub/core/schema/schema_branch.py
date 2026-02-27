@@ -2198,32 +2198,30 @@ class SchemaBranch:
             node = node.duplicate()
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
-            if node.parent:
-                if "parent" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_parent_rel(
-                            peer=node.parent,
-                            hierarchical=node.hierarchy,
-                            read_only=read_only,
-                            optional=node.parent in [node_name] + self.generic_names,
-                        )
+            parent_peer = node.parent or node.hierarchy
+            if "parent" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_parent_rel(
+                        peer=parent_peer,
+                        hierarchical=node.hierarchy,
+                        read_only=read_only,
+                        optional=parent_peer in [node_name] + self.generic_names,
                     )
-                else:
-                    parent_rel = node.get_relationship(name="parent")
-                    if parent_rel.peer != node.parent:
-                        parent_rel.peer = node.parent
+                )
+            else:
+                parent_rel = node.get_relationship(name="parent")
+                if parent_rel.peer != parent_peer:
+                    parent_rel.peer = parent_peer
 
-            if node.children:
-                if "children" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_child_rel(
-                            peer=node.children, hierarchical=node.hierarchy, read_only=read_only
-                        )
-                    )
-                else:
-                    children_rel = node.get_relationship(name="children")
-                    if children_rel.peer != node.children:
-                        children_rel.peer = node.children
+            children_peer = node.children or node.hierarchy
+            if "children" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_child_rel(peer=children_peer, hierarchical=node.hierarchy, read_only=read_only)
+                )
+            else:
+                children_rel = node.get_relationship(name="children")
+                if children_rel.peer != children_peer:
+                    children_rel.peer = children_peer
 
             self.set(name=node_name, schema=node)
 
@@ -2262,6 +2260,7 @@ class SchemaBranch:
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                     label=relationship.label,
+                    order_weight=relationship.order_weight,
                     inherited=False,
                 )
             )
@@ -2443,6 +2442,8 @@ class SchemaBranch:
                 "cardinality": RelationshipCardinality.ONE,
                 "branch": BranchSupportType.AWARE,
                 "order_weight": 1,
+                "max_count": 1,
+                "min_count": 0,
             }
 
             # Add relationship between node and template

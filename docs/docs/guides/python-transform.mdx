@@ -76,7 +76,7 @@ This allows you to manage the returned data with helper methods on the SDK objec
 Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
 :::
 
-<Tabs groupId="convertResponse">
+<Tabs groupId="convertResponse" queryString>
   <TabItem value="Non-converted query response">
 ```graphql
 query DeviceQuery {
@@ -235,7 +235,7 @@ The query will require an input parameter called `$name` what will refer to the 
 
 The next step is to create the actual Python Transformation. The Transformation is a Python class that inherits from InfrahubTransform from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config_render/device_config.py`:
 
-<Tabs groupId="convertResponse">
+<Tabs groupId="convertResponse" queryString>
   <TabItem value="Non-converted query response">
   <!-- vale Infrahub.spelling = NO -->
 ```python
@@ -297,7 +297,7 @@ With this configuration, the endpoint of our Transformation will be [http://loca
 
 4. The Transformation method
 
-<Tabs groupId="convertResponse">
+<Tabs groupId="convertResponse" queryString>
   <TabItem value="Non-converted query response">
     <!-- vale Infrahub.spelling = NO -->
 ```python
@@ -359,7 +359,7 @@ Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
 
 See [this topic](../topics/infrahub-yml.mdx) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
-<Tabs groupId="convertResponse">
+<Tabs groupId="convertResponse" queryString>
   <TabItem value="Non-converted query response">
     <!-- markdownlint-disable MD046 -->
     <!-- vale Infrahub.swap = NO -->
@@ -394,7 +394,7 @@ queries:
   </TabItem>
 </Tabs>
 
-<Tabs>
+<Tabs groupId="transform-type" queryString>
   <TabItem value="Python Transformation" default>
     Two parts here are required, first the `name` of the Transformation which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name `DeviceConfigTransform` instead of the default `Transform`.
   </TabItem>

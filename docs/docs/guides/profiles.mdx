@@ -175,7 +175,7 @@ From Infrahub 1.7 relationships can also be defined in Profiles. If you are usin
 
 :::
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Open the **Infrahub UI** in your browser
@@ -248,7 +248,7 @@ mutation {
 
 Query Infrahub to confirm the Profile exists:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Object Management** → **Profiles**
@@ -301,7 +301,7 @@ You should see the Profile with all attributes set to your specified values.
 
 Now that we have a Profile, let's create multiple interfaces that inherit configuration from it. When using Profiles, you only need to specify the unique attributes (like name) and reference the Profile for all standardized values.
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
@@ -398,7 +398,7 @@ The query should return the IDs of the created interfaces:
 
 Now let's verify that the interfaces have properly inherited values from the Profile. Infrahub's metadata shows which values came from Profiles, giving you complete transparency about data origin.
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
@@ -485,7 +485,7 @@ While Profiles ensure consistency, you sometimes need exceptions for specific de
 
 Create an interface with a custom MTU value that overrides the Profile default:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
@@ -523,7 +523,7 @@ mutation {
 
 Confirm that the MTU was overridden while other values still come from the Profile:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
@@ -590,7 +590,7 @@ One of the key benefits of Profiles is that when you update a Profile, all nodes
 
 We will change the `end-user-interface` Profile to set a new default **MTU** of `9000` instead of `1500`.
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Open the **Infrahub UI** in your browser
@@ -621,7 +621,7 @@ mutation {
 
 ### Verify the update in interfaces
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
@@ -675,7 +675,7 @@ Learn more about Profile priorities in the [Profile priority system](../topics/p
 
 #### Step 1: Creating another Profile
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Object Management** → **Profiles**
@@ -710,7 +710,7 @@ mutation {
 
 #### Step 2: Assigning multiple Profiles to an interface
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
@@ -753,7 +753,7 @@ mutation {
 
 Let's check which Profile values are being applied when multiple Profiles define the same attribute:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
 <TabItem value="web" label="Web interface">
 
 1. Navigate to **Interface**
