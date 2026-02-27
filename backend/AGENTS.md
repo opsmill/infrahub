@@ -93,6 +93,8 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - `dev/guides/backend/creating-events.md` - Creating new events
 - `dev/guides/backend/creating-async-tasks.md` - Creating async tasks
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
+- `dev/guides/backend/writing-migrations.md` - Writing graph migrations safely
+- `dev/guides/backend/adding-node-properties.md` - Adding properties to existing Neo4j node types
 
 ### ADRs (Why we decided)
 

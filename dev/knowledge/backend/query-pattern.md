@@ -419,6 +419,49 @@ Specialized base classes for different domains:
    id_func = db.get_id_function_name()  # Returns "elementId" for Neo4j
    ```
 
+## MERGE vs CREATE Semantics
+
+Write queries frequently use `MERGE` and `CREATE` to manage Neo4j nodes. Understanding the distinction is critical for correctness.
+
+### CREATE
+
+Always creates a new node, regardless of existing data:
+
+```cypher
+CREATE (:AttributeValue {value: $val, is_default: false})
+```
+
+Use when you are certain no matching node exists (e.g., inside a migration that already verified absence).
+
+### MERGE
+
+Finds an existing node matching **all specified properties**, or creates one if none exists:
+
+```cypher
+MERGE (av:AttributeValueIndexed {value: $val, is_default: false, value_lower: $val_lower})
+```
+
+**Critical:** MERGE matches on the **full set** of properties in the pattern. If you add a new property to an existing MERGE pattern, nodes that lack the new property will not be found, and MERGE will create duplicates. See [Neo4j Property Constraints](database-schema.md#neo4j-property-constraints-and-gotchas) for details.
+
+### When to Use Each
+
+| Operation | Use | Reason |
+|-----------|-----|--------|
+| Reusable shared values (e.g., `AttributeValueIndexed`) | `MERGE` | Multiple attributes may reference the same value node |
+| Unique per-instance data (e.g., `Attribute` for a specific node) | `CREATE` | Each instance is unique, no sharing |
+| Migration creating replacement nodes | `CREATE` | Old nodes will be deleted separately |
+
+### MERGE + ON CREATE SET
+
+When a MERGE pattern should only include the identity properties but needs additional properties on creation:
+
+```cypher
+MERGE (av:AttributeValueIndexed {value: $val, is_default: false})
+ON CREATE SET av.value_lower = toLower(toString($val))
+```
+
+This avoids making `value_lower` part of the match key while ensuring it exists on new nodes. However, it does **not** update `value_lower` on existing nodes — use `ON MATCH SET` for that.
+
 ## Key Locations
 
 | Component | Location |

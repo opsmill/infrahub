@@ -84,7 +84,23 @@ Stores attribute values. Labels always include `AttributeValue`. Labels include 
 | Property | Type | Description |
 |----------|------|-------------|
 | `value` | any | The attribute value (`"NULL"` for null) |
+| `value_lower` | string | Lowercase of `value` for case-insensitive TEXT index search (only on `AttributeValueIndexed`) |
 | `is_default` | boolean | Whether this is a default value |
+
+#### AttributeValueIndexed Write Paths
+
+**Critical:** `AttributeValueIndexed` nodes are created/modified in multiple code paths. When adding or changing properties on this node type, ALL paths must be updated:
+
+| Write Path | Location | When Used |
+|------------|----------|-----------|
+| `BaseAttribute.to_db()` | `core/attribute.py` | Normal CRUD (create/update node attributes) |
+| `NodeCreateFullBatchQuery` | `core/query/node.py` | Batch node creation |
+| `NumberPoolSetReservedQuery` | `core/query/resource_manager.py` | Number pool value reservation |
+| `UpdateAttributeValuesQuery` | `core/migrations/query/update_attribute_values.py` | Graph migrations that bulk-update attribute values |
+| `AttributeKindUpdateMigrationQuery` | `core/migrations/schema/attribute_kind_update.py` | Schema migrations when attribute `kind` changes |
+| Various graph migrations | `core/migrations/graph/m0*.py` | One-off data migrations (e.g., m047, m055, m044) |
+
+**Why this matters:** Neo4j has no `NOT NULL` constraint on properties. A missing property is silent at write time — no error, no warning. TEXT indexes only index nodes that **have** the indexed property, so a node created without `value_lower` becomes invisible to case-insensitive searches.
 
 ### Boolean
 
@@ -353,6 +369,48 @@ CALL (peer, rl) {
 - **DISTINCT first**: When multiple vertices may match, get DISTINCT nodes first, then validate each
 - **Order then filter**: Always `ORDER BY ... LIMIT 1` first, then `WHERE status = "active"` to handle the case where the latest edge is a deletion
 - **No `to` timestamp**: `to IS NULL` ensures the edge is currently valid (not expired)
+
+## Neo4j Property Constraints and Gotchas
+
+Neo4j's property graph model differs from relational databases in ways that cause subtle bugs if not anticipated.
+
+### No NOT NULL Constraints
+
+Neo4j does not enforce required properties on nodes. A node can be created without any property and no error is raised. This means:
+
+- Missing properties are **silent** at write time
+- Queries that filter on a property will silently exclude nodes that lack it
+- TEXT and RANGE indexes only index nodes that **have** the indexed property — a node without the property is invisible to index-backed queries
+
+**Mitigation:** Maintain a write path registry (see [AttributeValueIndexed Write Paths](#attributevalueindexed-write-paths)) and audit all paths when adding properties.
+
+### MERGE Matches on ALL Specified Properties
+
+`MERGE` finds an existing node by matching **every** property in the pattern. Adding a new property to a MERGE pattern is a breaking change if existing nodes lack that property:
+
+```cypher
+-- Before: matches existing nodes
+MERGE (av:AttributeValueIndexed { value: $val, is_default: false })
+
+-- After: FAILS to match existing nodes that lack value_lower → creates duplicates
+MERGE (av:AttributeValueIndexed { value: $val, is_default: false, value_lower: $val_lower })
+```
+
+**Mitigation:** When adding a property to a MERGE pattern, write a backfill migration first that populates the property on all existing nodes. The migration must run before the new MERGE code executes.
+
+### Cypher Functions Bypass Indexes
+
+Wrapping a property in a function call (e.g., `toLower(toString(av.value))`) prevents Neo4j from using indexes on that property. The query falls back to a full scan.
+
+```cypher
+-- Bad: full scan, O(n)
+WHERE toLower(toString(av.value)) CONTAINS $search
+
+-- Good: uses TEXT index on value_lower, O(1)-ish
+WHERE av.value_lower CONTAINS $search
+```
+
+**Mitigation:** Pre-compute derived values as separate properties (e.g., `value_lower`) and index those.
 
 ## See Also
 
