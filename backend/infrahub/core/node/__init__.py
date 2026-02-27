@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
@@ -210,11 +209,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
         await self._human_friendly_id.compute(db=db, node=self)
 
-    async def get_display_label(self, db: InfrahubDatabase) -> str:
+    async def get_display_label(self) -> str:
         if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
             return value
 
-        return await self.render_display_label(db=db)
+        return repr(self)
 
     def has_display_label(self) -> bool:
         return self._display_label is not None
@@ -883,7 +882,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.get_display_label(db=db)
+        node_changelog.display_label = await self.get_display_label()
         return node_changelog
 
     async def _update(
@@ -942,7 +941,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
 
-        node_changelog.display_label = await self.get_display_label(db=db)
+        node_changelog.display_label = await self.get_display_label()
 
         if node_changelog.has_changes:
             self._set_updated_at(update_at)
@@ -982,7 +981,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label()
         )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
@@ -1060,7 +1059,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                response[field_name] = await self.get_display_label(db=db)
+                response[field_name] = await self.get_display_label()
                 continue
 
             if field_name == "hfid":
@@ -1157,33 +1156,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
-
-    async def render_display_label(self, db: InfrahubDatabase | None = None) -> str:  # noqa: ARG002
-        if not self._schema.display_labels:
-            return repr(self)
-
-        display_elements = []
-        for item in self._schema.display_labels:
-            item_elements = item.split("__")
-            if len(item_elements) != 2:
-                raise ValidationError("Display Label can only have one level")
-
-            if item_elements[0] not in self._schema.attribute_names:
-                raise ValidationError("Only Attribute can be used in Display Label")
-
-            attr = getattr(self, item_elements[0])
-            attr_value = getattr(attr, item_elements[1])
-            if isinstance(attr_value, Enum):
-                display_elements.append(attr_value.value)
-            else:
-                display_elements.append(attr_value)
-
-        if not display_elements or all(de is None for de in display_elements):
-            return ""
-        display_label = " ".join([str(de) for de in display_elements])
-        if not display_label.strip():
-            return repr(self)
-        return display_label.strip()
 
     async def set_human_friendly_id(self, value: list[str] | None) -> None:
         """Set the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""
