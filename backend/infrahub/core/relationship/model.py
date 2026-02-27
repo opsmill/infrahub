@@ -13,6 +13,7 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
+    cast,
     overload,
 )
 
@@ -561,8 +562,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             self.set_peer(value=peer)
 
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
+            pool: Node | None = None
             pool_id = str(self.from_pool.get("id"))
-            pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            if is_valid_uuid(pool_id):
+                pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            else:
+                results = await registry.manager.query(
+                    db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
+                )
+                results = cast("list[Node]", results)
+                pool = results[0] if results else None
 
             if not pool:
                 raise NodeNotFoundError(
