@@ -21,7 +21,7 @@ Running Infrahub locally with Docker is the most convenient setup for developmen
 
 **Prerequisites**:
 
-- [Docker](https://docs.docker.com/get-docker/) installed and running! (Docker Desktop or OrbStack)
+- [Docker](https://docs.docker.com/get-docker/) installed and running (Docker Desktop or OrbStack)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
 - [Python 3.10+](https://www.python.org/downloads/)
 
@@ -35,7 +35,7 @@ Running Infrahub locally with Docker is the most convenient setup for developmen
 uv tool run --from 'copier' copier copy -r bgi-invoke-schema-library https://github.com/opsmill/infrahub-template infrahub-automation
 ```
 
-If unsure about the options, accept the default values for all prompts by pressing **Enter**.
+If you are unsure about the options, accept the default values for all prompts by pressing **Y**.
 
 2. Navigate to the project directory:
 
@@ -63,11 +63,11 @@ The project template includes [Invoke](https://www.pyinvoke.org/) tasks that wra
 uv run invoke start
 ```
 
-The first run takes a few minutes while container images are downloaded.
+The first run takes a few minutes while Docker downloads the container images.
 
 2. Open your browser and go to [http://localhost:8000](http://localhost:8000).
 
-3. Log in using the bottom left corner with the default credentials:
+3. Log in from the bottom-left corner using the default credentials:
 
     - Username: `admin`
     - Password: `infrahub`
@@ -92,13 +92,13 @@ uv run invoke schema-library-get
 
 :::info
 - The schema library is divided into a `base/` with core definitions and `extensions/` that build on top of the base. You need to load the base to add extensions.
-- As you have access to the full schema code, you can explore and modify the schemas to fit your organization's needs.
+- Since you have access to the full schema code, you can explore and modify the schemas to fit your organization's needs.
 :::
 
-3. Load schema into your project:
+3. Load the schema into your project:
 
 :::info
-To keep things clear you can put all schema files in a `schemas/` folder in your project and load them from there. You can copy the files you need from the `schema-library/` folder into your project's `schemas/` folder.
+To keep things organized, put all schema files in a `schemas/` folder in your project and load them from there. Copy the files you need from the `schema-library/` folder into your project's `schemas/` folder.
 :::
 
 ```bash
@@ -111,7 +111,7 @@ Go back to [http://localhost:8000](http://localhost:8000) and refresh the page. 
 
 ## Create your first data
 
-There are multiple ways to create data in Infrahub — the WebUI, APIs, Python SDK... For development purposes, it's often easiest to create YAML files and load them with `infrahubctl`.
+There are multiple ways to create data in Infrahub — the WebUI, APIs, Python SDK, and more. For development purposes, it's often easiest to create YAML files and load them with `infrahubctl`.
 
 1. Create a file called `countries.yml` in the `objects/` folder with the following content:
 
@@ -165,7 +165,7 @@ Branches in Infrahub work like Git branches — they let you stage changes in is
 
   </TabItem>
   <TabItem value="WebUI" label="WebUI">
-  Create a `add-locations` branch using the branch selector in the top-left corner of the WebUI.
+  Create an `add-locations` branch using the branch selector in the top-left corner of the WebUI.
   </TabItem>
 </Tabs>
 
