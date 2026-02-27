@@ -544,15 +544,13 @@ async def test_create_object_with_node_property(
     assert result1.errors is None
     assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["source"]["id"] == first_account.id
-    assert (
-        result1.data["TestPerson"]["edges"][0]["node"]["name"]["source"]["display_label"]
-        == await first_account.get_display_label()
-    )
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["source"][
+        "display_label"
+    ] == await first_account.get_display_label(db=db)
     assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"]["id"] == second_account.id
-    assert (
-        result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"]["display_label"]
-        == await second_account.get_display_label()
-    )
+    assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"][
+        "display_label"
+    ] == await second_account.get_display_label(db=db)
 
 
 async def test_create_object_with_single_relationship(

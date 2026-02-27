@@ -86,7 +86,9 @@ class UpdateDisplayLabel(Mutation):
                 message="The targeted node was not found in the database",
             )
 
-        existing_label = await target_node.get_display_label() if target_node.has_display_label() else None
+        existing_label = (
+            await target_node.get_display_label(db=graphql_context.db) if target_node.has_display_label() else None
+        )
         if str(data.value) != existing_label:
             await target_node.set_display_label(value=str(data.value))
 

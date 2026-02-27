@@ -101,7 +101,7 @@ class IPPrefixPoolGetResource(Mutation):
                 "id": resource.id,
                 "kind": resource.get_kind(),
                 "identifier": data.get("identifier", None),
-                "display_label": await resource.get_display_label(),
+                "display_label": await resource.get_display_label(db=graphql_context.db),
                 "branch": graphql_context.branch.name,
             },
         }
@@ -150,7 +150,7 @@ class IPAddressPoolGetResource(Mutation):
                 "id": resource.id,
                 "kind": resource.get_kind(),
                 "identifier": data.get("identifier"),
-                "display_label": await resource.get_display_label(),
+                "display_label": await resource.get_display_label(db=graphql_context.db),
                 "branch": graphql_context.branch.name,
             },
         }

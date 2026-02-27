@@ -209,7 +209,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
         await self._human_friendly_id.compute(db=db, node=self)
 
-    async def get_display_label(self) -> str:
+    async def get_display_label(self, db: InfrahubDatabase) -> str:
+        if not self._display_label and self._schema.display_label:
+            await self.add_display_label(db=db)
+
         if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
             return value
 
@@ -882,7 +885,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.get_display_label()
+        node_changelog.display_label = await self.get_display_label(db=db)
         return node_changelog
 
     async def _update(
@@ -941,7 +944,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
 
-        node_changelog.display_label = await self.get_display_label()
+        node_changelog.display_label = await self.get_display_label(db=db)
 
         if node_changelog.has_changes:
             self._set_updated_at(update_at)
@@ -981,7 +984,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label()
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
@@ -1059,7 +1062,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                response[field_name] = await self.get_display_label()
+                response[field_name] = await self.get_display_label(db=db)
                 continue
 
             if field_name == "hfid":

@@ -239,7 +239,7 @@ class PoolUtilization(ObjectType):
                     if "kind" in node_fields:
                         node_response["kind"] = resource_node.get_kind()
                     if "display_label" in node_fields:
-                        node_response["display_label"] = await resource_node.get_display_label()
+                        node_response["display_label"] = await resource_node.get_display_label(db=db)
                     if "weight" in node_fields:
                         node_response["weight"] = await resource_node.get_resource_weight(db=db)  # type: ignore[attr-defined]
                     if "utilization" in node_fields:

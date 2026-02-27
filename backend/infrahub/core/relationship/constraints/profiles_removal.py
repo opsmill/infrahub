@@ -55,7 +55,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
             if attr.is_from_profile:
                 source = await attr.get_source(db=self.db)
                 if source and source.id == profile_id:
-                    node_display_label = await node.get_display_label()
+                    node_display_label = await node.get_display_label(db=self.db)
                     node_reference = f"node '{node_display_label}' (ID: {node.get_id()})"
                     raise ValidationError(
                         f"Cannot remove profile '{profile_id}' because {node_reference} "
@@ -70,7 +70,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
                 if rel.is_from_profile:
                     source = await rel.get_source(db=self.db)
                     if source and source.id == profile_id:
-                        node_display_label = await node.get_display_label()
+                        node_display_label = await node.get_display_label(db=self.db)
                         node_reference = f"node '{node_display_label}' (ID: {node.get_id()})"
                         raise ValidationError(
                             f"Cannot remove profile '{profile_id}' because {node_reference} "

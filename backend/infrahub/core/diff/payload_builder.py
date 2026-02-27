@@ -36,7 +36,7 @@ async def get_display_labels_per_kind(
             break
         node_map = await NodeManager.get_many(ids=limited_ids, fields=fields, db=db, branch=branch)
         for node_id, node in node_map.items():
-            display_label_map[node_id] = await node.get_display_label()
+            display_label_map[node_id] = await node.get_display_label(db=db)
         offset += limit
     return display_label_map
 

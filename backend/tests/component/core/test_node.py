@@ -238,12 +238,12 @@ async def test_display_label(
     await obj.save(db=db)
 
     assert obj.has_display_label()
-    assert await obj.get_display_label() == expected
+    assert await obj.get_display_label(db=db) == expected
 
     obj = await NodeManager.get_one(db=db, kind=node_schema.kind, id=obj.id)
 
     assert obj.has_display_label()
-    assert await obj.get_display_label() == expected
+    assert await obj.get_display_label(db=db) == expected
 
 
 async def test_display_label_unset(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
@@ -270,12 +270,12 @@ async def test_display_label_unset(db: InfrahubDatabase, default_branch: Branch,
     await obj.save(db=db)
 
     assert obj.has_display_label()
-    assert await obj.get_display_label() == f"TestDisplay(ID: {obj.id})"
+    assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})"
 
     obj = await NodeManager.get_one(db=db, kind=node_schema.kind, id=obj.id)
 
     assert obj.has_display_label()
-    assert await obj.get_display_label() == f"TestDisplay(ID: {obj.id})"
+    assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})"
 
 
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
