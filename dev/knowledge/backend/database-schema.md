@@ -406,7 +406,7 @@ Wrapping a property in a function call (e.g., `toLower(toString(av.value))`) pre
 -- Bad: full scan, O(n)
 WHERE toLower(toString(av.value)) CONTAINS $search
 
--- Good: uses TEXT index on value_lower, O(1)-ish
+-- Good: index-backed via TEXT index on value_lower, avoids full scans
 WHERE av.value_lower CONTAINS $search
 ```
 
