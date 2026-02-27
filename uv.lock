@@ -1362,7 +1362,7 @@ wheels = [
 
 [[package]]
 name = "infrahub-server"
-version = "1.8.0b0"
+version = "1.8.0rc0"
 source = { editable = "." }
 dependencies = [
     { name = "aio-pika" },

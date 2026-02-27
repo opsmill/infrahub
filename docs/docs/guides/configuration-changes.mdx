@@ -42,7 +42,7 @@ For this guide, we'll use `INFRAHUB_HTTP_TIMEOUT` as an example. It affects how 
 
 Configure the variable before starting or restarting your Infrahub containers.
 
-<Tabs groupId="installation-method">
+<Tabs groupId="installation-method" queryString>
 <TabItem value="docker-compose" label="Docker Compose" default>
 
 :::note
@@ -129,7 +129,7 @@ helm upgrade infrahub opsmill/infrahub \
 
 Restart your Infrahub containers to apply the new configuration.
 
-<Tabs groupId="installation-method">
+<Tabs groupId="installation-method" queryString>
 <TabItem value="docker-compose" label="Docker Compose" default>
 
 :::note
@@ -187,7 +187,7 @@ Rolling out changes will trigger a pod restart. Depending on your deployment con
 
 Confirm that your configuration change has been applied successfully.
 
-<Tabs>
+<Tabs groupId="installation-method" queryString>
 <TabItem value="docker-compose" label="Docker Compose" default>
 
 :::note

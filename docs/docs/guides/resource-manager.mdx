@@ -159,7 +159,7 @@ A `CoreIPAddressPool` allows you to dynamically allocate IP addresses from one o
 First, create an IP Prefix object that the resource manager will use as a resource.
 You can create a prefix (for example, `10.100.0.0/24`) either via the web interface or through the GraphQL interface.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Via the Web Interface" default>
   ![Creating prefix 10.100.0 via the Web Interface](../media/guides/resources-manager/resource_manager_rss_prefix_10_100_0.png)
   </TabItem>
@@ -198,7 +198,7 @@ Next, create a resource manager of kind `CoreIPAddressPool` with the following p
 
 The `CoreIPAddressPool` can be created using the web interface, or by using this GraphQL mutation. Replace the id of the resource with the id of the prefix of the previous step.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Via the Web Interface" default>
   ![Creating IP address pool via the Web Interface](../media/guides/resources-manager/resource_manager_pool_ip.png)
   </TabItem>
@@ -243,7 +243,7 @@ Please refer to the [Resource Manager Topic](../topics/resource-manager.mdx) for
 
 Execute the following mutation to allocate an IP address out of the pool. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
   ```graphql
@@ -277,7 +277,7 @@ You can allocate resources in an idempotent way by specifying an identifier in t
 
 Execute this mutation twice, note the identifier. The resulting IP address should be the same, as well as the id. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
   ```graphql
@@ -309,7 +309,7 @@ IP address pools (`CoreIPAddressPool`) dynamically allocate individual IP addres
 
 Create the IP prefix that serves as the allocation source:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Navigate to **IPAM** → **IP Prefixes**  and create a new prefix with:
@@ -351,7 +351,7 @@ Save the prefix ID for the next step!
 
 Create a `CoreIPAddressPool` resource manager:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Navigate to **Object Management** → **Resource Managers** and create a new IP Address Pool with:
@@ -404,7 +404,7 @@ You can allocate IP addresses in two ways: direct allocation or allocation durin
 
 Allocate an IP address directly from the pool:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
   This method is currently not available in the Web interface. Use the GraphQL method instead.
@@ -468,7 +468,7 @@ You have created an IP address record from the pool!
 
 Allocate an IP address when creating a device:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
   Navigate to **Devices** → **Add Device**. Next to the Primary IP Address field, click the pools button and select your resource pool.
@@ -520,7 +520,7 @@ IP prefix pools (`CoreIPPrefixPool`) allocate IP subnets from larger prefixes.
 
 Create the parent prefix:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Navigate to **IPAM** → **IP Prefixes** and create a new prefix with:
@@ -561,7 +561,7 @@ Navigate to **IPAM** → **IP Prefixes** and create a new prefix with:
 
 Create a `CoreIPPrefixPool` resource manager:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Navigate to **Object Management** → **Resource Managers** and create a new IP Prefix Pool with:
@@ -614,7 +614,7 @@ You can allocate IP prefixes in two ways: direct allocation or allocation during
 
 Allocate an IP prefix directly from the pool:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
   This method is currently not available in the Web interface. Use the GraphQL method instead.
@@ -653,7 +653,7 @@ You have created an IP prefix record from the pool!
 
 Allocate an IP prefix when creating a customer service:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
   Navigate to **Customer Service** → **Add Customer Service**.
@@ -730,7 +730,7 @@ Please refer to the [Resource Manager Topic](../topics/resource-manager.mdx) for
 
 Execute the following mutation to allocate an IP prefix out of the pool. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
   ```graphql
@@ -762,7 +762,7 @@ Another way we can use resource managers is in situations where we create a node
 
 This feature is not yet available directly via the Web Interface.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="graphql" label="Via the GraphQL Interface" default>
   In this mutation we use the `from_pool` resolver to indicate we want to allocate a `assigned_prefix` from a resource pool. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
@@ -806,7 +806,7 @@ You can allocate resources in an idempotent way by specifying an identifier in t
 
 Execute this mutation twice, note the identifier. The resulting IP prefix should be the same, as well as the id. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
   ```graphql
@@ -838,7 +838,7 @@ Number pools (`CoreNumberPool`) automatically assign sequential numbers to numer
 
 Create a pool for VLAN IDs:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Navigate to **Object Management** → **Resource Managers** and create a new Number Pool with:
@@ -885,7 +885,7 @@ Save the pool ID for allocation operations!
 
 ### Step 2: Allocate VLAN ID
 
-<Tabs>
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
   Navigate to **VLAN** → **Add VLAN**. Next to the VLAN ID field, click the pools button and select your number pool.
@@ -1015,7 +1015,7 @@ Save the prefix IDs for the next step!
 
 4. Create a `CoreIPAddressPool` resource manager:
 
-<Tabs groupId="method">
+<Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Navigate to **Object Management** → **Resource Managers** and create a new IP Address Pool with:

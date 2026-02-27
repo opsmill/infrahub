@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
@@ -499,3 +500,18 @@ async def test_template_children_and_pool_recorded_as_side_effects(
 
     ip_side_effects = [n for n in side_effects if n.get_kind() == "IpamIPAddress"]
     assert len(ip_side_effects) == 1
+
+
+async def test_create_template_with_invalid_number_pool_id(
+    db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
+) -> None:
+    """Creating a template with from_pool referencing a nonexistent number pool should fail."""
+    fake_pool_id = str(uuid4())
+
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+    with pytest.raises(ValidationError, match=fake_pool_id):
+        await template.new(
+            db=db, template_name="device-template-bad-pool", rack_unit={"from_pool": {"id": fake_pool_id}}
+        )

@@ -35,7 +35,7 @@ Select a protocol based on your identity provider's support. Most modern provide
 OIDC provides standardized user information and is recommended for new implementations. See [Authentication topic](../topics/authentication.mdx) for details on the differences between OIDC and OAuth2.
 :::
 
-<Tabs groupId="selected-protocol">
+<Tabs groupId="selected-protocol" queryString>
   <TabItem value="oidc" default>
   OpenID Connect (OIDC) is recommended when available as it provides standardized user profile information.
   </TabItem>
@@ -67,7 +67,7 @@ https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback
 
 For a production Infrahub instance at `infrahub.example.com`:
 
-<Tabs groupId="selected-protocol">
+<Tabs groupId="selected-protocol" queryString>
   <TabItem value="oidc" default>
   ```
   https://infrahub.example.com/auth/oidc/provider1/callback
@@ -86,7 +86,7 @@ Use the `INFRAHUB_PUBLIC_URL` environment variable to specify the externally acc
 
 For a local development instance:
 
-<Tabs groupId="selected-protocol">
+<Tabs groupId="selected-protocol" queryString>
   <TabItem value="oidc" default>
   ```
   http://localhost:8000/auth/oidc/provider1/callback
@@ -143,7 +143,7 @@ Make note of the following information for Infrahub configuration:
 On the registration overview page, click the **Endpoints** tab to find the necessary URLs.
 :::
 
-<Tabs groupId="selected-protocol">
+<Tabs groupId="selected-protocol" queryString>
 <TabItem value="oidc" default>
 | Field | Location/Value |
 |-------|-------|
@@ -170,7 +170,7 @@ On the registration overview page, click the **Endpoints** tab to find the neces
 :::success
 At the end of this step, you should have gathered all the necessary information to configure SSO in Infrahub.
 
-<Tabs groupId="selected-protocol">
+<Tabs groupId="selected-protocol" queryString>
 <TabItem value="oidc" default>
 
 | Client ID | Client Secret | Discovery URL |
@@ -201,9 +201,9 @@ For detailed configuration options, see the [configuration reference](../referen
 For multiple identity providers, refer to the [Advanced Configuration Section](#multiple-identity-providers).
 :::
 
-<Tabs groupId="selected-protocol">
+<Tabs groupId="selected-protocol" queryString>
 <TabItem value="oidc" default>
-<Tabs groupId="config-method">
+<Tabs groupId="config-method" queryString>
 <TabItem value="environment-variables" default>
 
 ```bash
@@ -244,7 +244,7 @@ oidc_providers = ["provider1"]
 
 </TabItem>
 <TabItem value="oauth2">
-<Tabs groupId="config-method">
+<Tabs groupId="config-method" queryString>
 <TabItem value="environment-variables" default>
 
 ```bash
@@ -333,7 +333,7 @@ To configure multiple identity providers:
 - Configure each provider using the same steps as above, but with the appropriate slot name (for example `provider1`, `provider2`)
 - Make sure to set the `INFRAHUB_SECURITY_OIDC_PROVIDERS` or `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` variable to include all configured providers
 
-<Tabs groupId="config-method">
+<Tabs groupId="config-method" queryString>
 <TabItem value="environment-variables" default>
 
 ```bash
@@ -421,7 +421,7 @@ If your identity provider cannot provide group information, configure a default 
 You must create this default group in Infrahub before configuring it here.
 :::
 
-<Tabs groupId="config-method">
+<Tabs groupId="config-method" queryString>
 <TabItem value="environment-variables" default>
 
 ```bash
