@@ -20,7 +20,7 @@ This guide shows you how to create comprehensive backups of your Infrahub deploy
 
 ### Step 1: Install the backup tool
 
-<Tabs groupId="backup-method">
+<Tabs groupId="backup-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI (Recommended)" default>
 
 Install the infrahub-backup CLI tool:
@@ -52,7 +52,7 @@ Alternatively, you can use the [legacy tool](#using-the-python-based-backup-util
 
 ### Step 2: Backup the databases
 
-<Tabs groupId="backup-method">
+<Tabs groupId="backup-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 Create a backup of your running Infrahub instance:
@@ -129,7 +129,7 @@ python -m utilities.db_backup neo4j backup \
 
 ### Step 3: Backup the artifact store
 
-<Tabs groupId="storage-type">
+<Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 
 If using S3 for artifact storage, use AWS CLI or your preferred S3 backup tool:
@@ -158,7 +158,7 @@ docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/artifacts/
 
 Ensure Infrahub services are running before starting the restore process. You can start from a scratch/blank deployment.
 
-<Tabs groupId="restore-method">
+<Tabs groupId="restore-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 Restore from a backup archive:
@@ -193,7 +193,7 @@ If restoring manually, follow the steps below for each component.
 
 ### Step 2: Restore the databases
 
-<Tabs groupId="restore-method">
+<Tabs groupId="restore-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 This is automatically handled by infrahub-backup.
@@ -264,7 +264,7 @@ python -m utilities.db_backup neo4j restore \
 
 ### Step 3: Restore the artifact store
 
-<Tabs groupId="storage-type">
+<Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 
 ```bash
@@ -285,7 +285,7 @@ cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
 
 ### Step 4: Restart Infrahub services
 
-<Tabs groupId="restore-method">
+<Tabs groupId="restore-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 This is automatically handled by infrahub-backup.
