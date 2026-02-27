@@ -9128,8 +9128,6 @@ type Mutation {
   """
   CoreWeightedPoolResourceUpdate(context: ContextInput, data: CoreWeightedPoolResourceUpdateInput!): CoreWeightedPoolResourceUpdate
   DiffUpdate(context: ContextInput, data: DiffUpdateInput!, wait_until_completion: Boolean): DiffUpdateMutation
-  IPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub.")
-  IPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub.")
   InfrahubAccountSelfUpdate(data: InfrahubAccountUpdateSelfInput!): InfrahubAccountSelfUpdate
   InfrahubAccountTokenCreate(data: InfrahubAccountTokenCreateInput!): InfrahubAccountTokenCreate
   InfrahubAccountTokenDelete(data: InfrahubAccountTokenDeleteInput!): InfrahubAccountTokenDelete
@@ -23990,8 +23988,6 @@ type Query {
   DiffTreeSummary(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, name: String, proposed_change_id: String, to_time: DateTime): DiffTreeSummary
   """Retrieve fields mapping for converting object type"""
   FieldsMappingTypeConversion(source_kind: String, target_kind: String): FieldsMapping!
-  IPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.")
-  IPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.")
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
   """Retrieve paginated information about active branches."""
   InfrahubBranch(
