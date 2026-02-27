@@ -428,7 +428,14 @@ async def default_attribute_query_filter(
         else:
             if partial_match:
                 query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
-                query_where.append(f"av.value_lower CONTAINS toLower(toString(${param_prefix}_{filter_name}))")
+                if attribute_value_label == GraphAttributeValueIndexedNode.get_default_label():
+                    query_where.append(
+                        f"av.value_lower CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
+                    )
+                else:
+                    query_where.append(
+                        f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
+                    )
             elif attribute_kind and attribute_kind == "List" and not isinstance(filter_value, list):
                 query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
                 filter_value = build_regex_attrs(values=[filter_value])
