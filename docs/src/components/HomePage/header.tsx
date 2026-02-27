@@ -27,7 +27,7 @@ export default function HomepageHeader() {
                 <div className={styles.containerFlexWrap}>
                     <Link
                         className={clsx(styles.heroButton, "button button--primary button--lg")}
-                        to="overview/overview"
+                        to="overview"
                     >
                         {translate({
                             id: 'home.header.docs',
