@@ -448,3 +448,23 @@ class TestDiffTreeTerminalBranch:
         assert summary["num_updated"] == 1
         assert summary["num_added"] == 0
         assert summary["num_removed"] == 0
+
+    async def test_diff_tree_deleted_branch_with_invalid_proposed_change_id(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        deleted_branch: Branch,
+    ) -> None:
+        """DiffTree with deleted branch and unlinked proposed_change_id should return None."""
+        default_branch_scope_class.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=params.schema,
+            source=DIFF_TREE_QUERY_BY_PROPOSED_CHANGE,
+            context_value=params.context,
+            root_value=None,
+            variable_values={"branch": deleted_branch.name, "proposed_change_id": str(uuid4())},
+        )
+
+        assert result.errors is None
+        assert result.data["DiffTree"] is None

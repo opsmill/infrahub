@@ -493,7 +493,7 @@ class DiffTreeResolver:
             if not branch and not proposed_change_id:
                 raise ValidationError("Must include the branch or proposed_change_id argument") from None
             # case for deleted branch with an input proposed_change_id
-            if branch:
+            if branch and proposed_change_id:
                 return DiffBranchInfo(name=branch, branch_start_timestamp=None, is_terminal=False)
             raise
 
