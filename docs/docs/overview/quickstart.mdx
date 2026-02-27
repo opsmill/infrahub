@@ -91,34 +91,18 @@ uv run invoke schema-library-get
 2. Explore the downloaded schema files in the `schema-library/` folder in your IDE.
 
 :::info
-The schema library is divided into a `base/` with core definitions and `extensions/` that build on top of the base. You need to load the base to add extensions.
+- The schema library is divided into a `base/` with core definitions and `extensions/` that build on top of the base. You need to load the base to add extensions.
+- As you have access to the full schema code, you can explore and modify the schemas to fit your organization's needs.
 :::
 
-3. Copy the base schema into your project's `schemas/`:
+3. Load schema into your project:
 
 :::info
-As you have access to the full schema code, you can explore and modify the schemas to fit your organization's needs.
+To keep things clear you can put all schema files in a `schemas/` folder in your project and load them from there. You can copy the files you need from the `schema-library/` folder into your project's `schemas/` folder.
 :::
 
 ```bash
-cp -r schema-library/base schemas/
-```
-
-4. Load the base schema into Infrahub:
-
-:::info
-`infrahubctl` is the CLI tool for developing with Infrahub. The `schema load` command reads schema definitions from a folder and loads them into Infrahub via the API.
-:::
-
-```bash
-uv run infrahubctl schema load schemas/base
-```
-
-5. Add a location extension schema on top of the base:
-
-```bash
-cp -r schema-library/extensions/location_minimal schemas/
-uv run infrahubctl schema load schemas/location_minimal
+uv run infrahubctl schema load schemas/
 ```
 
 :::success Verification
@@ -139,9 +123,21 @@ spec:
   kind: LocationCountry
   data:
     - name: United States
+      shortname: US
       description: US operations
+      children:
+        kind: LocationMetro
+        data:
+          - name: Denver
+            shortname: DEN
     - name: France
+      shortname: FR
       description: EU operations
+      children:
+        kind: LocationMetro
+        data:
+          - name: Paris
+            shortname: PAR
 ```
 
 2. Load the data into Infrahub:
@@ -188,15 +184,19 @@ Branches in Infrahub work like Git branches — they let you stage changes in is
     kind: LocationSite
     data:
       - name: Denver DC1
+        shortname: DEN1
         description: Primary US data center
+        parent: DEN
       - name: Paris DC1
+        shortname: PAR1
         description: Primary EU data center
+        parent: PAR
   ```
 
   4. Load the sites into the `add-locations` branch:
 
   ```bash
-  uv run infrahubctl object load sites.yml --branch add-locations
+  uv run infrahubctl object load objects/sites.yml --branch add-locations
   ```
 
   Notice the `--branch` flag — this targets the branch instead of main.
