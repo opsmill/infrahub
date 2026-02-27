@@ -1,12 +1,7 @@
 from .account import AccountPermissions, AccountToken
 from .branch import BranchQueryList, InfrahubBranchQueryList
 from .internal import InfrahubInfo
-from .ipam import (
-    DeprecatedIPAddressGetNextAvailable,
-    DeprecatedIPPrefixGetNextAvailable,
-    InfrahubIPAddressGetNextAvailable,
-    InfrahubIPPrefixGetNextAvailable,
-)
+from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .proposed_change import ProposedChangeAvailableActions
 from .relationship import Relationship
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
@@ -18,8 +13,6 @@ __all__ = [
     "AccountPermissions",
     "AccountToken",
     "BranchQueryList",
-    "DeprecatedIPAddressGetNextAvailable",
-    "DeprecatedIPPrefixGetNextAvailable",
     "InfrahubBranchQueryList",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
