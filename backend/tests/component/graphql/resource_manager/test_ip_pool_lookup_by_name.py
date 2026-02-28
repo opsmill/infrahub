@@ -22,6 +22,8 @@ PREFIX_POOL_NAME = "prefix-pool-by-name"
 PREFIX_POOL_2_NAME = "prefix-pool-2-by-name"
 ADDRESS_POOL_NAME = "address-pool-by-name"
 ADDRESS_POOL_2_NAME = "address-pool-2-by-name"
+TPL_PREFIX_POOL_NAME = "tpl-prefix-pool"
+TPL_ADDRESS_POOL_NAME = "tpl-address-pool"
 
 CREATE_PREFIX_FROM_POOL = """
 mutation CreatePrefixFromPool($name: String!, $pool_id: String!) {
@@ -521,3 +523,457 @@ class TestIPPoolLookupByName:
 
         assert result.errors
         assert "Unable to find the pool to generate a node for the relationship 'address'" in str(result.errors[0])
+
+
+# --- Template mutations ---
+
+CREATE_TEMPLATE_PREFIX_WITH_POOL = """
+mutation CreateTemplatePrefixWithPool($template_name: String!, $pool_id: String!) {
+    TemplateTestMandatoryPrefixCreate(data: {
+        template_name: { value: $template_name }
+        prefix_from_resource_pool: { id: $pool_id }
+    }) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+CREATE_TEMPLATE_PREFIX_SETUP = """
+mutation CreateTemplatePrefixSetup($template_name: String!) {
+    TemplateTestMandatoryPrefixCreate(data: {
+        template_name: { value: $template_name }
+    }) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+UPDATE_TEMPLATE_PREFIX_POOL = """
+mutation UpdateTemplatePrefixPool($id: String!, $pool_id: String!) {
+    TemplateTestMandatoryPrefixUpdate(data: {
+        id: $id
+        prefix_from_resource_pool: { id: $pool_id }
+    }) {
+        ok
+    }
+}
+"""
+
+CREATE_TEMPLATE_ADDRESS_WITH_POOL = """
+mutation CreateTemplateAddressWithPool($template_name: String!, $pool_id: String!) {
+    TemplateTestMandatoryAddressCreate(data: {
+        template_name: { value: $template_name }
+        address_from_resource_pool: { id: $pool_id }
+    }) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+CREATE_TEMPLATE_ADDRESS_SETUP = """
+mutation CreateTemplateAddressSetup($template_name: String!) {
+    TemplateTestMandatoryAddressCreate(data: {
+        template_name: { value: $template_name }
+    }) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+UPDATE_TEMPLATE_ADDRESS_POOL = """
+mutation UpdateTemplateAddressPool($id: String!, $pool_id: String!) {
+    TemplateTestMandatoryAddressUpdate(data: {
+        id: $id
+        address_from_resource_pool: { id: $pool_id }
+    }) {
+        ok
+    }
+}
+"""
+
+
+class TestIPPoolTemplate:
+    """Tests for creating/updating template instances with IP pools by name and by ID."""
+
+    @pytest.fixture(scope="class")
+    async def register_ipam_schema(self, default_branch_scope_class: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+        schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch_scope_class.name)
+        default_branch_scope_class.update_schema_hash()
+        return schema_branch
+
+    @pytest.fixture(scope="class")
+    async def register_ipam_extended_schema(
+        self, default_branch_scope_class: Branch, register_ipam_schema: SchemaBranch
+    ) -> SchemaBranch:
+        SCHEMA: dict[str, Any] = {
+            "nodes": [
+                {
+                    "name": "MandatoryPrefix",
+                    "namespace": "Test",
+                    "generate_template": True,
+                    "attributes": [{"name": "name", "kind": "Text"}],
+                    "relationships": [
+                        {
+                            "name": "prefix",
+                            "peer": "IpamIPPrefix",
+                            "kind": "Attribute",
+                            "optional": False,
+                            "cardinality": "one",
+                        },
+                    ],
+                },
+                {
+                    "name": "MandatoryAddress",
+                    "namespace": "Test",
+                    "generate_template": True,
+                    "attributes": [{"name": "name", "kind": "Text"}],
+                    "relationships": [
+                        {
+                            "name": "address",
+                            "peer": "IpamIPAddress",
+                            "kind": "Attribute",
+                            "optional": False,
+                            "cardinality": "one",
+                        },
+                    ],
+                },
+            ],
+        }
+        schema_branch = registry.schema.register_schema(
+            schema=SchemaRoot(**SCHEMA), branch=default_branch_scope_class.name
+        )
+        default_branch_scope_class.update_schema_hash()
+        return schema_branch
+
+    @pytest.fixture(scope="class")
+    def init_nodes_registry(self) -> None:
+        registry.node["Node"] = Node
+        registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+        registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
+        registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
+
+    @pytest.fixture(scope="class")
+    async def default_ipnamespace(
+        self, db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch
+    ) -> None:
+        if not registry._default_ipnamespace:
+            ip_namespace = await create_ipam_namespace(db=db)
+            registry.default_ipnamespace = ip_namespace.id
+
+    @pytest.fixture(scope="class")
+    async def ip_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        default_ipnamespace: None,
+        register_ipam_extended_schema: SchemaBranch,
+        init_nodes_registry: None,
+    ) -> dict[str, Any]:
+        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch_scope_class)
+
+        ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+        await ns1.new(db=db, name="ns-template")
+        await ns1.save(db=db)
+
+        net_parent = await Node.init(db=db, schema=prefix_schema)
+        await net_parent.new(db=db, prefix="10.30.0.0/16", ip_namespace=ns1)
+        await net_parent.save(db=db)
+
+        net_for_address = await Node.init(db=db, schema=prefix_schema)
+        await net_for_address.new(db=db, prefix="10.30.3.0/27", parent=net_parent, ip_namespace=ns1)
+        await net_for_address.save(db=db)
+
+        return {"ns1": ns1, "net_parent": net_parent, "net_for_address": net_for_address}
+
+    @pytest.fixture(scope="class")
+    async def prefix_pool(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ip_dataset: dict[str, Any]
+    ) -> CoreIPPrefixPool:
+        prefix_pool_schema = registry.schema.get_node_schema(
+            name=InfrahubKind.IPPREFIXPOOL, branch=default_branch_scope_class
+        )
+        pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch_scope_class)
+        await pool.new(
+            db=db,
+            name=TPL_PREFIX_POOL_NAME,
+            default_prefix_length=24,
+            default_prefix_type="IpamIPPrefix",
+            resources=[ip_dataset["net_parent"]],
+            ip_namespace=ip_dataset["ns1"],
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture(scope="class")
+    async def address_pool(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ip_dataset: dict[str, Any]
+    ) -> CoreIPAddressPool:
+        address_pool_schema = registry.schema.get_node_schema(
+            name=InfrahubKind.IPADDRESSPOOL, branch=default_branch_scope_class
+        )
+        pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch_scope_class)
+        await pool.new(
+            db=db,
+            name=TPL_ADDRESS_POOL_NAME,
+            default_address_type="IpamIPAddress",
+            resources=[ip_dataset["net_for_address"]],
+            ip_namespace=ip_dataset["ns1"],
+        )
+        await pool.save(db=db)
+        return pool
+
+    # --- Prefix template: create ---
+
+    async def test_create_prefix_template_from_pool_by_name(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, prefix_pool: CoreIPPrefixPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_PREFIX_WITH_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-prefix-by-name", "pool_id": TPL_PREFIX_POOL_NAME},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryPrefixCreate"]["ok"]
+        template_id = result.data["TemplateTestMandatoryPrefixCreate"]["object"]["id"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.prefix_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == prefix_pool.id
+
+    async def test_create_prefix_template_from_pool_by_id(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, prefix_pool: CoreIPPrefixPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_PREFIX_WITH_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-prefix-by-id", "pool_id": prefix_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryPrefixCreate"]["ok"]
+        template_id = result.data["TemplateTestMandatoryPrefixCreate"]["object"]["id"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.prefix_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == prefix_pool.id
+
+    # --- Prefix template: update ---
+
+    async def test_update_prefix_template_from_pool_by_name(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, prefix_pool: CoreIPPrefixPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_PREFIX_SETUP,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-prefix-update-by-name"},
+        )
+        assert not create_result.errors
+        assert create_result.data
+        template_id = create_result.data["TemplateTestMandatoryPrefixCreate"]["object"]["id"]
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_TEMPLATE_PREFIX_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template_id, "pool_id": TPL_PREFIX_POOL_NAME},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryPrefixUpdate"]["ok"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.prefix_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == prefix_pool.id
+
+    async def test_update_prefix_template_from_pool_by_id(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, prefix_pool: CoreIPPrefixPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_PREFIX_SETUP,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-prefix-update-by-id"},
+        )
+        assert not create_result.errors
+        assert create_result.data
+        template_id = create_result.data["TemplateTestMandatoryPrefixCreate"]["object"]["id"]
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_TEMPLATE_PREFIX_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template_id, "pool_id": prefix_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryPrefixUpdate"]["ok"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.prefix_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == prefix_pool.id
+
+    # --- Address template: create ---
+
+    async def test_create_address_template_from_pool_by_name(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, address_pool: CoreIPAddressPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_ADDRESS_WITH_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-address-by-name", "pool_id": TPL_ADDRESS_POOL_NAME},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryAddressCreate"]["ok"]
+        template_id = result.data["TemplateTestMandatoryAddressCreate"]["object"]["id"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.address_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == address_pool.id
+
+    async def test_create_address_template_from_pool_by_id(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, address_pool: CoreIPAddressPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_ADDRESS_WITH_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-address-by-id", "pool_id": address_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryAddressCreate"]["ok"]
+        template_id = result.data["TemplateTestMandatoryAddressCreate"]["object"]["id"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.address_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == address_pool.id
+
+    # --- Address template: update ---
+
+    async def test_update_address_template_from_pool_by_name(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, address_pool: CoreIPAddressPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_ADDRESS_SETUP,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-address-update-by-name"},
+        )
+        assert not create_result.errors
+        assert create_result.data
+        template_id = create_result.data["TemplateTestMandatoryAddressCreate"]["object"]["id"]
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_TEMPLATE_ADDRESS_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template_id, "pool_id": TPL_ADDRESS_POOL_NAME},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryAddressUpdate"]["ok"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.address_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == address_pool.id
+
+    async def test_update_address_template_from_pool_by_id(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, address_pool: CoreIPAddressPool
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_ADDRESS_SETUP,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "tpl-address-update-by-id"},
+        )
+        assert not create_result.errors
+        assert create_result.data
+        template_id = create_result.data["TemplateTestMandatoryAddressCreate"]["object"]["id"]
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_TEMPLATE_ADDRESS_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template_id, "pool_id": address_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data["TemplateTestMandatoryAddressUpdate"]["ok"]
+
+        loaded = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        assert loaded is not None
+        pool_peer = await loaded.address_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == address_pool.id
