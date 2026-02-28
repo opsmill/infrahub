@@ -210,13 +210,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._human_friendly_id.compute(db=db, node=self)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
-        if not self._display_label and self._schema.display_label:
-            await self.add_display_label(db=db)
-
         if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
             return value
 
-        return repr(self)
+        if not self._schema.display_label:
+            return repr(self)
+
+        display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+        await display_label.compute(db=db, node=self)
+        return display_label.get_value(node=self, at=self._at) or ""
 
     def has_display_label(self) -> bool:
         return self._display_label is not None

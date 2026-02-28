@@ -150,8 +150,9 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
         if not self.is_jinja2_template:
             path_value = await node.get_path_value(db=db, path=self.template)
-            # Use .value for enum to keep compat with old style display label
-            self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
+            if path_value is not None:
+                # Use .value for enum to keep compat with old style display label
+                self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
             return
 
         jinja2_template = InfrahubJinja2Template(template=self.template)
