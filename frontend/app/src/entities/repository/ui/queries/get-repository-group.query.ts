@@ -4,7 +4,7 @@ import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import {
   type GetRepositoryGroupParams,

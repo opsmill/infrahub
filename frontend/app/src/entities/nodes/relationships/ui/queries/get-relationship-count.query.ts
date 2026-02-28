@@ -9,7 +9,7 @@ import {
   type GetRelationshipCountParams,
   getRelationshipCount,
 } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count";
-import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 
 export function getRelationshipCountQueryOptions(params: GetRelationshipCountParams) {
   return queryOptions({

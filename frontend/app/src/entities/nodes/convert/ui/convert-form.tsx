@@ -7,8 +7,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import { useConvertObjectMutation } from "@/entities/nodes/convert/domain/convert-object.mutation";
-import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping.query";
+import { useConvertObjectMutation } from "@/entities/nodes/convert/ui/queries/convert-object.mutation";
+import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/ui/queries/get-object-convert-fields-mapping.query";
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field";
 import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";

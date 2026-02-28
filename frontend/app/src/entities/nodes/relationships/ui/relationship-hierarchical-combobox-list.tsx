@@ -10,7 +10,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
+import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema } from "@/entities/schema/types";

@@ -14,7 +14,7 @@ import { pluralize } from "@/shared/utils/string";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
+import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 

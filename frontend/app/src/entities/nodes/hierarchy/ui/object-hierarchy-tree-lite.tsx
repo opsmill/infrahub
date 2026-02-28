@@ -5,7 +5,7 @@ import { Tree } from "@/shared/components/aria/tree";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Button } from "@/shared/components/ui/button";
 
-import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
+import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
 import {
   ObjectHierarchyTree,
   type ObjectHierarchyTreeProps,

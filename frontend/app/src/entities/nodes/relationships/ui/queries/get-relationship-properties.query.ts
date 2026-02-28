@@ -8,7 +8,7 @@ import {
   type GetRelationshipPropertiesParams,
   getRelationshipProperties,
 } from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties";
-import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 
 export type UseGetRelationshipPropertiesParams = Omit<
   GetRelationshipPropertiesParams,

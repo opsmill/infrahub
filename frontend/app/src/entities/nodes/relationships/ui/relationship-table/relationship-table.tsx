@@ -8,8 +8,8 @@ import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/u
 import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
-} from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
-import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
+} from "@/entities/nodes/relationships/ui/queries/get-object-relationships.query";
+import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";

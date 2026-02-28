@@ -17,7 +17,7 @@ import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { useGetProfiles } from "@/entities/nodes/profiles/domain/get-profiles.query";
+import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import type {
   NodeCore,
   NodeObjectWithMetadata,

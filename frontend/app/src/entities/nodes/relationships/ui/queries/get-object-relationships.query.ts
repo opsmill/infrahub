@@ -13,8 +13,8 @@ import {
   type GetObjectRelationshipsParams,
   getObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
-import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
-import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
+import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 
 export type GetObjectRelationshipsQueryOptionsParams = Omit<
   GetObjectRelationshipsParams,

@@ -15,7 +15,7 @@ import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { useAddRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships.mutation";
+import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
