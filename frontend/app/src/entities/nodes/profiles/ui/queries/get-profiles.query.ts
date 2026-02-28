@@ -5,7 +5,7 @@ import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { type GetProfilesParams, getProfiles } from "@/entities/nodes/profiles/domain/get-profiles";
 
 export function getProfilesQueryOptions(params: GetProfilesParams) {

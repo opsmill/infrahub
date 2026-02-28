@@ -15,8 +15,8 @@ import {
   getIpAddressList,
 } from "@/entities/ipam/ip-addresses/domain/get-ip-address-list";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 type GetIpAddressListInfiniteQueryParams = Omit<GetIpAddressListParams, keyof PaginationParams>;
 

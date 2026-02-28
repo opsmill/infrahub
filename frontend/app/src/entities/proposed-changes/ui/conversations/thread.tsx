@@ -21,7 +21,7 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";

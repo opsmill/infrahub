@@ -5,7 +5,7 @@ import { GRAPHQL_QUERY_OBJECT } from "@/shared/config/constants";
 import GraphqlQueryDetailsCard from "@/entities/graphql/ui/graphql-query-details-card";
 import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
 import { GraphqlQueryViewerCard } from "@/entities/graphql/ui/graphql-query-viewer-card";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";

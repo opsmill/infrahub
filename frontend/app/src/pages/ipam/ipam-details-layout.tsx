@@ -8,7 +8,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { IpamDetailsHeader } from "@/entities/ipam/ip-prefixes/ui/ipam-details-header";
 import { IpamDetailsTabs } from "@/entities/ipam/ipam-details-tabs";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import type { ModelSchema } from "@/entities/schema/types";

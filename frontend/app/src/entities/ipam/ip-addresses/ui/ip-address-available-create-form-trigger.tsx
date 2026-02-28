@@ -9,7 +9,7 @@ import {
   type IPAddressAvailableIdentifierProps,
   IpAddressAvailableIdentifier,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 

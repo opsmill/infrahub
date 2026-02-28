@@ -4,7 +4,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
-import { useNodeLabel } from "../api/get-display-label.query";
+import { useNodeLabel } from "./queries/get-display-label.query";
 
 type NodeLabelProps = {
   id?: string;

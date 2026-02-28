@@ -9,7 +9,7 @@ import {
   GetObjectConvertFieldsMapping,
   type GetObjectConvertFieldsMappingParams,
 } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function getConvertFieldsMappingOptions(params: GetObjectConvertFieldsMappingParams) {
   return queryOptions({

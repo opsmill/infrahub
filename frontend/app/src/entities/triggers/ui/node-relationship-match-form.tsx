@@ -33,8 +33,8 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NODE_TRIGGER_RELATIONSHIP_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 

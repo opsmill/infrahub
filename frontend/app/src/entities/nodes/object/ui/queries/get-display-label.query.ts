@@ -6,7 +6,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 
-import { getNodeLabelFromApi } from "./get-display-label";
+import { getNodeLabelFromApi } from "../../api/get-display-label";
 
 type NodeLabelProps = {
   objectId?: string;

@@ -9,7 +9,7 @@ import {
   type GetTreeNodesByParentParams,
   getTreeNodesByParent,
 } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 /** Page size for tree node queries - larger than default to reduce requests for hierarchical data */
 export const TREE_NODES_PAGE_SIZE = 80;

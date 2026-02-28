@@ -26,7 +26,7 @@ import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";

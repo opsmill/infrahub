@@ -1,4 +1,4 @@
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { GetTaskListParams } from "@/entities/tasks/domain/get-task-list/get-task-list";
 
 export const tasksQueryKeys = {

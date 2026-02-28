@@ -21,8 +21,8 @@ import {
 
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";

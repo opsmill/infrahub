@@ -9,7 +9,7 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import {
   type GetRelationshipsParams,
   getRelationships,

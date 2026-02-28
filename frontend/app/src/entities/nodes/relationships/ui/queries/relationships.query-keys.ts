@@ -3,7 +3,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 import {
   type ObjectDetailKeysParams,
   objectQueryKeys,
-} from "@/entities/nodes/object/domain/object.query-keys";
+} from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export interface RelationshipKeysBaseParams extends ObjectDetailKeysParams {
   relationshipName: string;

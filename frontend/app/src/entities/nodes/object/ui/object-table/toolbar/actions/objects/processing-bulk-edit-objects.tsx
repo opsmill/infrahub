@@ -4,9 +4,9 @@ import React from "react";
 import { queryClient } from "@/shared/api/rest/client";
 import { pluralize } from "@/shared/utils/string";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
-import { UPDATE_OBJECT_MUTATION_KEY } from "@/entities/nodes/object/domain/update-object.mutation";
+import { UPDATE_OBJECT_MUTATION_KEY } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import {
   GroupCard,
   GroupPanelBody,

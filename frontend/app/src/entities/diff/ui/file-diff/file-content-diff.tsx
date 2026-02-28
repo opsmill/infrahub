@@ -32,8 +32,8 @@ import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 
 interface FileContentDiffProps {
   repositoryId: string;

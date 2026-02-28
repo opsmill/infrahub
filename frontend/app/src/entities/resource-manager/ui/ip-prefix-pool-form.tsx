@@ -15,7 +15,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

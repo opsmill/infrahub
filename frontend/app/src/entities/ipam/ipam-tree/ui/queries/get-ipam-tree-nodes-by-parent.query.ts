@@ -10,7 +10,7 @@ import {
   type GetIpamTreeNodesByParentParams,
   getIpamTreeNodesByParent,
 } from "@/entities/ipam/ipam-tree/domain/get-ipam-tree-nodes-by-parent";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

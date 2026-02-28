@@ -1,6 +1,6 @@
 import type { ContextParams } from "@/shared/api/types";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { GetObjectFileParams } from "@/entities/object-file/domain/get-object-file";
 
 export const objectFileQueryKeys = {

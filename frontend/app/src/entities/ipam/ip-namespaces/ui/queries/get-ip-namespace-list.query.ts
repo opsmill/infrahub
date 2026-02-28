@@ -14,8 +14,8 @@ import {
   type GetIpNamespaceListParams,
   getIpNamespaceList,
 } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export type GetIpNamespaceListInfiniteQueryOptionsParams = Omit<
   GetIpNamespaceListParams,

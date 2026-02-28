@@ -7,7 +7,7 @@ import {
   type CreateObjectParams,
   createObject,
 } from "@/entities/nodes/object/domain/create-object";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function useCreateObjectMutation() {
   const { currentBranch } = useCurrentBranch();

@@ -10,7 +10,7 @@ import { PeerInput } from "@/shared/components/inputs/peer";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 
 import { updateRelationshipFieldValue } from "../utils/updateFormFieldValue";
 

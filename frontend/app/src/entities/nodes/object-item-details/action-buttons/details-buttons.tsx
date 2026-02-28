@@ -16,7 +16,7 @@ import {
 } from "@/entities/generators/constants";
 import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator-definition-run-button";
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { NodeObject } from "@/entities/nodes/types";

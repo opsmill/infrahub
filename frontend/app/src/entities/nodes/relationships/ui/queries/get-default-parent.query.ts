@@ -5,7 +5,7 @@ import { useCurrentFormContext } from "@/shared/components/form/utils/form-conte
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import {
   type DefaultParentParams,
   getDefaultParent,

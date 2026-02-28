@@ -1,7 +1,7 @@
 import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";

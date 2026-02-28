@@ -7,7 +7,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { DeleteObjectsParams } from "@/entities/nodes/object/api/delete-objects-from-api";
 
-import { deleteObjects } from "./delete-objects";
+import { deleteObjects } from "../../domain/delete-objects";
 
 interface DeleteObjectsProps {
   context?: DefaultContext;

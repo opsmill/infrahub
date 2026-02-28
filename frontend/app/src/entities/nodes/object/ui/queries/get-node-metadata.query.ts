@@ -5,28 +5,30 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import {
+  type GetNodeMetadataParams,
+  getNodeMetadata,
+} from "@/entities/nodes/object/domain/get-node-metadata";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
-import { type GetObjectsCountParams, getObjectsCount } from "./get-objects-count";
-
-export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
+export function getNodeMetadataQueryOptions(params: GetNodeMetadataParams) {
   return queryOptions({
-    queryKey: objectQueryKeys.count(params),
+    queryKey: objectQueryKeys.metadata(params),
     queryFn: async () => {
-      return getObjectsCount(params);
+      return getNodeMetadata(params);
     },
   });
 }
 
-export function useObjectsCount(params: Omit<GetObjectsCountParams, keyof ContextParams>) {
+export function useGetNodeMetadata(params: Omit<GetNodeMetadataParams, keyof ContextParams>) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
-    getObjectsCountQueryOptions({
-      ...params,
+    getNodeMetadataQueryOptions({
       branchName: currentBranch.name,
       atDate: timeMachineDate,
+      ...params,
     })
   );
 }

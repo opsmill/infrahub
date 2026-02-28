@@ -10,8 +10,8 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { type GetObjectsParams, getObjects } from "@/entities/nodes/object/domain/get-objects";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 type GetObjectsQueryParams = Omit<GetObjectsParams, keyof PaginationParams>;
 

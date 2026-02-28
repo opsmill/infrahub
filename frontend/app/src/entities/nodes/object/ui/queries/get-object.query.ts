@@ -6,7 +6,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { type GetObjectParams, getObject } from "@/entities/nodes/object/domain/get-object";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function getObjectQueryOptions(params: GetObjectParams) {
   return queryOptions({
