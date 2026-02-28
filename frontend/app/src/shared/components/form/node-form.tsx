@@ -14,7 +14,7 @@ import { classNames } from "@/shared/utils/common";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
+import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 

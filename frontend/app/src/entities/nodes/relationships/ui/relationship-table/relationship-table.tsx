@@ -13,7 +13,7 @@ import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/g
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
-import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipTableProps extends UseObjectRelationshipsParams {}

@@ -6,7 +6,7 @@ import {
   type GetPoolUtilizationParams,
   getPoolUtilization,
 } from "@/entities/resource-manager/domain/get-pool-utilization";
-import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 
 export function getPoolUtilizationQueryOptions(params: GetPoolUtilizationParams) {
   return queryOptions({

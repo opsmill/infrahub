@@ -2,7 +2,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
+import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 
 export function Component() {

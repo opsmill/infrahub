@@ -7,7 +7,7 @@ import { parseJwt } from "@/shared/utils/common";
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
-import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

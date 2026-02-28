@@ -10,7 +10,7 @@ import { QSP } from "@/shared/config/qsp";
 import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
-import { useGetEvents } from "../domain/get-events.query";
+import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
 import { EventCard } from "./event-card";
 
 const MAX_EVENTS = 5;

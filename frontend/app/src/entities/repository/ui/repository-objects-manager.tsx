@@ -4,7 +4,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { REPOSITORY_GROUP } from "@/entities/repository/constants";
-import { useGetRepositoryGroup } from "@/entities/repository/domain/get-repository-group.query";
+import { useGetRepositoryGroup } from "@/entities/repository/ui/queries/get-repository-group.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RepositoryObjectsManagerProps {

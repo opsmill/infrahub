@@ -7,7 +7,7 @@ import {
   type GetTaskListParams,
   getTaskList,
 } from "@/entities/tasks/domain/get-task-list/get-task-list";
-import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
+import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function getTaskListQueryOptions(params: GetTaskListParams) {
   return queryOptions({

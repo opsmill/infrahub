@@ -9,7 +9,7 @@ import {
   type SearchAnywhereParams,
   searchAnywhere,
 } from "@/entities/navigation/domain/search-anywhere";
-import { searchAnywhereQueryKeys } from "@/entities/navigation/domain/search-anywhere.query-keys";
+import { searchAnywhereQueryKeys } from "@/entities/navigation/ui/queries/search-anywhere.query-keys";
 
 export function searchAnywhereQueryOptions(params: SearchAnywhereParams) {
   return queryOptions({

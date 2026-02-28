@@ -6,7 +6,7 @@ import {
   type GetResourceAllocatedParams,
   getResourceAllocated,
 } from "@/entities/resource-manager/domain/get-resource-allocated";
-import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 
 export function getResourceAllocatedQueryOptions(params: GetResourceAllocatedParams) {
   return queryOptions({

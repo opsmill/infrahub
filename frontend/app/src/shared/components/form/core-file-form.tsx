@@ -22,7 +22,7 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-o
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
+import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export type CoreFileFormData = Record<string, FormFieldValue>;

@@ -10,8 +10,8 @@ import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { sortByName, sortByOrderWeight } from "@/shared/utils/common";
 
-import { useGetSchemaHash } from "@/entities/schema/domain/get-schema-hash.query";
-import { useLoadSchema } from "@/entities/schema/domain/load-schema.query";
+import { useGetSchemaHash } from "@/entities/schema/ui/queries/get-schema-hash.query";
+import { useLoadSchema } from "@/entities/schema/ui/queries/load-schema.query";
 import {
   genericSchemasAtom,
   namespacesAtom,

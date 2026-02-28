@@ -6,7 +6,7 @@ import {
   type GetTaskCountParams,
   getTaskCount,
 } from "@/entities/tasks/domain/get-node-task-count/get-task-count";
-import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
+import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function getTaskCountQueryOptions(params?: GetTaskCountParams) {
   return queryOptions({

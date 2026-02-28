@@ -17,9 +17,9 @@ import useFilters from "@/shared/hooks/useFilters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
-import { useGetTaskList } from "@/entities/tasks/domain/get-task-list/get-task-list.query";
-import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
+import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
+import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
+import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 import { getStateBadge } from "@/entities/tasks/ui/task-item-details";
 
