@@ -8,7 +8,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import { useBranchExists } from "@/entities/branches/domain/use-branch-exists";
+import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";
 import { DiffNode } from "@/entities/diff/node-diff/node";

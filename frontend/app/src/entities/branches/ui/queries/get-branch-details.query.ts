@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import {
   type GetBranchDetailsParams,
   getBranchDetails,

@@ -8,7 +8,7 @@ import {
 import type { PaginationParams } from "@/shared/api/types";
 
 import { BRANCHES_PER_PAGE } from "@/entities/branches/api/get-branches-from-api";
-import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import {
   type GetBranchesParams,
   getAllBranches,

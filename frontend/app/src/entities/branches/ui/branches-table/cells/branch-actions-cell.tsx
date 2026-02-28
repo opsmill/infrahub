@@ -15,7 +15,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
+import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 export interface BranchActionsCellProps {

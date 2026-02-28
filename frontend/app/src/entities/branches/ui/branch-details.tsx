@@ -4,7 +4,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetBranchDetails } from "@/entities/branches/domain/get-branch-details.query";
+import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-details.query";
 import { BranchDeleteButton } from "@/entities/branches/ui/branch-delete-button";
 import { BranchAttributes } from "@/entities/branches/ui/branch-details/branch-attributes";
 import { BranchMergeButton } from "@/entities/branches/ui/branch-merge-button";

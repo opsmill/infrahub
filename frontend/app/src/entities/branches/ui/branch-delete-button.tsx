@@ -9,7 +9,7 @@ import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
-import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
+import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
 
 type BranchDeleteButtonProps = {
   branch: BranchDetail;

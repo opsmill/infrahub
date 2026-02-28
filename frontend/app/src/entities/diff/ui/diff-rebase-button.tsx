@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 
-import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";
+import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { useUpdateDiffMutation } from "@/entities/diff/domain/update-diff.mutation";
 
 export interface DiffRebaseButtonProps extends ButtonProps {
