@@ -10,7 +10,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
-import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
+import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";

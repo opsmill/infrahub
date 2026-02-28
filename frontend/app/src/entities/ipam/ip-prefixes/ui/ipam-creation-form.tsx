@@ -7,8 +7,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/domain/get-next-ip-address-available.query";
-import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/domain/get-next-ip-prefix-available.query";
+import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/ui/queries/get-next-ip-address-available.query";
+import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/queries/get-next-ip-prefix-available.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";

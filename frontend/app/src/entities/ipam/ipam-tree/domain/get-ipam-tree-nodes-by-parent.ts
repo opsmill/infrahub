@@ -2,7 +2,7 @@ import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { GetIpamTreeNodesByParentFromApi } from "@/entities/ipam/ipam-tree/api/get-ipam-tree-nodes-by-parent-from-api";
-import { IPAM_NODES_PER_PAGE } from "@/entities/ipam/ipam-tree/domain/get-ipam-tree-nodes-by-parent.query";
+import { IPAM_NODES_PER_PAGE } from "@/entities/ipam/ipam-tree/ui/queries/get-ipam-tree-nodes-by-parent.query";
 import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/types";
 
 export interface GetIpamTreeNodesByParentParams extends PaginationParams, ContextParams {
