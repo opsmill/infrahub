@@ -4,7 +4,7 @@ import {
   type GetProposedChangeDetailsParams,
   getProposedChangeDetails,
 } from "@/entities/proposed-changes/domain/get-proposed-change-details";
-import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 
 type GetProposedChangeDetailsQueryOptionsParams = GetProposedChangeDetailsParams;
 

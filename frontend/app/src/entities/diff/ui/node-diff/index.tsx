@@ -10,10 +10,10 @@ import { QSP } from "@/shared/config/qsp";
 
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
-import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";
-import { DiffNode } from "@/entities/diff/node-diff/node";
-import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
-import { buildFilters } from "@/entities/diff/node-diff/utils";
+import { useDiffTreeInfiniteQuery } from "@/entities/diff/ui/queries/get-diff-tree.query";
+import { DiffNode } from "@/entities/diff/ui/node-diff/node";
+import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/ui/node-diff/types";
+import { buildFilters } from "@/entities/diff/ui/node-diff/utils";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,

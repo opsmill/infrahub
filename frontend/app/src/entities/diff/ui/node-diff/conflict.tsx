@@ -11,8 +11,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
-import { useResolveConflictMutation } from "@/entities/diff/domain/resolve-conflict.mutation";
+import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
+import { useResolveConflictMutation } from "@/entities/diff/ui/queries/resolve-conflict.mutation";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
 interface ConflictData {

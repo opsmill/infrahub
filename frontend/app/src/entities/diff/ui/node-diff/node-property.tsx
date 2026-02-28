@@ -4,8 +4,8 @@ import { useParams } from "react-router";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
-import type { DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
-import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/node-diff/utils";
+import type { DiffProperty, DiffStatus } from "@/entities/diff/ui/node-diff/types";
+import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/ui/node-diff/utils";
 import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 
 import { DiffThread } from "./thread";

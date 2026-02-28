@@ -7,7 +7,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { PROPOSED_CHANGE_STATES, STATE_VALUES_FILTER } from "@/entities/proposed-changes/constants";
-import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
+import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
 import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/proposed-change-item-light";
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";

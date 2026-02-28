@@ -5,7 +5,7 @@ import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
 import type { DiffTreeFilters } from "@/entities/diff/api/get-diff-tree-from-api";
-import { DIFF_STATUS, type DiffProperty, type DiffStatus } from "@/entities/diff/node-diff/types";
+import { DIFF_STATUS, type DiffProperty, type DiffStatus } from "@/entities/diff/ui/node-diff/types";
 import {
   BadgeAdded,
   BadgeConflict,

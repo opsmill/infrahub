@@ -2,7 +2,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetProposedChangeThread } from "@/entities/proposed-changes/domain/get-proposed-change-thread.query";
+import { useGetProposedChangeThread } from "@/entities/proposed-changes/ui/queries/get-proposed-change-thread.query";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 
 interface ProposedChangeThreadEventProps {

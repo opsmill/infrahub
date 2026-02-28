@@ -5,7 +5,7 @@ import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagi
 
 import type { ProposedChangesFromApiParams } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
 import { getProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes";
-import { proposedChangesQueryKeys } from "@/entities/proposed-changes/domain/proposed-changes.query-keys";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 
 type GetProposedChangesInfiniteQueryOptionsParams = Omit<
   ProposedChangesFromApiParams,

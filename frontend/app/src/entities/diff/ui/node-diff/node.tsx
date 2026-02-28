@@ -9,8 +9,8 @@ import { Card } from "@/shared/components/ui/card";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
-import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/ui/node-diff/types";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 

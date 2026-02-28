@@ -10,7 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/shared/config/constants";
 
-import { getThreadLabel, getThreadTitle } from "@/entities/diff/utils";
+import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { getPermission } from "@/entities/permission/utils";
 import { getProposedChangesObjectThreads } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";

@@ -8,7 +8,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/domain/get-proposed-change-available-actions.query";
+import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/ui/queries/get-proposed-change-available-actions.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";

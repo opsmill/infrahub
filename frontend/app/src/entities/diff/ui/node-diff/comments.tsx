@@ -10,7 +10,7 @@ import {
 } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getThreadLabel } from "@/entities/diff/utils";
+import { getThreadLabel } from "@/entities/diff/ui/diff-utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";

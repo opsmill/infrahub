@@ -2,7 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { QueryConfig } from "@/shared/api/types";
 
-import { filesDiffKeys } from "@/entities/diff/domain/diff.query-keys";
+import { filesDiffKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { type GetFilesDiffParams, getFilesDiff } from "@/entities/diff/domain/get-files-diff";
 
 export function getFilesDiffQueryOptions({ branchName }: GetFilesDiffParams) {

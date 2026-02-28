@@ -10,8 +10,8 @@ import { classNames } from "@/shared/utils/common";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
-import { DiffRow } from "../node-diff/utils";
-import { BadgeConflict } from "../ui/diff-badge";
+import { DiffRow } from "@/entities/diff/ui/node-diff/utils";
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 
 type Change = {
   branch: string;

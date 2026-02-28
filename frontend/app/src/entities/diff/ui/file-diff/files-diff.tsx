@@ -3,7 +3,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetFilesDiff } from "@/entities/diff/domain/get-files-diff.query";
+import { useGetFilesDiff } from "@/entities/diff/ui/queries/get-files-diff.query";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,

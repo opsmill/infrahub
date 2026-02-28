@@ -4,9 +4,9 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { ChecksSummary } from "@/entities/diff/checks/checks-summary";
-import { Validator } from "@/entities/diff/checks/validator";
-import { useGetValidatorsQuery } from "@/entities/diff/domain/get-validators.query";
+import { ChecksSummary } from "@/entities/diff/ui/checks/checks-summary";
+import { Validator } from "@/entities/diff/ui/checks/validator";
+import { useGetValidatorsQuery } from "@/entities/diff/ui/queries/get-validators.query";
 
 export const Checks = () => {
   const { proposedChangeId } = useParams();

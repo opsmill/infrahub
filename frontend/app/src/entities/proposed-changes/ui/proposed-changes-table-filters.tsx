@@ -4,7 +4,7 @@ import { QSP } from "@/shared/config/qsp";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
-import { useGetProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
+import { useGetProposedChangesCounts } from "@/entities/proposed-changes/ui/queries/get-proposed-changes-counts.query";
 import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
 import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";
 import type { NodeSchema } from "@/entities/schema/types";

@@ -2,7 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { QueryConfig } from "@/shared/api/types";
 
-import { fileKeys } from "@/entities/diff/domain/diff.query-keys";
+import { fileKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { type GetFileParams, getFile } from "@/entities/diff/domain/get-file";
 
 export function getFileQueryOptions(params: GetFileParams) {

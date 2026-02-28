@@ -12,9 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import { DataIntegrityConflicts } from "@/entities/diff/checks/data-integrity-conflicts";
-import { SchemaIntegrityConflicts } from "@/entities/diff/checks/schema-integrity-conflicts";
-import { useGetCheckDetails } from "@/entities/diff/domain/get-check-details.query";
+import { DataIntegrityConflicts } from "@/entities/diff/ui/checks/data-integrity-conflicts";
+import { SchemaIntegrityConflicts } from "@/entities/diff/ui/checks/schema-integrity-conflicts";
+import { useGetCheckDetails } from "@/entities/diff/ui/queries/get-check-details.query";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 type tCheckProps = {
