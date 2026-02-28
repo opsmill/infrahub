@@ -4,7 +4,7 @@ import { render } from "../../../../tests/components/render";
 import { AppInfo, AppInstallationType, AppVersion } from "./app-info";
 
 // Mock the useGetAppInfo hook
-vi.mock("@/entities/config/domain/get-app-info.query", () => ({
+vi.mock("@/entities/config/ui/queries/get-app-info.query", () => ({
   useGetAppInfo: vi.fn(),
 }));
 
@@ -13,7 +13,7 @@ vi.mock("@/entities/config/ui/config-provider", () => ({
   useConfig: vi.fn(),
 }));
 
-import { useGetAppInfo } from "@/entities/config/domain/get-app-info.query";
+import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 describe("AppInstallationType", () => {

@@ -1,7 +1,7 @@
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
-import { useGetAppInfo } from "@/entities/config/domain/get-app-info.query";
+import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 export function AppInfo() {

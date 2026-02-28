@@ -2,7 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { QueryConfig } from "@/shared/api/types";
 
-import { artifactsQueryKeys } from "@/entities/artifacts/domain/artifacts.query-keys";
+import { artifactsQueryKeys } from "@/entities/artifacts/ui/queries/artifacts.query-keys";
 import {
   type GetArtifactFileParams,
   getArtifactFile,

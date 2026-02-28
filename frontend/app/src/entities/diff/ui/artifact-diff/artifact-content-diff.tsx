@@ -19,7 +19,7 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
-import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
+import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";

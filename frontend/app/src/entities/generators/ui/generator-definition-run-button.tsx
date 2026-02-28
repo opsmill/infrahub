@@ -15,7 +15,7 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
+import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";

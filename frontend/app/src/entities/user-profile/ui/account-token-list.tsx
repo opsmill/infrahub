@@ -1,7 +1,7 @@
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
-import { useInfrahubAccountToken } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
+import { useInfrahubAccountToken } from "@/entities/user-profile/ui/queries/get-infrahub-account-token.query";
 import { AccountTokenItem } from "@/entities/user-profile/ui/account-token-item";
 
 export interface AccountTokenListProps extends React.HTMLAttributes<HTMLDivElement> {}
