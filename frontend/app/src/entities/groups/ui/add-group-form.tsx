@@ -1,6 +1,5 @@
 import { toast } from "react-toastify";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import DynamicForm, { type DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import type {
@@ -10,7 +9,7 @@ import type {
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
-import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
+import { useUpdateGroups } from "@/entities/groups/ui/queries/update-groups.mutation";
 import type { NodeSchema } from "@/entities/schema/types";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
@@ -27,7 +26,7 @@ export default function AddGroupForm({
   schema,
   ...props
 }: AddGroupFormProps) {
-  const [addObjectToGroups] = useMutation(updateGroupsQuery({ schema, objectId }));
+  const { mutateAsync: updateGroupsMutation } = useUpdateGroups();
 
   const memberOfGroupsRelationship = schema.relationships?.find(
     ({ name }) => name === "member_of_groups"
@@ -39,7 +38,11 @@ export default function AddGroupForm({
 
   async function onSubmit(groupIds: Array<{ id: string }>) {
     try {
-      await addObjectToGroups({ variables: { id: objectId, groupIds } });
+      await updateGroupsMutation({
+        schema,
+        objectId,
+        groupIds,
+      });
 
       toast(
         <Alert

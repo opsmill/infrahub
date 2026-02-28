@@ -1,6 +1,10 @@
+import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import type { ContextParams } from "@/shared/api/types";
 import Handlebars from "@/shared/libs/handlebars";
 
-export const getGroupsQuery = Handlebars.compile(`
+const getGroupsQuery = Handlebars.compile(`
 query GET_GROUPS {
   {{objectKind}}(ids:["{{objectId}}"]) {
     edges {
@@ -39,3 +43,25 @@ query GET_GROUPS {
   }
 }
 `);
+
+export interface GetGroupsFromApiParams extends ContextParams {
+  objectKind: string;
+  objectId: string;
+}
+
+export function getGroupsFromApi({
+  objectKind,
+  objectId,
+  branchName,
+  atDate,
+}: GetGroupsFromApiParams) {
+  const query = gql(getGroupsQuery({ objectKind, objectId }));
+
+  return graphqlClient.query({
+    query,
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}

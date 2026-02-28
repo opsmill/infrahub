@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -13,6 +13,7 @@ import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
+import { groupsQueryKeys } from "@/entities/groups/ui/queries/groups.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -95,7 +96,7 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
       },
       {
         onSuccess: () => {
-          graphqlClient.refetchQueries({ include: ["GET_GROUPS"] });
+          queryClient.invalidateQueries({ queryKey: groupsQueryKeys.all });
           setShowDeleteModal(false);
         },
       }
