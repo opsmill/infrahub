@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Tabs } from "@/shared/components/tabs-routes";
 import {
@@ -11,10 +10,10 @@ import {
   OBJECT_PERMISSION_OBJECT,
 } from "@/shared/config/constants";
 
-import { GET_ROLE_MANAGEMENT_COUNTS } from "@/entities/role-manager/api/getCounts";
+import { useGetCounts } from "@/entities/role-manager/ui/queries/get-counts.query";
 
 export function RoleManagementNavigation() {
-  const { loading, data, error } = useQuery(GET_ROLE_MANAGEMENT_COUNTS);
+  const { isLoading, data, error } = useGetCounts();
 
   const tabs = [
     {
@@ -26,7 +25,7 @@ export function RoleManagementNavigation() {
         </div>
       ),
       count: data && data[ACCOUNT_GENERIC_OBJECT]?.count,
-      isLoading: loading,
+      isLoading,
       error: !!error,
     },
     {
@@ -38,7 +37,7 @@ export function RoleManagementNavigation() {
         </div>
       ),
       count: data && data[ACCOUNT_GROUP_OBJECT]?.count,
-      isLoading: loading,
+      isLoading,
       error: !!error,
     },
     {
@@ -50,7 +49,7 @@ export function RoleManagementNavigation() {
         </div>
       ),
       count: data && data[ACCOUNT_ROLE_OBJECT]?.count,
-      isLoading: loading,
+      isLoading,
       error: !!error,
     },
     {
@@ -62,7 +61,7 @@ export function RoleManagementNavigation() {
         </div>
       ),
       count: data && data[GLOBAL_PERMISSION_OBJECT]?.count,
-      isLoading: loading,
+      isLoading,
       error: !!error,
     },
     {
@@ -74,7 +73,7 @@ export function RoleManagementNavigation() {
         </div>
       ),
       count: data && data[OBJECT_PERMISSION_OBJECT]?.count,
-      isLoading: loading,
+      isLoading,
       error: !!error,
     },
   ];

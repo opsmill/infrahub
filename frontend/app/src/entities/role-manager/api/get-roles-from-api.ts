@@ -1,5 +1,8 @@
 import { graphql } from "gql.tada";
 
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+
 export const GET_ROLE_MANAGEMENT_ROLES = graphql(`
   query GET_ROLE_MANAGEMENT_ROLES($search: String, $offset: Int, $limit: Int) {
     CoreAccountRole(any__value: $search, partial_match: true, offset: $offset, limit: $limit) {
@@ -49,3 +52,24 @@ export const GET_ROLE_MANAGEMENT_ROLES = graphql(`
     }
   }
 `);
+
+export interface GetRolesFromApiParams extends ContextParams, PaginationParams {
+  search?: string;
+}
+
+export function getRolesFromApi({
+  search,
+  offset,
+  limit,
+  branchName,
+  atDate,
+}: GetRolesFromApiParams) {
+  return graphqlClient.query({
+    query: GET_ROLE_MANAGEMENT_ROLES,
+    variables: { search, offset, limit },
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}
