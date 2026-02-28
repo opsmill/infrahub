@@ -14,8 +14,8 @@ import {
 } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
+import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";

@@ -13,8 +13,8 @@ vi.mock("@/entities/config/ui/config-provider", () => ({
   useConfig: vi.fn(),
 }));
 
-import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
 import { useConfig } from "@/entities/config/ui/config-provider";
+import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
 
 describe("AppInstallationType", () => {
   const useConfigMock = vi.mocked(useConfig);

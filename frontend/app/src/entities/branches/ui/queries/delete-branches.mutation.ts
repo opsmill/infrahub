@@ -3,10 +3,10 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
-import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { deleteBranches } from "@/entities/branches/domain/delete-branches";
-import { getBranchesInfiniteQueryOptions } from "@/entities/branches/ui/queries/get-branches.query";
 import { branchesState } from "@/entities/branches/stores";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
+import { getBranchesInfiniteQueryOptions } from "@/entities/branches/ui/queries/get-branches.query";
 
 export function useDeleteBranchesMutation() {
   return useMutation({

@@ -6,8 +6,8 @@ import { useId, useMemo } from "react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 
-import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import type { MenuItem } from "@/entities/navigation/types";
+import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";

@@ -17,8 +17,8 @@ import {
 import { classNames } from "@/shared/utils/common";
 
 import { IPAM_TREE_KEY } from "@/entities/ipam/constants";
-import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ui/ip-namespace-selector";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
+import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ui/ip-namespace-selector";
 import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";
 
 const ipamTreeCollapsedAtom = atomWithStorage(IPAM_TREE_KEY, false);

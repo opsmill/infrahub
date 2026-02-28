@@ -9,8 +9,8 @@ import {
   type IPAddressAvailableIdentifierProps,
   IpAddressAvailableIdentifier,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 
 export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIdentifierProps) {

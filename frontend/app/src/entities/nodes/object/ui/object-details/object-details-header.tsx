@@ -1,10 +1,10 @@
 import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
-import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
 import type { Permission } from "@/entities/permission/types";

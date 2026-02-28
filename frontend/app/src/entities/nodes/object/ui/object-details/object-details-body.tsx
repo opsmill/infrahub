@@ -1,9 +1,9 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { ObjectDetailsTabs } from "@/entities/nodes/object/ui/object-details/object-details-tabs";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 

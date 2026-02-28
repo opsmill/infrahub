@@ -7,9 +7,9 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 
-import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
 import { GlobalEventsFilters } from "@/entities/events/ui/filters/global-events-filters";
 import { Event } from "@/entities/events/ui/global-event";
+import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 
 export function Component() {

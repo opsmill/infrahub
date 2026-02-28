@@ -10,8 +10,8 @@ import { assertArtifactObject } from "@/entities/artifacts/types";
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { ArtifactHeader } from "@/entities/artifacts/ui/artifact-header";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
-import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export interface ArtifactsDetailsProps {

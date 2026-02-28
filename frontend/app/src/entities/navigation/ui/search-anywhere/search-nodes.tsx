@@ -10,8 +10,8 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
-import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
+import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";

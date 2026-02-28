@@ -10,10 +10,6 @@ import { QSP } from "@/shared/config/qsp";
 
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
-import { useDiffTreeInfiniteQuery } from "@/entities/diff/ui/queries/get-diff-tree.query";
-import { DiffNode } from "@/entities/diff/ui/node-diff/node";
-import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/ui/node-diff/types";
-import { buildFilters } from "@/entities/diff/ui/node-diff/utils";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,
@@ -24,6 +20,10 @@ import { DiffNoFound } from "@/entities/diff/ui/diff-no-found";
 import { DiffRebaseButton } from "@/entities/diff/ui/diff-rebase-button";
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 import DiffTree from "@/entities/diff/ui/diff-tree";
+import { DiffNode } from "@/entities/diff/ui/node-diff/node";
+import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/ui/node-diff/types";
+import { buildFilters } from "@/entities/diff/ui/node-diff/utils";
+import { useDiffTreeInfiniteQuery } from "@/entities/diff/ui/queries/get-diff-tree.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 

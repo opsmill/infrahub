@@ -3,9 +3,9 @@ import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remo
 import Content from "@/shared/components/layout/content";
 import useFilters from "@/shared/hooks/useFilters";
 
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import type { ModelSchema } from "@/entities/schema/types";
 
 interface ObjectItemsHeaderProps {

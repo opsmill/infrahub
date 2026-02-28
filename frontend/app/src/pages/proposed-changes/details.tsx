@@ -14,17 +14,17 @@ import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/shared/config/co
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { Checks } from "@/entities/diff/ui/checks/checks";
-import { NodeDiff } from "@/entities/diff/ui/node-diff";
 import { ArtifactsDiff } from "@/entities/diff/ui/artifact-diff/artifacts-diff";
+import { Checks } from "@/entities/diff/ui/checks/checks";
 import { FilesDiff } from "@/entities/diff/ui/file-diff/files-diff";
+import { NodeDiff } from "@/entities/diff/ui/node-diff";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
-import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
+import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
 import { ProposedChangeTabs } from "@/entities/proposed-changes/ui/tabs/proposed-change-tabs";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";

@@ -2,8 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 
 import { queryClient } from "@/shared/api/rest/client";
 
-import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { createBranch } from "@/entities/branches/domain/create-branch";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { getBranchesInfiniteQueryOptions } from "@/entities/branches/ui/queries/get-branches.query";
 
 export function useCreateBranchMutation() {

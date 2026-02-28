@@ -4,10 +4,10 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 import { sortByName } from "@/shared/utils/common";
 
-import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 import { BranchesEmpty } from "@/entities/branches/ui/branches-empty";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
+import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 
 export function BranchesTable() {
   const [filters] = useFilters();

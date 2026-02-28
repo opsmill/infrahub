@@ -10,8 +10,6 @@ import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { sortByName, sortByOrderWeight } from "@/shared/utils/common";
 
-import { useGetSchemaHash } from "@/entities/schema/ui/queries/get-schema-hash.query";
-import { useLoadSchema } from "@/entities/schema/ui/queries/load-schema.query";
 import {
   genericSchemasAtom,
   namespacesAtom,
@@ -21,6 +19,8 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useGetSchemaHash } from "@/entities/schema/ui/queries/get-schema-hash.query";
+import { useLoadSchema } from "@/entities/schema/ui/queries/load-schema.query";
 
 export const SchemaProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: schemaHash, error: errorHash } = useGetSchemaHash({

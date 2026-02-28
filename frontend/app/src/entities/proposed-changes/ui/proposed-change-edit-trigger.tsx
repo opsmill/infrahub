@@ -14,8 +14,8 @@ import {
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
+import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";

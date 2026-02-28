@@ -17,9 +17,9 @@ import {
   type AttributeType,
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";

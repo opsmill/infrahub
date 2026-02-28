@@ -9,8 +9,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
-import { useLoginWithCredentials } from "@/entities/authentication/ui/queries/login-with-credentials.mutation";
 import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
+import { useLoginWithCredentials } from "@/entities/authentication/ui/queries/login-with-credentials.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useConfig } from "@/entities/config/ui/config-provider";
 

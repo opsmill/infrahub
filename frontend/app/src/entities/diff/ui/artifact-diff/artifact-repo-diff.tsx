@@ -2,8 +2,8 @@ import { Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 
 import type { ArtifactDiff } from "@/entities/diff/domain/get-artifacts-diff";
-import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { ArtifactContentDiff } from "@/entities/diff/ui/artifact-diff/artifact-content-diff";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 
 interface ArtifactRepoDiffProps {
   diff: ArtifactDiff;

@@ -9,8 +9,8 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { CHECK_OBJECT, TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";

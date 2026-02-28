@@ -2,8 +2,8 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { getBranchesCount } from "@/entities/branches/domain/get-branches-count";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 
 // Count query for branches list header badge
 export function getBranchesCountQueryOptions(filters?: Filter[]) {

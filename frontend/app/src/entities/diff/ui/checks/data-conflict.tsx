@@ -7,11 +7,10 @@ import { Id } from "@/shared/components/ui/id";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
+import { DiffRow } from "@/entities/diff/ui/node-diff/utils";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-
-import { DiffRow } from "@/entities/diff/ui/node-diff/utils";
-import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 
 type Change = {
   branch: string;

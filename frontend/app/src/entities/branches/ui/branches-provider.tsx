@@ -11,8 +11,8 @@ import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { currentBranchAtom } from "@/entities/branches/stores";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { findSelectedBranch } from "@/entities/branches/utils";
 
 type BranchContext = {
