@@ -1,0 +1,1 @@
+Added a configuration wizard that guides first-time users through creating Git credentials, connecting a repository, and selecting schemas from the Infrahub Marketplace for installation via a background job.
