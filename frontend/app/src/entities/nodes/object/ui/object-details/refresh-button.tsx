@@ -59,6 +59,7 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
           size="sm"
           onClick={handleRefresh}
           disabled={isRefetching}
+          aria-label="Refresh data"
           {...props}
         >
           {isRefreshSuccess ? (
