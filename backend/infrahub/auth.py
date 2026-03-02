@@ -139,12 +139,15 @@ async def create_fresh_access_token(
     return models.AccessTokenResponse(access_token=access_token)
 
 
-def _extract_effective_sso_group_names(sso_groups: list[str], filter_pattern: str | None) -> set[str]:
+def _extract_effective_sso_group_names(sso_groups: list[str], filter_pattern: str | list[str] | None) -> set[str]:
     if filter_pattern is None:
         return set(sso_groups)
 
+    filter_patterns = [filter_pattern] if isinstance(filter_pattern, str) else filter_pattern
+
+    compiled_filters: list[re.Pattern[str]] = []
     try:
-        compiled_filter = re.compile(filter_pattern)
+        compiled_filters = [re.compile(pattern) for pattern in filter_patterns]
     except re.error as exc:
         log.warning(
             "Invalid SSO group filter pattern, skipping auto-group generation",
@@ -155,15 +158,17 @@ def _extract_effective_sso_group_names(sso_groups: list[str], filter_pattern: st
 
     effective_group_names: set[str] = set()
     for group_name in sso_groups:
-        match = compiled_filter.match(group_name)
-        if not match:
-            continue
+        for compiled_filter in compiled_filters:
+            match = compiled_filter.match(group_name)
+            if not match:
+                continue
 
-        if match.lastindex:
-            effective_group_names.add(match.group(1))
-            continue
+            if match.lastindex:
+                effective_group_names.add(match.group(1))
+            else:
+                effective_group_names.add(group_name)
 
-        effective_group_names.add(group_name)
+            break
 
     return effective_group_names
 

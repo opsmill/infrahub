@@ -763,19 +763,22 @@ class SecuritySettings(BaseSettings):
         default=False,
         description="When enabled, automatically create account groups for SSO users based on groups provided by identity provider",
     )
-    sso_generate_groups_filter: str | None = Field(
+    sso_generate_groups_filter: str | list[str] | None = Field(
         default=None,
         description="When sso_generate_groups is enabled, this filter is used to extract the group name from the group identifier provided by the identity provider",
     )
 
-    @field_validator("sso_generate_groups_filter", mode="after")
+    @field_validator("sso_generate_groups_filter", mode="before")
     @classmethod
-    def validate_sso_generate_groups_filter_regex(cls, value: str | None) -> str | None:
+    def validate_sso_generate_groups_filter_regex(cls, value: str | list[str] | None) -> str | list[str] | None:
         if value is None:
             return value
 
+        patterns = [value] if isinstance(value, str) else value
+
         try:
-            re.compile(value)
+            for pattern in patterns:
+                re.compile(pattern)
         except re.error as exc:
             raise ValueError("Invalid regex pattern") from exc
 

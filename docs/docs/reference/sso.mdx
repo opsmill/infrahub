@@ -95,7 +95,9 @@ These settings control how Infrahub handles group assignment and creation for SS
 |-----------|---------------------|-----------|-------------|----------|
 | Default Group | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | `security.sso_user_default_group` | Name of the group to assign SSO users when no groups are provided by the identity provider | No |
 | Auto-generate Groups | `INFRAHUB_SECURITY_SSO_GENERATE_GROUPS` | `security.sso_generate_groups` | When enabled, automatically create missing account groups for groups received from identity providers during SSO authentication (default: `false`) | No |
-| Group Filter | `INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER` | `security.sso_generate_groups_filter` | Regex pattern to filter which SSO groups are auto-generated. Only groups matching this pattern will be created. Supports capture groups to extract group names. | No |
+| Group Filter | `INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER` | `security.sso_generate_groups_filter` | Regex pattern or ordered list of regex patterns to filter which SSO groups are auto-generated. Only groups matching a configured pattern are created. Supports capture groups to extract group names. | No |
+
+When you configure multiple group filters, Infrahub evaluates them in order and uses the first matching pattern for each SSO group.
 
 ## Examples
 
@@ -139,6 +141,23 @@ sso_generate_groups = true
 # Optional: Only create groups matching a pattern
 # This example only creates groups starting with "team-"
 sso_generate_groups_filter = "^team-.*"
+```
+
+### Auto-group creation with multiple filter patterns
+
+```toml
+[security]
+sso_generate_groups = true
+# Patterns are evaluated in order, first match wins.
+sso_generate_groups_filter = ["^team-.*", "ldap/groups/(\\w+)"]
+```
+
+### Auto-group creation with multiple filters via environment variable
+
+```bash
+export INFRAHUB_SECURITY_SSO_GENERATE_GROUPS='true'
+# Use a JSON array for multiple patterns in environment variables.
+export INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER='["^team-.*", "ldap/groups/(\\w+)"]'
 ```
 
 ### Group name extraction with capture groups

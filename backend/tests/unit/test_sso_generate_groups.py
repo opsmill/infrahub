@@ -165,12 +165,31 @@ class TestSSOGenerateGroupsFilterValidation:
         settings = SecuritySettings(sso_generate_groups_filter=r"^team-.*")
         assert settings.sso_generate_groups_filter == r"^team-.*"
 
+    def test_valid_regex_pattern_list_accepted(self):
+        """Verify that valid regex pattern lists are accepted"""
+        from infrahub.config import SecuritySettings
+
+        patterns = [r"^team-.*", r"ldap/groups/(\w+)"]
+        settings = SecuritySettings(sso_generate_groups_filter=patterns)
+        assert settings.sso_generate_groups_filter == patterns
+
     def test_none_filter_accepted(self):
         """Verify that None filter is accepted"""
         from infrahub.config import SecuritySettings
 
         settings = SecuritySettings(sso_generate_groups_filter=None)
         assert settings.sso_generate_groups_filter is None
+
+    def test_invalid_regex_pattern_in_list_raises_error(self):
+        """Verify that invalid regex in list raises a validation error"""
+        from pydantic import ValidationError
+
+        from infrahub.config import SecuritySettings
+
+        with pytest.raises(ValidationError) as exc_info:
+            SecuritySettings(sso_generate_groups_filter=[r"^team-.*", "[invalid(regex"])
+
+        assert "Invalid regex pattern" in str(exc_info.value)
 
 
 class TestSSOGenerateGroupsFilterCaptureGroup:

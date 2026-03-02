@@ -459,9 +459,12 @@ Automatically created groups have no permissions by default. You'll need to assi
 # Enable automatic group creation
 export INFRAHUB_SECURITY_SSO_GENERATE_GROUPS='true'
 
-# Optional: Filter which groups are created using a regex pattern
-# This example only creates groups starting with "team-"
+# Optional: Filter which groups are created using one regex pattern
+# This example creates groups starting with "team-"
 export INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER='^team-.*'
+
+# Optional: Filter with multiple patterns (JSON array, evaluated in order)
+export INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER='["^team-.*", "ldap/groups/(\\w+)"]'
 ```
 
 </TabItem>
@@ -472,9 +475,12 @@ export INFRAHUB_SECURITY_SSO_GENERATE_GROUPS_FILTER='^team-.*'
 # Enable automatic group creation
 sso_generate_groups = true
 
-# Optional: Filter which groups are created using a regex pattern
-# This example only creates groups starting with "team-"
+# Optional: Filter with one regex pattern
+# This example creates groups starting with "team-"
 sso_generate_groups_filter = "^team-.*"
+
+# Optional: Filter with multiple patterns (evaluated in order)
+sso_generate_groups_filter = ["^team-.*", "ldap/groups/(\\w+)"]
 ```
 
 </TabItem>
@@ -509,7 +515,7 @@ sso_generate_groups_filter = "ldap/groups/(\\w+)"
 </Tabs>
 
 :::info
-When the filter pattern contains a capture group, the first captured value becomes the group name in Infrahub. Groups that don't match the pattern are ignored.
+When a filter pattern contains a capture group, the first captured value becomes the group name in Infrahub. If you configure multiple patterns, Infrahub evaluates them in order and uses the first matching pattern for each group. Groups that do not match any pattern are ignored.
 :::
 
 ## Related resources
