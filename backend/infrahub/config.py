@@ -768,6 +768,19 @@ class SecuritySettings(BaseSettings):
         description="When sso_generate_groups is enabled, this filter is used to extract the group name from the group identifier provided by the identity provider",
     )
 
+    @field_validator("sso_generate_groups_filter", mode="after")
+    @classmethod
+    def validate_sso_generate_groups_filter_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        try:
+            re.compile(value)
+        except re.error as exc:
+            raise ValueError("Invalid regex pattern") from exc
+
+        return value
+
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
         mapped_providers: dict[Oauth2Provider, type[SecurityOAuth2BaseSettings]] = {

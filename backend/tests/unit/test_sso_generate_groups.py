@@ -174,6 +174,35 @@ class TestSSOGenerateGroupsFilterValidation:
 
 
 class TestSSOGenerateGroupsFilterCaptureGroup:
+    async def test_filter_does_not_duplicate_existing_extracted_group(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
+    ):
+        """Verify that extracted names do not create duplicates when group already exists"""
+        preexisting_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await preexisting_group.new(db=db, name="network_automation")
+        await preexisting_group.save(db=db)
+
+        original_generate = config.SETTINGS.security.sso_generate_groups
+        original_filter = config.SETTINGS.security.sso_generate_groups_filter
+        config.SETTINGS.security.sso_generate_groups = True
+        config.SETTINGS.security.sso_generate_groups_filter = r"ldap/groups/(\w+)"
+
+        try:
+            await signin_sso_account(
+                db=db,
+                account_name="test-user-existing-transformed",
+                sso_groups=["ldap/groups/network_automation"],
+            )
+
+            groups = await NodeManager.query(db=db, schema=CoreAccountGroup)
+            group_names = [g.name.value for g in groups]
+
+            assert group_names.count("network_automation") == 1
+            assert "ldap/groups/network_automation" not in group_names
+        finally:
+            config.SETTINGS.security.sso_generate_groups = original_generate
+            config.SETTINGS.security.sso_generate_groups_filter = original_filter
+
     async def test_filter_extracts_group_name_from_capture_group(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
     ):

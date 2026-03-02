@@ -139,6 +139,35 @@ async def create_fresh_access_token(
     return models.AccessTokenResponse(access_token=access_token)
 
 
+def _extract_effective_sso_group_names(sso_groups: list[str], filter_pattern: str | None) -> set[str]:
+    if filter_pattern is None:
+        return set(sso_groups)
+
+    try:
+        compiled_filter = re.compile(filter_pattern)
+    except re.error as exc:
+        log.warning(
+            "Invalid SSO group filter pattern, skipping auto-group generation",
+            filter_pattern=filter_pattern,
+            error=str(exc),
+        )
+        return set()
+
+    effective_group_names: set[str] = set()
+    for group_name in sso_groups:
+        match = compiled_filter.match(group_name)
+        if not match:
+            continue
+
+        if match.lastindex:
+            effective_group_names.add(match.group(1))
+            continue
+
+        effective_group_names.add(group_name)
+
+    return effective_group_names
+
+
 async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups: list[str]) -> models.UserToken:
     account = await NodeManager.get_one_by_default_filter(db=db, id=account_name, kind=InfrahubKind.ACCOUNT)
 
@@ -159,22 +188,45 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
 
         if config.SETTINGS.security.sso_generate_groups:
             filter_pattern = config.SETTINGS.security.sso_generate_groups_filter
-            created_group_names: set[str] = set()
-            for group_name in sso_groups:
-                if group_name not in existing_group_names:
-                    effective_name = group_name
-                    if filter_pattern is not None:
-                        match = re.match(filter_pattern, group_name)
-                        if match and match.lastindex:
-                            effective_name = match.group(1)
-                        elif not match:
-                            continue
-                    if effective_name not in existing_group_names and effective_name not in created_group_names:
-                        new_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-                        await new_group.new(db=db, name=effective_name)
-                        await new_group.save(db=db)
-                        infrahub_groups.append(new_group)
-                        created_group_names.add(effective_name)
+            effective_group_names = _extract_effective_sso_group_names(
+                sso_groups=sso_groups,
+                filter_pattern=filter_pattern,
+            )
+
+            missing_effective_names = effective_group_names - existing_group_names
+            if missing_effective_names:
+                existing_effective_groups = await NodeManager.query(
+                    db=db,
+                    schema=CoreAccountGroup,
+                    filters={"name__values": list(missing_effective_names)},
+                    prefetch_relationships=True,
+                )
+                for group in existing_effective_groups:
+                    group_name = group.name.value
+                    if group_name in existing_group_names:
+                        continue
+                    infrahub_groups.append(group)
+                    existing_group_names.add(group_name)
+
+            created_effective_names: set[str] = set()
+            for effective_name in effective_group_names:
+                if effective_name in existing_group_names:
+                    continue
+
+                new_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+                await new_group.new(db=db, name=effective_name)
+                await new_group.save(db=db)
+                existing_group_names.add(effective_name)
+                created_effective_names.add(effective_name)
+
+            if created_effective_names:
+                newly_created_groups = await NodeManager.query(
+                    db=db,
+                    schema=CoreAccountGroup,
+                    filters={"name__values": list(created_effective_names)},
+                    prefetch_relationships=True,
+                )
+                infrahub_groups.extend(newly_created_groups)
 
 
         for group in infrahub_groups:
