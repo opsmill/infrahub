@@ -5,7 +5,7 @@ import pytest
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
-def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
+def _get_schema_by_kind(full_schema: dict[str, Any], kind: str) -> dict[str, Any]:
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
         if schema_kind == kind:
