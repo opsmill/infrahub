@@ -7,7 +7,6 @@ import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupForm from "@/entities/groups/ui/add-group-form";
-import { groupsQueryKeys } from "@/entities/groups/ui/queries/groups.query-keys";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -77,7 +76,6 @@ export default function AddGroupTriggerButton({
           className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}
           onUpdateCompleted={async () => {
-            await queryClient.invalidateQueries({ queryKey: groupsQueryKeys.all });
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsAddGroupFormOpen(false);
           }}

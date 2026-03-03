@@ -13,7 +13,7 @@ import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
-import { groupsQueryKeys } from "@/entities/groups/ui/queries/groups.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -96,7 +96,7 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
       },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: groupsQueryKeys.all });
+          queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
           setShowDeleteModal(false);
         },
       }

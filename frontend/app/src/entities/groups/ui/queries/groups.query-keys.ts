@@ -1,3 +1,5 @@
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+
 export interface GroupsKeysParams {
   objectKind: string;
   objectId: string;
@@ -6,7 +8,7 @@ export interface GroupsKeysParams {
 }
 
 export const groupsQueryKeys = {
-  all: ["groups"] as const,
+  all: [...objectQueryKeys.all, "groups"] as const,
   list: (params: GroupsKeysParams) =>
     [
       ...groupsQueryKeys.all,
