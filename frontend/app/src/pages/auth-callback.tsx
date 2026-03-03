@@ -27,8 +27,8 @@ function AuthCallback() {
     );
     if (!currentAuthProvider) return;
 
-    const { tokenPath } = currentAuthProvider;
-    fetchUrl(`${INFRAHUB_API_SERVER_URL}${tokenPath}?code=${code}&state=${state}`)
+    const { token_path } = currentAuthProvider;
+    fetchUrl(`${INFRAHUB_API_SERVER_URL}${token_path}?code=${code}&state=${state}`)
       .then((result) => {
         if (result.errors) {
           throw result;

@@ -22,7 +22,10 @@ describe("AppInstallationType", () => {
   test("should display capitalized installation type with Edition suffix", async () => {
     // GIVEN
     useConfigMock.mockReturnValue({
-      installationType: "community",
+      installation_type: "community",
+      main_menu_mode: "default",
+      main_menu_size: 14,
+      experimental_features: {},
     } as any);
 
     // WHEN
@@ -35,7 +38,10 @@ describe("AppInstallationType", () => {
   test("should handle enterprise installation type", async () => {
     // GIVEN
     useConfigMock.mockReturnValue({
-      installationType: "enterprise",
+      installation_type: "enterprise",
+      main_menu_mode: "default",
+      main_menu_size: 14,
+      experimental_features: {},
     } as any);
 
     // WHEN
@@ -104,7 +110,10 @@ describe("AppInfo", () => {
   test("should render complete app info with all components", async () => {
     // GIVEN
     useConfigMock.mockReturnValue({
-      installationType: "community",
+      installation_type: "community",
+      main_menu_mode: "default",
+      main_menu_size: 14,
+      experimental_features: {},
     } as any);
 
     useGetAppInfoMock.mockReturnValue({

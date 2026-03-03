@@ -3,10 +3,10 @@ import React from "react";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 
-import type { Config } from "@/entities/config/types";
+import type { ConfigAPI } from "@/entities/config/types";
 import { useGetConfig } from "@/entities/config/ui/queries/get-config.query";
 
-export const ConfigContext = React.createContext<Config>({} as Config);
+export const ConfigContext = React.createContext<ConfigAPI>({} as ConfigAPI);
 
 export function useConfig() {
   const context = React.use(ConfigContext);
