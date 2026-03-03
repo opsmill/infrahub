@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { VariableType, jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   type AddAttributesToRequestOptions,
@@ -13,7 +14,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export interface GetObjectsFromApiParams extends ContextParams, PaginationParams {
+interface GetObjectsQueryParams {
   schemaKind: string;
   attributes: AttributeSchema[];
   relationships: RelationshipSchema[];
@@ -22,7 +23,47 @@ export interface GetObjectsFromApiParams extends ContextParams, PaginationParams
   relationshipsOptions?: AddAttributesToRequestOptions;
 }
 
-export const getObjectsFromApi = async ({
+const getObjectsQuery = ({
+  schemaKind,
+  attributes,
+  relationships,
+  filters,
+  attributesOptions,
+  relationshipsOptions,
+}: GetObjectsQueryParams) => {
+  return gql(
+    jsonToGraphQLQuery({
+      query: {
+        __name: `GetObjects${schemaKind}`,
+        __variables: {
+          limit: "Int",
+          offset: "Int",
+        },
+        [schemaKind]: {
+          __args: {
+            limit: new VariableType("limit"),
+            offset: new VariableType("offset"),
+            ...(filters ? addFiltersToRequest(filters) : {}),
+          },
+          edges: {
+            node: {
+              ...nodeCoreFragment,
+              ...addAttributesToRequest(attributes, attributesOptions),
+              ...addRelationshipsToRequest(relationships, relationshipsOptions),
+            },
+          },
+        },
+      },
+    })
+  );
+};
+
+export interface GetObjectsFromApiParams
+  extends ContextParams,
+    PaginationParams,
+    GetObjectsQueryParams {}
+
+export async function getObjectsFromApi({
   schemaKind,
   attributes,
   relationships,
@@ -33,35 +74,23 @@ export const getObjectsFromApi = async ({
   filters,
   attributesOptions,
   relationshipsOptions,
-}: GetObjectsFromApiParams) => {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: `GetObjects${schemaKind}`,
-      [schemaKind]: {
-        __args: {
-          limit,
-          offset,
-          ...(filters ? addFiltersToRequest(filters) : {}),
-        },
-        edges: {
-          node: {
-            id: true,
-            display_label: true,
-            hfid: true,
-            ...addAttributesToRequest(attributes, attributesOptions),
-            ...addRelationshipsToRequest(relationships, relationshipsOptions),
-          },
-        },
-      },
-    },
-  });
-
-  const query = gql(queryString);
+}: GetObjectsFromApiParams) {
   return graphqlClient.query({
-    query,
+    query: getObjectsQuery({
+      schemaKind,
+      attributes,
+      relationships,
+      filters,
+      attributesOptions,
+      relationshipsOptions,
+    }),
+    variables: {
+      limit,
+      offset,
+    },
     context: {
       branch: branchName,
       date: atDate,
     },
   });
-};
+}

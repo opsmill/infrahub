@@ -1,21 +1,58 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { VariableType, jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export interface GetObjectFromApiParams extends ContextParams {
+interface GetObjectQueryParams {
   schemaKind: string;
-  objectId: string;
   attributes: AttributeSchema[];
   relationships: RelationshipSchema[];
   relationshipFragment?: Record<string, string>;
 }
 
-export const getObjectFromApi = async ({
+const getObjectQuery = ({
+  schemaKind,
+  attributes,
+  relationships,
+  relationshipFragment,
+}: GetObjectQueryParams) => {
+  return gql(
+    jsonToGraphQLQuery({
+      query: {
+        __name: `GetObject${schemaKind}`,
+        __variables: {
+          ids: "[ID!]",
+        },
+        [schemaKind]: {
+          __args: {
+            ids: new VariableType("ids"),
+          },
+          edges: {
+            node: {
+              ...nodeCoreFragment,
+              ...addAttributesToRequest(attributes, { withMetadata: true }),
+              ...addRelationshipsToRequest(relationships, {
+                relationshipFragment,
+                withMetadata: true,
+              }),
+            },
+          },
+        },
+      },
+    })
+  );
+};
+
+export interface GetObjectFromApiParams extends ContextParams, GetObjectQueryParams {
+  objectId: string;
+}
+
+export async function getObjectFromApi({
   schemaKind,
   objectId,
   attributes,
@@ -23,36 +60,20 @@ export const getObjectFromApi = async ({
   relationshipFragment,
   branchName,
   atDate,
-}: GetObjectFromApiParams) => {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: `GetObject${schemaKind}`,
-      [schemaKind]: {
-        __args: {
-          ids: [objectId],
-        },
-        edges: {
-          node: {
-            id: true,
-            display_label: true,
-            hfid: true,
-            ...addAttributesToRequest(attributes, { withMetadata: true }),
-            ...addRelationshipsToRequest(relationships, {
-              relationshipFragment,
-              withMetadata: true,
-            }),
-          },
-        },
-      },
-    },
-  });
-
-  const query = gql(queryString);
+}: GetObjectFromApiParams) {
   return graphqlClient.query({
-    query,
+    query: getObjectQuery({
+      schemaKind,
+      attributes,
+      relationships,
+      relationshipFragment,
+    }),
+    variables: {
+      ids: [objectId],
+    },
     context: {
       branch: branchName,
       date: atDate,
     },
   });
-};
+}
