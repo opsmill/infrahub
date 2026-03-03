@@ -1,3 +1,6 @@
+import type { NodeCore } from "@/entities/nodes/types";
+import type { Permission } from "@/entities/permission/types";
+import { getPermission } from "@/entities/permission/utils";
 import {
   type GetAccountsFromApiParams,
   getAccountsFromApi,
@@ -5,12 +8,61 @@ import {
 
 export type GetAccountsParams = GetAccountsFromApiParams;
 
-export async function getAccounts(params: GetAccountsParams) {
+export interface AccountItem extends NodeCore {
+  name: string | null | undefined;
+  description: string | null | undefined;
+  accountType: string | null | undefined;
+  status: {
+    value: string | null | undefined;
+    color: string | null | undefined;
+    description: string | null | undefined;
+  };
+  memberOfGroups: NodeCore[];
+}
+
+export interface AccountListResult {
+  accounts: AccountItem[];
+  count: number | null | undefined;
+  permission: Permission;
+}
+
+export async function getAccounts(params: GetAccountsParams): Promise<AccountListResult> {
   const { data, errors } = await getAccountsFromApi(params);
 
   if (errors?.[0]?.message) {
     throw new Error(errors[0].message);
   }
 
-  return data;
+  const root = data?.CoreGenericAccount;
+
+  const permission = getPermission(root?.permissions?.edges);
+
+  const accounts: AccountItem[] =
+    root?.edges.map((edge) => ({
+      id: edge?.node?.id ?? "",
+      display_label: edge?.node?.display_label,
+      hfid: edge?.node?.hfid,
+      __typename: edge?.node?.__typename ?? "",
+      name: edge?.node?.name?.value,
+      description: edge?.node?.description?.value,
+      accountType: edge?.node?.account_type?.value,
+      status: {
+        value: edge?.node?.status?.value,
+        color: edge?.node?.status?.color,
+        description: edge?.node?.status?.description,
+      },
+      memberOfGroups:
+        edge?.node?.member_of_groups?.edges?.map((groupEdge) => ({
+          id: groupEdge?.node?.id ?? "",
+          display_label: groupEdge?.node?.display_label,
+          hfid: groupEdge?.node?.hfid,
+          __typename: groupEdge?.node?.__typename ?? "",
+        })) ?? [],
+    })) ?? [];
+
+  return {
+    accounts,
+    count: root?.count,
+    permission,
+  };
 }

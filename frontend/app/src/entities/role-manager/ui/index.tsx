@@ -2,13 +2,6 @@ import { Icon } from "@iconify-icon/react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Tabs } from "@/shared/components/tabs-routes";
-import {
-  ACCOUNT_GENERIC_OBJECT,
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-  GLOBAL_PERMISSION_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/shared/config/constants";
 
 import { useGetCounts } from "@/entities/role-manager/ui/queries/get-counts.query";
 
@@ -24,7 +17,7 @@ export function RoleManagementNavigation() {
           Accounts
         </div>
       ),
-      count: data && data[ACCOUNT_GENERIC_OBJECT]?.count,
+      count: data?.accounts,
       isLoading,
       error: !!error,
     },
@@ -36,7 +29,7 @@ export function RoleManagementNavigation() {
           Groups
         </div>
       ),
-      count: data && data[ACCOUNT_GROUP_OBJECT]?.count,
+      count: data?.groups,
       isLoading,
       error: !!error,
     },
@@ -48,7 +41,7 @@ export function RoleManagementNavigation() {
           Roles
         </div>
       ),
-      count: data && data[ACCOUNT_ROLE_OBJECT]?.count,
+      count: data?.roles,
       isLoading,
       error: !!error,
     },
@@ -60,7 +53,7 @@ export function RoleManagementNavigation() {
           Global Permissions
         </div>
       ),
-      count: data && data[GLOBAL_PERMISSION_OBJECT]?.count,
+      count: data?.globalPermissions,
       isLoading,
       error: !!error,
     },
@@ -72,7 +65,7 @@ export function RoleManagementNavigation() {
           Object Permissions
         </div>
       ),
-      count: data && data[OBJECT_PERMISSION_OBJECT]?.count,
+      count: data?.objectPermissions,
       isLoading,
       error: !!error,
     },

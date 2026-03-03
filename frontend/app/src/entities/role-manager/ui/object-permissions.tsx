@@ -21,7 +21,6 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getPermission } from "@/entities/permission/utils";
 import { useGetObjectPermissions } from "@/entities/role-manager/ui/queries/get-object-permissions.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -62,7 +61,7 @@ function Permissions() {
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const permission = getPermission(data?.[OBJECT_PERMISSION_OBJECT]?.permissions?.edges);
+  const permission = data?.permission;
 
   const columns = [
     {
@@ -91,59 +90,59 @@ function Permissions() {
     },
   ];
 
-  const rows =
-    data &&
-    data[OBJECT_PERMISSION_OBJECT]?.edges.map((edge) => {
-      const iconKey = edge?.node?.decision?.value;
-      const icon = icons[iconKey];
+  const rows = data?.objectPermissions.map((item) => {
+    const icon = icons[item.decision as string];
+    const itemAsNodeCore = {
+      id: item.id,
+      display_label: item.display_label,
+      hfid: item.hfid,
+      __typename: item.__typename,
+    };
 
-      return {
-        values: {
-          id: edge?.node?.id,
-          display_label: edge?.node?.display_label,
-          hfid: edge?.node?.hfid,
-          display: {
-            value: edge?.node ? getNodeLabel(edge.node) : undefined,
-            display: (
-              <div className="flex items-center gap-2">
-                {icon} {edge?.node ? getNodeLabel(edge.node) : ""}
-              </div>
-            ),
-          },
-          namespace: {
-            value: edge?.node?.namespace?.value,
-          },
-          name: {
-            value: edge?.node?.name?.value,
-          },
-          action: {
-            value: edge?.node?.action?.value,
-          },
-          decision: {
-            display: objectDecisionOptions.find(
-              (decision) => decision.value === edge?.node?.decision?.value
-            )?.label,
-            value: edge?.node?.decision?.value,
-          },
-          roles: {
-            value: { edges: edge?.node?.roles?.edges },
-            display: (
-              <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) =>
-                  edge?.node ? getNodeLabel(edge.node) : ""
-                )}
-                render={(item) => <Badge>{item}</Badge>}
-              />
-            ),
-          },
-          identifier: {
-            value: edge?.node?.identifier?.value,
-            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
-          },
-          __typename: edge?.node?.__typename,
+    return {
+      values: {
+        id: item.id,
+        display_label: item.display_label,
+        hfid: item.hfid,
+        display: {
+          value: getNodeLabel(itemAsNodeCore),
+          display: (
+            <div className="flex items-center gap-2">
+              {icon} {getNodeLabel(itemAsNodeCore)}
+            </div>
+          ),
         },
-      };
-    });
+        namespace: {
+          value: item.namespace,
+        },
+        name: {
+          value: item.name,
+        },
+        action: {
+          value: item.action,
+        },
+        decision: {
+          display: objectDecisionOptions.find((decision) => decision.value === item.decision)
+            ?.label,
+          value: item.decision,
+        },
+        roles: {
+          value: { edges: item.roles.map((role) => ({ node: role })) },
+          display: (
+            <InlineDisplay
+              items={item.roles.map((role) => getNodeLabel(role))}
+              render={(item) => <Badge>{item}</Badge>}
+            />
+          ),
+        },
+        identifier: {
+          value: item.identifier,
+          display: <BadgeCopy value={item.identifier} />,
+        },
+        __typename: item.__typename,
+      },
+    };
+  });
 
   if (error) {
     if ((error as any).networkError?.statusCode === 403) {
@@ -207,7 +206,7 @@ function Permissions() {
           permission={permission}
         />
 
-        <Pagination count={data && data[OBJECT_PERMISSION_OBJECT]?.count} />
+        <Pagination count={data?.count} />
       </div>
 
       <ModalDeleteObject
