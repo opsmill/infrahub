@@ -5,9 +5,8 @@ import { queryClient } from "@/shared/api/rest/client";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { deleteObject } from "@/entities/nodes/object/domain/delete-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-
-import { deleteObject } from "../../domain/delete-object";
 
 export interface DeleteObjectParams {
   objectKind: string;

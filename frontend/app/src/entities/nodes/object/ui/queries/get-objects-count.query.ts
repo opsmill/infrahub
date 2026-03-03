@@ -5,9 +5,11 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import {
+  type GetObjectsCountParams,
+  getObjectsCount,
+} from "@/entities/nodes/object/domain/get-objects-count";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-
-import { type GetObjectsCountParams, getObjectsCount } from "../../domain/get-objects-count";
 
 export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
   return queryOptions({

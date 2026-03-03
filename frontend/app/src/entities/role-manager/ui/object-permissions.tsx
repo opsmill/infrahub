@@ -20,12 +20,11 @@ import { OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import { objectDecisionOptions } from "@/entities/role-manager/constants";
 import { useGetObjectPermissions } from "@/entities/role-manager/ui/queries/get-object-permissions.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-import { objectDecisionOptions } from "../constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (

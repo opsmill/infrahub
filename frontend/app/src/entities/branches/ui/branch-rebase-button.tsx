@@ -7,12 +7,11 @@ import { Button } from "@/shared/components/ui/button";
 import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
 import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
-
-import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchRebaseButtonProps = {
   branch: BranchDetail;
