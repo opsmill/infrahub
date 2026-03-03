@@ -1,4 +1,3 @@
-import type { NodeCore } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
 import {
@@ -8,19 +7,27 @@ import {
 
 export type GetRolesParams = GetRolesFromApiParams;
 
-export interface RolePermissionItem extends NodeCore {
+export interface RoleRelatedItem {
+  id: string;
+  display_label: string | null | undefined;
+}
+
+export interface RolePermissionItem extends RoleRelatedItem {
   identifier: string | null | undefined;
 }
 
-export interface RoleItem extends NodeCore {
+export interface RoleItem {
+  id: string;
+  display_label: string | null | undefined;
+  hfid: string[] | null | undefined;
   name: string | null | undefined;
-  groups: NodeCore[];
+  groups: RoleRelatedItem[];
   permissions: RolePermissionItem[];
 }
 
 export interface RoleListResult {
   roles: RoleItem[];
-  count: number | null | undefined;
+  count: number | undefined;
   permission: Permission;
 }
 
@@ -40,28 +47,23 @@ export async function getRoles(params: GetRolesParams): Promise<RoleListResult> 
       id: edge?.node?.id ?? "",
       display_label: edge?.node?.display_label,
       hfid: edge?.node?.hfid,
-      __typename: edge?.node?.__typename ?? "",
       name: edge?.node?.name?.value,
       groups:
         edge?.node?.groups?.edges?.map((groupEdge) => ({
           id: groupEdge?.node?.id ?? "",
           display_label: groupEdge?.node?.display_label,
-          hfid: groupEdge?.node?.hfid,
-          __typename: groupEdge?.node?.__typename ?? "",
         })) ?? [],
       permissions:
         edge?.node?.permissions?.edges?.map((permEdge) => ({
           id: permEdge?.node?.id ?? "",
           display_label: permEdge?.node?.display_label,
-          hfid: permEdge?.node?.hfid,
-          __typename: permEdge?.node?.__typename ?? "",
           identifier: permEdge?.node?.identifier?.value,
         })) ?? [],
     })) ?? [];
 
   return {
     roles,
-    count: root?.count,
+    count: root?.count ?? undefined,
     permission,
   };
 }

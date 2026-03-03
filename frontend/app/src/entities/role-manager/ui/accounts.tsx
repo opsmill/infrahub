@@ -18,7 +18,7 @@ import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constant
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+
 import { useGetAccounts } from "@/entities/role-manager/ui/queries/get-accounts.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -92,12 +92,11 @@ function Accounts() {
         value: { edges: account.memberOfGroups.map((group) => ({ node: group })) },
         display: (
           <InlineDisplay
-            items={account.memberOfGroups.map((group) => getNodeLabel(group))}
+            items={account.memberOfGroups.map((group) => group.display_label || group.id)}
             render={(item) => <Badge>{item}</Badge>}
           />
         ),
       },
-      __typename: account.__typename,
     },
   }));
 

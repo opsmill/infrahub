@@ -20,7 +20,7 @@ import { OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+
 import { useGetObjectPermissions } from "@/entities/role-manager/ui/queries/get-object-permissions.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -92,12 +92,7 @@ function Permissions() {
 
   const rows = data?.objectPermissions.map((item) => {
     const icon = icons[item.decision as string];
-    const itemAsNodeCore = {
-      id: item.id,
-      display_label: item.display_label,
-      hfid: item.hfid,
-      __typename: item.__typename,
-    };
+    const label = item.display_label || item.id;
 
     return {
       values: {
@@ -105,10 +100,10 @@ function Permissions() {
         display_label: item.display_label,
         hfid: item.hfid,
         display: {
-          value: getNodeLabel(itemAsNodeCore),
+          value: label,
           display: (
             <div className="flex items-center gap-2">
-              {icon} {getNodeLabel(itemAsNodeCore)}
+              {icon} {label}
             </div>
           ),
         },
@@ -130,7 +125,7 @@ function Permissions() {
           value: { edges: item.roles.map((role) => ({ node: role })) },
           display: (
             <InlineDisplay
-              items={item.roles.map((role) => getNodeLabel(role))}
+              items={item.roles.map((role) => role.display_label || role.id)}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),
@@ -139,7 +134,6 @@ function Permissions() {
           value: item.identifier,
           display: <BadgeCopy value={item.identifier} />,
         },
-        __typename: item.__typename,
       },
     };
   });

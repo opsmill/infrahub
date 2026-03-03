@@ -1,4 +1,3 @@
-import type { NodeCore } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
 import {
@@ -8,7 +7,15 @@ import {
 
 export type GetAccountsParams = GetAccountsFromApiParams;
 
-export interface AccountItem extends NodeCore {
+export interface AccountGroupItem {
+  id: string;
+  display_label: string | null | undefined;
+}
+
+export interface AccountItem {
+  id: string;
+  display_label: string | null | undefined;
+  hfid: string[] | null | undefined;
   name: string | null | undefined;
   description: string | null | undefined;
   accountType: string | null | undefined;
@@ -17,12 +24,12 @@ export interface AccountItem extends NodeCore {
     color: string | null | undefined;
     description: string | null | undefined;
   };
-  memberOfGroups: NodeCore[];
+  memberOfGroups: AccountGroupItem[];
 }
 
 export interface AccountListResult {
   accounts: AccountItem[];
-  count: number | null | undefined;
+  count: number | undefined;
   permission: Permission;
 }
 
@@ -42,7 +49,6 @@ export async function getAccounts(params: GetAccountsParams): Promise<AccountLis
       id: edge?.node?.id ?? "",
       display_label: edge?.node?.display_label,
       hfid: edge?.node?.hfid,
-      __typename: edge?.node?.__typename ?? "",
       name: edge?.node?.name?.value,
       description: edge?.node?.description?.value,
       accountType: edge?.node?.account_type?.value,
@@ -55,14 +61,12 @@ export async function getAccounts(params: GetAccountsParams): Promise<AccountLis
         edge?.node?.member_of_groups?.edges?.map((groupEdge) => ({
           id: groupEdge?.node?.id ?? "",
           display_label: groupEdge?.node?.display_label,
-          hfid: groupEdge?.node?.hfid,
-          __typename: groupEdge?.node?.__typename ?? "",
         })) ?? [],
     })) ?? [];
 
   return {
     accounts,
-    count: root?.count,
+    count: root?.count ?? undefined,
     permission,
   };
 }

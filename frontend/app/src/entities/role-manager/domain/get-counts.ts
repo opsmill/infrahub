@@ -6,11 +6,11 @@ import {
 export type GetCountsParams = GetCountsFromApiParams;
 
 export interface RoleManagerCounts {
-  accounts: number | null | undefined;
-  groups: number | null | undefined;
-  roles: number | null | undefined;
-  globalPermissions: number | null | undefined;
-  objectPermissions: number | null | undefined;
+  accounts: number | undefined;
+  groups: number | undefined;
+  roles: number | undefined;
+  globalPermissions: number | undefined;
+  objectPermissions: number | undefined;
 }
 
 export async function getCounts(params: GetCountsParams): Promise<RoleManagerCounts> {
@@ -21,10 +21,10 @@ export async function getCounts(params: GetCountsParams): Promise<RoleManagerCou
   }
 
   return {
-    accounts: data?.CoreGenericAccount?.count,
-    groups: data?.CoreAccountGroup?.count,
-    roles: data?.CoreAccountRole?.count,
-    globalPermissions: data?.CoreGlobalPermission?.count,
-    objectPermissions: data?.CoreObjectPermission?.count,
+    accounts: data?.CoreGenericAccount?.count ?? undefined,
+    groups: data?.CoreAccountGroup?.count ?? undefined,
+    roles: data?.CoreAccountRole?.count ?? undefined,
+    globalPermissions: data?.CoreGlobalPermission?.count ?? undefined,
+    objectPermissions: data?.CoreObjectPermission?.count ?? undefined,
   };
 }
