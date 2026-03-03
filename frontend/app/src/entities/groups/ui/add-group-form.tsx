@@ -9,7 +9,7 @@ import type {
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
-import { useUpdateGroups } from "@/entities/groups/ui/queries/update-groups.mutation";
+import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
 import type { ModelSchema } from "@/entities/schema/types";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
@@ -26,7 +26,7 @@ export function AddGroupForm({
   schema,
   ...props
 }: AddGroupFormProps) {
-  const { mutateAsync: updateGroupsMutation } = useUpdateGroups();
+  const { mutateAsync: addRelationships } = useAddRelationships();
 
   const memberOfGroupsRelationship = schema.relationships?.find(
     ({ name }) => name === "member_of_groups"
@@ -38,10 +38,10 @@ export function AddGroupForm({
 
   async function onSubmit(groupIds: Array<{ id: string }>) {
     try {
-      await updateGroupsMutation({
-        objectKind: schema.kind!,
+      await addRelationships({
         objectId,
-        groupIds,
+        relationshipName: "member_of_groups",
+        relationshipIds: groupIds.map(({ id }) => id),
       });
 
       toast(
