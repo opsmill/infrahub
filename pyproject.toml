@@ -981,10 +981,7 @@ allow-dunder-method-names = [
 # backend/tests/component/. Split from the broad section above to allow incremental fixes.       #
 # Remove each entry below once all ANN001 violations in that path have been resolved.            #
 ##################################################################################################
-"backend/tests/component/api/test_40_schema.py" = ["ANN001"]                   # 77 violations
 # backend/tests/component/core/constraint_validators/ (320 violations)
-"backend/tests/component/core/constraint_validators/test_uniqueness_checker.py" = ["ANN001"]              # 47 violations
-"backend/tests/component/core/constraint_validators/test_uniqueness_constraint_query.py" = ["ANN001"]     # 42 violations
 "backend/tests/component/core/constraint_validators/test_relationship_count.py" = ["ANN001"]              # 28 violations
 "backend/tests/component/core/constraint_validators/test_uniqueness_validation_query.py" = ["ANN001"]     # 25 violations
 "backend/tests/component/core/constraint_validators/test_attribute_length.py" = ["ANN001"]                # 18 violations
