@@ -1,4 +1,4 @@
-export type GroupDataFromAPI = {
+export type Group = {
   id: string;
   display_label: string;
   description: { value: string } | null;

@@ -8,8 +8,8 @@ export type UpdateGroupsParams = UpdateGroupsFromApiParams;
 export async function updateGroups(params: UpdateGroupsParams) {
   const { data, errors } = await updateGroupsFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
   return data;

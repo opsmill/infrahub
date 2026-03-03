@@ -19,7 +19,7 @@ interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"
   onUpdateCompleted?: () => void;
 }
 
-export default function AddGroupForm({
+export function AddGroupForm({
   objectId,
   onUpdateCompleted,
   defaultGroupIds,
@@ -39,7 +39,7 @@ export default function AddGroupForm({
   async function onSubmit(groupIds: Array<{ id: string }>) {
     try {
       await updateGroupsMutation({
-        schema,
+        objectKind: schema.kind!,
         objectId,
         groupIds,
       });

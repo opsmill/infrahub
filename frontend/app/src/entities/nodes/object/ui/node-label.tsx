@@ -2,9 +2,8 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 import { NODE_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
+import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-
-import { useNodeLabel } from "./queries/get-display-label.query";
 
 type NodeLabelProps = {
   id?: string;

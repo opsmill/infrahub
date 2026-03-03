@@ -4,48 +4,44 @@ import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
-
-function buildUpdateGroupsQuery(schema: NodeSchema | ProfileSchema) {
-  const request = {
-    mutation: {
-      __variables: {
-        id: "String",
-        groupIds: "[RelatedNodeInput]",
-      },
-      __name: `${schema.kind}UpdateGroups`,
-      [`${schema.kind}Update`]: {
-        __args: {
-          data: {
-            id: new VariableType("id"),
-            member_of_groups: new VariableType("groupIds"),
-          },
+function buildUpdateGroupsMutation(objectKind: string) {
+  return gql(
+    jsonToGraphQLQuery({
+      mutation: {
+        __variables: {
+          id: "String",
+          groupIds: "[RelatedNodeInput]",
         },
-        ok: true,
+        __name: `${objectKind}UpdateGroups`,
+        [`${objectKind}Update`]: {
+          __args: {
+            data: {
+              id: new VariableType("id"),
+              member_of_groups: new VariableType("groupIds"),
+            },
+          },
+          ok: true,
+        },
       },
-    },
-  };
-
-  return gql(jsonToGraphQLQuery(request));
+    })
+  );
 }
 
 export interface UpdateGroupsFromApiParams extends ContextParams {
-  schema: NodeSchema | ProfileSchema;
+  objectKind: string;
   objectId: string;
   groupIds: Array<{ id: string }>;
 }
 
 export function updateGroupsFromApi({
-  schema,
+  objectKind,
   objectId,
   groupIds,
   branchName,
   atDate,
 }: UpdateGroupsFromApiParams) {
-  const mutation = buildUpdateGroupsQuery(schema);
-
   return graphqlClient.mutate({
-    mutation,
+    mutation: buildUpdateGroupsMutation(objectKind),
     variables: { id: objectId, groupIds },
     context: {
       branch: branchName,

@@ -272,7 +272,6 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
         <GroupsManager
           schema={objectSchema}
           objectId={objectData.id}
-          onUpdateCompleted={() => queryClient.invalidateQueries({ queryKey: objectQueryKeys.all })}
           className="overflow-auto p-4"
         />
       </SlideOver>

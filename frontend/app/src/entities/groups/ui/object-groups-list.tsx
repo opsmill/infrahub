@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -12,20 +12,20 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import type { GroupDataFromAPI } from "@/entities/groups/api/types";
+import type { Group } from "@/entities/groups/domain/types";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-type ObjectGroupsListProps = {
+interface ObjectGroupsListProps {
   className?: string;
   objectId: string;
-  groups: Array<GroupDataFromAPI>;
-};
+  groups: Array<Group>;
+}
 
-export default function ObjectGroupsList({ className, objectId, groups }: ObjectGroupsListProps) {
+export function ObjectGroupsList({ className, objectId, groups }: ObjectGroupsListProps) {
   if (groups.length === 0) {
     return <p className="py-4 text-center">There are no groups to display.</p>;
   }
@@ -39,17 +39,16 @@ export default function ObjectGroupsList({ className, objectId, groups }: Object
   );
 }
 
-type ObjectGroupProps = {
+interface ObjectGroupItemProps {
   objectId: string;
-  group: GroupDataFromAPI;
-};
+  group: Group;
+}
 
-const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
-  const nodes = useAtomValue(nodeSchemasAtom);
-  const groupSchema = nodes.find((node) => node.kind === group.__typename);
+function ObjectGroupItem({ objectId, group }: ObjectGroupItemProps) {
+  const { schema: groupSchema } = useSchema(group.__typename);
 
   return (
-    <div className="relative flex items-center justify-between gap-4 rounded-md border border-gray-300 bg-gray-100 p-2">
+    <Row className="relative justify-between gap-4 rounded-md border border-gray-300 bg-gray-100 p-2">
       <div className="space-y-1 overflow-hidden">
         <Link
           to={getObjectDetailsUrl(group.__typename, group.id)}
@@ -58,7 +57,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
           {getNodeLabel(group)}
         </Link>
 
-        <div className="flex items-center gap-2">
+        <Row>
           <Link
             to={getObjectDetailsUrl(group.__typename, group.id, [
               { name: QSP.TAB, value: "members" },
@@ -73,17 +72,17 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
               {groupSchema?.label}
             </Badge>
           </Link>
-        </div>
+        </Row>
 
         {group.description && <p className="text-xs">{group.description.value}</p>}
       </div>
 
-      {objectId && <RemoveGroupButton objectId={objectId} group={group} />}
-    </div>
+      <RemoveGroupButton objectId={objectId} group={group} />
+    </Row>
   );
-};
+}
 
-const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
+function RemoveGroupButton({ objectId, group }: ObjectGroupItemProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { mutate: removeRelationships, isPending } = useRemoveRelationships();
 
@@ -127,4 +126,4 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
       />
     </>
   );
-};
+}

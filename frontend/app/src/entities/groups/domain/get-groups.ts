@@ -2,35 +2,30 @@ import {
   type GetGroupsFromApiParams,
   getGroupsFromApi,
 } from "@/entities/groups/api/get-groups-from-api";
-import type { GroupDataFromAPI } from "@/entities/groups/api/types";
+import type { Group } from "@/entities/groups/domain/types";
 import type { Permission } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
 
 export type GetGroupsParams = GetGroupsFromApiParams;
 
 export interface GetGroupsResult {
-  objectFound: boolean;
-  groups: Array<GroupDataFromAPI>;
+  groups: Array<Group>;
   permission: Permission;
 }
 
 export async function getGroups(params: GetGroupsParams): Promise<GetGroupsResult> {
   const { data, errors } = await getGroupsFromApi(params);
 
-  if (errors?.[0]?.message) {
-    throw new Error(errors[0].message);
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
   }
 
   const kindData = data?.[params.objectKind];
   const objectNode = kindData?.edges?.[0]?.node;
   const permission = getPermission(kindData?.permissions?.edges);
 
-  if (!objectNode) {
-    return { objectFound: false, groups: [], permission };
-  }
+  const groups: Array<Group> =
+    objectNode?.member_of_groups?.edges?.map(({ node }: { node: Group }) => node) ?? [];
 
-  const groups: Array<GroupDataFromAPI> =
-    objectNode.member_of_groups?.edges?.map(({ node }: { node: GroupDataFromAPI }) => node) ?? [];
-
-  return { objectFound: true, groups, permission };
+  return { groups, permission };
 }
