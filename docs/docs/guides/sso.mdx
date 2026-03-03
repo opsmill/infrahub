@@ -488,8 +488,7 @@ sso_generate_groups_filter = ["^team-.*", "ldap/groups/(\\w+)"]
 
 ##### Using capture groups to transform group names
 
-If your identity provider sends groups with prefixes or paths (like `ldap/groups/network_automation`), you can use regex capture groups to extract just the relevant part as the group name:
-
+If your identity provider sends groups with prefixes or paths (for example `ldap/groups/network_automation`), you can use regular expression (regex) capture groups to extract the relevant part as the group name:
 <Tabs groupId="config-method">
 <TabItem value="environment-variables" default>
 
