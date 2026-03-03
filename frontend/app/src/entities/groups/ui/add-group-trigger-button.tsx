@@ -5,7 +5,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
-import type { Group } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/types";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
@@ -17,7 +17,7 @@ interface AddGroupTriggerButtonProps {
   schema: ModelSchema;
   objectId: string;
   permission: Permission;
-  currentGroups?: Array<Group>;
+  currentGroups?: Array<GroupData>;
 }
 
 export function AddGroupTriggerButton({
@@ -29,17 +29,6 @@ export function AddGroupTriggerButton({
   const [isAddGroupFormOpen, setIsAddGroupFormOpen] = useState(false);
 
   const { data: objectDetailsData } = useGetObject({ objectSchema: schema, objectId });
-
-  const defaultGroupIds = currentGroups
-    ? {
-        source: { type: "user" as const },
-        value: currentGroups.map(({ id, display_label, __typename }) => ({
-          id,
-          display_label,
-          __typename,
-        })),
-      }
-    : undefined;
 
   return (
     <>
@@ -69,7 +58,18 @@ export function AddGroupTriggerButton({
       >
         <AddGroupForm
           objectId={objectId}
-          defaultGroupIds={defaultGroupIds}
+          defaultGroupIds={
+            currentGroups
+              ? {
+                  source: { type: "user" },
+                  value: currentGroups.map(({ id, display_label, __typename }) => ({
+                    id,
+                    display_label,
+                    __typename,
+                  })),
+                }
+              : undefined
+          }
           schema={schema}
           className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}

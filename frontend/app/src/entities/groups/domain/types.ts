@@ -1,4 +1,4 @@
-export type Group = {
+export type GroupData = {
   id: string;
   display_label: string;
   description: { value: string } | null;

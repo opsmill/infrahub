@@ -12,7 +12,7 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import type { Group } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/types";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
@@ -22,7 +22,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 interface ObjectGroupsListProps {
   className?: string;
   objectId: string;
-  groups: Array<Group>;
+  groups: Array<GroupData>;
 }
 
 export function ObjectGroupsList({ className, objectId, groups }: ObjectGroupsListProps) {
@@ -41,7 +41,7 @@ export function ObjectGroupsList({ className, objectId, groups }: ObjectGroupsLi
 
 interface ObjectGroupItemProps {
   objectId: string;
-  group: Group;
+  group: GroupData;
 }
 
 function ObjectGroupItem({ objectId, group }: ObjectGroupItemProps) {
