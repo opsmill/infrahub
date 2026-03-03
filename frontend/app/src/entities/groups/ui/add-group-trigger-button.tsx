@@ -12,10 +12,10 @@ import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.quer
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type AddGroupTriggerButtonProps = {
-  schema: NodeSchema;
+  schema: ModelSchema;
   objectId: string;
   permission: Permission;
   currentGroups?: Array<GroupDataFromAPI>;

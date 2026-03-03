@@ -10,12 +10,12 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
 import { useUpdateGroups } from "@/entities/groups/ui/queries/update-groups.mutation";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;
   defaultGroupIds?: FormRelationshipValue;
-  schema: NodeSchema;
+  schema: ModelSchema;
   onUpdateCompleted?: () => void;
 }
 

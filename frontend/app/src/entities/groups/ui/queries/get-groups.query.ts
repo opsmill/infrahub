@@ -1,6 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
+import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -14,10 +15,7 @@ export function getGroupsQueryOptions(params: GetGroupsParams) {
   });
 }
 
-export function useGetGroups({
-  objectKind,
-  objectId,
-}: Omit<GetGroupsParams, "branchName" | "atDate">) {
+export function useGetGroups({ objectKind, objectId }: Omit<GetGroupsParams, keyof ContextParams>) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
