@@ -218,11 +218,24 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
                 if effective_name in existing_group_names:
                     continue
 
-                new_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-                await new_group.new(db=db, name=effective_name)
-                await new_group.save(db=db)
-                existing_group_names.add(effective_name)
-                created_effective_names.add(effective_name)
+                try:
+                    new_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+                    await new_group.new(db=db, name=effective_name)
+                    await new_group.save(db=db)
+                    existing_group_names.add(effective_name)
+                    created_effective_names.add(effective_name)
+                except Exception:
+                    # A concurrent login may have created this group between check and create.
+                    concurrent_group = await NodeManager.query(
+                        db=db,
+                        schema=CoreAccountGroup,
+                        filters={"name__values": [effective_name]},
+                        prefetch_relationships=True,
+                    )
+                    if not concurrent_group:
+                        raise
+                    infrahub_groups.extend(concurrent_group)
+                    existing_group_names.add(effective_name)
 
             if created_effective_names:
                 newly_created_groups = await NodeManager.query(
@@ -232,7 +245,6 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
                     prefetch_relationships=True,
                 )
                 infrahub_groups.extend(newly_created_groups)
-
 
         for group in infrahub_groups:
             members = await group.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
