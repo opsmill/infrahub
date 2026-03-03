@@ -18,6 +18,8 @@ import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constant
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getPermission } from "@/entities/permission/utils";
 import { useGetAccounts } from "@/entities/role-manager/ui/queries/get-accounts.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -44,7 +46,7 @@ function Accounts() {
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const permission = data?.permission;
+  const permission = getPermission(data?.[ACCOUNT_GENERIC_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
@@ -69,35 +71,40 @@ function Accounts() {
     },
   ];
 
-  const rows = data?.accounts.map((account) => ({
-    values: {
-      id: account.id,
-      display_label: account.display_label,
-      hfid: account.hfid,
-      name: { value: account.name },
-      description: { value: account.description },
-      account_type: { value: account.accountType },
-      status: {
-        value: account.status.value,
-        display: (
-          <ColorDisplay
-            color={account.status.color}
-            value={account.status.value}
-            description={account.status.description}
-          />
-        ),
+  const rows =
+    data &&
+    data[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge) => ({
+      values: {
+        id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
+        name: { value: edge?.node?.name?.value },
+        description: { value: edge?.node?.description?.value },
+        account_type: { value: edge?.node?.account_type?.value },
+        status: {
+          value: edge?.node?.status?.value,
+          display: (
+            <ColorDisplay
+              color={edge?.node?.status?.color}
+              value={edge?.node?.status?.value}
+              description={edge?.node?.status?.description}
+            />
+          ),
+        },
+        member_of_groups: {
+          value: { edges: edge?.node?.member_of_groups?.edges },
+          display: (
+            <InlineDisplay
+              items={edge?.node?.member_of_groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
+              render={(item) => <Badge>{item}</Badge>}
+            />
+          ),
+        },
+        __typename: edge?.node?.__typename,
       },
-      member_of_groups: {
-        value: { edges: account.memberOfGroups.map((group) => ({ node: group })) },
-        display: (
-          <InlineDisplay
-            items={account.memberOfGroups.map((group) => group.display_label || group.id)}
-            render={(item) => <Badge>{item}</Badge>}
-          />
-        ),
-      },
-    },
-  }));
+    }));
 
   if (error) {
     if ((error as any).networkError?.statusCode === 403) {
@@ -157,7 +164,7 @@ function Accounts() {
           permission={permission}
         />
 
-        <Pagination count={data?.count} />
+        <Pagination count={data && data[ACCOUNT_GENERIC_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject

@@ -17,6 +17,8 @@ import { ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getPermission } from "@/entities/permission/utils";
 import { useGetRoles } from "@/entities/role-manager/ui/queries/get-roles.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -40,7 +42,7 @@ function Roles() {
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const permission = data?.permission;
+  const permission = getPermission(data?.[ACCOUNT_ROLE_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
@@ -57,32 +59,38 @@ function Roles() {
     },
   ];
 
-  const rows = data?.roles.map((role) => ({
-    values: {
-      id: role.id,
-      display_label: role.display_label,
-      hfid: role.hfid,
-      name: { value: role.name },
-      groups: {
-        value: { edges: role.groups.map((group) => ({ node: group })) },
-        display: (
-          <InlineDisplay
-            items={role.groups.map((group) => group.display_label || group.id)}
-            render={(item) => <Badge>{item}</Badge>}
-          />
-        ),
+  const rows =
+    data &&
+    data[ACCOUNT_ROLE_OBJECT]?.edges.map((edge) => ({
+      values: {
+        id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
+        name: { value: edge?.node?.name.value },
+        description: { value: edge?.node?.description?.value },
+        groups: {
+          value: { edges: edge?.node?.groups?.edges },
+          display: (
+            <InlineDisplay
+              items={edge?.node?.groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
+              render={(item) => <Badge>{item}</Badge>}
+            />
+          ),
+        },
+        permissions: {
+          value: { edges: edge?.node?.permissions?.edges },
+          display: (
+            <InlineDisplay
+              items={edge?.node?.permissions?.edges?.map((edge) => edge?.node?.identifier?.value)}
+              render={(item) => <Badge>{item}</Badge>}
+            />
+          ),
+        },
+        __typename: edge?.node?.__typename,
       },
-      permissions: {
-        value: { edges: role.permissions.map((perm) => ({ node: perm })) },
-        display: (
-          <InlineDisplay
-            items={role.permissions.map((perm) => perm.identifier)}
-            render={(item) => <Badge>{item}</Badge>}
-          />
-        ),
-      },
-    },
-  }));
+    }));
 
   if (error) {
     if ((error as any).networkError?.statusCode === 403) {
@@ -141,7 +149,7 @@ function Roles() {
           permission={permission}
         />
 
-        <Pagination count={data?.count} />
+        <Pagination count={data && data[ACCOUNT_ROLE_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject

@@ -18,11 +18,14 @@ import { GLOBAL_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
-import { globalDecisionOptions } from "@/entities/role-manager/constants";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getPermission } from "@/entities/permission/utils";
 import { useGetGlobalPermissions } from "@/entities/role-manager/ui/queries/get-global-permissions.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+import { globalDecisionOptions } from "../constants";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -44,7 +47,7 @@ function GlobalPermissions() {
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const permission = data?.permission;
+  const permission = getPermission(data?.[GLOBAL_PERMISSION_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
@@ -65,35 +68,40 @@ function GlobalPermissions() {
     },
   ];
 
-  const rows = data?.globalPermissions.map((item) => {
-    return {
-      values: {
-        id: item.id,
-        display_label: item.display_label,
-        hfid: item.hfid,
-        action: { value: item.action },
-        decision: {
-          display: globalDecisionOptions.find((decision) => decision.value === item.decision)
-            ?.label,
-          value: item.decision,
+  const rows =
+    data &&
+    data[GLOBAL_PERMISSION_OBJECT]?.edges.map((edge) => {
+      return {
+        values: {
+          id: edge?.node?.id,
+          display_label: edge?.node?.display_label,
+          hfid: edge?.node?.hfid,
+          action: { value: edge?.node?.action?.value },
+          decision: {
+            display: globalDecisionOptions.find(
+              (decision) => decision.value === edge?.node?.decision?.value
+            )?.label,
+            value: edge?.node?.decision?.value,
+          },
+          roles: {
+            display: (
+              <InlineDisplay
+                items={edge?.node?.roles?.edges?.map((edge) =>
+                  edge?.node ? getNodeLabel(edge.node) : ""
+                )}
+                render={(item) => <Badge>{item}</Badge>}
+              />
+            ),
+            value: { edges: edge?.node?.roles?.edges },
+          },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
+          __typename: edge.node.__typename,
         },
-        roles: {
-          display: (
-            <InlineDisplay
-              items={item.roles.map((role) => role.display_label || role.id)}
-              render={(item) => <Badge>{item}</Badge>}
-            />
-          ),
-          value: { edges: item.roles.map((role) => ({ node: role })) },
-        },
-        identifier: {
-          value: item.identifier,
-          display: <BadgeCopy value={item.identifier} />,
-        },
-        __typename: item.__typename,
-      },
-    };
-  });
+      };
+    });
 
   const globalRefetch = () => {
     queryClient.invalidateQueries({ queryKey: roleManagerQueryKeys.all });
@@ -157,7 +165,7 @@ function GlobalPermissions() {
           permission={permission}
         />
 
-        <Pagination count={data?.count} />
+        <Pagination count={data && data[GLOBAL_PERMISSION_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject
