@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 
 export interface DiffNoFoundProps {
   diffStatus: string;

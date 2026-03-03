@@ -32,7 +32,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,

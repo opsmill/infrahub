@@ -3,8 +3,8 @@ import React from "react";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 
-import { useGetConfig } from "@/entities/config/domain/get-config.query";
 import type { ConfigAPI } from "@/entities/config/types";
+import { useGetConfig } from "@/entities/config/ui/queries/get-config.query";
 
 export const ConfigContext = React.createContext<ConfigAPI>({} as ConfigAPI);
 

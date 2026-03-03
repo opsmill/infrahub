@@ -11,8 +11,8 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/
 
 import ConvertForm from "@/entities/nodes/convert/ui/convert-form";
 import { TargetSchemaComboboxList } from "@/entities/nodes/convert/ui/target-schema-combobox-list";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";

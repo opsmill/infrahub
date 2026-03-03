@@ -4,8 +4,8 @@ import { useLocation } from "react-router";
 
 import { Tree, TreeItem, TreeItemContent } from "@/shared/components/aria/tree";
 
-import type { DiffNode } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import type { DiffNode } from "@/entities/diff/ui/node-diff/types";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/utils/build-diff-tree-items";
 
 interface DiffTreeProps extends Omit<AriaTreeProps<DiffTreeItem>, "items" | "children"> {

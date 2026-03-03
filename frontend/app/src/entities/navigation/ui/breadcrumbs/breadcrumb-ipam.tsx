@@ -19,7 +19,7 @@ import {
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { NodeRelationshipOne } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";

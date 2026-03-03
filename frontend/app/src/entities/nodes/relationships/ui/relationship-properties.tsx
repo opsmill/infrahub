@@ -9,7 +9,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   type UseGetRelationshipPropertiesParams,
   useGetRelationshipProperties,
-} from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties.query";
+} from "@/entities/nodes/relationships/ui/queries/get-relationship-properties.query";
 
 export interface RelationshipPropertiesProps extends UseGetRelationshipPropertiesParams {}
 

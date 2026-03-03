@@ -1,6 +1,6 @@
 import { DIFF_TABS } from "@/shared/config/constants";
 
-import { useGetValidatorsQuery } from "@/entities/diff/domain/get-validators.query";
+import { useGetValidatorsQuery } from "@/entities/diff/ui/queries/get-validators.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
 
 export interface ChecksTabProps {
