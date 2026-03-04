@@ -345,7 +345,6 @@ class BrokerSettings(BaseSettings):
     """Configuration settings for the message bus."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
-    enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -374,7 +373,6 @@ class BrokerSettings(BaseSettings):
 
 class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
-    enable: bool = True
     address: str = "localhost"
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
@@ -402,7 +400,6 @@ class CacheSettings(BaseSettings):
 
 class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
-    enable: bool = True
     address: str = "localhost"
     port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")

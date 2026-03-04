@@ -1,8 +1,11 @@
 from copy import deepcopy
 from unittest.mock import patch
 
+from infrahub_sdk import InfrahubClient
+
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants.infrahubkind import GRAPHQLQUERY, GRAPHQLQUERYGROUP
 from infrahub.core.initialization import create_branch
 from infrahub.core.node.lock_utils import (
@@ -12,6 +15,7 @@ from infrahub.core.node.lock_utils import (
     get_lock_names_on_object_mutation,
 )
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 from tests.node_creation import create_and_save
@@ -21,9 +25,9 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_get_kinds_lock(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        register_core_models_schema,
-        client,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        client: InfrahubClient,
     ) -> None:
         # CoreCredential has no uniqueness_constraint, but generic CorePasswordCredential has one
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -44,9 +48,9 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_core_graphql_query_groups(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        register_core_models_schema,
-        client,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        client: InfrahubClient,
     ) -> None:
         graphql_query = await client.create(
             kind=GRAPHQLQUERY,
@@ -144,9 +148,9 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_other_branch(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
-        car_person_schema,
+        default_branch: Branch,
+        client: InfrahubClient,
+        car_person_schema: SchemaBranch,
     ) -> None:
         other_branch = await create_branch(branch_name="other_branch", db=db)
         schema_branch = registry.schema.get_schema_branch(name=other_branch.name)
@@ -159,9 +163,9 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_only_attributes(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
-        car_person_schema_unregistered,
+        default_branch: Branch,
+        client: InfrahubClient,
+        car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         car_person_schema_unregistered = deepcopy(car_person_schema_unregistered)
         car_person_schema_unregistered.nodes[0].uniqueness_constraints = [
@@ -180,9 +184,9 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_optional_empty_attribute(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
-        car_person_schema_unregistered,
+        default_branch: Branch,
+        client: InfrahubClient,
+        car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         car_person_schema_unregistered = deepcopy(car_person_schema_unregistered)
         car_person_schema_unregistered.nodes[1].uniqueness_constraints = [["height__value"]]
@@ -197,8 +201,8 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_peer_cardinality_one_relationship(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
+        default_branch: Branch,
+        client: InfrahubClient,
         car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         """Test that we add locks for relationships where the peer has cardinality one.
@@ -229,8 +233,8 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_direct_cardinality_one_relationship(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
+        default_branch: Branch,
+        client: InfrahubClient,
         car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         """Test that we add locks for direct cardinality one relationships on the node side.
@@ -267,8 +271,8 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_max_count_relationship(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
+        default_branch: Branch,
+        client: InfrahubClient,
         car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         """Test that we add locks for relationships where the peer has max_count constraint.
@@ -304,8 +308,8 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_min_count_relationship(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
+        default_branch: Branch,
+        client: InfrahubClient,
         car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         """Test that we add locks for relationships where the peer has min_count constraint.
@@ -341,8 +345,8 @@ class TestGetKindsLock(TestInfrahubApp):
     async def test_lock_names_direct_min_count_relationship(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
+        default_branch: Branch,
+        client: InfrahubClient,
         car_person_schema_unregistered: SchemaRoot,
     ) -> None:
         """Test that we add locks for direct min_count relationships on the node side.

@@ -26,20 +26,23 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
+import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-import { DRAFT_STATE, OPEN_STATE } from "../constants";
 import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
   const [sourceBranch] = useQueryState(QSP.SOURCE_BRANCH);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
-  const sourceBranches = branches.filter((branch) => !branch.is_default);
+  const sourceBranches = branches.filter(
+    (branch) => !branch.is_default && branch.status !== BRANCH_STATUS.MERGED
+  );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
 
@@ -47,8 +50,9 @@ export const ProposedChangeCreateForm = () => {
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
-  if (branches.length === 0 || !proposedChangeSchema)
+  if (branches.length === 0 || !proposedChangeSchema) {
     return <Spinner className="flex justify-center" />;
+  }
 
   return (
     <Form
@@ -80,8 +84,15 @@ export const ProposedChangeCreateForm = () => {
             required: "Required",
             validate: {
               branchExists: (value: string) => {
-                const branchesName = sourceBranches.map(({ name }) => name);
-                return branchesName.includes(value) || "Branch does not exist";
+                if (sourceBranches.some((b) => b.name === value)) {
+                  return true;
+                }
+
+                if (branches.some((b) => b.name === value)) {
+                  return "Branch is not available (merged or default)";
+                }
+
+                return "Branch does not exist";
               },
             },
           }}

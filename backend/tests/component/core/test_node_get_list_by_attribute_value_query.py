@@ -3,6 +3,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -236,7 +237,7 @@ async def test_query_NodeGetListByAttributeValueQuery_get_node_ids_method(
 async def test_query_NodeGetListByAttributeValueQuery_branch_aware(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
+    car_person_schema: SchemaBranch,
 ) -> None:
     """Test search respects branch boundaries for branch-aware nodes."""
     # Create person on main branch
@@ -282,7 +283,7 @@ async def test_query_NodeGetListByAttributeValueQuery_branch_aware(
 async def test_query_NodeGetListByAttributeValueQuery_updated_attribute_in_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
+    car_person_schema: SchemaBranch,
 ) -> None:
     """Test search finds updated attribute values in branches."""
     # Create person on main branch
@@ -337,7 +338,7 @@ async def test_query_NodeGetListByAttributeValueQuery_updated_attribute_in_branc
 async def test_query_NodeGetListByAttributeValueQuery_deleted_in_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
+    car_person_schema: SchemaBranch,
 ) -> None:
     """Test deleted nodes in branch are not returned in branch search but still appear in main."""
     # Create person on main branch

@@ -3,7 +3,6 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 
 import SlideOver from "@/shared/components/display/slide-over";
-import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -11,16 +10,13 @@ import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/ob
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import type {
-  NodeAttributeWithMetadata,
-  NodeObjectWithMetadata,
-  NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
+import type { NodeAttributeWithMetadata, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
@@ -57,9 +53,7 @@ export function ObjectDataDisplay({
     setShowMetaEditModal(true);
   };
 
-  const attributes = isOfKind(FILE_OBJECT_KIND, objectSchema)
-    ? getAttributesVisibleInFileObject(objectSchema.attributes ?? [])
-    : getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
+  const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
   const relationships = getRelationshipsVisibleInDataDisplay(objectSchema.relationships ?? []);
   const fields = sortByOrderWeight([...attributes, ...relationships]);
 
@@ -73,11 +67,17 @@ export function ObjectDataDisplay({
         const objectKind = objectSchema.kind!;
 
         if ("peer" in field) {
+          const relationshipData = resolveRelationshipData({
+            relationshipName: fieldName,
+            objectSchema,
+            objectData,
+          });
+
           return (
             <ObjectRelationshipRow
               key={fieldName}
               relationshipSchema={field}
-              relationshipData={fieldData as NodeRelationshipWithMetadata}
+              relationshipData={relationshipData}
               objectKind={objectKind}
               permission={permission}
               onClickMetadata={onClickRelationshipMetadata}
@@ -131,12 +131,6 @@ export function ObjectDataDisplay({
   );
 }
 
-function getAttributesVisibleInFileObject(attributes: AttributeSchema[]): AttributeSchema[] {
-  return attributes.filter(
-    (attr) => !["file_name", "file_size", "file_type", "storage_id", "checksum"].includes(attr.name)
-  );
-}
-
 function getRelationshipsVisibleInDataDisplay(
   relationships: RelationshipSchema[]
 ): RelationshipSchema[] {
@@ -144,6 +138,7 @@ function getRelationshipsVisibleInDataDisplay(
     (rel) =>
       isRelationshipVisibleInDetailedView(rel) &&
       rel.name !== "member_of_groups" &&
+      !isFromResourcePoolRelationship(rel.name) &&
       rel.kind !== "Profile"
   );
 }

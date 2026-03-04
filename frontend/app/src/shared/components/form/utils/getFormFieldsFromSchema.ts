@@ -1,4 +1,5 @@
 import {
+  FROM_RESOURCE_POOL_SUFFIX,
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
@@ -41,10 +42,16 @@ export const getFormFieldsFromSchema = ({
   parentSchema,
   parentData,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
+  const attributes = (schema.attributes ?? []).filter(
+    (attribute) => !isBulkUpdate || !attribute.unique
+  );
+  const relationships = getRelationshipsForForm(schema, isUpdate || isBulkUpdate).filter(
+    (relationship) => !relationship.name.endsWith(FROM_RESOURCE_POOL_SUFFIX) // required in data but field is not visible
+  );
   const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
-    ...(schema.attributes ?? []).filter((attribute) => !isBulkUpdate || !attribute.unique),
-    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate || isBulkUpdate, schema),
-  ].filter((attribute) => !attribute.read_only);
+    ...attributes,
+    ...relationships,
+  ].filter((field) => !field.read_only);
   const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {

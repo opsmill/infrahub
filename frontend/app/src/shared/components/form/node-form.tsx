@@ -12,10 +12,11 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
+import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -55,7 +56,11 @@ export const NodeForm = ({
   const createObject = useCreateObjectMutation();
 
   const { data: numberPools, isPending } = useGetNumberPools({
-    objectKinds: [schema.kind as string, ...(schema.inherit_from ?? [])],
+    objectKinds: [
+      schema.kind!,
+      ...(schema.inherit_from ?? []),
+      ...(isTemplateSchema(schema) ? [schema.name] : []),
+    ],
   });
 
   if (isPending) return <LoadingIndicator className="my-4" />;

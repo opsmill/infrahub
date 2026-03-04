@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, AllowOverrideType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import (
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    AllowOverrideType,
+    InfrahubKind,
+    RelationshipKind,
+)
 
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema

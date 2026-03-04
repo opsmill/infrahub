@@ -7,16 +7,17 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import InfrahubDatabase
+from tests.conftest import TestHelper
 
 
 async def test_schema_validate_migrations(
     db: InfrahubDatabase,
     default_branch: Branch,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     car_accord_main: Node,
     car_volt_main: Node,
-    person_john_main,
-    helper,
+    person_john_main: Node,
+    helper: TestHelper,
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
     person_schema = schema.get(name="TestPerson")

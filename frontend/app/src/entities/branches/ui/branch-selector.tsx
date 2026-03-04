@@ -18,10 +18,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 
 type DisplayForm = {

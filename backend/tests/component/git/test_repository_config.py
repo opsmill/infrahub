@@ -170,7 +170,7 @@ schemas: []
         return repo
 
     async def test_missing_config_file_raises_error(
-        self, repo_without_config: InfrahubRepository, prefect_test_fixture
+        self, repo_without_config: InfrahubRepository, prefect_test_fixture: None
     ) -> None:
         """Test that a missing config file raises RepositoryConfigurationError."""
         commit = repo_without_config.get_commit_value(branch_name="main")
@@ -185,7 +185,7 @@ schemas: []
         assert "docs.infrahub.app" in str(exc_info.value)
 
     async def test_invalid_yaml_raises_error(
-        self, repo_with_invalid_yaml: InfrahubRepository, prefect_test_fixture
+        self, repo_with_invalid_yaml: InfrahubRepository, prefect_test_fixture: None
     ) -> None:
         """Test that an invalid YAML config file raises RepositoryConfigurationError."""
         commit = repo_with_invalid_yaml.get_commit_value(branch_name="main")
@@ -198,7 +198,7 @@ schemas: []
         assert "could not be parsed as valid YAML" in str(exc_info.value)
 
     async def test_invalid_format_raises_error(
-        self, repo_with_invalid_format: InfrahubRepository, prefect_test_fixture
+        self, repo_with_invalid_format: InfrahubRepository, prefect_test_fixture: None
     ) -> None:
         """Test that a config file with invalid format raises RepositoryConfigurationError."""
         commit = repo_with_invalid_format.get_commit_value(branch_name="main")
@@ -211,7 +211,7 @@ schemas: []
         assert "format is not valid" in str(exc_info.value)
 
     async def test_valid_config_file_returns_config(
-        self, repo_with_valid_config: InfrahubRepository, prefect_test_fixture
+        self, repo_with_valid_config: InfrahubRepository, prefect_test_fixture: None
     ) -> None:
         """Test that a valid config file is successfully loaded."""
         commit = repo_with_valid_config.get_commit_value(branch_name="main")

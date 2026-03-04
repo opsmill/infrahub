@@ -13,6 +13,7 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
+    cast,
     overload,
 )
 
@@ -23,6 +24,7 @@ from pydantic import BaseModel, Field
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
 from infrahub.core.property import (
@@ -518,7 +520,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         )
         await delete_query.execute(db=db)
 
-    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> None:
+    async def resolve(
+        self,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+        fields: list[str] | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         """Resolve the peer of the relationship."""
 
         fields = fields or []
@@ -554,8 +562,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             self.set_peer(value=peer)
 
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
+            pool: Node | None = None
             pool_id = str(self.from_pool.get("id"))
-            pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            if is_valid_uuid(pool_id):
+                pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            else:
+                results = await registry.manager.query(
+                    db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
+                )
+                results = cast("list[Node]", results)
+                pool = results[0] if results else None
 
             if not pool:
                 raise NodeNotFoundError(
@@ -573,9 +589,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
-            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, at=at, **data_from_pool)  # type: ignore[attr-defined]
+            assigned_peer: Node = await pool.get_resource(  # type: ignore[attr-defined]
+                db=db, branch=self.branch, at=at, user_id=user_id, **data_from_pool
+            )
             self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
+            NodeCreationContext.record_if_active(node=assigned_peer)
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""
@@ -1276,9 +1295,11 @@ class RelationshipManager:
 
         return True
 
-    async def resolve(self, db: InfrahubDatabase, fields: list[str] | None = None) -> None:
+    async def resolve(
+        self, db: InfrahubDatabase, fields: list[str] | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
         for rel in self._relationships:
-            await rel.resolve(db=db, fields=fields)
+            await rel.resolve(db=db, fields=fields, user_id=user_id)
 
     async def remove_locally(
         self,
@@ -1336,7 +1357,7 @@ class RelationshipManager:
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
 
-        await self.resolve(db=db)
+        await self.resolve(db=db, user_id=user_id)
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)

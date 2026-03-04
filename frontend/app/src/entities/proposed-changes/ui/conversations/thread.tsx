@@ -10,6 +10,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
@@ -19,14 +20,13 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getThreadTitle } from "@/entities/diff/utils";
+import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 
-import { Button } from "../../../../shared/components/ui/button";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 

@@ -3,9 +3,12 @@ from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
@@ -16,13 +19,20 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.proposed_change.constants import ProposedChangeState
 
 
 class TestDiffCoordinator:
+    @pytest.fixture(autouse=True)
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
+        return
+
     async def get_wrapped_diff_coordinator(
         self,
         db: InfrahubDatabase,
@@ -248,6 +258,21 @@ class TestDiffCoordinator:
         assert no_changes_diff.from_time == no_changes_diff_metadata.from_time == diff_with_data.from_time
         assert no_changes_diff.to_time == no_changes_diff_metadata.to_time
 
+        # mark branch as merged and verify update_branch_diff returns stored diff without recalculating
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=branch.name)])
+        branch.status = BranchStatus.MERGED
+        await branch.save(db=db)
+        registry.branch[branch.name] = branch
+        self.reset_mocks(wrapped_diff_coordinator)
+
+        terminal_diff_metadata = await wrapped_diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch
+        )
+        assert type(terminal_diff_metadata) is EnrichedDiffRootMetadata
+        assert terminal_diff_metadata.uuid == no_changes_diff_metadata.uuid
+        wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_not_awaited()
+        wrapped_diff_coordinator.diff_repo.save.assert_not_awaited()
+
     async def test_unrelated_changes_skip_some_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
     ) -> None:
@@ -374,7 +399,6 @@ class TestDiffCoordinator:
     async def test_schema_deleted_on_source_and_target_branches(
         self,
         db: InfrahubDatabase,
-        register_internal_models_schema,
         default_branch: Branch,
         person_john_main,
     ) -> None:
@@ -510,3 +534,150 @@ class TestDiffCoordinator:
         assert len(retrieved_metadata) == 2
         for metadata in retrieved_metadata:
             assert metadata.proposed_change_id == proposed_change_id
+
+    async def test_open_proposed_change_discovered_when_not_provided(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_john_main: Node,
+    ) -> None:
+        """When update_branch_diff is called without proposed_change_id but an OPEN
+        CoreProposedChange exists for the branch, the diff should be linked to it."""
+        branch = await create_branch(db=db, branch_name="branch")
+
+        # Create a real OPEN CoreProposedChange for this branch
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
+        await proposed_change.new(
+            db=db,
+            name="test-pc",
+            source_branch=branch.name,
+            destination_branch=default_branch.name,
+        )
+        await proposed_change.save(db=db)
+
+        # Make a change on the branch so the diff has content
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # Update branch diff WITHOUT providing proposed_change_id
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # The diff should have discovered and linked the open proposed change
+        assert diff_metadata.proposed_change_id == proposed_change.id
+
+        # Verify both diff roots are linked via the repository
+        retrieved_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch.name, default_branch.name],
+            proposed_change_id=proposed_change.id,
+        )
+        assert len(retrieved_metadata) == 2
+        for metadata in retrieved_metadata:
+            assert metadata.proposed_change_id == proposed_change.id
+
+    async def test_non_open_proposed_changes_not_discovered(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_john_main: Node,
+    ) -> None:
+        """Diffs should not be linked to CLOSED, CANCELED, or MERGED proposed changes."""
+        branch = await create_branch(db=db, branch_name="branch")
+
+        # Create proposed changes in non-open states for this branch
+        for state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED, ProposedChangeState.MERGED):
+            pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
+            await pc.new(
+                db=db,
+                name=f"pc-{state.value}",
+                source_branch=branch.name,
+                destination_branch=default_branch.name,
+                state=state.value,
+            )
+            await pc.save(db=db)
+
+        # Make a change on the branch so the diff has content
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value += 1
+        await person_john_branch.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+
+        # Update branch diff WITHOUT providing proposed_change_id
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # The diff should NOT be linked to any of the non-open proposed changes
+        assert diff_metadata.proposed_change_id is None
+
+    async def test_parent_reassigned_then_deleted(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        hierarchical_location_schema_simple: SchemaRoot,
+    ) -> None:
+        """Test reassigning a child to a new parent and deleting the old parent"""
+        branch = await create_branch(db=db, branch_name="branch_parent_reassign")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # Create region R1 and site S with parent=R1
+        region1 = await Node.init(db=db, branch=branch, schema="LocationRegion")
+        await region1.new(db=db, name="test-region-1")
+        await region1.save(db=db)
+
+        site = await Node.init(db=db, branch=branch, schema="LocationSite")
+        await site.new(db=db, name="test-site", parent=region1)
+        await site.save(db=db)
+
+        # Window 1: R1=ADDED, S=ADDED with parent=R1
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # Reassign site to new parent R2, then delete R1
+        region2 = await Node.init(db=db, branch=branch, schema="LocationRegion")
+        await region2.new(db=db, name="test-region-2")
+        await region2.save(db=db)
+
+        site_branch = await NodeManager.get_one(db=db, branch=branch, id=site.id)
+        await site_branch.parent.update(db=db, data=region2)
+        site_branch.status.value = "offline"
+        await site_branch.save(db=db)
+
+        await NodeManager.delete(
+            db=db, nodes=[await NodeManager.get_one(db=db, branch=branch, id=region1.id)], branch=branch
+        )
+
+        # Window 2: S reassigned to R2, R1 deleted
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
+
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+
+        # R1 was ADDED then deleted — should not be in the final diff
+        assert set(nodes_by_id.keys()) == {site.id, region2.id}
+
+        # Site must still be present as ADDED
+        site_node = nodes_by_id[site.id]
+        assert site_node.kind == "LocationSite"
+        assert site_node.action is DiffAction.ADDED
+
+        # Site's parent relationship should point to R2
+        rels_by_name = {r.name: r for r in site_node.relationships}
+        assert "parent" in rels_by_name
+        parent_rel = rels_by_name["parent"]
+        assert parent_rel.cardinality is RelationshipCardinality.ONE
+        assert len(parent_rel.relationships) == 1
+        parent_element = list(parent_rel.relationships)[0]
+        assert parent_element.peer_id == region2.id
+
+        # R2 must be present as ADDED
+        r2_node = nodes_by_id[region2.id]
+        assert r2_node.kind == "LocationRegion"
+        assert r2_node.action is DiffAction.ADDED

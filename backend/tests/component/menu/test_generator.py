@@ -8,6 +8,7 @@ from infrahub.menu.constants import FULL_DEFAULT_MENU, MenuSection
 from infrahub.menu.generator import generate_menu
 from infrahub.menu.models import MenuItemDefinition
 from infrahub.menu.repository import MenuRepository
+from tests.conftest import TestHelper
 
 
 def generate_menu_fixtures(prefix: str = "Menu", depth: int = 1, nbr_item: int = 10) -> list[MenuItemDefinition]:
@@ -38,7 +39,7 @@ async def test_generate_menu_placement(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     menu_repository: MenuRepository,
-    helper,
+    helper: TestHelper,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
@@ -65,7 +66,7 @@ async def test_generate_menu_top_level(
     menu_repository: MenuRepository,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    helper,
+    helper: TestHelper,
 ) -> None:
     await create_default_menu(db=db)
 
@@ -86,7 +87,7 @@ async def test_generate_menu_default(
     menu_repository: MenuRepository,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    helper,
+    helper: TestHelper,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_car = schema_branch.get(name="TestCar")

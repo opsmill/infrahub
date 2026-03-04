@@ -25,7 +25,7 @@ def test_parse_node_kind() -> None:
         parse_node_kind(kind="Test3myname1234")
 
 
-async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database) -> None:
+async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database: None) -> None:
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })
@@ -61,7 +61,7 @@ async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database) -> 
     assert len(paths) == 0
 
 
-async def test_count_relationships(db: InfrahubDatabase, empty_database) -> None:
+async def test_count_relationships(db: InfrahubDatabase, empty_database: None) -> None:
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })

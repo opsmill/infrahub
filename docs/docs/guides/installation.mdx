@@ -43,7 +43,7 @@ Allocating more CPU cores to the Neo4j database will only improve performance on
 
 Infrahub Community is deployed as a container-based architecture and can be installed using several methods.
 
-<Tabs>
+<Tabs groupId="install-method" queryString>
 <TabItem value="Docker compose via curl" default>
 
 ### Using curl and Docker Compose
@@ -62,7 +62,7 @@ You can also specify a specific version or the `develop` branch in the URL:
 
 #### Start an Infrahub environment
 
-<Tabs groupId="os">
+<Tabs groupId="os" queryString>
 <TabItem value="macOS" default>
 
 ```bash
@@ -95,7 +95,7 @@ docker ps | grep infrahub
 
 #### Stop and remove an Infrahub environment
 
-<Tabs groupId="os">
+<Tabs groupId="os" queryString>
 <TabItem value="macOS" default>
 
 ```bash
@@ -310,7 +310,7 @@ neo4j:
 
 :::warning
 
-Be sure to replace the placeholder values with your actual values.
+Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
 
 :::
 
@@ -352,7 +352,7 @@ Infrahub Enterprise is based on the Community version, with several enhancements
 
 Infrahub Enterprise can be deployed using the same methods as Infrahub Community.
 
-<Tabs>
+<Tabs groupId="install-method" queryString>
 <TabItem value="Docker compose via curl" default>
 
 ### Using curl and Docker Compose
@@ -384,7 +384,7 @@ You can also specify a sizing preset in the URL. This will automatically configu
 
 #### Start an Infrahub Enterprise environment
 
-<Tabs groupId="os">
+<Tabs groupId="os" queryString>
 <TabItem value="macOS" default>
 
 ```bash
@@ -405,7 +405,7 @@ sudo docker compose -p infrahub up -d
 
 #### Stop and remove an Infrahub Enterprise environment
 
-<Tabs groupId="os">
+<Tabs groupId="os" queryString>
 <TabItem value="macOS" default>
 
 ```bash
@@ -454,6 +454,19 @@ They are present to ease deployment on non-production environments.
 
 - A Kubernetes cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your system
+
+:::warning Storage persistence for testing and lab environments
+
+By default, the Helm chart disables storage persistence on all components (Neo4j, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
+
+However, if pods get rescheduled on the Kubernetes cluster for any reason, all data will be lost. This can happen unexpectedly due to node maintenance, resource pressure, or cluster updates.
+
+For long-running tests or lab environments, you should either:
+
+- Enable storage persistence for the Neo4j database at minimum (but also on the other components if possible)
+- Use Docker Compose instead, which provides more predictable behavior for non-production environments
+
+:::
 
 #### Step 1: Fill in the values file
 
@@ -519,7 +532,7 @@ infrahub:
 ```
 
 :::warning
-Be sure to replace the placeholder values with your actual values.
+Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
 :::
 
 Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
@@ -539,6 +552,23 @@ You can review the configuration values for each sizing preset here:
 <ReferenceLink title="Medium (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
 <ReferenceLink title="Large size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
 <ReferenceLink title="Large (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+
+:::info Redis host configuration for flavored charts
+
+When using a flavored chart (sizing preset), you must also configure the Redis host for the Prefect background services. Add the following to your `values.yml`:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master"
+```
+
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (e.g. `4.0.0`) does not require it.
+
+:::
 
 ##### Migrating from chart versions before 4.0.0
 

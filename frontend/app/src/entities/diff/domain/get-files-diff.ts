@@ -12,7 +12,11 @@ export type GetFilesDiffParams = GetFilesDiffFromApiParams;
 export async function getFilesDiff({ branchName }: GetFilesDiffParams): Promise<FileDiff[]> {
   const { data, error } = await getFilesDiffFromApi({ branchName });
 
-  if (error) throw error;
+  if (error) {
+    const apiError = error as { errors?: Array<{ message?: string }> };
+    const message = apiError.errors?.[0]?.message;
+    throw new Error(message ?? "An error occurred while fetching file diffs.");
+  }
 
   // Response: { [branchName]: { [repoId]: BranchDiffRepository } }
   const branchData = data?.[branchName];

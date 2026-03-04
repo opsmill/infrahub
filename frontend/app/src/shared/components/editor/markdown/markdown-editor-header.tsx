@@ -4,9 +4,13 @@ import type { FC } from "react";
 import { Button } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import {
+  boldCommand,
+  type EditorCommand,
+  italicCommand,
+  strikethroughCommand,
+} from "@/shared/components/editor/commands";
 import type { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
-
-import { boldCommand, type EditorCommand, italicCommand, strikethroughCommand } from "../commands";
 
 type ToolbarProps = { codeMirror: UseCodeMirror };
 

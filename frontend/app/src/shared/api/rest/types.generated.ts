@@ -670,12 +670,6 @@ export interface components {
              */
             generate_profile: boolean;
             /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -1541,12 +1535,6 @@ export interface components {
              */
             generate_profile: boolean;
             /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -1976,7 +1964,7 @@ export interface components {
             start_range: number;
             /**
              * Number Pool Id
-             * @description The ID of the numberpool associated with this attribute
+             * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
              */
             number_pool_id?: string | null;
         };

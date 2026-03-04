@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.7.4"
+version = "1.8.0rc0"
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"

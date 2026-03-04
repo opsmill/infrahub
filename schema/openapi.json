@@ -2465,13 +2465,6 @@
                         "default": true,
                         "update": "validate_constraint"
                     },
-                    "generate_template": {
-                        "type": "boolean",
-                        "title": "Generate Template",
-                        "description": "Indicate if an object template schema should be generated for this schema",
-                        "default": false,
-                        "update": "allowed"
-                    },
                     "used_by": {
                         "items": {
                             "type": "string"
@@ -4671,13 +4664,6 @@
                         "default": true,
                         "update": "validate_constraint"
                     },
-                    "generate_template": {
-                        "type": "boolean",
-                        "title": "Generate Template",
-                        "description": "Indicate if an object template schema should be generated for this schema",
-                        "default": false,
-                        "update": "allowed"
-                    },
                     "used_by": {
                         "items": {
                             "type": "string"
@@ -5601,7 +5587,7 @@
                             }
                         ],
                         "title": "Number Pool Id",
-                        "description": "The ID of the numberpool associated with this attribute",
+                        "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.",
                         "update": "not_supported"
                     }
                 },

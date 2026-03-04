@@ -194,7 +194,7 @@ class NumberPoolParameters(AttributeParameters):
     )
     number_pool_id: str | None = Field(
         default=None,
-        description="The ID of the numberpool associated with this attribute",
+        description="The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.",
         json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
     )
 

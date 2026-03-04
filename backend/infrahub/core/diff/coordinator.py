@@ -8,9 +8,12 @@ from opentelemetry import trace
 from prefect import flow
 
 from infrahub.core.branch import Branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ResourceNotFoundError, ValidationError
 from infrahub.log import get_logger
+from infrahub.proposed_change.constants import ProposedChangeState
 
 from ..query.diff import get_num_changes_in_time_range_by_branch
 from .model.field_specifiers_map import NodeFieldSpecifierMap
@@ -125,27 +128,61 @@ class DiffCoordinator:
             name=name,
         )
 
+    async def _get_proposed_change_id_for_branch(self, branch_name: str) -> str | None:
+        """Look up the ID of an OPEN CoreProposedChange for the given source branch."""
+        open_proposed_changes = await NodeManager.query(
+            db=self.db,
+            schema=CoreProposedChange,
+            filters={
+                "source_branch__value": branch_name,
+                "state__value": ProposedChangeState.OPEN.value,
+            },
+        )
+        if open_proposed_changes:
+            return open_proposed_changes[0].id
+        return None
+
     async def _link_diff_to_proposed_change(
-        self, diff_root: EnrichedDiffRootMetadata, proposed_change_id: str | None
-    ) -> None:
+        self,
+        diff_root: EnrichedDiffRootMetadata,
+        proposed_change_id: str | None,
+        diff_branch_name: str,
+    ) -> str | None:
         """Link a diff root to a proposed change if needed.
 
+        If proposed_change_id is not provided, attempts to find an OPEN
+        CoreProposedChange for the given diff_branch_name.
+
         Updates the database link and the in-memory object's proposed_change_id.
+        Returns the resolved proposed_change_id (may be None).
         """
         if not proposed_change_id:
-            return
+            proposed_change_id = await self._get_proposed_change_id_for_branch(diff_branch_name)
+        if not proposed_change_id:
+            return None
         if diff_root.proposed_change_id != proposed_change_id:
             diff_uuids = [diff_root.uuid]
             if diff_root.partner_uuid:
                 diff_uuids.append(diff_root.partner_uuid)
             await self.diff_repo.link_to_proposed_change(diff_uuids=diff_uuids, proposed_change_id=proposed_change_id)
         diff_root.proposed_change_id = proposed_change_id
+        return proposed_change_id
 
     async def update_branch_diff(
         self, base_branch: Branch, diff_branch: Branch, proposed_change_id: str | None = None
     ) -> EnrichedDiffRootMetadata:
         tracking_id = BranchTrackingId(name=diff_branch.name)
         self.logger.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
+        if diff_branch.is_terminal:
+            self.logger.info(
+                f"Branch {diff_branch.name} is in terminal state {diff_branch.status.value}, returning latest diff"
+            )
+            diff_roots = await self.diff_repo.get_roots_metadata(
+                diff_branch_names=[diff_branch.name], tracking_id=tracking_id, exclude_merged=False
+            )
+            if not diff_roots:
+                raise ResourceNotFoundError(f"No stored diff found for terminal branch {diff_branch.name}")
+            return diff_roots[0]
         existing_incremental_lock = self.diff_locker.get_existing_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
         )
@@ -156,7 +193,11 @@ class DiffCoordinator:
             ):
                 self.logger.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
                 diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
-                await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+                await self._link_diff_to_proposed_change(
+                    diff_root=diff_root,
+                    proposed_change_id=proposed_change_id,
+                    diff_branch_name=diff_branch.name,
+                )
                 return diff_root
         from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
@@ -178,7 +219,11 @@ class DiffCoordinator:
                         f"Branch {diff_branch.name} was merged or rebased while waiting for lock, returning latest diff"
                     )
                     diff_root = await self.diff_repo.get_one(tracking_id=tracking_id, diff_branch_name=diff_branch.name)
-                    await self._link_diff_to_proposed_change(diff_root=diff_root, proposed_change_id=proposed_change_id)
+                    await self._link_diff_to_proposed_change(
+                        diff_root=diff_root,
+                        proposed_change_id=proposed_change_id,
+                        diff_branch_name=diff_branch.name,
+                    )
                     return diff_root
                 self.logger.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
                 enriched_diffs, node_identifiers_to_drop = await self._update_diffs(
@@ -190,6 +235,8 @@ class DiffCoordinator:
                     force_branch_refresh=False,
                 )
 
+                if not proposed_change_id and not enriched_diffs.diff_branch_diff.proposed_change_id:
+                    proposed_change_id = await self._get_proposed_change_id_for_branch(diff_branch.name)
                 if proposed_change_id:
                     enriched_diffs.diff_branch_diff.proposed_change_id = proposed_change_id
                     enriched_diffs.base_branch_diff.proposed_change_id = proposed_change_id

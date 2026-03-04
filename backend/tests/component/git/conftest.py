@@ -2,7 +2,7 @@ import re
 import shutil
 import tarfile
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 import anyio
 import pytest
@@ -24,6 +24,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
+from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -33,7 +34,7 @@ def client() -> InfrahubClient:
 
 
 @pytest.fixture
-def branch01():
+def branch01() -> BranchData:
     return BranchData(
         id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
         name="branch01",
@@ -46,7 +47,7 @@ def branch01():
 
 
 @pytest.fixture
-def branch02():
+def branch02() -> BranchData:
     return BranchData(
         id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         name="branch02",
@@ -59,7 +60,7 @@ def branch02():
 
 
 @pytest.fixture
-def branch99():
+def branch99() -> BranchData:
     return BranchData(
         id="2e933717-086c-47cf-8242-21421dd3c2bb",
         name="branch99",
@@ -606,7 +607,7 @@ async def gql_query_data_02() -> dict:
 
 
 @pytest.fixture
-async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_schema_query_01(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
@@ -619,7 +620,7 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
@@ -627,7 +628,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_check_create(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
             f"{InfrahubKind.CHECKDEFINITION}Create": {
@@ -734,7 +735,7 @@ async def check_definition_data_01() -> dict:
 
 
 @pytest.fixture
-async def gql_query_data_03():
+async def gql_query_data_03() -> dict[str, Any]:
     # QUERY
     query_string = """
     query {
@@ -792,14 +793,14 @@ async def gql_query_data_03():
 
 
 @pytest.fixture
-async def schema_02(client, helper, car_data_01) -> ClientSchemaRoot:
+async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dict) -> ClientSchemaRoot:
     full_schema = ujson.loads((helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8"))
 
     return ClientSchemaRoot(**full_schema)
 
 
 @pytest.fixture
-async def gql_query_node_03(client, gql_query_data_03) -> InfrahubNode:
+async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
     schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
     node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
     return node
@@ -833,7 +834,7 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def artifact_definition_data_01():
+async def artifact_definition_data_01() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
@@ -868,14 +869,16 @@ async def artifact_definition_data_01():
 
 
 @pytest.fixture
-async def artifact_definition_node_01(client, schema_02: ClientSchemaRoot, artifact_definition_data_01) -> InfrahubNode:
+async def artifact_definition_node_01(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_01: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
     return node
 
 
 @pytest.fixture
-async def artifact_definition_data_02():
+async def artifact_definition_data_02() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
@@ -910,14 +913,16 @@ async def artifact_definition_data_02():
 
 
 @pytest.fixture
-async def artifact_definition_node_02(client, schema_02: ClientSchemaRoot, artifact_definition_data_02) -> InfrahubNode:
+async def artifact_definition_node_02(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_02: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
     return node
 
 
 @pytest.fixture
-async def artifact_data_01():
+async def artifact_data_01() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": "CoreArtifact",
@@ -943,14 +948,16 @@ async def artifact_data_01():
 
 
 @pytest.fixture
-async def artifact_node_01(client, schema_02: ClientSchemaRoot, artifact_data_01) -> InfrahubNode:
+async def artifact_node_01(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_01: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_data_01)
     return node
 
 
 @pytest.fixture
-async def artifact_data_02():
+async def artifact_data_02() -> dict[str, Any]:
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACT,
@@ -978,7 +985,9 @@ async def artifact_data_02():
 
 
 @pytest.fixture
-async def artifact_node_02(client, schema_02: ClientSchemaRoot, artifact_data_02) -> InfrahubNode:
+async def artifact_node_02(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_02: dict[str, Any]
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_data_02)
     return node
@@ -1059,7 +1068,9 @@ async def transformation_data_01() -> dict:
 
 
 @pytest.fixture
-async def transformation_node_01(client, schema_02, transformation_data_01) -> InfrahubNode:
+async def transformation_node_01(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_01: dict
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == "CoreTransformPython"][0]
     node = InfrahubNode(client=client, schema=schema, data=transformation_data_01)
     return node
@@ -1097,7 +1108,9 @@ async def transformation_data_02() -> dict:
 
 
 @pytest.fixture
-async def transformation_node_02(client, schema_02, transformation_data_02) -> InfrahubNode:
+async def transformation_node_02(
+    client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_02: dict
+) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2][0]
     node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
     return node
@@ -1147,7 +1160,7 @@ async def car_data_01() -> dict:
 
 
 @pytest.fixture
-async def car_node_01(client, schema_02, car_data_01) -> InfrahubNode:
+async def car_node_01(client: InfrahubClient, schema_02: ClientSchemaRoot, car_data_01: dict) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.name == "ElectricCar"][0]
     node = InfrahubNode(client=client, schema=schema, data=car_data_01)
     return node
@@ -1184,7 +1197,7 @@ async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-def git_use_explicit_merge_commit_config():
+def git_use_explicit_merge_commit_config() -> Generator[None, None, None]:
     initial_use_explicit_merge_commit = config.SETTINGS.git.use_explicit_merge_commit
     config.SETTINGS.git.use_explicit_merge_commit = True
     yield

@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
+test.describe("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   const BRANCH_NAME = generateRandomBranchName("profiles");
@@ -45,6 +45,8 @@ test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
+      const profileLink = page.getByRole("link", { name: "profile test tag" });
+      await expect(profileLink).toBeVisible({ timeout: 30_000 });
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
 
@@ -57,6 +59,7 @@ test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
         .getByTestId("breadcrumb-navigation")
         .getByRole("link", { name: "Profile", exact: true })
         .click();
+      await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
       expect(page.url()).toContain("/objects/CoreProfile");
     });
   });
@@ -70,6 +73,8 @@ test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
 
     await test.step("Select profile and enter details", async () => {
       await page.getByLabel("Select profiles").click();
+      const profileOption = page.getByRole("option", { name: "profile test tag" });
+      await expect(profileOption).toBeVisible({ timeout: 30_000 });
       await page.getByRole("option", { name: "profile test tag" }).click();
       await page.getByLabel("Select profiles").click();
 
@@ -102,7 +107,7 @@ test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
         .getByTestId("view-metadata-button")
         .click();
       await expect(
-        page.getByTestId("metadata-tooltip").getByText("Sourceprofile test tag")
+        page.getByTestId("metadata-tooltip").getByRole("link", { name: "profile test tag" })
       ).toBeVisible();
     });
 
@@ -134,7 +139,13 @@ test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
     await test.step("Verify the changes in an object using the edited profile", async () => {
       await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "tag with profile" })).toBeVisible();
+
+      // Refresh profile is an async task
+      while (await page.getByText("DescriptionA profile for E2E test edited").isHidden()) {
+        await page.reload();
+        await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
+      }
     });
   });
 
@@ -151,7 +162,7 @@ test.describe.fixme("/objects/CoreProfile - Profiles page", () => {
       await page.getByRole("button", { name: "Save" }).click();
     });
 
-    await expect(page.getByText("Description-")).toBeVisible();
+    await expect(page.getByTestId("object-details").getByText("Description-")).toBeVisible();
   });
 
   test("delete the profile and reset object attribute value", async ({ page }) => {

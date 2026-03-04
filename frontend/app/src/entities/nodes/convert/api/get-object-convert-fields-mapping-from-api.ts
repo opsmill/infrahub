@@ -4,7 +4,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
 const GET_FIELDS_MAPPING = graphql(`
-  query GET_FIELDS_MAPPING($sourceKind: String, $targetKind: String) {
+  query GET_FIELDS_MAPPING($sourceKind: String!, $targetKind: String!) {
     FieldsMappingTypeConversion(source_kind: $sourceKind, target_kind: $targetKind) {
       mapping
     }

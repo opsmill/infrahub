@@ -6,7 +6,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
-import { useCreateAccountTokenMutation } from "@/entities/user-profile/domain/create-account-token.mutation";
+import { useCreateAccountTokenMutation } from "@/entities/user-profile/ui/queries/create-account-token.mutation";
 
 export interface AccountTokenCreateFormProps {
   onSuccess: (data: { token: string }) => Promise<void>;

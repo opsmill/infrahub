@@ -7,9 +7,8 @@ import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import type { NodeCore } from "@/entities/nodes/types";
-
-import { IP_NAMESPACE_GENERIC } from "../../constants";
 
 export interface GetIpNamespaceListParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;

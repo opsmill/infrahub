@@ -1,5 +1,6 @@
 import uuid
-from typing import Any
+from collections.abc import AsyncGenerator
+from typing import Any, Generator
 
 import pytest
 from graphql import ExecutionResult
@@ -397,7 +398,7 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
     return [str(event.meta.id) for event in events_data.values()]
 
 
-def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
+def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict[str, Any]:
     """
     Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
@@ -407,7 +408,7 @@ def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
 
 
 @pytest.fixture(scope="module")
-async def prefect_client(prefect_test_fixture):
+async def prefect_client(prefect_test_fixture: Generator[None, None, None]) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 
@@ -428,8 +429,8 @@ async def test_event_query_prefect(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    events_data,
-    event_ids_inscope,
+    events_data: dict[str, InfrahubEvent],
+    event_ids_inscope: list[str],
 ) -> None:
     result = await run_query(
         db=db,

@@ -18,10 +18,15 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.conftest import do_register_simplified_proposed_change_schema
 from tests.helpers.test_app import TestInfrahub
 
 
 class TestDiffReadQuery(TestInfrahub):
+    @pytest.fixture(scope="class", autouse=True)
+    async def _setup_core_schema(self, default_branch: Branch) -> None:
+        do_register_simplified_proposed_change_schema(branch=default_branch)
+
     @pytest.fixture(scope="class")
     async def hierarchical_location_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         SCHEMA: dict[str, Any] = {
@@ -86,7 +91,9 @@ class TestDiffReadQuery(TestInfrahub):
         registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     @pytest.fixture(scope="class")
-    async def hierarchical_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema):
+    async def hierarchical_data(
+        self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+    ) -> dict[str, Node]:
         REGIONS = (
             ("north-america",),
             ("europe",),
@@ -128,7 +135,7 @@ class TestDiffReadQuery(TestInfrahub):
         return nodes
 
     @pytest.fixture(scope="class")
-    async def load_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_data):
+    async def load_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_data) -> dict[str, Any]:
         rack1_main = hierarchical_data["paris-r1"]
         rack2_main = hierarchical_data["paris-r2"]
 

@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
 from ..shared import load_schema
 from .shared import (
@@ -363,3 +364,4 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
+        await assert_no_virtual_schema_relationships_in_db(db=db)

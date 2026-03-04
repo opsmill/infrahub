@@ -1,6 +1,6 @@
 import { DIFF_TABS } from "@/shared/config/constants";
 
-import { useGetFilesDiff } from "@/entities/diff/domain/get-files-diff.query";
+import { useGetFilesDiff } from "@/entities/diff/ui/queries/get-files-diff.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
 
 export interface FilesTabProps {

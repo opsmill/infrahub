@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
-from infrahub.core.node import Node
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.log import get_logger
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -13,12 +14,14 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
-    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+    from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
+
+log = get_logger()
 
 
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuery):
@@ -83,12 +86,16 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db = migration_input.db
         at = migration_input.at
 
-        number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(
+        upserter = SchemaNumberPoolUpserter(
             db=db,
-            branch=branch,
-            schema_node=self.new_schema,  # type: ignore
-            schema_attribute=self.new_attribute_schema,
+            schema_manager=registry.schema,
+        )
+        number_pool = await upserter.upsert_number_pool(
+            schema_node=self.new_schema,
+            attribute=self.new_attribute_schema,
+            branch_name=branch.name,
             at=at,
+            user_id=migration_input.user_id,
         )
 
         await update_branch_registry(db=db, branch=branch)
@@ -99,12 +106,12 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             for node in nodes:
-                number = await number_pool.get_resource(
+                number = await number_pool.get_resource(  # type: ignore[attr-defined]
                     db=db, branch=branch, node=node, attribute=self.new_attribute_schema, at=at
                 )
                 attr = node.get_attribute(name=self.new_attribute_schema.name)
                 attr.value = number
-                attr.set_source(number_pool)
+                attr.set_source(number_pool.get_id())
 
                 await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
 

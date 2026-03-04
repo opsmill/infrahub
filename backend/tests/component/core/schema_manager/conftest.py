@@ -92,7 +92,7 @@ async def animal_person_schema_dict() -> dict:
 
 
 @pytest.fixture
-def schema_all_in_one():
+def schema_all_in_one() -> dict[str, Any]:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -242,7 +242,7 @@ def schema_all_in_one():
 
 
 @pytest.fixture
-def schema_criticality_tag():
+def schema_criticality_tag() -> dict[str, Any]:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -355,7 +355,7 @@ def schema_parent_component() -> dict:
 
 
 @pytest.fixture
-def schema_diff_attr_inheritance_types():
+def schema_diff_attr_inheritance_types() -> dict[str, Any]:
     """Two generics with the same attribute but different types and a single node implementation."""
     FULL_SCHEMA = {
         "generics": [

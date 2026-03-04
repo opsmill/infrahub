@@ -11,6 +11,7 @@ type AccountGlobalPermissionNode {
   action: String!
   decision: String!
   description: String
+  display_label: String!
   id: String!
   identifier: String!
   name: String!
@@ -29,6 +30,7 @@ type AccountObjectPermissionNode {
   action: String!
   decision: String!
   description: String
+  display_label: String!
   id: String!
   identifier: String!
   name: String!

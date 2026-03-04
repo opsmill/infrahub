@@ -530,18 +530,31 @@ async def test_address_cannot_be_parent(
     prefix_node = await Node.init(db=db, schema=prefix_schema)
     await prefix_node.new(db=db, prefix="172.20.20.0/27", ip_namespace=ip_namespace)
     await prefix_node.save(db=db)
-    address_node = await Node.init(db=db, schema=address_schema)
-    await address_node.new(db=db, address="172.20.20.0/24", ip_namespace=ip_namespace)
-    await address_node.save(db=db)
 
-    for ip_value in (ipaddress.ip_interface("172.20.20.0/24"), ipaddress.ip_network("172.20.20.0/27")):
+    address_a = await Node.init(db=db, schema=address_schema)
+    await address_a.new(db=db, address="172.20.20.0/24", ip_namespace=ip_namespace)
+    await address_a.save(db=db)
+    address_b = await Node.init(db=db, schema=address_schema)
+    await address_b.new(db=db, address="172.20.20.1/32", ip_namespace=ip_namespace)
+    await address_b.save(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("172.20.20.0/27")
+    )
+    await query.execute(db=db)
+    data = query.get_data()
+    assert data is not None
+    assert data.calculated_parent_uuid is None
+    assert set(data.calculated_children_uuids) == {address_a.id, address_b.id}
+
+    for address_value in ("172.20.20.0/24", "172.20.20.1/32"):
         query = await IPPrefixReconcileQuery.init(
-            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ip_value
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address_value)
         )
         await query.execute(db=db)
         data = query.get_data()
         assert data is not None
-        assert data.calculated_parent_uuid is None
+        assert data.calculated_parent_uuid == prefix_node.id
         assert data.calculated_children_uuids == ()
 
 
@@ -753,7 +766,7 @@ async def test_reconcile_query_on_migrated_kind_node(
 
 async def test_reconcile_query_for_address_with_prefix_added_on_branch_and_merged(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
-):
+) -> None:
     """
     Test for bug that could cause an IP address to be its own parent after an update on a branch was merged
     """

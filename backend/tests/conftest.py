@@ -42,6 +42,7 @@ from infrahub.core.schema.definitions.core import (
     core_generic_account,
     core_profile_schema_definition,
 )
+from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
@@ -296,6 +297,28 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
     return schema_branch
 
 
+def do_register_simplified_proposed_change_schema(branch: Branch) -> SchemaBranch:
+    """Register a minimal CoreProposedChange schema with only the attributes needed for queries."""
+
+    minimal_pc = NodeSchema(
+        name=core_proposed_change.name,
+        namespace=core_proposed_change.namespace,
+        branch=core_proposed_change.branch,
+        attributes=[
+            attr for attr in core_proposed_change.attributes if attr.name in {"name", "source_branch", "state"}
+        ],
+    )
+    schema = SchemaRoot(nodes=[minimal_pc])
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
+async def register_simplified_proposed_change_schema(default_branch: Branch) -> SchemaBranch:
+    return do_register_simplified_proposed_change_schema(branch=default_branch)
+
+
 @pytest.fixture(scope="session")
 def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
@@ -520,25 +543,12 @@ def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) ->
     storage_dir = tmpdir_factory.mktemp("storage")
     config.SETTINGS.storage.local.path_ = Path(storage_dir)
 
-    config.SETTINGS.broker.enable = False
-    config.SETTINGS.cache.enable = True
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
     config.OVERRIDE.message_bus = BusRecorder()
 
     initialize_lock(local_only=True)
-
-
-@pytest.fixture
-def enable_broker_config() -> Generator[None, None, None]:
-    # This is required for situations where we need the broker to be enabled.
-    # We should really remove this setting as it doesn't make any sense to have
-    # outside of the test environment
-    original_config = config.SETTINGS.broker.enable
-    config.SETTINGS.broker.enable = True
-    yield
-    config.SETTINGS.broker.enable = original_config
 
 
 @pytest.fixture

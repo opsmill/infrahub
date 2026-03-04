@@ -415,6 +415,59 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         assert updated["primary_address"]["node"] is None
         assert updated["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
 
+    @pytest.fixture(scope="class")
+    async def small_prefix(self, db: InfrahubDatabase, ip_namespace: Node, ip_prefix: Node) -> Node:
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="10.20.30.0/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=False)
+        await prefix.save(db=db)
+        return prefix
+
+    @pytest.fixture(scope="class")
+    async def small_pool(self, db: InfrahubDatabase, ip_namespace: Node, small_prefix: Node) -> Node:
+        pool = await Node.init(db=db, schema=InfrahubKind.IPADDRESSPOOL)
+        await pool.new(
+            db=db,
+            name="small-address-pool",
+            resources=[small_prefix],
+            ip_namespace=ip_namespace,
+            default_address_type="IpamIPAddress",
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture(scope="class")
+    async def template_with_small_pool(self, db: InfrahubDatabase, small_pool: Node, device_schema: None) -> Node:
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(db=db, template_name="device-small-pool", primary_address_from_resource_pool=small_pool)
+        await template.save(db=db)
+        return template
+
+    async def test_pool_template_performs_correct_allocations(
+        self, db: InfrahubDatabase, template_with_small_pool: Node, small_prefix: Node, client: InfrahubClient
+    ) -> None:
+        """With an IPv4 /30 creating 2 devices must both succeed."""
+        addresses = list(small_prefix.prefix.obj.hosts())
+        for i in range(2):
+            result = await client.execute_graphql(
+                query=CREATE_DEVICE_FROM_TEMPLATE,
+                variables={"name": f"device-small-pool-{i}", "template_id": template_with_small_pool.id},
+            )
+            device_id = result["InfraDeviceCreate"]["object"]["id"]
+            device = await NodeManager.get_one(id=device_id, db=db)
+            addr_peer = await device.primary_address.get_peer(db=db)
+            assert addr_peer is not None
+            assert addr_peer.address.obj.ip == addresses[i]
+
+    async def test_small_pool_exhausts_after_exact_capacity(
+        self, template_with_small_pool: Node, client: InfrahubClient
+    ) -> None:
+        """After 2 allocations from an IPv4 /30, the pool should be exhausted."""
+        with pytest.raises(GraphQLError, match=r"no more addresses available"):
+            await client.execute_graphql(
+                query=CREATE_DEVICE_FROM_TEMPLATE,
+                variables={"name": "device-small-pool-overflow", "template_id": template_with_small_pool.id},
+            )
+
 
 class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -561,6 +614,72 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         assert rack1.slot_id.value is not None
         assert rack2.slot_id.value is not None
         assert rack1.slot_id.value != rack2.slot_id.value
+
+    async def test_template_can_swap_pool_to_static_value(
+        self, db: InfrahubDatabase, slot_pool: Node, client: InfrahubClient, device_schema: None
+    ) -> None:
+        """Swapping from pool to static value should set the value and clear the pool source."""
+        sdk_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=slot_pool.id)
+        template = await client.create(
+            kind="TemplateInfraRack", template_name="rack-pool-to-static", location="datacenter-1", slot_id=sdk_pool
+        )
+        await template.save()
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value is None
+        assert tmpl.slot_id.source_id == slot_pool.id
+
+        await client.execute_graphql(
+            query="""
+            mutation SwapPoolToStatic($id: String!, $slot_id: BigInt!) {
+                TemplateInfraRackUpdate(
+                    data: {
+                        id: $id
+                        slot_id: { value: $slot_id, from_pool: null }
+                    }
+                ) {
+                    ok
+                }
+            }
+            """,
+            variables={"id": template.id, "slot_id": 42},
+        )
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value == 42
+        assert tmpl.slot_id.source_id is None
+
+    async def test_template_can_swap_static_value_to_pool(
+        self, db: InfrahubDatabase, slot_pool: Node, client: InfrahubClient, device_schema: None
+    ) -> None:
+        """Swapping from static value to pool should clear the value and set pool as source."""
+        template = await Node.init(db=db, schema="TemplateInfraRack")
+        await template.new(db=db, template_name="rack-static-to-pool", location="datacenter-1", slot_id=75)
+        await template.save(db=db)
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value == 75
+        assert tmpl.slot_id.source_id is None
+
+        await client.execute_graphql(
+            query="""
+            mutation SwapStaticToPool($id: String!, $pool_id: String!) {
+                TemplateInfraRackUpdate(
+                    data: {
+                        id: $id
+                        slot_id: { from_pool: { id: $pool_id } }
+                    }
+                ) {
+                    ok
+                }
+            }
+            """,
+            variables={"id": template.id, "pool_id": slot_pool.id},
+        )
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        assert tmpl.slot_id.value is None
+        assert tmpl.slot_id.source_id == slot_pool.id
 
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):

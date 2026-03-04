@@ -25,6 +25,7 @@ export type PoolSource = {
   label: string | null;
   kind: string;
   id: string;
+  fromTemplate?: boolean;
 };
 
 export type ProfileSource = {
@@ -153,6 +154,7 @@ export type FormFieldProps = {
   pool?: {
     kind: string;
     defaultAllocatedObjectKind: string;
+    fromPoolRelationshipName?: string;
   };
   shouldUnregister?: boolean;
 };

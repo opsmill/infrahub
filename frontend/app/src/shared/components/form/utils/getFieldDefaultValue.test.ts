@@ -8,7 +8,7 @@ import {
 import { store } from "@/shared/stores";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -511,8 +511,8 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        __typename: "FakeTemplate" as any,
+        id: "template-id",
+        __typename: "FakeTemplate",
         field1: {
           value: "template-value",
         },
@@ -530,6 +530,85 @@ describe("getFieldDefaultValue", () => {
           kind: "FakeTemplate",
         },
         value: "template-value",
+      });
+    });
+
+    it("returns pool value from template when field value is null and source is a pool", () => {
+      // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({
+          kind: "CoreNumberPool",
+          inherit_from: ["CoreResourcePool"],
+        }),
+      ]);
+
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObjectWithMetadata = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        field1: {
+          value: null,
+          is_default: false,
+          is_from_profile: false,
+          is_protected: false,
+          is_visible: true,
+          owner: null,
+          updated_at: new Date().toISOString(),
+          source: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          id: "pool-id",
+          label: "My Number Pool",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns null when template field value is null and source is not a pool", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObjectWithMetadata = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        field1: {
+          value: null,
+          is_default: false,
+          is_from_profile: false,
+          is_protected: false,
+          is_visible: true,
+          owner: null,
+          updated_at: new Date().toISOString(),
+          source: {
+            id: "some-id",
+            display_label: "Some Source",
+            __typename: "TestNode",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: null,
       });
     });
 

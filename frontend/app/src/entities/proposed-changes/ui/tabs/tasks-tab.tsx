@@ -1,7 +1,7 @@
 import { TASK_TAB } from "@/shared/config/constants";
 
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
+import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
 export interface TasksTabProps {
   proposedChangeId: string;
