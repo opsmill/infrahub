@@ -172,7 +172,7 @@ exports[`fix ts error`] = {
       [20, 42, 4, "tsc: Binding element \'peer\' implicitly has an \'any\' type.", "2088092007"],
       [26, 15, 21, "tsc: Element implicitly has an \'any\' type because expression of type \'any\' can\'t be used to index type \'{ ADDED: Element; REMOVED: Element; UPDATED: Element; UNCHANGED: Element; }\'.", "1966659023"]
     ],
-    "src/entities/events/ui/node-events/node-event-title.tsx:2650345206": [
+    "src/entities/events/ui/node-events/node-event-title.tsx:3075856234": [
       [2, 38, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
     "src/entities/events/ui/standard-events/standard-event-title.tsx:2736794961": [
