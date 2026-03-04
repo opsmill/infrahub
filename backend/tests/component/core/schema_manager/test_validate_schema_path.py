@@ -13,7 +13,7 @@ from infrahub.database import InfrahubDatabase
 
 class TestValidateSchemaPath:
     @pytest.fixture
-    async def schema(self, db: InfrahubDatabase, reset_registry, default_branch: Branch) -> SchemaBranch:
+    async def schema(self, db: InfrahubDatabase, reset_registry: None, default_branch: Branch) -> SchemaBranch:
         FULL_SCHEMA = {
             "nodes": [
                 {
@@ -96,7 +96,7 @@ class TestValidateSchemaPath:
             ("primary_tag", SchemaElementPathType.REL_ONE_NO_ATTR | SchemaElementPathType.REL_MANY_NO_ATTR),
         ],
     )
-    def test_rel_one_valid(self, schema: SchemaBranch, path, allowed_types) -> None:
+    def test_rel_one_valid(self, schema: SchemaBranch, path: str, allowed_types: SchemaElementPathType) -> None:
         criticality_schema = schema.get(name="TestCriticality")
         schema_path = schema.validate_schema_path(
             node_schema=criticality_schema, path=path, allowed_path_types=allowed_types
@@ -147,7 +147,7 @@ class TestValidateSchemaPath:
             ("tags", SchemaElementPathType.REL_MANY_NO_ATTR | SchemaElementPathType.REL_ONE_NO_ATTR),
         ],
     )
-    def test_rel_many_valid(self, schema: SchemaBranch, path, allowed_types) -> None:
+    def test_rel_many_valid(self, schema: SchemaBranch, path: str, allowed_types: SchemaElementPathType) -> None:
         criticality_schema = schema.get(name="TestCriticality")
         schema_path = schema.validate_schema_path(
             node_schema=criticality_schema, path=path, allowed_path_types=allowed_types
