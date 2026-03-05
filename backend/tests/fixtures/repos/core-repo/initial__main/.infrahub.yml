@@ -1,0 +1,3 @@
+queries:
+  - name: core_repo_tags_query
+    file_path: "./core_repo_tags_query.gql"

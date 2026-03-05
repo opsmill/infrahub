@@ -12,7 +12,7 @@ from prefect.cache_policies import NONE
 from pydantic import Field
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
@@ -244,15 +244,42 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         return str(commit)
 
-    async def sync_from_remote(self, commit: str | None = None) -> None:
+    async def sync_from_remote(self, commit: str | None = None) -> bool:
+        """Synchronize the repository from remote and update operational status.
+
+        Args:
+            commit: Specific commit to sync to. If None, fetches latest from remote.
+
+        Returns:
+            True if synchronization was performed, False if local state was already current.
+        """
         if not commit:
             commit = self.get_commit_value(branch_name=self.ref, remote=True)
         local_branches = self.get_branches_from_local()
         if self.ref in local_branches and commit == local_branches[self.ref].commit:
-            return
+            await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
+            return False
         self.create_commit_worktree(commit=commit)
         await self.import_objects_from_files(infrahub_branch_name=self.infrahub_branch_name, commit=commit)
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
+        await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
+        return True
+
+    async def update_latest_commit(self) -> None:
+        git_repo = self.get_git_repo_main()
+        git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+        try:
+            latest_commit = git_repo.git.rev_parse(f"origin/{self.ref}")
+        except GitCommandError:
+            try:
+                latest_commit = git_repo.git.rev_parse(self.ref)
+            except GitCommandError as err:
+                log.error(f"No object found for ref {self.ref} on repository {self.name}")
+                raise ValueError(f"Ref {self.ref} not found.") from err
+        latest_commit = str(git_repo.commit(latest_commit))
+        synced_from_remote = await self.sync_from_remote(commit=latest_commit)
+        if not synced_from_remote:
+            await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
 
 
 @cached(
