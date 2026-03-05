@@ -765,7 +765,10 @@ class SecuritySettings(BaseSettings):
     )
     sso_generate_groups_filter: str | list[str] | None = Field(
         default=None,
-        description="When sso_generate_groups is enabled, this filter is used to extract the group name from the group identifier provided by the identity provider",
+        description=(
+            "When sso_generate_groups is enabled, this filter is used to extract the group name "
+            "from the group identifier provided by the identity provider"
+        ),
     )
 
     @field_validator("sso_generate_groups_filter", mode="before")

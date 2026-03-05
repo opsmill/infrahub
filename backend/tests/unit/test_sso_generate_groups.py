@@ -7,11 +7,12 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccountGroup
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
-async def existing_group(db: InfrahubDatabase, register_core_models_schema) -> Node:
+async def existing_group(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node:
     group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="existing-group")
     await group.save(db=db)
@@ -20,8 +21,12 @@ async def existing_group(db: InfrahubDatabase, register_core_models_schema) -> N
 
 class TestSSOGenerateGroups:
     async def test_groups_not_created_when_disabled(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that groups are NOT created when sso_generate_groups is disabled (default)"""
         original_value = config.SETTINGS.security.sso_generate_groups
         config.SETTINGS.security.sso_generate_groups = False
@@ -41,8 +46,12 @@ class TestSSOGenerateGroups:
             config.SETTINGS.security.sso_generate_groups = original_value
 
     async def test_groups_created_when_enabled(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that missing groups are created when sso_generate_groups is enabled"""
         original_value = config.SETTINGS.security.sso_generate_groups
         config.SETTINGS.security.sso_generate_groups = True
@@ -64,8 +73,12 @@ class TestSSOGenerateGroups:
 
 class TestSSOGenerateGroupsFilter:
     async def test_filter_allows_matching_groups(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that only groups matching the filter pattern are created"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
@@ -91,8 +104,12 @@ class TestSSOGenerateGroupsFilter:
             config.SETTINGS.security.sso_generate_groups_filter = original_filter
 
     async def test_no_filter_allows_all_groups(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that all groups are created when filter is not set"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
@@ -118,8 +135,12 @@ class TestSSOGenerateGroupsFilter:
             config.SETTINGS.security.sso_generate_groups_filter = original_filter
 
     async def test_filter_with_complex_pattern(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that complex regex patterns work correctly"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
@@ -194,8 +215,12 @@ class TestSSOGenerateGroupsFilterValidation:
 
 class TestSSOGenerateGroupsFilterCaptureGroup:
     async def test_filter_does_not_duplicate_existing_extracted_group(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that extracted names do not create duplicates when group already exists"""
         preexisting_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await preexisting_group.new(db=db, name="network_automation")
@@ -223,8 +248,12 @@ class TestSSOGenerateGroupsFilterCaptureGroup:
             config.SETTINGS.security.sso_generate_groups_filter = original_filter
 
     async def test_filter_extracts_group_name_from_capture_group(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that the first capture group is used as the group name"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
@@ -250,8 +279,12 @@ class TestSSOGenerateGroupsFilterCaptureGroup:
             config.SETTINGS.security.sso_generate_groups_filter = original_filter
 
     async def test_filter_without_capture_group_uses_original_name(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that when pattern has no capture group, the original name is used"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
@@ -275,8 +308,12 @@ class TestSSOGenerateGroupsFilterCaptureGroup:
             config.SETTINGS.security.sso_generate_groups_filter = original_filter
 
     async def test_filter_deduplicates_extracted_names(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that duplicate extracted names only create one group"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
@@ -299,8 +336,12 @@ class TestSSOGenerateGroupsFilterCaptureGroup:
             config.SETTINGS.security.sso_generate_groups_filter = original_filter
 
     async def test_filter_skips_non_matching_groups(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, existing_group
-    ):
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        existing_group: Node,
+    ) -> None:
         """Verify that groups not matching the pattern are skipped"""
         original_generate = config.SETTINGS.security.sso_generate_groups
         original_filter = config.SETTINGS.security.sso_generate_groups_filter
