@@ -165,3 +165,201 @@ This approach:
 - Provides consistent error handling
 - Makes testing validators easier
 - Separates concerns (validation from form binding)
+
+## Forms with Profiles
+
+Profiles allow users to pre-populate form fields with inherited values. Infrahub supports profile-based forms for creating objects with default values from selected profiles.
+
+### Profile Pattern
+
+For forms that support profiles, use the `*WithProfileForm` wrapper components:
+
+```tsx
+// For standard node forms
+import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+
+<NodeWithProfileForm
+  schema={schema}
+  profiles={currentProfiles}  // Optional: initial profiles
+  onSuccess={handleSuccess}
+/>
+```
+
+```tsx
+// For file upload forms
+import { FileWithProfileForm } from "@/shared/components/form/file-with-profile-form";
+
+<FileWithProfileForm
+  schema={schema}
+  profiles={currentProfiles}
+  onSuccess={handleSuccess}
+/>
+```
+
+### ProfileData Type
+
+Profiles extend `NodeCore` with a priority field:
+
+```tsx
+type ProfileData = NodeCore & {
+  profile_priority?: { value: number | null };
+  [key: string]: unknown;  // Dynamic attributes/relationships
+};
+```
+
+### How Profile Forms Work
+
+1. **Profile Selection** - The `ProfilesSelector` component renders at the top of the form:
+   - Shows selected profiles as removable badges
+   - Provides a combobox to add more profiles
+   - Displays "optional" indicator in the label
+   - Fetches available profiles via `useGetProfiles({ schema })`
+
+2. **Value Inheritance** - When profiles are selected:
+   - Form fields check for values in the selected profiles
+   - Profile values populate as defaults with `source: { type: "profile", id, kind, label }`
+   - User can override profile values (changes source to `"user"`)
+   - Priority order determines which profile wins if multiple provide same field
+
+3. **Form Submission** - Profile IDs are sent with the mutation:
+   ```tsx
+   createObject.mutateAsync({
+     objectKind: schema.kind,
+     data: newObject,
+     profileIds: profiles?.map((profile) => profile.id),
+   });
+   ```
+
+### Implementation Details
+
+The wrapper components (`NodeWithProfileForm`, `FileWithProfileForm`) follow this pattern:
+
+```tsx
+export const NodeWithProfileForm = ({ schema, profiles, ...props }) => {
+  const [selectedProfiles, setSelectedProfiles] = useState<ProfileData[] | undefined>();
+
+  return (
+    <>
+      <ProfilesSelector
+        schema={schema}
+        defaultValue={profiles}
+        value={selectedProfiles}
+        onChange={setSelectedProfiles}
+      />
+
+      <NodeForm schema={schema} profiles={selectedProfiles} {...props} />
+    </>
+  );
+};
+```
+
+Key points:
+- Wrapper manages profile selection state
+- `ProfilesSelector` handles UI and profile fetching
+- Core form (`NodeForm`/`CoreFileForm`) receives selected profiles
+- Profiles flow through `getFormFieldsFromSchema` to populate defaults
+
+### When to Use Profile Forms
+
+Use profile-based forms when:
+- The schema supports profiles (check schema definition)
+- Creating new objects (not for updates)
+- Users benefit from reusable configuration templates
+- Multiple objects share common field values
+
+Examples: Network device configurations, user account templates, infrastructure patterns.
+
+### Integration with ObjectForm
+
+The `ObjectForm` router automatically selects the appropriate form:
+
+```tsx
+// In object-form.tsx
+import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+import { FileWithProfileForm } from "@/shared/components/form/file-with-profile-form";
+
+// For FILE_OBJECT_KIND
+if (isOfKind(schema, FILE_OBJECT_KIND)) {
+  return <FileWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
+}
+
+// For standard nodes with profiles
+if (isNode && !isGeneric) {
+  return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
+}
+```
+
+### Best Practices
+
+1. **Always pass profiles through** - Don't consume profiles at intermediate layers
+2. **Use undefined for unselected** - Let `ProfilesSelector` initialize from defaultValue
+3. **Show profile source** - The `LabelFormField` component displays profile inheritance indicators
+4. **Allow overrides** - Users can always override profile values (changes source to "user")
+5. **Test empty profiles** - Forms should work with zero profiles selected
+
+## Focus Management
+
+### AutoFocus Usage
+
+Use `autoFocus` only for:
+- Modal search inputs and first form fields
+- Bulk operation inputs requiring immediate attention
+- Dedicated search interfaces
+
+Avoid in long forms, mobile contexts, or when multiple fields could compete for focus.
+
+### Styling
+
+Standard inputs use `focusVisibleStyle` from `@/shared/components/ui/style`:
+
+```tsx
+import { focusVisibleStyle, inputErrorStyle } from "@/shared/components/ui/style";
+
+// Normal focus: blue ring
+<input className={focusVisibleStyle} />
+
+// Error focus: red ring
+<input className={classNames(focusVisibleStyle, hasError && inputErrorStyle)} />
+```
+
+React Aria components use `data-focus-visible` variant from `@/shared/components/aria/style-rac`.
+
+### Ref-Based Focus Control
+
+**Number inputs** - Prevent scroll-to-change:
+
+```tsx
+const ref = usePreventScrollOnNumberInput();
+<input type="number" ref={ref} />
+```
+
+**Modal initial focus** - Control dialog focus order:
+
+```tsx
+const focusRef = useRef(null);
+<Dialog initialFocus={focusRef}>
+  <button tabIndex={-1} ref={focusRef} />
+  <input name="field" />
+</Dialog>
+```
+
+**Dynamic focus** - Pool allocation toggle:
+
+```tsx
+const [override, setOverride] = useState(false);
+<Input
+  autoFocus={override}
+  onBlur={() => setOverride(false)}
+/>
+```
+
+### Dialog Focus
+
+HeadlessUI Dialog and React Aria Modal provide automatic focus trap, restoration, and keyboard handling. Use `initialFocus` prop to control focus order.
+
+### Best Practices
+
+- Use `focus-visible` (not `focus`) to show outline only for keyboard navigation
+- Let framework components (Dialog, Modal) handle focus management
+- Style error states with red focus ring
+- Test keyboard navigation (Tab order, focus trap, restoration)

@@ -22,6 +22,13 @@ export const getCreateMutationFromFormData = (
     }
 
     if (isFormFieldValueFromPool(fieldData)) {
+      if (fieldData.source.fromTemplate) {
+        return acc;
+      }
+      const fromPoolField = field.pool?.fromPoolRelationshipName;
+      if (fromPoolField && "from_pool" in fieldData.value) {
+        return { ...acc, [fromPoolField]: { id: fieldData.value.from_pool.id } };
+      }
       return { ...acc, [field.name]: fieldData.value };
     }
 
@@ -93,6 +100,9 @@ export const getCreateMutationFromFormDataOnly = (
     }
 
     if (isFormFieldValueFromPool(fieldData)) {
+      if (fieldData.source.fromTemplate) {
+        return acc;
+      }
       return { ...acc, [fieldName]: fieldData.value };
     }
 

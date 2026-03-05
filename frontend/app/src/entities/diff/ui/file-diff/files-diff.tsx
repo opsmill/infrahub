@@ -3,8 +3,12 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetFilesDiff } from "@/entities/diff/domain/get-files-diff.query";
+import {
+  DiffBranchNotFound,
+  isBranchNotFoundError,
+} from "@/entities/diff/ui/diff-branch-not-found";
 import { FileRepoDiff } from "@/entities/diff/ui/file-diff/file-repo-diff";
+import { useGetFilesDiff } from "@/entities/diff/ui/queries/get-files-diff.query";
 
 interface FilesDiffProps {
   branchName: string;
@@ -18,6 +22,9 @@ export function FilesDiff({ branchName }: FilesDiffProps) {
   }
 
   if (error) {
+    if (isBranchNotFoundError(error)) {
+      return <DiffBranchNotFound branchName={branchName} />;
+    }
     return <ErrorScreen message={error.message} />;
   }
 

@@ -9,11 +9,11 @@ import { render } from "../../../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { NodeMetadata as NodeMetadataComponent } from "./node-metadata-popover";
 
-vi.mock("@/entities/nodes/object/domain/get-node-metadata.query", () => ({
+vi.mock("@/entities/nodes/object/ui/queries/get-node-metadata.query", () => ({
   useGetNodeMetadata: vi.fn(),
 }));
 
-import { useGetNodeMetadata } from "@/entities/nodes/object/domain/get-node-metadata.query";
+import { useGetNodeMetadata } from "@/entities/nodes/object/ui/queries/get-node-metadata.query";
 
 describe("NodeMetadata", () => {
   const coreAccountSchema = generateNodeSchema({

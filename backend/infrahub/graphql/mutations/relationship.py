@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Self
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import compare_lists
 
-from infrahub import config
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog, RelationshipChangelogGetter
 from infrahub.core.constants import (
@@ -114,7 +113,7 @@ class RelationshipAdd(Mutation):
                     schema=rel_schema, branch=graphql_context.branch, source_kind=source.get_kind(), node=source
                 )
                 await rel.new(db=db, data=node_data)
-                await rel.resolve(db=db)
+                await rel.resolve(db=db, user_id=graphql_context.assigned_user_id)
                 # Save it only if it does not exist
                 if rel.get_peer_id() not in existing_peers.keys():
                     if group_event_type != GroupUpdateType.NONE:
@@ -129,7 +128,12 @@ class RelationshipAdd(Mutation):
                 for node in nodes.values():
                     await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
-        if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
+        if (
+            graphql_context.background
+            and graphql_context.account_session
+            and graphql_context.service
+            and node_changelog.has_changes
+        ):
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,
@@ -260,7 +264,12 @@ class RelationshipRemove(Mutation):
                 for node in nodes.values():
                     await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
-        if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
+        if (
+            graphql_context.background
+            and graphql_context.account_session
+            and graphql_context.service
+            and node_changelog.has_changes
+        ):
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,

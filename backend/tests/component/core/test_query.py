@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core.query import (
@@ -56,7 +58,7 @@ async def test_query_base(db: InfrahubDatabase) -> None:
     assert query.get_query() == expected_query
 
 
-async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01) -> None:
+async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01: dict) -> None:
     params = {
         "my": "tooshort",
         "mystring": "5ffa45d4",
@@ -88,7 +90,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
     assert result == "\n".join(expected_query_lines)
 
 
-async def test_query_results(db: InfrahubDatabase, simple_dataset_01) -> None:
+async def test_query_results(db: InfrahubDatabase, simple_dataset_01: dict) -> None:
     query = await Query01.init(db=db)
 
     assert query.has_been_executed is False
@@ -100,7 +102,7 @@ async def test_query_results(db: InfrahubDatabase, simple_dataset_01) -> None:
     assert query.results[0].get("at") is not None
 
 
-async def test_query_stats(db: InfrahubDatabase, simple_dataset_01) -> None:
+async def test_query_stats(db: InfrahubDatabase, simple_dataset_01: dict) -> None:
     query = await Query02.init(db=db)
     await query.execute(db=db)
 
@@ -110,7 +112,7 @@ async def test_query_stats(db: InfrahubDatabase, simple_dataset_01) -> None:
     assert query.stats.get_counter("relationships_created") == 1
 
 
-async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_01) -> None:
+async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_01: dict) -> None:
     query = await Query01.init(db=db, limit=2, offset=1)
     await query.execute(db=db)
     assert query.num_of_results == 2
@@ -130,7 +132,7 @@ async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_0
     assert expected_values == [5]
 
 
-async def test_query_async(db: InfrahubDatabase, simple_dataset_01) -> None:
+async def test_query_async(db: InfrahubDatabase, simple_dataset_01: dict) -> None:
     query = await Query01.init(db=db)
 
     assert query.has_been_executed is False
@@ -142,12 +144,12 @@ async def test_query_async(db: InfrahubDatabase, simple_dataset_01) -> None:
     assert query.results[0].get("at") is not None
 
 
-async def test_query_count(db: InfrahubDatabase, simple_dataset_01) -> None:
+async def test_query_count(db: InfrahubDatabase, simple_dataset_01: dict) -> None:
     query = await Query01.init(db=db)
     assert await query.count(db=db) == 3
 
 
-async def test_query_result_getters(neo4j_factory) -> None:
+async def test_query_result_getters(neo4j_factory: Any) -> None:
     time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
@@ -193,7 +195,7 @@ async def test_query_result_getters(neo4j_factory) -> None:
         qr.get("r3")
 
 
-async def test_sort_results_by_time(neo4j_factory) -> None:
+async def test_sort_results_by_time(neo4j_factory: Any) -> None:
     time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")

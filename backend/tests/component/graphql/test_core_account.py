@@ -5,12 +5,13 @@ from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account) -> None:
+async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account: Node) -> None:
     new_password = "NewP@ssw0rd"
     new_description = "what a cool description"
     query = """
@@ -49,9 +50,9 @@ async def test_permissions(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
-    authentication_base,
-    session_admin,
-    first_account,
+    authentication_base: None,
+    session_admin: AccountSession,
+    first_account: Node,
 ) -> None:
     query = """
     query {
@@ -59,6 +60,7 @@ async def test_permissions(
             global_permissions {
                 edges {
                     node {
+                        display_label
                         identifier
                     }
                 }
@@ -66,6 +68,7 @@ async def test_permissions(
             object_permissions {
                 edges {
                     node {
+                        display_label
                         identifier
                     }
                 }
@@ -83,19 +86,44 @@ async def test_permissions(
 
     assert result.errors is None
     assert result.data
-    perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]]
-    assert perms == [
-        str(GlobalPermission(action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value))
+    perm_display_labels = [
+        edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]
     ]
-
-    perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]]
-    assert perms == [
-        str(
-            ObjectPermission(
-                namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
+    perm_identifiers = [
+        edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]
+    ]
+    assert (
+        perm_display_labels
+        == perm_identifiers
+        == [
+            str(
+                GlobalPermission(
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+                )
             )
-        )
+        ]
+    )
+
+    perm_display_labels = [
+        edge["node"]["display_label"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]
     ]
+    perm_identifiers = [
+        edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["object_permissions"]["edges"]
+    ]
+    assert (
+        perm_display_labels
+        == perm_identifiers
+        == [
+            str(
+                ObjectPermission(
+                    namespace="*",
+                    name="*",
+                    action=PermissionAction.ANY.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            )
+        ]
+    )
 
     gql_params = await prepare_graphql_params(
         db=db,

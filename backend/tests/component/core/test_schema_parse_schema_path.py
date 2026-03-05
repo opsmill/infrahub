@@ -6,26 +6,26 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class TestSchemaParseSchemaPath:
-    def test_property_only_is_invalid(self, car_person_schema) -> None:
+    def test_property_only_is_invalid(self, car_person_schema: SchemaBranch) -> None:
         car_schema = registry.schema.get(name="TestCar")
 
         with pytest.raises(AttributePathParsingError, match=r"value is invalid on schema"):
             car_schema.parse_schema_path(path="value")
 
     @pytest.mark.parametrize("bad_path", ["blork", "person", "__", "__dunder__"])
-    def test_invalid_paths(self, car_person_schema, bad_path) -> None:
+    def test_invalid_paths(self, car_person_schema: SchemaBranch, bad_path: str) -> None:
         car_schema = registry.schema.get(name="TestCar")
 
         with pytest.raises(AttributePathParsingError, match=rf"{bad_path} is invalid on schema"):
             car_schema.parse_schema_path(path=bad_path)
 
-    def test_invalid_attribute_of_relationship_path(self, car_person_schema) -> None:
+    def test_invalid_attribute_of_relationship_path(self, car_person_schema: SchemaBranch) -> None:
         car_schema = registry.schema.get(name="TestCar")
 
         with pytest.raises(AttributePathParsingError, match=r"blork is not a valid attribute of TestPerson"):
             car_schema.parse_schema_path(path="owner__blork", schema=car_person_schema)
 
-    def test_invalid_property_of_attribute_path(self, car_person_schema) -> None:
+    def test_invalid_property_of_attribute_path(self, car_person_schema: SchemaBranch) -> None:
         car_schema = registry.schema.get(name="TestCar")
 
         with pytest.raises(AttributePathParsingError, match=r"blork is not a valid property of nbr_seats"):
@@ -37,7 +37,7 @@ class TestSchemaParseSchemaPath:
         with pytest.raises(AttributePathParsingError, match=r"blork is not a valid attribute of TestPerson"):
             car_schema.parse_schema_path(path="owner__blork", schema=car_person_schema)
 
-    def test_attribute_only_is_valid(self, car_person_schema) -> None:
+    def test_attribute_only_is_valid(self, car_person_schema: SchemaBranch) -> None:
         car_schema = registry.schema.get(name="TestCar")
 
         schema_path = car_schema.parse_schema_path(path="nbr_seats")

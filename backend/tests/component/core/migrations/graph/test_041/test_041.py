@@ -27,7 +27,7 @@ class TestMigration041:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-    ):
+    ) -> None:
         export_dir = Path(__file__).parent / ("data_export")
         await load_export(db=db, export_dir=export_dir)
         # set default branch on the import Root node
@@ -89,7 +89,7 @@ DETACH DELETE r
         """
         await db.execute_query(query=query)
 
-    async def test_migration_041(self, db: InfrahubDatabase, load_bad_data, car_person_schema: SchemaBranch):
+    async def test_migration_041(self, db: InfrahubDatabase, load_bad_data, car_person_schema: SchemaBranch) -> None:
         for schema_name in car_person_schema.node_names:
             if schema_name == "TestCar":
                 car_schema = car_person_schema.get(name=schema_name, duplicate=False)

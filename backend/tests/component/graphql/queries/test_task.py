@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import pytest
@@ -138,7 +139,7 @@ async def tag_red(db: InfrahubDatabase, default_branch: Branch) -> Node:
 
 
 @pytest.fixture
-async def prefect_client(prefect_test_fixture):
+async def prefect_client(prefect_test_fixture: Generator[None, None, None]) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 
@@ -151,7 +152,9 @@ async def delete_flow_runs(prefect_client: PrefectClient) -> None:
 
 
 @pytest.fixture
-async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, account_bob) -> dict[str, FlowRun]:
+async def flow_runs_data(
+    prefect_client: PrefectClient, tag_blue: Node, tag_red: Node, account_bob: Node
+) -> dict[str, FlowRun]:
     branch1_tag = WorkflowTag.BRANCH.render(identifier="branch1")
     db_tag = WorkflowTag.DATABASE_CHANGE.render()
     items = [
@@ -245,7 +248,7 @@ async def test_task_query_prefect(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    delete_flow_runs,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     result = await run_query(
@@ -274,7 +277,7 @@ async def test_task_query_filter_workflow(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    delete_flow_runs,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
@@ -312,7 +315,11 @@ async def test_task_query_filter_workflow(
 
 
 async def test_task_query_filter_workflow_state(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
     query {
@@ -343,7 +350,11 @@ async def test_task_query_filter_workflow_state(
 
 
 async def test_task_query_filter_id(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    flow_runs_data: dict[str, FlowRun],
 ) -> None:
     dummy_completed_br1_db = flow_runs_data["dummy-completed-br1-db"]
     dummy_running_br1 = flow_runs_data["dummy-running-br1"]
@@ -376,7 +387,11 @@ async def test_task_query_filter_id(
 
 
 async def test_task_query_filter_branch(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
     query TaskQuery(
@@ -414,7 +429,11 @@ async def test_task_query_filter_branch(
 
 
 async def test_task_query_filter_state(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
     query {
@@ -450,7 +469,11 @@ async def test_task_query_filter_state(
 
 
 async def test_task_query_partial_text(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+    flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
     query {
@@ -489,11 +512,11 @@ async def test_task_query_filter_node(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    tag_blue,
-    tag_red,
-    account_bob,
-    account_bill,
-    delete_flow_runs,
+    tag_blue: Node,
+    tag_red: Node,
+    account_bob: Node,
+    account_bill: Node,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     result = await run_query(
@@ -598,9 +621,9 @@ async def test_task_query_both(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    tag_blue,
-    account_bob,
-    delete_flow_runs,
+    tag_blue: Node,
+    account_bob: Node,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     result = await run_query(
@@ -629,9 +652,9 @@ async def test_task_query_with_log_offset(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    tag_blue,
-    account_bob,
-    delete_flow_runs,
+    tag_blue: Node,
+    account_bob: Node,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     """
@@ -666,9 +689,9 @@ async def test_task_branch_status(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    tag_blue,
-    account_bob,
-    delete_flow_runs,
+    tag_blue: Node,
+    account_bob: Node,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
@@ -705,7 +728,7 @@ async def test_task_query_progress(
     default_branch: Branch,
     prefect_client: PrefectClient,
     register_core_models_schema: None,
-    tag_red,
+    tag_red: Node,
 ) -> None:
     flow = await prefect_client.create_flow_run(
         flow=dummy_flow,
@@ -765,9 +788,9 @@ async def test_task_no_count(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    tag_blue,
-    account_bob,
-    delete_flow_runs,
+    tag_blue: Node,
+    account_bob: Node,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """
@@ -808,9 +831,9 @@ async def test_task_only_count(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    tag_blue,
-    account_bob,
-    delete_flow_runs,
+    tag_blue: Node,
+    account_bob: Node,
+    delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     QUERY = """

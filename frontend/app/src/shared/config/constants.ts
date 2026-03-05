@@ -142,13 +142,6 @@ export const relationshipsForDetailsView: { one: RelationshipKind[]; many: Relat
   many: ["Attribute", "Parent"],
 };
 
-export const RELATIONSHIP_VIEW_BLACKLIST = [
-  "member_of_groups",
-  "subscriber_of_groups",
-  "children",
-  "profiles",
-];
-
 export const relationshipKindForForm: Array<RelationshipKind> = ["Attribute", "Parent"];
 
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];

@@ -1,6 +1,5 @@
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { getTextColor } from "@/shared/utils/common";
-
-import { Tooltip } from "../ui/tooltip";
 
 type tColorDisplay = {
   color?: string | null;

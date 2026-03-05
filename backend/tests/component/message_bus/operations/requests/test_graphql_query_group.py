@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 import ujson
+from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from pytest_httpx import HTTPXMock
 
@@ -10,10 +11,11 @@ from infrahub.database import InfrahubDatabase
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.groups.tasks import update_graphql_query_group
 from infrahub.workers.dependencies import build_client
+from tests.conftest import TestHelper
 
 
 @pytest.fixture
-async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
@@ -21,7 +23,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 async def test_graphql_group_update(
-    db: InfrahubDatabase, httpx_mock: HTTPXMock, mock_schema_query_02, dependency_provider
+    db: InfrahubDatabase, httpx_mock: HTTPXMock, mock_schema_query_02: HTTPXMock, dependency_provider: Provider
 ) -> None:
     with dependency_provider.scope(
         build_client, lambda: InfrahubClient(config=Config(address="http://mock", insert_tracker=True))

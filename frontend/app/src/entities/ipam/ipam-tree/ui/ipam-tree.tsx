@@ -11,9 +11,9 @@ import { classNames } from "@/shared/utils/common";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
-import { useGetIpamTreeNodesByParent } from "@/entities/ipam/ipam-tree/domain/get-ipam-tree-nodes-by-parent.query";
 import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/types";
-import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
+import { useGetIpamTreeNodesByParent } from "@/entities/ipam/ipam-tree/ui/queries/get-ipam-tree-nodes-by-parent.query";
+import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

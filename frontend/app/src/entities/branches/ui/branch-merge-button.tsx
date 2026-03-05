@@ -11,11 +11,11 @@ import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
-
-import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchMergeButtonProps = {
   branch: BranchDetail;
@@ -45,7 +45,13 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     }
   }, [loading, hasOngoingTask]);
 
-  const hasMergeInProgress = isMergeRequested || hasOngoingTask;
+  const isDisabled =
+    !isAuthenticated ||
+    loading ||
+    !!branch.is_default ||
+    branch.status === BRANCH_STATUS.MERGED ||
+    isMergeRequested ||
+    hasOngoingTask;
 
   const handleSubmit = async () => {
     setIsMergeRequested(true);
@@ -62,7 +68,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merge requested!"} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch merge requested!" />, {
         toastId: "alert-success",
       });
 
@@ -71,20 +77,20 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       console.error(error);
       setIsMergeRequested(false);
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occurred while merging the branch"} />
+        <Alert type={ALERT_TYPES.ERROR} message="An error occurred while merging the branch" />
       );
     }
   };
 
   return (
     <Button
-      disabled={!isAuthenticated || loading || branch.is_default || hasMergeInProgress}
+      disabled={isDisabled}
       onClick={handleSubmit}
-      variant={"active"}
+      variant="active"
       className="flex items-center gap-2"
     >
       Merge
-      <Icon icon={"mdi:check"} />
+      <Icon icon="mdi:check" />
     </Button>
   );
 };

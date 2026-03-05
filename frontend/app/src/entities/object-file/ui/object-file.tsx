@@ -15,7 +15,7 @@ import {
   getObjectFileDownloadUrl,
   getObjectFileRawUrl,
 } from "@/entities/object-file/domain/get-object-file";
-import { useGetObjectFile } from "@/entities/object-file/domain/get-object-file.query";
+import { useGetObjectFile } from "@/entities/object-file/ui/queries/get-object-file.query";
 
 export interface ObjectFileProps {
   nodeId: string;

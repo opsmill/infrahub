@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -13,15 +14,17 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.models import WorkflowDefinition
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -41,7 +44,7 @@ async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02) ->
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     expected_paths_main = [
@@ -101,8 +104,10 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     assert modified_branch1 == sorted(expected_paths_branch1)
 
 
-async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, base_dataset_02) -> None:
-    def execute_workflow_side_effect(workflow, parameters):
+async def test_diff_get_files_repository(
+    db: InfrahubDatabase, repos_in_main: dict[str, Node], base_dataset_02: dict
+) -> None:
+    def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
         model = GitDiffNamesOnlyResponse(
             files_changed=["readme.md", "mydir/myfile.py"],
             files_removed=["notthere.md"],
@@ -139,12 +144,12 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, ba
 
 
 async def test_diff_get_files_repositories_for_branch_case01(
-    db: InfrahubDatabase, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict[str, Node]
 ) -> None:
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
-    def execute_workflow_side_effect(workflow, parameters):
+    def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
         model = GitDiffNamesOnlyResponse(
             files_changed=["readme.md", "mydir/myfile.py"],
             files_removed=[],
@@ -180,12 +185,12 @@ async def test_diff_get_files_repositories_for_branch_case01(
 async def test_diff_get_files_repositories_for_branch_case02(
     db: InfrahubDatabase,
     default_branch: Branch,
-    repos_in_main,
+    repos_in_main: dict[str, Node],
 ) -> None:
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
-    def execute_workflow_side_effect(workflow, parameters):
+    def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
         model = parameters["model"]
         assert isinstance(model, GitDiffNamesOnly)
         if model.repository_name == "repo01":
@@ -229,11 +234,11 @@ async def test_diff_get_files_repositories_for_branch_case02(
     assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main) -> None:
+async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict[str, Node]) -> None:
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
-    def execute_workflow_side_effect(workflow, parameters):
+    def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
         model = parameters["model"]
         assert isinstance(model, GitDiffNamesOnly)
         if model.repository_name == "repo01":
@@ -279,7 +284,9 @@ async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repo
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, read_only_repos_in_main) -> None:
+async def test_diff_get_nodes_entire_branch(
+    db: InfrahubDatabase, default_branch: Branch, read_only_repos_in_main: dict[str, Node]
+) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     repo01b2 = await NodeManager.get_one(id=read_only_repos_in_main["repo01"].id, branch=branch2, db=db)
@@ -392,7 +399,9 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
 
 @pytest.mark.xfail(reason="Need to investigate, fails on every other run")
-async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_branch, repos_in_main) -> None:
+async def test_diff_get_nodes_multiple_changes(
+    db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict[str, Node]
+) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
@@ -448,7 +457,7 @@ async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_bra
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -553,7 +562,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02) 
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_03) -> None:
+async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_03: dict) -> None:
     branch2 = await Branch.get_by_name(name="branch2", db=db)
 
     # Calculate the diff with the default value
@@ -566,7 +575,7 @@ async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -685,7 +694,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02) -> 
 
 @pytest.mark.skip(reason="Update for new diff logic")
 async def test_diff_relationship_one_conflict(
-    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]
 ) -> None:
     c1_main = car_person_data_generic["c1"]
     p1_main = car_person_data_generic["p1"]
@@ -865,7 +874,7 @@ async def test_diff_relationship_one_conflict(
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04) -> None:
+async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04: dict) -> None:
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -965,7 +974,10 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
 
 @pytest.mark.skip(reason="Update for new diff logic")
 async def test_diff_schema_changes(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
 ) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.update_schema_branch(

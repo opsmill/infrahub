@@ -4,6 +4,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -12,7 +13,11 @@ from tests.helpers.schema.tshirt import TSHIRT
 
 
 async def test_analyzer_init_with_schema(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str, bad_query_01: str
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    query_01: str,
+    bad_query_01: str,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
@@ -32,7 +37,7 @@ async def test_is_valid_simple_schema(
     query_03: str,
     query_04: str,
     query_introspection: str,
-    car_person_schema_generics,
+    car_person_schema_generics: SchemaRoot,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
@@ -77,7 +82,7 @@ async def test_is_valid_core_schema(
     db: InfrahubDatabase,
     default_branch: Branch,
     query_05: str,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
@@ -97,7 +102,7 @@ async def test_get_models_in_use(
     query_01: str,
     query_02: str,
     query_03: str,
-    car_person_schema_generics,
+    car_person_schema_generics: SchemaRoot,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
@@ -183,7 +188,9 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
 
 
-async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics) -> None:
+async def test_query_report(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)

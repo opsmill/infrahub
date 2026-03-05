@@ -8,10 +8,10 @@ import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
-import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
+import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
 import { computeProposedChangeFilters } from "@/entities/proposed-changes/utils/compute-proposed-change-filters";
 import type { NodeSchema } from "@/entities/schema/types";
 

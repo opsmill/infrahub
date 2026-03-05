@@ -1,17 +1,9 @@
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import {
-  type AddAttributesToRequestOptions,
-  addAttributesToRequest,
-  addFiltersToRequest,
-  addRelationshipsToRequest,
-} from "@/shared/api/graphql/utils";
+import type { AddAttributesToRequestOptions } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
+import { getObjectsFromApi } from "@/entities/nodes/object/api/get-objects-from-api";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -46,35 +38,17 @@ export const getObjects: GetObjects = async ({
 
   const schemaKind = schema.kind as string;
 
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: `GetObjects${schemaKind}`,
-      [schemaKind]: {
-        __args: {
-          limit,
-          offset,
-          ...(filters ? addFiltersToRequest(filters) : {}),
-        },
-        edges: {
-          node: {
-            id: true,
-            display_label: true,
-            hfid: true,
-            ...addAttributesToRequest(attributesVisible, attributesOptions),
-            ...addRelationshipsToRequest(relationshipsVisible, relationshipsOptions),
-          },
-        },
-      },
-    },
-  });
-
-  const query = gql(queryString);
-  const { data, errors } = await graphqlClient.query({
-    query,
-    context: {
-      branch: branchName,
-      date: atDate,
-    },
+  const { data, errors } = await getObjectsFromApi({
+    schemaKind,
+    attributes: attributesVisible,
+    relationships: relationshipsVisible,
+    limit,
+    offset,
+    branchName,
+    atDate,
+    filters,
+    attributesOptions,
+    relationshipsOptions,
   });
 
   if (errors) {

@@ -3,12 +3,17 @@ import { LockIcon } from "lucide-react";
 
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
+import { Link } from "@/shared/components/ui/link";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
 
 interface ObjectAttributeRowProps {
   attributeSchema: AttributeSchema;
@@ -25,6 +30,8 @@ export function ObjectAttributeRow({
   onClickMetadata,
   permission,
 }: ObjectAttributeRowProps) {
+  const { isTemplate } = useSchema(objectKind);
+  const { schema: sourceSchema } = useSchema(attributeData.source?.__typename);
   const attributeLabel = attributeSchema.label ?? attributeSchema.name;
 
   return (
@@ -33,7 +40,15 @@ export function ObjectAttributeRow({
       objectKind={objectKind}
       value={
         <>
-          <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
+          {isTemplate && attributeData.source && isPoolSchema(sourceSchema) ? (
+            <Link
+              to={getObjectDetailsUrl(attributeData.source.__typename, attributeData.source.id)}
+            >
+              {getNodeLabel(attributeData.source)}
+            </Link>
+          ) : (
+            <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
+          )}
 
           <MetaDetailsTooltip
             updatedAt={attributeData.updated_at}

@@ -1,11 +1,13 @@
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
+async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -67,7 +69,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
     } in result.data["TestCriticality"]["edges"]
 
 
-async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
+async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -122,7 +124,11 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
 
 
 async def test_directive_merge_fields(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    person_tag_schema: None,
+    first_account: Node,
 ) -> None:
     """This test validates that the @expand directive doesn't override the source field under username."""
     p1 = await Node.init(db=db, schema="TestPerson")

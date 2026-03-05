@@ -12,8 +12,9 @@ from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigra
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -97,12 +98,12 @@ async def test_update_simple_object_with_ok_return(
 )
 async def test_update_simple_object_with_enum(
     db: InfrahubDatabase,
-    default_branch,
-    person_john_main,
-    car_person_schema,
-    graphql_enums_on,
-    enum_value,
-    response_value,
+    default_branch: Branch,
+    person_john_main: Node,
+    car_person_schema: SchemaBranch,
+    graphql_enums_on: bool,
+    enum_value: str,
+    response_value: str,
 ) -> None:
     graphql_registry.clear_cache()
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
@@ -240,9 +241,8 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
 
 async def test_update_all_attributes(
     db: InfrahubDatabase,
-    default_branch,
-    all_attribute_types_schema,
-    enable_broker_config: None,
+    default_branch: Branch,
+    all_attribute_types_schema: NodeSchema,
     session_first_account: AccountSession,
 ) -> None:
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
@@ -325,7 +325,7 @@ async def test_update_all_attributes(
 
 @pytest.fixture
 async def person_john_with_source_main(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, first_account
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, first_account: Node
 ) -> Node:
     obj = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await obj.new(db=db, name={"value": "John", "source": first_account}, height=180)
@@ -377,7 +377,7 @@ async def test_update_object_with_node_property(
 
 
 async def test_update_invalid_object(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, branch: Branch
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, branch: Branch
 ) -> None:
     query = """
     mutation {
@@ -445,7 +445,6 @@ async def test_update_single_relationship(
     person_jim_main: Node,
     car_accord_main: Node,
     branch: Branch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     query = """
@@ -805,7 +804,11 @@ async def test_update_existing_single_relationship_flag_property(
 
 @pytest.fixture
 async def car_accord_with_source_main(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, person_john_main: Node, first_account: Node
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    person_john_main: Node,
+    first_account: Node,
 ) -> Node:
     obj = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await obj.new(
@@ -1230,7 +1233,7 @@ async def test_update_relationship_previously_deleted(
 async def test_update_for_node_with_migrated_kind(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_internal_models_schema,
+    register_internal_models_schema: SchemaBranch,
     car_person_schema: Node,
     person_alfred_main: Node,
 ) -> None:
@@ -1419,7 +1422,7 @@ async def test_update_for_node_with_migrated_kind(
 
 
 async def test_update_with_uniqueness_constraint_violation(
-    db: InfrahubDatabase, default_branch, car_person_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
     car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
     car_schema.uniqueness_constraints = [["owner", "color__value"]]
@@ -1465,7 +1468,7 @@ async def test_update_with_uniqueness_constraint_violation(
     assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message
 
 
-async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+async def test_with_hfid(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1508,7 +1511,9 @@ async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_sch
     assert result.data["TestDogUpdate"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
 
-async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+async def test_incorrect_peer_type_prevented(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1589,7 +1594,7 @@ async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branc
 
 
 async def test_removing_mandatory_relationship_not_allowed(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -1654,7 +1659,7 @@ async def test_removing_mandatory_relationship_not_allowed(
 
 
 async def test_updating_relationship_when_peer_side_is_required(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -1701,7 +1706,7 @@ async def test_updating_relationship_when_peer_side_is_required(
 
 
 async def test_updating_relationship_when_peer_side_is_optional(
-    db: InfrahubDatabase, default_branch, animal_person_schema
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")

@@ -8,8 +8,8 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 
 import { EmptyHomeCard } from "./empty-home-card";

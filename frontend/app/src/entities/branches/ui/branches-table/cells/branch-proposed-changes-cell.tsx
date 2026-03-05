@@ -1,35 +1,44 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
+import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { LinkButton } from "@/shared/components/ui/button";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
+import {
+  OPEN_STATE,
+  PROPOSED_CHANGE_OBJECT,
+  STATE_VALUES_FILTER,
+} from "@/entities/proposed-changes/constants";
+import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+
+const OPEN_STATE_FILTER = { name: STATE_VALUES_FILTER, value: [OPEN_STATE] };
 
 interface BranchProposedChangesCellProps {
   branchName: string;
 }
 
 export function BranchProposedChangesCell({ branchName }: BranchProposedChangesCellProps) {
-  // Use required schema - guaranteed to exist for Core namespace objects
   const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { throwIfNotFound: true });
+  const filters = [{ name: "source_branch__value", value: branchName }, OPEN_STATE_FILTER];
+  const { data, isPending } = useGetProposedChanges({ schema, filters });
 
-  // Query proposed changes for this specific branch
-  const { data: proposedChangesData } = useGetProposedChanges({
-    schema,
-    filters: [{ name: "source_branch__value", value: branchName }],
-  });
+  if (isPending) {
+    return (
+      <TableCell className="h-auto min-h-14">
+        <Spinner />
+      </TableCell>
+    );
+  }
 
-  // Get all proposed changes from all pages
-  const proposedChanges = proposedChangesData?.pages?.flat() ?? [];
-  const firstPC = proposedChanges[0]?.items?.[0];
+  const totalCount = data?.pages?.[0]?.count ?? 0;
+  const firstPC = data?.pages?.[0]?.items?.[0];
 
-  // Show empty state if no proposed changes
   if (!firstPC) {
     return (
       <TableCell className="h-auto min-h-14">
@@ -38,22 +47,15 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
     );
   }
 
-  const remainingCount = proposedChanges.length - 1;
-
-  // URL for first proposed change detail
+  const remainingCount = totalCount - 1;
   const detailUrl = getObjectDetailsUrl(PROPOSED_CHANGE_OBJECT, firstPC.id);
-
-  // URL for filtered list (if more than one)
   const listUrl = getObjectDetailsUrl(PROPOSED_CHANGE_OBJECT, undefined, [
-    {
-      name: QSP.FILTER,
-      value: JSON.stringify([{ name: "source_branch__value", value: branchName }]),
-    },
+    { name: QSP.FILTER, value: JSON.stringify(filters) },
   ]);
 
   return (
     <TableCell className="h-auto min-h-14">
-      <div className="flex flex-wrap items-center gap-2">
+      <Row className="flex-wrap">
         <LinkButton
           variant="outline"
           size="sm"
@@ -72,7 +74,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
             +{remainingCount} more
           </Link>
         )}
-      </div>
+      </Row>
     </TableCell>
   );
 }

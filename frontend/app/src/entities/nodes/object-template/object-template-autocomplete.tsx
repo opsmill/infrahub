@@ -10,7 +10,7 @@ import {
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { TemplateSchema } from "@/entities/schema/types";

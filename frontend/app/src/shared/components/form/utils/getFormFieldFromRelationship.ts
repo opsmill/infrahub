@@ -1,3 +1,4 @@
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   DynamicRelationshipFieldProps,
@@ -75,13 +76,20 @@ export const getFormFieldFromRelationship = ({
   const { schema: peerSchema } = getSchema(relationshipSchema.peer);
   const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
 
+  const fromPoolName = `${relationshipSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
+  const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
+
   return {
     type: type ?? "relationship",
     name: name ?? relationshipSchema.name,
     label,
     pool:
       poolKind && peerSchema
-        ? { kind: poolKind, defaultAllocatedObjectKind: peerSchema.kind as string }
+        ? {
+            kind: poolKind,
+            defaultAllocatedObjectKind: peerSchema.kind as string,
+            fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
+          }
         : undefined,
     defaultValue: getRelationshipDefaultValue({
       objectData,

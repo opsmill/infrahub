@@ -5,8 +5,8 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 
-import { useGetEvents } from "@/entities/events/domain/get-events.query";
 import { EventCard } from "@/entities/events/ui/event-card";
+import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 
 export const ProposedChangeEvents = () => {

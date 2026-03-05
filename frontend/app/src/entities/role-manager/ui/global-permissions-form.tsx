@@ -22,10 +22,9 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { globalDecisionOptions } from "@/entities/role-manager/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-import { globalDecisionOptions } from "../constants";
 
 interface GlobalPermissionFormProps {
   currentObject?: Record<string, AttributeType | RelationshipType>;

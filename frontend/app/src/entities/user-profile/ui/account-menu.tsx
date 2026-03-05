@@ -27,7 +27,7 @@ import {
 } from "@/shared/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
-import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
+import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { AppInfo } from "@/entities/config/ui/app-info";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";

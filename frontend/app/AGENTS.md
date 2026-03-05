@@ -25,7 +25,7 @@ cd frontend/app && npm run codegen # Generate GraphQL types
 - `dev/guidelines/frontend/naming-conventions.md` - File naming patterns
 - `dev/guidelines/frontend/typescript.md` - TypeScript and React patterns
 - `dev/guidelines/frontend/styling.md` - Tailwind CSS and CVA
-- `dev/guidelines/frontend/forms.md` - react-hook-form patterns
+- `dev/guidelines/frontend/object-forms.md` - react-hook-form patterns and focus management
 - `dev/guidelines/frontend/url-construction.md` - URL building utilities
 
 ### Knowledge (How the system works)
@@ -39,3 +39,4 @@ cd frontend/app && npm run codegen # Generate GraphQL types
 
 - `dev/guides/frontend/writing-unit-tests.md` - Unit tests for TypeScript functions
 - `dev/guides/frontend/writing-component-tests.md` - React component tests
+- `dev/guides/frontend/writing-e2e-tests.md` - Playwright E2E tests

@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
-import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
+import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
 describe("getRelationshipsForForm", () => {
   it("returns an empty array if the provided relationships array is empty", () => {
     // GIVEN
-    const relationships: never[] = [];
+    const schema = generateNodeSchema({ relationships: [] });
 
     // WHEN
-    const result = getRelationshipsForForm(relationships);
+    const result = getRelationshipsForForm(schema);
 
     // THEN
     expect(result).toEqual([]);
@@ -25,7 +25,7 @@ describe("getRelationshipsForForm", () => {
     ];
 
     // WHEN
-    const result = getRelationshipsForForm(relationships);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }));
 
     // THEN
     expect(result).toEqual(relationships);
@@ -39,7 +39,7 @@ describe("getRelationshipsForForm", () => {
     ];
 
     // WHEN
-    const result = getRelationshipsForForm(relationships);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }));
 
     // THEN
     expect(result).toEqual([relationships[1]]);
@@ -53,7 +53,7 @@ describe("getRelationshipsForForm", () => {
     ];
 
     // WHEN
-    const result = getRelationshipsForForm(relationships);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }));
 
     // THEN
     expect(result).toEqual(relationships);
@@ -70,7 +70,7 @@ describe("getRelationshipsForForm", () => {
     ];
 
     // WHEN
-    const result = getRelationshipsForForm(relationships);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }));
 
     // THEN
     expect(result).toEqual([]);
@@ -89,7 +89,7 @@ describe("getRelationshipsForForm", () => {
     ];
 
     // WHEN
-    const result = getRelationshipsForForm(relationships);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }));
 
     // THEN
     expect(result).toEqual(relationships);
@@ -107,7 +107,7 @@ describe("getRelationshipsForForm", () => {
     const isUpdate = true;
 
     // WHEN
-    const result = getRelationshipsForForm(relationships, isUpdate);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }), isUpdate);
 
     // THEN
     expect(result).toEqual([relationships[0], relationships[1], relationships[2]]);
@@ -123,7 +123,7 @@ describe("getRelationshipsForForm", () => {
     const isUpdate = true;
 
     // WHEN
-    const result = getRelationshipsForForm(relationships, isUpdate);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }), isUpdate);
 
     // THEN
     expect(result).toEqual([]);
@@ -138,7 +138,7 @@ describe("getRelationshipsForForm", () => {
     const isUpdate = true;
 
     // WHEN
-    const result = getRelationshipsForForm(relationships, isUpdate);
+    const result = getRelationshipsForForm(generateNodeSchema({ relationships }), isUpdate);
 
     // THEN
     expect(result).toEqual([relationships[1]]);

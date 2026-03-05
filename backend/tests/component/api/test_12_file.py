@@ -1,19 +1,24 @@
+from typing import Any
+
 import pytest
+from fastapi.testclient import TestClient
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
 
 
 async def test_get_file(
     db: InfrahubDatabase,
-    client,
-    client_headers,
-    default_branch,
-    rpc_bus,
-    register_core_models_schema,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    rpc_bus: Any,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
@@ -70,7 +75,12 @@ async def test_get_file(
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_get_file_anonymous_account(
-    db: InfrahubDatabase, client, default_branch, rpc_bus, register_core_models_schema, allow_anonymous_access: bool
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    rpc_bus: Any,
+    register_core_models_schema: SchemaBranch,
+    allow_anonymous_access: bool,
 ) -> None:
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
+import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
@@ -15,6 +16,7 @@ import {
 } from "@/shared/components/ui/combobox";
 import type { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { inputStyle } from "@/shared/components/ui/style";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
 
@@ -22,9 +24,6 @@ import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRela
 import type { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-
-import { Badge } from "../ui/badge";
-import { inputStyle } from "../ui/style";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;

@@ -8,15 +8,16 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.transformations.tasks import transform_python, transform_render_jinja2_template
+from tests.conftest import TestHelper
 
 
 @pytest.fixture
-async def init_service():
+async def init_service() -> InfrahubServices:
     return await InfrahubServices.new(client=InfrahubClient(), workflow=WorkflowLocalExecution())
 
 
 async def test_git_transform_jinja2_success(
-    git_repo_jinja: InfrahubRepository, init_service, prefect_test_fixture, helper
+    git_repo_jinja: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None, helper: TestHelper
 ) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
     message = TransformJinjaTemplateData(
@@ -40,7 +41,7 @@ magnum
 
 
 async def test_git_transform_jinja2_missing(
-    git_repo_jinja: InfrahubRepository, init_service, prefect_test_fixture, helper
+    git_repo_jinja: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None, helper: TestHelper
 ) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
@@ -63,10 +64,10 @@ async def test_git_transform_jinja2_missing(
 
 async def test_git_transform_jinja2_invalid(
     git_repo_jinja: InfrahubRepository,
-    prefect_test_fixture,
-    helper,
-    caplog,
-    init_service,
+    prefect_test_fixture: None,
+    helper: TestHelper,
+    caplog: pytest.LogCaptureFixture,
+    init_service: InfrahubServices,
 ) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
@@ -88,7 +89,7 @@ async def test_git_transform_jinja2_invalid(
 
 
 async def test_transform_python_success(
-    git_fixture_repo: InfrahubRepository, init_service, prefect_test_fixture, helper
+    git_fixture_repo: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None, helper: TestHelper
 ) -> None:
     commit = git_fixture_repo.get_commit_value(branch_name="main")
 

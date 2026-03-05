@@ -10,7 +10,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { IP_ADDRESS_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
 import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
+import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";

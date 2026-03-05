@@ -7,7 +7,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
-import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
+import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;

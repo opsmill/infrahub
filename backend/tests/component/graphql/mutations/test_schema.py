@@ -1,3 +1,5 @@
+from typing import Any, Generator
+
 import pytest
 
 from infrahub.auth import AccountSession
@@ -17,7 +19,11 @@ from tests.helpers.graphql import graphql
 
 
 async def test_delete_last_dropdown_option(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     query = """
     mutation {
@@ -41,7 +47,11 @@ async def test_delete_last_dropdown_option(
 
 
 async def test_delete_last_enum_option(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     query = """
     mutation {
@@ -65,7 +75,11 @@ async def test_delete_last_enum_option(
 
 
 async def test_delete_enum_option_that_does_not_exist(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     query = """
     mutation {
@@ -89,7 +103,11 @@ async def test_delete_enum_option_that_does_not_exist(
 
 
 async def test_delete_drop_option_that_does_not_exist(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     query = """
     mutation {
@@ -113,7 +131,11 @@ async def test_delete_drop_option_that_does_not_exist(
 
 
 async def test_add_enum_option_that_exist(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     query = """
     mutation {
@@ -137,7 +159,11 @@ async def test_add_enum_option_that_exist(
 
 
 async def test_delete_dropdown_option_in_use(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     obj1 = await Node.init(db=db, schema="TestChoice")
     await obj1.new(db=db, name="test-passive-01", status="passive", temperature_scale="celsius")
@@ -165,7 +191,11 @@ async def test_delete_dropdown_option_in_use(
 
 
 async def test_delete_enum_option_in_use(
-    db: InfrahubDatabase, default_permission_backend, default_branch: Branch, choices_schema, session_admin
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
 ) -> None:
     obj1 = await Node.init(db=db, schema="TestChoice")
     await obj1.new(db=db, name="test-passive-01", status="passive")
@@ -192,7 +222,7 @@ async def test_delete_enum_option_in_use(
     assert "There are still TestChoice objects using this enum" in str(result.errors[0])
 
 
-async def test_validate_kind_exceptions(db: InfrahubDatabase, choices_schema) -> None:
+async def test_validate_kind_exceptions(db: InfrahubDatabase, choices_schema: None) -> None:
     node = await Node.init(db=db, schema="TestChoice")
     restricted_node = await Node.init(db=db, schema="LineageOwner")
 
@@ -212,7 +242,7 @@ async def test_validate_kind_exceptions(db: InfrahubDatabase, choices_schema) ->
     assert "Attribute color on TestChoice is inherited and must be changed on the generic" in str(exc.value)
 
 
-async def test_validate_kind_dropdown_exceptions(db: InfrahubDatabase, choices_schema) -> None:
+async def test_validate_kind_dropdown_exceptions(db: InfrahubDatabase, choices_schema: None) -> None:
     node = await Node.init(db=db, schema="TestChoice")
 
     with pytest.raises(ValidationError) as exc:
@@ -221,7 +251,7 @@ async def test_validate_kind_dropdown_exceptions(db: InfrahubDatabase, choices_s
     assert "Attribute comment on TestChoice is not a Dropdown" in str(exc.value)
 
 
-async def test_validate_kind_enum_exceptions(db: InfrahubDatabase, choices_schema) -> None:
+async def test_validate_kind_enum_exceptions(db: InfrahubDatabase, choices_schema: None) -> None:
     node = await Node.init(db=db, schema="TestChoice")
 
     with pytest.raises(ValidationError) as exc:

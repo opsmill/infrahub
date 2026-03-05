@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from infrahub import exceptions as infra_execs
@@ -157,7 +159,7 @@ async def test_relationship_save(
 
 
 async def test_relationship_hash(
-    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch, first_account
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch, first_account: Node
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
@@ -476,8 +478,8 @@ async def test_relationship_assign_from_pool(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
