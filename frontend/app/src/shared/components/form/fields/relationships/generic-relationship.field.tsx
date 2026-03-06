@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Col } from "@/shared/components/container";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -128,6 +128,7 @@ export const GenericRelationshipField = ({
             variant="small"
           />
           <RelationshipInput
+            name={name + "_parent"}
             value={selectedParent ?? null}
             peer={parentRelationship.peer}
             disabled={props.disabled || !selectedGeneric?.id}
@@ -205,6 +206,7 @@ const GenericSchemaPicker = ({
   selectedGeneric: GenericOption | null;
   setSelectedGeneric: (value: GenericOption | null) => void;
 }) => {
+  const id = useId();
   const [open, setOpen] = useState(false);
 
   return (
@@ -213,10 +215,11 @@ const GenericSchemaPicker = ({
         label="Kind"
         description="Kind of node to use as relationship"
         variant="small"
+        htmlFor={id}
       />
 
       <Combobox open={open} onOpenChange={setOpen}>
-        <ComboboxTrigger>
+        <ComboboxTrigger id={id}>
           {selectedGeneric && (
             <div className="flex w-full justify-between" data-testid="select-value">
               {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
