@@ -4,7 +4,11 @@ import type { QueryConfig } from "@/shared/api/types";
 
 import { type GetDiffSummaryParams, getDiffSummary } from "@/entities/diff/domain/get-diff-summary";
 
-export function getDiffSummaryQueryOptions({ branch, filters, proposedChangeId }: GetDiffSummaryParams) {
+export function getDiffSummaryQueryOptions({
+  branch,
+  filters,
+  proposedChangeId,
+}: GetDiffSummaryParams) {
   return queryOptions({
     queryKey: ["diff-summary", branch, filters, proposedChangeId],
     queryFn: () => getDiffSummary({ branch, filters, proposedChangeId }),
