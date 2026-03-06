@@ -11,7 +11,11 @@ export interface DiffComputingProps {
   hideActions?: boolean;
 }
 
-export function DiffComputing({ sourceBranch, destinationBranch, hideActions }: DiffComputingProps) {
+export function DiffComputing({
+  sourceBranch,
+  destinationBranch,
+  hideActions,
+}: DiffComputingProps) {
   return (
     <div className="mt-10 flex flex-col items-center gap-5">
       <LoadingIndicator message="" />

@@ -12,7 +12,12 @@ export interface DiffEmptyProps {
   hideActions?: boolean;
 }
 
-export function DiffEmpty({ branchName, lastRefreshedAt, branchExists = true, hideActions }: DiffEmptyProps) {
+export function DiffEmpty({
+  branchName,
+  lastRefreshedAt,
+  branchExists = true,
+  hideActions,
+}: DiffEmptyProps) {
   return (
     <div className="my-10 flex flex-col items-center gap-5">
       <div className="inline-flex rounded-full bg-white p-3">
@@ -28,7 +33,9 @@ export function DiffEmpty({ branchName, lastRefreshedAt, branchExists = true, hi
           </Tooltip>
           .
         </p>
-        {branchExists && !hideActions && <p>If you have made any changes, please refresh the diff:</p>}
+        {branchExists && !hideActions && (
+          <p>If you have made any changes, please refresh the diff:</p>
+        )}
       </div>
 
       {branchExists && !hideActions && <DiffRefreshButton branchName={branchName} />}
