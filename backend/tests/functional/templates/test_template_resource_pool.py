@@ -275,8 +275,7 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
                     TemplateInfraDeviceCreate(
                         data: {
                             template_name: { value: "device-both-relationships" }
-                            primary_address: { id: $address_id }
-                            primary_address_from_resource_pool: { id: $pool_id }
+                            primary_address: { id: $address_id, from_pool: { id: $pool_id } }
                         }
                     ) {
                         ok
@@ -287,133 +286,113 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
                 variables={"address_id": static_ip_address.id, "pool_id": ip_address_pool.id},
             )
 
-        assert "Cannot set 'primary_address' when 'primary_address_from_resource_pool' is already set" in str(exc.value)
+        assert "Cannot specify both a direct reference and from_pool on 'primary_address'" in str(exc.value)
 
-    async def test_template_cannot_add_pool_when_direct_exists(
+    async def test_template_update_direct_to_pool(
         self, db: InfrahubDatabase, ip_address_pool: Node, ip_namespace: Node, ip_prefix: Node, client: InfrahubClient
     ) -> None:
+        """Assigning a pool node to the regular relationship field auto-clears the direct relationship."""
         address = await Node.init(db=db, schema="IpamIPAddress")
         await address.new(db=db, address="10.20.30.150/24", ip_prefix=ip_prefix, ip_namespace=ip_namespace)
         await address.save(db=db)
 
-        template = await Node.init(db=db, schema="TemplateInfraDevice")
-        await template.new(db=db, template_name="device-direct-then-pool", primary_address=address)
-        await template.save(db=db)
+        sdk_address = await client.get(kind="IpamIPAddress", id=address.id)
+        sdk_template = await client.create(
+            kind="TemplateInfraDevice",
+            template_name="device-direct-to-pool",
+            primary_address=sdk_address,
+        )
+        await sdk_template.save()
 
-        with pytest.raises(GraphQLError) as exc:
-            await client.execute_graphql(
-                query="""
-                mutation AddPoolToTemplate($id: String!, $pool_id: String!) {
-                    TemplateInfraDeviceUpdate(
-                        data: {
-                            id: $id
-                            primary_address_from_resource_pool: { id: $pool_id }
-                        }
-                    ) {
-                        ok
-                        object { id }
-                    }
-                }
-                """,
-                variables={"id": template.id, "pool_id": ip_address_pool.id},
-            )
+        # Verify direct relationship is set
+        tmpl = await NodeManager.get_one(id=sdk_template.id, db=db)
+        addr_peer = await tmpl.primary_address.get_peer(db=db)
+        assert addr_peer is not None
 
-        assert "Templates can only use one of: direct relationship or resource pool allocation" in str(exc.value)
+        # Update to use pool — SDK detects pool and generates from_pool, handler auto-clears direct
+        sdk_pool = await client.get(kind=InfrahubKind.IPADDRESSPOOL, id=ip_address_pool.id)
+        sdk_template.primary_address = sdk_pool
+        await sdk_template.save()
 
-    async def test_template_cannot_add_direct_when_pool_exists(
+        tmpl = await NodeManager.get_one(id=sdk_template.id, db=db)
+        addr_peer = await tmpl.primary_address.get_peer(db=db)
+        assert addr_peer is None
+        pool_peer = await tmpl.primary_address_from_resource_pool.get_peer(db=db)
+        assert pool_peer.id == ip_address_pool.id
+
+    async def test_template_update_pool_to_direct(
         self, db: InfrahubDatabase, static_ip_address: Node, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        template = await Node.init(db=db, schema="TemplateInfraDevice")
-        await template.new(
-            db=db, template_name="device-pool-then-direct", primary_address_from_resource_pool=ip_address_pool
+        """Assigning a direct node to the regular relationship field auto-clears the pool relationship."""
+        sdk_pool = await client.get(kind=InfrahubKind.IPADDRESSPOOL, id=ip_address_pool.id)
+        sdk_template = await client.create(
+            kind="TemplateInfraDevice",
+            template_name="device-pool-to-direct",
+            primary_address=sdk_pool,
         )
-        await template.save(db=db)
+        await sdk_template.save()
 
-        with pytest.raises(GraphQLError) as exc:
-            await client.execute_graphql(
-                query="""
-                mutation AddDirectToTemplate($id: String!, $address_id: String!) {
-                    TemplateInfraDeviceUpdate(
-                        data: {
-                            id: $id
-                            primary_address: { id: $address_id }
-                        }
-                    ) {
-                        ok
-                        object { id }
-                    }
-                }
-                """,
-                variables={"id": template.id, "address_id": static_ip_address.id},
-            )
+        # Verify pool relationship is set
+        tmpl = await NodeManager.get_one(id=sdk_template.id, db=db)
+        pool_peer = await tmpl.primary_address_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
 
-        assert "Templates can only use one of: direct relationship or resource pool allocation" in str(exc.value)
+        # Update to use direct address — handler auto-clears pool
+        sdk_address = await client.get(kind="IpamIPAddress", id=static_ip_address.id)
+        sdk_template.primary_address = sdk_address
+        await sdk_template.save()
 
-    async def test_template_can_add_direct_when_pool_is_unset(
-        self, db: InfrahubDatabase, static_ip_address: Node, ip_address_pool: Node, client: InfrahubClient
+        tmpl = await NodeManager.get_one(id=sdk_template.id, db=db)
+        addr_peer = await tmpl.primary_address.get_peer(db=db)
+        assert addr_peer.id == static_ip_address.id
+        pool_peer = await tmpl.primary_address_from_resource_pool.get_peer(db=db)
+        assert pool_peer is None
+
+    async def test_template_create_with_pool_via_graphql(
+        self, db: InfrahubDatabase, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        template = await Node.init(db=db, schema="TemplateInfraDevice")
-        await template.new(
-            db=db, template_name="device-pool-replaced-by-direct", primary_address_from_resource_pool=ip_address_pool
-        )
-        await template.save(db=db)
-
-        update_result = await client.execute_graphql(
+        """Create a template using from_pool syntax in raw GraphQL."""
+        result = await client.execute_graphql(
             query="""
-            mutation SwapPoolToDirect($id: String!, $address_id: String!) {
-                TemplateInfraDeviceUpdate(
+            mutation CreateTemplateWithPool($pool_id: String!) {
+                TemplateInfraDeviceCreate(
                     data: {
-                        id: $id
-                        primary_address_from_resource_pool: null
-                        primary_address: { id: $address_id }
+                        template_name: { value: "device-graphql-pool" }
+                        primary_address: { from_pool: { id: $pool_id } }
                     }
                 ) {
                     ok
-                    object {
-                        id
-                        primary_address { node { id } }
-                        primary_address_from_resource_pool { node { id } }
-                    }
+                    object { id }
                 }
             }
             """,
-            variables={"id": template.id, "address_id": static_ip_address.id},
+            variables={"pool_id": ip_address_pool.id},
         )
-        updated = update_result["TemplateInfraDeviceUpdate"]["object"]
-        assert updated["primary_address"]["node"]["id"] == static_ip_address.id
-        assert updated["primary_address_from_resource_pool"]["node"] is None
+        template_id = result["TemplateInfraDeviceCreate"]["object"]["id"]
 
-    async def test_template_can_add_pool_when_direct_is_unset(
-        self, db: InfrahubDatabase, static_ip_address: Node, ip_address_pool: Node, client: InfrahubClient
+        template = await NodeManager.get_one(id=template_id, db=db)
+        addr_peer = await template.primary_address.get_peer(db=db)
+        assert addr_peer is None
+        pool_peer = await template.primary_address_from_resource_pool.get_peer(db=db)
+        assert pool_peer.id == ip_address_pool.id
+
+    async def test_template_create_with_pool_via_sdk(
+        self, db: InfrahubDatabase, ip_address_pool: Node, client: InfrahubClient
     ) -> None:
-        template = await Node.init(db=db, schema="TemplateInfraDevice")
-        await template.new(db=db, template_name="device-direct-replaced-by-pool", primary_address=static_ip_address)
-        await template.save(db=db)
-
-        update_result = await client.execute_graphql(
-            query="""
-            mutation SwapDirectToPool($id: String!, $pool_id: String!) {
-                TemplateInfraDeviceUpdate(
-                    data: {
-                        id: $id
-                        primary_address: null
-                        primary_address_from_resource_pool: { id: $pool_id }
-                    }
-                ) {
-                    ok
-                    object {
-                        id
-                        primary_address { node { id } }
-                        primary_address_from_resource_pool { node { id } }
-                    }
-                }
-            }
-            """,
-            variables={"id": template.id, "pool_id": ip_address_pool.id},
+        """Create a template using SDK client.create with a pool node on the regular relationship field."""
+        sdk_pool = await client.get(kind=InfrahubKind.IPADDRESSPOOL, id=ip_address_pool.id)
+        template = await client.create(
+            kind="TemplateInfraDevice",
+            template_name="device-sdk-pool",
+            primary_address=sdk_pool,
         )
-        updated = update_result["TemplateInfraDeviceUpdate"]["object"]
-        assert updated["primary_address"]["node"] is None
-        assert updated["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
+        await template.save()
+
+        tmpl = await NodeManager.get_one(id=template.id, db=db)
+        addr_peer = await tmpl.primary_address.get_peer(db=db)
+        assert addr_peer is None
+        pool_peer = await tmpl.primary_address_from_resource_pool.get_peer(db=db)
+        assert pool_peer.id == ip_address_pool.id
 
     @pytest.fixture(scope="class")
     async def small_prefix(self, db: InfrahubDatabase, ip_namespace: Node, ip_prefix: Node) -> Node:
@@ -843,11 +822,13 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
         """Device template with 8 interface templates, all using pool allocations."""
         sdk_rack_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=rack_unit_pool.id)
         sdk_vlan_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=vlan_pool.id)
+        sdk_mgmt_pool = await client.get(kind=InfrahubKind.IPADDRESSPOOL, id=mgmt_address_pool.id)
+        sdk_prefix_pool = await client.get(kind=InfrahubKind.IPPREFIXPOOL, id=interface_prefix_pool.id)
 
         device_template = await client.create(
             kind="TemplateInfraDevice",
             template_name="device-with-8-interfaces",
-            mgmt_address_from_resource_pool=mgmt_address_pool.id,
+            mgmt_address=sdk_mgmt_pool,
             rack_unit=sdk_rack_pool,
         )
         await device_template.save()
@@ -859,7 +840,7 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
                 name=f"eth{i}",
                 vlan_id=sdk_vlan_pool,
                 device=device_template,
-                prefix_from_resource_pool=interface_prefix_pool.id,
+                prefix=sdk_prefix_pool,
             )
             await interface_template.save()
 

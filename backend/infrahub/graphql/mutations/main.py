@@ -25,6 +25,7 @@ from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.mutations.template_pool_router import TemplatePoolHandler
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -246,6 +247,9 @@ class InfrahubMutationMixin:
         create_data = dict(data)
         create_data.update(override_data or {})
 
+        if isinstance(schema, TemplateSchema):
+            create_data = TemplatePoolHandler.route_relationships(data=create_data, schema=schema)
+
         obj = await create_node(
             data=create_data,
             db=db,
@@ -319,9 +323,14 @@ class InfrahubMutationMixin:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
+        schema = cls._meta.active_schema
         obj = node or await NodeManager.find_object(
-            db=db, kind=cls._meta.active_schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=db, kind=schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
+
+        if isinstance(schema, TemplateSchema):
+            data = TemplatePoolHandler.route_relationships(data=dict(data), schema=schema)
+
         obj, result = await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
 
         return obj, result

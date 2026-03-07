@@ -9,6 +9,7 @@ import graphene
 from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -773,6 +774,8 @@ class GraphQLSchemaManager:
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
                 continue
+            if isinstance(schema, TemplateSchema) and rel.name.endswith(RESOURCE_POOL_REL_SUFFIX):
+                continue
 
             input_type = self._get_related_input_type(relationship=rel)
 
@@ -820,6 +823,8 @@ class GraphQLSchemaManager:
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
+                continue
+            if isinstance(schema, TemplateSchema) and rel.name.endswith(RESOURCE_POOL_REL_SUFFIX):
                 continue
 
             input_type = self._get_related_input_type(relationship=rel)
@@ -874,6 +879,8 @@ class GraphQLSchemaManager:
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
+                continue
+            if isinstance(schema, TemplateSchema) and rel.name.endswith(RESOURCE_POOL_REL_SUFFIX):
                 continue
 
             input_type = self._get_related_input_type(relationship=rel)
