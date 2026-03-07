@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
@@ -214,7 +213,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
             return value
 
-        return await self.render_display_label(db=db)
+        if not self._schema.display_label:
+            return repr(self)
+
+        display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+        await display_label.compute(db=db, node=self)
+        return display_label.get_value(node=self, at=self._at) or ""
 
     def has_display_label(self) -> bool:
         return self._display_label is not None
@@ -1157,33 +1161,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
-
-    async def render_display_label(self, db: InfrahubDatabase | None = None) -> str:  # noqa: ARG002
-        if not self._schema.display_labels:
-            return repr(self)
-
-        display_elements = []
-        for item in self._schema.display_labels:
-            item_elements = item.split("__")
-            if len(item_elements) != 2:
-                raise ValidationError("Display Label can only have one level")
-
-            if item_elements[0] not in self._schema.attribute_names:
-                raise ValidationError("Only Attribute can be used in Display Label")
-
-            attr = getattr(self, item_elements[0])
-            attr_value = getattr(attr, item_elements[1])
-            if isinstance(attr_value, Enum):
-                display_elements.append(attr_value.value)
-            else:
-                display_elements.append(attr_value)
-
-        if not display_elements or all(de is None for de in display_elements):
-            return ""
-        display_label = " ".join([str(de) for de in display_elements])
-        if not display_label.strip():
-            return repr(self)
-        return display_label.strip()
 
     async def set_human_friendly_id(self, value: list[str] | None) -> None:
         """Set the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""
