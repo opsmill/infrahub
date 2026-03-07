@@ -24858,6 +24858,7 @@ input RelatedIPAddressNodeInput {
   _relation__owner: String
   _relation__source: String
   from_pool: IPAddressPoolInput = null
+  hfid: [String] = null
   id: String
 }
 
