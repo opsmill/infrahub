@@ -190,7 +190,7 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         schema_step_01: None,
     ) -> Node:
         """Create an IP namespace for pool resources."""
-        ns = await Node.init(db=db, schema=InfrahubKind.IPNAMESPACE)
+        ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
         await ns.new(db=db, name="pool-test-ns")
         await ns.save(db=db)
         return ns
@@ -360,12 +360,12 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         schema_step_02: None,
     ) -> None:
         """Set address pool on template instance and verify retrieval."""
-        # Update the template instance to set the address pool
+        pool = await client.get(kind="CoreIPAddressPool", id=address_pool.id)
         template = await client.get(
             kind="TemplateTestingDevice",
             id=node_template_instance.get_id(),
         )
-        template.mgmt_address_from_resource_pool = address_pool.id
+        template.mgmt_address = pool
         await template.save()
 
         # Retrieve and verify the pool is set
@@ -448,12 +448,12 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         schema_step_03: None,
     ) -> None:
         """Set prefix pool on template instance and verify both pools are present."""
-        # Update the template instance to set the prefix pool
+        pool = await client.get(kind="CoreIPPrefixPool", id=prefix_pool.id)
         template = await client.get(
             kind="TemplateTestingDevice",
             id=node_template_instance.get_id(),
         )
-        template.network_prefix_from_resource_pool = prefix_pool.id
+        template.network_prefix = pool
         await template.save()
 
         # Retrieve and verify both pools are set
@@ -558,12 +558,13 @@ class TestTemplateResourcePoolLifecycle(TestInfrahubApp):
         address_pool: Node,
         schema_step_04: None,
     ) -> None:
-        """Set connected_vlan_from_resource_pool on template instance and verify retrieval."""
+        """Set connected_vlan pool on template instance and verify retrieval."""
+        pool = await client.get(kind="CoreIPAddressPool", id=address_pool.id)
         template = await client.get(
             kind="TemplateTestingDevice",
             id=node_template_instance.get_id(),
         )
-        template.connected_vlan_from_resource_pool = address_pool.id
+        template.connected_vlan = pool
         await template.save()
 
         # Retrieve and verify the pool is set

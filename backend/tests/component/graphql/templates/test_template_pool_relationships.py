@@ -364,3 +364,65 @@ class TestTemplatePoolRelationships:
 
         pool_peer = await reloaded.get_relationship("primary_ip_from_resource_pool").get_peer(db=db)
         assert pool_peer is None
+
+    async def test_create_template_with_pool_by_name(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        ip_address_pool: CoreIPAddressPool,
+    ) -> None:
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_TEMPLATE_WITH_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"template_name": "device-tpl-pool-by-name", "pool_id": "tpl-test-address-pool"},
+        )
+
+        assert not result.errors
+        assert result.data
+        template_id = result.data["TemplateTestingDeviceCreate"]["object"]["id"]
+
+        template = await NodeManager.get_one(id=template_id, db=db, branch=default_branch_scope_class)
+        pool_peer = await template.get_relationship("primary_ip_from_resource_pool").get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == ip_address_pool.id
+
+        direct_peer = await template.get_relationship("primary_ip").get_peer(db=db)
+        assert direct_peer is None
+
+    async def test_update_template_with_pool_by_name(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        ip_address_pool: CoreIPAddressPool,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-tpl-update-pool-by-name")
+        await template.save(db=db)
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_TEMPLATE_WITH_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template.id, "pool_id": "tpl-test-address-pool"},
+        )
+
+        assert not result.errors
+        assert result.data
+
+        reloaded = await NodeManager.get_one(id=template.id, db=db, branch=default_branch_scope_class)
+        pool_peer = await reloaded.get_relationship("primary_ip_from_resource_pool").get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == ip_address_pool.id
+
+        direct_peer = await template.get_relationship("primary_ip").get_peer(db=db)
+        assert direct_peer is None
