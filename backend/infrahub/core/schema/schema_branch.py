@@ -2530,6 +2530,7 @@ class SchemaBranch:
             identifier=pool_identifier,
             label=pool_label,
             inherited=relationship.inherited,
+            read_only=True,
         )
 
     def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
