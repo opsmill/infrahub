@@ -14,6 +14,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
+from infrahub.graphql.resolvers.template_pool_source import TemplatePoolSourceResolver
 
 from ..loaders.node import GetManyParams, NodeDataLoader
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -25,8 +26,9 @@ if TYPE_CHECKING:
 
 
 class SingleRelationshipResolver:
-    def __init__(self) -> None:
+    def __init__(self, pool_source_resolver: TemplatePoolSourceResolver) -> None:
         self._data_loader_instances: dict[GetManyParams, NodeDataLoader] = {}
+        self._pool_source_resolver = pool_source_resolver
 
     def _build_relationship_meta_response(
         self, relationship: Relationship, metadata_fields: dict[str, Any]
@@ -126,6 +128,18 @@ class SingleRelationshipResolver:
             )
 
         if not relationship and not peer_node:
+            pool_source_response = await self._pool_source_resolver.get_pool_source(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                parent_id=parent["id"],
+                source_kind=node_schema.kind,
+                node_schema=node_schema,
+                rel_name=info.field_name,
+                property_fields=property_fields,
+            )
+            if pool_source_response:
+                return pool_source_response
             return response
 
         async with graphql_context.db.start_session(read_only=True) as db:

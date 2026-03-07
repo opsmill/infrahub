@@ -11,6 +11,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
+from infrahub.graphql.resolvers.template_pool_source import TemplatePoolSourceResolver
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -49,7 +50,9 @@ async def resolver_graphql_query(
                     at=Timestamp(),
                     related_node_ids=set(),
                     types=graphql_context.types,
-                    single_relationship_resolver=SingleRelationshipResolver(),
+                    single_relationship_resolver=SingleRelationshipResolver(
+                        pool_source_resolver=TemplatePoolSourceResolver(),
+                    ),
                     many_relationship_resolver=ManyRelationshipResolver(),
                     account_metadata_resolver=AccountMetadataResolver(),
                 ),

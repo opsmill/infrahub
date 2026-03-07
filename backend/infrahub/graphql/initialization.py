@@ -14,6 +14,7 @@ from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
+from infrahub.graphql.resolvers.template_pool_source import TemplatePoolSourceResolver
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
@@ -121,7 +122,9 @@ async def prepare_graphql_params(
         context=GraphqlContext(
             db=db,
             branch=branch,
-            single_relationship_resolver=SingleRelationshipResolver(),
+            single_relationship_resolver=SingleRelationshipResolver(
+                pool_source_resolver=TemplatePoolSourceResolver(),
+            ),
             many_relationship_resolver=ManyRelationshipResolver(),
             account_metadata_resolver=AccountMetadataResolver(),
             at=Timestamp(at),

@@ -81,6 +81,24 @@ mutation ClearTemplate($id: String!) {
 }
 """
 
+QUERY_TEMPLATE_WITH_SOURCE = """
+query QueryTemplate($id: ID!) {
+    TemplateTestingDevice(ids: [$id]) {
+        edges {
+            node {
+                id
+                primary_ip {
+                    node { id }
+                    properties {
+                        source { id }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
 
 class TestTemplatePoolRelationships:
     """Component tests for template pool relationship routing via GraphQL.
@@ -426,3 +444,97 @@ class TestTemplatePoolRelationships:
 
         direct_peer = await template.get_relationship("primary_ip").get_peer(db=db)
         assert direct_peer is None
+
+    async def test_query_template_with_pool_shows_source_no_direct_peer(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        ip_address_pool: CoreIPAddressPool,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(
+            db=db, template_name="device-tpl-query-pool-source", primary_ip_from_resource_pool=ip_address_pool
+        )
+        await template.save(db=db)
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=QUERY_TEMPLATE_WITH_SOURCE,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        edges = result.data["TemplateTestingDevice"]["edges"]
+        assert len(edges) == 1
+        primary_ip = edges[0]["node"]["primary_ip"]
+        assert primary_ip["node"] is None
+        assert primary_ip["properties"]["source"]["id"] == ip_address_pool.id
+
+    async def test_query_template_with_direct_peer_no_pool_source(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        ip_address: Node,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-tpl-query-direct-peer", primary_ip=ip_address)
+        await template.save(db=db)
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=QUERY_TEMPLATE_WITH_SOURCE,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        edges = result.data["TemplateTestingDevice"]["edges"]
+        assert len(edges) == 1
+        primary_ip = edges[0]["node"]["primary_ip"]
+        assert primary_ip["node"]["id"] == ip_address.id
+        assert primary_ip["properties"]["source"] is None
+
+    async def test_query_template_without_pool_or_peer_returns_null(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-tpl-query-no-pool")
+        await template.save(db=db)
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=QUERY_TEMPLATE_WITH_SOURCE,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        edges = result.data["TemplateTestingDevice"]["edges"]
+        assert len(edges) == 1
+        primary_ip = edges[0]["node"]["primary_ip"]
+        assert primary_ip["node"] is None
+        assert primary_ip["properties"]["source"] is None
