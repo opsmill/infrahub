@@ -262,7 +262,7 @@ class TestTemplatePoolRelationships:
         direct_peer = await reloaded.get_relationship("primary_ip").get_peer(db=db)
         assert direct_peer is None
 
-    async def test_null_clears_both_relationships(
+    async def test_null_clears_pool_relationship(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -273,8 +273,13 @@ class TestTemplatePoolRelationships:
             name="TemplateTestingDevice", branch=default_branch_scope_class
         )
         template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
-        await template.new(db=db, template_name="device-tpl-clear", primary_ip_from_resource_pool=ip_address_pool)
+        await template.new(db=db, template_name="device-tpl-clear-pool", primary_ip_from_resource_pool=ip_address_pool)
         await template.save(db=db)
+
+        # Verify pool relationship is set before clearing
+        pool_peer_before = await template.get_relationship("primary_ip_from_resource_pool").get_peer(db=db)
+        assert pool_peer_before is not None
+        assert pool_peer_before.id == ip_address_pool.id
 
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
         result = await graphql(
@@ -292,6 +297,42 @@ class TestTemplatePoolRelationships:
         assert pool_peer is None
         direct_peer = await reloaded.get_relationship("primary_ip").get_peer(db=db)
         assert direct_peer is None
+
+    async def test_null_clears_direct_relationship(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        ip_address: Node,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-tpl-clear-direct", primary_ip=ip_address)
+        await template.save(db=db)
+
+        # Verify direct relationship is set before clearing
+        direct_peer_before = await template.get_relationship("primary_ip").get_peer(db=db)
+        assert direct_peer_before is not None
+        assert direct_peer_before.id == ip_address.id
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_TEMPLATE_CLEAR,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": template.id},
+        )
+
+        assert not result.errors
+
+        reloaded = await NodeManager.get_one(id=template.id, db=db, branch=default_branch_scope_class)
+        direct_peer = await reloaded.get_relationship("primary_ip").get_peer(db=db)
+        assert direct_peer is None
+        pool_peer = await reloaded.get_relationship("primary_ip_from_resource_pool").get_peer(db=db)
+        assert pool_peer is None
 
     async def test_update_template_swap_direct_to_pool(
         self,
