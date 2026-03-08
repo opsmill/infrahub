@@ -62,6 +62,7 @@ core_ip_prefix_pool = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    human_friendly_id=["name__value"],
     attributes=[
         Attr(
             name="default_prefix_length",
@@ -120,6 +121,7 @@ core_ip_address_pool = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    human_friendly_id=["name__value"],
     attributes=[
         Attr(
             name="default_address_type",
@@ -169,6 +171,7 @@ core_number_pool = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    human_friendly_id=["name__value"],
     attributes=[
         Attr(
             name="node",

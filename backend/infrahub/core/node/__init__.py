@@ -377,7 +377,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     raise ValidationError(
                         {f"{attribute.name}.from_pool": "Missing 'id' in from_pool reference."}
                     ) from exc
-                attribute.source = number_pool_id
                 attribute.value = None
                 allocate_resources = False
             elif attribute.from_pool is None:
@@ -425,6 +424,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             ) from exc
 
         if not allocate_resources:
+            attribute.source = number_pool.id
             return
 
         if (

@@ -4,14 +4,14 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.initialization import create_ipam_namespace
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -117,41 +117,39 @@ class TestIPPoolLookupByName:
     async def register_ipam_extended_schema(
         self, default_branch_scope_class: Branch, register_ipam_schema: SchemaBranch
     ) -> SchemaBranch:
-        SCHEMA: dict[str, Any] = {
-            "nodes": [
-                {
-                    "name": "MandatoryPrefix",
-                    "namespace": "Test",
-                    "attributes": [{"name": "name", "kind": "Text"}],
-                    "relationships": [
-                        {
-                            "name": "prefix",
-                            "peer": "IpamIPPrefix",
-                            "kind": "Attribute",
-                            "optional": False,
-                            "cardinality": "one",
-                        },
+        SCHEMA = SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="MandatoryPrefix",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(
+                            name="prefix",
+                            peer="IpamIPPrefix",
+                            kind=RelationshipKind.ATTRIBUTE,
+                            optional=False,
+                            cardinality=RelationshipCardinality.ONE,
+                        ),
                     ],
-                },
-                {
-                    "name": "MandatoryAddress",
-                    "namespace": "Test",
-                    "attributes": [{"name": "name", "kind": "Text"}],
-                    "relationships": [
-                        {
-                            "name": "address",
-                            "peer": "IpamIPAddress",
-                            "kind": "Attribute",
-                            "optional": False,
-                            "cardinality": "one",
-                        },
+                ),
+                NodeSchema(
+                    name="MandatoryAddress",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(
+                            name="address",
+                            peer="IpamIPAddress",
+                            kind=RelationshipKind.ATTRIBUTE,
+                            optional=False,
+                            cardinality=RelationshipCardinality.ONE,
+                        ),
                     ],
-                },
+                ),
             ],
-        }
-        schema_branch = registry.schema.register_schema(
-            schema=SchemaRoot(**SCHEMA), branch=default_branch_scope_class.name
         )
+        schema_branch = registry.schema.register_schema(schema=SCHEMA, branch=default_branch_scope_class.name)
         default_branch_scope_class.update_schema_hash()
         return schema_branch
 
@@ -298,7 +296,7 @@ class TestIPPoolLookupByName:
         obj_id = result.data["TestMandatoryPrefixCreate"]["object"]["id"]
         loaded = await NodeManager.get_one(id=obj_id, db=db, branch=default_branch_scope_class)
         assert loaded is not None
-        prefix_rels = await loaded.prefix.get_relationships(db=db)
+        prefix_rels = await loaded.get_relationship("prefix").get_relationships(db=db)
         assert len(prefix_rels) == 1
         assert prefix_rels[0].source_id == prefix_pool.id
 
@@ -419,7 +417,7 @@ class TestIPPoolLookupByName:
         obj_id = result.data["TestMandatoryAddressCreate"]["object"]["id"]
         loaded = await NodeManager.get_one(id=obj_id, db=db, branch=default_branch_scope_class)
         assert loaded is not None
-        address_rels = await loaded.address.get_relationships(db=db)
+        address_rels = await loaded.get_relationship("address").get_relationships(db=db)
         assert len(address_rels) == 1
         assert address_rels[0].source_id == address_pool.id
 
@@ -466,7 +464,7 @@ class TestIPPoolLookupByName:
         # Retrieve the updated object to confirm the pool changed
         loaded = await NodeManager.get_one(id=obj_id, db=db, branch=default_branch_scope_class)
         assert loaded is not None
-        address_rels = await loaded.address.get_relationships(db=db)
+        address_rels = await loaded.get_relationship("address").get_relationships(db=db)
         assert len(address_rels) == 1
         assert address_rels[0].source_id == address_pool_2.id
 
