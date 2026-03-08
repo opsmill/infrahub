@@ -24,15 +24,15 @@ The **Webhook System** also powers the [Activity Log](./activity-log.mdx).
 Infrahub supports two different types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint.
-- `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
+- `Custom Webhook` allows the ability to tie events to a [Transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
 
 :::note
 
 Custom webhooks might be useful in situations where the endpoint needs a specific payload to be successful. A use-case that might need this would be triggering external actions in platforms like GitHub and GitLab.
 
-The data passed into a normal Python transformation will typically be the result of the GraphQL query, but webhooks execute the transform by passing in the webhook data instead.
+The data passed into a normal Python Transformation will typically be the result of the GraphQL query, but webhooks execute the Transformation by passing in the webhook data instead.
 
-Currently, it is **required** to define a GraphQL query to be defined on a transform regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
+Currently, it is **required** to define a GraphQL query to be defined on a Transformation regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
 
 :::
 
@@ -76,7 +76,7 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 
 - **Description**: A description can be set to identify the webhooks purpose.
 - **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
-- **Transformation** (Custom Webhook only): The Python transformation used to customize the webhook payload before being sent to the webhook receiver.
+- **Transformation** (Custom Webhook only): The Python Transformation used to customize the webhook payload before being sent to the webhook receiver.
 
 ### Shared key for security
 
