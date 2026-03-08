@@ -1,11 +1,9 @@
 import { gql, useQuery } from "@apollo/client";
 import { formatISO } from "date-fns";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import * as R from "remeda";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
@@ -14,15 +12,12 @@ import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
@@ -41,13 +36,12 @@ export const Thread = (props: tThread) => {
 
   const auth = useAuth();
 
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
 
   const { loading, data } = useQuery(
     gql(getObjectPermissionsQuery(PROPOSED_CHANGES_THREAD_COMMENT_OBJECT))
@@ -112,7 +106,6 @@ export const Thread = (props: tThread) => {
     }
 
     if (displayAddComment && !markAsResolved) {
-      // If we want to resolve while submitting, we need to stop here and let the user submit the comment form
       setMarkAsResolved(true);
       setConfirmModal(false);
       return;
@@ -120,43 +113,43 @@ export const Thread = (props: tThread) => {
 
     setIsLoading(true);
 
-    const mutationString = updateObjectWithId({
-      kind: thread.__typename,
-      data: stringifyWithoutQuotes({
-        id: thread.id,
-        resolved: {
-          value: true,
+    await updateObject.mutateAsync(
+      {
+        objectKind: thread.__typename,
+        data: {
+          id: thread.id,
+          resolved: {
+            value: true,
+          },
         },
-      }),
-    });
+      },
+      {
+        onSuccess: () => {
+          if (refetch) {
+            refetch();
+          }
 
-    const mutation = gql`
-      ${mutationString}
-    `;
+          if (confirmModal) {
+            setConfirmModal(false);
+          }
 
-    await graphqlClient.mutate({
-      mutation,
-      context: { branch: currentBranch.name, date },
-    });
+          if (displayAddComment) {
+            setDisplayAddComment(false);
+          }
 
-    if (refetch) {
-      refetch();
-    }
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes(thread.id),
+          });
 
-    if (confirmModal) {
-      setConfirmModal(false);
-    }
-
-    if (displayAddComment) {
-      setDisplayAddComment(false);
-    }
-
-    queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey.includes(thread.id),
-    });
-
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
-    setIsLoading(false);
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
+          setIsLoading(false);
+        },
+        onError: (error) => {
+          console.error("An error occurred while resolving the thread: ", error);
+          setIsLoading(false);
+        },
+      }
+    );
   };
 
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];

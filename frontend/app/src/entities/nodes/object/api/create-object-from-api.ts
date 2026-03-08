@@ -11,10 +11,6 @@ export interface CreateObjectFromApiParams extends BranchContextParams {
   file?: File;
 }
 
-function buildProfiles(profileIds: Array<string>) {
-  return profileIds.map((id) => ({ id }));
-}
-
 export function createObjectFromApi({
   data,
   objectKind,
@@ -29,7 +25,7 @@ export function createObjectFromApi({
         __args: {
           data: {
             ...data,
-            ...(profileIds.length && { profiles: buildProfiles(profileIds) }),
+            ...(profileIds.length && { profiles: profileIds.map((id) => ({ id })) }),
           },
           ...(file && { file: new VariableType("file") }),
         },
