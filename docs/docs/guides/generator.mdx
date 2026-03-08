@@ -4,17 +4,17 @@ title: How to Create a Generator
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# How to create a generator in Infrahub
+# How to create a Generator in Infrahub
 
 Generators in Infrahub allow you to automatically create or modify data based on existing information in your database. They are defined in [external repositories](../topics/repository.mdx) and can be developed and tested locally using [infrahubctl generator]($(base_url)infrahubctl/infrahubctl-generator).
 
-In this guide, you'll learn how to develop a generator and integrate it into Infrahub.
+In this guide, you'll learn how to develop a Generator and integrate it into Infrahub.
 
 For conceptual information about Generators and their architecture, see [Generators](../topics/generator.mdx).
 
 ## What you'll build
 
-You'll build a basic generator that:
+You'll build a basic Generator that:
 
 1. Reads information about Widget objects from the database
 2. Creates a number of Resource objects based on each Widget's count property
@@ -24,11 +24,11 @@ You'll build a basic generator that:
 
 1. Prepare the data model by creating a schema and objects
 2. Create a GraphQL query to fetch data from Infrahub
-3. Implement a Python generator that creates the data
+3. Implement a Python Generator that creates the data
 4. Tie everything together in an `.infrahub.yml` file
-5. Test the generator locally with infrahubctl
-6. Deploy the generator to Infrahub
-7. Validate that the generator works in Infrahub's CI pipeline
+5. Test the Generator locally with infrahubctl
+6. Deploy the Generator to Infrahub
+7. Validate that the Generator works in Infrahub's CI pipeline
 
 ## Prerequisites
 
@@ -39,17 +39,17 @@ Before you begin, you'll need:
 - An Infrahub instance running locally or remotely
 - A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository.mdx))
 - [infrahubctl]($(base_url)infrahubctl/infrahubctl) installed and configured locally
-- The repository cloned locally where you'll develop the generator
+- The repository cloned locally where you'll develop the Generator
 
 ## Step 1: Setting up the data model
 
-In this step, you'll create the data structures needed for your generator, including a schema, group, and sample objects that the generator will process.
+In this step, you'll create the data structures needed for your Generator, including a schema, group, and sample objects that the Generator will process.
 
 ### Create a new branch
 
 :::warning Version Control & Branching
 
-We recommend creating a new branch in your Git repository for your generator development to avoid affecting the main branch. In this guide, we'll use a branch named `create-widget-generator`.
+We recommend creating a new branch in your Git repository for your Generator development to avoid affecting the main branch. In this guide, we'll use a branch named `create-widget-generator`.
 
 ```shell
 git checkout -b create-widget-generator
@@ -114,7 +114,7 @@ To verify the group was created successfully, navigate to the Groups view in the
 
 :::warning Schema Creation
 
-This step is only necessary if you don't already have the schemas affected by the generator in your instance.
+This step is only necessary if you don't already have the schemas affected by the Generator in your instance.
 
 :::
 
@@ -194,11 +194,11 @@ You should see new entries for `Widget` and `Resource` in the left-hand side men
 
 ### Create widget objects
 
-Now that you have the schema loaded, you need to create objects that will be used by the generator:
+Now that you have the schema loaded, you need to create objects that will be used by the Generator:
 
 :::warning Object Creation
 
-This step is only necessary if you don't already have the objects affected by the generator in your instance.
+This step is only necessary if you don't already have the objects affected by the Generator in your instance.
 
 :::
 
@@ -222,7 +222,7 @@ You can also use an object file to create the widgets, though it's less relevant
 
 ## Step 2: Create the GraphQL query
 
-Next, create a GraphQL query that fetches the data your generator needs to process.
+Next, create a GraphQL query that fetches the data your Generator needs to process.
 
 ### Create a query file
 
@@ -294,13 +294,13 @@ Access the sandbox by clicking your user icon in the bottom left corner and sele
 
 :::success
 
-You now have a working GraphQL query that retrieves the necessary data from Infrahub. You might want to keep the result of the query for later reference, as it will be useful when implementing the generator.
+You now have a working GraphQL query that retrieves the necessary data from Infrahub. You might want to keep the result of the query for later reference, as it will be useful when implementing the Generator.
 
 :::
 
-## Step 3: Implement the generator
+## Step 3: Implement the Generator
 
-Now create a Python class that implements your generator logic. The generator creates `TestResource` objects equal to the widget's count value.
+Now create a Python class that implements your Generator logic. The Generator creates `TestResource` objects equal to the widget's count value.
 
 The class must:
 
@@ -338,7 +338,7 @@ class WidgetGenerator(InfrahubGenerator):
 
 ## Step 4: Tie everything together in the .infrahub.yml file
 
-Now that you have your GraphQL query and Python generator, edit your [.infrahub.yml](../topics/infrahub-yml.mdx) file to tie everything together.
+Now that you have your GraphQL query and Python Generator, edit your [.infrahub.yml](../topics/infrahub-yml.mdx) file to tie everything together.
 
 1. Add the following configuration to the file `.infrahub.yml`:
 
@@ -380,13 +380,13 @@ widget_generator (generators/widget_generator.py::WidgetGenerator) Target: widge
 
 :::
 
-## Step 5: Test the generator locally
+## Step 5: Test the Generator locally
 
-Before deploying your generator to Infrahub, test it locally using the `infrahubctl` command-line tool.
+Before deploying your Generator to Infrahub, test it locally using the `infrahubctl` command-line tool.
 
-### Run the generator
+### Run the Generator
 
-Run the generator on both of your widget objects:
+Run the Generator on both of your widget objects:
 
 ```shell
 infrahubctl generator widget_generator --branch=create-widget-generator name=widget1
@@ -411,13 +411,13 @@ You might want to cleanup this development data before merging your changes into
 
 :::success
 
-Your generator worked as expected, it's now time to deploy it to Infrahub.
+Your Generator worked as expected, it's now time to deploy it to Infrahub.
 
 :::
 
 ## Step 6: Deploy to Infrahub
 
-Now that you've tested your generator, deploy it to Infrahub.
+Now that you've tested your Generator, deploy it to Infrahub.
 
 ### Verify repository structure
 
@@ -440,7 +440,7 @@ your-repository/
 
 ### Commit and push your code
 
-Upload your generator code to the repository:
+Upload your Generator code to the repository:
 
 ```shell
 git add .
@@ -448,9 +448,9 @@ git commit -m "Add widget generator"
 git push
 ```
 
-### Confirm the generator is imported
+### Confirm the Generator is imported
 
-After pushing your changes, confirm that the generator is imported correctly by checking the Infrahub UI.
+After pushing your changes, confirm that the Generator is imported correctly by checking the Infrahub UI.
 
 1. Open the **Infrahub UI** in your browser
 2. Select the `create-widget-generator` branch
@@ -478,13 +478,13 @@ We recommend using Infrahub's **Proposed Changes** feature to merge your changes
 
 :::success
 
-Your generator is now deployed to Infrahub in the `main` branch and ready to be used.
+Your Generator is now deployed to Infrahub in the `main` branch and ready to be used.
 
 :::
 
-## Step 7: Run the generator in Infrahub's CI pipeline
+## Step 7: Run the Generator in Infrahub's CI pipeline
 
-Now let's verify that your generator automatically runs when new widgets are created:
+Now let's verify that your Generator automatically runs when new widgets are created:
 
 1. Create a new branch named `add-widget-3`
 2. Navigate to the **Widget** objects in the Infrahub UI
@@ -497,29 +497,29 @@ Now let's verify that your generator automatically runs when new widgets are cre
     - Destination branch: `main`
     - Name: `Add widget3`
 
-### Check generator results
+### Check Generator results
 
 1. Navigate to the **Checks** tab of your proposed change
-2. Wait for the **generator** CI check to complete
+2. Wait for the **Generator** CI check to complete
 ![Generator CI Check](../media/guides/generator_pc_1.png)
 3. Navigate to the **Data** tab
-4. Click the **Refresh diff** button to see the resources created by your generator
+4. Click the **Refresh diff** button to see the resources created by your Generator
 ![Data Refresh showing generated resources](../media/guides/generator_pc_2.png)
 
 :::success
 
-You should see three new resources (`widget3-1`, `widget3-2`, and `widget3-3`) automatically created by your generator.
+You should see three new resources (`widget3-1`, `widget3-2`, and `widget3-3`) automatically created by your Generator.
 
 :::
 
 ## Next steps
 
-Now that you've created a basic generator, you can:
+Now that you've created a basic Generator, you can:
 
 - Create Generators that handle a full object lifecycle, including creation, updates, and deletions
 - Build idempotent Generators that can be run multiple times without creating duplicate data
-- Add unit tests to your generator to ensure it behaves as expected
-- Harden your generator by adding error handling and logging
+- Add unit tests to your Generator to ensure it behaves as expected
+- Harden your Generator by adding error handling and logging
 
 :::success Real-World Example
 
