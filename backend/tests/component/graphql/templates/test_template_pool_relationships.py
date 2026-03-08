@@ -424,5 +424,5 @@ class TestTemplatePoolRelationships:
         assert pool_peer is not None
         assert pool_peer.id == ip_address_pool.id
 
-        direct_peer = await template.get_relationship("primary_ip").get_peer(db=db)
+        direct_peer = await reloaded.get_relationship("primary_ip").get_peer(db=db)
         assert direct_peer is None
