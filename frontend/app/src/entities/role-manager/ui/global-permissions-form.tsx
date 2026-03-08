@@ -1,9 +1,6 @@
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
@@ -16,13 +13,10 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_ROLE_OBJECT, GLOBAL_PERMISSION_OBJECT } from "@/shared/config/constants";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { globalDecisionOptions } from "@/entities/role-manager/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -37,10 +31,9 @@ export const GlobalPermissionForm = ({
   onSuccess,
   onCancel,
 }: GlobalPermissionFormProps) => {
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(GLOBAL_PERMISSION_OBJECT);
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
     objectData: { roles: currentObject?.roles?.value },
@@ -76,31 +69,26 @@ export const GlobalPermissionForm = ({
     }
 
     if (currentObject) {
-      try {
-        const result = await graphqlClient.mutate({
-          mutation: gql(
-            updateObjectWithId({
-              kind: GLOBAL_PERMISSION_OBJECT,
-              data: stringifyWithoutQuotes({
-                id: currentObject.id,
-                ...newObject,
-              }),
-            })
-          ),
-          context: {
-            branch: currentBranch.name,
-            date,
+      await updateObject.mutateAsync(
+        {
+          objectKind: GLOBAL_PERMISSION_OBJECT,
+          data: {
+            id: currentObject.id,
+            ...newObject,
           },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Global permission updated!"} />, {
-          toastId: "alert-success-global-permission-updated",
-        });
-
-        if (onSuccess) await onSuccess(result?.data?.[`${GLOBAL_PERMISSION_OBJECT}Update`]);
-      } catch (error: unknown) {
-        console.error("An error occurred while creating the object: ", error);
-      }
+        },
+        {
+          onSuccess: async (updatedNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Global permission updated!"} />, {
+              toastId: "alert-success-global-permission-updated",
+            });
+            if (onSuccess) await onSuccess(updatedNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while updating the object: ", error);
+          },
+        }
+      );
     } else {
       await createObject.mutateAsync(
         {

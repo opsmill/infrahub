@@ -1,8 +1,6 @@
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -10,13 +8,10 @@ import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/objec
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -46,8 +41,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const { loading, error, data } = useQuery(query, { skip: !schema });
 
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
+  const updateObject = useUpdateObjectMutation();
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
@@ -72,35 +66,30 @@ export default function ObjectItemEditComponent(props: Props) {
     const areProfilesUpdated = !!profiles && !areObjectArraysEqualById(profiles, objectProfiles);
 
     if (isObjectUpdated || areProfilesUpdated) {
-      const profilesId = profiles?.map((profile) => ({ id: profile.id })) ?? [];
+      const profileIds = profiles?.map((profile) => profile.id);
 
-      try {
-        const mutationString = updateObjectWithId({
-          kind: schema?.kind,
-          data: stringifyWithoutQuotes({
+      await updateObject.mutateAsync(
+        {
+          objectKind: schema?.kind as string,
+          data: {
             id: objectId,
             ...updatedObject,
-            ...(areProfilesUpdated ? { profiles: profilesId } : {}),
-          }),
-        });
+          },
+          ...(areProfilesUpdated ? { profileIds } : {}),
+        },
+        {
+          onSuccess: async () => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+              toastId: "alert-success-updated",
+            });
 
-        const mutation = gql`
-          ${mutationString}
-        `;
-
-        await graphqlClient.mutate({
-          mutation,
-          context: { branch: currentBranch.name, date },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
-          toastId: "alert-success-updated",
-        });
-
-        if (onUpdateComplete) await onUpdateComplete();
-      } catch (e) {
-        console.error("Something went wrong while updating the object:", e);
-      }
+            if (onUpdateComplete) await onUpdateComplete();
+          },
+          onError: (error) => {
+            console.error("Something went wrong while updating the object:", error);
+          },
+        }
+      );
     }
   };
 

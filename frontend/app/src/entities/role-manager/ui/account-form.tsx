@@ -1,9 +1,6 @@
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
@@ -16,13 +13,10 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constants";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AccountFormProps {
@@ -32,10 +26,9 @@ interface AccountFormProps {
 }
 
 export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormProps) => {
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_OBJECT);
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
 
   const memberDefaultValue = getRelationshipDefaultValue({
     objectData: { member_of_groups: currentObject?.member_of_groups?.value },
@@ -62,31 +55,26 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
     }
 
     if (currentObject) {
-      try {
-        const result = await graphqlClient.mutate({
-          mutation: gql(
-            updateObjectWithId({
-              kind: ACCOUNT_OBJECT,
-              data: stringifyWithoutQuotes({
-                id: currentObject.id,
-                ...newObject,
-              }),
-            })
-          ),
-          context: {
-            branch: currentBranch.name,
-            date,
+      await updateObject.mutateAsync(
+        {
+          objectKind: ACCOUNT_OBJECT,
+          data: {
+            id: currentObject.id,
+            ...newObject,
           },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Account updated!"} />, {
-          toastId: "alert-success-account-updated",
-        });
-
-        if (onSuccess) await onSuccess(result?.data?.[`${ACCOUNT_OBJECT}Update`]);
-      } catch (error: unknown) {
-        console.error("An error occurred while updating the object: ", error);
-      }
+        },
+        {
+          onSuccess: async (updatedNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Account updated!"} />, {
+              toastId: "alert-success-account-updated",
+            });
+            if (onSuccess) await onSuccess(updatedNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while updating the object: ", error);
+          },
+        }
+      );
     } else {
       await createObject.mutateAsync(
         {
