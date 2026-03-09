@@ -10,6 +10,7 @@ from fastapi.openapi.docs import (
 from starlette.responses import HTMLResponse  # noqa: TC002
 
 from infrahub.api import (
+    ai,
     artifact,
     auth,
     diff,
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
 
 router = APIRouter(prefix="/api")
 
+router.include_router(ai.router)
 router.include_router(artifact.router)
 router.include_router(auth.router)
 router.include_router(diff.router)

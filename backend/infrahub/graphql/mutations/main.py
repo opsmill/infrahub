@@ -8,7 +8,7 @@ from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
@@ -28,6 +28,7 @@ from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.workflows.catalogue import FILE_OBJECT_AI_EXTRACTION
 
 from ...core.node.lock_utils import get_lock_names_on_object_mutation
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
@@ -227,6 +228,26 @@ class InfrahubMutationMixin:
             deleted_nodes=deleted_nodes,
             side_effect_nodes=side_effect_nodes,
         )
+
+        if (
+            file_stored
+            and obj is not None
+            and config.SETTINGS.ai.extraction_enabled
+            and config.SETTINGS.ai.anthropic_api_key
+            and action in (MutationAction.CREATED, MutationAction.UPDATED)
+            and InfrahubKind.FILEOBJECT in obj.get_schema().inherit_from
+            and graphql_context.service
+        ):
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=FILE_OBJECT_AI_EXTRACTION,
+                context=graphql_context.get_context(),
+                parameters={
+                    "branch_name": graphql_context.branch.name,
+                    "node_id": obj.id,
+                    "node_kind": obj.get_kind(),
+                    "context": graphql_context.get_context(),
+                },
+            )
 
         return mutation
 

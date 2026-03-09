@@ -174,6 +174,13 @@ DIFF_REFRESH_ALL = WorkflowDefinition(
     function="refresh_diff_all",
 )
 
+FILE_OBJECT_AI_EXTRACTION = WorkflowDefinition(
+    name="file-object-ai-extraction",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.ai.tasks",
+    function="file_object_ai_extraction",
+)
+
 GIT_REPOSITORIES_SYNC = WorkflowDefinition(
     name="git_repositories_sync",
     type=WorkflowType.INTERNAL,
@@ -689,6 +696,7 @@ WORKFLOWS = [
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
     DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
+    FILE_OBJECT_AI_EXTRACTION,
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,

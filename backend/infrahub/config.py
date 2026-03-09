@@ -729,6 +729,13 @@ class AnalyticsSettings(BaseSettings):
     api_key: str | None = None
 
 
+class AISettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_AI_")
+    anthropic_api_key: str | None = Field(default=None, description="Anthropic API key for AI-powered data extraction")
+    extraction_enabled: bool = Field(default=False, description="Enable automatic AI extraction on file object upload")
+    extraction_model: str = Field(default="claude-sonnet-4-6", description="Claude model to use for extraction")
+
+
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
@@ -999,6 +1006,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def ai(self) -> AISettings:
+        return self.active_settings.ai
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -1025,6 +1036,7 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+    ai: AISettings = AISettings()
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
