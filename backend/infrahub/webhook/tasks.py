@@ -183,8 +183,8 @@ async def _reconcile_all() -> None:
     async with database.start_session(read_only=True) as db:
         triggers = await gather_trigger_webhook(db=db)
 
-    log.info(f"{len(triggers)} Webhooks automation configuration completed")
     await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[arg-type]
+    log.info(f"{len(triggers)} Webhooks automation configuration completed")
 
 
 async def _configure_one(
