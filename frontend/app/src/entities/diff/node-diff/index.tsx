@@ -108,7 +108,11 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   return (
     <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
       <header className="flex items-center gap-2 border-gray-200 border-b px-4 py-2">
-        <DiffFilter branch={branchName} filters={filters} />
+        <DiffFilter
+          branch={branchName}
+          filters={filters}
+          proposedChangeId={branch ? undefined : proposedChangesDetails?.id}
+        />
         <span className="ml-auto inline-flex gap-1 text-xs">
           Updated <DateDisplay date={firstPageNodes?.to_time} />
         </span>
