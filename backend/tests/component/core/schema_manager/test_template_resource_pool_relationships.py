@@ -1,4 +1,3 @@
-
 from infrahub.core.constants import (
     InfrahubKind,
     RelationshipCardinality,
