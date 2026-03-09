@@ -7,16 +7,25 @@ Infrahub webhooks deliver HTTP notifications to external systems when events occ
 ## Architecture Overview
 
 ```text
-GraphQL Mutation (create/update webhook)
+GraphQL Mutation (create/update/delete webhook)
        │
        ▼
-Built-in Trigger (TRIGGER_WEBHOOK_SETUP_UPDATE)
+Built-in Trigger (TRIGGER_WEBHOOK_CONFIGURE)
        │
        ▼
-configure_webhook_one flow
+configure_webhook flow
        │
-       ├──► Creates/updates Prefect Automation
-       └──► Clears Redis cache
+       ├─ WebhookAction.CONFIGURE ──► _configure_one()
+       │     ├──► Creates/updates Prefect Automation
+       │     └──► Clears Redis cache
+       │
+       ├─ WebhookAction.DELETE ──► _delete_automation()
+       │     ├──► Deletes Prefect Automation
+       │     └──► Clears Redis cache
+       │
+       └─ WebhookAction.RECONCILE_ALL ──► _reconcile_all()
+             └──► Full sync via setup_triggers_specific()
+
                                           ┌─────────────────────┐
 Application Event (e.g. node.created) ──► │ Prefect Automation   │
                                           │ (event matching)     │
@@ -45,7 +54,7 @@ Three webhook types form a class hierarchy inheriting from the `Webhook` base cl
 
 | Type | Class | Payload Behavior | Signing |
 |------|-------|------------------|---------|
-| Standard | `StandardWebhook` | Raw event data + context | Optional (shared key required) |
+| Standard | `StandardWebhook` | Raw event data + context | Required (`shared_key` is mandatory) |
 | Custom | `CustomWebhook` | Raw event data + context | Optional |
 | Transform | `TransformWebhook` | Runs a `CoreTransformPython` from a Git repo | Optional |
 
@@ -96,6 +105,7 @@ All webhooks are branch-agnostic (`BranchSupportType.AGNOSTIC`).
 | `active` | Boolean | `true` | Enable/disable toggle |
 | `branch_scope` | Dropdown | `"default_branch"` | `all_branches` / `default_branch` / `other_branches` |
 | `node_kind` | Text | — | Optional node type filter (only valid for node-level events) |
+| `description` | Text | — | Optional description |
 | `url` | URL | — | Target delivery endpoint |
 | `validate_certificates` | Boolean | — | TLS certificate validation |
 | `shared_key` | Password | — | HMAC signing secret |
@@ -111,15 +121,24 @@ Webhooks are created via standard GraphQL mutations (`CoreStandardWebhookCreate`
 
 ### 2. Trigger Setup
 
-When a webhook node is created or updated, the built-in trigger `TRIGGER_WEBHOOK_SETUP_UPDATE` fires, invoking the `configure_webhook_one` flow. This flow:
+When a webhook node is created, updated, or deleted, the single built-in trigger `TRIGGER_WEBHOOK_CONFIGURE` fires, invoking the `configure_webhook` flow. The flow parses the event into a `WebhookConfigureParams` (using the `EVENT_TO_ACTION` mapping from `constants.py`) and routes to the appropriate handler:
 
-1. Fetches the webhook node via the SDK
-2. Builds a `WebhookTriggerDefinition` from the node
-3. Queries existing Prefect automations for a matching name
-4. Creates or updates the Prefect automation
-5. Clears the Redis cache for that webhook
+- **`WebhookAction.CONFIGURE`** (node created/updated) → `_configure_one()`:
+  1. Fetches the webhook node via the SDK
+  2. Builds a `WebhookTriggerDefinition` from the node
+  3. Queries existing Prefect automations for a matching name
+  4. Creates or updates the Prefect automation
+  5. Clears the Redis cache for that webhook
+  6. If the webhook is inactive, deletes the automation instead
 
-If the webhook is inactive, the automation is deleted instead.
+- **`WebhookAction.DELETE`** (node deleted) → `_delete_automation(webhook_id)`:
+  1. Constructs the automation name from the webhook ID
+  2. Deletes the Prefect automation if it exists
+  3. Clears the Redis cache
+
+- **`WebhookAction.RECONCILE_ALL`** (scheduled/no event) → `_reconcile_all()`:
+  1. Queries all active webhooks from the database
+  2. Delegates to `setup_triggers_specific()` for full sync
 
 ### 3. Event Matching
 
@@ -140,10 +159,6 @@ When a matched event fires, Prefect runs the `webhook_process` flow:
 5. Calls `webhook.send()` which prepares the payload, assigns headers (with optional HMAC), and POSTs to the target URL
 
 The `webhook_send` task has 3 retries configured and calls `response.raise_for_status()`.
-
-### 5. Cleanup
-
-When a webhook node is deleted, the built-in trigger `TRIGGER_WEBHOOK_DELETE` fires, invoking the `delete_webhook_automation` flow. This deletes the corresponding Prefect automation and clears the Redis cache.
 
 ## Security
 
@@ -169,29 +184,20 @@ Three headers are added to signed requests:
 - **TTL**: 2 hours (`KVTTL.TWO_HOURS`)
 - **Storage**: Redis via the cache service
 - **Cache miss**: Falls back to fetching the webhook node from the database via SDK, then caches the result
-- **Invalidation**: Cache is cleared on webhook create/update (via `configure_webhook_one`) and on webhook delete (via `delete_webhook_automation`)
-
-## Retry and Error Handling
-
-- The `webhook_send` task is configured with `retries=3`
-- HTTP errors propagate via `response.raise_for_status()`
-- TLS certificate validation is controlled per-webhook via `validate_certificates`
+- **Invalidation**: Cache is cleared by `_configure_one()` (on create/update) and `_delete_automation()` (on delete), both routed through the unified `configure_webhook` flow
 
 ## Prefect Workflows
 
 | Workflow | Type | Cron | Purpose |
 |----------|------|------|---------|
 | `WEBHOOK_PROCESS` | USER | — | Delivers webhook payload on event match |
-| `WEBHOOK_CONFIGURE_ONE` | CORE | — | Sets up or updates individual automation on webhook create/update |
-| `WEBHOOK_CONFIGURE_ALL` | INTERNAL | `* 3 * * *` (daily at 3 AM) | Reconfigures all webhook automations |
-| `WEBHOOK_DELETE_AUTOMATION` | CORE | — | Deletes automation and cache on webhook deletion |
+| `WEBHOOK_CONFIGURE` | INTERNAL | daily at 3 AM (random minute) | Unified webhook automation configuration (configure, delete, reconcile) |
 
 ## Built-in Triggers
 
-Two built-in triggers in `triggers.py` react to webhook node lifecycle events:
+A single built-in trigger in `triggers.py` reacts to all webhook node lifecycle events:
 
-- **`TRIGGER_WEBHOOK_SETUP_UPDATE`**: Fires on `infrahub.node.created` and `infrahub.node.updated` for `CoreCustomWebhook` and `CoreStandardWebhook` nodes. Invokes `WEBHOOK_CONFIGURE_ONE`.
-- **`TRIGGER_WEBHOOK_DELETE`**: Fires on `infrahub.node.deleted` for the same node kinds. Invokes `WEBHOOK_DELETE_AUTOMATION`.
+- **`TRIGGER_WEBHOOK_CONFIGURE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreCustomWebhook` and `CoreStandardWebhook` nodes. Invokes `WEBHOOK_CONFIGURE` with the event type and node data. The `configure_webhook` flow uses `WebhookConfigureParams` and the `EVENT_TO_ACTION` mapping to route to the correct handler.
 
 ## Key Locations
 
