@@ -3,24 +3,24 @@ title: Resource manager
 ---
 import VideoPlayer from '../../src/components/VideoPlayer';
 
-Resource managers in Infrahub automate the allocation of network resources from predefined pools, eliminating manual assignment and preventing conflicts across your infrastructure. This system ensures consistent resource allocation while maintaining complete visibility and control over your available resources.
+Resource Manager in Infrahub automates the allocation of network resources from predefined pools, eliminating manual assignment and preventing conflicts across your infrastructure. This system ensures consistent resource allocation while maintaining complete visibility and control over your available resources.
 
 ## Core concepts
 
 ### What is a resource manager?
 
-A resource manager is a system component that automatically allocates resources from pools when creating or updating infrastructure objects. Instead of manually tracking available IP addresses, VLAN IDs, or other resources in spreadsheets, you define pools and let Infrahub handle the allocation.
+A Resource Manager is a system component that automatically allocates resources from pools when creating or updating infrastructure objects. Instead of manually tracking available IP addresses, VLAN IDs, or other resources in spreadsheets, you define pools and let Infrahub handle the allocation.
 
-Resource managers support three primary types of pools:
+Resource Manager supports three primary types of pools:
 
 - **IP Address Pools** (`CoreIPAddressPool`) - Allocate individual IP addresses from IP prefixes
 - **IP Prefix Pools** (`CoreIPPrefixPool`) - Allocate smaller subnets from larger IP prefixes
 - **Number Pools** (`CoreNumberPool`) - Allocate sequential numbers for attributes like VLAN IDs, ASNs, or circuit IDs
 
 :::warning
-When an attribute is assigned by a resource manager, the attribute cannot be used as part of the Human Friendly Identifier (HFID).
+When an attribute is assigned by a Resource Manager, the attribute cannot be used as part of the Human Friendly Identifier (HFID).
 
-This is due the dynamic nature of using resource managers and the idempotency of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
+This is due to the dynamic nature of using Resource Manager and the idempotency of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
 :::
 
 ### Branch-agnostic allocation
@@ -29,7 +29,7 @@ This is due the dynamic nature of using resource managers and the idempotency of
   <VideoPlayer url='https://youtu.be/F7tvLRQULdg?si=S83VyA0xmXHQGQqV' light />
 </center>
 
-One of the most powerful features of Infrahub's resource managers is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
+One of the most powerful features of Infrahub's Resource Manager is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
 
 Consider this scenario:
 
@@ -42,7 +42,7 @@ This behavior guarantees that resources remain unique and conflict-free when bra
 
 ### Idempotent allocation
 
-Resource managers support idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
+Resource Manager supports idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
 
 ```graphql
 mutation {
@@ -199,7 +199,7 @@ Infrahub provides comprehensive visibility into resource utilization:
 
 ### With Generators
 
-Resource managers integrate seamlessly with [Generators](./generator.mdx) to create fully automated provisioning workflows:
+Resource Manager integrates seamlessly with [Generators](./generator.mdx) to create fully automated provisioning workflows:
 
 - Template configurations with dynamically allocated IPs
 - Generate DNS records based on allocations
@@ -216,7 +216,7 @@ Incorporate resource allocation into your automation:
 
 ### API integration
 
-Resource managers expose full functionality through GraphQL APIs:
+Resource Manager exposes full functionality through GraphQL APIs:
 
 - Build custom allocation interfaces
 - Integrate with external IPAM systems

@@ -6,7 +6,7 @@ import VideoPlayer from '../../src/components/VideoPlayer';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-This guide shows you how to create resource pools and allocate resources from them automatically. Resource managers eliminate manual IP address and number assignment by providing dynamic allocation from predefined pools.
+This guide shows you how to create resource pools and allocate resources from them automatically. Resource Manager eliminates manual IP address and number assignment by providing dynamic allocation from predefined pools.
 
 :::note
 
@@ -20,7 +20,7 @@ This guide uses a simplified schema. If you already have the demo schema loaded,
 
 ## What you'll build
 
-In this guide, you'll learn how to implement three common resource manager use cases:
+In this guide, you'll learn how to implement three common Resource Manager use cases:
 
 1. **IP Address Allocation**: Assign IP addresses to devices from address pools
 2. **IP Prefix Allocation**: Allocate customer subnets from larger prefix pools
@@ -37,7 +37,7 @@ In this guide, you'll learn how to implement three common resource manager use c
 
 :::warning Schema Creation
 
-This step is only necessary if you don't already have the schemas affected by the resource manager in your instance.
+This step is only necessary if you don't already have the schemas affected by the Resource Manager in your instance.
 
 :::
 
@@ -156,7 +156,7 @@ A `CoreIPAddressPool` allows you to dynamically allocate IP addresses from one o
 
 ### Creating an IP Prefix object
 
-First, create an IP Prefix object that the resource manager will use as a resource.
+First, create an IP Prefix object that the Resource Manager will use as a resource.
 You can create a prefix (for example, `10.100.0.0/24`) either via the web interface or through the GraphQL interface.
 
 <Tabs groupId="method" queryString>
@@ -186,9 +186,9 @@ You can create a prefix (for example, `10.100.0.0/24`) either via the web interf
   </TabItem>
 </Tabs>
 
-### Creating an IP address resource manager
+### Creating an IP address Resource Manager
 
-Next, create a resource manager of kind `CoreIPAddressPool` with the following properties:
+Next, create a Resource Manager of kind `CoreIPAddressPool` with the following properties:
 
 - **Name**: My IP address pool
 - **Default Address Type**: `IpamIPAddress` (as defined in your schema)
@@ -232,7 +232,7 @@ The `CoreIPAddressPool` can be created using the web interface, or by using this
 
 We can now start allocating IP addresses out of the `CoreIPAddressPool` we created.
 
-We can use the resource manager to allocate resources out of a pool in 2 different ways:
+We can use the Resource Manager to allocate resources out of a pool in 2 different ways:
 
 1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
 2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
@@ -349,12 +349,12 @@ Save the prefix ID for the next step!
 
 ### Step 2: Create the IP address pool
 
-Create a `CoreIPAddressPool` resource manager:
+Create a `CoreIPAddressPool` Resource Manager:
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **Object Management** → **Resource Managers** and create a new IP Address Pool with:
+Navigate to **Object Management** → **Resource Manager** and create a new IP Address Pool with:
 
 - **Name**: `My IP address pool`
 - **Default Address Type**: `IpamIPAddress`
@@ -559,12 +559,12 @@ Navigate to **IPAM** → **IP Prefixes** and create a new prefix with:
 
 ### Step 2: Create the IP prefix pool
 
-Create a `CoreIPPrefixPool` resource manager:
+Create a `CoreIPPrefixPool` Resource Manager:
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **Object Management** → **Resource Managers** and create a new IP Prefix Pool with:
+Navigate to **Object Management** → **Resource Manager** and create a new IP Prefix Pool with:
 
 - **Name**: `Customer Service Pool`
 - **Default Prefix Type**: `IpamIPPrefix`
@@ -719,7 +719,7 @@ Allocate an IP prefix when creating a customer service:
 
 We can now start allocating IP prefix out of the `CoreIPPrefixPool` we created.
 
-We can use the resource manager to allocate resources out of a pool in 2 different ways:
+We can use the Resource Manager to allocate resources out of a pool in 2 different ways:
 
 1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
 2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
@@ -758,7 +758,7 @@ In the mutation we passed additional data to the allocated resource, in this cas
 
 #### Allocating an IP prefix to a relationship of a node
 
-Another way we can use resource managers is in situations where we create a node that has a relationship and we want to use a resource manager to allocate a new resource for that relationship. For example, we want to create a new customer service and assign a prefix of a pool.
+Another way we can use Resource Manager is in situations where we create a node that has a relationship and we want to use a Resource Manager to allocate a new resource for that relationship. For example, we want to create a new customer service and assign a prefix of a pool.
 
 This feature is not yet available directly via the Web Interface.
 
@@ -841,7 +841,7 @@ Create a pool for VLAN IDs:
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **Object Management** → **Resource Managers** and create a new Number Pool with:
+Navigate to **Object Management** → **Resource Manager** and create a new Number Pool with:
 
 - **Name**: `My VLAN ID Pool`
 - **Node**: `IpamVLAN`
@@ -1013,12 +1013,12 @@ Save the prefix IDs for the next step!
 
 :::
 
-4. Create a `CoreIPAddressPool` resource manager:
+4. Create a `CoreIPAddressPool` Resource Manager:
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **Object Management** → **Resource Managers** and create a new IP Address Pool with:
+Navigate to **Object Management** → **Resource Manager** and create a new IP Address Pool with:
 
 - **Name**: `My Weighted IP address pool`
 - **Default Address Type**: `IpamIPAddress`
@@ -1083,7 +1083,7 @@ You should have received an IP address from the `10.100.6.0/24` prefix, as it ha
 
 ### Branch-agnostic allocation
 
-Resource managers allocate resources across all branches to prevent conflicts.
+Resource Manager allocates resources across all branches to prevent conflicts.
 
 1. Create a test branch
 
@@ -1143,7 +1143,7 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 ## Related resources
 
-- [Resource Manager topic](../topics/resource-manager.mdx) - Deep dive into resource manager concepts and architecture
+- [Resource Manager topic](../topics/resource-manager.mdx) - Deep dive into Resource Manager concepts and architecture
 - [Resource Manager blog post](https://opsmill.com/blog/infrahub-resource-manager-automate-allocation/) - Alternative learning resource with additional examples
 - [Generators topic](../topics/generator.mdx) - Learn how to automate resource allocation workflows
 - [IPAM topic](../topics/ipam.mdx) - Additional information about IP address management

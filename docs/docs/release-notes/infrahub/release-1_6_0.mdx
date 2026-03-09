@@ -104,7 +104,7 @@ See which Infrahub edition you're using in the account menu alongside the versio
 
 ⚠ **BREAKING CHANGE**
 
-When using `convert_query_response` with nested relationships in Python transforms and Generators, queries must now include `id` and `__typename` fields on all nodes. This fixes a bug where objects were only converted one level deep.
+When using `convert_query_response` with nested relationships in Python Transformations and Generators, queries must now include `id` and `__typename` fields on all nodes. This fixes a bug where objects were only converted one level deep.
 
 If you are not using `convert_query_response` or if the queries that you are using with this feature aren't deeply nested, then you don't have to change anything.
 
@@ -112,7 +112,7 @@ If you are not using `convert_query_response` or if the queries that you are usi
 
 ## Added
 
-- Templates now support profile assignment. When both `generate_template` and `generate_profile` are configured on a schema node, profiles can be assigned to templates and will be automatically inherited by objects created from those templates. Profiles provide values for attributes not explicitly configured on the template, while template values take precedence when manually set. Multiple profiles can be assigned with proper priority handling. This enables bulk configuration updates across templated objects while maintaining consistency through profile inheritance. ([#template-profiles](https://github.com/opsmill/infrahub/issues/template-profiles))
+- Templates now support Profile assignment. When both `generate_template` and `generate_profile` are configured on a schema node, Profiles can be assigned to templates and will be automatically inherited by objects created from those templates. Profiles provide values for attributes not explicitly configured on the template, while template values take precedence when manually set. Multiple Profiles can be assigned with proper priority handling. This enables bulk configuration updates across templated objects while maintaining consistency through Profile inheritance. ([#template-profiles](https://github.com/opsmill/infrahub/issues/template-profiles))
 - Merge core read only repositories on branch merge ([#5978](https://github.com/opsmill/infrahub/issues/5978))
 - IPAM tree is now resizable:
 
