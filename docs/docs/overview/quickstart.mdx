@@ -1,0 +1,229 @@
+---
+title: Quick Start
+description: Set up a local Infrahub instance, load a data model, create infrastructure data, and explore branching.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
+
+In this tutorial, you will set up a local Infrahub instance on your machine, load a schema that defines your data model, create infrastructure objects, and explore branching. By the end, you will have a working environment with real data you can interact with.
+
+This quick start serves a dual purpose: it teaches you the fundamentals of Infrahub — schemas, `infrahubctl`, and branching — and it sets up a local development environment that you can continue building on as you go deeper.
+
+**Time**: ~30 minutes
+
+**What you will build**: A running Infrahub instance with a network location data model, location data, and a branch with proposed changes.
+
+:::note
+Running Infrahub locally with Docker is the most convenient setup for development and experimentation, but it requires a machine with adequate resources. See [hardware requirements](../topics/hardware-requirements.mdx) for details. If you prefer a lighter option, try the [Infrahub Sandbox](https://sandbox.infrahub.app/) or the [Getting Started Lab](https://opsmill.instruqt.com/pages/labs) instead.
+:::
+
+**Prerequisites**:
+
+- [Docker](https://docs.docker.com/get-docker/) installed and running (Docker Desktop or OrbStack)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
+- [Python 3.10+](https://www.python.org/downloads/)
+
+## Create a project
+
+[Copier](https://copier.readthedocs.io/) is a project scaffolding tool. Use it to create a new Infrahub project from the official template, which includes the standard file structure, task definitions, and a `schemas/` folder:
+
+1. Run the following command to create a new project directory:
+
+```bash
+uv tool run --from 'copier' copier copy https://github.com/opsmill/infrahub-template infrahub-automation
+```
+
+If you are unsure about the options, accept the default values for all prompts by pressing **Y**.
+
+2. Navigate to the project directory:
+
+```bash
+cd infrahub-automation
+```
+
+3. Open the project in your IDE. If you have Visual Studio Code installed, you can run:
+
+```bash
+code .
+```
+
+:::success Verification
+Run `ls` in the project directory. You should see files including `pyproject.toml`, `tasks.py`, and a `schemas/` folder.
+:::
+
+## Start Infrahub
+
+The project template includes [Invoke](https://www.pyinvoke.org/) tasks that wrap Docker Compose commands.
+
+1. Start all Infrahub services with a single command:
+
+```bash
+uv run invoke start
+```
+
+The first run takes a few minutes while Docker downloads the container images.
+
+2. Open your browser and go to [http://localhost:8000](http://localhost:8000).
+
+3. Log in from the bottom-left corner using the default credentials:
+
+    - Username: `admin`
+    - Password: `infrahub`
+
+:::success Verification
+You should see the Infrahub web interface with a navigation menu on the left side.
+:::
+
+## Load a schema
+
+A schema defines the structure of your infrastructure data in Infrahub — the types of objects, their attributes, and how they relate to each other. [Learn more about schemas](../topics/schema.mdx).
+
+Rather than writing a schema from scratch, use the [Schema Library](https://github.com/opsmill/schema-library), a community-maintained collection of reusable data models.
+
+1. Download the schema library:
+
+```bash
+uv run invoke schema-library-get
+```
+
+2. Explore the downloaded schema files in the `schema-library/` folder in your IDE.
+
+:::info
+- The schema library is divided into a `base/` with core definitions and `extensions/` that build on top of the base. You need to load the base to add extensions.
+- Since you have access to the full schema code, you can explore and modify the schemas to fit your organization's needs.
+:::
+
+3. Load the schema into your project:
+
+:::info
+To keep things organized, put all schema files in a `schemas/` folder in your project and load them from there. Copy the files you need from the `schema-library/` folder into your project's `schemas/` folder.
+:::
+
+```bash
+uv run infrahubctl schema load schemas/
+```
+
+:::success Verification
+Go back to [http://localhost:8000](http://localhost:8000) and refresh the page. The left-hand menu should now display new items including location types like **Country** and **Site**.
+:::
+
+## Create your first data
+
+There are multiple ways to create data in Infrahub — the WebUI, APIs, Python SDK, and more. For development purposes, it's often easiest to create YAML files and load them with `infrahubctl`.
+
+1. Create a file called `countries.yml` in the `objects/` folder with the following content:
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: LocationCountry
+  data:
+    - name: United States
+      shortname: US
+      description: US operations
+      children:
+        kind: LocationMetro
+        data:
+          - name: Denver
+            shortname: DEN
+    - name: France
+      shortname: FR
+      description: EU operations
+      children:
+        kind: LocationMetro
+        data:
+          - name: Paris
+            shortname: PAR
+```
+
+2. Load the data into Infrahub:
+
+```bash
+uv run infrahubctl object load objects/countries.yml
+```
+
+:::success Verification
+Go to [http://localhost:8000](http://localhost:8000) and navigate to the **Country** list in the left-hand menu. You should see **United States** and **France**. Click on **United States** to view its details.
+:::
+
+## Explore branching
+
+Branches in Infrahub work like Git branches — they let you stage changes in isolation without affecting the main dataset. This is one of Infrahub's most powerful features: you can propose, review, and test data changes before merging them. [Learn more about branching](../topics/branching.mdx).
+
+1. Create a branch called `add-locations`:
+
+<Tabs groupId="branching-method">
+  <TabItem value="infrahubctl" label="infrahubctl CLI" default>
+
+  ```bash
+  uv run infrahubctl branch create add-locations
+  ```
+
+  </TabItem>
+  <TabItem value="WebUI" label="WebUI">
+  Create an `add-locations` branch using the branch selector in the top-left corner of the WebUI.
+  </TabItem>
+</Tabs>
+
+2. Add sites in the `add-locations` branch:
+
+<Tabs groupId="branching-method">
+  <TabItem value="infrahubctl" label="infrahubctl CLI" default>
+
+  3. Create a file called `sites.yml` in the `objects/` folder:
+
+  ```yaml
+  ---
+  apiVersion: infrahub.app/v1
+  kind: Object
+  spec:
+    kind: LocationSite
+    data:
+      - name: Denver DC1
+        shortname: DEN1
+        description: Primary US data center
+        parent: DEN
+      - name: Paris DC1
+        shortname: PAR1
+        description: Primary EU data center
+        parent: PAR
+  ```
+
+  4. Load the sites into the `add-locations` branch:
+
+  ```bash
+  uv run infrahubctl object load objects/sites.yml --branch add-locations
+  ```
+
+  Notice the `--branch` flag — this targets the branch instead of main.
+
+  </TabItem>
+  <TabItem value="WebUI" label="WebUI">
+  - Switch to the `add-locations` branch in the WebUI.
+  - Using the left-hand menu, navigate to the **Site** list and click the "Create Site" button.
+  - Create new **Site** objects for **Denver DC1** and **Paris DC1** using the UI forms.
+  </TabItem>
+</Tabs>
+
+:::success Verification
+Go to [http://localhost:8000](http://localhost:8000). In the top-left corner, use the branch selector to switch to the **add-locations** branch. Navigate to the **Site** list in the left-hand menu. You should see **Denver DC1** and **Paris DC1**.
+
+Switch back to the **main** branch. The sites are not visible because they only exist in the `add-locations` branch.
+:::
+
+## Next steps
+
+You now have a working Infrahub development environment. You know how to:
+
+- Start a local Infrahub instance
+- Load a schema to define your data model
+- Create infrastructure objects from YAML files
+- Use branches to isolate changes from the main dataset
+
+The [Next Steps](./next-steps.mdx) guide walks you through turning this local setup into a proof of concept for your organization — from designing your own schema to generating artifacts and deploying to a shared environment.
+
+<ReferenceLink title="Next Steps" url="./next-steps" />

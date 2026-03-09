@@ -5,14 +5,18 @@ const sidebars: SidebarsConfig = {
     "home",
     {
       type: 'category',
-      label: 'Getting Started',
+      label: 'Overview',
       collapsed: false,
       collapsible: false,
+      link: {
+        type: 'doc',
+        id: 'overview/overview',
+      },
       items: [
-        'getting-started/overview',
-        'getting-started/quick-start',
-        'getting-started/next-steps',
-        'getting-started/concepts',
+        'overview/concepts',
+        'overview/explore',
+        'overview/quickstart',
+        'overview/next-steps',
       ],
     },
     {
