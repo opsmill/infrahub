@@ -33,15 +33,15 @@ The complete list of changes can always be found in the `CHANGELOG.md` file in t
 ### Added
 
 - Allow OIDC providers to fall back to id_token for group membership reports if they are not provided within the `userinfo` URL. This allows for group support using Azure. ([#5464](https://github.com/opsmill/infrahub/issues/5464))
-- Add computed attributes display in schema visualizer to display the Jinja2 and Python transforms details. ([#5515](https://github.com/opsmill/infrahub/issues/5515))
+- Add computed attributes display in schema visualizer to display the Jinja2 and Python Transformations details. ([#5515](https://github.com/opsmill/infrahub/issues/5515))
 
 ### Fixed
 
 - Prevent branches in a remote Git repository from being imported if they have conflicts. This can be checked in the repository task logs. ([#5085](https://github.com/opsmill/infrahub/issues/5085))
-- Correct the form to ensure it retrieves all values from the profile accurately. ([#5276](https://github.com/opsmill/infrahub/issues/5276))
+- Correct the form to ensure it retrieves all values from the Profile accurately. ([#5276](https://github.com/opsmill/infrahub/issues/5276))
 - Fix the multi select update mutation when removing all items. ([#5334](https://github.com/opsmill/infrahub/issues/5334))
 - Fix parent filter rule for relationships in forms to not mark as required if the field is required. ([#5418](https://github.com/opsmill/infrahub/issues/5418))
-- Ensure Transforms are executed with the correct timeout. ([#5456](https://github.com/opsmill/infrahub/issues/5456))
+- Ensure Transformations are executed with the correct timeout. ([#5456](https://github.com/opsmill/infrahub/issues/5456))
 - Fix unexpected `Too many relationships` error while retrieving multiple nodes having the same parent. ([#5474](https://github.com/opsmill/infrahub/issues/5474))
 - The name of generated artifacts is now using `artifact_name`, from the artifact definition, instead of the name of the definition itself. Existing artifacts will be renamed the next time they are generated. ([#5484](https://github.com/opsmill/infrahub/issues/5484))
 - Switch Docker health check from `/api/schema/summary` to `/api/config`, to ensure that the health check works when Infrahub is configured to disallow anonymous read access. ([#5522](https://github.com/opsmill/infrahub/issues/5522))

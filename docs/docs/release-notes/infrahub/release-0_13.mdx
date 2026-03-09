@@ -91,9 +91,9 @@ Generator are expected to be idempotent and should be able to run multiple times
 One use case for the Generators is to be able to manage technical objects derived from a higher level definition of a service.
 
 Generators are associated with some input data identified by a GraphQL query.
-Similar to the Transforms & Artifacts, Generator will be automatically executed as part of the CI Pipeline if the data associated with a given generator has changed.
+Similar to the Transformations & artifacts, Generator will be automatically executed as part of the CI Pipeline if the data associated with a given Generator has changed.
 
-The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like transforms and checks, the Generators are user defined.
+The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like Transformations and checks, the Generators are user defined.
 
 More information about Generators is available in the [Documentation](../../topics/generator.mdx).
 
@@ -144,7 +144,7 @@ More information about the schema is available in the [Documentation](../../refe
 
 In GraphQL, it's now possible to query 2 new properties on all attributes to gather more information about the origin of the value:
 
-- `is_from_profile`: True if the value was inherited from a profile, the name of the profile will be available in under `source`
+- `is_from_profile`: True if the value was inherited from a Profile, the name of the Profile will be available in under `source`
 - `is_default`: True if the value was set by the default value defined in the schema
 
 ### Other

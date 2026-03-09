@@ -31,8 +31,8 @@ While it's always possible to generate [Transformations](./transformation.mdx) o
 
 - **Caching**: Generated artifacts are stored in the internal [object storage](./object-storage.mdx). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
-- **Peer Review**: Artifacts are automatically part of the [Proposed Change](./proposed-change.mdx) review process.
-- **Database**: Artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
+- **Peer Review**: artifacts are automatically part of the [Proposed Change](./proposed-change.mdx) review process.
+- **Database**: artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
@@ -42,7 +42,7 @@ While the content of an artifact can change, its identifier will remain the same
 
 ## High level design
 
-Artifacts are defined by grouping a [transformation](./transformation.mdx) with a [group](./groups.mdx) of targets in an *Artifact Definition*.
+Artifacts are defined by grouping a [Transformation](./transformation.mdx) with a [group](./groups.mdx) of targets in an *artifact definition*.
 
 An **artifact definition** centralizes all the information required to generate an artifact.
 
@@ -53,7 +53,7 @@ An **artifact definition** centralizes all the information required to generate 
 
 Groups provide flexible targeting that decouples artifact generation from specific object lists. You can add or remove objects from groups without modifying artifact definitions. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
 
-From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the transformation is stored in the [object storage](./object-storage.mdx). The generation of the artifacts is performed by the Task worker(s).
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](./object-storage.mdx). The generation of the artifacts is performed by the Task worker(s).
 
 ![Artifact architecture diagram](../media/topics/artifact/architecture.excalidraw.svg)
 

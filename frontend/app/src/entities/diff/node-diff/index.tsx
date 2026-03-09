@@ -24,6 +24,7 @@ import { DiffNoFound } from "@/entities/diff/ui/diff-no-found";
 import { DiffRebaseButton } from "@/entities/diff/ui/diff-rebase-button";
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 import DiffTree from "@/entities/diff/ui/diff-tree";
+import { MERGE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
@@ -38,6 +39,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   // When branch prop is provided, we're in branch diff view - use only the branch prop
   // When no branch prop, we're in proposed change view - use source_branch from proposedChangesDetails
   const branchName: string = branch || proposedChangesDetails?.source_branch?.value;
+  const isMerged = proposedChangesDetails?.state?.value === MERGE_STATE;
   const branchExists = useBranchExists(branchName);
 
   // Get filters merged with status filter
@@ -77,6 +79,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
       <DiffComputing
         sourceBranch={branchName}
         destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+        hideActions={isMerged}
       />
     );
   }
@@ -87,6 +90,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
         branchName={branchName}
         lastRefreshedAt={firstPageNodes.to_time}
         branchExists={branchExists}
+        hideActions={isMerged}
       />
     );
   }
@@ -112,7 +116,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
         <span className="ml-auto inline-flex gap-1 text-xs">
           Updated <DateDisplay date={firstPageNodes?.to_time} />
         </span>
-        {branchExists && (
+        {branchExists && !isMerged && (
           <>
             <DiffRefreshButton size="sm" variant="primary" branchName={branchName} />
             <DiffRebaseButton branchName={branchName} />
