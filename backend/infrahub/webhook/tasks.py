@@ -10,6 +10,7 @@ from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
+from prefect.runtime import flow_run
 
 from infrahub.message_bus.types import KVTTL
 from infrahub.trigger.models import ExecuteWorkflow, TriggerType
@@ -17,6 +18,7 @@ from infrahub.trigger.setup import gather_all_automations, setup_triggers_specif
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_http
 from infrahub.workflows.utils import add_tags
 
+from .constants import EVENT_TO_ACTION, WebhookAction
 from .gather import gather_trigger_webhook
 from .models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook, WebhookTriggerDefinition
 
@@ -109,21 +111,34 @@ async def webhook_process(
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
 
 
-@flow(name="webhook-configure", flow_run_name="Configure webhook ({action}){' - ' + webhook_name if webhook_name else ''}")
+def _configure_webhook_run_name() -> str:
+    params = flow_run.parameters
+    action = params.get("event_type") or "reconcile_all"
+    name = f"Configure webhook ({action})"
+    if webhook_name := params.get("webhook_name"):
+        name += f" - {webhook_name}"
+    return name
+
+
+@flow(name="webhook-configure", flow_run_name=_configure_webhook_run_name)
 async def configure_webhook(
-    action: str = "reconcile_all",
+    event_type: str | None = None,
     webhook_id: str | None = None,
     webhook_name: str | None = None,
     event_data: dict | None = None,
 ) -> None:
-    if action == "configure":
-        await _configure_one(webhook_name=webhook_name, event_data=event_data)
-    elif action == "delete":
-        await _delete_automation(webhook_id=webhook_id)
-    elif action == "reconcile_all":
-        await _reconcile_all()
-    else:
-        raise ValueError(f"Unknown webhook configure action: {action}")
+    if event_type and event_type not in EVENT_TO_ACTION:
+        raise ValueError(f"Unknown webhook event type: {event_type}")
+
+    action = EVENT_TO_ACTION[event_type] if event_type else WebhookAction.RECONCILE_ALL
+
+    match action:
+        case WebhookAction.CONFIGURE:
+            await _configure_one(webhook_name=webhook_name, event_data=event_data)
+        case WebhookAction.DELETE:
+            await _delete_automation(webhook_id=webhook_id)
+        case WebhookAction.RECONCILE_ALL:
+            await _reconcile_all()
 
 
 async def _reconcile_all() -> None:
