@@ -14,14 +14,12 @@ from infrahub.trigger.setup import gather_all_automations
 from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.webhook.models import EventContext, WebhookTriggerDefinition
 from infrahub.webhook.tasks import (
-    configure_webhook_all,
-    configure_webhook_one,
+    configure_webhook,
     convert_node_to_webhook,
-    delete_webhook_automation,
     webhook_process,
 )
 from infrahub.workers.dependencies import build_http_service
-from infrahub.workflows.catalogue import WEBHOOK_PROCESS, WORKER_POOLS
+from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.adapters.http import MemoryHTTP
 from tests.constants import TestKind
@@ -109,6 +107,7 @@ class TestWebhookTasks(TestInfrahubApp):
     async def webhook_deployment(self, db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
         await setup_worker_pools(client=prefect_client)
         await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+        await WEBHOOK_CONFIGURE.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
     @pytest.fixture(scope="class")
     async def webhook1(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
@@ -193,7 +192,7 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_configure_one(
         self, db: InfrahubDatabase, prefect_client: PrefectClient, webhook1: Node, webhook_deployment: None
     ) -> None:
-        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
+        await configure_webhook(action="configure", webhook_name="Webhook1", event_data={"node_id": webhook1.id})
 
         name = f"webhook::{webhook1.id}"
         automations = await prefect_client.read_automations_by_name(name=name)
@@ -208,12 +207,12 @@ class TestWebhookTasks(TestInfrahubApp):
         assert action.parameters["webhook_kind"] == "CoreStandardWebhook"
 
         # Configure it a second time to ensure the function is idempotent
-        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
+        await configure_webhook(action="configure", webhook_name="Webhook1", event_data={"node_id": webhook1.id})
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 1
 
         # Delete the webhook automation
-        await delete_webhook_automation(webhook_id=webhook1.id, webhook_name="Webhook1")
+        await configure_webhook(action="delete", webhook_id=webhook1.id, webhook_name="Webhook1")
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 0
 
@@ -221,7 +220,7 @@ class TestWebhookTasks(TestInfrahubApp):
         self, db: InfrahubDatabase, prefect_client: PrefectClient, inactive_webhook: Node, webhook_deployment: None
     ) -> None:
         """Test that configuring an inactive webhook does not create a Prefect automation."""
-        await configure_webhook_one(webhook_name="InactiveWebhook", event_data={"node_id": inactive_webhook.id})
+        await configure_webhook(action="configure", webhook_name="InactiveWebhook", event_data={"node_id": inactive_webhook.id})
 
         name = f"webhook::{inactive_webhook.id}"
         automations = await prefect_client.read_automations_by_name(name=name)
@@ -232,7 +231,7 @@ class TestWebhookTasks(TestInfrahubApp):
     ) -> None:
         """Test that deactivating a webhook deletes its Prefect automation."""
         # First, ensure the webhook automation exists
-        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
+        await configure_webhook(action="configure", webhook_name="Webhook1", event_data={"node_id": webhook1.id})
         name = f"webhook::{webhook1.id}"
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 1
@@ -242,7 +241,7 @@ class TestWebhookTasks(TestInfrahubApp):
         await webhook1.save(db=db)
 
         # Configure again - should delete the automation
-        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id})
+        await configure_webhook(action="configure", webhook_name="Webhook1", event_data={"node_id": webhook1.id})
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 0
 
@@ -270,7 +269,7 @@ class TestWebhookTasks(TestInfrahubApp):
         webhook2: Node,
         webhook_deployment: None,
     ) -> None:
-        await configure_webhook_all()
+        await configure_webhook(action="reconcile_all")
 
         automations = await gather_all_automations(client=prefect_client)
         automations_by_name = {automation.name: automation for automation in automations}

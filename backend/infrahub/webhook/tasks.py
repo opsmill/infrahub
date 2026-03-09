@@ -109,8 +109,24 @@ async def webhook_process(
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
 
 
-@flow(name="webhook-setup-automation-all", flow_run_name="Configure all webhooks")
-async def configure_webhook_all() -> None:
+@flow(name="webhook-configure", flow_run_name="Configure webhook ({action}){' - ' + webhook_name if webhook_name else ''}")
+async def configure_webhook(
+    action: str = "reconcile_all",
+    webhook_id: str | None = None,
+    webhook_name: str | None = None,
+    event_data: dict | None = None,
+) -> None:
+    if action == "configure":
+        await _configure_one(webhook_name=webhook_name, event_data=event_data)
+    elif action == "delete":
+        await _delete_automation(webhook_id=webhook_id)
+    elif action == "reconcile_all":
+        await _reconcile_all()
+    else:
+        raise ValueError(f"Unknown webhook configure action: {action}")
+
+
+async def _reconcile_all() -> None:
     log = get_run_logger()
 
     database = await get_database()
@@ -121,10 +137,9 @@ async def configure_webhook_all() -> None:
     await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[arg-type]
 
 
-@flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
-async def configure_webhook_one(
-    webhook_name: str,
-    event_data: dict,
+async def _configure_one(
+    webhook_name: str | None,
+    event_data: dict | None,
 ) -> None:
     log = get_run_logger()
 
@@ -173,10 +188,8 @@ async def configure_webhook_one(
         await cache.delete(key=f"webhook:{webhook.id}")
 
 
-@flow(name="webhook-delete-automation", flow_run_name="Delete webhook automation for {webhook_name}")
-async def delete_webhook_automation(
-    webhook_id: str,
-    webhook_name: str,  # noqa: ARG001
+async def _delete_automation(
+    webhook_id: str | None
 ) -> None:
     log = get_run_logger()
 
