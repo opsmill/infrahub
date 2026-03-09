@@ -1,13 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { Link, useLocation } from "react-router";
-import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button, LinkButton } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -139,19 +137,15 @@ const AuthenticatedAccountMenu = () => {
   const { mutateAsync: logout, isPending: isLoggingOut } = useLogoutMutation();
 
   const handleSignOut = async () => {
-    await logout(undefined, {
-      onSuccess: () => {
-        setToken(null);
-        queryClient.invalidateQueries();
-        graphqlClient.refetchQueries({ include: "active" });
-      },
-      onError: (error) => {
-        console.error("Error when logging out: ", error);
-        toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to log out" />, {
-          toastId: "alert-error-sign-out",
-        });
-      },
-    });
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Error when logging out: ", error);
+    }
+
+    setToken(null);
+    queryClient.clear();
+    graphqlClient.clearStore();
   };
 
   if (isPending) {
