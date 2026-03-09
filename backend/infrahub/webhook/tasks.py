@@ -36,6 +36,7 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 
 @task(name="webhook-send", task_run_name="Send Standard Webhook {webhook.name}", cache_policy=NONE, retries=3)
 async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict) -> Response:
+    """Send an HTTP request to the webhook endpoint. Retries up to 3 times on failure."""
     http_service = get_http()
     client = get_client()
     response = await webhook.send(data=event_data, context=context, http_service=http_service, client=client)
@@ -77,6 +78,7 @@ async def webhook_process(
     event_payload: dict,
     branch_name: str | None = None,
 ) -> None:
+    """Resolve a webhook's configuration from cache (or DB on miss) and send the HTTP request."""
     log = get_run_logger()
     client = get_client()
     cache = await get_cache()
@@ -148,6 +150,7 @@ def parse_flow_params(event_type: str | None, event_data: dict | None) -> Webhoo
 
 
 def _configure_webhook_run_name() -> str:
+    """Generate a dynamic Prefect flow run name from the current run's parameters."""
     params = flow_run.parameters
     return parse_flow_params(
         event_type=params.get("event_type"),
@@ -177,6 +180,11 @@ async def configure_webhook(
 
 
 async def _reconcile_all() -> None:
+    """Sync all active webhooks with Prefect automations.
+
+    Delegates to setup_triggers_specific which creates missing automations,
+    updates existing ones, and removes automations for deleted webhooks.
+    """
     log = get_run_logger()
 
     database = await get_database()
@@ -191,6 +199,11 @@ async def _configure_one(
     webhook_id: str,
     webhook_name: str | None,
 ) -> None:
+    """Create or update a Prefect automation for a single webhook.
+
+    If the webhook is inactive, deletes the existing automation instead.
+    Always invalidates the webhook cache to ensure fresh config on next execution.
+    """
     log = get_run_logger()
 
     webhook = await get_client().get(kind=CoreWebhook, id=webhook_id)
@@ -241,6 +254,7 @@ async def _configure_one(
 async def _delete_automation(
     webhook_id: str,
 ) -> None:
+    """Delete the Prefect automation for a webhook and invalidate its cache."""
     log = get_run_logger()
 
     async with get_prefect_client(sync_client=False) as prefect_client:
