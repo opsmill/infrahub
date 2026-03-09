@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import ujson
@@ -111,32 +112,66 @@ async def webhook_process(
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
 
 
+@dataclass
+class WebhookConfigureParams:
+    action: WebhookAction
+    webhook_id: str | None
+    webhook_name: str | None
+
+    @property
+    def required_webhook_id(self) -> str:
+        if not self.webhook_id:
+            raise ValueError(f"webhook_id is required for action {self.action}")
+        return self.webhook_id
+
+    @property
+    def run_name(self) -> str:
+        name = f"Configure webhook ({self.action})"
+        if self.webhook_name:
+            name += f" - {self.webhook_name}"
+        return name
+
+
+def parse_flow_params(event_type: str | None, event_data: dict | None) -> WebhookConfigureParams:
+    """Parse raw flow parameters into a structured WebhookConfigureParams.
+
+    Maps event types to actions via EVENT_TO_ACTION. Defaults to RECONCILE_ALL
+    when no event_type is provided (e.g. scheduled runs).
+    """
+    if event_type and event_type not in EVENT_TO_ACTION:
+        raise ValueError(f"Unknown webhook event type: {event_type}")
+
+    action = EVENT_TO_ACTION[event_type] if event_type else WebhookAction.RECONCILE_ALL
+    webhook_id = event_data["node_id"] if event_data else None
+    webhook_name = event_data.get("changelog", {}).get("display_label") if event_data else None
+    return WebhookConfigureParams(action=action, webhook_id=webhook_id, webhook_name=webhook_name)
+
+
 def _configure_webhook_run_name() -> str:
     params = flow_run.parameters
-    action = params.get("event_type") or "reconcile_all"
-    name = f"Configure webhook ({action})"
-    if webhook_name := params.get("webhook_name"):
-        name += f" - {webhook_name}"
-    return name
+    return parse_flow_params(
+        event_type=params.get("event_type"),
+        event_data=params.get("event_data"),
+    ).run_name
 
 
 @flow(name="webhook-configure", flow_run_name=_configure_webhook_run_name)
 async def configure_webhook(
     event_type: str | None = None,
-    webhook_id: str | None = None,
-    webhook_name: str | None = None,
     event_data: dict | None = None,
 ) -> None:
-    if event_type and event_type not in EVENT_TO_ACTION:
-        raise ValueError(f"Unknown webhook event type: {event_type}")
+    """Entry point for webhook automation configuration.
 
-    action = EVENT_TO_ACTION[event_type] if event_type else WebhookAction.RECONCILE_ALL
+    Routes to the appropriate handler based on the event type: configure a single
+    webhook, delete an automation, or reconcile all webhooks.
+    """
+    parsed = parse_flow_params(event_type=event_type, event_data=event_data)
 
-    match action:
+    match parsed.action:
         case WebhookAction.CONFIGURE:
-            await _configure_one(webhook_name=webhook_name, event_data=event_data)
+            await _configure_one(webhook_id=parsed.required_webhook_id, webhook_name=parsed.webhook_name)
         case WebhookAction.DELETE:
-            await _delete_automation(webhook_id=webhook_id)
+            await _delete_automation(webhook_id=parsed.required_webhook_id)
         case WebhookAction.RECONCILE_ALL:
             await _reconcile_all()
 
@@ -153,12 +188,12 @@ async def _reconcile_all() -> None:
 
 
 async def _configure_one(
+    webhook_id: str,
     webhook_name: str | None,
-    event_data: dict | None,
 ) -> None:
     log = get_run_logger()
 
-    webhook = await get_client().get(kind=CoreWebhook, id=event_data["node_id"])
+    webhook = await get_client().get(kind=CoreWebhook, id=webhook_id)
     trigger = WebhookTriggerDefinition.from_object(webhook)
 
     async with get_prefect_client(sync_client=False) as prefect_client:
@@ -204,7 +239,7 @@ async def _configure_one(
 
 
 async def _delete_automation(
-    webhook_id: str | None
+    webhook_id: str,
 ) -> None:
     log = get_run_logger()
 

@@ -15,8 +15,6 @@ TRIGGER_WEBHOOK_CONFIGURE = BuiltinTriggerDefinition(
             workflow=WEBHOOK_CONFIGURE,
             parameters={
                 "event_type": "{{ event.event }}",
-                "webhook_id": "{{ event.payload['data']['node_id'] }}",
-                "webhook_name": "{{ event.payload['data']['changelog']['display_label'] }}",
                 "event_data": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['data'] | tojson }}"},
