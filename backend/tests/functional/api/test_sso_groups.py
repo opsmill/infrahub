@@ -7,6 +7,7 @@ import pytest
 
 from infrahub import config
 from infrahub.auth import signin_sso_account
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccountGroup
@@ -17,16 +18,14 @@ if TYPE_CHECKING:
 
 class TestSSOAutoGroupCreation:
     @pytest.fixture
-    async def existing_group(self, db: InfrahubDatabase) -> CoreAccountGroup:
+    async def existing_group(self, db: InfrahubDatabase) -> Node:
         """Create an existing group for testing."""
-        group = await Node.init(db=db, schema=CoreAccountGroup)
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await group.new(db=db, name="ExistingGroup")
         await group.save(db=db)
         return group
 
-    async def test_auto_create_groups_when_enabled(
-        self, db: InfrahubDatabase, existing_group: CoreAccountGroup
-    ) -> None:
+    async def test_auto_create_groups_when_enabled(self, db: InfrahubDatabase, existing_group: Node) -> None:
         """When sso_generate_groups is enabled, missing groups should be auto-created."""
         sso_groups = ["ExistingGroup", "NewGroup1", "NewGroup2"]
 
@@ -41,9 +40,7 @@ class TestSSOAutoGroupCreation:
         assert "NewGroup1" in group_names
         assert "NewGroup2" in group_names
 
-    async def test_no_auto_create_groups_when_disabled(
-        self, db: InfrahubDatabase, existing_group: CoreAccountGroup
-    ) -> None:
+    async def test_no_auto_create_groups_when_disabled(self, db: InfrahubDatabase, existing_group: Node) -> None:
         """When sso_generate_groups is disabled (default), missing groups should NOT be created."""
         sso_groups = ["ExistingGroup", "MissingGroup"]
 
@@ -57,9 +54,7 @@ class TestSSOAutoGroupCreation:
         assert "ExistingGroup" in group_names
         assert "MissingGroup" not in group_names
 
-    async def test_user_added_to_auto_created_groups(
-        self, db: InfrahubDatabase, existing_group: CoreAccountGroup
-    ) -> None:
+    async def test_user_added_to_auto_created_groups(self, db: InfrahubDatabase, existing_group: Node) -> None:
         """User should be added to both existing and auto-created groups."""
         sso_groups = ["ExistingGroup", "AutoCreatedGroup"]
 
@@ -79,9 +74,7 @@ class TestSSOAutoGroupCreation:
             member_names = [m.name.value for m in members.values()]
             assert "testuser3" in member_names, f"User not found in group {group.name.value}"
 
-    async def test_auto_created_groups_have_no_roles(
-        self, db: InfrahubDatabase, existing_group: CoreAccountGroup
-    ) -> None:
+    async def test_auto_created_groups_have_no_roles(self, db: InfrahubDatabase, existing_group: Node) -> None:
         """Auto-created groups should have no roles assigned."""
         sso_groups = ["GroupWithNoRoles"]
 

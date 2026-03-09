@@ -444,12 +444,16 @@ sso_user_default_group = "default-group"
 Now that group mapping is configured, manage user permissions in Infrahub by [assigning permissions and roles](./accounts-permissions.mdx) to these groups.
 :::
 
-#### Step 4: Enable automatic group creation (optional)
+#### Enable automatic group creation (optional)
 
 Instead of manually creating groups, you can configure Infrahub to automatically create missing groups when SSO users authenticate.
 
 :::warning
 Automatically created groups have no permissions by default. You'll need to assign permissions to these groups after they're created.
+:::
+
+:::info
+Infrahub adds group memberships during SSO login, but it does not remove existing memberships when your identity provider stops sending a group claim for a user.
 :::
 
 <Tabs groupId="config-method">
@@ -514,7 +518,7 @@ sso_generate_groups_filter = "ldap/groups/(\\w+)"
 </Tabs>
 
 :::info
-When a filter pattern contains a capture group, the first captured value becomes the group name in Infrahub. If you configure multiple patterns, Infrahub evaluates them in order and uses the first matching pattern for each group. Groups that do not match any pattern are ignored.
+Filter patterns use Python `re.match` semantics, so matching starts at the beginning of the SSO group identifier. When a filter pattern contains a capture group, the first captured value becomes the group name in Infrahub. If you only want grouping inside the regex without renaming the group, use a non-capturing group such as `(?:dev|prod)`. If you configure multiple patterns, Infrahub evaluates them in order and uses the first matching pattern for each group. Groups that do not match any pattern are ignored.
 :::
 
 ## Related resources

@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import bcrypt
 import jwt
@@ -21,9 +21,10 @@ from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.create import create_node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreGenericAccount
 from infrahub.core.registry import registry
-from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError
+from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ValidationError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -140,6 +141,20 @@ async def create_fresh_access_token(
 
 
 def _extract_effective_sso_group_names(sso_groups: list[str], filter_pattern: str | list[str] | None) -> set[str]:
+    """Extract effective group names for SSO auto-provisioning.
+
+    Args:
+        sso_groups: Group names received from the identity provider.
+        filter_pattern: A regex pattern, ordered list of regex patterns, or None.
+            Patterns are compiled and applied with ``re.match`` semantics. When
+            the first capture group matches, that captured value becomes the
+            effective group name; otherwise the original group name is used.
+
+    Returns:
+        The effective group names to provision. Returns an empty set when a
+        configured regex cannot be compiled.
+
+    """
     if filter_pattern is None:
         return set(sso_groups)
 
@@ -163,14 +178,70 @@ def _extract_effective_sso_group_names(sso_groups: list[str], filter_pattern: st
             if not match:
                 continue
 
-            if match.lastindex:
-                effective_group_names.add(match.group(1))
+            captured_name = match.group(1) if match.lastindex else None
+            if captured_name is not None:
+                effective_group_names.add(captured_name)
             else:
                 effective_group_names.add(group_name)
 
             break
 
     return effective_group_names
+
+
+async def _load_or_create_sso_groups(
+    db: InfrahubDatabase, effective_group_names: set[str], existing_group_names: set[str]
+) -> list[CoreAccountGroup]:
+    infrahub_groups: list[CoreAccountGroup] = []
+    missing_effective_names = effective_group_names - existing_group_names
+    if not missing_effective_names:
+        return infrahub_groups
+
+    existing_effective_groups = await NodeManager.query(
+        db=db,
+        schema=CoreAccountGroup,
+        filters={"name__values": list(missing_effective_names)},
+        prefetch_relationships=True,
+    )
+    for group in existing_effective_groups:
+        group_name = group.name.value
+        if group_name in existing_group_names:
+            continue
+        infrahub_groups.append(group)
+        existing_group_names.add(group_name)
+
+    missing_effective_names = effective_group_names - existing_group_names
+    if not missing_effective_names:
+        return infrahub_groups
+
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    account_group_schema = db.schema.get_node_schema(
+        name=InfrahubKind.ACCOUNTGROUP, branch=default_branch, duplicate=False
+    )
+
+    for effective_name in missing_effective_names:
+        try:
+            new_group = await create_node(
+                data={"name": effective_name},
+                db=db,
+                branch=default_branch,
+                schema=account_group_schema,
+            )
+            infrahub_groups.append(cast("CoreAccountGroup", new_group))
+            existing_group_names.add(effective_name)
+        except ValidationError:
+            concurrent_groups = await NodeManager.query(
+                db=db,
+                schema=CoreAccountGroup,
+                filters={"name__values": [effective_name]},
+                prefetch_relationships=True,
+            )
+            if not concurrent_groups:
+                raise
+            infrahub_groups.extend(concurrent_groups)
+            existing_group_names.update(group.name.value for group in concurrent_groups)
+
+    return infrahub_groups
 
 
 async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups: list[str]) -> models.UserToken:
@@ -197,54 +268,13 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
                 sso_groups=sso_groups,
                 filter_pattern=filter_pattern,
             )
-
-            missing_effective_names = effective_group_names - existing_group_names
-            if missing_effective_names:
-                existing_effective_groups = await NodeManager.query(
+            infrahub_groups.extend(
+                await _load_or_create_sso_groups(
                     db=db,
-                    schema=CoreAccountGroup,
-                    filters={"name__values": list(missing_effective_names)},
-                    prefetch_relationships=True,
+                    effective_group_names=effective_group_names,
+                    existing_group_names=existing_group_names,
                 )
-                for group in existing_effective_groups:
-                    group_name = group.name.value
-                    if group_name in existing_group_names:
-                        continue
-                    infrahub_groups.append(group)
-                    existing_group_names.add(group_name)
-
-            created_effective_names: set[str] = set()
-            for effective_name in effective_group_names:
-                if effective_name in existing_group_names:
-                    continue
-
-                try:
-                    new_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-                    await new_group.new(db=db, name=effective_name)
-                    await new_group.save(db=db)
-                    existing_group_names.add(effective_name)
-                    created_effective_names.add(effective_name)
-                except Exception:
-                    # A concurrent login may have created this group between check and create.
-                    concurrent_group = await NodeManager.query(
-                        db=db,
-                        schema=CoreAccountGroup,
-                        filters={"name__values": [effective_name]},
-                        prefetch_relationships=True,
-                    )
-                    if not concurrent_group:
-                        raise
-                    infrahub_groups.extend(concurrent_group)
-                    existing_group_names.add(effective_name)
-
-            if created_effective_names:
-                newly_created_groups = await NodeManager.query(
-                    db=db,
-                    schema=CoreAccountGroup,
-                    filters={"name__values": list(created_effective_names)},
-                    prefetch_relationships=True,
-                )
-                infrahub_groups.extend(newly_created_groups)
+            )
 
         for group in infrahub_groups:
             members = await group.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)

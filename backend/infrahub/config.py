@@ -774,6 +774,16 @@ class SecuritySettings(BaseSettings):
     @field_validator("sso_generate_groups_filter", mode="before")
     @classmethod
     def validate_sso_generate_groups_filter_regex(cls, value: str | list[str] | None) -> str | list[str] | None:
+        """Validate SSO group filter regex values.
+
+        Args:
+            value: A regex pattern string, an ordered list of regex pattern
+                strings, or None.
+
+        Raises:
+            ValueError: If any configured pattern fails to compile as a regular
+                expression.
+        """
         if value is None:
             return value
 
