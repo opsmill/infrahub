@@ -86,16 +86,14 @@ class CoreNumberPool(Node):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        node: Node,
         attribute: AttributeSchema,
-        identifier: str | None = None,
+        identifier: str,
         at: Timestamp | None = None,
     ) -> int:
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # NOTE: ideally we should use the HFID as the identifier (if available)
             # one of the challenge with using the HFID is that it might change over time
             # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
-            identifier = identifier or node.get_id()
 
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing number and allocate the next available

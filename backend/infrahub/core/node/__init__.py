@@ -432,7 +432,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         ):
             try:
                 next_free = await number_pool.get_resource(
-                    db=db, branch=self._branch, node=self, attribute=attribute.schema
+                    db=db, branch=self._branch, identifier=self.get_id(), attribute=attribute.schema
                 )
             except PoolExhaustedError as exc:
                 raise ValidationError(
