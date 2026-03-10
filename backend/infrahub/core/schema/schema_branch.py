@@ -2494,7 +2494,7 @@ class SchemaBranch:
         Returns:
             A RelationshipSchema for the resource pool relationship, or None if not applicable
         """
-        if attr.kind != "Number":
+        if attr.kind != "Number" or not attr.support_templates:
             return None
 
         pool_rel_name = f"{attr.name}{RESOURCE_POOL_REL_SUFFIX}"
@@ -2638,8 +2638,6 @@ class SchemaBranch:
 
         # Add resource pool relationships for eligible attributes (e.g., Number → CoreNumberPool)
         for node_attr in node.attributes:
-            if not node_attr.support_templates:
-                continue
             attr_pool_relationship = self._create_attribute_resource_pool_relationship(attr=node_attr)
             if attr_pool_relationship:
                 template_schema.relationships.append(attr_pool_relationship)
