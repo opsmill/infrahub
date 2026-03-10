@@ -87,8 +87,7 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
                 }
             )
 
-    @staticmethod
-    def _check_attribute_counterpart_not_set(node: Node, attribute_name: str, current_name: str) -> None:
+    def _check_attribute_counterpart_not_set(self, node: Node, attribute_name: str, current_name: str) -> None:
         """Check that the counterpart attribute does not have a user-set value."""
         try:
             attr = node.get_attribute(name=attribute_name)
