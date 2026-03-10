@@ -87,7 +87,7 @@ Key aspects of Generators include:
 
 5. Customization: While based on templates, Generators allow for significant customization to meet specific project requirements.
 
-6. Versioning: Infrahub supports versioning of generator outputs, enabling users to track changes over time.
+6. Versioning: Infrahub supports versioning of Generator outputs, enabling users to track changes over time.
 
 7. Integration: Generators can be integrated into workflows and CI/CD pipelines for automated infrastructure provisioning.
 
@@ -131,20 +131,20 @@ These concepts are tightly integrated and work together to address a wide range 
 
 ### Design-driven automation and service catalog
 
-Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../topics/schema.mdx) and instantiated by a generator.
+Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../topics/schema.mdx) and instantiated by a Generator.
 
-Downstream objects are linked to the generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
+Downstream objects are linked to the Generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
 
 For example, when deploying a new service:
     - A branch is created to stage the changes
-    - A generator runs and creates the needed objects according to the business logic
+    - A Generator runs and creates the needed objects according to the business logic
     - A Transformation runs to create the needed configuration files
     - The changes are reviewed and eventually merged in a proposed change
 
 :::success
 
 - This sets up a robust data structure that will allow lifecycle management of the service, including updates, decommissioning, and more.
-- Capturing business logic in the generator enables consistent and repeatable deployments, reducing the risk of human error.
+- Capturing business logic in the Generator enables consistent and repeatable deployments, reducing the risk of human error.
 
 :::
 
