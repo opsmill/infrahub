@@ -678,6 +678,7 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
                 TemplateInfraRackUpdate(
                     data: {
                         id: $id
+                        slot_id: { value: null }
                         slot_id_from_resource_pool: { id: $pool_id }
                     }
                 ) {

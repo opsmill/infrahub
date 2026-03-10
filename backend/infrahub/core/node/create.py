@@ -157,6 +157,7 @@ async def allocate_from_resource_pools(
             )  # type: ignore
             attribute = obj.get_attribute(name=original_name)
             attribute.value = allocated_value
+            attribute.is_default = False
             attribute.source = pool.id  # type: ignore[assignment]
         elif original_name in obj_schema.relationship_names:
             # IP pool: allocate a node and set it as the relationship peer

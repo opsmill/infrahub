@@ -33,7 +33,6 @@ class DefaultPoolAllocator(PoolAllocator):
             return None
 
         attr_schema = target_schema.get_attribute(name=attribute_name)
-        # NumberPool.get_resource needs a node-like object for identifier; use identifier directly
         return await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier, attribute=attr_schema)  # type: ignore[attr-defined]
 
     async def allocate_for_relationship(self, pool_relationship: RelationshipManager, identifier: str) -> Node | None:
