@@ -204,14 +204,16 @@ A single built-in trigger in `triggers.py` reacts to all webhook node lifecycle 
 | Component | Path |
 |-----------|------|
 | Models | `backend/infrahub/webhook/models.py` |
-| Tasks/Workflows | `backend/infrahub/webhook/tasks.py` |
+| Tasks/Workflows (configure) | `backend/infrahub/webhook/tasks/configure.py` |
+| Tasks/Workflows (process) | `backend/infrahub/webhook/tasks/process.py` |
 | Built-in Triggers | `backend/infrahub/webhook/triggers.py` |
 | Gathering | `backend/infrahub/webhook/gather.py` |
 | Schema definitions | `backend/infrahub/core/schema/definitions/core/webhook.py` |
 | GraphQL mutations | `backend/infrahub/graphql/mutations/webhook.py` |
 | Workflow catalogue | `backend/infrahub/workflows/catalogue.py` |
 | Unit tests | `backend/tests/unit/webhook/test_models.py` |
-| Functional tests | `backend/tests/functional/webhook/test_task.py` |
+| Functional tests (configure) | `backend/tests/functional/webhook/test_configure.py` |
+| Functional tests (process) | `backend/tests/functional/webhook/test_process.py` |
 | Mutation tests | `backend/tests/component/graphql/mutations/test_webhook.py` |
 
 ## See Also
