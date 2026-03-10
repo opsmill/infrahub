@@ -34,7 +34,7 @@ class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
         repo_kind: type[CoreGenericRepository],
     ) -> None:
         fixture_dir = get_fixtures_dir()
-        repo_name = "test_base"
+        repo_name = "car-dealership"
         repo_dir = fixture_dir / "repos" / repo_name / "initial__main"
         repo = GitRepo(type=git_repo_type, name=repo_name, src_directory=repo_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
