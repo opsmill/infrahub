@@ -54,7 +54,7 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
-from infrahub.exceptions import MergeFailedError
+from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
@@ -430,7 +430,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
     try:
         candidate_schema.duplicate().process()
-    except ValueError as exc:
+    except (ValueError, ValidationError, SchemaNotFoundError) as exc:
         error_msg = str(exc)
         parts = error_msg.split(":", 1)
         kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
