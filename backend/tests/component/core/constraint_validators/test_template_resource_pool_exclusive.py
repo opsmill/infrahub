@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -26,35 +26,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-
-IPAM_SCHEMA: dict[str, Any] = {
-    "nodes": [
-        {
-            "name": "IPPrefix",
-            "namespace": "Ipam",
-            "default_filter": "prefix__value",
-            "order_by": ["prefix__value"],
-            "display_labels": ["prefix__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "inherit_from": [InfrahubKind.IPPREFIX],
-        },
-        {
-            "name": "IPAddress",
-            "namespace": "Ipam",
-            "default_filter": "address__value",
-            "order_by": ["address__value"],
-            "display_labels": ["address__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "inherit_from": [InfrahubKind.IPADDRESS],
-        },
-    ],
-}
-
-
-@pytest.fixture(scope="class")
-def ipam_schema() -> SchemaRoot:
-    return SchemaRoot(**IPAM_SCHEMA)
 
 
 @pytest.fixture(scope="class")
