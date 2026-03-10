@@ -5,6 +5,7 @@ from prefect import flow, get_run_logger
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata
 from infrahub.core.diff.models import RequestDiffUpdate  # noqa: TC001  needed for prefect flow
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
@@ -57,6 +58,23 @@ async def refresh_diff(branch_name: str, diff_id: str) -> None:
         await diff_coordinator.recalculate(base_branch=base_branch, diff_branch=diff_branch, diff_id=diff_id)
 
 
+def _get_latest_branch_tracking_roots(
+    diff_roots: list[EnrichedDiffRootMetadata],
+) -> list[EnrichedDiffRootMetadata]:
+    """Filter diff roots to only include the latest BranchTrackingId root per diff_branch_name."""
+    latest_by_branch: dict[str, EnrichedDiffRootMetadata] = {}
+
+    for root in diff_roots:
+        if not isinstance(root.tracking_id, BranchTrackingId):
+            continue
+
+        key = root.diff_branch_name
+        if key not in latest_by_branch or root.to_time > latest_by_branch[key].to_time:
+            latest_by_branch[key] = root
+
+    return list(latest_by_branch.values())
+
+
 @flow(name="diff-refresh-all", flow_run_name="Recreate all diffs for branch {branch_name}")
 async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
     await add_tags(branches=[branch_name])
@@ -67,6 +85,7 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         diff_roots_to_refresh = await diff_repository.get_roots_metadata(diff_branch_names=[branch_name])
+        diff_roots_to_refresh = _get_latest_branch_tracking_roots(diff_roots_to_refresh)
 
         for diff_root in diff_roots_to_refresh:
             if diff_root.base_branch_name != diff_root.diff_branch_name:
