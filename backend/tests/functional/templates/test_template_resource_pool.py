@@ -695,6 +695,26 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         assert pool_peer is not None
         assert pool_peer.id == slot_pool.id
 
+    async def test_template_from_pool_on_attribute_blocked(self, slot_pool: Node, client: InfrahubClient) -> None:
+        """Using from_pool on a template attribute should raise an error."""
+        with pytest.raises(GraphQLError, match="'from_pool' is not supported on template attributes"):
+            await client.execute_graphql(
+                query="""
+                mutation CreateTemplateWithFromPool($pool_id: String!) {
+                    TemplateInfraRackCreate(
+                        data: {
+                            template_name: { value: "rack-from-pool-blocked" }
+                            slot_id: { from_pool: { id: $pool_id } }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"pool_id": slot_pool.id},
+            )
+
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
     """End-to-end test for pool allocations in templates with nested component relationships.

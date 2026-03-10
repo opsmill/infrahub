@@ -14,7 +14,7 @@ from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema
-from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError
+from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 
@@ -327,6 +327,22 @@ async def test_template_with_number_pool_relationship_does_not_allocate(
     pool_rel = await template.rack_unit_from_resource_pool.get_peer(db=db)
     assert pool_rel is not None
     assert pool_rel.id == number_pool.id
+
+
+async def test_template_from_pool_on_attribute_raises_validation_error(
+    db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
+) -> None:
+    """Using from_pool on a template attribute should raise ValidationError."""
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+
+    with pytest.raises(
+        ValidationError,
+        match=r"'from_pool' is not supported on template attributes\. Set the 'rack_unit_from_resource_pool' relationship on this template instead\.",
+    ):
+        await template.new(
+            db=db, template_name="device-template-from-pool-attr", rack_unit={"from_pool": {"id": number_pool.id}}
+        )
 
 
 async def test_object_from_template_with_number_pool_allocates_value(
