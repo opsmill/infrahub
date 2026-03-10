@@ -12,7 +12,7 @@ from tests.helpers.fixtures import get_fixtures_dir
 
 class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
     @pytest.mark.parametrize(
-        "git_repo_type,repo_kind",
+        ("git_repo_type", "repo_kind"),
         [
             pytest.param(
                 GitRepoType.READ_ONLY,
