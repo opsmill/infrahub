@@ -19,7 +19,7 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import SchemaElementPathType
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
@@ -366,21 +366,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
         """
         number_pool_id: str | None = None
-        # Templates should not allocate from pools - just store the reference
-        # Actual allocation happens when creating objects from the template
+        # Templates must use _from_resource_pool relationships, not from_pool
         if isinstance(self._schema, TemplateSchema):
             if attribute.from_pool:
-                try:
-                    number_pool_id = str(attribute.from_pool["id"])
-                except KeyError as exc:
-                    raise ValidationError(
-                        {f"{attribute.name}.from_pool": "Missing 'id' in from_pool reference."}
-                    ) from exc
-                attribute.value = None
-                allocate_resources = False
-            elif attribute.from_pool is None:
-                attribute.clear_source()
-                return
+                pool_rel_name = f"{attribute.name}{RESOURCE_POOL_REL_SUFFIX}"
+                raise ValidationError(
+                    {
+                        f"{attribute.name}.from_pool": (
+                            f"'from_pool' is not supported on template attributes. Set the '{pool_rel_name}' relationship on this template instead."
+                        )
+                    }
+                )
 
         # Case 1: Schema-defined NumberPool attribute
         if (
