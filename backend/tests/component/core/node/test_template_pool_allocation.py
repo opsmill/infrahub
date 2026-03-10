@@ -14,7 +14,7 @@ from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema
-from infrahub.exceptions import PoolExhaustedError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 
@@ -307,36 +307,40 @@ async def number_pool(
     return pool
 
 
-async def test_template_with_number_pool_attribute_does_not_allocate(
+async def test_template_with_number_pool_relationship_does_not_allocate(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
-    """Template with from_pool attribute should store reference but not allocate."""
+    """Template with _from_resource_pool relationship should store pool reference but not allocate."""
     template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-with-pool-attr", rack_unit={"from_pool": {"id": number_pool.id}}
+        db=db,
+        template_name="device-template-with-pool-attr",
+        rack_unit_from_resource_pool={"id": number_pool.id},
     )
     await template.save(db=db)
 
     assert template.id is not None
     assert template.rack_unit.value is None
 
-    source = await template.rack_unit.get_source(db=db)
-    assert source is not None
-    assert source.id == number_pool.id
+    pool_rel = await template.rack_unit_from_resource_pool.get_peer(db=db)
+    assert pool_rel is not None
+    assert pool_rel.id == number_pool.id
 
 
 async def test_object_from_template_with_number_pool_allocates_value(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
-    """Object created from template should allocate from the NumberPool."""
+    """Object created from template should allocate from the NumberPool via _from_resource_pool relationship."""
     template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-for-number-allocation", rack_unit={"from_pool": {"id": number_pool.id}}
+        db=db,
+        template_name="device-template-for-number-allocation",
+        rack_unit_from_resource_pool={"id": number_pool.id},
     )
     await template.save(db=db)
 
@@ -372,7 +376,9 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-explicit-override", rack_unit={"from_pool": {"id": number_pool.id}}
+        db=db,
+        template_name="device-template-explicit-override",
+        rack_unit_from_resource_pool={"id": number_pool.id},
     )
     await template.save(db=db)
 
@@ -399,7 +405,7 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
 async def test_object_from_template_raises_error_when_number_pool_exhausted(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
 ) -> None:
-    """Creating object from template raises ValidationError when NumberPool is exhausted."""
+    """Creating object from template raises PoolExhaustedError when NumberPool is exhausted."""
     small_pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
     await small_pool.new(
         db=db, name="small-rack-unit-pool", node=TestKind.DEVICE, node_attribute="rack_unit", start_range=1, end_range=2
@@ -411,7 +417,9 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-small-number-pool", rack_unit={"from_pool": {"id": small_pool.id}}
+        db=db,
+        template_name="device-template-small-number-pool",
+        rack_unit_from_resource_pool={"id": small_pool.id},
     )
     await template.save(db=db)
 
@@ -431,7 +439,7 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
         )
         assert device.id is not None
 
-    with pytest.raises(ValidationError, match=r"The pool (.*) is exhausted"):
+    with pytest.raises(PoolExhaustedError):
         await create_node(
             data={
                 "name": "device-should-fail-number",
@@ -505,13 +513,15 @@ async def test_template_children_and_pool_recorded_as_side_effects(
 async def test_create_template_with_invalid_number_pool_id(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
 ) -> None:
-    """Creating a template with from_pool referencing a nonexistent number pool should fail."""
+    """Saving a template with _from_resource_pool referencing a nonexistent pool should fail."""
     fake_pool_id = str(uuid4())
 
     template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
-
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
-    with pytest.raises(ValidationError, match=fake_pool_id):
-        await template.new(
-            db=db, template_name="device-template-bad-pool", rack_unit={"from_pool": {"id": fake_pool_id}}
-        )
+    await template.new(
+        db=db,
+        template_name="device-template-bad-pool",
+        rack_unit_from_resource_pool=fake_pool_id,
+    )
+    with pytest.raises(NodeNotFoundError):
+        await template.save(db=db)
