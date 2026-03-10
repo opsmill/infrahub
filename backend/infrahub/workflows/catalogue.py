@@ -531,6 +531,8 @@ WEBHOOK_CONFIGURE = WorkflowDefinition(
     cron=f"{random.randint(0, 59)} 3 * * *",
     module="infrahub.webhook.tasks",
     function="configure_webhook",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.ENQUEUE,
 )
 
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
