@@ -25,6 +25,8 @@ from .models import CustomWebhook, EventContext, StandardWebhook, TransformWebho
 
 if TYPE_CHECKING:
     from httpx import Response
+    from prefect import Flow, State
+    from prefect.client.schemas.objects import FlowRun
 
 
 WEBHOOK_MAP: dict[str, type[Webhook]] = {
@@ -158,7 +160,23 @@ def _configure_webhook_run_name() -> str:
     ).run_name
 
 
-@flow(name="webhook-configure", flow_run_name=_configure_webhook_run_name)
+async def _configure_webhook_on_failure(flow: Flow, flow_run: FlowRun, state: State) -> None:  # noqa: ARG001
+    """Log structured error when webhook configuration fails."""
+    run_log = get_run_logger()
+    parsed = parse_flow_params(
+        event_type=flow_run.parameters.get("event_type"),
+        event_data=flow_run.parameters.get("event_data"),
+    )
+    run_log.error(
+        "Webhook configuration failed: action=%s webhook_id=%s webhook_name=%s state_message=%s",
+        parsed.action,
+        parsed.webhook_id,
+        parsed.webhook_name,
+        state.message,
+    )
+
+
+@flow(name="webhook-configure", flow_run_name=_configure_webhook_run_name, on_failure=[_configure_webhook_on_failure])
 async def configure_webhook(
     event_type: str | None = None,
     event_data: dict | None = None,

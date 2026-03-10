@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 import httpx
 import pytest
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.protocols import CoreStandardWebhook
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.actions import RunDeployment
@@ -425,6 +426,20 @@ class TestWebhookTasks(TestInfrahubApp):
             "ID": "ce3b7013-4abb-4945-89de-1f56da4ff636",
             "OCCURED_AT": "2025-02-28T08:37:09.969Z",
         }
+
+    async def test_configure_webhook_on_failure_logs_error(
+        self, webhook_deployment: None, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that the on_failure hook logs structured error when configuration fails."""
+        with pytest.raises(NodeNotFoundError), caplog.at_level("ERROR"):
+            await configure_webhook(
+                event_type="infrahub.node.created",
+                event_data={"node_id": "non-existent-id", "changelog": {"display_label": "Ghost"}},
+            )
+        assert "Webhook configuration failed" in caplog.text
+        assert "non-existent-id" in caplog.text
+        assert "Ghost" in caplog.text
+        assert "configure" in caplog.text
 
     async def test_trigger_definition_node_kind_match(
         self,
