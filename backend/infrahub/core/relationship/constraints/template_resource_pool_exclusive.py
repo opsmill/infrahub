@@ -35,6 +35,8 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
 
         expanded = list(field_filters)
         for name in field_filters:
+            if name not in node_schema.attribute_names:
+                continue
             pool_rel_name = f"{name}{RESOURCE_POOL_REL_SUFFIX}"
             if pool_rel_name in node_schema.relationship_names and pool_rel_name not in expanded:
                 expanded.append(pool_rel_name)
