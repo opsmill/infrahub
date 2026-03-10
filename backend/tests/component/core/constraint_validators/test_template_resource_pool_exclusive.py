@@ -347,13 +347,10 @@ class TestTemplateResourcePoolExclusiveConstraint:
         weight_attr = template.get_attribute(name="weight")
         assert weight_attr.is_default is True
 
-        # Act
-        result = await constraint.check(
+        # Act & Assert -> No error should occur, pool is allowed when attribute has no user-set value
+        await constraint.check(
             relm=template.weight_from_resource_pool, node_schema=template.get_schema(), node=template
         )
-
-        # No error raised, pool is allowed when attribute has no user-set value
-        assert result is None
 
     async def test_constraint_rejects_attribute_pool_when_attribute_has_value(
         self,
@@ -437,15 +434,12 @@ class TestTemplateResourcePoolExclusiveConstraint:
         weight_attr.is_default = True
         await loaded_template.weight_from_resource_pool.update(db=db, data={"id": number_pool.id})
 
-        # Act
-        result = await constraint.check(
+        # Act & Assert -> No error should occur, pool is allowed after resetting attribute
+        await constraint.check(
             relm=loaded_template.weight_from_resource_pool,
             node_schema=loaded_template.get_schema(),
             node=loaded_template,
         )
-
-        # No error raised, pool is allowed after resetting attribute
-        assert result is None
 
 
 class TestNodeConstraintRunnerPoolFilterExpansion:
@@ -518,8 +512,5 @@ class TestNodeConstraintRunnerPoolFilterExpansion:
             relationship_manager_constraints=[constraint],
         )
 
-        # Act
-        result = await runner.check(node=loaded_template, field_filters=["weight"], skip_uniqueness_check=True)
-
-        # No error occurred
-        assert result is None
+        # Act & Assert -> No error should occur
+        await runner.check(node=loaded_template, field_filters=["weight"], skip_uniqueness_check=True)

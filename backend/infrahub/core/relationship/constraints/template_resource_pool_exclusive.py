@@ -54,7 +54,7 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
             if original_name in node_schema.relationship_names:
                 await self._check_counterpart_not_set(node=node, counterpart_name=original_name, current_name=rel_name)
             elif original_name in node_schema.attribute_names:
-                await self._check_attribute_counterpart_not_set(
+                self._check_attribute_counterpart_not_set(
                     node=node, attribute_name=original_name, current_name=rel_name
                 )
         else:
@@ -88,7 +88,7 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
             )
 
     @staticmethod
-    async def _check_attribute_counterpart_not_set(node: Node, attribute_name: str, current_name: str) -> None:
+    def _check_attribute_counterpart_not_set(node: Node, attribute_name: str, current_name: str) -> None:
         """Check that the counterpart attribute does not have a user-set value."""
         try:
             attr = node.get_attribute(name=attribute_name)
