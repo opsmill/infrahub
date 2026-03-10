@@ -521,7 +521,7 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
 WEBHOOK_PROCESS = WorkflowDefinition(
     name="webhook-process",
     type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
+    module="infrahub.webhook.tasks.process",
     function="webhook_process",
 )
 
@@ -529,7 +529,7 @@ WEBHOOK_CONFIGURE = WorkflowDefinition(
     name="webhook-configure",
     type=WorkflowType.INTERNAL,
     cron=f"{random.randint(0, 59)} 3 * * *",
-    module="infrahub.webhook.tasks",
+    module="infrahub.webhook.tasks.configure",
     function="configure_webhook",
     concurrency_limit=1,
     concurrency_limit_strategy=ConcurrencyLimitStrategy.ENQUEUE,
