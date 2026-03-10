@@ -28,63 +28,85 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+IPAM_SCHEMA: dict[str, Any] = {
+    "nodes": [
+        {
+            "name": "IPPrefix",
+            "namespace": "Ipam",
+            "default_filter": "prefix__value",
+            "order_by": ["prefix__value"],
+            "display_labels": ["prefix__value"],
+            "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.IPPREFIX],
+        },
+        {
+            "name": "IPAddress",
+            "namespace": "Ipam",
+            "default_filter": "address__value",
+            "order_by": ["address__value"],
+            "display_labels": ["address__value"],
+            "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.IPADDRESS],
+        },
+    ],
+}
+
+
+@pytest.fixture(scope="class")
+def ipam_schema() -> SchemaRoot:
+    return SchemaRoot(**IPAM_SCHEMA)
+
+
+@pytest.fixture(scope="class")
+async def register_ipam_schema(default_branch_scope_class: Branch, ipam_schema: SchemaRoot) -> None:
+    registry.schema.register_schema(schema=ipam_schema, branch=default_branch_scope_class.name)
+    default_branch_scope_class.update_schema_hash()
+
+
+@pytest.fixture(scope="class")
+def init_nodes_registry() -> None:
+    registry.node["Node"] = Node
+    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+
+@pytest.fixture(scope="class")
+async def device_schema_with_pool_rel(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    register_core_models_schema_scope_class: SchemaBranch,
+    register_ipam_schema: None,
+    init_nodes_registry: None,
+) -> None:
+    device = copy.deepcopy(DEVICE)
+    device.relationships = [
+        RelationshipSchema(
+            name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
+        )
+    ]
+    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
+    registry.schema.register_schema(schema=schema, branch=default_branch_scope_class.name)
+
+
+@pytest.fixture(scope="class")
+async def number_pool(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, device_schema_with_pool_rel: None
+) -> CoreNumberPool:
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(
+        db=db,
+        name="weight-pool",
+        node=TestKind.DEVICE,
+        node_attribute="weight",
+        start_range=1,
+        end_range=100,
+    )
+    await pool.save(db=db)
+    return pool
+
+
 class TestTemplateResourcePoolExclusiveConstraint:
-    @pytest.fixture(scope="class")
-    def ipam_schema(self) -> SchemaRoot:
-        SCHEMA: dict[str, Any] = {
-            "nodes": [
-                {
-                    "name": "IPPrefix",
-                    "namespace": "Ipam",
-                    "default_filter": "prefix__value",
-                    "order_by": ["prefix__value"],
-                    "display_labels": ["prefix__value"],
-                    "branch": BranchSupportType.AWARE.value,
-                    "inherit_from": [InfrahubKind.IPPREFIX],
-                },
-                {
-                    "name": "IPAddress",
-                    "namespace": "Ipam",
-                    "default_filter": "address__value",
-                    "order_by": ["address__value"],
-                    "display_labels": ["address__value"],
-                    "branch": BranchSupportType.AWARE.value,
-                    "inherit_from": [InfrahubKind.IPADDRESS],
-                },
-            ],
-        }
-        return SchemaRoot(**SCHEMA)
-
-    @pytest.fixture(scope="class")
-    async def register_ipam_schema(self, default_branch_scope_class: Branch, ipam_schema: SchemaRoot) -> None:
-        registry.schema.register_schema(schema=ipam_schema, branch=default_branch_scope_class.name)
-        default_branch_scope_class.update_schema_hash()
-
-    @pytest.fixture(scope="class")
-    def init_nodes_registry(self) -> None:
-        registry.node["Node"] = Node
-        registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
-        registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
-        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-
-    @pytest.fixture(scope="class")
-    async def device_schema_with_pool_rel(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-        register_ipam_schema: None,
-        init_nodes_registry: None,
-    ) -> None:
-        device = copy.deepcopy(DEVICE)
-        device.relationships = [
-            RelationshipSchema(
-                name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
-            )
-        ]
-        schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
-        registry.schema.register_schema(schema=schema, branch=default_branch_scope_class.name)
-
     @pytest.fixture(scope="class")
     async def ip_namespace(self, db: InfrahubDatabase, register_ipam_schema: SchemaBranch) -> Node:
         ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
@@ -305,22 +327,6 @@ class TestTemplateResourcePoolExclusiveConstraint:
             relm=loaded_template.primary_ip, node_schema=loaded_template.get_schema(), node=loaded_template
         )
 
-    @pytest.fixture(scope="class")
-    async def number_pool(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_schema_with_pool_rel: None
-    ) -> CoreNumberPool:
-        pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-        await pool.new(
-            db=db,
-            name="weight-pool",
-            node=TestKind.DEVICE,
-            node_attribute="weight",
-            start_range=1,
-            end_range=100,
-        )
-        await pool.save(db=db)
-        return pool
-
     async def test_constraint_allows_attribute_pool_when_attribute_is_default(
         self,
         db: InfrahubDatabase,
@@ -445,78 +451,6 @@ class TestTemplateResourcePoolExclusiveConstraint:
 class TestNodeConstraintRunnerPoolFilterExpansion:
     """Tests that NodeConstraintRunner expands field_filters to include _from_resource_pool
     relationships when an attribute is being updated on a template."""
-
-    @pytest.fixture(scope="class")
-    def ipam_schema(self) -> SchemaRoot:
-        SCHEMA: dict[str, Any] = {
-            "nodes": [
-                {
-                    "name": "IPPrefix",
-                    "namespace": "Ipam",
-                    "default_filter": "prefix__value",
-                    "order_by": ["prefix__value"],
-                    "display_labels": ["prefix__value"],
-                    "branch": BranchSupportType.AWARE.value,
-                    "inherit_from": [InfrahubKind.IPPREFIX],
-                },
-                {
-                    "name": "IPAddress",
-                    "namespace": "Ipam",
-                    "default_filter": "address__value",
-                    "order_by": ["address__value"],
-                    "display_labels": ["address__value"],
-                    "branch": BranchSupportType.AWARE.value,
-                    "inherit_from": [InfrahubKind.IPADDRESS],
-                },
-            ],
-        }
-        return SchemaRoot(**SCHEMA)
-
-    @pytest.fixture(scope="class")
-    async def register_ipam_schema(self, default_branch_scope_class: Branch, ipam_schema: SchemaRoot) -> None:
-        registry.schema.register_schema(schema=ipam_schema, branch=default_branch_scope_class.name)
-        default_branch_scope_class.update_schema_hash()
-
-    @pytest.fixture(scope="class")
-    def init_nodes_registry(self) -> None:
-        registry.node["Node"] = Node
-        registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
-        registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
-        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-
-    @pytest.fixture(scope="class")
-    async def device_schema_with_pool_rel(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-        register_ipam_schema: None,
-        init_nodes_registry: None,
-    ) -> None:
-        device = copy.deepcopy(DEVICE)
-        device.relationships = [
-            RelationshipSchema(
-                name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
-            )
-        ]
-        schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
-        registry.schema.register_schema(schema=schema, branch=default_branch_scope_class.name)
-
-    @pytest.fixture(scope="class")
-    async def number_pool(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_schema_with_pool_rel: None
-    ) -> CoreNumberPool:
-        pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-        await pool.new(
-            db=db,
-            name="runner-weight-pool",
-            node=TestKind.DEVICE,
-            node_attribute="weight",
-            start_range=1,
-            end_range=100,
-        )
-        await pool.save(db=db)
-        return pool
 
     async def test_runner_rejects_attribute_update_when_pool_is_set(
         self,
