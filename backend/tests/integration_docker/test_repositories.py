@@ -31,7 +31,7 @@ class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
         client: InfrahubClient,
         remote_repos_dir: Path,
         git_repo_type: GitRepoType,
-        repo_kind: CoreGenericRepository,
+        repo_kind: type[CoreGenericRepository],
     ) -> None:
         fixture_dir = get_fixtures_dir()
         repo_name = "test_base"
