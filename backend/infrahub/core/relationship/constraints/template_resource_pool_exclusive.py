@@ -29,6 +29,17 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
         self.db = db
         self.branch = branch
 
+    def expand_filters(self, field_filters: list[str], node_schema: MainSchemaTypes) -> list[str]:
+        if not node_schema.is_template_schema:
+            return field_filters
+
+        expanded = list(field_filters)
+        for name in field_filters:
+            pool_rel_name = f"{name}{RESOURCE_POOL_REL_SUFFIX}"
+            if pool_rel_name in node_schema.relationship_names and pool_rel_name not in expanded:
+                expanded.append(pool_rel_name)
+        return expanded
+
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:
         if not node_schema.is_template_schema:
             return
