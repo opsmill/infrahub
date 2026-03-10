@@ -551,3 +551,99 @@ async def test_schema_load_restricted_names(
         response.json()["errors"][0]["message"]
         == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
     )
+
+
+async def test_schema_load_reserved_suffix_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_attribute_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on attribute 'foo_from_resource_pool' in 'TestTestNode'"
+    )
+
+
+async def test_schema_load_reserved_suffix_relationship(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_relationship_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on relationship 'bar_from_resource_pool' in 'TestTestNode'"
+    )
+
+
+async def test_schema_check_reserved_suffix_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/check",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_attribute_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on attribute 'foo_from_resource_pool' in 'TestTestNode'"
+    )
+
+
+async def test_schema_check_reserved_suffix_relationship(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/check",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_relationship_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on relationship 'bar_from_resource_pool' in 'TestTestNode'"
+    )
