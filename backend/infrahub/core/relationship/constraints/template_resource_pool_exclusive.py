@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 
 
 class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInterface):
-    """Constraint that prevents setting both a relationship and its _from_resource_pool counterpart on templates.
+    """Constraint that prevents setting both a relationship/attribute and its _from_resource_pool counterpart on templates.
 
     On template instances, users can either:
-    - Set a fixed relationship value (e.g., ip_address pointing to a specific IP)
-    - Set a pool to allocate from (e.g., ip_address_from_resource_pool pointing to a pool)
+    - Set a fixed value (relationship peer or attribute value)
+    - Set a pool to allocate from (e.g., ip_address_from_resource_pool or weight_from_resource_pool)
 
     But not both at the same time.
     """
@@ -39,8 +39,13 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
         rel_name = relm.schema.name
 
         if rel_name.endswith(RESOURCE_POOL_REL_SUFFIX):
-            original_rel_name = rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
-            await self._check_counterpart_not_set(node=node, counterpart_name=original_rel_name, current_name=rel_name)
+            original_name = rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
+            if original_name in node_schema.relationship_names:
+                await self._check_counterpart_not_set(node=node, counterpart_name=original_name, current_name=rel_name)
+            elif original_name in node_schema.attribute_names:
+                await self._check_attribute_counterpart_not_set(
+                    node=node, attribute_name=original_name, current_name=rel_name
+                )
         else:
             # Check if this relationship has a pool counterpart and if it's set
             pool_rel_name = f"{rel_name}{RESOURCE_POOL_REL_SUFFIX}"
@@ -67,6 +72,24 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
                     current_name: (
                         f"Cannot set '{current_name}' when '{counterpart_name}' is already set. "
                         "Templates can only use one of: direct relationship or resource pool allocation."
+                    )
+                }
+            )
+
+    @staticmethod
+    async def _check_attribute_counterpart_not_set(node: Node, attribute_name: str, current_name: str) -> None:
+        """Check that the counterpart attribute does not have a user-set value."""
+        try:
+            attr = node.get_attribute(name=attribute_name)
+        except ValueError:
+            return
+
+        if not attr.is_default and attr.value is not None:
+            raise ValidationError(
+                {
+                    current_name: (
+                        f"Cannot set '{current_name}' when '{attribute_name}' has a value set. "
+                        "Templates can only use one of: direct attribute value or resource pool allocation."
                     )
                 }
             )

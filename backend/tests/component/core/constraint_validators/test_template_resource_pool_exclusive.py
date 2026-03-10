@@ -10,11 +10,13 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind, Relationshi
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.relationship.constraints.template_resource_pool_exclusive import (
     TemplateResourcePoolExclusiveConstraint,
 )
 from infrahub.core.schema import RelationshipSchema, SchemaRoot
 from infrahub.exceptions import ValidationError
+from tests.constants import TestKind
 from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
 
 if TYPE_CHECKING:
@@ -60,6 +62,7 @@ class TestTemplateResourcePoolExclusiveConstraint:
         registry.node["Node"] = Node
         registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
         registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     @pytest.fixture(scope="class")
     async def device_schema_with_pool_rel(
@@ -298,3 +301,139 @@ class TestTemplateResourcePoolExclusiveConstraint:
         await constraint.check(
             relm=loaded_template.primary_ip, node_schema=loaded_template.get_schema(), node=loaded_template
         )
+
+    @pytest.fixture(scope="class")
+    async def number_pool(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_schema_with_pool_rel: None
+    ) -> CoreNumberPool:
+        pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(
+            db=db,
+            name="weight-pool",
+            node=TestKind.DEVICE,
+            node_attribute="weight",
+            start_range=1,
+            end_range=100,
+        )
+        await pool.save(db=db)
+        return pool
+
+    async def test_constraint_allows_attribute_pool_when_attribute_is_default(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        number_pool: CoreNumberPool,
+    ) -> None:
+        """Pool relationship is allowed when the attribute has no user-set value."""
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        constraint = TemplateResourcePoolExclusiveConstraint(db=db, branch=default_branch_scope_class)
+
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-template-attr-pool-only", weight_from_resource_pool=number_pool)
+
+        # Attribute is defaulted
+        weight_attr = template.get_attribute(name="weight")
+        assert weight_attr.is_default is True
+
+        # Act
+        result = await constraint.check(
+            relm=template.weight_from_resource_pool, node_schema=template.get_schema(), node=template
+        )
+
+        # No error raised
+        assert result is None
+
+    async def test_constraint_rejects_attribute_pool_when_attribute_has_value(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        number_pool: CoreNumberPool,
+    ) -> None:
+        """Pool relationship is rejected when the attribute has a user-set value."""
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        constraint = TemplateResourcePoolExclusiveConstraint(db=db, branch=default_branch_scope_class)
+
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(
+            db=db,
+            template_name="device-template-attr-and-pool",
+            weight=42,
+            weight_from_resource_pool=number_pool,
+        )
+
+        with pytest.raises(ValidationError) as exc:
+            # Act
+            await constraint.check(
+                relm=template.weight_from_resource_pool, node_schema=template.get_schema(), node=template
+            )
+
+        assert "Cannot set 'weight_from_resource_pool' when 'weight' has a value set." in exc.value.message
+
+    async def test_constraint_rejects_attribute_pool_when_attribute_set_on_saved_template(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        number_pool: CoreNumberPool,
+    ) -> None:
+        """Pool relationship is rejected when the attribute was set on a previously saved template."""
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        constraint = TemplateResourcePoolExclusiveConstraint(db=db, branch=default_branch_scope_class)
+
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-template-attr-then-pool", weight=42)
+        await template.save(db=db)
+
+        loaded_template = await registry.manager.get_one(db=db, id=template.id, branch=default_branch_scope_class)
+        await loaded_template.weight_from_resource_pool.update(db=db, data={"id": number_pool.id})
+
+        with pytest.raises(ValidationError) as exc:
+            # Act
+            await constraint.check(
+                relm=loaded_template.weight_from_resource_pool,
+                node_schema=loaded_template.get_schema(),
+                node=loaded_template,
+            )
+
+        assert "Cannot set 'weight_from_resource_pool' when 'weight' has a value set." in exc.value.message
+
+    async def test_constraint_allows_attribute_pool_after_resetting_attribute(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        device_schema_with_pool_rel: None,
+        number_pool: CoreNumberPool,
+    ) -> None:
+        """Pool relationship is allowed after the attribute value is reset to default."""
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch_scope_class
+        )
+        constraint = TemplateResourcePoolExclusiveConstraint(db=db, branch=default_branch_scope_class)
+
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch_scope_class)
+        await template.new(db=db, template_name="device-template-reset-attr", weight=42)
+        await template.save(db=db)
+
+        loaded_template = await registry.manager.get_one(db=db, id=template.id, branch=default_branch_scope_class)
+        weight_attr = loaded_template.get_attribute(name="weight")
+        weight_attr.value = None
+        weight_attr.is_default = True
+        await loaded_template.weight_from_resource_pool.update(db=db, data={"id": number_pool.id})
+
+        # Act
+        result = await constraint.check(
+            relm=loaded_template.weight_from_resource_pool,
+            node_schema=loaded_template.get_schema(),
+            node=loaded_template,
+        )
+
+        # No error raised
+        assert result is None
