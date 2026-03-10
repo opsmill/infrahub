@@ -22,6 +22,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.tasks import get_latest_branch_tracking_roots
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -538,6 +539,7 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         # send diff update requests for every branch-tracking diff
         branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
+        branch_diff_roots = get_latest_branch_tracking_roots(branch_diff_roots)
 
         await get_workflow().submit_workflow(
             workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -558,8 +560,6 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
             if (
                 diff_root.base_branch_name != diff_root.diff_branch_name
                 and diff_root.diff_branch_name in active_branch_names
-                and diff_root.tracking_id
-                and isinstance(diff_root.tracking_id, BranchTrackingId)
             ):
                 request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
                 await get_workflow().submit_workflow(
