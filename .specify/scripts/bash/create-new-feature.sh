@@ -306,9 +306,10 @@ if [ -z "$BRANCH_NUMBER" ]; then
     fi
 fi
 
-# If BRANCH_NUMBER is a ticket ID (e.g., infp-460, ifc-2140), use it as-is.
+# If BRANCH_NUMBER is a ticket ID (e.g., infp-460, ifc-2140, gh-7400) or a
+# placeholder (e.g., ph-user-auth), use it as-is.
 # Otherwise zero-pad as a 3-digit integer (legacy numeric mode).
-if [[ "$BRANCH_NUMBER" =~ ^[a-z]+-[0-9]+$ ]]; then
+if [[ "$BRANCH_NUMBER" =~ ^[a-z]+-[a-z0-9][a-z0-9-]*$ ]]; then
     FEATURE_NUM="$BRANCH_NUMBER"
 else
     # Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)

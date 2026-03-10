@@ -36,25 +36,32 @@ Given that feature description, do this:
      - "Create a dashboard for analytics" → "analytics-dashboard"
      - "Fix payment processing timeout bug" → "fix-payment-timeout"
 
-2. **Determine the Jira/JPD reference and create the feature branch**:
+2. **Determine the ticket reference and create the feature branch**:
 
-   a. Determine the Jira/JPD reference for this feature:
-      - Parse `$ARGUMENTS` for a ticket ID matching:
+   a. Determine the ticket reference for this feature:
+      - Parse `$ARGUMENTS` for a ticket ID matching any of these formats:
         - JPD format: `infp-[0-9]+` (e.g., `infp-460`)
         - Jira epic format: `ifc-[0-9]+` (e.g., `ifc-2140`)
+        - GitHub issue format: `gh-[0-9]+` (e.g., `gh-7400`)
       - If no ticket ID is found in the arguments, prompt the user:
 
-        > "Please provide a Jira or JPD reference for this feature (e.g., `infp-460` for a JPD item or `ifc-2140` for a Jira epic):"
+        > "Please provide a ticket reference for this feature, or choose to create a placeholder:
+        > - Jira/JPD: `infp-460` (JPD item) or `ifc-2140` (Jira epic)
+        > - GitHub issue: `gh-7400`
+        > - Placeholder: type `ph` or press Enter to skip — the feature folder will be named `ph-<short-name>`"
 
-      - Do not proceed until a valid ticket ID is provided.
+      - If the user provides a valid ticket ID (`infp-*`, `ifc-*`, or `gh-*`), use it.
+      - If the user types `ph`, presses Enter, or provides no ticket ID, use a placeholder: set the ticket ID to `ph-<short-name>` (e.g., `ph-user-auth`). No number is appended.
 
    b. Run the script `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` with the ticket ID and short-name:
       - Pass `--number <ticket-id>` and `--short-name "your-short-name"` along with the feature description
-      - Bash example: `.specify/scripts/bash/create-new-feature.sh --json --number infp-460 --short-name "user-auth" "Add user authentication"`
-      - PowerShell example: `.specify/scripts/bash/create-new-feature.sh --json -Number infp-460 -ShortName "user-auth" "Add user authentication"`
+      - Bash examples:
+        - Jira: `.specify/scripts/bash/create-new-feature.sh --json --number infp-460 --short-name "user-auth" "Add user authentication"`
+        - GitHub: `.specify/scripts/bash/create-new-feature.sh --json --number gh-7400 --short-name "user-auth" "Add user authentication"`
+        - Placeholder: `.specify/scripts/bash/create-new-feature.sh --json --number ph-user-auth --short-name "user-auth" "Add user authentication"`
 
    **IMPORTANT**:
-   - A valid ticket ID is required — never invent or skip it
+   - Never invent a ticket ID — either parse one from the arguments, confirm with the user, or use the `ph-<short-name>` placeholder
    - Ticket IDs are unique identifiers; no branch scanning is needed
    - You must only ever run this script once per feature
    - The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for
