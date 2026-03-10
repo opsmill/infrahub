@@ -345,6 +345,26 @@ async def test_template_from_pool_on_attribute_raises_validation_error(
         )
 
 
+async def test_template_from_pool_on_relationship_raises_validation_error(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    ip_address_pool: CoreIPAddressPool,
+) -> None:
+    """Using from_pool on a template relationship should raise ValidationError."""
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+
+    with pytest.raises(
+        ValidationError,
+        match=r"'from_pool' is not supported on template relationships\. "
+        r"Set the 'primary_ip_from_resource_pool' relationship on this template instead\.",
+    ):
+        await template.new(
+            db=db, template_name="device-template-from-pool-rel", primary_ip={"from_pool": {"id": ip_address_pool.id}}
+        )
+
+
 async def test_object_from_template_with_number_pool_allocates_value(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
