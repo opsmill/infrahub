@@ -169,11 +169,7 @@ CREATE_TEMPLATE_TICKET_WITH_POOL = """
 mutation CreateTemplateTicketWithPool($template_name: String!, $pool_id: String!) {
     TemplateTestingTicketCreate(data: {
         template_name: { value: $template_name }
-        ticket_id: {
-            from_pool: {
-                id: $pool_id
-            }
-        }
+        ticket_id_from_resource_pool: { id: $pool_id }
     }) {
         ok
         object {
@@ -200,11 +196,7 @@ UPDATE_TEMPLATE_TICKET_WITH_POOL = """
 mutation UpdateTemplateTicketWithPool($template_id: String!, $pool_id: String!) {
     TemplateTestingTicketUpdate(data: {
         id: $template_id
-        ticket_id: {
-            from_pool: {
-                id: $pool_id
-            }
-        }
+        ticket_id_from_resource_pool: { id: $pool_id }
     }) {
         ok
     }
@@ -263,7 +255,9 @@ class TestNumberPoolTemplate:
         )
         assert loaded is not None
         assert loaded.ticket_id.value is None
-        assert loaded.ticket_id.source_id == number_pool.id
+        pool_peer = await loaded.ticket_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == number_pool.id
 
     async def test_create_template_from_number_pool_by_id(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, number_pool: CoreNumberPool
@@ -287,7 +281,9 @@ class TestNumberPoolTemplate:
         )
         assert loaded is not None
         assert loaded.ticket_id.value is None
-        assert loaded.ticket_id.source_id == number_pool.id
+        pool_peer = await loaded.ticket_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == number_pool.id
 
     async def test_update_template_from_number_pool_by_name(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, number_pool: CoreNumberPool
@@ -324,7 +320,9 @@ class TestNumberPoolTemplate:
         )
         assert loaded is not None
         assert loaded.ticket_id.value is None
-        assert loaded.ticket_id.source_id == number_pool.id
+        pool_peer = await loaded.ticket_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == number_pool.id
 
     async def test_update_template_from_number_pool_by_id(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, number_pool: CoreNumberPool
@@ -361,4 +359,6 @@ class TestNumberPoolTemplate:
         )
         assert loaded is not None
         assert loaded.ticket_id.value is None
-        assert loaded.ticket_id.source_id == number_pool.id
+        pool_peer = await loaded.ticket_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == number_pool.id

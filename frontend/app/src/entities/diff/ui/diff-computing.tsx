@@ -8,9 +8,14 @@ import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 export interface DiffComputingProps {
   sourceBranch: string;
   destinationBranch: string;
+  hideActions?: boolean;
 }
 
-export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputingProps) {
+export function DiffComputing({
+  sourceBranch,
+  destinationBranch,
+  hideActions,
+}: DiffComputingProps) {
   return (
     <div className="mt-10 flex flex-col items-center gap-5">
       <LoadingIndicator message="" />
@@ -33,7 +38,7 @@ export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputing
         <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
       </div>
 
-      <DiffRefreshButton branchName={sourceBranch} />
+      {!hideActions && <DiffRefreshButton branchName={sourceBranch} />}
     </div>
   );
 }

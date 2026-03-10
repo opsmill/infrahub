@@ -4,7 +4,7 @@ title: Rendering configuration
 
 # Rendering configurations using transformations
 
-Infrahub can render configurations from the data that it contains. In Infrahub this process is called a transformation. We transform data according to a certain schema in Infrahub to some other format. Examples of this are, a network device configuration file, an OpenConfig payload, inputs to a CloudFormation template, a configuration file for a Linux daemon.
+Infrahub can render configurations from the data that it contains. In Infrahub this process is called a Transformation. We transform data according to a certain schema in Infrahub to some other format. Examples of this are, a network device configuration file, an OpenConfig payload, inputs to a CloudFormation template, a configuration file for a Linux daemon.
 
 Infrahub has 2 types of transformations:
 
@@ -15,7 +15,7 @@ Please refer to [Transformation topic](../../topics/transformation.mdx) to learn
 
 ## Generate the configuration of a device using Jinja2
 
-From the `infrahub-demo-git` repository that we imported in the previous section of the tutorial, we imported 2 Jinja2 transformations. We can run the transformation by accessing them via the REST API under `/api/transform/jinja2/<transform_name>` followed by any additional parameters expected in the GraphQL query that the transformation uses.
+From the `infrahub-demo-git` repository that we imported in the previous section of the tutorial, we imported 2 Jinja2 Transformations. We can run the Transformation by accessing them via the REST API under `/api/transform/jinja2/<transform_name>` followed by any additional parameters expected in the GraphQL query that the Transformation uses.
 
 The imported Jinja2 transform, `device_startup`, expects the name of the device as a parameter `/api/transform/jinja2/device_startup?device=<device_name>`. As an example, below is the URL for couple of devices:
 
