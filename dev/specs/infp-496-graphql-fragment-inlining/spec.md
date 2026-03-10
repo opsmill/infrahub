@@ -104,6 +104,37 @@ A platform engineer updates a fragment definition in the fragment file (e.g., ad
 - What happens when a query uses the same fragment spread more than once? The fragment definition is included only once in the rendered output.
 - What happens when fragments are circularly dependent (A uses B, B uses A)? The importer detects the cycle and reports it as an import error.
 
+## Architecture / Component Responsibilities
+
+Fragment parsing, resolution, and rendering is **SDK responsibility**, not server responsibility. The Infrahub server calls into the SDK during repository sync; it does not own this logic itself.
+
+### Why the SDK owns fragment rendering
+
+`infrahubctl` executes GraphQL queries directly from the local filesystem — it never imports them into a running Infrahub instance first. If fragment rendering lived only on the server, local `infrahubctl` workflows (e.g. `infrahubctl run`, `infrahubctl transform`) would not benefit from fragment inlining and would break when encountering fragment spreads in local query files.
+
+Placing the logic in the SDK means a single implementation is reused by:
+
+1. **Infrahub server** — calls the SDK rendering function during repository sync to produce the fully-rendered query text before storing it in the database.
+2. **infrahubctl** — calls the same SDK rendering function when loading queries from the local filesystem before executing them.
+
+### Component split
+
+| Responsibility | Owner |
+|---|---|
+| Parse `.gql` files and resolve fragment spreads | Python SDK |
+| Detect transitive dependencies, cycles, duplicate names | Python SDK |
+| Produce fully-rendered, self-contained query document | Python SDK |
+| Declare `graphql_fragments` in `.infrahub.yml` | Python SDK config model |
+| Call SDK renderer during repository sync | Infrahub server (import pipeline) |
+| Store rendered query text in database | Infrahub server |
+| Call SDK renderer when loading local query files | infrahubctl |
+
+### Constraint
+
+No fragment rendering logic should be added to the Infrahub server codebase directly. Any logic needed by the server must live in the SDK and be imported from there.
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -122,6 +153,8 @@ A platform engineer updates a fragment definition in the fragment file (e.g., ad
 - **FR-012**: Fragment scoping MUST be per-repository — fragment files from one repository are not accessible when importing queries from a different repository.
 - **FR-013**: If the same fragment name is defined more than once — either within a single fragment file or across multiple declared fragment files in the same repository — the importer MUST report this as an error, since the correct definition would be ambiguous.
 - **FR-014**: Circular fragment dependencies (A uses B, B uses A) MUST be detected and reported as an import error.
+- **FR-015**: Fragment parsing, resolution, and rendering logic MUST reside in the Python SDK, not in the Infrahub server codebase. The server MUST call SDK functions for this; it MUST NOT duplicate the logic.
+- **FR-016**: `infrahubctl` commands that load GraphQL query files from the local filesystem MUST apply the same fragment rendering logic (via the SDK) before executing those queries. Local workflows MUST continue to work when queries reference fragment spreads defined in local fragment files.
 
 ### Key Entities
 
