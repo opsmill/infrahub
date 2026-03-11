@@ -37,12 +37,6 @@ from .group import (
     core_repository_group,
     core_standard_group,
 )
-from .key_value import (
-    core_key_value,
-    core_key_value_environment_variable,
-    core_key_value_password,
-    core_key_value_static,
-)
 from .ipam import (
     builtin_ip_address,
     builtin_ip_prefix,
@@ -50,6 +44,12 @@ from .ipam import (
     core_ipam_namespace,
     internal_ipam_ip_prefix_available,
     internal_ipam_ip_range_available,
+)
+from .key_value import (
+    core_key_value,
+    core_key_value_environment_variable,
+    core_key_value_password,
+    core_key_value_static,
 )
 from .lineage import lineage_owner, lineage_source
 from .menu import generic_menu_item, menu_item

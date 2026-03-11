@@ -133,9 +133,7 @@ class TestWebhookHeaders(TestInfrahubApp):
         return webhook
 
     @pytest.fixture(scope="class")
-    async def webhook_with_env_header(
-        self, db: InfrahubDatabase, initial_dataset: None, env_var_header: Node
-    ) -> Node:
+    async def webhook_with_env_header(self, db: InfrahubDatabase, initial_dataset: None, env_var_header: Node) -> Node:
         webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
         await webhook.new(
             db=db,
@@ -151,9 +149,7 @@ class TestWebhookHeaders(TestInfrahubApp):
         return webhook
 
     @pytest.fixture(scope="class")
-    async def webhook_a_shared(
-        self, db: InfrahubDatabase, initial_dataset: None, shared_header: Node
-    ) -> Node:
+    async def webhook_a_shared(self, db: InfrahubDatabase, initial_dataset: None, shared_header: Node) -> Node:
         webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
         await webhook.new(
             db=db,
@@ -169,9 +165,7 @@ class TestWebhookHeaders(TestInfrahubApp):
         return webhook
 
     @pytest.fixture(scope="class")
-    async def webhook_b_shared(
-        self, db: InfrahubDatabase, initial_dataset: None, shared_header: Node
-    ) -> Node:
+    async def webhook_b_shared(self, db: InfrahubDatabase, initial_dataset: None, shared_header: Node) -> Node:
         webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
         await webhook.new(
             db=db,
@@ -351,9 +345,7 @@ class TestWebhookHeaders(TestInfrahubApp):
             http = HeaderCapturingHTTP()
             http.add_post_response(
                 url="https://url.mock",
-                response=httpx.Response(
-                    request=httpx.Request(method="POST", url="https://url.mock"), status_code=200
-                ),
+                response=httpx.Response(request=httpx.Request(method="POST", url="https://url.mock"), status_code=200),
             )
             with dependency_provider.scope(build_http_service, lambda _http=http: _http):
                 await webhook_process(
