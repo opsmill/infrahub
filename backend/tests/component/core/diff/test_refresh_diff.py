@@ -1,4 +1,3 @@
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -12,6 +11,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.tasks import refresh_diff_all
 from infrahub.database import InfrahubDatabase
 from infrahub.workflows.catalogue import DIFF_REFRESH, DIFF_UPDATE
+from infrahub.workflows.models import WorkflowDefinition
 
 from .factories import EnrichedRootFactory
 
@@ -23,7 +23,7 @@ def _make_context(branch_name: str) -> InfrahubContext:
     )
 
 
-def _filter_calls(mock_workflow: MagicMock, workflow: Any) -> list[call]:
+def _filter_calls(mock_workflow: MagicMock, workflow: WorkflowDefinition) -> list[call]:  # type: ignore
     return [c for c in mock_workflow.submit_workflow.call_args_list if c.kwargs.get("workflow") == workflow]
 
 

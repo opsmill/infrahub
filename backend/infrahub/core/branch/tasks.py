@@ -558,10 +558,10 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
         for diff_root in diff_roots:
             if (
-                isinstance(diff_root.tracking_id, BranchTrackingId)
-                and not diff_root.is_frozen
-                and diff_root.base_branch_name != diff_root.diff_branch_name
+                diff_root.base_branch_name != diff_root.diff_branch_name
                 and diff_root.diff_branch_name in active_branch_names
+                and isinstance(diff_root.tracking_id, BranchTrackingId)
+                and not diff_root.is_frozen
             ):
                 request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
                 await get_workflow().submit_workflow(
