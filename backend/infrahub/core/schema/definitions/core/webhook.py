@@ -91,6 +91,17 @@ core_webhook = GenericSchema(
             order_weight=5000,
         ),
     ],
+    relationships=[
+        Rel(
+            name="headers",
+            peer=InfrahubKind.KEYVALUE,
+            kind=RelKind.ATTRIBUTE,
+            identifier="webhook__headers",
+            cardinality=Cardinality.MANY,
+            optional=True,
+            order_weight=6000,
+        ),
+    ],
 )
 
 core_standard_webhook = NodeSchema(
