@@ -21,17 +21,18 @@ class Migration066Query01(Query):
         MATCH (diff_root:DiffRoot)
         WHERE diff_root.tracking_id STARTS WITH "branch."
         AND (diff_root.is_frozen IS NULL OR diff_root.is_frozen <> TRUE)
-        OPTIONAL MATCH (branch:Branch {name: diff_root.diff_branch})
+        WITH diff_root, substring(diff_root.tracking_id, 7) AS branch_name
+        OPTIONAL MATCH (branch:Branch {name: branch_name})
             WHERE branch.status <> "DELETING"
-        WITH diff_root, branch
+        WITH diff_root, branch, branch_name
         WHERE branch IS NULL
             OR branch.branched_from <> diff_root.from_time
             OR branch.status = "MERGED"
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_PARTNER]-(partner:DiffRoot)
         SET diff_root.is_frozen = TRUE
-        SET diff_root.tracking_id = "frozen." + diff_root.diff_branch
+        SET diff_root.tracking_id = "frozen." + branch_name
         SET partner.is_frozen = TRUE
-        SET partner.tracking_id = "frozen." + diff_root.diff_branch
+        SET partner.tracking_id = "frozen." + branch_name
         """
         self.add_to_query(query)
 
