@@ -148,7 +148,7 @@ For local filesystem storage, copy the object storage directory:
 
 ```bash
 # Copy object storage directory to backup location
-docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/object_store/
+docker compose cp infrahub-server:/opt/infrahub/storage/. /backup/object_store/
 ```
 
 </TabItem>
@@ -278,8 +278,8 @@ aws s3 sync /backup/object_store/ s3://your-infrahub-bucket
 <TabItem value="local" label="Local Filesystem">
 
 ```bash
-# Restore object storage directory
-cp -r /backup/object_store/ /path/to/infrahub/storage/
+# Restore object storage directory into the container
+docker compose cp /backup/object_store/. infrahub-server:/opt/infrahub/storage/
 ```
 
 </TabItem>
