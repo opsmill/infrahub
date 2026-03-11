@@ -55,6 +55,9 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema.schema_branch_display import TemplateLabel
+    from infrahub.core.schema.schema_branch_hfid import HFIDDefinition
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
@@ -819,27 +822,36 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self
 
-    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+    @staticmethod
+    def _merge_relationship_fields(
+        definitions: list[HFIDDefinition | TemplateLabel],
+    ) -> dict[str, set[str]]:
+        """Merge ``relationship_fields`` from the given definitions into a single mapping."""
         extra_filters: dict[str, set[str]] = {}
+        for definition in definitions:
+            for rel_name, attrs in definition.relationship_fields.items():
+                extra_filters.setdefault(rel_name, set()).update(attrs)
+        return extra_filters
 
-        if not self._existing:
-            # If we are creating a new node, we need to resolve extra filters from HFID and Display Labels,
-            # if we don't do this the fields might be blank
-            schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
-            try:
-                hfid_identifier = schema_branch.hfids.get_node_definition(kind=self._schema.kind)
-                for rel_name, attrs in hfid_identifier.relationship_fields.items():
-                    extra_filters.setdefault(rel_name, set()).update(attrs)
-            except KeyError:
-                # No HFID defined for this kind
-                ...
-            try:
-                display_label_identifier = schema_branch.display_labels.get_template_node(kind=self._schema.kind)
-                for rel_name, attrs in display_label_identifier.relationship_fields.items():
-                    extra_filters.setdefault(rel_name, set()).update(attrs)
-            except KeyError:
-                # No Display Label defined for this kind
-                ...
+    def _collect_extra_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
+        """Collect peer attributes that must be loaded during relationship resolution."""
+        definitions: list[HFIDDefinition | TemplateLabel] = []
+
+        # If we are creating a new node, we need to resolve extra filters from Display Labels or HFIDs, if we don't do
+        # this the fields might be blank.
+        # We could also need it when we need to recompute the Display Labels or HFIDs
+        if (not self._existing) or self._human_friendly_id:
+            if hfid := schema_branch.hfids.get_template_nodes().get(self._schema.kind):
+                definitions.append(hfid)
+        if (not self._existing) or self._display_label:
+            if display_labels := schema_branch.display_labels.get_template_nodes().get(self._schema.kind):
+                definitions.append(display_labels)
+
+        return self._merge_relationship_fields(definitions)
+
+    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+        schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
+        extra_filters = self._collect_extra_filters(schema_branch=schema_branch)
 
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
