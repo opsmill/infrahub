@@ -22,7 +22,6 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
-from infrahub.core.diff.tasks import get_latest_branch_tracking_roots
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -553,15 +552,15 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         if not config.SETTINGS.main.diff_update_after_merge:
             return
 
-        # send diff update requests for every branch-tracking diff
-        branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
-        branch_diff_roots = get_latest_branch_tracking_roots(branch_diff_roots)
+        # send diff update requests for every active branch-tracking diff
         active_branches = await Branch.get_list(db=db)
         active_branch_names = {branch.name for branch in active_branches}
-
-        for diff_root in branch_diff_roots:
+        diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
+        for diff_root in diff_roots:
             if (
-                diff_root.base_branch_name != diff_root.diff_branch_name
+                isinstance(diff_root.tracking_id, BranchTrackingId)
+                and not diff_root.is_frozen
+                and diff_root.base_branch_name != diff_root.diff_branch_name
                 and diff_root.diff_branch_name in active_branch_names
             ):
                 request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
