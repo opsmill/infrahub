@@ -98,7 +98,7 @@ export function ObjectDataDisplay({
           | NodeRelationshipOneWithMetadata
           | undefined;
 
-        if (fromResourcePoolRelationship && poolRelData) {
+        if (fromResourcePoolRelationship && poolRelData?.node) {
           return (
             <ObjectRelationshipRow
               key={fieldName}
