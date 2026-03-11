@@ -12,16 +12,18 @@ from tests.helpers.fixtures import get_fixtures_dir
 
 class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
     @pytest.mark.parametrize(
-        ("git_repo_type", "repo_kind"),
+        ("git_repo_type", "repo_kind", "repo_name"),
         [
             pytest.param(
                 GitRepoType.READ_ONLY,
                 CoreReadOnlyRepository,
+                "read-only-repo",
                 id="read-only-repo",
             ),
             pytest.param(
                 GitRepoType.INTEGRATED,
                 CoreRepository,
+                "core-repo",
                 id="core-repo",
             ),
         ],
@@ -32,9 +34,9 @@ class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
         remote_repos_dir: Path,
         git_repo_type: GitRepoType,
         repo_kind: type[CoreGenericRepository],
+        repo_name: str,
     ) -> None:
         fixture_dir = get_fixtures_dir()
-        repo_name = "car-dealership"
         repo_dir = fixture_dir / "repos" / repo_name / "initial__main"
         repo = GitRepo(type=git_repo_type, name=repo_name, src_directory=repo_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
