@@ -82,6 +82,10 @@
   description: "Topic for brainstorming, discussions"
   color: "e19e0f"
 
+- name: "type/spec"
+  description: "A specification for an upcoming change to the project"
+  color: "8b5cf6"
+
 - name: "type/user-centric"
   description: "Issue that would improve the overall experience of our users"
   color: "ff8c00"
