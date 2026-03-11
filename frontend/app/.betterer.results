@@ -238,7 +238,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2093276488": [
       [19, 10, 8, "tsc: Type \'(null | string | undefined)[]\' is not assignable to type \'string[]\'.\\n  Type \'string | null | undefined\' is not assignable to type \'string\'.\\n    Type \'undefined\' is not assignable to type \'string\'.", "3441362927"]
     ],
-    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:1654065084": [
+    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:1029296365": [
       [146, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
     ],
     "src/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row.test.tsx:3986220632": [
