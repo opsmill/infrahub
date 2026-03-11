@@ -1,10 +1,14 @@
 import ipaddress
+from typing import Any
+
+import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -1371,3 +1375,109 @@ async def test_delete_top_level_prefix(
 
     ip_prefixes = await NodeManager.query(db=db, branch=default_branch, schema="IpamIPPrefix")
     assert len(ip_prefixes) == 0
+
+
+@pytest.fixture
+async def schema_with_ip_address_hfid(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> SchemaBranch:
+    """Register IPAM schemas with human_friendly_id on IpamIPAddress and a TestDevice with an IP address relationship."""
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Ipam",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_labels": ["prefix__value"],
+                "branch": "aware",
+                "inherit_from": [InfrahubKind.IPPREFIX],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Ipam",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_labels": ["address__value"],
+                "human_friendly_id": ["address__value"],
+                "branch": "aware",
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "primary_ip",
+                        "peer": "IpamIPAddress",
+                        "identifier": "device__primary_ip",
+                        "cardinality": "one",
+                        "optional": True,
+                        "kind": "Attribute",
+                    },
+                ],
+            },
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+async def test_ipaddress_relationship_with_hfid(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    schema_with_ip_address_hfid: SchemaBranch,
+) -> None:
+    """Verify that a relationship targeting IpamIPAddress can be referenced by hfid."""
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    addr = await Node.init(db=db, schema=address_schema)
+    await addr.new(db=db, address="10.0.0.1/32")
+    await addr.save(db=db)
+
+    addr_hfid = await addr.get_hfid(db=db)
+    assert addr_hfid
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation CreateDevice($name: String!, $ip_hfid: [String!]!) {
+            TestDeviceCreate(
+                data: {
+                    name: { value: $name }
+                    primary_ip: { hfid: $ip_hfid }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    primary_ip {
+                        node {
+                            address {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"name": "device01", "ip_hfid": addr_hfid},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["TestDeviceCreate"]["ok"]
+    assert result.data["TestDeviceCreate"]["object"]["primary_ip"]["node"]["address"]["value"] == "10.0.0.1/32"
