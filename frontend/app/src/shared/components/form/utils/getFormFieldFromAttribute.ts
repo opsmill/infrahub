@@ -1,4 +1,5 @@
 import type { components } from "@/shared/api/rest/types.generated";
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   DynamicAttributeFieldProps,
@@ -152,10 +153,20 @@ export const getFormFieldFromAttribute = ({
   if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
     const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name);
 
+    const fromPoolName = `${attributeSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
+    const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
+
     const dropdownField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
       type: "Number",
       pools: numberPools,
+      pool: hasFromPoolRelationship
+        ? {
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: schema.kind as string,
+            fromPoolRelationshipName: fromPoolName,
+          }
+        : undefined,
     };
 
     return dropdownField;
