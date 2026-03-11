@@ -51,7 +51,7 @@
 
 - [x] T009 [P] [US1] Unit test for header merging logic in `backend/tests/unit/webhook/test_models.py` — verify `_assign_headers()` merges custom headers with system defaults (`Accept`, `Content-Type`, HMAC signature headers). Test that custom header with same name as system header overrides the system default (FR-006).
 - [x] T010 [P] [US1] Unit test for `HeaderConfig` serialization roundtrip in `backend/tests/unit/webhook/test_models.py` — verify `to_cache()` includes headers and `from_cache()` reconstructs them correctly.
-- [ ] T011 [P] [US1] Functional test for webhook with password header in `backend/tests/functional/webhook/test_webhook_headers.py` — create `CoreKeyValuePassword`, link to webhook via `headers` relationship, trigger webhook, assert HTTP request contains the authentication header with correct value.
+- [x] T011 [P] [US1] Functional test for webhook with password header in `backend/tests/functional/webhook/test_webhook_headers.py` — create `CoreKeyValuePassword`, link to webhook via `headers` relationship, trigger webhook, assert HTTP request contains the authentication header with correct value.
 
 ### Implementation for User Story 1
 
@@ -90,8 +90,8 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Functional test for shared header across webhooks in `backend/tests/functional/webhook/test_webhook_headers.py` — create one KV, link to two webhooks, trigger both, assert both requests include the header. Update KV value, invalidate cache, trigger again, verify updated value in both.
-- [ ] T019 [P] [US3] Functional test for header unlink in `backend/tests/functional/webhook/test_webhook_headers.py` — link KV to two webhooks, remove from one, verify the remaining webhook still sends the header while the unlinked one does not.
+- [x] T018 [P] [US3] Functional test for shared header across webhooks in `backend/tests/functional/webhook/test_webhook_headers.py` — create one KV, link to two webhooks, trigger both, assert both requests include the header. Update KV value, invalidate cache, trigger again, verify updated value in both.
+- [x] T019 [P] [US3] Functional test for header unlink in `backend/tests/functional/webhook/test_webhook_headers.py` — link KV to two webhooks, remove from one, verify the remaining webhook still sends the header while the unlinked one does not.
 
 ### Implementation for User Story 3
 
@@ -109,7 +109,7 @@
 
 ### Tests for User Story 4
 
-- [ ] T021 [P] [US4] Functional test for static header in `backend/tests/functional/webhook/test_webhook_headers.py` — create `CoreKeyValueStatic`, link to webhook, trigger, verify header value appears in HTTP request.
+- [x] T021 [P] [US4] Functional test for static header in `backend/tests/functional/webhook/test_webhook_headers.py` — create `CoreKeyValueStatic`, link to webhook, trigger, verify header value appears in HTTP request.
 - [x] T022 [P] [US4] Unit test verifying static KV value is not masked in `backend/tests/unit/webhook/test_models.py` — query `CoreKeyValueStatic` via GraphQL, assert `value` field returns cleartext (not `***`). Contrast with `CoreKeyValuePassword` which returns `***`.
 
 ### Implementation for User Story 4

@@ -38,6 +38,7 @@ class TestWebhookProcess(TestInfrahubApp):
             "event_type": "infrahub.branch.created",
             "validate_certificates": False,
             "shared_key": "1234567890",
+            "custom_headers": [],
             "webhook_type": "StandardWebhook",
         }
 
@@ -57,6 +58,7 @@ class TestWebhookProcess(TestInfrahubApp):
             "repository_name": "car-dealership",
             "convert_query_response": False,
             "shared_key": None,
+            "custom_headers": [],
             "transform_class": "WebhookTransformer",
             "transform_file": "transforms/webhook_transformer.py",
             "transform_name": "WebhookTransformer",
