@@ -147,6 +147,12 @@ class CoreGroup(CoreNode):
     children: RelationshipManager
 
 
+class CoreKeyValue(CoreNode):
+    name: String
+    key: String
+    description: StringOptional
+
+
 class CoreMenu(CoreNode):
     namespace: String
     name: String
@@ -235,6 +241,7 @@ class CoreWebhook(CoreNode):
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
+    headers: RelationshipManager
 
 
 class CoreWeightedPoolResource(CoreNode):
@@ -341,6 +348,10 @@ class CoreDataCheck(CoreCheck):
 
 class CoreDataValidator(CoreValidator):
     pass
+
+
+class CoreEnvironmentVariableKeyValue(CoreKeyValue):
+    value: String
 
 
 class CoreFileCheck(CoreCheck):
@@ -491,6 +502,10 @@ class CorePasswordCredential(CoreCredential):
     password: StringOptional
 
 
+class CorePasswordKeyValue(CoreKeyValue):
+    value: String
+
+
 class CoreProposedChange(CoreTaskTarget):
     name: String
     description: StringOptional
@@ -545,6 +560,10 @@ class CoreStandardGroup(CoreGroup):
 
 class CoreStandardWebhook(CoreWebhook, CoreTaskTarget):
     shared_key: String
+
+
+class CoreStaticKeyValue(CoreKeyValue):
+    value: String
 
 
 class CoreThreadComment(CoreComment):
