@@ -149,12 +149,11 @@ class Migration063(MigrationRequiringRebase):
             # Check if _from_resource_pool relationship already exists (idempotency)
             pool_rel_mgr = template.get_relationship(pool_rel_name)
             existing_pool_rels = await pool_rel_mgr.get_relationships(db=db)
-            if existing_pool_rels:
-                continue
 
-            # Create _from_resource_pool relationship pointing to the pool
-            await pool_rel_mgr.update(db=db, data=source)
-            await pool_rel_mgr.save(db=db, at=at, user_id=user_id)
+            if not existing_pool_rels or existing_pool_rels[0].peer_id != source.id:
+                # Create or repair the _from_resource_pool relationship
+                await pool_rel_mgr.update(db=db, data=source)
+                await pool_rel_mgr.save(db=db, at=at, user_id=user_id)
 
             # Clear the attribute source
             attribute.clear_source()
