@@ -115,9 +115,7 @@ test.describe("/objects/CoreWebhook", () => {
         await page.getByRole("button", { name: "Save" }).click();
 
         // Verify the header appears in the relationship list
-        await expect(
-          page.getByRole("link", { name: "eda-auth-token" })
-        ).toBeVisible();
+        await expect(page.getByRole("link", { name: "eda-auth-token" })).toBeVisible();
       });
     });
 
