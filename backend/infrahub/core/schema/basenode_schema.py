@@ -687,6 +687,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         return self
 
+    def check_attr_in_uniqueness_constraint(self, attr: str) -> bool:
+        if not self.uniqueness_constraints:
+            return False
+        for constraint_paths in self.uniqueness_constraints:
+            for constraint_path in constraint_paths:
+                if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
+                    return True
+        return False
+
 
 @dataclass
 class SchemaUniquenessConstraintPath:

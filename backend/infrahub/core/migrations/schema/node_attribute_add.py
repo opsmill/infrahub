@@ -31,7 +31,9 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
         schema_kinds = [schema.kind]
         if not isinstance(schema, (NodeSchema, GenericSchema)):
             return schema_kinds
-        if new_attribute_schema.support_profiles:
+        if new_attribute_schema.support_profiles and not (
+            new_attribute_schema.optional and schema.check_attr_in_uniqueness_constraint(attr=new_attribute_schema.name)
+        ):
             schema_kinds.append(f"Profile{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
                 schema_kinds.extend([f"Profile{kind}" for kind in schema.used_by])
