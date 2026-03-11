@@ -37,6 +37,12 @@ from .group import (
     core_repository_group,
     core_standard_group,
 )
+from .key_value import (
+    core_key_value,
+    core_key_value_environment_variable,
+    core_key_value_password,
+    core_key_value_static,
+)
 from .ipam import (
     builtin_ip_address,
     builtin_ip_prefix,
@@ -118,6 +124,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_artifact_target,
         core_file_object,
         core_task_target,
+        core_key_value,
         core_webhook,
         core_generic_repository,
         builtin_ipam,
@@ -179,6 +186,9 @@ core_models_mixed: CoreModelsMixedType = {
         core_artifact_definition,
         core_generator_definition,
         core_generator_instance,
+        core_key_value_static,
+        core_key_value_password,
+        core_key_value_environment_variable,
         core_standard_webhook,
         core_custom_webhook,
         core_ipam_namespace,

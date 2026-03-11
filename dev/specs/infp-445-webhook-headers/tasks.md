@@ -17,11 +17,11 @@
 
 **Purpose**: Define CoreKeyValue schema hierarchy and register in the core schema system
 
-- [ ] T001 Create `CoreKeyValue` generic schema and 3 node type schemas (`CoreKeyValueStatic`, `CoreKeyValuePassword`, `CoreKeyValueEnvironmentVariable`) in `backend/infrahub/core/schema/definitions/core/key_value.py`. Generic: `branch=BranchSupportType.AGNOSTIC`, attributes `name` (Text, unique), `key` (Text, required), `description` (Text, optional). Static node: `value` (Text). Password node: `value` (Password kind). EnvVar node: `value` (Text, regex `^[A-Za-z_][A-Za-z0-9_]*$`). All nodes `inherit_from=[InfrahubKind.KEYVALUE]`.
-- [ ] T002 Add `InfrahubKind` constants for `KEYVALUE`, `KEYVALUESTATIC`, `KEYVALUEPASSWORD`, `KEYVALUEENVIRONMENTVARIABLE` in `backend/infrahub/core/constants/__init__.py` (follow existing pattern for `WEBHOOK`, `STANDARDWEBHOOK`, etc.)
-- [ ] T003 Register new generic and node schemas in `backend/infrahub/core/schema/definitions/core/__init__.py` — add imports and entries to `core_models_mixed["generics"]` and `core_models_mixed["nodes"]`
-- [ ] T004 Add `headers` relationship to `core_webhook` generic in `backend/infrahub/core/schema/definitions/core/webhook.py` — `Rel(name="headers", peer=InfrahubKind.KEYVALUE, kind=RelKind.GENERIC, cardinality=Cardinality.MANY, optional=True, order_weight=6000)`
-- [ ] T005 Regenerate schema and protocol files: run `uv run invoke backend.generate` to update `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py`
+- [x] T001 Create `CoreKeyValue` generic schema and 3 node type schemas (`CoreKeyValueStatic`, `CoreKeyValuePassword`, `CoreKeyValueEnvironmentVariable`) in `backend/infrahub/core/schema/definitions/core/key_value.py`. Generic: `branch=BranchSupportType.AGNOSTIC`, attributes `name` (Text, unique), `key` (Text, required), `description` (Text, optional). Static node: `value` (Text). Password node: `value` (Password kind). EnvVar node: `value` (Text, regex `^[A-Za-z_][A-Za-z0-9_]*$`). All nodes `inherit_from=[InfrahubKind.KEYVALUE]`.
+- [x] T002 Add `InfrahubKind` constants for `KEYVALUE`, `KEYVALUESTATIC`, `KEYVALUEPASSWORD`, `KEYVALUEENVIRONMENTVARIABLE` in `backend/infrahub/core/constants/__init__.py` (follow existing pattern for `WEBHOOK`, `STANDARDWEBHOOK`, etc.)
+- [x] T003 Register new generic and node schemas in `backend/infrahub/core/schema/definitions/core/__init__.py` — add imports and entries to `core_models_mixed["generics"]` and `core_models_mixed["nodes"]`
+- [x] T004 Add `headers` relationship to `core_webhook` generic in `backend/infrahub/core/schema/definitions/core/webhook.py` — `Rel(name="headers", peer=InfrahubKind.KEYVALUE, kind=RelKind.GENERIC, cardinality=Cardinality.MANY, optional=True, order_weight=6000)`
+- [x] T005 Regenerate schema and protocol files: run `uv run invoke backend.generate` to update `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py`
 
 **Checkpoint**: Schema definitions complete. CoreKeyValue types exist in the schema system. GraphQL CRUD auto-generated.
 
@@ -33,9 +33,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Add `HeaderConfig` Pydantic model and `custom_headers: list[HeaderConfig]` field to `Webhook` base model in `backend/infrahub/webhook/models.py`. `HeaderConfig` fields: `key: str` (HTTP header name), `value: str` (literal value or env var name), `header_type: str` (one of `"static"`, `"password"`, `"env"`). This automatically extends `to_cache()`/`from_cache()` via `model_dump()`.
-- [ ] T007 Extend `convert_node_to_webhook` task in `backend/infrahub/webhook/tasks/process.py` to fetch the webhook's `headers` relationship peers (batch query via `client.all()` or relationship traversal), build `list[HeaderConfig]` from each peer's `__typename`/kind, and pass to `Webhook` constructor. Handle all 3 node types mapping to appropriate `header_type`.
-- [ ] T008 Extend `StandardWebhook.from_object()`, `CustomWebhook.from_object()`, and `TransformWebhook.from_object()` in `backend/infrahub/webhook/models.py` to accept and forward `custom_headers` parameter.
+- [x] T006 Add `HeaderConfig` Pydantic model and `custom_headers: list[HeaderConfig]` field to `Webhook` base model in `backend/infrahub/webhook/models.py`. `HeaderConfig` fields: `key: str` (HTTP header name), `value: str` (literal value or env var name), `header_type: str` (one of `"static"`, `"password"`, `"env"`). This automatically extends `to_cache()`/`from_cache()` via `model_dump()`.
+- [x] T007 Extend `convert_node_to_webhook` task in `backend/infrahub/webhook/tasks/process.py` to fetch the webhook's `headers` relationship peers (batch query via `client.all()` or relationship traversal), build `list[HeaderConfig]` from each peer's `__typename`/kind, and pass to `Webhook` constructor. Handle all 3 node types mapping to appropriate `header_type`.
+- [x] T008 Extend `StandardWebhook.from_object()`, `CustomWebhook.from_object()`, and `TransformWebhook.from_object()` in `backend/infrahub/webhook/models.py` to accept and forward `custom_headers` parameter.
 
 **Checkpoint**: Foundation ready — webhooks carry header data through cache. User story implementation can begin.
 
@@ -49,15 +49,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Unit test for header merging logic in `backend/tests/unit/webhook/test_models.py` — verify `_assign_headers()` merges custom headers with system defaults (`Accept`, `Content-Type`, HMAC signature headers). Test that custom header with same name as system header overrides the system default (FR-006).
-- [ ] T010 [P] [US1] Unit test for `HeaderConfig` serialization roundtrip in `backend/tests/unit/webhook/test_models.py` — verify `to_cache()` includes headers and `from_cache()` reconstructs them correctly.
+- [x] T009 [P] [US1] Unit test for header merging logic in `backend/tests/unit/webhook/test_models.py` — verify `_assign_headers()` merges custom headers with system defaults (`Accept`, `Content-Type`, HMAC signature headers). Test that custom header with same name as system header overrides the system default (FR-006).
+- [x] T010 [P] [US1] Unit test for `HeaderConfig` serialization roundtrip in `backend/tests/unit/webhook/test_models.py` — verify `to_cache()` includes headers and `from_cache()` reconstructs them correctly.
 - [ ] T011 [P] [US1] Functional test for webhook with password header in `backend/tests/functional/webhook/test_webhook_headers.py` — create `CoreKeyValuePassword`, link to webhook via `headers` relationship, trigger webhook, assert HTTP request contains the authentication header with correct value.
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement custom header merging in `Webhook._assign_headers()` in `backend/infrahub/webhook/models.py` — after setting system headers and HMAC signature, iterate `self.custom_headers` and add each resolved header. For `static` and `password` types, use value directly. Custom headers override system defaults on name conflict. Log warning if duplicate header names exist among custom headers (last wins).
-- [ ] T013 [US1] Extend webhook cache invalidation in `backend/infrahub/webhook/triggers.py` — add `CoreKeyValueStatic`, `CoreKeyValuePassword`, `CoreKeyValueEnvironmentVariable` kinds to `TRIGGER_WEBHOOK_CONFIGURE` match filter so that KV node create/update/delete events trigger cache invalidation.
-- [ ] T014 [US1] Implement cache invalidation handler for KV node changes in `backend/infrahub/webhook/tasks/configure.py` — when a KV node is created/updated/deleted, find all webhooks linked to it via the `headers` relationship, and call `cache.delete(key=f"webhook:{webhook_id}")` for each. Add a new action case in `configure_webhook` flow or extend existing `_configure_one`.
+- [x] T012 [US1] Implement custom header merging in `Webhook._assign_headers()` in `backend/infrahub/webhook/models.py` — after setting system headers and HMAC signature, iterate `self.custom_headers` and add each resolved header. For `static` and `password` types, use value directly. Custom headers override system defaults on name conflict. Log warning if duplicate header names exist among custom headers (last wins).
+- [x] T013 [US1] Extend webhook cache invalidation in `backend/infrahub/webhook/triggers.py` — add `CoreKeyValueStatic`, `CoreKeyValuePassword`, `CoreKeyValueEnvironmentVariable` kinds to `TRIGGER_WEBHOOK_CONFIGURE` match filter so that KV node create/update/delete events trigger cache invalidation.
+- [x] T014 [US1] Implement cache invalidation handler for KV node changes in `backend/infrahub/webhook/tasks/configure.py` — when a KV node is created/updated/deleted, find all webhooks linked to it via the `headers` relationship, and call `cache.delete(key=f"webhook:{webhook_id}")` for each. Add a new action case in `configure_webhook` flow or extend existing `_configure_one`.
 
 **Checkpoint**: User Story 1 complete. Password-type headers are injected into webhook requests. Cache invalidates on header changes.
 
@@ -71,12 +71,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Unit test for env var resolution in `backend/tests/unit/webhook/test_models.py` — verify that `header_type="env"` headers resolve via `os.environ.get()`. Test with set variable (value included) and missing variable (header skipped, no exception).
-- [ ] T016 [P] [US2] Unit test for warning log on missing env var in `backend/tests/unit/webhook/test_models.py` — verify a warning is logged with the missing variable name when env var is not set (FR-009).
+- [x] T015 [P] [US2] Unit test for env var resolution in `backend/tests/unit/webhook/test_models.py` — verify that `header_type="env"` headers resolve via `os.environ.get()`. Test with set variable (value included) and missing variable (header skipped, no exception).
+- [x] T016 [P] [US2] Unit test for warning log on missing env var in `backend/tests/unit/webhook/test_models.py` — verify a warning is logged with the missing variable name when env var is not set (FR-009).
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Add env var resolution branch in header merging logic in `backend/infrahub/webhook/models.py` `_assign_headers()` — for `header_type="env"`, call `os.environ.get(header.value)`. If `None`, skip the header and log a warning identifying the missing variable name. If present, add resolved value as the header.
+- [x] T017 [US2] Add env var resolution branch in header merging logic in `backend/infrahub/webhook/models.py` `_assign_headers()` — for `header_type="env"`, call `os.environ.get(header.value)`. If `None`, skip the header and log a warning identifying the missing variable name. If present, add resolved value as the header.
 
 **Checkpoint**: User Story 2 complete. Env var headers resolve at send time with graceful handling of missing variables.
 
@@ -95,7 +95,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Extend cache invalidation in `backend/infrahub/webhook/tasks/configure.py` to handle KV update events that affect multiple webhooks — when a KV node is updated, query all webhooks linked via `headers` relationship and invalidate each webhook's cache entry. Ensure relationship-change events (header linked/unlinked) also trigger invalidation for the affected webhook.
+- [x] T020 [US3] Extend cache invalidation in `backend/infrahub/webhook/tasks/configure.py` to handle KV update events that affect multiple webhooks — when a KV node is updated, query all webhooks linked via `headers` relationship and invalidate each webhook's cache entry. Ensure relationship-change events (header linked/unlinked) also trigger invalidation for the affected webhook.
 
 **Checkpoint**: User Story 3 complete. Shared headers work across webhooks with proper cache invalidation on updates.
 
@@ -110,7 +110,7 @@
 ### Tests for User Story 4
 
 - [ ] T021 [P] [US4] Functional test for static header in `backend/tests/functional/webhook/test_webhook_headers.py` — create `CoreKeyValueStatic`, link to webhook, trigger, verify header value appears in HTTP request.
-- [ ] T022 [P] [US4] Unit test verifying static KV value is not masked in `backend/tests/unit/webhook/test_models.py` — query `CoreKeyValueStatic` via GraphQL, assert `value` field returns cleartext (not `***`). Contrast with `CoreKeyValuePassword` which returns `***`.
+- [x] T022 [P] [US4] Unit test verifying static KV value is not masked in `backend/tests/unit/webhook/test_models.py` — query `CoreKeyValueStatic` via GraphQL, assert `value` field returns cleartext (not `***`). Contrast with `CoreKeyValuePassword` which returns `***`.
 
 ### Implementation for User Story 4
 
@@ -126,9 +126,9 @@ No additional implementation needed — static headers are already handled by th
 
 - [ ] T023 [P] Add E2E Playwright test for key-value pair CRUD and webhook header association in `frontend/app/tests/e2e/webhook/webhook.spec.ts` — create a `CoreKeyValuePassword` via UI, navigate to webhook, add header association, save, verify header appears in webhook detail view.
 - [ ] T024 [P] Add user documentation for custom webhook headers in `docs/docs/topics/webhooks.mdx` (or appropriate docs location) — cover all 3 KV types, linking to webhooks, env var setup for Kubernetes workers, header precedence rules.
-- [ ] T025 [P] Add Towncrier changelog fragment in `changelog/` for the new custom headers feature.
-- [ ] T026 Run `uv run invoke format` and `uv run invoke lint` to ensure all new code passes formatting and linting gates.
-- [ ] T027 Run `uv run invoke backend.test-unit` to verify all unit tests pass (including new header tests).
+- [x] T025 [P] Add Towncrier changelog fragment in `changelog/` for the new custom headers feature.
+- [x] T026 Run `uv run invoke format` and `uv run invoke lint` to ensure all new code passes formatting and linting gates.
+- [x] T027 Run `uv run invoke backend.test-unit` to verify all unit tests pass (including new header tests).
 - [ ] T028 Run quickstart.md validation — execute the GraphQL mutations from `specs/infp-445-webhook-headers/quickstart.md` against a running instance and verify expected behavior.
 
 ---

@@ -9,11 +9,18 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import KVTTL
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
-from ..models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook
+from ..models import CustomWebhook, EventContext, HeaderConfig, StandardWebhook, TransformWebhook, Webhook
+
+KEYVALUE_KIND_TO_HEADER_TYPE: dict[str, str] = {
+    InfrahubKind.KEYVALUESTATIC: "static",
+    InfrahubKind.KEYVALUEPASSWORD: "password",
+    InfrahubKind.KEYVALUEENVIRONMENTVARIABLE: "env",
+}
 
 if TYPE_CHECKING:
     from httpx import Response
@@ -36,6 +43,23 @@ async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict
     return response
 
 
+@task(name="webhook-fetch-headers", task_run_name="Fetch headers for webhook", cache_policy=NONE)
+async def fetch_webhook_headers(webhook_node: CoreWebhook) -> list[HeaderConfig]:
+    """Fetch all key-value header peers linked to a webhook and convert to HeaderConfig list."""
+    log = get_run_logger()
+    await webhook_node.headers.fetch()
+    headers: list[HeaderConfig] = []
+    for relationship in webhook_node.headers.peers:
+        peer = relationship.peer
+        peer_kind = peer.get_kind()
+        header_type = KEYVALUE_KIND_TO_HEADER_TYPE.get(peer_kind)
+        if not header_type:
+            log.warning(f"Unknown key-value kind {peer_kind} on header peer {peer.id}, skipping")
+            continue
+        headers.append(HeaderConfig(key=peer.key.value, value=peer.value.value, header_type=header_type))
+    return headers
+
+
 @task(name="webhook-convert-node", task_run_name="Convert node to webhook", cache_policy=NONE)
 async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubClient) -> Webhook:
     webhook_kind = webhook_node.get_kind()
@@ -43,8 +67,10 @@ async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubCli
     if webhook_kind not in ["CoreStandardWebhook", "CoreCustomWebhook"]:
         raise ValueError(f"Unsupported webhook kind: {webhook_kind}")
 
+    custom_headers = await fetch_webhook_headers(webhook_node=webhook_node)
+
     if webhook_kind == "CoreStandardWebhook":
-        return StandardWebhook.from_object(obj=webhook_node)
+        return StandardWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
     # Processing Custom Webhook
     if webhook_node.transformation.id:
@@ -54,9 +80,9 @@ async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubCli
             prefetch_relationships=True,
             include=["name", "class_name", "file_path", "repository"],
         )
-        return TransformWebhook.from_object(obj=webhook_node, transform=transform)
+        return TransformWebhook.from_object(obj=webhook_node, transform=transform, custom_headers=custom_headers)
 
-    return CustomWebhook.from_object(obj=webhook_node)
+    return CustomWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
 
 @flow(name="webhook-process", flow_run_name="Send webhook for {webhook_name}")

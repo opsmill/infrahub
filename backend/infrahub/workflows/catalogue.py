@@ -535,6 +535,13 @@ WEBHOOK_CONFIGURE = WorkflowDefinition(
     concurrency_limit_strategy=ConcurrencyLimitStrategy.ENQUEUE,
 )
 
+WEBHOOK_INVALIDATE_HEADERS_CACHE = WorkflowDefinition(
+    name="webhook-invalidate-headers-cache",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.webhook.tasks.configure",
+    function="invalidate_webhook_headers_cache",
+)
+
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
     name="git-repository-check-artifact-create",
     type=WorkflowType.USER,
@@ -732,6 +739,7 @@ WORKFLOWS = [
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     VALIDATE_SCHEMA_NUMBER_POOLS,
     WEBHOOK_CONFIGURE,
+    WEBHOOK_INVALIDATE_HEADERS_CACHE,
     WEBHOOK_PROCESS,
 ]
 

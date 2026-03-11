@@ -147,6 +147,12 @@ class CoreGroup(CoreNode):
     children: RelationshipManager
 
 
+class CoreKeyValue(CoreNode):
+    name: String
+    key: String
+    description: StringOptional
+
+
 class CoreMenu(CoreNode):
     namespace: String
     name: String
@@ -235,6 +241,7 @@ class CoreWebhook(CoreNode):
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
+    headers: RelationshipManager
 
 
 class CoreWeightedPoolResource(CoreNode):
@@ -442,6 +449,18 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
     default_prefix_type: StringOptional
     resources: RelationshipManager
     ip_namespace: RelationshipManager
+
+
+class CoreKeyValueEnvironmentVariable(CoreKeyValue):
+    value: String
+
+
+class CoreKeyValuePassword(CoreKeyValue):
+    value: String
+
+
+class CoreKeyValueStatic(CoreKeyValue):
+    value: String
 
 
 class CoreMenuItem(CoreMenu):

@@ -10,6 +10,7 @@ from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.trigger.models import ExecuteWorkflow, TriggerType
 from infrahub.trigger.setup import gather_all_automations, setup_triggers_specific
 from infrahub.workers.dependencies import get_cache, get_client, get_database
@@ -195,3 +196,38 @@ async def _reconcile_all() -> None:
 
     await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[arg-type]
     log.info(f"{len(triggers)} Webhooks automation configuration completed")
+
+
+@flow(name="webhook-invalidate-headers-cache", flow_run_name="Invalidate webhook cache for header change")
+async def invalidate_webhook_headers_cache(
+    event_type: str | None = None,
+    event_data: dict | None = None,
+) -> None:
+    """Invalidate cached webhook data when a key-value header node is created, updated, or deleted.
+
+    Finds all webhooks linked to the changed key-value node via the 'headers' relationship
+    and deletes their cache entries so the next webhook fire fetches fresh data.
+    """
+    log = get_run_logger()
+
+    if not event_data or "node_id" not in event_data:
+        log.warning("No node_id in event_data for header cache invalidation, skipping")
+        return
+
+    kv_node_id = event_data["node_id"]
+    client = get_client()
+    cache = await get_cache()
+
+    # Find all webhooks linked to this key-value node via the headers relationship
+    # Query both webhook types that can have headers
+    invalidated_count = 0
+    for webhook_kind in [InfrahubKind.STANDARDWEBHOOK, InfrahubKind.CUSTOMWEBHOOK]:
+        webhooks = await client.filters(kind=webhook_kind, headers__ids=[kv_node_id])
+        for webhook_node in webhooks:
+            await cache.delete(key=f"webhook:{webhook_node.id}")
+            invalidated_count += 1
+            log.info(f"Invalidated cache for webhook {webhook_node.name.value} ({webhook_node.id})")
+
+    log.info(
+        f"Header cache invalidation complete: event={event_type} kv_node={kv_node_id} webhooks_invalidated={invalidated_count}"
+    )
