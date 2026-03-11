@@ -9,14 +9,15 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { IP_ADDRESS_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
+import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace.query";
 import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list.query";
 import { constructPathForIpam } from "@/entities/ipam/utils";
+import type { NodeObject } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 type IpNamespaceContext = {
-  currentIpNamespace: IpNamespace;
+  currentIpNamespace: NodeObject;
   setCurrentIpNamespace: (newIpNamespace: IpNamespace) => void;
 };
 
@@ -26,29 +27,23 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
   const { objectKind } = useParams();
   const navigate = useNavigate();
   const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
-  const { data, error, isPending } = useGetIpNamespaceList();
+
+  const {
+    data: currentIpNamespace,
+    isPending,
+    error,
+  } = useGetIpNamespace({ ipNamespaceId: namespaceQSP });
 
   if (isPending) {
     return <LoadingIndicator className="h-full" message="Loading IP namespaces..." />;
   }
 
-  if (error) {
-    return <ErrorScreen message={error.message} />;
-  }
-
-  const namespaceList = data.pages.flat() ?? [];
-
-  const selectedNamespace = namespaceList.find((namespace) => {
-    if (namespaceQSP) return namespace.id === namespaceQSP;
-    return !!namespace.default?.value;
-  });
-
-  if (!selectedNamespace) {
+  if (error || !currentIpNamespace) {
     return (
       <ErrorScreen
         message={
           <Col className="items-center">
-            <span>{`IP Namespace ${namespaceQSP ?? "default"} not found.`}</span>
+            <span>{error?.message ?? `IP Namespace ${namespaceQSP ?? "default"} not found.`}</span>
             <Link
               to={constructPath("/ipam")}
               className="inline-flex items-center gap-2 text-indigo-700 hover:underline"
@@ -64,7 +59,7 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
   return (
     <IpNamespaceContext.Provider
       value={{
-        currentIpNamespace: selectedNamespace,
+        currentIpNamespace,
         setCurrentIpNamespace: (newIpNamespace) => {
           const newIpNamespaceId = newIpNamespace.default?.value ? null : newIpNamespace.id;
 

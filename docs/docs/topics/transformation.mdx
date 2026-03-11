@@ -101,7 +101,7 @@ Transformations themselves are generic pieces of logic that process data and pro
 This design enables powerful patterns:
 
 - **Reusable logic**: A single Transformation can be applied to different groups through multiple artifact definitions
-- **Bulk processing**: Artifact definitions automatically apply the Transformation to all members of the target group
+- **Bulk processing**: artifact definitions automatically apply the Transformation to all members of the target group
 - **Dynamic targeting**: Adding or removing objects from groups automatically changes which objects the Transformation processes
 
 The Transformation logic remains group-agnostic, while artifact definitions and Generators provide the targeting mechanism. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.

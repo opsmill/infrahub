@@ -3,6 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase
 
@@ -10,7 +11,7 @@ from infrahub.database import InfrahubDatabase
 async def test_schema_validate_migrations(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
+    car_person_schema: SchemaBranch,
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
 

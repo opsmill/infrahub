@@ -43,12 +43,12 @@ export const LabelFormField = ({
   required,
   unique,
   description,
-  variant,
   fieldData,
+  ...props
 }: LabelFormFieldProps) => {
   return (
     <div className={classNames("flex h-4 items-center gap-1", className)}>
-      <FormLabel variant={variant}>
+      <FormLabel {...props}>
         {label} {required && "*"}
       </FormLabel>
       {unique && <InputUniqueTips className="mb-px self-end" />}

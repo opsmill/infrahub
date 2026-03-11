@@ -85,12 +85,12 @@ Create three tags with different naming patterns:
 
 You can create these tags using the Infrahub UI or in batch using object file:
 
-<Tabs groupId="check-type">
+<Tabs groupId="check-type" queryString>
 <TabItem value="Targeted Check">
 
 For targeted checks, you will also need to create a group that includes the tags you want to validate.
 
-<Tabs>
+<Tabs groupId="setup-method" queryString>
 <TabItem value="Using Object File" >
 
   1. Create a file named `groups.yml` in the `objects` directory of your repository:
@@ -153,7 +153,7 @@ For targeted checks, you will also need to create a group that includes the tags
 </Tabs>
 </TabItem>
 <TabItem value="Global Check">
-<Tabs>
+<Tabs groupId="setup-method" queryString>
 <TabItem value="Using Object File" >
   1. Create a file named `tags.yml` in the `objects` directory of your repository:
 
@@ -206,7 +206,7 @@ Next, create a GraphQL query that fetches the data your check needs to process.
 
 Create a `tags_query.gql` file in the `queries` directory of your repository:
 
-<Tabs groupId="check-type">
+<Tabs groupId="check-type" queryString>
 <TabItem value="Targeted Check">
 ```graphql title="queries/tags_query.gql"
 query TagsQuery($name: String!) {
@@ -255,7 +255,7 @@ Access the sandbox by clicking your user icon in the bottom left corner and sele
 
 :::
 
-<Tabs groupId="check-type">
+<Tabs groupId="check-type" queryString>
 <TabItem value="Targeted Check">
 
 1. Copy the above GraphQL query in the main section
@@ -385,7 +385,7 @@ Now that you have your GraphQL query and Python check, edit your [.infrahub.yml]
 
 1. Add the following configuration to the file `.infrahub.yml`:
 
-<Tabs groupId="check-type">
+<Tabs groupId="check-type" queryString>
 <TabItem value="Targeted Check">
 
 ```yaml title=".infrahub.yml"
@@ -435,7 +435,7 @@ infrahubctl check --list
 
 If successful, you'll see output like:
 
-<Tabs groupId="check-type">
+<Tabs groupId="check-type" queryString>
 <TabItem value="Targeted Check">
 ```shell
 Python checks defined in repository: 1
@@ -472,7 +472,7 @@ infrahubctl check check_color_tags_name --branch=create-tag-check
 
 If successful, you'll see output like:
 
-<Tabs groupId="check-type">
+<Tabs groupId="check-type" queryString>
 <TabItem value="Targeted Check">
 ```shell
 INFO     HTTP Request: GET http://localhost:8000/api/schema?branch=create-tag-check2 "HTTP/1.1 200 OK"

@@ -415,6 +415,81 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
         assert updated["primary_address"]["node"] is None
         assert updated["primary_address_from_resource_pool"]["node"]["id"] == ip_address_pool.id
 
+    @pytest.fixture(scope="class")
+    async def small_prefix(self, db: InfrahubDatabase, ip_namespace: Node, ip_prefix: Node) -> Node:
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="10.20.30.0/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=False)
+        await prefix.save(db=db)
+        return prefix
+
+    @pytest.fixture(scope="class")
+    async def small_pool(self, db: InfrahubDatabase, ip_namespace: Node, small_prefix: Node) -> Node:
+        pool = await Node.init(db=db, schema=InfrahubKind.IPADDRESSPOOL)
+        await pool.new(
+            db=db,
+            name="small-address-pool",
+            resources=[small_prefix],
+            ip_namespace=ip_namespace,
+            default_address_type="IpamIPAddress",
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture(scope="class")
+    async def template_with_small_pool(self, db: InfrahubDatabase, small_pool: Node, device_schema: None) -> Node:
+        template = await Node.init(db=db, schema="TemplateInfraDevice")
+        await template.new(db=db, template_name="device-small-pool", primary_address_from_resource_pool=small_pool)
+        await template.save(db=db)
+        return template
+
+    async def test_pool_template_performs_correct_allocations(
+        self, db: InfrahubDatabase, template_with_small_pool: Node, small_prefix: Node, client: InfrahubClient
+    ) -> None:
+        """With an IPv4 /30 creating 2 devices must both succeed."""
+        addresses = list(small_prefix.prefix.obj.hosts())
+        for i in range(2):
+            result = await client.execute_graphql(
+                query=CREATE_DEVICE_FROM_TEMPLATE,
+                variables={"name": f"device-small-pool-{i}", "template_id": template_with_small_pool.id},
+            )
+            device_id = result["InfraDeviceCreate"]["object"]["id"]
+            device = await NodeManager.get_one(id=device_id, db=db)
+            addr_peer = await device.primary_address.get_peer(db=db)
+            assert addr_peer is not None
+            assert addr_peer.address.obj.ip == addresses[i]
+
+    async def test_small_pool_exhausts_after_exact_capacity(
+        self, template_with_small_pool: Node, client: InfrahubClient
+    ) -> None:
+        """After 2 allocations from an IPv4 /30, the pool should be exhausted."""
+        with pytest.raises(GraphQLError, match=r"no more addresses available"):
+            await client.execute_graphql(
+                query=CREATE_DEVICE_FROM_TEMPLATE,
+                variables={"name": "device-small-pool-overflow", "template_id": template_with_small_pool.id},
+            )
+
+    async def test_template_from_pool_on_relationship_blocked(
+        self, ip_address_pool: Node, client: InfrahubClient
+    ) -> None:
+        """Using from_pool on a template relationship should raise an error."""
+        with pytest.raises(GraphQLError, match="'from_pool' is not supported on template relationships"):
+            await client.execute_graphql(
+                query="""
+                mutation CreateTemplateWithFromPool($pool_id: String!) {
+                    TemplateInfraDeviceCreate(
+                        data: {
+                            template_name: { value: "device-from-pool-blocked" }
+                            primary_address: { from_pool: { id: $pool_id } }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"pool_id": ip_address_pool.id},
+            )
+
 
 class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -461,23 +536,26 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     async def template_with_pool_slot(
         self, client: InfrahubClient, slot_pool: Node, device_schema: None
     ) -> InfrahubNode:
-        sdk_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=slot_pool.id)
         template = await client.create(
             kind="TemplateInfraRack",
             template_name="rack-pool-slot",
             location="datacenter-1",
-            slot_id=sdk_pool,
+            slot_id_from_resource_pool=slot_pool.id,
         )
         await template.save()
         return template
 
     async def test_template_with_pool_stores_reference_not_value(
-        self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode
+        self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode, slot_pool: Node
     ) -> None:
-        """Template with from_pool should store reference without allocating a value."""
+        """Template with _from_resource_pool should store pool reference without allocating a value."""
         template = await NodeManager.get_one(id=template_with_pool_slot.id, db=db)
         assert template.template_name.value == "rack-pool-slot"
         assert template.slot_id.value is None
+
+        pool_peer = await template.slot_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == slot_pool.id
 
     async def test_rack_from_template_with_static_slot(
         self, db: InfrahubDatabase, template_with_static_slot: Node, client: InfrahubClient
@@ -565,16 +643,20 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     async def test_template_can_swap_pool_to_static_value(
         self, db: InfrahubDatabase, slot_pool: Node, client: InfrahubClient, device_schema: None
     ) -> None:
-        """Swapping from pool to static value should set the value and clear the pool source."""
-        sdk_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=slot_pool.id)
+        """Swapping from pool to static value should set the value and clear the pool relationship."""
         template = await client.create(
-            kind="TemplateInfraRack", template_name="rack-pool-to-static", location="datacenter-1", slot_id=sdk_pool
+            kind="TemplateInfraRack",
+            template_name="rack-pool-to-static",
+            location="datacenter-1",
+            slot_id_from_resource_pool=slot_pool.id,
         )
         await template.save()
 
-        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        tmpl = await NodeManager.get_one(id=template.id, db=db)
         assert tmpl.slot_id.value is None
-        assert tmpl.slot_id.source_id == slot_pool.id
+        pool_peer = await tmpl.slot_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == slot_pool.id
 
         await client.execute_graphql(
             query="""
@@ -582,7 +664,8 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
                 TemplateInfraRackUpdate(
                     data: {
                         id: $id
-                        slot_id: { value: $slot_id, from_pool: null }
+                        slot_id: { value: $slot_id }
+                        slot_id_from_resource_pool: null
                     }
                 ) {
                     ok
@@ -592,21 +675,24 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
             variables={"id": template.id, "slot_id": 42},
         )
 
-        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        tmpl = await NodeManager.get_one(id=template.id, db=db)
         assert tmpl.slot_id.value == 42
-        assert tmpl.slot_id.source_id is None
+        pool_peer = await tmpl.slot_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is None
 
     async def test_template_can_swap_static_value_to_pool(
         self, db: InfrahubDatabase, slot_pool: Node, client: InfrahubClient, device_schema: None
     ) -> None:
-        """Swapping from static value to pool should clear the value and set pool as source."""
-        template = await Node.init(db=db, schema="TemplateInfraRack")
-        await template.new(db=db, template_name="rack-static-to-pool", location="datacenter-1", slot_id=75)
-        await template.save(db=db)
+        """Swapping from static value to pool should clear the value and set pool relationship."""
+        template = await client.create(
+            kind="TemplateInfraRack", template_name="rack-static-to-pool", location="datacenter-1", slot_id=75
+        )
+        await template.save()
 
-        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        tmpl = await NodeManager.get_one(id=template.id, db=db)
         assert tmpl.slot_id.value == 75
-        assert tmpl.slot_id.source_id is None
+        pool_peer = await tmpl.slot_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is None
 
         await client.execute_graphql(
             query="""
@@ -614,7 +700,8 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
                 TemplateInfraRackUpdate(
                     data: {
                         id: $id
-                        slot_id: { from_pool: { id: $pool_id } }
+                        slot_id: { value: null }
+                        slot_id_from_resource_pool: { id: $pool_id }
                     }
                 ) {
                     ok
@@ -624,9 +711,31 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
             variables={"id": template.id, "pool_id": slot_pool.id},
         )
 
-        tmpl = await NodeManager.get_one(id=template.id, db=db, include_metadata=MetadataOptions.SOURCE)
+        tmpl = await NodeManager.get_one(id=template.id, db=db)
         assert tmpl.slot_id.value is None
-        assert tmpl.slot_id.source_id == slot_pool.id
+        pool_peer = await tmpl.slot_id_from_resource_pool.get_peer(db=db)
+        assert pool_peer is not None
+        assert pool_peer.id == slot_pool.id
+
+    async def test_template_from_pool_on_attribute_blocked(self, slot_pool: Node, client: InfrahubClient) -> None:
+        """Using from_pool on a template attribute should raise an error."""
+        with pytest.raises(GraphQLError, match="'from_pool' is not supported on template attributes"):
+            await client.execute_graphql(
+                query="""
+                mutation CreateTemplateWithFromPool($pool_id: String!) {
+                    TemplateInfraRackCreate(
+                        data: {
+                            template_name: { value: "rack-from-pool-blocked" }
+                            slot_id: { from_pool: { id: $pool_id } }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"pool_id": slot_pool.id},
+            )
 
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
@@ -788,14 +897,11 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
         rack_unit_pool: Node,
     ) -> InfrahubNode:
         """Device template with 8 interface templates, all using pool allocations."""
-        sdk_rack_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=rack_unit_pool.id)
-        sdk_vlan_pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=vlan_pool.id)
-
         device_template = await client.create(
             kind="TemplateInfraDevice",
             template_name="device-with-8-interfaces",
             mgmt_address_from_resource_pool=mgmt_address_pool.id,
-            rack_unit=sdk_rack_pool,
+            rack_unit_from_resource_pool=rack_unit_pool.id,
         )
         await device_template.save()
 
@@ -804,7 +910,7 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
                 kind="TemplateInfraInterface",
                 template_name=f"interface-eth{i}",
                 name=f"eth{i}",
-                vlan_id=sdk_vlan_pool,
+                vlan_id_from_resource_pool=vlan_pool.id,
                 device=device_template,
                 prefix_from_resource_pool=interface_prefix_pool.id,
             )

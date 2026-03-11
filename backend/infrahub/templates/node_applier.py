@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
-    InfrahubKind,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -30,14 +29,16 @@ class NodeTemplateApplier:
     async def apply(
         self,
         template: CoreObjectTemplate,
-        target_schema: MainSchemaTypes,  # noqa: ARG002
+        target_schema: MainSchemaTypes,
         target_id: str,
         user_fields: dict[str, Any],
     ) -> dict[str, Any]:
         """Apply template and return merged fields. User fields take precedence."""
         fields = dict(user_fields)
         await self._apply_attributes(template=template, fields=fields)
-        await self._apply_relationships(template=template, target_id=target_id, fields=fields)
+        await self._apply_relationships(
+            template=template, target_schema=target_schema, target_id=target_id, fields=fields
+        )
         return fields
 
     async def _apply_attributes(self, template: CoreObjectTemplate, fields: dict[str, Any]) -> None:
@@ -46,35 +47,29 @@ class NodeTemplateApplier:
                 continue
 
             attr = template.get_attribute(name=attr_name)
-
-            # NumberPool from_pool handling requires two code paths:
-            # 1. Template just created in-memory: from_pool is set but not yet persisted
-            # 2. Template loaded from DB: from_pool is not persisted, must reconstruct from source
-            if attr.from_pool:
-                fields[attr_name] = {"from_pool": attr.from_pool}
+            if attr.value is None:
                 continue
 
-            if attr.value is None and attr.source_id:  # type: ignore[attr-defined]
-                source = await attr.get_source(db=self.db)
-                if source and source.get_kind() == InfrahubKind.NUMBERPOOL:
-                    fields[attr_name] = {"from_pool": {"id": source.id}}
-                    continue
+            # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
+            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}  # type: ignore[attr-defined]
+            if attr.is_from_profile:
+                field_data["is_from_profile"] = True
+            fields[attr_name] = field_data
 
-            if attr.value is not None:
-                # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
-                field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}  # type: ignore[attr-defined]
-                if attr.is_from_profile:
-                    field_data["is_from_profile"] = True
-                fields[attr_name] = field_data
-
-    async def _apply_relationships(self, template: CoreObjectTemplate, target_id: str, fields: dict[str, Any]) -> None:
+    async def _apply_relationships(
+        self, template: CoreObjectTemplate, target_schema: MainSchemaTypes, target_id: str, fields: dict[str, Any]
+    ) -> None:
         template_schema = template.get_schema()
         for rel_name in template_schema.relationship_names:
             rel_schema = template_schema.get_relationship(name=rel_name)
 
             if rel_name.endswith(RESOURCE_POOL_REL_SUFFIX):
                 await self._handle_pool_relationship(
-                    template=template, pool_rel_name=rel_name, target_id=target_id, fields=fields
+                    template=template,
+                    pool_rel_name=rel_name,
+                    target_schema=target_schema,
+                    target_id=target_id,
+                    fields=fields,
                 )
                 continue
 
@@ -95,19 +90,37 @@ class NodeTemplateApplier:
                 fields[rel_name] = [{"id": peer_id} for peer_id in peers]
 
     async def _handle_pool_relationship(
-        self, template: CoreObjectTemplate, pool_rel_name: str, target_id: str, fields: dict[str, Any]
+        self,
+        template: CoreObjectTemplate,
+        pool_rel_name: str,
+        target_schema: MainSchemaTypes,
+        target_id: str,
+        fields: dict[str, Any],
     ) -> None:
-        """Allocate from pool and set the original relationship."""
-        original_rel_name = pool_rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
+        """Allocate from pool and set the original relationship or attribute."""
+        original_name = pool_rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
 
-        if original_rel_name in fields:
+        if original_name in fields:
             return
 
         pool_relationship = template.get_relationship(name=pool_rel_name)
+
+        if original_name in target_schema.attribute_names:
+            # Number pool: allocate a value for the attribute
+            allocated_value = await self.pool_allocator.allocate_for_attribute(
+                pool_relationship=pool_relationship,
+                target_schema=target_schema,
+                attribute_name=original_name,
+                identifier=target_id,
+            )
+            if allocated_value is not None:
+                pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
+                fields[original_name] = {"value": allocated_value, "source": pool_node.id}
+            return
+        # IP pool: allocate a node for the relationship
         allocated = await self.pool_allocator.allocate_for_relationship(
             pool_relationship=pool_relationship, identifier=target_id
         )
-
         if allocated:
             pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
-            fields[original_rel_name] = {"peer": allocated, "_relation__source": pool_node.id}
+            fields[original_name] = {"peer": allocated, "_relation__source": pool_node.id}

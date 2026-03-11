@@ -1,3 +1,5 @@
+from graphql import ExecutionResult
+
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -13,7 +15,7 @@ from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import COLOR, TICKET, TSHIRT
+from tests.helpers.schema import COLOR, TICKET, TSHIRT, load_schema
 from tests.node_creation import create_and_save
 
 
@@ -714,6 +716,7 @@ async def test_upsert_with_required_relationship_from_template(
       - Upsert a Tshirt specifying the template (should succeed and apply the color from the template).
     """
     registry.schema.register_schema(schema=SchemaRoot(nodes=[TSHIRT, COLOR]), branch=default_branch.name)
+    default_branch.update_schema_hash()
 
     # Create a color node
     color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
@@ -780,3 +783,74 @@ async def test_upsert_with_required_relationship_from_template(
     assert tshirt_obj["name"]["value"] == "My Tshirt"
     assert tshirt_obj["color"]["node"]["id"] == color_node.id
     assert tshirt_obj["color"]["node"]["name"]["value"] == "Red"
+
+
+async def test_upsert_preserves_relationship_display_label(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that display_label with relationship-based Jinja2 template stays correct after upsert.
+
+    Steps:
+    - Create mutation (through Upsert query), display_label correctly renders relationship values (e.g. "Classic Red")
+    - Update mutation (through a second Upsert query) display_label should still render correctly
+
+    Uses HFID-based relationship references (passing color by name "Red" instead of UUID) to
+    replicate how object file loading works.
+    """
+    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), branch_name=default_branch.name)
+
+    # Create a color node
+    color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+    await color_node.new(db=db, name="Red", description="Bright Red")
+    await color_node.save(db=db)
+
+    upsert_mutation = """
+    mutation {
+        TestingTShirtUpsert(data: {
+            name: {value: "Classic"},
+            color: {id: "Red"}
+        }) {
+            ok
+            object {
+                id
+                display_label
+            }
+        }
+    }
+    """
+
+    # First upsert: creates the TShirt (display_label template: "{{ name__value }} {{ color__name__value }}")
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result_create = await graphql(
+        schema=gql_params.schema,
+        source=upsert_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    _basic_asserts(result_create)
+    assert result_create.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
+    tshirt_id = result_create.data["TestingTShirtUpsert"]["object"]["id"]
+
+    # Second upsert: updates the same TShirt (matched by uniqueness_constraints on name)
+    # This is where the bug manifests: display_label becomes "Classic None"
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    # Act
+    result_upsert = await graphql(
+        schema=gql_params.schema,
+        source=upsert_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    _basic_asserts(result_upsert)
+    assert result_upsert.data["TestingTShirtUpsert"]["object"]["id"] == tshirt_id
+    # display_label should still be "Classic Red"
+    assert result_upsert.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
+
+
+def _basic_asserts(result_upsert: ExecutionResult) -> None:
+    assert result_upsert.errors is None
+    assert result_upsert.data
+    assert result_upsert.data["TestingTShirtUpsert"]["ok"] is True

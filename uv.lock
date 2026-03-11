@@ -1362,7 +1362,7 @@ wheels = [
 
 [[package]]
 name = "infrahub-server"
-version = "1.8.0b0"
+version = "1.8.0rc0"
 source = { editable = "." }
 dependencies = [
     { name = "aio-pika" },
@@ -1520,7 +1520,7 @@ dev = [
     { name = "pytest-codspeed", specifier = ">=4.2.0,<5" },
     { name = "pytest-cov", specifier = "==7.0.0" },
     { name = "pytest-env", specifier = ">=1.1.3,<2" },
-    { name = "pytest-httpx", specifier = ">=0.30" },
+    { name = "pytest-httpx", specifier = ">=0.33" },
     { name = "pytest-timeout", specifier = "==2.3.1" },
     { name = "pytest-xdist", specifier = ">=3.4,<3.5" },
     { name = "ruamel-yaml", specifier = "==0.18.6" },

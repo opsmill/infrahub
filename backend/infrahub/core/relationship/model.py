@@ -13,6 +13,7 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
+    cast,
     overload,
 )
 
@@ -23,6 +24,7 @@ from pydantic import BaseModel, Field
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
@@ -561,8 +563,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             self.set_peer(value=peer)
 
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
+            pool: Node | None = None
             pool_id = str(self.from_pool.get("id"))
-            pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            if is_valid_uuid(pool_id):
+                pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            else:
+                results = await registry.manager.query(
+                    db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
+                )
+                results = cast("list[Node]", results)
+                pool = results[0] if results else None
 
             if not pool:
                 raise NodeNotFoundError(
@@ -897,6 +907,17 @@ class RelationshipManager:
         await rm._validate_hierarchy()
 
         for item in data:
+            if isinstance(item, dict) and item.get("from_pool") is not None and rm.node._schema.is_template_schema:
+                pool_rel_name = f"{rm.name}{RESOURCE_POOL_REL_SUFFIX}"
+                raise ValidationError(
+                    {
+                        rm.name: (
+                            f"'from_pool' is not supported on template relationships. "
+                            f"Set the '{pool_rel_name}' relationship on this template instead."
+                        )
+                    }
+                )
+
             if not isinstance(item, rm.rel_class | str | dict) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
 
