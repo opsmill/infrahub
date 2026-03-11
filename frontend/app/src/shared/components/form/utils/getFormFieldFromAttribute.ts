@@ -16,6 +16,7 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeObject } from "@/entities/nodes/types";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
@@ -162,8 +163,8 @@ export const getFormFieldFromAttribute = ({
       pools: numberPools,
       pool: hasFromPoolRelationship
         ? {
-            kind: "CoreNumberPool",
-            defaultAllocatedObjectKind: schema.kind as string,
+            kind: NUMBER_POOL_KIND,
+            defaultAllocatedObjectKind: schema.kind!,
             fromPoolRelationshipName: fromPoolName,
           }
         : undefined,
