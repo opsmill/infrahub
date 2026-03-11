@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>SpecKitty Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div>
+                <h1>SpecKitty</h1>
+                <div class="mission-display">
+                    <span class="mission-label">Mission:</span>
+                    <span class="mission-name" id="mission-name">Infrahub</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="header-info">
+                <div class="feature-selector">
+                    <label for="feature-select">Active Feature</label>
+                    <select id="feature-select" onchange="switchFeature(this.value)" onfocus="setFeatureSelectActive(true)" onblur="setFeatureSelectActive(false)">
+                        <option value="">Loading features...</option>
+                    </select>
+                </div>
+                <div class="tree-view" id="tree-info">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <span class="last-update sidebar-last-update" id="last-update"></span>
+            <div class="sidebar-item active" data-page="overview" onclick="switchPage('overview')">📊 Overview</div>
+            <div class="sidebar-item" data-page="spec" onclick="switchPage('spec')">📄 Specification</div>
+            <div class="sidebar-item" data-page="plan" onclick="switchPage('plan')">🏗️ Plan</div>
+            <div class="sidebar-item" data-page="tasks" onclick="switchPage('tasks')">📋 Tasks</div>
+            <div class="sidebar-item" data-page="kanban" onclick="switchPage('kanban')">🎯 Kanban Board</div>
+            <div class="sidebar-item" data-page="research" onclick="switchPage('research')">🔬 Research</div>
+            <div class="sidebar-item" data-page="contracts" onclick="switchPage('contracts')">📜 Contracts</div>
+            <div class="sidebar-item" data-page="checklists" onclick="switchPage('checklists')">✅ Checklists</div>
+            <div class="sidebar-item" data-page="quickstart" onclick="switchPage('quickstart')">🚀 Quickstart</div>
+            <div class="sidebar-item" data-page="data-model" onclick="switchPage('data-model')">💾 Data Model</div>
+            <hr style="margin: 10px 30px; border: none; border-top: 1px solid #e5e7eb;">
+            <div class="sidebar-item" data-page="constitution" onclick="switchPage('constitution')">⚖️ Constitution</div>
+            <div class="sidebar-item" data-page="diagnostics" onclick="switchPage('diagnostics')">🔍 Diagnostics</div>
+        </div>
+
+        <div class="main-content">
+            <div id="page-overview" class="page active">
+                <div class="content-card">
+                    <h2>Feature Overview</h2>
+                    <div id="overview-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-spec" class="page">
+                <div class="content-card">
+                    <h2>Specification</h2>
+                    <div id="spec-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-plan" class="page">
+                <div class="content-card">
+                    <h2>Implementation Plan</h2>
+                    <div id="plan-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-tasks" class="page">
+                <div class="content-card">
+                    <h2>Tasks</h2>
+                    <div id="tasks-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-kanban" class="page">
+                <div class="content-card">
+                    <h2>Kanban Board</h2>
+                    <div id="kanban-status" class="status-summary"></div>
+                    <div id="kanban-board" class="kanban-board">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-research" class="page">
+                <div class="content-card">
+                    <h2>Research</h2>
+                    <div id="research-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-contracts" class="page">
+                <div class="content-card">
+                    <h2>Contracts</h2>
+                    <div id="contracts-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-checklists" class="page">
+                <div class="content-card">
+                    <h2>Checklists</h2>
+                    <div id="checklists-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-quickstart" class="page">
+                <div class="content-card">
+                    <h2>Quickstart</h2>
+                    <div id="quickstart-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-data-model" class="page">
+                <div class="content-card">
+                    <h2>Data Model</h2>
+                    <div id="data-model-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-constitution" class="page">
+                <div class="content-card">
+                    <h2>Project Constitution</h2>
+                    <div id="constitution-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+
+            <div id="page-diagnostics" class="page">
+                <div class="content-card">
+                    <h2>Diagnostics</h2>
+                    <div id="diagnostics-content" class="markdown-content">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WP Detail Modal -->
+    <div class="modal hidden" id="prompt-modal">
+        <div class="modal-overlay" onclick="hidePromptModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modal-title"></div>
+                    <div class="modal-subtitle" id="modal-subtitle"></div>
+                </div>
+                <button class="modal-close" onclick="hidePromptModal()">&times;</button>
+            </div>
+            <div class="modal-meta" id="modal-prompt-meta"></div>
+            <div class="modal-body" id="modal-body">
+                <div id="modal-prompt-content" class="markdown-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/dashboard/dashboard.js"></script>
+    <script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFeatures();
+            setInterval(autoRefresh, 5000);
+        });
+
+        function autoRefresh() {
+            if (!featureSelectActive) {
+                loadFeatures();
+            }
+        }
+
+        function loadFeatures() {
+            fetch('/api/features')
+                .then(r => r.json())
+                .then(data => {
+                    allFeatures = data.features || [];
+                    projectPathDisplay = data.project_path || '';
+                    activeWorktreeDisplay = data.active_worktree || '';
+
+                    if (data.active_mission) {
+                        updateMissionDisplay(data.active_mission);
+                    }
+
+                    const select = document.getElementById('feature-select');
+                    const prevValue = select.value;
+
+                    select.innerHTML = allFeatures.map(f =>
+                        `<option value="${f.id}">${f.name}</option>`
+                    ).join('');
+
+                    if (allFeatures.length === 0) {
+                        select.innerHTML = '<option value="">No features found</option>';
+                        return;
+                    }
+
+                    // Restore state or pick active/first
+                    const saved = restoreState();
+                    const targetFeature = saved.feature && allFeatures.find(f => f.id === saved.feature)
+                        ? saved.feature
+                        : (data.active_feature_id || allFeatures[0].id);
+
+                    if (!currentFeature || !allFeatures.find(f => f.id === currentFeature)) {
+                        select.value = targetFeature;
+                        currentFeature = targetFeature;
+                        if (saved.page) currentPage = saved.page;
+                        switchPage(currentPage);
+                        loadCurrentPage();
+                    } else {
+                        select.value = currentFeature;
+                        loadCurrentPage();
+                    }
+
+                    updateSidebarState();
+                    updateTreeInfo();
+                    updateLastUpdate();
+                })
+                .catch(err => console.error('Failed to load features:', err));
+        }
+
+        function updateLastUpdate() {
+            const el = document.getElementById('last-update');
+            if (el) {
+                el.textContent = 'Updated: ' + new Date().toLocaleTimeString();
+            }
+        }
+    </script>
+</body>
+</html>

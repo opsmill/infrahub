@@ -14,6 +14,13 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 This command displays the current status of all work packages for the feature, both as a terminal summary and optionally as a browser-based kanban board.
 
+0. **Check for stop/kill request**:
+   - If `$ARGUMENTS` contains `stop`, `kill`, or `--kill`, stop the running dashboard:
+     ```bash
+     python dev/spec-kitty/kittify/scripts/dashboard.py --kill
+     ```
+   - Report that the dashboard has been stopped and exit — do NOT continue to the remaining steps.
+
 1. **Determine feature**:
    - Parse `$ARGUMENTS` for an optional feature/branch name
    - If not provided, use the current git branch name
@@ -59,7 +66,7 @@ This command displays the current status of all work packages for the feature, b
 
    Report:
    - Dashboard URL: `http://localhost:5050`
-   - How to stop: `python dev/spec-kitty/kittify/scripts/dashboard.py --kill` or Ctrl+C
+   - How to stop: `/kitty-spec.dashboard stop`
    - Auto-refreshes every 5 seconds
 
 5. **Suggest next actions** based on current state:
