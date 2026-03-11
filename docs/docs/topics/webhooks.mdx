@@ -78,6 +78,24 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 - **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
 - **Transformation** (Custom Webhook only): The Python transformation used to customize the webhook payload before being sent to the webhook receiver.
 
+### Custom HTTP headers
+
+Webhooks can include custom HTTP headers in every request. This is useful for authentication tokens, API keys, routing metadata, or any other headers the receiving system requires.
+
+Infrahub provides three types of key-value pairs for headers:
+
+| Type | Kind | Description | Value handling |
+|------|------|-------------|----------------|
+| **Password** | `CoreKeyValuePassword` | Sensitive values like tokens or API keys | Masked in UI and API responses (`***`) |
+| **Static** | `CoreKeyValueStatic` | Non-sensitive values like routing metadata | Displayed in cleartext |
+| **Environment Variable** | `CoreKeyValueEnvironmentVariable` | Values resolved from worker environment at send time | Stores the variable name, resolves at delivery |
+
+Key-value pairs are linked to webhooks through the **Headers** relationship. A single key-value pair can be shared across multiple webhooks — updating the value propagates to all linked webhooks on the next trigger.
+
+**Header precedence**: Custom headers override system defaults (`Accept`, `Content-Type`) if they share the same name. HMAC signature headers (`webhook-id`, `webhook-timestamp`, `webhook-signature`) are set before custom headers.
+
+**Environment variable resolution**: For environment variable headers, the variable is resolved from `os.environ` on the Infrahub worker at send time. If the variable is not set, the header is silently skipped and a warning is logged.
+
 ### Shared key for security
 
 A **shared key** can be configured to sign webhook requests. This key ensures the **authenticity** and **integrity** of the webhook message.

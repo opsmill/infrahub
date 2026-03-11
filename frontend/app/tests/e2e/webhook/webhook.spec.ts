@@ -72,6 +72,55 @@ test.describe("/objects/CoreWebhook", () => {
       });
     });
 
+    test("Create a key-value header and associate it with the webhook", async ({ page }) => {
+      await test.step("create a password key-value pair", async () => {
+        await page.goto("/objects/CoreKeyValue");
+        await expect(page.getByTestId("object-header")).toContainText("Key Value");
+        await page.getByTestId("create-object-button").click();
+
+        await page.getByLabel("Select an object type").click();
+        await page.getByRole("option", { name: "Password Key Value" }).click();
+
+        await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+        await page.getByLabel("Name *").fill("eda-auth-token");
+        await page.getByLabel("Key *").fill("Authorization");
+        await page.getByLabel("Value *").fill("Bearer e2e-test-token");
+
+        await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByRole("link", { name: "eda-auth-token" })).toBeVisible();
+      });
+
+      await test.step("associate header with webhook", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await expect(page.getByTestId("object-header")).toContainText("Webhook");
+        await page
+          .getByTestId("identifier-cell")
+          .getByRole("link", { name: "Ansible EDA", exact: true })
+          .click();
+
+        await expect(
+          page.getByTestId("object-header").getByText("Ansible EDA", { exact: true })
+        ).toBeVisible();
+
+        // Navigate to the Headers relationship tab
+        await page.getByRole("link", { name: "Headers 0" }).click();
+        await expect(page.getByText("No Key Value found")).toBeVisible();
+
+        // Add the header via the relationship form
+        await page.getByTestId("open-relationship-form-button").click();
+        await page.getByRole("combobox", { name: "Kind" }).click();
+        await page.getByRole("option", { name: "Password Key Value" }).click();
+        await page.getByRole("combobox").last().click();
+        await page.getByRole("option", { name: "eda-auth-token" }).click();
+        await page.getByRole("button", { name: "Save" }).click();
+
+        // Verify the header appears in the relationship list
+        await expect(
+          page.getByRole("link", { name: "eda-auth-token" })
+        ).toBeVisible();
+      });
+    });
+
     test("Delete webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
         await page.goto("/objects/CoreWebhook");

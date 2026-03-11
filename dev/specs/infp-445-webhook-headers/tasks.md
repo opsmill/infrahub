@@ -124,8 +124,8 @@ No additional implementation needed — static headers are already handled by th
 
 **Purpose**: Documentation, E2E tests, edge cases, and cleanup
 
-- [ ] T023 [P] Add E2E Playwright test for key-value pair CRUD and webhook header association in `frontend/app/tests/e2e/webhook/webhook.spec.ts` — create a `CoreKeyValuePassword` via UI, navigate to webhook, add header association, save, verify header appears in webhook detail view.
-- [ ] T024 [P] Add user documentation for custom webhook headers in `docs/docs/topics/webhooks.mdx` (or appropriate docs location) — cover all 3 KV types, linking to webhooks, env var setup for Kubernetes workers, header precedence rules.
+- [x] T023 [P] Add E2E Playwright test for key-value pair CRUD and webhook header association in `frontend/app/tests/e2e/webhook/webhook.spec.ts` — create a `CoreKeyValuePassword` via UI, navigate to webhook, add header association, save, verify header appears in webhook detail view.
+- [x] T024 [P] Add user documentation for custom webhook headers in `docs/docs/topics/webhooks.mdx` (or appropriate docs location) — cover all 3 KV types, linking to webhooks, env var setup for Kubernetes workers, header precedence rules.
 - [x] T025 [P] Add Towncrier changelog fragment in `changelog/` for the new custom headers feature.
 - [x] T026 Run `uv run invoke format` and `uv run invoke lint` to ensure all new code passes formatting and linting gates.
 - [x] T027 Run `uv run invoke backend.test-unit` to verify all unit tests pass (including new header tests).

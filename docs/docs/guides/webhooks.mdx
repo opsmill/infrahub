@@ -48,6 +48,71 @@ mutation {
   </TabItem>
 </Tabs>
 
+# Adding custom headers to a webhook
+
+Webhooks can include custom HTTP headers for authentication, routing, or metadata. Headers are managed as key-value pair objects linked to webhooks through a relationship.
+
+For an overview of header types and precedence rules, see the [webhooks topic](../topics/webhooks.mdx).
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+1. Navigate to **Objects** > **Key Value** and create a key-value pair:
+   - Select the type: **Password Key Value** (for sensitive tokens), **Static Key Value** (for plain text), or **Environment Variable Key Value** (for worker env vars).
+   - Set **Name** (a friendly identifier), **Key** (the HTTP header name, e.g., `Authorization`), and **Value** (the header value or env var name).
+   - Click **Save**.
+2. Navigate to the webhook detail page.
+3. Click the **Headers** tab.
+4. Click **Add** and select the key-value pair you created.
+5. Click **Save**.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+First, create a key-value pair:
+
+```graphql
+mutation CreateAuthHeader {
+  CoreKeyValuePasswordCreate(
+    data: {
+      name: {value: "eda-auth-token"}
+      key: {value: "Authorization"}
+      value: {value: "Bearer my-secret-token"}
+    }
+  ) {
+    object {
+      id
+      display_label
+    }
+  }
+}
+```
+
+Then link it to a webhook using the header's ID:
+
+```graphql
+mutation AddHeaderToWebhook {
+  CoreStandardWebhookUpdate(
+    data: {
+      id: "<webhook-id>"
+      headers: [{id: "<key-value-id>"}]
+    }
+  ) {
+    object {
+      display_label
+    }
+  }
+}
+```
+
+For environment variable headers, use `CoreKeyValueEnvironmentVariableCreate` and set the value to the variable name (e.g., `VAULT_API_KEY`). The variable is resolved from the worker environment at send time.
+
+For static (non-sensitive) headers, use `CoreKeyValueStaticCreate`.
+
+  </TabItem>
+</Tabs>
+
 # Creating a custom webhook with a Transformation
 
 Custom webhooks allow you to transform event data before sending it to an external endpoint. This is useful when the receiving system expects a specific payload format, such as Slack, Microsoft Teams, GitHub Actions, or other third-party APIs.
