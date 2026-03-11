@@ -129,7 +129,7 @@ No additional implementation needed — static headers are already handled by th
 - [x] T025 [P] Add Towncrier changelog fragment in `changelog/` for the new custom headers feature.
 - [x] T026 Run `uv run invoke format` and `uv run invoke lint` to ensure all new code passes formatting and linting gates.
 - [x] T027 Run `uv run invoke backend.test-unit` to verify all unit tests pass (including new header tests).
-- [ ] T028 Run quickstart.md validation — execute the GraphQL mutations from `specs/infp-445-webhook-headers/quickstart.md` against a running instance and verify expected behavior.
+- [x] T028 Run quickstart.md validation — execute the GraphQL mutations from `specs/infp-445-webhook-headers/quickstart.md` against a running instance and verify expected behavior.
 
 ---
 
