@@ -4636,3 +4636,21 @@ async def test_manage_object_templates_component_relationship_to_excluded_kind()
     template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
     pool_rel = template.get_relationship(name="number_pools")
     assert pool_rel.peer == InfrahubKind.NUMBERPOOL
+
+
+async def test_profile_does_not_contain_optional_unique_attributes() -> None:
+    schema = {
+        "namespace": "Network",
+        "name": "Router",
+        "uniqueness_constraints": [["name__value"]],
+        "human_friendly_id": ["name__value"],
+        "display_label": "name__value",
+        "attributes": [{"name": "name", "kind": "Text", "optional": True}],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[schema]))
+    schema_branch.process()
+
+    network_router_profile = schema_branch.get(name="ProfileNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_profile.get_attribute("name")

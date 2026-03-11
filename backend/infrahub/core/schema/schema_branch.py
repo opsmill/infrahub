@@ -2429,6 +2429,15 @@ class SchemaBranch:
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
 
+    def check_attr_in_uniqueness_constraint(self, attr: str, node_schema: NodeSchema) -> bool:
+        if not node_schema.uniqueness_constraints:
+            return False
+        for constraint_paths in node_schema.uniqueness_constraints:
+            for constraint_path in constraint_paths:
+                if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
+                    return True
+        return False
+
     def generate_profile_from_node(self, node: NodeSchema) -> ProfileSchema:
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
         core_name_attr = core_profile_schema.get_attribute(name="profile_name")
@@ -2480,7 +2489,9 @@ class SchemaBranch:
             )
 
         for node_attr in node.attributes:
-            if not node_attr.support_profiles:
+            if not node_attr.support_profiles or (
+                node_attr.optional and self.check_attr_in_uniqueness_constraint(attr=node_attr.name, node_schema=node)
+            ):
                 continue
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
