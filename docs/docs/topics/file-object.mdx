@@ -140,7 +140,7 @@ For production deployments behind a reverse proxy, the proxy must also allow lar
 
 ### Backups
 
-File objects are stored in the [object storage](./object-storage.mdx) layer, which is separate from the graph database.
+The file content for file objects is stored in the [object storage](./object-storage.mdx) layer, which is separate from the graph database.
 
 :::warning Data loss risk
 Unlike artifacts, which can be regenerated from their definitions, user-uploaded files may only exist in object storage. Losing object storage without a backup means those files are unrecoverable. Both the graph database and object storage must be backed up together to maintain consistency.
