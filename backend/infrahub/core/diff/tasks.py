@@ -69,7 +69,7 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
         diff_roots_to_refresh = await diff_repository.get_roots_metadata(diff_branch_names=[branch_name])
 
         for diff_root in diff_roots_to_refresh:
-            if diff_root.base_branch_name != diff_root.diff_branch_name:
+            if diff_root.base_branch_name != diff_root.diff_branch_name and diff_root.is_frozen is False:
                 await get_workflow().submit_workflow(
                     workflow=DIFF_REFRESH,
                     context=context,

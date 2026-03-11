@@ -201,6 +201,10 @@ class MainSettings(BaseSettings):
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
     )
+    diff_update_after_merge: bool = Field(
+        default=True,
+        description="When enabled, diff updates are triggered for active branches after a branch merge.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
