@@ -3,6 +3,8 @@ import os
 from unittest.mock import patch
 from uuid import UUID
 
+import pytest
+
 from infrahub.core.timestamp import Timestamp
 from infrahub.webhook.models import HeaderConfig, StandardWebhook
 
@@ -161,7 +163,7 @@ def test_env_var_header_skipped_when_missing() -> None:
     assert webhook._headers["X-Static"] == "present"
 
 
-def test_env_var_missing_logs_warning(caplog: logging.LogRecord) -> None:
+def test_env_var_missing_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     """T016: Warning logged with missing variable name when env var not set."""
     headers = [
         HeaderConfig(key="X-Secret", value="MISSING_SECRET_VAR", header_type="env"),
