@@ -2490,7 +2490,11 @@ class SchemaBranch:
 
         for node_attr in node.attributes:
             if not node_attr.support_profiles or (
-                node_attr.optional and self.check_attr_in_uniqueness_constraint(attr=node_attr.name, node_schema=node)
+                node_attr.optional
+                and (
+                    any(unique_attr.name == node_attr.name for unique_attr in node.unique_attributes)
+                    or self.check_attr_in_uniqueness_constraint(attr=node_attr.name, node_schema=node)
+                )
             ):
                 continue
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)

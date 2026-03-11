@@ -4654,3 +4654,15 @@ async def test_profile_does_not_contain_optional_unique_attributes() -> None:
     network_router_profile = schema_branch.get(name="ProfileNetworkRouter", duplicate=False)
     with pytest.raises(ValueError, match="Unable to find the attribute name"):
         network_router_profile.get_attribute("name")
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["attributes"][0]["unique"] = True
+    schema_2["uniqueness_constraints"] = []
+
+    schema_branch_2 = SchemaBranch(cache={}, name="test2")
+    schema_branch_2.load_schema(schema=SchemaRoot(nodes=[schema_2]))
+    schema_branch_2.process()
+
+    network_router_profile = schema_branch_2.get(name="ProfileNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_profile.get_attribute("name")
