@@ -67,6 +67,7 @@ from .m062_template_number_pool_cleanup import Migration062
 from .m063_template_ip_pool_relationship_cleanup import Migration063
 from .m064_remove_generic_generate_template import Migration064
 from .m065_consolidate_duplicate_number_pools import Migration065
+from .m066_freeze_orphaned_branch_tracking_diffs import Migration066
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -138,6 +139,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration063,
     Migration064,
     Migration065,
+    Migration066,
 ]
 
 

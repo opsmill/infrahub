@@ -1519,6 +1519,94 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         frozen_uuids_after = {m.uuid for m in frozen_metadata_after}
         assert frozen_branch_diff.uuid not in frozen_uuids_after
 
+    async def test_freeze_diffs_for_branch(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ) -> None:
+        """Test freezing diffs by branch name, including partner diffs."""
+        branch_name = "freeze-branch-test"
+        tracking_id = BranchTrackingId(name=branch_name)
+
+        # Create branch diff + base diff pair linked by partner relationship
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=self._build_nodes(num_nodes=2, num_sub_fields=1),
+            tracking_id=tracking_id,
+            is_frozen=False,
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=tracking_id,
+            is_frozen=False,
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
+
+        # Verify diffs are not frozen initially
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_name, self.base_branch_name],
+            tracking_id=tracking_id,
+        )
+        assert len(metadata) == 2
+        for m in metadata:
+            assert m.is_frozen is False
+            assert isinstance(m.tracking_id, BranchTrackingId)
+
+        # Freeze diffs for branch
+        await diff_repository.freeze_diffs_for_branch(branch_name=branch_name)
+
+        # Verify both branch diff and partner (base) diff are frozen with FrozenTrackingId
+        frozen_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_name, self.base_branch_name],
+            tracking_id=FrozenTrackingId(name=branch_name),
+        )
+        assert len(frozen_metadata) == 2
+        for m in frozen_metadata:
+            assert m.is_frozen is True
+            assert isinstance(m.tracking_id, FrozenTrackingId)
+            assert m.tracking_id.name == branch_name
+
+        # Verify the original BranchTrackingId no longer finds any diffs
+        old_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_name, self.base_branch_name],
+            tracking_id=tracking_id,
+        )
+        assert len(old_metadata) == 0
+
+        # Freeze again - should not error
+        await diff_repository.freeze_diffs_for_branch(branch_name=branch_name)
+
+        # Verify still frozen with correct tracking id
+        frozen_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_name, self.base_branch_name],
+            tracking_id=FrozenTrackingId(name=branch_name),
+        )
+        assert len(frozen_metadata) == 2
+        for m in frozen_metadata:
+            assert m.is_frozen is True
+            assert isinstance(m.tracking_id, FrozenTrackingId)
+            assert m.tracking_id.name == branch_name
+
+        # Verify the original BranchTrackingId no longer finds any diffs
+        old_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_name, self.base_branch_name],
+            tracking_id=tracking_id,
+        )
+        assert len(old_metadata) == 0
+
     async def test_save_and_retrieve_is_frozen(
         self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
     ) -> None:
