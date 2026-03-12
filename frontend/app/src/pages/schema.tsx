@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
 import Content from "@/shared/components/layout/content";
+import { LinkButton } from "@/shared/components/ui/button";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import {
@@ -11,7 +12,6 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 import { SchemaSelector } from "@/entities/schema/ui/schema-selector";
 import { SchemaViewerStack } from "@/entities/schema/ui/schema-viewer";
-import { LinkButton } from "@/shared/components/ui/button";
 
 function SchemaPage() {
   useTitle("Schema");
