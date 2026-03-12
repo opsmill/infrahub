@@ -51,7 +51,7 @@ test.describe("/object-template - Number pool from template", () => {
       await page.getByTestId("number-pool-button").click();
       await page.getByRole("option", { name: "module capacity pool" }).click();
       await expect(page.getByTestId("source-pool-badge")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Allocated by pool" })).toBeVisible();
+      await expect(page.getByLabel("Module Capacity")).toContainText("Allocated by pool");
 
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraPatchPanel created")).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("/object-template - Number pool from template", () => {
       await page.getByRole("button", { name: "Start from template" }).click();
       await page.getByRole("option", { name: "number_pool_patch_panel_template" }).click();
       await expect(page.getByTestId("source-pool-badge")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Allocated by pool" })).toBeVisible();
+      await expect(page.getByLabel("Module Capacity")).toContainText("Allocated by pool");
 
       await page.getByRole("textbox", { name: "Name *" }).fill("patch-panel-from-pool-template");
       await page.getByRole("button", { name: "Save" }).click();
