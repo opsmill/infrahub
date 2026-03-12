@@ -436,7 +436,7 @@ First create a prefix to draw addresses from, then create the pool backed by tha
   <TabItem value="graphql" label="Via the GraphQL Interface">
 
   ```graphql
-  mutation CreatePool {
+  mutation CreatePrefix {
     IpamIPPrefixCreate(
       data: {prefix: {value: "192.168.0.0/16"}, member_type: {value: "address"}, is_pool: {value: true}}
     ) {
