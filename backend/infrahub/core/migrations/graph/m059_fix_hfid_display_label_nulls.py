@@ -159,6 +159,10 @@ class Migration059(MigrationRequiringRebase):
             value = dl._value
             if value is not None:
                 return value.value if isinstance(value, AttributeFromDB) else value
+            console.print(
+                f"[red]ERROR: Failed to compute display_label for node {node.id} ({schema.kind}) "
+                f"using template {schema.display_label!r}[/red]"
+            )
         # display_labels (plural) is deprecated but existing schemas in production may still use it
         elif schema.display_labels:
             parts = []
@@ -168,6 +172,10 @@ class Migration059(MigrationRequiringRebase):
                     parts.append(str(path_value))
             if parts:
                 return " ".join(parts)
+            console.print(
+                f"[red]ERROR: Failed to compute display_label for node {node.id} ({schema.kind}) "
+                f"using display_labels paths {schema.display_labels!r}[/red]"
+            )
         return None
 
     async def _compute_hfid(
@@ -185,6 +193,10 @@ class Migration059(MigrationRequiringRebase):
         if hfid_value is not None:
             raw_list = hfid_value.value if isinstance(hfid_value, AttributeFromDB) else hfid_value
             return ujson.dumps(raw_list)
+        console.print(
+            f"[red]ERROR: Failed to compute human_friendly_id for node {node.id} ({schema.kind}) "
+            f"using paths {schema.human_friendly_id!r}[/red]"
+        )
         return None
 
     async def _compute_values_for_batch(
