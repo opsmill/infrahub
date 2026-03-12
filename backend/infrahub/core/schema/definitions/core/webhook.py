@@ -97,6 +97,7 @@ core_webhook = GenericSchema(
             peer=InfrahubKind.KEYVALUE,
             kind=RelKind.ATTRIBUTE,
             identifier="webhook__headers",
+            description="Custom HTTP headers sent with webhook requests",
             cardinality=Cardinality.MANY,
             optional=True,
             order_weight=6000,
