@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration066Query01(Query):
-    name = "migration_066_01"
+class Migration067Query01(Query):
+    name = "migration_067_01"
     type: QueryType = QueryType.WRITE
     insert_return = False
 
@@ -37,10 +37,10 @@ class Migration066Query01(Query):
         self.add_to_query(query)
 
 
-class Migration066(GraphMigration):
-    name: str = "066_freeze_orphaned_branch_tracking_diffs"
-    queries: Sequence[type[Query]] = [Migration066Query01]
-    minimum_version: int = 65
+class Migration067(GraphMigration):
+    name: str = "067_freeze_orphaned_branch_tracking_diffs"
+    queries: Sequence[type[Query]] = [Migration067Query01]
+    minimum_version: int = 66
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

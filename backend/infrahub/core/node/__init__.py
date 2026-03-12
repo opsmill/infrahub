@@ -53,10 +53,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
-<<<<<<< HEAD
     from infrahub.core.creation_context import NodeCreationContext
-=======
->>>>>>> stable
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.schema_branch_display import TemplateLabel
     from infrahub.core.schema.schema_branch_hfid import HFIDDefinition
@@ -811,11 +808,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self._merge_relationship_fields(definitions)
 
-<<<<<<< HEAD
     async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
-=======
-    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
->>>>>>> stable
         schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
         extra_filters = self._collect_extra_filters(schema_branch=schema_branch)
 

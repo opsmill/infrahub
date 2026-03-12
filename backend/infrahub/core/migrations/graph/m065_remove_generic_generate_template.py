@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class RemoveGenericGenerateTemplateQuery(Query):
     """Remove generate_template Attribute nodes from all SchemaGeneric-labeled instances."""
 
-    name = "migration_062_remove_generic_generate_template"
+    name = "migration_065_remove_generic_generate_template"
     type: QueryType = QueryType.WRITE
     insert_return = False
 
@@ -30,7 +30,7 @@ DETACH DELETE attr
 class RemoveGenericGenerateTemplateSchemaAttributeQuery(Query):
     """Remove the generate_template SchemaAttribute from the SchemaGeneric type definition."""
 
-    name = "migration_062_remove_generic_generate_template_schema_attribute"
+    name = "migration_065_remove_generic_generate_template_schema_attribute"
     type: QueryType = QueryType.WRITE
     insert_return = False
 
@@ -63,9 +63,9 @@ DELETE val
         self.add_to_query(query)
 
 
-class Migration064(GraphMigration):
-    name: str = "064_remove_generic_generate_template"
-    minimum_version: int = 63
+class Migration065(GraphMigration):
+    name: str = "065_remove_generic_generate_template"
+    minimum_version: int = 64
     queries: Sequence[type[Query]] = [
         RemoveGenericGenerateTemplateQuery,
         RemoveGenericGenerateTemplateSchemaAttributeQuery,

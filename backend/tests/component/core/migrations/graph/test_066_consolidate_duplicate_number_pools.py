@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MetadataOptions, NumberPoolType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m065_consolidate_duplicate_number_pools import Migration065
+from infrahub.core.migrations.graph.m066_consolidate_duplicate_number_pools import Migration066
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class TestMigration065:
+class TestMigration066:
     @pytest.fixture
     async def duplicate_pool_setup(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
@@ -153,7 +153,7 @@ class TestMigration065:
 
         # First run
         async with db.start_session() as dbs:
-            migration = Migration065()
+            migration = Migration066()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
@@ -167,7 +167,7 @@ class TestMigration065:
 
         # Second run (idempotency) — should succeed with no changes
         async with db.start_session() as dbs:
-            migration = Migration065()
+            migration = Migration066()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
@@ -199,7 +199,7 @@ class TestMigration065:
         await pool.save(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration065()
+            migration = Migration066()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 

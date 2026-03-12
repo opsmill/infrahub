@@ -785,16 +785,6 @@ async def test_upsert_with_required_relationship_from_template(
     assert tshirt_obj["color"]["node"]["name"]["value"] == "Red"
 
 
-<<<<<<< HEAD
-async def test_upsert_preserves_relationship_display_label(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
-) -> None:
-    """Validate that display_label with relationship-based Jinja2 template stays correct after upsert.
-
-    Steps:
-    - Create mutation (through Upsert query), display_label correctly renders relationship values (e.g. "Classic Red")
-    - Update mutation (through a second Upsert query) display_label should still render correctly
-=======
 async def test_upsert_preserves_relationship_display_label_and_hfid(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
@@ -803,17 +793,12 @@ async def test_upsert_preserves_relationship_display_label_and_hfid(
     Steps:
     - Create mutation (through Upsert query), display_label correctly renders relationship values (e.g. "Classic Red")
     - Update mutation (through a second Upsert query) display_label and hfid should still render correctly
->>>>>>> stable
 
     Uses HFID-based relationship references (passing color by name "Red" instead of UUID) to
     replicate how object file loading works.
     """
-<<<<<<< HEAD
-    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), branch_name=default_branch.name)
-=======
     tshirt_with_rel_hfid = TSHIRT.model_copy(update={"human_friendly_id": ["name__value", "color__name__value"]})
     await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, tshirt_with_rel_hfid]), branch_name=default_branch.name)
->>>>>>> stable
 
     # Create a color node
     color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
@@ -830,22 +815,15 @@ async def test_upsert_preserves_relationship_display_label_and_hfid(
             object {
                 id
                 display_label
-<<<<<<< HEAD
-=======
                 hfid
->>>>>>> stable
             }
         }
     }
     """
 
-<<<<<<< HEAD
-    # First upsert: creates the TShirt (display_label template: "{{ name__value }} {{ color__name__value }}")
-=======
     # First upsert: creates the TShirt
     # display_label template: "{{ name__value }} {{ color__name__value }}"
     # human_friendly_id: ["name__value", "color__name__value"]
->>>>>>> stable
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result_create = await graphql(
         schema=gql_params.schema,
@@ -856,18 +834,11 @@ async def test_upsert_preserves_relationship_display_label_and_hfid(
     )
     _basic_asserts(result_create)
     assert result_create.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
-<<<<<<< HEAD
-    tshirt_id = result_create.data["TestingTShirtUpsert"]["object"]["id"]
-
-    # Second upsert: updates the same TShirt (matched by uniqueness_constraints on name)
-    # This is where the bug manifests: display_label becomes "Classic None"
-=======
     assert result_create.data["TestingTShirtUpsert"]["object"]["hfid"] == ["Classic", "Red"]
     tshirt_id = result_create.data["TestingTShirtUpsert"]["object"]["id"]
 
     # Second upsert: updates the same TShirt (matched by uniqueness_constraints on name)
     # This is where the bug manifests: display_label becomes "Classic None" and hfid becomes ["Classic", null]
->>>>>>> stable
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     # Act
@@ -882,11 +853,8 @@ async def test_upsert_preserves_relationship_display_label_and_hfid(
     assert result_upsert.data["TestingTShirtUpsert"]["object"]["id"] == tshirt_id
     # display_label should still be "Classic Red"
     assert result_upsert.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
-<<<<<<< HEAD
-=======
     # hfid should still be ["Classic", "Red"]
     assert result_upsert.data["TestingTShirtUpsert"]["object"]["hfid"] == ["Classic", "Red"]
->>>>>>> stable
 
 
 def _basic_asserts(result_upsert: ExecutionResult) -> None:
