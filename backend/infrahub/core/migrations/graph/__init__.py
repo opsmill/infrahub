@@ -60,6 +60,7 @@ from .m055_remove_webhook_validate_certificates_default import Migration055
 from .m056_update_schema_node_generic_constraints import Migration056
 from .m057_deduplicate_schema_nodes import Migration057
 from .m058_remove_profiles_schema_relationships import Migration058
+<<<<<<< HEAD
 from .m059_set_coreproposedchange_created_by_on_node import Migration059
 from .m060_link_proposed_changes_to_diff_roots import Migration060
 from .m061_recompute_permission_display_labels import Migration061
@@ -68,6 +69,9 @@ from .m063_template_ip_pool_relationship_cleanup import Migration063
 from .m064_remove_generic_generate_template import Migration064
 from .m065_consolidate_duplicate_number_pools import Migration065
 from .m066_freeze_orphaned_branch_tracking_diffs import Migration066
+=======
+from .m059_fix_hfid_display_label_nulls import Migration059
+>>>>>>> stable
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -133,6 +137,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration057,
     Migration058,
     Migration059,
+<<<<<<< HEAD
     Migration060,
     Migration061,
     Migration062,
@@ -140,6 +145,8 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration064,
     Migration065,
     Migration066,
+=======
+>>>>>>> stable
 ]
 
 

@@ -1,6 +1,10 @@
 [project]
 name = "infrahub-server"
+<<<<<<< HEAD
 version = "1.8.0rc0"
+=======
+version = "1.7.7"
+>>>>>>> stable
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
