@@ -24,7 +24,7 @@ class DuplicatePoolGroup:
     duplicate_uuids: list[str] = field(default_factory=list)
 
 
-class Migration065(ArbitraryMigration):
+class Migration066(ArbitraryMigration):
     """Consolidate duplicate CoreNumberPool instances with pool_type='Schema'
     that share the same node + node_attribute combination.
 
@@ -33,8 +33,8 @@ class Migration065(ArbitraryMigration):
     Updates any NumberPoolParameters on SchemaAttributes that reference a deleted CoreNumberPool
     """
 
-    name: str = "065_consolidate_duplicate_number_pools"
-    minimum_version: int = 64
+    name: str = "066_consolidate_duplicate_number_pools"
+    minimum_version: int = 65
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

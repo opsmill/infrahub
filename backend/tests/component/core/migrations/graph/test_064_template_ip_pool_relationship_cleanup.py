@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipCardinality
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m063_template_ip_pool_relationship_cleanup import Migration063
+from infrahub.core.migrations.graph.m064_template_ip_pool_relationship_cleanup import Migration064
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class TestMigration063(TestInfrahubApp):
+class TestMigration064(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def device_schema(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_schema: SchemaBranch
@@ -219,7 +219,7 @@ class TestMigration063(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def test_branch(self, db: InfrahubDatabase, template_with_pool_source: Node) -> Branch:
-        return await create_branch(db=db, branch_name="test-branch-m063")
+        return await create_branch(db=db, branch_name="test-branch-m064")
 
     @pytest.fixture(scope="class")
     async def branch_template_with_pool_source(
@@ -376,7 +376,7 @@ class TestMigration063(TestInfrahubApp):
 
         # Run migration
         async with db.start_session() as dbs:
-            migration = Migration063()
+            migration = Migration064()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
@@ -405,7 +405,7 @@ class TestMigration063(TestInfrahubApp):
 
         # Verify idempotency: running again produces no errors and same results
         async with db.start_session() as dbs:
-            migration = Migration063()
+            migration = Migration064()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
@@ -446,7 +446,7 @@ class TestMigration063(TestInfrahubApp):
         await test_branch.rebase(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration063()
+            migration = Migration064()
             result = await migration.execute_against_branch(migration_input=MigrationInput(db=dbs), branch=test_branch)
             assert not result.errors
 

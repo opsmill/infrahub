@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m062_template_number_pool_cleanup import Migration062
+from infrahub.core.migrations.graph.m063_template_number_pool_cleanup import Migration063
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot
@@ -38,7 +38,7 @@ DEVICE_SCHEMA: dict = {
 }
 
 
-class TestMigration062(TestInfrahubApp):
+class TestMigration063(TestInfrahubApp):
     @staticmethod
     async def get_default_branch_attr_value_from_db(db: InfrahubDatabase, node_uuid: str, attr_name: str) -> str | None:
         """Read the raw attribute value from the DB on the default branch, bypassing ORM deserialization.
@@ -137,7 +137,7 @@ class TestMigration062(TestInfrahubApp):
         )
 
         async with db.start_session() as dbs:
-            migration = Migration062()
+            migration = Migration063()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
@@ -179,12 +179,12 @@ class TestMigration062(TestInfrahubApp):
         template_with_pool_source: Node,
     ) -> None:
         async with db.start_session() as dbs:
-            migration = Migration062()
+            migration = Migration063()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
         async with db.start_session() as dbs:
-            migration = Migration062()
+            migration = Migration063()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
@@ -197,7 +197,7 @@ class TestMigration062(TestInfrahubApp):
         device_schema: NodeSchema,
         number_pool: Node,
     ) -> None:
-        test_branch = await create_branch(db=db, branch_name="test-branch-m062")
+        test_branch = await create_branch(db=db, branch_name="test-branch-m063")
 
         template = await Node.init(db=db, schema="TemplateTestDevice", branch=test_branch)
         await template.new(
@@ -215,13 +215,13 @@ class TestMigration062(TestInfrahubApp):
 
         # Execute against default branch first (required before execute_against_branch)
         async with db.start_session() as dbs:
-            migration = Migration062()
+            migration = Migration063()
             await migration.execute(migration_input=MigrationInput(db=dbs))
 
         await test_branch.rebase(db=db)
 
         async with db.start_session() as dbs:
-            migration = Migration062()
+            migration = Migration063()
             result = await migration.execute_against_branch(migration_input=MigrationInput(db=dbs), branch=test_branch)
             assert not result.errors
 

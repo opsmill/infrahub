@@ -1,5 +1,5 @@
 """
-Tests for Migration 066: Freeze orphaned branch-tracking diffs.
+Tests for Migration 067: Freeze orphaned branch-tracking diffs.
 
 The migration freezes DiffRoots (and their partners) whose tracking_id starts with "branch."
 when the associated Branch no longer exists, has been merged, or has a different branched_from
@@ -25,7 +25,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffs, FrozenTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
-from infrahub.core.migrations.graph.m066_freeze_orphaned_branch_tracking_diffs import Migration066
+from infrahub.core.migrations.graph.m067_freeze_orphaned_branch_tracking_diffs import Migration067
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -40,7 +40,7 @@ class DiffExpectation:
     expected_frozen: bool
 
 
-class TestMigration066:
+class TestMigration067:
     @pytest.fixture
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
         component_registry = get_component_registry()
@@ -108,7 +108,7 @@ class TestMigration066:
                     f"got {metadata.is_frozen}"
                 )
 
-    async def test_migration_066(
+    async def test_migration_067(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -271,7 +271,7 @@ class TestMigration066:
         )
 
         # --- Run migration and validate ---
-        migration = Migration066()
+        migration = Migration067()
         await migration.execute(MigrationInput(db=db))
         await self._validate_expectations(diff_repository, expectations)
 
