@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -153,7 +154,9 @@ class Migration059(MigrationRequiringRebase):
         """Compute the correct display_label value for a node."""
         if schema.display_label:
             dl = DisplayLabel(node_schema=schema, template=schema.display_label)
-            await dl.compute(db=db, node=node)
+            # in case computing fails, will log an error later
+            with contextlib.suppress(ValueError):
+                await dl.compute(db=db, node=node)
             # NodePropertyAttribute doesn't expose a public getter that avoids needing a Node+Timestamp,
             # so accessing _value directly is the pragmatic choice in migration context.
             value = dl._value
@@ -188,7 +191,9 @@ class Migration059(MigrationRequiringRebase):
         if not schema.human_friendly_id:
             return None
         hfid = HumanFriendlyIdentifier(node_schema=schema, template=schema.human_friendly_id)
-        await hfid.compute(db=db, node=node)
+        # in case computing fails, will log an error later
+        with contextlib.suppress(ValueError):
+            await hfid.compute(db=db, node=node)
         hfid_value = hfid._value
         if hfid_value is not None:
             raw_list = hfid_value.value if isinstance(hfid_value, AttributeFromDB) else hfid_value
