@@ -25,7 +25,7 @@ export type PoolValue = {
 
 type PoolSelectorProps = {
   children: React.ReactNode;
-  onChange: (value: PoolValue) => void;
+  onChange: (value: PoolValue | null) => void;
   pools: Array<NumberPool>;
   value: FormFieldValue;
 };
@@ -61,16 +61,30 @@ export function PoolSelector({ children, onChange, value, pools }: PoolSelectorP
                 key={pool.id}
                 value={pool.id}
                 keywords={[poolLabel, pool.id]}
-                onSelect={() =>
-                  onChange({
-                    from_pool: {
-                      id: pool.id,
-                      name: poolLabel,
-                      kind: pool.__typename,
-                    },
-                  })
-                }
-                selectedValue={value?.source?.id}
+                onSelect={() => {
+                  if (value.source?.type !== "pool") {
+                    onChange({
+                      from_pool: {
+                        id: pool.id,
+                        name: poolLabel,
+                        kind: pool.__typename,
+                      },
+                    });
+                    return;
+                  }
+                  onChange(
+                    value.source.id === pool.id
+                      ? null
+                      : {
+                          from_pool: {
+                            id: pool.id,
+                            name: poolLabel,
+                            kind: pool.__typename,
+                          },
+                        }
+                  );
+                }}
+                selectedValue={value.source?.type === "pool" ? value.source.id : null}
               >
                 {poolLabel}
               </ComboboxItem>

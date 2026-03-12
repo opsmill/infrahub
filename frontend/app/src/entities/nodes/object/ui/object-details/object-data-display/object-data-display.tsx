@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 
 import SlideOver from "@/shared/components/display/slide-over";
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -14,7 +15,11 @@ import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is
 import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import type { NodeAttributeWithMetadata, NodeObjectWithMetadata } from "@/entities/nodes/types";
+import type {
+  NodeAttributeWithMetadata,
+  NodeObjectWithMetadata,
+  NodeRelationshipOneWithMetadata,
+} from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
@@ -78,6 +83,27 @@ export function ObjectDataDisplay({
               key={fieldName}
               relationshipSchema={field}
               relationshipData={relationshipData}
+              objectKind={objectKind}
+              permission={permission}
+              onClickMetadata={onClickRelationshipMetadata}
+            />
+          );
+        }
+
+        const fromResourcePoolRelationshipName = fieldName + FROM_RESOURCE_POOL_SUFFIX;
+        const fromResourcePoolRelationship = objectSchema.relationships?.find(
+          (relationship) => relationship.name === fromResourcePoolRelationshipName
+        );
+        const poolRelData = objectData[fromResourcePoolRelationshipName] as
+          | NodeRelationshipOneWithMetadata
+          | undefined;
+
+        if (fromResourcePoolRelationship && poolRelData?.node) {
+          return (
+            <ObjectRelationshipRow
+              key={fieldName}
+              relationshipSchema={{ ...fromResourcePoolRelationship, label: field.label }}
+              relationshipData={poolRelData}
               objectKind={objectKind}
               permission={permission}
               onClickMetadata={onClickRelationshipMetadata}

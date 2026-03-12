@@ -468,6 +468,28 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
                 variables={"name": "device-small-pool-overflow", "template_id": template_with_small_pool.id},
             )
 
+    async def test_template_from_pool_on_relationship_blocked(
+        self, ip_address_pool: Node, client: InfrahubClient
+    ) -> None:
+        """Using from_pool on a template relationship should raise an error."""
+        with pytest.raises(GraphQLError, match="'from_pool' is not supported on template relationships"):
+            await client.execute_graphql(
+                query="""
+                mutation CreateTemplateWithFromPool($pool_id: String!) {
+                    TemplateInfraDeviceCreate(
+                        data: {
+                            template_name: { value: "device-from-pool-blocked" }
+                            primary_address: { from_pool: { id: $pool_id } }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"pool_id": ip_address_pool.id},
+            )
+
 
 class TestTemplateNumberPoolAttributes(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -694,6 +716,26 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         pool_peer = await tmpl.slot_id_from_resource_pool.get_peer(db=db)
         assert pool_peer is not None
         assert pool_peer.id == slot_pool.id
+
+    async def test_template_from_pool_on_attribute_blocked(self, slot_pool: Node, client: InfrahubClient) -> None:
+        """Using from_pool on a template attribute should raise an error."""
+        with pytest.raises(GraphQLError, match="'from_pool' is not supported on template attributes"):
+            await client.execute_graphql(
+                query="""
+                mutation CreateTemplateWithFromPool($pool_id: String!) {
+                    TemplateInfraRackCreate(
+                        data: {
+                            template_name: { value: "rack-from-pool-blocked" }
+                            slot_id: { from_pool: { id: $pool_id } }
+                        }
+                    ) {
+                        ok
+                        object { id }
+                    }
+                }
+                """,
+                variables={"pool_id": slot_pool.id},
+            )
 
 
 class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):

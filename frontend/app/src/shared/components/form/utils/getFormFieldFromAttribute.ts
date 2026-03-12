@@ -1,4 +1,5 @@
 import type { components } from "@/shared/api/rest/types.generated";
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   DynamicAttributeFieldProps,
@@ -15,6 +16,7 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeObject } from "@/entities/nodes/types";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
@@ -152,10 +154,20 @@ export const getFormFieldFromAttribute = ({
   if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
     const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name);
 
+    const fromPoolName = `${attributeSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
+    const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
+
     const dropdownField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
       type: "Number",
       pools: numberPools,
+      pool: hasFromPoolRelationship
+        ? {
+            kind: NUMBER_POOL_KIND,
+            defaultAllocatedObjectKind: schema.kind!,
+            fromPoolRelationshipName: fromPoolName,
+          }
+        : undefined,
     };
 
     return dropdownField;
