@@ -1,0 +1,25 @@
+---
+title: Release 1.7.7
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.7.7</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>March 12th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.7.7](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.7.7)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Fixed display labels showing 'None' for relationship-based fields after upsert.
+  Relationship peer attributes needed by display label and HFID templates are now correctly loaded during node updates.
+  Includes a migration to correct objects that had their display labels and or human-friendly IDs improperly updated to include a null value.
