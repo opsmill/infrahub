@@ -127,6 +127,15 @@ cmd_cleanup_worktree() {
     local branch_name="kitty/${feature}-${wp_id}"
 
     if [[ -d "$worktree_path" ]]; then
+        if [[ -n "$(git -C "$worktree_path" status --porcelain 2>/dev/null)" ]]; then
+            echo "WARNING: Worktree has uncommitted changes: $worktree_path"
+            echo -n "Force remove and discard changes? [y/N] "
+            read -r confirm
+            if [[ "$confirm" != [yY] ]]; then
+                echo "Skipping worktree removal."
+                return 0
+            fi
+        fi
         git worktree remove "$worktree_path" --force
         echo "Removed worktree: $worktree_path"
     else

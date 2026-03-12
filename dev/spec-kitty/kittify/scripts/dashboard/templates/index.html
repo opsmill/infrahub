@@ -130,7 +130,11 @@
             <div id="page-diagnostics" class="page">
                 <div class="content-card">
                     <h2>Diagnostics</h2>
-                    <div id="diagnostics-content" class="markdown-content">Loading...</div>
+                    <div id="diagnostics-loading" class="markdown-content">Loading...</div>
+                    <div id="diagnostics-error" style="display:none" class="markdown-content">
+                        <p id="diagnostics-error-message"></p>
+                    </div>
+                    <div id="diagnostics-content" style="display:none" class="markdown-content"></div>
                 </div>
             </div>
         </div>
@@ -183,14 +187,20 @@
                     const select = document.getElementById('feature-select');
                     const prevValue = select.value;
 
-                    select.innerHTML = allFeatures.map(f =>
-                        `<option value="${f.id}">${f.name}</option>`
-                    ).join('');
-
+                    select.textContent = '';
                     if (allFeatures.length === 0) {
-                        select.innerHTML = '<option value="">No features found</option>';
+                        const opt = document.createElement('option');
+                        opt.value = '';
+                        opt.textContent = 'No features found';
+                        select.appendChild(opt);
                         return;
                     }
+                    allFeatures.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f.id;
+                        opt.textContent = f.name;
+                        select.appendChild(opt);
+                    });
 
                     // Restore state or pick active/first
                     const saved = restoreState();
@@ -203,7 +213,6 @@
                         currentFeature = targetFeature;
                         if (saved.page) currentPage = saved.page;
                         switchPage(currentPage);
-                        loadCurrentPage();
                     } else {
                         select.value = currentFeature;
                         loadCurrentPage();

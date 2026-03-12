@@ -4,8 +4,8 @@ lane: planned
 feature: <branch-name>
 assigned_to: ""
 agent: ""
-acceptance_criteria: []
-activity_log: []
+acceptance_criteria:
+activity_log:
 ---
 
 # Work Package WP##: <title>
