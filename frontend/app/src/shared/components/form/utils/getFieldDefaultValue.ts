@@ -224,6 +224,18 @@ export const getDefaultValueFromTemplate = (
         };
       }
     }
+
+    const poolFromRelationship = getDefaultValueFromPoolRelationship(
+      fieldName,
+      objectTemplate as Record<string, AttributeType>
+    );
+    if (poolFromRelationship) {
+      return {
+        ...poolFromRelationship,
+        source: { ...poolFromRelationship.source, fromTemplate: true },
+      };
+    }
+
     return null;
   }
 

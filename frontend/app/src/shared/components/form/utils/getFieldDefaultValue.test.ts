@@ -578,6 +578,40 @@ describe("getFieldDefaultValue", () => {
       });
     });
 
+    it("returns pool value from template when field value is null and companion relationship has pool", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+      const objectTemplate: NodeObject = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        weight: {
+          value: null,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
     it("returns null when template field value is null and source is not a pool", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
