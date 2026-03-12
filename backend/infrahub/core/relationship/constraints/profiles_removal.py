@@ -39,7 +39,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
             if (
                 attr_schema.support_profiles
                 and not attr_schema.optional
-                and not (attr_schema.optional and schema.check_attr_in_uniqueness_constraint(attr=attr_schema.name))
+                and not schema.check_attr_in_uniqueness_constraint(attr=attr_schema.name)
             ):
                 attr_names.add(attr_schema.name)
         return attr_names
