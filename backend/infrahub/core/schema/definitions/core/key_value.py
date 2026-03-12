@@ -21,9 +21,21 @@ core_key_value = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     attributes=[
-        Attr(name="name", kind="Text", unique=True, order_weight=1000),
-        Attr(name="key", kind="Text", order_weight=2000),
-        Attr(name="description", kind="Text", optional=True, order_weight=3000),
+        Attr(
+            name="name",
+            kind="Text",
+            unique=True,
+            description="Unique name identifying this key-value pair",
+            order_weight=1000,
+        ),
+        Attr(name="key", kind="Text", description="The key portion of the key-value pair", order_weight=2000),
+        Attr(
+            name="description",
+            kind="Text",
+            optional=True,
+            description="Optional description of this key-value pair",
+            order_weight=3000,
+        ),
     ],
 )
 
@@ -41,7 +53,7 @@ core_static_key_value = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.KEYVALUE],
     attributes=[
-        Attr(name="value", kind="Text", order_weight=4000),
+        Attr(name="value", kind="Text", description="The plain-text value", order_weight=4000),
     ],
 )
 
@@ -59,7 +71,7 @@ core_password_key_value = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.KEYVALUE],
     attributes=[
-        Attr(name="value", kind="Password", order_weight=4000),
+        Attr(name="value", kind="Password", description="The password-protected value", order_weight=4000),
     ],
 )
 
