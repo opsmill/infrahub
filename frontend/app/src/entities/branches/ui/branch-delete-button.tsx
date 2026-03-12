@@ -3,12 +3,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Button } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
 
 type BranchDeleteButtonProps = {
@@ -30,14 +30,10 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
         <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
       </Button>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          <>
-            Are you sure you want to remove the branch <b>`{branch.name}`</b>?
-          </>
-        }
-        onDelete={async () => {
+      <ModalDeleteBranch
+        branches={[branch]}
+        onDelete={async (_scope) => {
+          // TODO: pass _scope to mutation once backend supports deleteRemote parameter
           await deleteBranch({ name: branch.name });
 
           const queryStringParams = getCurrentQsp();

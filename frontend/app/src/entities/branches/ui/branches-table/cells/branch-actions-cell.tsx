@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +14,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
@@ -71,15 +71,10 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
         </DropdownMenu>
       </StickyRightCell>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          <>
-            Are you sure you want to remove the branch
-            <br /> <b>`{branch.name}`</b>?
-          </>
-        }
-        onDelete={async () => {
+      <ModalDeleteBranch
+        branches={[branch]}
+        onDelete={async (_scope) => {
+          // TODO: pass _scope to mutation once backend supports deleteRemote parameter
           await deleteBranch({ name: branch.name });
           setShowDeleteModal(false);
         }}

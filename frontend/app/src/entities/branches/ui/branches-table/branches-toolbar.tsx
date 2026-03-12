@@ -5,12 +5,12 @@ import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchesMutation } from "@/entities/branches/ui/queries/delete-branches.mutation";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
@@ -31,6 +31,7 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
     const branchNames = deletableBranches.map((branch) => branch.name);
 
     try {
+      // TODO: pass scope to mutation once backend supports deleteRemote parameter
       const result = await deleteBranches({ names: branchNames });
 
       if (result.failed.length > 0) {
@@ -94,23 +95,12 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
         </ToolbarButton>
       </div>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          deletableBranches.length === 1 ? (
-            <>
-              Are you sure you want to remove the branch
-              <br /> <b>`{deletableBranches[0].name}`</b>?
-            </>
-          ) : (
-            <>
-              Are you sure you want to remove {deletableBranches.length} branches?
-              <br />
-              <b>{deletableBranches.map((b) => b.name).join(", ")}</b>
-            </>
-          )
-        }
-        onDelete={handleDelete}
+      <ModalDeleteBranch
+        branches={deletableBranches}
+        onDelete={async (_scope) => {
+          // TODO: pass _scope to mutation once backend supports deleteRemote parameter
+          await handleDelete();
+        }}
         isOpen={showDeleteModal}
         onOpenChange={setShowDeleteModal}
         isLoading={isDeleting}
