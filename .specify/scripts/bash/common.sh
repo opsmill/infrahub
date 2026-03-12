@@ -65,6 +65,12 @@ has_git() {
 check_feature_branch() {
     local branch="$1"
     local has_git_repo="$2"
+    local skip_check="${SPECIFY_SKIP_BRANCH_CHECK:-false}"
+
+    # Allow skipping branch check via environment variable
+    if [[ "$skip_check" == "true" ]]; then
+        return 0
+    fi
 
     # For non-git repos, we can't enforce branch naming but still provide output
     if [[ "$has_git_repo" != "true" ]]; then
@@ -73,8 +79,19 @@ check_feature_branch() {
     fi
 
     if [[ ! "$branch" =~ ^([a-z]{2,4}-)?[0-9]{3,}- ]]; then
+        # Before failing, check if find_feature_dir_by_prefix can resolve a spec directory
+        local repo_root
+        repo_root=$(get_repo_root)
+        local resolved_dir
+        resolved_dir=$(find_feature_dir_by_prefix "$repo_root" "$branch")
+        if [[ -d "$resolved_dir" ]]; then
+            # A spec directory exists for this branch via prefix lookup — allow it
+            return 0
+        fi
+
         echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
         echo "Feature branches should be named like: infp-445-feature-name (prefix-number-name)" >&2
+        echo "Or set SPECIFY_SKIP_BRANCH_CHECK=true to bypass this check." >&2
         return 1
     fi
 
@@ -92,7 +109,22 @@ find_feature_dir_by_prefix() {
 
     # Extract numeric prefix from branch (e.g., "445" from "infp-445-whatever" or "004-whatever")
     if [[ ! "$branch_name" =~ ^(([a-z]{2,4})-)?([0-9]{3,})- ]]; then
-        # If branch doesn't have numeric prefix, fall back to exact match
+        # If branch doesn't have numeric prefix, try to find a spec dir containing the branch name
+        # or any numeric prefix from the branch name
+        if [[ -d "$specs_dir" ]]; then
+            for dir in "$specs_dir"/*; do
+                if [[ -d "$dir" ]]; then
+                    local dirname=$(basename "$dir")
+                    for num in $(echo "$branch_name" | grep -oE '[0-9]{3,}'); do
+                        if [[ "$dirname" =~ ^([a-z]{2,4}-)?${num}- ]]; then
+                            echo "$dir"
+                            return
+                        fi
+                    done
+                fi
+            done
+        fi
+        # Fall back to exact match
         echo "$specs_dir/$branch_name"
         return
     fi
