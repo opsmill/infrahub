@@ -11,6 +11,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.7.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.7) - 2026-03-12
+
+### Fixed
+
+- Fixed display labels showing 'None' for relationship-based fields after upsert.
+  Relationship peer attributes needed by display label and HFID templates are now correctly loaded during node updates.
+  Includes a migration to correct objects that had their display labels and or human-friendly IDs improperly updated to include a null value. ([#8237](https://github.com/opsmill/infrahub/issues/8237))
+
 ## [Infrahub - v1.7.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.6) - 2026-02-24
 
 ### Fixed
