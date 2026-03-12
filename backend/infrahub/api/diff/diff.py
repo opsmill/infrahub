@@ -81,9 +81,8 @@ async def get_diff_data(
     _: AccountSession = Depends(get_current_user),
 ) -> list[EnrichedDiffRoot]:
     base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-    diff_branch = await registry.get_branch(db=db, branch=branch)
     component_registry = get_component_registry()
-    diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
+    diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
 
     from_time = Timestamp(time_from) if time_from else None
     to_time = Timestamp(time_to) if time_to else None
