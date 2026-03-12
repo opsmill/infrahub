@@ -36,8 +36,10 @@ This command implements a single work package in an isolated git worktree, enabl
 
 4. **Create worktree** (if not already created):
    ```bash
-   dev/spec-kitty/kittify/scripts/manage-workpackages.sh create-worktree <branch> <WP_ID>
+   WORKTREE_PATH=$(dev/spec-kitty/kittify/scripts/manage-workpackages.sh create-worktree <branch> <WP_ID> | grep 'Created worktree at:' | sed 's/Created worktree at: //')
+   cd "$WORKTREE_PATH"
    ```
+   All subsequent file modifications and git operations must run inside this worktree directory.
 
 5. **Transition WP to doing**:
    ```bash
@@ -50,6 +52,7 @@ This command implements a single work package in an isolated git worktree, enabl
    - Read `FEATURE_DIR/data-model.md` if referenced in the WP
    - Read `FEATURE_DIR/contracts/` if referenced in the WP
    - Read `.specify/memory/constitution.md` for project principles
+   - **Required**: Read `dev/knowledge/` docs relevant to the files being modified. If the implementation instructions contradict these docs, STOP and ask the user which is correct before proceeding.
 
 7. **Display the implementation prompt** from the WP file to establish clear scope.
 
