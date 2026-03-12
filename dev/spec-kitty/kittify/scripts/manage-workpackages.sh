@@ -22,6 +22,7 @@ Commands:
   create-worktree <feature> <WP_ID>     Create git worktree for a WP
   cleanup-worktree <feature> <WP_ID>    Remove worktree and optionally delete branch
   status <feature>                      Kanban summary (count per lane)
+  mark-task <feature> <TASK_ID>         Mark a task as done in WP files and tasks.md
 USAGE
     exit 1
 }
@@ -115,9 +116,36 @@ cmd_create_worktree() {
     fi
 
     mkdir -p "$WT_DIR"
-    git worktree add "$worktree_path" -b "$branch_name"
+
+    # Resolve a start-point for the new branch: prefer the feature as a ref,
+    # fall back to HEAD so the command still works when no matching ref exists.
+    local start_point="HEAD"
+    if git rev-parse --verify "$feature" &>/dev/null; then
+        start_point="$feature"
+    fi
+
+    if git rev-parse --verify "refs/heads/$branch_name" &>/dev/null; then
+        echo "Reusing existing branch: $branch_name"
+        git worktree add "$worktree_path" "$branch_name"
+    else
+        git worktree add "$worktree_path" -b "$branch_name" "$start_point"
+    fi
     echo "Created worktree at: $worktree_path"
     echo "Branch: $branch_name"
+
+    # Initialize submodules in worktree
+    if [[ -f "$worktree_path/.gitmodules" ]]; then
+        echo "Initializing git submodules..."
+        git -C "$worktree_path" submodule update --init
+    fi
+
+    # Install Python dependencies if uv is available and pyproject.toml exists
+    if command -v uv &>/dev/null && [[ -f "$worktree_path/pyproject.toml" ]]; then
+        echo "Installing Python dependencies..."
+        (cd "$worktree_path" && uv sync --all-groups 2>&1) || {
+            echo "WARNING: uv sync failed. You may need to install dependencies manually."
+        }
+    fi
 }
 
 cmd_cleanup_worktree() {
@@ -127,13 +155,28 @@ cmd_cleanup_worktree() {
     local branch_name="kitty/${feature}-${wp_id}"
 
     if [[ -d "$worktree_path" ]]; then
+        # Clean up generated artifacts that cause false "uncommitted changes" warnings
+        if [[ -d "$worktree_path/.venv" ]]; then
+            echo "Cleaning up .venv directory..."
+            rm -rf "$worktree_path/.venv"
+        fi
+        if [[ -f "$worktree_path/.gitmodules" ]]; then
+            echo "De-initializing submodules..."
+            git -C "$worktree_path" submodule deinit --all --force 2>/dev/null || true
+        fi
+
+        # Check for real uncommitted changes after cleanup
         if [[ -n "$(git -C "$worktree_path" status --porcelain 2>/dev/null)" ]]; then
             echo "WARNING: Worktree has uncommitted changes: $worktree_path"
-            echo -n "Force remove and discard changes? [y/N] "
-            read -r confirm
-            if [[ "$confirm" != [yY] ]]; then
-                echo "Skipping worktree removal."
-                return 0
+            if [[ -t 0 ]]; then
+                echo -n "Force remove and discard changes? [y/N] "
+                read -r confirm || confirm="N"
+                if [[ "$confirm" != [yY] ]]; then
+                    echo "Skipping worktree removal."
+                    return 0
+                fi
+            else
+                echo "Non-interactive mode: force removing worktree."
             fi
         fi
         git worktree remove "$worktree_path" --force
@@ -167,12 +210,13 @@ cmd_status() {
         local lane
         lane="$(get_lane "$wp_file")"
         case "$lane" in
-            planned) ((planned++)) ;;
-            doing) ((doing++)) ;;
-            for_review) ((for_review++)) ;;
-            done) ((done++)) ;;
+            planned) planned=$((planned + 1)) ;;
+            doing) doing=$((doing + 1)) ;;
+            for_review) for_review=$((for_review + 1)) ;;
+            done) done=$((done + 1)) ;;
+            *) planned=$((planned + 1)) ;;
         esac
-        ((total++))
+        total=$((total + 1))
     done
 
     echo "Feature: $feature"
@@ -189,6 +233,52 @@ cmd_status() {
     fi
 }
 
+cmd_mark_task() {
+    local feature="${1:?Feature name required}"
+    local task_id="${2:?Task ID required (e.g., T001)}"
+    local wp_dir
+    wp_dir="$(get_wp_dir "$feature")"
+
+    # Find the spec/tasks.md via common.sh if available
+    local repo_root="$REPO_ROOT"
+    local tasks_file=""
+
+    if type find_feature_dir_by_prefix &>/dev/null; then
+        local feature_dir
+        feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$feature")
+        if [[ -f "$feature_dir/tasks.md" ]]; then
+            tasks_file="$feature_dir/tasks.md"
+        fi
+    fi
+
+    local count=0
+
+    # Mark in all WP files that contain this task
+    for wp_file in "$wp_dir"/WP*.md; do
+        [[ -f "$wp_file" ]] || continue
+        if grep -q "\- \[ \] $task_id " "$wp_file"; then
+            local tmp_file
+            tmp_file="$(mktemp)"
+            sed "s/- \[ \] $task_id /- [x] $task_id /" "$wp_file" > "$tmp_file" && mv "$tmp_file" "$wp_file"
+            echo "Marked $task_id as done in $(basename "$wp_file")"
+            count=$((count + 1))
+        fi
+    done
+
+    # Mark in tasks.md if found
+    if [[ -n "$tasks_file" ]] && grep -q "\- \[ \] $task_id " "$tasks_file"; then
+        local tmp_file
+        tmp_file="$(mktemp)"
+        sed "s/- \[ \] $task_id /- [x] $task_id /" "$tasks_file" > "$tmp_file" && mv "$tmp_file" "$tasks_file"
+        echo "Marked $task_id as done in tasks.md"
+        count=$((count + 1))
+    fi
+
+    if [[ $count -eq 0 ]]; then
+        echo "WARNING: Task $task_id not found in any WP file or tasks.md"
+    fi
+}
+
 # Main dispatch
 command="${1:-}"
 shift || true
@@ -199,5 +289,6 @@ case "$command" in
     create-worktree) cmd_create_worktree "$@" ;;
     cleanup-worktree) cmd_cleanup_worktree "$@" ;;
     status) cmd_status "$@" ;;
+    mark-task) cmd_mark_task "$@" ;;
     *) usage ;;
 esac
