@@ -91,7 +91,11 @@ cd docs && npm run build              # Build documentation
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
 
-Regenerate with: `uv run invoke backend.generate` or `cd frontend/app && npm run codegen`
+Regenerate backend (offline): `uv run invoke backend.generate`
+Export GraphQL/OpenAPI schemas (requires running instance): `infrahub dev export-graphql-schema`
+Regenerate frontend types (offline, reads local schema files): `cd frontend/app && npm run codegen`
+
+See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ## Boundaries
 
