@@ -25,6 +25,7 @@ bool
 boolean
 booleans
 Buildkite
+Ceph
 changelog
 check_color_tags_name
 check_definitions
@@ -133,6 +134,7 @@ namespaces
 nats
 Nautobot
 Neo4j
+NGINX
 Netbox
 Netutils
 Newsfragment
@@ -211,6 +213,7 @@ Toml
 TOML
 toolchain
 Towncrier
+Traefik
 TypeScript
 uniqueness_constraints
 unoptimized

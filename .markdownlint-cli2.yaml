@@ -34,3 +34,5 @@ config:
 # Files to ignore within docs/docs/
 ignores:
   - "docs/docs/reference/**"
+  - "docs/docs/release-notes/**"
+  - "**/AGENTS.md"
