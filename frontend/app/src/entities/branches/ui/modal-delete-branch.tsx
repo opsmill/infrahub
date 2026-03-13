@@ -9,7 +9,7 @@ import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Button } from "@/shared/components/ui/button";
 import { REPOSITORY_KIND } from "@/shared/config/constants";
 
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 
 export type DeleteBranchScope = "local" | "local-and-remote";
 
