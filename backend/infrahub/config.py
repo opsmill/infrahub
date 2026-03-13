@@ -205,6 +205,21 @@ class MainSettings(BaseSettings):
         default=True,
         description="When enabled, diff updates are triggered for active branches after a branch merge.",
     )
+    delete_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+    )
+    delete_git_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
+        "Requires delete_branch_after_merge to be enabled.",
+    )
+
+    @model_validator(mode="after")
+    def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
+        if self.delete_git_branch_after_merge and not self.delete_branch_after_merge:
+            raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
