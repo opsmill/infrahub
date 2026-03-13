@@ -4,7 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -113,12 +113,19 @@ class EventContext(BaseModel):
         )
 
 
+class WebhookHeader(BaseModel):
+    key: str
+    value: str
+    kind: Literal["static", "environment"]
+
+
 class Webhook(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
     validate_certificates: bool | None = Field(...)
+    custom_headers: list[WebhookHeader] = Field(default_factory=list)
     _payload: Any = None
     _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
@@ -131,6 +138,10 @@ class Webhook(BaseModel):
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
+
+        for header in self.custom_headers:
+            if header.kind == "static":
+                self._headers[header.key] = header.value
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
@@ -184,25 +195,27 @@ class CustomWebhook(Webhook):
     """Custom webhook"""
 
     @classmethod
-    def from_object(cls, obj: CoreCustomWebhook) -> Self:
+    def from_object(cls, obj: CoreCustomWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
 
 
 class StandardWebhook(Webhook):
     @classmethod
-    def from_object(cls, obj: CoreStandardWebhook) -> Self:
+    def from_object(cls, obj: CoreStandardWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
 
 
@@ -238,7 +251,9 @@ class TransformWebhook(Webhook):
         )  # type: ignore[call-overload]
 
     @classmethod
-    def from_object(cls, obj: CoreCustomWebhook, transform: CoreTransformPython) -> Self:
+    def from_object(
+        cls, obj: CoreCustomWebhook, transform: CoreTransformPython, custom_headers: list[WebhookHeader] | None = None
+    ) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
@@ -253,4 +268,5 @@ class TransformWebhook(Webhook):
             transform_timeout=transform.timeout.value,
             convert_query_response=transform.convert_query_response.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
