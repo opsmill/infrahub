@@ -1,4 +1,8 @@
+import logging
+from unittest.mock import patch
 from uuid import UUID
+
+import pytest
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.webhook.models import CustomWebhook, StandardWebhook, WebhookHeader
@@ -39,18 +43,6 @@ def test_standard_webhook_header() -> None:
         "webhook-signature": "v1,BQN9AgPA4evuGDChi9VKxNKRwediIXsAQz8hVHMfKNg=",
         "webhook-timestamp": "1740656629",
     }
-
-
-def test_webhook_header_model() -> None:
-    """WebhookHeader creation and serialization."""
-    header = WebhookHeader(key="Authorization", value="Bearer token123", kind="static")
-    assert header.key == "Authorization"
-    assert header.value == "Bearer token123"
-    assert header.kind == "static"
-
-    dumped = header.model_dump()
-    assert dumped == {"key": "Authorization", "value": "Bearer token123", "kind": "static"}
-    assert WebhookHeader(**dumped) == header
 
 
 def test_assign_headers_with_static_custom_header() -> None:
@@ -107,6 +99,47 @@ def test_cache_roundtrip_preserves_custom_headers() -> None:
     assert len(restored.custom_headers) == 2
     assert restored.custom_headers[0].key == "X-Source"
     assert restored.custom_headers[0].kind == "static"
+
+
+def test_assign_headers_resolves_environment_variable() -> None:
+    """Environment variable header resolves from os.environ at send time."""
+    webhook = CustomWebhook(
+        name="test",
+        url="http://test.com",
+        event_type="test",
+        validate_certificates=True,
+        custom_headers=[WebhookHeader(key="X-API-Key", value="MY_API_KEY", kind="environment")],
+    )
+
+    with patch.dict("os.environ", {"MY_API_KEY": "secret123"}):
+        webhook._assign_headers()
+
+    assert webhook._headers is not None
+    assert webhook._headers["X-API-Key"] == "secret123"
+    assert webhook._headers["Accept"] == "application/json"
+
+
+def test_assign_headers_skips_missing_environment_variable(caplog: pytest.LogCaptureFixture) -> None:
+    """Missing environment variable is skipped with a warning, no exception raised."""
+    webhook = CustomWebhook(
+        name="test",
+        url="http://test.com",
+        event_type="test",
+        validate_certificates=True,
+        custom_headers=[
+            WebhookHeader(key="X-API-Key", value="MISSING_VAR", kind="environment"),
+            WebhookHeader(key="X-Source", value="infrahub", kind="static"),
+        ],
+    )
+
+    with patch.dict("os.environ", {}, clear=True), caplog.at_level(logging.WARNING, logger="infrahub.webhook.models"):
+        webhook._assign_headers()
+
+    assert webhook._headers is not None
+    assert "X-API-Key" not in webhook._headers
+    assert webhook._headers["X-Source"] == "infrahub"
+    assert "MISSING_VAR" in caplog.text
+    assert "X-API-Key" in caplog.text
 
 
 def test_webhook_signature_with_payload() -> None:

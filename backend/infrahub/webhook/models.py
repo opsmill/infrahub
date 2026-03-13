@@ -4,6 +4,8 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
+import os
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
 
@@ -18,6 +20,8 @@ from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubReposito
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from httpx import Response
@@ -118,6 +122,20 @@ class WebhookHeader(BaseModel):
     value: str
     kind: Literal["static", "environment"]
 
+    def resolve(self) -> str | None:
+        """Resolve the header value based on its kind.
+
+        Returns None if the value cannot be resolved (e.g. missing environment variable).
+        """
+        if self.kind == "static":
+            return self.value
+
+        resolved = os.environ.get(self.value)
+        if resolved is None:
+            logger.warning("Environment variable '%s' not found, skipping header '%s'", self.value, self.key)
+            return None
+        return resolved
+
 
 class Webhook(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -140,8 +158,9 @@ class Webhook(BaseModel):
         }
 
         for header in self.custom_headers:
-            if header.kind == "static":
-                self._headers[header.key] = header.value
+            resolved = header.resolve()
+            if resolved is not None:
+                self._headers[header.key] = resolved
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
