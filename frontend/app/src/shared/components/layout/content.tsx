@@ -74,8 +74,8 @@ export const ContentCardTitle = ({
   ...props
 }: ContentCardTitleProps) => {
   return (
-    <header className={classNames("flex border-gray-200 border-b p-5", className)} {...props}>
-      <div className="flex flex-col gap-0.5 overflow-hidden">
+    <header className={classNames("flex items-center border-gray-200 border-b p-5", className)} {...props}>
+      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
         {title && (
           <div className="flex items-center gap-2 font-bold text-xl">
             <h1 className="truncate">{title}</h1>
