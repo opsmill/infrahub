@@ -1,4 +1,4 @@
-import { SchemaVisualizer, type SchemaVisualizerData } from "@infrahub/schema-visualizer";
+import { SchemaVisualizer, type SchemaVisualizerData } from "infrahub-schema-visualizer";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 

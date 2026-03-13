@@ -29,7 +29,7 @@
     "betterer": "betterer"
   },
   "dependencies": {
-    "@infrahub/schema-visualizer": "file:../packages/schema-visualizer",
+    "infrahub-schema-visualizer": "file:../packages/schema-visualizer",
     "@apollo/client": "^3.13.8",
     "@codemirror/commands": "^6.10.2",
     "@codemirror/lang-markdown": "^6.5.0",
