@@ -57,24 +57,6 @@ core_static_key_value = NodeSchema(
     ],
 )
 
-core_password_key_value = NodeSchema(
-    name="PasswordKeyValue",
-    namespace="Core",
-    description="A key-value pair with a password-protected value",
-    label="Password Key Value",
-    human_friendly_id=["name__value"],
-    order_by=["name__value"],
-    display_label="{{ name__value }}",
-    include_in_menu=False,
-    icon="mdi:key-variant",
-    branch=BranchSupportType.AGNOSTIC,
-    generate_profile=False,
-    inherit_from=[InfrahubKind.KEYVALUE],
-    attributes=[
-        Attr(name="value", kind="Password", description="The password-protected value", order_weight=4000),
-    ],
-)
-
 core_environment_variable_key_value = NodeSchema(
     name="EnvironmentVariableKeyValue",
     namespace="Core",

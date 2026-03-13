@@ -5342,93 +5342,6 @@ input CorePasswordCredentialUpsertInput {
   username: TextAttributeUpdate
 }
 
-"""A key-value pair with a password-protected value"""
-type CorePasswordKeyValue implements CoreKeyValue & CoreNode {
-  _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
-  """Optional description of this key-value pair"""
-  description: TextAttribute
-  display_label: String
-  """Human friendly identifier"""
-  hfid: [String!]
-  """Unique identifier"""
-  id: String!
-  """The key portion of the key-value pair"""
-  key: TextAttribute
-  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  """Unique name identifying this key-value pair"""
-  name: TextAttribute
-  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  """The password-protected value (required)"""
-  value: TextAttribute
-}
-
-"""A key-value pair with a password-protected value"""
-type CorePasswordKeyValueCreate {
-  object: CorePasswordKeyValue
-  ok: Boolean
-}
-
-input CorePasswordKeyValueCreateInput {
-  """Optional description of this key-value pair"""
-  description: TextAttributeCreate
-  id: String
-  """The key portion of the key-value pair"""
-  key: TextAttributeCreate
-  member_of_groups: [RelatedNodeInput]
-  """Unique name identifying this key-value pair"""
-  name: TextAttributeCreate
-  subscriber_of_groups: [RelatedNodeInput]
-  """The password-protected value"""
-  value: TextAttributeCreate
-}
-
-"""A key-value pair with a password-protected value"""
-type CorePasswordKeyValueDelete {
-  ok: Boolean
-}
-
-"""A key-value pair with a password-protected value"""
-type CorePasswordKeyValueUpdate {
-  object: CorePasswordKeyValue
-  ok: Boolean
-}
-
-input CorePasswordKeyValueUpdateInput {
-  """Optional description of this key-value pair"""
-  description: TextAttributeUpdate
-  hfid: [String]
-  id: String
-  """The key portion of the key-value pair"""
-  key: TextAttributeUpdate
-  member_of_groups: [RelatedNodeInput]
-  """Unique name identifying this key-value pair"""
-  name: TextAttributeUpdate
-  subscriber_of_groups: [RelatedNodeInput]
-  """The password-protected value"""
-  value: TextAttributeUpdate
-}
-
-"""A key-value pair with a password-protected value"""
-type CorePasswordKeyValueUpsert {
-  object: CorePasswordKeyValue
-  ok: Boolean
-}
-
-input CorePasswordKeyValueUpsertInput {
-  """Optional description of this key-value pair"""
-  description: TextAttributeUpdate
-  hfid: [String]
-  id: String
-  """The key portion of the key-value pair"""
-  key: TextAttributeUpdate
-  member_of_groups: [RelatedNodeInput]
-  """Unique name identifying this key-value pair"""
-  name: TextAttributeUpdate
-  subscriber_of_groups: [RelatedNodeInput]
-  """The password-protected value"""
-  value: TextAttributeUpdate
-}
-
 """Base Profile in Infrahub."""
 interface CoreProfile {
   display_label: String
@@ -8002,12 +7915,6 @@ type EdgedCorePasswordCredential {
   node_metadata: InfrahubNodeMetadata
 }
 
-"""A key-value pair with a password-protected value"""
-type EdgedCorePasswordKeyValue {
-  node: CorePasswordKeyValue
-  node_metadata: InfrahubNodeMetadata
-}
-
 """Base Profile in Infrahub."""
 type EdgedCoreProfile {
   node: CoreProfile
@@ -9355,14 +9262,6 @@ type Mutation {
   CorePasswordCredentialUpdate(context: ContextInput, data: CorePasswordCredentialUpdateInput!): CorePasswordCredentialUpdate
   """Username/Password based credential"""
   CorePasswordCredentialUpsert(context: ContextInput, data: CorePasswordCredentialUpsertInput!): CorePasswordCredentialUpsert
-  """A key-value pair with a password-protected value"""
-  CorePasswordKeyValueCreate(context: ContextInput, data: CorePasswordKeyValueCreateInput!): CorePasswordKeyValueCreate
-  """A key-value pair with a password-protected value"""
-  CorePasswordKeyValueDelete(context: ContextInput, data: DeleteInput!): CorePasswordKeyValueDelete
-  """A key-value pair with a password-protected value"""
-  CorePasswordKeyValueUpdate(context: ContextInput, data: CorePasswordKeyValueUpdateInput!): CorePasswordKeyValueUpdate
-  """A key-value pair with a password-protected value"""
-  CorePasswordKeyValueUpsert(context: ContextInput, data: CorePasswordKeyValueUpsertInput!): CorePasswordKeyValueUpsert
   """Base Profile in Infrahub."""
   CoreProfileUpdate(context: ContextInput, data: CoreProfileUpdateInput!): CoreProfileUpdate
   CoreProposedChangeCheckForApprovalRevoke(data: ProposedChangeCheckForApprovalRevokeInput!): ProposedChangeCheckForApprovalRevoke
@@ -10095,14 +9994,6 @@ type NestedEdgedCorePasswordCredential {
   relationship_metadata: InfrahubRelationshipMetadata
 }
 
-"""A key-value pair with a password-protected value"""
-type NestedEdgedCorePasswordKeyValue {
-  node: CorePasswordKeyValue
-  node_metadata: InfrahubNodeMetadata
-  properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata
-}
-
 """Base Profile in Infrahub."""
 type NestedEdgedCoreProfile {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
@@ -10817,13 +10708,6 @@ type NestedPaginatedCoreObjectThread {
 type NestedPaginatedCorePasswordCredential {
   count: Int!
   edges: [NestedEdgedCorePasswordCredential!]!
-  permissions: PaginatedObjectPermission!
-}
-
-"""A key-value pair with a password-protected value"""
-type NestedPaginatedCorePasswordKeyValue {
-  count: Int!
-  edges: [NestedEdgedCorePasswordKeyValue!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -11622,13 +11506,6 @@ type PaginatedCoreObjectThread {
 type PaginatedCorePasswordCredential {
   count: Int!
   edges: [EdgedCorePasswordCredential!]!
-  permissions: PaginatedObjectPermission!
-}
-
-"""A key-value pair with a password-protected value"""
-type PaginatedCorePasswordKeyValue {
-  count: Int!
-  edges: [EdgedCorePasswordKeyValue!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -20918,92 +20795,6 @@ type Query {
     username__value: String
     username__values: [String]
   ): PaginatedCorePasswordCredential!
-  CorePasswordKeyValue(
-    any__is_protected: Boolean
-    any__owner__id: ID
-    any__source__id: ID
-    any__value: String
-    any__values: [String]
-    description__is_protected: Boolean
-    description__isnull: Boolean
-    description__owner__id: ID
-    description__source__id: ID
-    description__value: String
-    description__values: [String]
-    display_label__isnull: Boolean
-    display_label__value: String
-    display_label__values: [String]
-    hfid: [String]
-    ids: [ID]
-    key__is_protected: Boolean
-    key__isnull: Boolean
-    key__owner__id: ID
-    key__source__id: ID
-    key__value: String
-    key__values: [String]
-    limit: Int
-    member_of_groups__description__value: String
-    member_of_groups__description__values: [String]
-    member_of_groups__display_label__isnull: Boolean
-    member_of_groups__display_label__value: String
-    member_of_groups__display_label__values: [String]
-    member_of_groups__group_type__value: String
-    member_of_groups__group_type__values: [String]
-    member_of_groups__ids: [ID]
-    member_of_groups__isnull: Boolean
-    member_of_groups__label__value: String
-    member_of_groups__label__values: [String]
-    member_of_groups__name__value: String
-    member_of_groups__name__values: [String]
-    name__is_protected: Boolean
-    name__isnull: Boolean
-    name__owner__id: ID
-    name__source__id: ID
-    name__value: String
-    name__values: [String]
-    """Filter by exact creation timestamp"""
-    node_metadata__created_at: DateTime
-    """Filter for objects created after this timestamp"""
-    node_metadata__created_at__after: DateTime
-    """Filter for objects created before this timestamp"""
-    node_metadata__created_at__before: DateTime
-    """Filter by exact creator account UUID"""
-    node_metadata__created_by__id: ID
-    """Filter by list of creator account UUIDs"""
-    node_metadata__created_by__ids: [ID]
-    """Filter by exact update timestamp"""
-    node_metadata__updated_at: DateTime
-    """Filter for objects updated after this timestamp"""
-    node_metadata__updated_at__after: DateTime
-    """Filter for objects updated before this timestamp"""
-    node_metadata__updated_at__before: DateTime
-    """Filter by exact updater account UUID"""
-    node_metadata__updated_by__id: ID
-    """Filter by list of updater account UUIDs"""
-    node_metadata__updated_by__ids: [ID]
-    offset: Int
-    order: OrderInput
-    partial_match: Boolean
-    subscriber_of_groups__description__value: String
-    subscriber_of_groups__description__values: [String]
-    subscriber_of_groups__display_label__isnull: Boolean
-    subscriber_of_groups__display_label__value: String
-    subscriber_of_groups__display_label__values: [String]
-    subscriber_of_groups__group_type__value: String
-    subscriber_of_groups__group_type__values: [String]
-    subscriber_of_groups__ids: [ID]
-    subscriber_of_groups__isnull: Boolean
-    subscriber_of_groups__label__value: String
-    subscriber_of_groups__label__values: [String]
-    subscriber_of_groups__name__value: String
-    subscriber_of_groups__name__values: [String]
-    value__is_protected: Boolean
-    value__isnull: Boolean
-    value__owner__id: ID
-    value__source__id: ID
-    value__value: String
-    value__values: [String]
-  ): PaginatedCorePasswordKeyValue!
   CoreProfile(
     any__is_protected: Boolean
     any__owner__id: ID

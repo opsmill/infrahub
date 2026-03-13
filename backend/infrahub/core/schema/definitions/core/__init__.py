@@ -48,7 +48,6 @@ from .ipam import (
 from .key_value import (
     core_environment_variable_key_value,
     core_key_value,
-    core_password_key_value,
     core_static_key_value,
 )
 from .lineage import lineage_owner, lineage_source
@@ -187,7 +186,6 @@ core_models_mixed: CoreModelsMixedType = {
         core_generator_definition,
         core_generator_instance,
         core_static_key_value,
-        core_password_key_value,
         core_environment_variable_key_value,
         core_standard_webhook,
         core_custom_webhook,

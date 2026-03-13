@@ -518,10 +518,6 @@ class CorePasswordCredential(CoreCredential):
     password: StringOptional
 
 
-class CorePasswordKeyValue(CoreKeyValue):
-    value: String
-
-
 class CoreProposedChange(CoreTaskTarget):
     name: String
     description: StringOptional
