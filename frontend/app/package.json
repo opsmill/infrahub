@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "git submodule update --init --recursive && npm install --prefix ../packages/schema-visualizer",
     "start": "vite",
     "dev": "VITE_DEVTOOLS=1 vite",
-    "build": "vite build",
+    "build": "npm install --prefix ../packages/schema-visualizer && vite build",
     "serve": "vite preview",
     "build-serve": "npm run build && npm run serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
