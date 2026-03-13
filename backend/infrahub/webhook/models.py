@@ -6,7 +6,8 @@ import hmac
 import json
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Literal
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -117,6 +118,11 @@ class EventContext(BaseModel):
         )
 
 
+class HeaderKind(StrEnum):
+    STATIC = "static"
+    ENVIRONMENT = "environment"
+
+
 class WebhookHeaderResolutionError(Exception):
     pass
 
@@ -124,14 +130,14 @@ class WebhookHeaderResolutionError(Exception):
 class WebhookHeader(BaseModel):
     key: str
     value: str
-    kind: Literal["static", "environment"]
+    kind: HeaderKind
 
     def resolve(self) -> str:
         """Resolve the header value based on its kind.
 
         Raises WebhookHeaderResolutionError if the value cannot be resolved.
         """
-        if self.kind == "static":
+        if self.kind == HeaderKind.STATIC:
             return self.value
 
         resolved = os.environ.get(self.value)
