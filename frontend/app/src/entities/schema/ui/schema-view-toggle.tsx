@@ -3,7 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import {
   LinkToggleButton,
   LinkToggleButtonGroup,
-} from "@/shared/components/aria/toggle-button-group";
+} from "@/shared/components/buttons/link-toggle-button";
 
 export const SchemaViewToggle = () => (
   <LinkToggleButtonGroup>
