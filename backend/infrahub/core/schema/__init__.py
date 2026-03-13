@@ -8,6 +8,7 @@ from infrahub_sdk.utils import deep_merge_dict
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import SchemaNotFoundError
 
@@ -94,6 +95,22 @@ class SchemaRoot(BaseModel):
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
 
+        return errors
+
+    def validate_reserved_suffixes(self) -> list[str]:
+        models = self.nodes + self.generics + self.extensions.nodes
+        errors: list[str] = []
+        for model in models:
+            for attr in model.attributes:
+                if attr.name.endswith(RESOURCE_POOL_REL_SUFFIX):
+                    errors.append(
+                        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr.name}' in '{model.kind}'"
+                    )
+            for rel in model.relationships:
+                if rel.name.endswith(RESOURCE_POOL_REL_SUFFIX):
+                    errors.append(
+                        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel.name}' in '{model.kind}'"
+                    )
         return errors
 
     def gather_warnings(self) -> list[SchemaWarning]:

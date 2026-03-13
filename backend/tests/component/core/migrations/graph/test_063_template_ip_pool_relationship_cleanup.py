@@ -48,7 +48,10 @@ class TestMigration063(TestInfrahubApp):
                     "namespace": "Test",
                     "generate_template": True,
                     "display_labels": ["name__value"],
-                    "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {"name": "vlan_id", "kind": "Number", "optional": True},
+                    ],
                     "relationships": [
                         {
                             "name": "primary_address",
@@ -119,6 +122,20 @@ class TestMigration063(TestInfrahubApp):
         return pool
 
     @pytest.fixture(scope="class")
+    async def number_pool(self, db: InfrahubDatabase, device_schema: NodeSchema) -> Node:
+        pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(
+            db=db,
+            name="test-vlan-pool",
+            node="TestDevice",
+            node_attribute="vlan_id",
+            start_range=100,
+            end_range=200,
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture(scope="class")
     async def ip_address(self, db: InfrahubDatabase, ip_namespace: Node) -> Node:
         addr = await Node.init(db=db, schema="IpamIPAddress")
         await addr.new(db=db, address="10.0.0.1/32", ip_namespace=ip_namespace)
@@ -140,6 +157,7 @@ class TestMigration063(TestInfrahubApp):
         ip_address_pool: Node,
         child_prefix: Node,
         ip_prefix_pool: Node,
+        number_pool: Node,
     ) -> Node:
         template = await Node.init(db=db, schema="TemplateTestDevice")
         await template.new(
@@ -147,12 +165,13 @@ class TestMigration063(TestInfrahubApp):
             template_name="pooled-device-template",
             primary_address=ip_address,
             management_prefix=child_prefix,
+            vlan_id=150,
         )
         await template.save(db=db)
 
-        # Set pool sources on both relationships
         loaded = await NodeManager.get_one(db=db, id=template.id, include_metadata=MetadataOptions.LINKED_NODES)
 
+        # Set pool sources on both IP relationships
         address_rel_mgr = loaded.get_relationship("primary_address")
         address_rels = await address_rel_mgr.get_relationships(db=db)
         address_rels[0].source = ip_address_pool.id
@@ -162,6 +181,10 @@ class TestMigration063(TestInfrahubApp):
         prefix_rels = await prefix_rel_mgr.get_relationships(db=db)
         prefix_rels[0].source = ip_prefix_pool.id
         await prefix_rel_mgr.save(db=db)
+
+        # Set number pool as source on vlan_id attribute
+        loaded.vlan_id.source = number_pool.id
+        await loaded.save(db=db, fields=["vlan_id"])
 
         return loaded
 
@@ -189,6 +212,7 @@ class TestMigration063(TestInfrahubApp):
             template_name="plain-device-template",
             primary_address=plain_ip_address,
             management_prefix=plain_child_prefix,
+            vlan_id=42,
         )
         await template.save(db=db)
         return template
@@ -206,6 +230,7 @@ class TestMigration063(TestInfrahubApp):
         ip_address_pool: Node,
         child_prefix: Node,
         ip_prefix_pool: Node,
+        number_pool: Node,
     ) -> Node:
         template = await Node.init(db=db, schema="TemplateTestDevice", branch=test_branch)
         await template.new(
@@ -213,6 +238,7 @@ class TestMigration063(TestInfrahubApp):
             template_name="branch-device-template",
             primary_address=ip_address,
             management_prefix=child_prefix,
+            vlan_id=175,
         )
         await template.save(db=db)
 
@@ -229,6 +255,9 @@ class TestMigration063(TestInfrahubApp):
         prefix_rels = await prefix_mgr.get_relationships(db=db)
         prefix_rels[0].source = ip_prefix_pool.id
         await prefix_mgr.save(db=db)
+
+        loaded.vlan_id.source = number_pool.id
+        await loaded.save(db=db, fields=["vlan_id"])
 
         return loaded
 
@@ -270,12 +299,49 @@ class TestMigration063(TestInfrahubApp):
         pool_rels = await loaded.get_relationship(f"{rel_name}_from_resource_pool").get_relationships(db=db)
         assert len(pool_rels) == 0
 
-    async def test_creates_from_resource_pool_and_deletes_original(
+    async def _assert_attr_pool_migrated(
+        self,
+        db: InfrahubDatabase,
+        template_id: str,
+        attr_name: str,
+        pool_id: str,
+        branch: Branch | None = None,
+    ) -> None:
+        loaded = await NodeManager.get_one(
+            db=db, id=template_id, branch=branch, include_metadata=MetadataOptions.LINKED_NODES
+        )
+
+        pool_rels = await loaded.get_relationship(f"{attr_name}_from_resource_pool").get_relationships(db=db)
+        assert len(pool_rels) == 1
+        assert pool_rels[0].peer_id == pool_id
+
+        attribute = loaded.get_attribute(attr_name)
+        assert attribute.source_id is None
+
+    async def _assert_attr_pool_unchanged(
+        self,
+        db: InfrahubDatabase,
+        template_id: str,
+        attr_name: str,
+        branch: Branch | None = None,
+    ) -> None:
+        loaded = await NodeManager.get_one(
+            db=db, id=template_id, branch=branch, include_metadata=MetadataOptions.LINKED_NODES
+        )
+
+        pool_rels = await loaded.get_relationship(f"{attr_name}_from_resource_pool").get_relationships(db=db)
+        assert len(pool_rels) == 0
+
+        attribute = loaded.get_attribute(attr_name)
+        assert attribute.source_id is None
+
+    async def test_migrates_pool_sources(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         ip_address_pool: Node,
         ip_prefix_pool: Node,
+        number_pool: Node,
         ip_address: Node,
         child_prefix: Node,
         plain_ip_address: Node,
@@ -304,12 +370,17 @@ class TestMigration063(TestInfrahubApp):
         )
         assert len(prefix_pool_rels) == 0
 
+        assert loaded.vlan_id.source_id == number_pool.id
+        vlan_pool_rels = await loaded.get_relationship("vlan_id_from_resource_pool").get_relationships(db=db)
+        assert len(vlan_pool_rels) == 0
+
         # Run migration
         async with db.start_session() as dbs:
             migration = Migration063()
             result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not result.errors
 
+        # Verify IP relationships migrated
         await self._assert_rel_migrated(
             db=db, template_id=template_with_pool_source.id, rel_name="primary_address", pool_id=ip_address_pool.id
         )
@@ -325,6 +396,12 @@ class TestMigration063(TestInfrahubApp):
             rel_name="management_prefix",
             peer_id=plain_child_prefix.id,
         )
+
+        # Verify Number attribute migrated
+        await self._assert_attr_pool_migrated(
+            db=db, template_id=template_with_pool_source.id, attr_name="vlan_id", pool_id=number_pool.id
+        )
+        await self._assert_attr_pool_unchanged(db=db, template_id=template_without_pool_source.id, attr_name="vlan_id")
 
         # Verify idempotency: running again produces no errors and same results
         async with db.start_session() as dbs:
@@ -347,6 +424,10 @@ class TestMigration063(TestInfrahubApp):
             rel_name="management_prefix",
             peer_id=plain_child_prefix.id,
         )
+        await self._assert_attr_pool_migrated(
+            db=db, template_id=template_with_pool_source.id, attr_name="vlan_id", pool_id=number_pool.id
+        )
+        await self._assert_attr_pool_unchanged(db=db, template_id=template_without_pool_source.id, attr_name="vlan_id")
 
     async def test_execute_against_branch(
         self,
@@ -354,6 +435,7 @@ class TestMigration063(TestInfrahubApp):
         test_branch: Branch,
         ip_address_pool: Node,
         ip_prefix_pool: Node,
+        number_pool: Node,
         plain_ip_address: Node,
         plain_child_prefix: Node,
         template_without_pool_source: Node,
@@ -382,6 +464,13 @@ class TestMigration063(TestInfrahubApp):
             pool_id=ip_prefix_pool.id,
             branch=test_branch,
         )
+        await self._assert_attr_pool_migrated(
+            db=db,
+            template_id=branch_template_with_pool_source.id,
+            attr_name="vlan_id",
+            pool_id=number_pool.id,
+            branch=test_branch,
+        )
         await self._assert_rel_unchanged(
             db=db, template_id=template_without_pool_source.id, rel_name="primary_address", peer_id=plain_ip_address.id
         )
@@ -391,3 +480,4 @@ class TestMigration063(TestInfrahubApp):
             rel_name="management_prefix",
             peer_id=plain_child_prefix.id,
         )
+        await self._assert_attr_pool_unchanged(db=db, template_id=template_without_pool_source.id, attr_name="vlan_id")

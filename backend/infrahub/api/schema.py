@@ -349,6 +349,7 @@ async def load_schema(
     warnings: list[SchemaWarning] = []
     for schema in schemas.schemas:
         errors += schema.validate_namespaces()
+        errors += schema.validate_reserved_suffixes()
         warnings += schema.gather_warnings()
 
     if errors:
@@ -433,6 +434,7 @@ async def check_schema(
     warnings: list[SchemaWarning] = []
     for schema in schemas.schemas:
         errors += schema.validate_namespaces()
+        errors += schema.validate_reserved_suffixes()
         warnings += schema.gather_warnings()
 
     if errors:

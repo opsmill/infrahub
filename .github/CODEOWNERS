@@ -6,3 +6,4 @@
 /docker-compose.yml @opsmill/cloud
 uv.lock @opsmill/backend
 pyproject.toml @opsmill/backend
+/python_sdk/ @opsmill/backend

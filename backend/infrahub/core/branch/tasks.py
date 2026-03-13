@@ -8,7 +8,7 @@ from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -536,8 +536,6 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         component_registry = get_component_registry()
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
-        # send diff update requests for every branch-tracking diff
-        branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
 
         await get_workflow().submit_workflow(
             workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -551,15 +549,19 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
             parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
         )
 
+        if not config.SETTINGS.main.diff_update_after_merge:
+            return
+
+        # send diff update requests for every active branch-tracking diff
         active_branches = await Branch.get_list(db=db)
         active_branch_names = {branch.name for branch in active_branches}
-
-        for diff_root in branch_diff_roots:
+        diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])
+        for diff_root in diff_roots:
             if (
                 diff_root.base_branch_name != diff_root.diff_branch_name
                 and diff_root.diff_branch_name in active_branch_names
-                and diff_root.tracking_id
                 and isinstance(diff_root.tracking_id, BranchTrackingId)
+                and not diff_root.is_frozen
             ):
                 request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
                 await get_workflow().submit_workflow(
