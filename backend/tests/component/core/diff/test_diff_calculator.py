@@ -4528,3 +4528,71 @@ async def test_migrated_kind_on_main_then_relationship_update_on_branch(
         rel_diff = person_diff.relationships[0]
         assert rel_diff.name == "cars"
         assert rel_diff.action is DiffAction.UPDATED
+
+
+@pytest.mark.parametrize("new_source,expected_action", [(True, DiffAction.UPDATED), (False, DiffAction.REMOVED)])
+async def test_diff_attribute_single_source_property_change(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main,
+    person_alfred_main,
+    person_jane_main,
+    new_source: bool,
+    expected_action: DiffAction,
+) -> None:
+    """Test that updating or removing a HAS_SOURCE property from an attribute on a branch is captured in the diff."""
+    # Set a source on john's name attribute on main
+    john_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
+    john_main.name.source = person_alfred_main
+    await john_main.save(db=db)
+
+    # Create a branch after the source is set
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+
+    # On the branch, update or clear the source from the name attribute
+    john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+    if new_source:
+        john_branch.name.source = person_jane_main
+    else:
+        john_branch.name.clear_source()
+    await john_branch.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    # No changes on main
+    base_root_path = calculated_diffs.base_branch_diff
+    assert base_root_path.nodes == []
+
+    # Branch should show the source change
+    branch_root_path = calculated_diffs.diff_branch_diff
+    assert branch_root_path.branch == branch.name
+    assert len(branch_root_path.nodes) == 1
+    node_diff = branch_root_path.nodes[0]
+    assert node_diff.uuid == person_john_main.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+
+    # Find the name attribute diff
+    attrs_by_name = {a.name: a for a in node_diff.attributes}
+    assert "name" in attrs_by_name
+    name_attr_diff = attrs_by_name["name"]
+    assert name_attr_diff.action is DiffAction.UPDATED
+
+    # Verify that the HAS_SOURCE property change is included
+    props_by_type = {p.property_type: p for p in name_attr_diff.properties}
+    assert DatabaseEdgeType.HAS_SOURCE in props_by_type
+    source_prop = props_by_type[DatabaseEdgeType.HAS_SOURCE]
+    assert source_prop.action is expected_action
+    assert source_prop.previous_value == person_alfred_main.get_id()
+    if new_source:
+        assert source_prop.new_value == person_jane_main.get_id()
+    else:
+        assert source_prop.new_value is None
