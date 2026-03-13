@@ -28,11 +28,7 @@ function SchemaGraphPage() {
 
   return (
     <Content.Card className="flex h-[calc(100%-1rem)] flex-col">
-      <Content.CardTitle
-        title="Schema"
-        className="w-full"
-        end={<SchemaViewToggle />}
-      />
+      <Content.CardTitle title="Schema" className="w-full" end={<SchemaViewToggle />} />
 
       <div className="flex min-h-125 flex-1">
         <SchemaVisualizer data={schemaData} className="flex-1" />
