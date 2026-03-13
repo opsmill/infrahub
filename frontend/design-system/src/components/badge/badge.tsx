@@ -1,5 +1,6 @@
 import type React from "react";
-import { cn, tv, type VariantProps } from "tailwind-variants";
+
+import { type VariantProps, cn, tv } from "tailwind-variants";
 
 export const badgeVariants = tv({
   base: "inline-flex items-center rounded-md border px-1.5 py-0.5 font-semibold text-xs",
@@ -21,11 +22,8 @@ export const badgeVariants = tv({
 });
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {}
+  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 export const Badge = ({ className, variant, ...props }: BadgeProps) => {
-  return (
-    <span className={cn(badgeVariants({ variant }), className)} {...props} />
-  );
+  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
 };
