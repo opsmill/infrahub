@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 
 export interface DeleteObjectModalProps {
   objectId: string;

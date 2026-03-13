@@ -1,3 +1,4 @@
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import (
     AttributeChangelog,
@@ -11,8 +12,11 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from tests.constants import TestKind
+from tests.helpers.schema import TICKET
 
 
 async def test_node_changelog_creation(
@@ -184,6 +188,63 @@ async def test_node_changelog_creation(
                 properties={},
             )
         ],
+    )
+
+
+async def test_node_changelog_creation_without_display_label(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """When a schema has no display_label, the changelog should use repr(node) as display_label."""
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[TICKET]), branch=default_branch.name)
+    ticket_schema = registry.schema.get_node_schema(name=TestKind.TICKET, duplicate=False)
+
+    obj = await Node.init(db=db, schema=ticket_schema, branch=default_branch)
+    await obj.new(db=db, title="Something broke")
+    await obj.save(db=db)
+
+    expected_display_label = repr(obj)
+    assert obj.node_changelog == NodeChangelog(
+        node_id=obj.id,
+        node_kind=TestKind.TICKET,
+        display_label=expected_display_label,
+        attributes={
+            "human_friendly_id": AttributeChangelog(
+                name="human_friendly_id",
+                value=["Something broke", None],
+                value_previous=None,
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
+                kind="List",
+            ),
+            "display_label": AttributeChangelog(
+                name="display_label",
+                value=None,
+                value_previous=None,
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
+                kind="Text",
+            ),
+            "title": AttributeChangelog(
+                name="title",
+                value="Something broke",
+                value_previous=None,
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
+                kind="Text",
+            ),
+            "description": AttributeChangelog(
+                name="description",
+                value=None,
+                value_previous=None,
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
+                kind="TextArea",
+            ),
+            "ticket_id": AttributeChangelog(
+                name="ticket_id",
+                value=None,
+                value_previous=None,
+                properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
+                kind="Number",
+            ),
+        },
+        relationships={},
     )
 
 

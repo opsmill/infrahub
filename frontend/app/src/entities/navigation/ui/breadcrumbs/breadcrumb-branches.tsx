@@ -9,7 +9,7 @@ import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
 
 export function BreadcrumbBranches() {

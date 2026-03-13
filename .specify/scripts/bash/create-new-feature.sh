@@ -5,6 +5,7 @@ set -e
 JSON_MODE=false
 SHORT_NAME=""
 BRANCH_NUMBER=""
+INITIALS=""
 ARGS=()
 i=1
 while [ $i -le $# ]; do
@@ -40,18 +41,32 @@ while [ $i -le $# ]; do
             fi
             BRANCH_NUMBER="$next_arg"
             ;;
-        --help|-h) 
-            echo "Usage: $0 [--json] [--short-name <name>] [--number N] <feature_description>"
+        --initials)
+            if [ $((i + 1)) -gt $# ]; then
+                echo 'Error: --initials requires a value' >&2
+                exit 1
+            fi
+            i=$((i + 1))
+            next_arg="${!i}"
+            if [[ "$next_arg" == --* ]]; then
+                echo 'Error: --initials requires a value' >&2
+                exit 1
+            fi
+            INITIALS="$next_arg"
+            ;;
+        --help|-h)
+            echo "Usage: $0 [--json] [--short-name <name>] [--number N] [--initials <init>] <feature_description>"
             echo ""
             echo "Options:"
             echo "  --json              Output in JSON format"
             echo "  --short-name <name> Provide a custom short name (2-4 words) for the branch"
             echo "  --number N          Specify branch number manually (overrides auto-detection)"
+            echo "  --initials <init>   Specify initials manually (overrides OPSMILL_GIT_USER_SHORT and git user.name)"
             echo "  --help, -h          Show this help message"
             echo ""
             echo "Examples:"
             echo "  $0 'Add user authentication system' --short-name 'user-auth'"
-            echo "  $0 'Implement OAuth2 integration for API' --number 5"
+            echo "  $0 'Implement OAuth2 integration for API' --number 5 --initials fac"
             exit 0
             ;;
         *) 
@@ -63,7 +78,7 @@ done
 
 FEATURE_DESCRIPTION="${ARGS[*]}"
 if [ -z "$FEATURE_DESCRIPTION" ]; then
-    echo "Usage: $0 [--json] [--short-name <name>] [--number N] <feature_description>" >&2
+    echo "Usage: $0 [--json] [--short-name <name>] [--number N] [--initials <init>] <feature_description>" >&2
     exit 1
 fi
 
@@ -80,6 +95,44 @@ find_repo_root() {
     return 1
 }
 
+# Function to extract user short name / initials.
+# Checks OPSMILL_GIT_USER_SHORT env var first, then falls back to deriving
+# initials from git user.name (first letter of first name + first two letters of last name).
+# Example: "Fatih Acar" -> "fac", "John Doe" -> "jdo"
+get_git_initials() {
+    # Prefer explicit environment variable
+    if [ -n "${OPSMILL_GIT_USER_SHORT:-}" ]; then
+        echo "$OPSMILL_GIT_USER_SHORT" | tr '[:upper:]' '[:lower:]'
+        return 0
+    fi
+
+    local full_name
+    full_name=$(git config user.name 2>/dev/null || echo "")
+
+    if [ -z "$full_name" ]; then
+        echo ""
+        return 1
+    fi
+
+    # Split into words, take first and last
+    local first_name last_name
+    first_name=$(echo "$full_name" | awk '{print $1}')
+    last_name=$(echo "$full_name" | awk '{print $NF}')
+
+    # If only one name provided, use first 3 chars of that name
+    if [ "$first_name" = "$last_name" ]; then
+        echo "$full_name" | tr '[:upper:]' '[:lower:]' | cut -c1-3
+        return 0
+    fi
+
+    # First letter of first name + first two letters of last name
+    local first_initial last_initials
+    first_initial=$(echo "$first_name" | tr '[:upper:]' '[:lower:]' | cut -c1)
+    last_initials=$(echo "$last_name" | tr '[:upper:]' '[:lower:]' | cut -c1-2)
+
+    echo "${first_initial}${last_initials}"
+}
+
 # Function to get highest number from specs directory
 get_highest_from_specs() {
     local specs_dir="$1"
@@ -89,7 +142,8 @@ get_highest_from_specs() {
         for dir in "$specs_dir"/*; do
             [ -d "$dir" ] || continue
             dirname=$(basename "$dir")
-            number=$(echo "$dirname" | grep -o '^[0-9]\+' || echo "0")
+            # Strip optional initials prefix (2-4 lowercase letters followed by hyphen)
+            number=$(echo "$dirname" | sed 's/^[a-z]\{2,4\}-//' | grep -o '^[0-9]\+' || echo "0")
             number=$((10#$number))
             if [ "$number" -gt "$highest" ]; then
                 highest=$number
@@ -112,8 +166,14 @@ get_highest_from_branches() {
             # Clean branch name: remove leading markers and remote prefixes
             clean_branch=$(echo "$branch" | sed 's/^[* ]*//; s|^remotes/[^/]*/||')
             
-            # Extract feature number if branch matches pattern ###-*
-            if echo "$clean_branch" | grep -q '^[0-9]\{3\}-'; then
+            # Extract feature number if branch matches new format: initials-###-* or old format: ###-*
+            if echo "$clean_branch" | grep -q '^[a-z]\{2,4\}-[0-9]\{3\}-'; then
+                number=$(echo "$clean_branch" | sed 's/^[a-z]*-//' | grep -o '^[0-9]\{3\}' || echo "0")
+                number=$((10#$number))
+                if [ "$number" -gt "$highest" ]; then
+                    highest=$number
+                fi
+            elif echo "$clean_branch" | grep -q '^[0-9]\{3\}-'; then
                 number=$(echo "$clean_branch" | grep -o '^[0-9]\{3\}' || echo "0")
                 number=$((10#$number))
                 if [ "$number" -gt "$highest" ]; then
@@ -246,8 +306,14 @@ if [ -z "$BRANCH_NUMBER" ]; then
     fi
 fi
 
-# Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)
-FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
+# If BRANCH_NUMBER is a ticket ID (e.g., infp-460, ifc-2140), use it as-is.
+# Otherwise zero-pad as a 3-digit integer (legacy numeric mode).
+if [[ "$BRANCH_NUMBER" =~ ^[a-z]+-[0-9]+$ ]]; then
+    FEATURE_NUM="$BRANCH_NUMBER"
+else
+    # Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)
+    FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
+fi
 BRANCH_NAME="${FEATURE_NUM}-${BRANCH_SUFFIX}"
 
 # GitHub enforces a 244-byte limit on branch names
@@ -255,17 +321,18 @@ BRANCH_NAME="${FEATURE_NUM}-${BRANCH_SUFFIX}"
 MAX_BRANCH_LENGTH=244
 if [ ${#BRANCH_NAME} -gt $MAX_BRANCH_LENGTH ]; then
     # Calculate how much we need to trim from suffix
-    # Account for: feature number (3) + hyphen (1) = 4 chars
-    MAX_SUFFIX_LENGTH=$((MAX_BRANCH_LENGTH - 4))
-    
+    # Account for: feature number (variable) + hyphen (1)
+    PREFIX_LENGTH=$(( ${#FEATURE_NUM} + 1 ))
+    MAX_SUFFIX_LENGTH=$((MAX_BRANCH_LENGTH - PREFIX_LENGTH))
+
     # Truncate suffix at word boundary if possible
     TRUNCATED_SUFFIX=$(echo "$BRANCH_SUFFIX" | cut -c1-$MAX_SUFFIX_LENGTH)
     # Remove trailing hyphen if truncation created one
     TRUNCATED_SUFFIX=$(echo "$TRUNCATED_SUFFIX" | sed 's/-$//')
-    
+
     ORIGINAL_BRANCH_NAME="$BRANCH_NAME"
     BRANCH_NAME="${FEATURE_NUM}-${TRUNCATED_SUFFIX}"
-    
+
     >&2 echo "[specify] Warning: Branch name exceeded GitHub's 244-byte limit"
     >&2 echo "[specify] Original: $ORIGINAL_BRANCH_NAME (${#ORIGINAL_BRANCH_NAME} bytes)"
     >&2 echo "[specify] Truncated to: $BRANCH_NAME (${#BRANCH_NAME} bytes)"

@@ -1,32 +1,30 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
-import type { GroupDataFromAPI } from "@/entities/groups/api/types";
-import AddGroupForm from "@/entities/groups/ui/add-group-form";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import type { GroupData } from "@/entities/groups/domain/types";
+import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
-type AddGroupTriggerButtonProps = {
-  schema: NodeSchema;
+interface AddGroupTriggerButtonProps {
+  schema: ModelSchema;
   objectId: string;
   permission: Permission;
-  currentGroups?: Array<GroupDataFromAPI>;
-};
+  currentGroups?: Array<GroupData>;
+}
 
-export default function AddGroupTriggerButton({
+export function AddGroupTriggerButton({
   schema,
   currentGroups,
   objectId,
   permission,
-  ...props
 }: AddGroupTriggerButtonProps) {
   const [isAddGroupFormOpen, setIsAddGroupFormOpen] = useState(false);
 
@@ -41,7 +39,6 @@ export default function AddGroupTriggerButton({
         tooltipContent={permission.update.message ?? "Add groups"}
         tooltipEnabled
         data-testid="open-group-form-button"
-        {...props}
       >
         <Icon icon="mdi:plus" className="text-lg" />
       </ButtonWithTooltip>
@@ -77,7 +74,6 @@ export default function AddGroupTriggerButton({
           className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}
           onUpdateCompleted={async () => {
-            await graphqlClient.refetchQueries({ include: ["GET_GROUPS"] });
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsAddGroupFormOpen(false);
           }}

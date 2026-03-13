@@ -11,7 +11,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/domain/is-task-running-on-branch/is-task-running-on-branch.query";
+import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/ui/queries/is-task-running-on-branch.query";
 
 export function TaskStatus() {
   const { currentBranch } = useCurrentBranch();

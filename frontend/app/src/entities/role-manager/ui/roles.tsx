@@ -1,9 +1,7 @@
-import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -17,33 +15,21 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import usePagination from "@/shared/hooks/usePagination";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
+import { getPermission } from "@/entities/permission/utils";
+import { useGetRoles } from "@/entities/role-manager/ui/queries/get-roles.query";
+import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-import { getPermission } from "../../permission/utils";
 
 function Roles() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
-  const [{ offset, limit }] = usePagination();
 
-  const {
-    loading,
-    networkStatus,
-    data: latestData,
-    previousData,
-    error,
-    refetch,
-  } = useQuery(GET_ROLE_MANAGEMENT_ROLES, {
-    variables: { search: searchDebounced, offset, limit },
-    notifyOnNetworkStatusChange: true,
-  });
-  const data = latestData || previousData;
+  const { isLoading, isFetching, data, error, refetch } = useGetRoles({ search: searchDebounced });
+
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_ROLE_OBJECT);
   const [rowToDelete, setRowToDelete] = useState<Record<
@@ -107,8 +93,8 @@ function Roles() {
     }));
 
   if (error) {
-    if (error.networkError?.statusCode === 403) {
-      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+    if ((error as any).networkError?.statusCode === 403) {
+      const { message } = (error as any).networkError?.result?.errors?.[0] ?? {};
 
       return <UnauthorizedScreen message={message} />;
     }
@@ -116,7 +102,7 @@ function Roles() {
     return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (isLoading) {
     return <LoadingIndicator message="Retrieving roles..." className="h-[calc(100vh-13rem)]" />;
   }
 
@@ -125,7 +111,7 @@ function Roles() {
   }
 
   const globalRefetch = () => {
-    graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
+    queryClient.invalidateQueries({ queryKey: roleManagerQueryKeys.all });
     refetch();
   };
 
@@ -134,7 +120,7 @@ function Roles() {
       <div>
         <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
-            loading={loading}
+            loading={isFetching}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search roles"

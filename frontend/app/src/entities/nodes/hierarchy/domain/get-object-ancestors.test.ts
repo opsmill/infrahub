@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+import * as getObjectAncestorsFromApiModule from "@/entities/nodes/hierarchy/api/get-object-ancestors-from-api";
 import type { NodeCoreWithParent } from "@/entities/nodes/types";
 
-import * as getObjectAncestorsFromApiModule from "../api/get-object-ancestors-from-api";
 import { getObjectAncestors } from "./get-object-ancestors";
 
-vi.mock("../api/get-object-ancestors-from-api");
+vi.mock("@/entities/nodes/hierarchy/api/get-object-ancestors-from-api");
 
 describe("getObjectAncestors", () => {
   const branchName = "main";

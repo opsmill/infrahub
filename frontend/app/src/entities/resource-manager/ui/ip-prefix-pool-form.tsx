@@ -1,8 +1,6 @@
-import { gql } from "@apollo/client";
 import { useMemo } from "react";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
 import type { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
@@ -10,12 +8,10 @@ import { useCurrentFormContext } from "@/shared/components/form/utils/form-conte
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -30,9 +26,9 @@ export function IpPrefixPoolForm({
   ...props
 }: IpPrefixPoolFormProps) {
   const { schema: genericPrefixSchema, isGeneric } = useSchema(IP_PREFIX_GENERIC);
-  const { currentBranch } = useCurrentBranch();
   const { parentSchema, parentData } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
 
   const fields = useMemo(() => {
     const schemaFields = getFormFieldsFromSchema({
@@ -96,36 +92,26 @@ export function IpPrefixPoolForm({
     }
 
     if (isUpdate && currentObject) {
-      try {
-        const result = await graphqlClient.mutate({
-          mutation: gql(
-            updateObjectWithId({
-              kind: IP_PREFIX_POOL,
-              data: stringifyWithoutQuotes({
-                id: currentObject.id,
-                ...newObject,
-              }),
-            })
-          ),
-          context: {
-            branch: currentBranch.name,
+      await updateObject.mutateAsync(
+        {
+          objectKind: IP_PREFIX_POOL,
+          data: {
+            id: currentObject.id,
+            ...newObject,
           },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message="IP prefix pool updated" />, {
-          toastId: "alert-success-ip-prefix-pool-update",
-        });
-
-        if (onSuccess) {
-          const resultData = result?.data?.[`${IP_PREFIX_POOL}$Update`];
-          await onSuccess(resultData);
+        },
+        {
+          onSuccess: async (updatedNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="IP prefix pool updated" />, {
+              toastId: "alert-success-ip-prefix-pool-update",
+            });
+            if (onSuccess) await onSuccess(updatedNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while updating the IP prefix pool:", error);
+          },
         }
-      } catch (error: unknown) {
-        console.error(
-          `An error occurred while ${isUpdate ? "updating" : "creating"} the IP prefix pool:`,
-          error
-        );
-      }
+      );
     } else {
       await createObject.mutateAsync(
         {

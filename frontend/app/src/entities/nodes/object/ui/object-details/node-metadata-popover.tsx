@@ -8,7 +8,7 @@ import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate } from "@/shared/utils/date";
 
-import { useGetNodeMetadata } from "@/entities/nodes/object/domain/get-node-metadata.query";
+import { useGetNodeMetadata } from "@/entities/nodes/object/ui/queries/get-node-metadata.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";

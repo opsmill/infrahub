@@ -9,7 +9,7 @@ import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export interface RefreshButtonProps extends ButtonProps {
   queryKey?: readonly unknown[];

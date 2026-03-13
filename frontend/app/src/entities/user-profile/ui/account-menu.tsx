@@ -1,15 +1,11 @@
-import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import { Link, useLocation } from "react-router";
-import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button, LinkButton } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -25,29 +21,20 @@ import {
   INFRAHUB_GITHUB_URL,
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/shared/config/config";
-import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
-import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
+import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { AppInfo } from "@/entities/config/ui/app-info";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
-import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
+import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
 
 export const AccountMenu = () => {
   const { isAuthenticated } = useAuth();
-  const generics = useAtomValue(genericSchemasAtom);
-  const schema = generics.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   if (!isAuthenticated) {
     return <UnauthenticatedAccountMenu />;
   }
 
-  if (!schema) {
-    return <AccountMenuSkeleton />;
-  }
-
-  return <AuthenticatedAccountMenu schema={schema} />;
+  return <AuthenticatedAccountMenu />;
 };
 
 const CommonMenuItems = () => (
@@ -144,36 +131,26 @@ const UnauthenticatedAccountMenu = () => {
   );
 };
 
-const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
-  const query = gql(getProfileDetails({ ...schema }));
+const AuthenticatedAccountMenu = () => {
   const { setToken } = useAuth();
-  const { loading, data } = useQuery(query);
-  const { mutateAsync: logout, isPending } = useLogoutMutation();
+  const { data: profile, isPending } = useGetAccountProfile();
+  const { mutateAsync: logout, isPending: isLoggingOut } = useLogoutMutation();
 
   const handleSignOut = async () => {
-    await logout(undefined, {
-      onSuccess: () => {
-        setToken(null);
-        queryClient.refetchQueries();
-        graphqlClient.refetchQueries({
-          include: "active",
-          onQueryUpdated: ({ queryName }) => queryName !== "GET_PROFILE_DETAILS",
-        });
-      },
-      onError: (error) => {
-        console.error("Error when logging out: ", error);
-        toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to log out" />, {
-          toastId: "alert-error-sign-out",
-        });
-      },
-    });
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Error when logging out: ", error);
+    }
+
+    setToken(null);
+    queryClient.clear();
+    graphqlClient.clearStore();
   };
 
-  if (loading) {
+  if (isPending) {
     return <AccountMenuSkeleton />;
   }
-
-  const profile = data?.AccountProfile;
 
   return (
     <DropdownMenu>
@@ -206,8 +183,8 @@ const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
         <DropdownMenuDivider />
         <CommonMenuItems />
         <DropdownMenuDivider />
-        <DropdownMenuItem onClick={handleSignOut} disabled={isPending}>
-          {isPending ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
+        <DropdownMenuItem onClick={handleSignOut} disabled={isLoggingOut}>
+          {isLoggingOut ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
           Logout
         </DropdownMenuItem>
         <DropdownMenuDivider />

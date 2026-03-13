@@ -10,7 +10,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
-import { useGetTreeNodesByParent } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent.query";
+import { useGetTreeNodesByParent } from "@/entities/nodes/hierarchy/ui/queries/get-tree-nodes-by-parent.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
