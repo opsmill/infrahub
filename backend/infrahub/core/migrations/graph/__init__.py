@@ -60,6 +60,7 @@ from .m055_remove_webhook_validate_certificates_default import Migration055
 from .m056_update_schema_node_generic_constraints import Migration056
 from .m057_deduplicate_schema_nodes import Migration057
 from .m058_remove_profiles_schema_relationships import Migration058
+from .m059_fix_hfid_display_label_nulls import Migration059
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -124,6 +125,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration056,
     Migration057,
     Migration058,
+    Migration059,
 ]
 
 

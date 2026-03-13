@@ -42,13 +42,34 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
-Use `TYPE_CHECKING` blocks for imports only needed for type hints to avoid circular imports:
+All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
 
 ```python
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+```
+
+If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
+
+```python
+# ❌ Bad - top-level import only used in annotations; causes circular import
+from infrahub.core.schema.schema_branch import SchemaBranch
+
+def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
+    ...
+
+# ✅ Good - deferred under TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
+
+def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
+    ...
 ```
 
 ## Data Structures
