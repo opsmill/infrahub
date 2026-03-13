@@ -15,26 +15,26 @@
     "fix": "ultracite fix"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^3.4.1",
+    "tailwind-merge": "^3.5.0",
     "tailwind-variants": "^3.2.2",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.2",
-    "@storybook/react-vite": "^10.2.10",
-    "@types/node": "^25.2.3",
+    "@biomejs/biome": "^2.4.6",
+    "@storybook/react-vite": "^10.2.18",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
+    "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "chromatic": "^15.1.1",
-    "globals": "^17.3.0",
-    "storybook": "^10.2.10",
+    "chromatic": "^15.2.0",
+    "globals": "^17.4.0",
+    "storybook": "^10.2.18",
     "typescript": "~5.9.3",
-    "ultracite": "^7.2.3",
+    "ultracite": "^7.3.0",
     "vite": "npm:rolldown-vite@7.3.1"
   },
   "overrides": {
