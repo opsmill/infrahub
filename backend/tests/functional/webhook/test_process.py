@@ -38,6 +38,7 @@ class TestWebhookProcess(TestInfrahubApp):
             "event_type": "infrahub.branch.created",
             "validate_certificates": False,
             "shared_key": "1234567890",
+            "custom_headers": [],
             "webhook_type": "StandardWebhook",
         }
 
@@ -63,6 +64,7 @@ class TestWebhookProcess(TestInfrahubApp):
             "transform_timeout": 5,
             "url": "https://url.mock",
             "validate_certificates": False,
+            "custom_headers": [],
             "webhook_type": "TransformWebhook",
         }
 
