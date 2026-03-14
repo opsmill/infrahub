@@ -27,7 +27,7 @@ For each changed area identified in the commits, check all 5 documentation layer
 
 | Layer | Location | Question |
 |-------|----------|----------|
-| Technical reference | `dev/knowledge/backend/` or `frontend/` | Does the knowledge doc explain how this works? |
+| Technical reference | `dev/knowledge/backend/` or `dev/knowledge/frontend/` | Does the knowledge doc explain how this works? |
 | User-facing docs | `docs/docs/topics/` or `docs/docs/guides/` | Can users understand and use this feature? |
 | Feature spec | `dev/specs/` | Is there a spec, and does it match what was built? |
 | Changelog | `changelog/` | Is there a changelog fragment for user-visible changes? |
@@ -93,4 +93,4 @@ For approved fixes:
 
 - Prefer editing existing files over creating new ones.
 - Check cross-references in both directions (A links to B and B links to A).
-- Run `uv run invoke docs.lint` on any modified `.mdx` files.
+- Run `uv run invoke docs.lint` to perform global Markdown/MDX linting across the repo.

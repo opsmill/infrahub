@@ -31,7 +31,7 @@ This auto-fixes formatting issues via ruff. Always run this first.
 uv run invoke docs.format
 ```
 
-Auto-fixes markdown formatting issues.
+Auto-fixes Markdown formatting issues.
 
 ### 3. Lint Python code (ruff + ty)
 
