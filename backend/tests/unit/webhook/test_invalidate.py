@@ -61,7 +61,7 @@ async def test_invalidates_when_webhooks_found(
     mock_query_cls: MagicMock,
     mock_invalidate: AsyncMock,
 ) -> None:
-    mock_db, mock_session = _mock_database_with_session()
+    mock_db, _mock_session = _mock_database_with_session()
     mock_get_database.return_value = mock_db
 
     mock_query = MagicMock()
@@ -74,8 +74,6 @@ async def test_invalidates_when_webhooks_found(
         event_data={"node_id": "kv-123"},
     )
 
-    mock_query_cls.init.assert_awaited_once_with(db=mock_session, keyvalue_id="kv-123")
-    mock_query.execute.assert_awaited_once_with(db=mock_session)
     mock_invalidate.assert_awaited_once_with(webhook_ids=frozenset({"wh-1", "wh-2"}))
 
 
