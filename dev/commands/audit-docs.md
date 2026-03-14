@@ -1,6 +1,6 @@
 ---
-description: Audit documentation completeness for a feature branch by scanning commits and cross-referencing existing docs
-argument-hint: <commit-range, branch name, or subject to audit>
+description: Audit documentation completeness for a feature branch, subject, or set of existing docs
+argument-hint: <commit-range, branch name, subject, or doc paths to audit>
 ---
 
 # Documentation Audit
@@ -13,13 +13,15 @@ The user may provide one of the following as an argument:
 
 - A **commit range or branch name** — audit all changes in that range.
 - A **subject** (e.g., "webhooks", "computed attributes", "IPAM") — audit documentation for that topic across the codebase, regardless of branch. Search `dev/knowledge/`, `docs/docs/`, `dev/specs/`, `backend/AGENTS.md`, `frontend/app/AGENTS.md`, and the code itself to assess coverage.
+- A **set of doc paths** (e.g., `docs/docs/guides/installation.mdx dev/knowledge/backend/templates.md`) — audit only those specific documents. Read each file, identify what feature/topic it covers, then assess completeness, accuracy, and cross-references. Also check whether the code it documents has drifted from what the doc describes.
 
 If no argument is provided, ask:
 
-1. **What to audit**: A commit range, branch name, or subject? (default: current branch vs `stable`)
+1. **What to audit**: A commit range, branch name, subject, or list of doc paths? (default: current branch vs `stable`)
 
 For commit-based audits, run `git log <range> --oneline --stat` to understand all changes.
 For subject-based audits, use Grep/Glob to find all code and docs related to the subject.
+For doc-path audits, read each provided file, extract its topic/feature scope, then search the codebase for the corresponding implementation to verify the docs are current and complete.
 
 ## Step 2: Map Changes to Documentation Layers
 
@@ -47,8 +49,8 @@ Present findings in this format:
 ```markdown
 ## Documentation Audit Report
 
-### Branch / Commit Range
-<!-- What was scanned -->
+### Scope
+<!-- What was scanned: branch/range, subject, or list of doc files -->
 
 ### Changes Summary
 <!-- Grouped by area: schema, logic, tests, etc. -->
