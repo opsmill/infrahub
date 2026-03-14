@@ -1,6 +1,6 @@
 # Writing Component Tests
 
-> Part of: `dev/guides/frontend/` | Related: [TypeScript Standards](../../guidelines/frontend/typescript.md)
+> Part of: `dev/guides/frontend/` | Related: [TypeScript Standards](../../guidelines/frontend/typescript.md), [E2E Tests](writing-e2e-tests.md), [Unit Tests](writing-unit-tests.md)
 
 Step-by-step guide for writing React component tests following the project's testing patterns and best practices.
 

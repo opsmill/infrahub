@@ -1,6 +1,6 @@
 # Writing Unit Tests
 
-> Part of: `dev/guides/frontend/` | Related: [TypeScript Standards](../../guidelines/frontend/typescript.md)
+> Part of: `dev/guides/frontend/` | Related: [TypeScript Standards](../../guidelines/frontend/typescript.md), [E2E Tests](writing-e2e-tests.md), [Component Tests](writing-component-tests.md)
 
 Step-by-step guide for writing unit tests for TypeScript functions following the project's testing patterns and best practices.
 

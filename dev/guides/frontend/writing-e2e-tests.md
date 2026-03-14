@@ -35,6 +35,7 @@ tests/e2e/
   proposed-changes/  # Proposed change workflows
   ipam/              # IPAM-specific features
   form/              # Form interaction patterns
+  webhook/           # Webhook CRUD and header management
   utils/             # Shared helper functions
   auth.setup.ts      # Authentication setup project
 ```
@@ -352,6 +353,39 @@ await page.getByTestId("side-panel-container").getByLabel("Status").click();
 await page.getByRole("option", { name: "Maintenance" }).click();
 ```
 
+### Relationship Management
+
+#### Adding a relationship (generic peer form)
+
+```typescript
+// Navigate to a relationship tab (label + count badge, no space)
+await page.getByText("Members0").click();
+
+// For Attribute-kind relationships (no visible tab), navigate via URL param
+await page.goto(`${page.url()}?tab=headers`);
+
+// Open the relationship form and select kind + peer
+await page.getByTestId("open-relationship-form-button").click();
+await page.getByRole("combobox", { name: "Kind" }).click();
+await page.getByRole("option", { name: "Tag Builtin" }).click();
+// Note: the peer selector label matches the schema label of the selected kind
+await page.getByLabel("Tag", { exact: true }).click();
+await page.getByRole("option", { name: "blue" }).click();
+await page.getByRole("button", { name: "Save" }).click();
+```
+
+**Tab count badge selector**: Relationship tabs render label and count as separate DOM elements but Playwright merges child text, so `getByText("Members0")` works (no space). `getByText("Members 0")` (with space) will NOT match.
+
+**Non-tab relationships**: Only `Generic`, `Component`, `Hierarchy`, and `Template` relationship kinds get visible tabs. `Attribute`-kind (and `Parent`) relationships render inline in the details panel. Navigate via `?tab=<relationship_name>` URL param — the `ObjectDetails` component renders the tab content whenever a `tab` query param is present, regardless of whether a visible tab exists. See `src/entities/nodes/object/utils/get-relationships-visible-in-tab.ts`.
+
+#### Dissociating a relationship
+
+```typescript
+await page.getByTestId("actions-cell-<peer-name>").click();
+await page.getByRole("menuitem", { name: "Dissociate" }).click();
+await page.getByTestId("modal-delete-confirm").click();
+```
+
 ### 500 Error Guard
 
 Add this to catch unexpected server errors during tests:
@@ -367,6 +401,29 @@ test.beforeEach(async function ({ page }) {
 ```
 
 ## Running Tests
+
+### Running E2E Tests Locally
+
+E2E tests require a running Infrahub instance at `http://localhost:8080` (configurable via `INFRAHUB_ADDRESS` env var).
+
+`dev.start` runs the full stack in Docker using the locally-built image, matching the current branch.
+
+```bash
+# 1. Build the local Docker image (required once, or after backend changes)
+uv run invoke dev.build
+
+# 2. Start all services with clean state
+uv run invoke dev.destroy
+uv run invoke dev.start --wait
+
+# 3. Load test data
+uv run invoke dev.load-infra-schema
+uv run invoke dev.load-infra-data
+
+# 4. Run tests (see commands below)
+```
+
+### Test Commands
 
 ```bash
 cd frontend/app
