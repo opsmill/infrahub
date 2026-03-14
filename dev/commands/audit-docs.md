@@ -1,6 +1,6 @@
 ---
 description: Audit documentation completeness for a feature branch by scanning commits and cross-referencing existing docs
-argument-hint: <commit-range or branch name>
+argument-hint: <commit-range, branch name, or subject to audit>
 ---
 
 # Documentation Audit
@@ -9,11 +9,17 @@ Audit documentation completeness after a feature branch. Scan commits, cross-ref
 
 ## Step 1: Gather Scope
 
-If the user provided a commit range or branch name as an argument, use it. Otherwise ask:
+The user may provide one of the following as an argument:
 
-1. **Commit range**: What commits should be audited? (default: current branch vs `stable`)
+- A **commit range or branch name** — audit all changes in that range.
+- A **subject** (e.g., "webhooks", "computed attributes", "IPAM") — audit documentation for that topic across the codebase, regardless of branch. Search `dev/knowledge/`, `docs/docs/`, `dev/specs/`, `backend/AGENTS.md`, `frontend/app/AGENTS.md`, and the code itself to assess coverage.
 
-Then run `git log <range> --oneline --stat` to understand all changes.
+If no argument is provided, ask:
+
+1. **What to audit**: A commit range, branch name, or subject? (default: current branch vs `stable`)
+
+For commit-based audits, run `git log <range> --oneline --stat` to understand all changes.
+For subject-based audits, use Grep/Glob to find all code and docs related to the subject.
 
 ## Step 2: Map Changes to Documentation Layers
 
