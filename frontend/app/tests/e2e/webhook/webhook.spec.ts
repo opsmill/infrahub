@@ -72,6 +72,73 @@ test.describe("/objects/CoreWebhook", () => {
       });
     });
 
+    test("Create a static key-value header", async ({ page }) => {
+      await test.step("load key values", async () => {
+        await page.goto("/objects/CoreKeyValue");
+        await expect(page.getByTestId("object-header")).toContainText("Key Value");
+      });
+
+      await test.step("create a new static key value", async () => {
+        await page.getByTestId("create-object-button").click();
+
+        await page.getByLabel("Select an object type").click();
+        await page.getByRole("option", { name: "Static Key Value Core" }).click();
+
+        await page.getByLabel("Name *").fill("eda-auth-header");
+        await page.getByLabel("Key *").fill("Authorization");
+        await page.getByLabel("Value *").fill("Bearer e2e-test-token");
+
+        await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByText("StaticKeyValue created")).toBeVisible();
+      });
+    });
+
+    test("Add header to webhook", async ({ page }) => {
+      await test.step("navigate to webhook detail", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await page.getByRole("link", { name: "Ansible EDA" }).click();
+        await expect(
+          page.getByTestId("object-header").getByText("Ansible EDA", { exact: true })
+        ).toBeVisible();
+      });
+
+      await test.step("add header relationship", async () => {
+        // Headers is an Attribute-kind relationship (no visible tab), navigate via URL param
+        await page.goto(`${page.url()}?tab=headers`);
+        await expect(page.getByText("No Key Value found")).toBeVisible();
+        await page.getByTestId("open-relationship-form-button").click();
+        await page.getByRole("combobox", { name: "Kind" }).click();
+        await page.getByRole("option", { name: "Static Key Value Core" }).click();
+        await page.getByLabel("Static Key Value", { exact: true }).click();
+        await page.getByRole("option", { name: "eda-auth-header" }).click();
+
+        await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByRole("link", { name: "eda-auth-header" })).toBeVisible();
+      });
+    });
+
+    test("Remove header from webhook", async ({ page }) => {
+      await test.step("navigate to webhook headers", async () => {
+        await page.goto("/objects/CoreWebhook");
+        await page.getByRole("link", { name: "Ansible EDA" }).click();
+        await expect(
+          page.getByTestId("object-header").getByText("Ansible EDA", { exact: true })
+        ).toBeVisible();
+        // Headers is an Attribute-kind relationship (no visible tab), navigate via URL param
+        await page.goto(`${page.url()}?tab=headers`);
+      });
+
+      await test.step("dissociate header", async () => {
+        await page.getByTestId("actions-cell-eda-auth-header").click();
+        await page.getByRole("menuitem", { name: "Dissociate" }).click();
+        await page.getByTestId("modal-delete-confirm").click();
+      });
+
+      await test.step("verify dissociation", async () => {
+        await expect(page.getByRole("link", { name: "eda-auth-header" })).toBeHidden();
+      });
+    });
+
     test("Delete webhook", async ({ page }) => {
       await test.step("load webhooks", async () => {
         await page.goto("/objects/CoreWebhook");
