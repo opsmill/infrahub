@@ -17,7 +17,7 @@ from infrahub.workers.dependencies import get_client, get_database
 from ..constants import EVENT_TO_ACTION, WebhookAction
 from ..gather import gather_trigger_webhook
 from ..models import WebhookTriggerDefinition
-from .cache import invalidate_webhook_cache
+from .cache import invalidate_all_webhook_caches, invalidate_webhook_cache
 
 if TYPE_CHECKING:
     from prefect import Flow, State
@@ -192,4 +192,5 @@ async def _reconcile_all() -> None:
         triggers = await gather_trigger_webhook(db=db)
 
     await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[arg-type]
+    await invalidate_all_webhook_caches()
     log.info(f"{len(triggers)} Webhooks automation configuration completed")

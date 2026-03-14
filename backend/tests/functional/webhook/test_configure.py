@@ -8,6 +8,7 @@ from infrahub_sdk.protocols import CoreStandardWebhook
 from prefect.events.actions import RunDeployment
 
 from infrahub.trigger.setup import gather_all_automations
+from infrahub.webhook.constants import CACHE_KEY_PREFIX
 from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.webhook.models import WebhookTriggerDefinition
 from infrahub.webhook.tasks import configure_webhook
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.cache import MemoryCache
 
 
 class TestWebhookConfigure(TestInfrahubApp):
@@ -137,6 +139,23 @@ class TestWebhookConfigure(TestInfrahubApp):
         assert action.parameters["webhook_id"] == webhook2.id
         assert "webhook_kind" in action.parameters.keys()
         assert action.parameters["webhook_kind"] == "CoreCustomWebhook"
+
+    async def test_configure_all_invalidates_cache(
+        self,
+        db: InfrahubDatabase,
+        memory_cache: MemoryCache,
+        webhook1: Node,
+        webhook2: Node,
+        webhook_deployment: None,
+    ) -> None:
+        """Test that reconcile_all invalidates all webhook caches."""
+        await memory_cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook1.id}", value='{"cached": true}')
+        await memory_cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook2.id}", value='{"cached": true}')
+
+        await configure_webhook()
+
+        assert await memory_cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook1.id}") is None
+        assert await memory_cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook2.id}") is None
 
     async def test_configure_webhook_on_failure_logs_error(
         self, webhook_deployment: None, caplog: pytest.LogCaptureFixture
