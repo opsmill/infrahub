@@ -184,7 +184,7 @@ Three headers are added to signed requests:
 - **TTL**: 2 hours (`KVTTL.TWO_HOURS`)
 - **Storage**: Redis via the cache service
 - **Cache miss**: Falls back to fetching the webhook node from the database via SDK, then caches the result
-- **Invalidation**: Cache is cleared by `_configure_one()` (on create/update) and `_delete_automation()` (on delete), both routed through the unified `configure_webhook` flow
+- **Invalidation**: Cache is cleared by `_configure_one()` (on create/update) and `_delete_automation()` (on delete), both routed through the unified `configure_webhook` flow. Additionally, when a `CoreKeyValue` header is modified, `TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE` fires `invalidate_webhook_headers`, which queries affected webhooks via `KeyValueGetWebhooksQuery` and deletes their cache entries
 
 ## Prefect Workflows
 
@@ -192,12 +192,15 @@ Three headers are added to signed requests:
 |----------|------|------|---------|
 | `WEBHOOK_PROCESS` | USER | — | Delivers webhook payload on event match |
 | `WEBHOOK_CONFIGURE` | INTERNAL | daily at 3 AM (random minute) | Unified webhook automation configuration (configure, delete, reconcile) |
+| `WEBHOOK_INVALIDATE_HEADERS` | INTERNAL | — | Invalidates cached webhook data when a referenced KeyValue header changes |
 
 ## Built-in Triggers
 
-A single built-in trigger in `triggers.py` reacts to all webhook node lifecycle events:
+Two built-in triggers in `triggers.py` react to webhook-related node lifecycle events:
 
 - **`TRIGGER_WEBHOOK_CONFIGURE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreCustomWebhook` and `CoreStandardWebhook` nodes. Invokes `WEBHOOK_CONFIGURE` with the event type and node data. The `configure_webhook` flow uses `WebhookConfigureParams` and the `EVENT_TO_ACTION` mapping to route to the correct handler.
+
+- **`TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreStaticKeyValue` and `CoreEnvironmentVariableKeyValue` nodes. Invokes `WEBHOOK_INVALIDATE_HEADERS` which resolves which webhooks reference the changed KeyValue (via `KeyValueGetWebhooksQuery` traversing the `webhook__headers` relationship) and clears their cache entries.
 
 ## Key Locations
 
@@ -206,6 +209,9 @@ A single built-in trigger in `triggers.py` reacts to all webhook node lifecycle 
 | Models | `backend/infrahub/webhook/models.py` |
 | Tasks/Workflows (configure) | `backend/infrahub/webhook/tasks/configure.py` |
 | Tasks/Workflows (process) | `backend/infrahub/webhook/tasks/process.py` |
+| Tasks/Workflows (invalidate) | `backend/infrahub/webhook/tasks/invalidate.py` |
+| Cache invalidation task | `backend/infrahub/webhook/tasks/cache.py` |
+| KeyValue→Webhook query | `backend/infrahub/webhook/query.py` |
 | Built-in Triggers | `backend/infrahub/webhook/triggers.py` |
 | Gathering | `backend/infrahub/webhook/gather.py` |
 | Schema definitions | `backend/infrahub/core/schema/definitions/core/webhook.py` |
