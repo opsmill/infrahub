@@ -15,7 +15,7 @@ jobs:
   chromatic:
     defaults:
       run:
-        working-directory: .frontend/design-system
+        working-directory: ./frontend/design-system
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
