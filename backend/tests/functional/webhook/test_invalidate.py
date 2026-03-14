@@ -18,7 +18,7 @@ class TestWebhookInvalidateHeaders(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def keyvalue_header(self, db: InfrahubDatabase, register_core_schema: None) -> Node:
         kv = await Node.init(schema=InfrahubKind.STATICKEYVALUE, db=db)
-        await kv.new(db=db, key="Authorization", value="Bearer secret-token")
+        await kv.new(db=db, name="auth-header", key="Authorization", value="Bearer secret-token")
         await kv.save(db=db)
         return kv
 
@@ -70,7 +70,7 @@ class TestWebhookInvalidateHeaders(TestInfrahubApp):
         await memory_cache.set(key=cache_key, value='{"cached": true}')
 
         unlinked_kv = await Node.init(schema=InfrahubKind.STATICKEYVALUE, db=db)
-        await unlinked_kv.new(db=db, key="X-Unlinked", value="not-used")
+        await unlinked_kv.new(db=db, name="unlinked-header", key="X-Unlinked", value="not-used")
         await unlinked_kv.save(db=db)
 
         await invalidate_webhook_headers(
