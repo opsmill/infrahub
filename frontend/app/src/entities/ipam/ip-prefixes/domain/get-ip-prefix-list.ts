@@ -3,7 +3,7 @@ import { gql } from "@apollo/client";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
-import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import {
@@ -21,9 +21,7 @@ export interface GetIpPrefixListParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;
 }
 
-export type GetIpPrefixList = (
-  params: GetIpPrefixListParams
-) => Promise<PaginatedResponse<IpPrefixNode>>;
+export type GetIpPrefixList = (params: GetIpPrefixListParams) => Promise<IpPrefixNode[]>;
 
 export const getIpPrefixList: GetIpPrefixList = async ({
   schema,
@@ -61,10 +59,9 @@ export const getIpPrefixList: GetIpPrefixList = async ({
     },
   });
 
-  const result = data[excludeIpAvailability ? schemaKind : IP_PREFIX_GENERIC];
-
-  return {
-    items: result?.edges?.map((edge: any) => edge.node) ?? [],
-    count: result?.count ?? 0,
-  };
+  return (
+    data[excludeIpAvailability ? schemaKind : IP_PREFIX_GENERIC]?.edges?.map(
+      ({ node }: { node: IpPrefixNode }) => node
+    ) ?? []
+  );
 };

@@ -20,7 +20,7 @@ from .factories import (
 
 class TestDiffConflictsTransferer:
     @pytest.fixture
-    async def conflict_transferer(self):
+    async def conflict_transferer(self) -> DiffConflictTransferer:
         return DiffConflictTransferer(diff_combiner=DiffCombiner())
 
     async def test_node_conflicts(self, conflict_transferer: DiffConflictTransferer) -> None:

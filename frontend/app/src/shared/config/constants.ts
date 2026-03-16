@@ -24,6 +24,8 @@ export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
 export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
 export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
+export const FILE_OBJECT_KIND = "CoreFileObject";
+
 export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
 
 export const REPOSITORY_KIND = "CoreRepository";
@@ -139,13 +141,6 @@ export const relationshipsForDetailsView: { one: RelationshipKind[]; many: Relat
   one: ["Generic", "Attribute", "Component", "Parent", "Hierarchy"],
   many: ["Attribute", "Parent"],
 };
-
-export const RELATIONSHIP_VIEW_BLACKLIST = [
-  "member_of_groups",
-  "subscriber_of_groups",
-  "children",
-  "profiles",
-];
 
 export const relationshipKindForForm: Array<RelationshipKind> = ["Attribute", "Parent"];
 

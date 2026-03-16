@@ -29,6 +29,7 @@ from .relationship import RelationshipNode
 from .standard_node import InfrahubObjectType
 from .task import TaskNodes
 from .task_log import TaskLog, TaskLogEdge, TaskLogNodes
+from .upload import Upload
 
 __all__ = [
     "AnyAttributeType",
@@ -62,6 +63,7 @@ __all__ = [
     "TaskLogNodes",
     "TaskNodes",
     "TextAttributeType",
+    "Upload",
 ]
 
 

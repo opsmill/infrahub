@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import Kbd from "@/shared/components/ui/kbd";
 import { classNames } from "@/shared/utils/common";
 

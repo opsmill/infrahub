@@ -1,16 +1,4 @@
-from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
-from graphene.types.uuid import UUID
-
-from .enums import Severity
-
-
-class RelatedTaskLogCreateInput(InputObjectType):
-    message = String(required=True)
-    severity = Severity(required=True)
-
-
-class TaskLogCreateInput(RelatedTaskLogCreateInput):
-    task_id = UUID(required=True)
+from graphene import Field, Int, List, NonNull, ObjectType, String
 
 
 class TaskLog(ObjectType):

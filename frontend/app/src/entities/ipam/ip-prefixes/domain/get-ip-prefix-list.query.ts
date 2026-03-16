@@ -1,57 +1,72 @@
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
+import {
+  infiniteQueryOptionsWithOptimizedPageSize,
+  type OptimizedPageSizeConfig,
+} from "@/shared/libs/react-query/infinite-query-options-with-optimized-page-size";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { calculateDynamicPageSize, DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import {
   type GetIpPrefixListParams,
   getIpPrefixList,
 } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 type GetIpPrefixListInfiniteQueryParams = Omit<GetIpPrefixListParams, keyof PaginationParams>;
 
-export function getIpPrefixListInfiniteQueryOptions(params: GetIpPrefixListInfiniteQueryParams) {
-  return infiniteQueryOptions({
-    queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
-    queryFn: ({ pageParam }: { pageParam: { offset: number; limit: number } }) => {
-      return getIpPrefixList({
-        ...params,
-        offset: pageParam.offset,
-        limit: pageParam.limit,
-      });
+export function getIpPrefixListInfiniteQueryOptions(
+  params: GetIpPrefixListInfiniteQueryParams,
+  config?: OptimizedPageSizeConfig
+) {
+  return infiniteQueryOptionsWithOptimizedPageSize(
+    {
+      queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
+      queryFn: ({ pageParam }) =>
+        getIpPrefixList({
+          ...params,
+          offset: pageParam.offset,
+          limit: pageParam.limit,
+        }),
     },
-    initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
-    getNextPageParam: (lastPage, allPages, lastPageParam) => {
-      if (lastPage.items.length < lastPageParam.limit) {
-        return;
-      }
-
-      const totalCount = allPages[0]?.count ?? 0;
-      const pageSize = totalCount > 0 ? calculateDynamicPageSize(totalCount) : DEFAULT_PAGE_SIZE;
-
-      return {
-        offset: lastPageParam.offset + lastPageParam.limit,
-        limit: pageSize,
-      };
-    },
-  });
+    config
+  );
 }
 
 export function useGetIpPrefixList(
-  params: Omit<GetIpPrefixListInfiniteQueryParams, keyof ContextParams>
+  params: Omit<GetIpPrefixListInfiniteQueryParams, keyof ContextParams>,
+  config?: InfiniteQueryConfig<typeof getIpPrefixListInfiniteQueryOptions>
 ) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useInfiniteQuery(
-    getIpPrefixListInfiniteQueryOptions({
-      ...params,
-      branchName: currentBranch.name,
-      atDate: timeMachineDate,
-    })
-  );
+  const {
+    data: totalCount,
+    isSuccess: isCountSuccess,
+    isError: isCountError,
+  } = useObjectsCount({
+    objectKind:
+      params.filters && hasIncompatibleFiltersForIpAvailability(params.filters)
+        ? params.schema.kind!
+        : IP_PREFIX_GENERIC,
+    filters: params.filters,
+  });
+
+  return useInfiniteQuery({
+    ...getIpPrefixListInfiniteQueryOptions(
+      {
+        ...params,
+        branchName: currentBranch.name,
+        atDate: timeMachineDate,
+      },
+      { totalCount }
+    ),
+    ...config,
+    enabled: (isCountSuccess || isCountError) && config?.enabled,
+  });
 }

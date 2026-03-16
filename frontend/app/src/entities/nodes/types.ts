@@ -10,9 +10,8 @@ export interface NodeCore {
   __typename: string;
 }
 
-export interface NodeAttribute {
-  id: string;
-  value: string | number | boolean | string[] | null;
+export interface NodeAttribute<T = string | number | boolean | string[] | null> {
+  value: T;
 }
 
 export interface NodeAttributeMetadata {
@@ -38,8 +37,8 @@ export interface NodeRelationshipMany {
 export type NodeRelationship = NodeRelationshipOne | NodeRelationshipMany;
 
 export interface NodeRelationshipMetadata {
-  is_protected: boolean;
-  updated_at: string;
+  is_protected: boolean | null;
+  updated_at: string | null;
   source: NodeCore | null;
   owner: NodeCore | null;
 }
@@ -56,12 +55,25 @@ export type NodeRelationshipWithMetadata =
   | NodeRelationshipOneWithMetadata
   | NodeRelationshipManyWithMetadata;
 
-export type NodeObject = NodeCore & {
-  [key: string]: NodeAttribute | NodeRelationship;
-};
+// Include NodeCore's value types so that `NodeCore & NodeFields` doesn't create
+// an impossible intersection (e.g. `id` must be both `string` and `NodeAttribute`).
+type NodeCorePropertyValue = NodeCore[keyof NodeCore];
 
-export type NodeObjectWithMetadata = NodeCore & {
-  [key: string]: NodeAttributeWithMetadata | NodeRelationshipWithMetadata;
+export type NodeFields = Record<string, NodeAttribute | NodeRelationship | NodeCorePropertyValue>;
+export type NodeFieldsWithMetadata = Record<
+  string,
+  NodeAttributeWithMetadata | NodeRelationshipWithMetadata | NodeCorePropertyValue
+>;
+
+export type NodeObject = NodeCore & NodeFields;
+export type NodeObjectWithMetadata = NodeCore & NodeFieldsWithMetadata;
+
+export type NodeFileObject = NodeObject & {
+  file_name: NodeAttribute<string>;
+  file_size: NodeAttribute<number>;
+  file_type: NodeAttribute<string>;
+  storage_id: NodeAttribute<string>;
+  checksum: NodeAttribute<string>;
 };
 
 export interface NodeMetadata {

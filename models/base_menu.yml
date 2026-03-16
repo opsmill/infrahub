@@ -119,7 +119,6 @@ spec:
             kind: InfraPlatform
             icon: "mdi:application-cog-outline"
 
-
     - namespace: Infra
       name: CircuitMenu
       label: Circuit Management
@@ -131,6 +130,11 @@ spec:
             label: "Circuit"
             icon: "mdi:cable-data"
             kind: InfraCircuit
+          - name: CircuitContract
+            namespace: Infra
+            label: "Circuit Contract"
+            icon: "mdi:file-document-box-multiple-outline"
+            kind: InfraCircuitContract
 
     - namespace: Infra
       name: NetworkMenu

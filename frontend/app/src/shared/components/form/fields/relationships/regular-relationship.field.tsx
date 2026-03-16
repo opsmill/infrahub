@@ -16,8 +16,6 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
@@ -36,6 +34,7 @@ export const NodeRelationshipField = ({
   type,
   options,
   parent,
+  pool,
   shouldUnregister,
   ...props
 }: RegularRelationshipFieldProps) => {
@@ -116,8 +115,6 @@ export const NodeRelationshipField = ({
           const fieldData: FormRelationshipValue = field.value;
 
           const { peer } = relationship;
-          const { schema: peerSchema } = useSchema(peer);
-          const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
           const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
           const onChange = (newValue: Node | PoolValue | null) => {
@@ -150,10 +147,10 @@ export const NodeRelationshipField = ({
                   />
                 </FormInput>
 
-                {poolKind && peerSchema && (
+                {pool && (
                   <PoolSelect
-                    poolKind={poolKind}
-                    poolDefaultAllocatedObjectKind={peerSchema.kind as string}
+                    poolKind={pool.kind}
+                    poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                     selectedPoolId={selectedPoolId}
                     onChange={onChange}
                   />

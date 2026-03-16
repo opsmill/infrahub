@@ -232,9 +232,14 @@ After creation, your new repository should appear under **Integrations > Git Rep
 
 ### Update a read-only repository with remote changes
 
-Unlike fully integrated repositories which sync automatically, read-only repositories must be manually updated by changing the `ref` value when you want to pull in new changes.
+Unlike fully integrated repositories which sync automatically, read-only repositories require manual action to pull in new changes. There are two ways to do this:
+
+- **Change the `ref` property**: Point the repository to a different branch, tag, or commit hash
+- **Import latest commit**: Fetch the latest commit from the remote for the current ref and re-import resources
 
 For more details on how each repository type tracks changes, refer to the [Repository Topic](../topics/repository.mdx#read-only-vs-core).
+
+#### Change the ref
 
 <Tabs groupId="method" queryString>
 <TabItem value="Via the Web Interface" default>
@@ -285,6 +290,60 @@ After updating the ref, the repository will begin synchronizing. You can monitor
 
 :::
 
+#### Import latest commit
+
+If the remote repository has new commits on the same ref that your read-only repository is already tracking, you can pull the latest commit without changing the ref. This fetches from the remote, resolves the latest commit for the tracked ref, and re-imports all resources.
+
+<Tabs groupId="method" queryString>
+<TabItem value="Via the Web Interface" default>
+
+1. Log in to the Infrahub UI
+2. Go to **Integrations > Git Repositories**
+3. Click on the `CoreReadOnlyRepository` record you want to update
+4. Click the **More** menu
+5. Select **Import latest commit**
+
+The repository will fetch the latest changes from the remote, update to the most recent commit on the tracked ref, and re-import resources.
+
+</TabItem>
+<TabItem value="Via the GraphQL Interface">
+
+1. Open the **GraphQL Interface**
+
+:::note GraphQL Sandbox
+
+Access the sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**.
+
+:::
+
+2. Execute the import mutation with the repository ID:
+
+```graphql
+mutation {
+  InfrahubReadOnlyRepositoryImportLastCommit(
+    data: {
+      id: "REPOSITORY_ID"
+    }
+  ) {
+    ok
+    task {
+      id
+    }
+  }
+}
+```
+
+The mutation returns a task ID that you can use to monitor the progress of the import operation.
+
+</TabItem>
+</Tabs>
+
+:::success Check synchronization status
+
+After triggering the import, the repository will fetch from the remote and re-import resources. You can monitor the process by checking the repository's sync status and the commit field, which will update to reflect the latest commit from the tracked ref.
+
+:::
+
 ### Troubleshoot repository connections
 
 If you encounter issues with your repository connections, you can use the following steps to diagnose and resolve them:
@@ -305,7 +364,8 @@ If you encounter issues with your repository connections, you can use the follow
 3. Use repository actions for advanced troubleshooting:
    - From the repository detail view, click the **More** menu
    - Select **Check connectivity** to verify authentication and connection
-   - Select **Reimport last commit** to force reimport without changing the reference
+   - Select **Reimport current commit** to force reimport without changing the reference
+   - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
 
 :::success Validation
 A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.

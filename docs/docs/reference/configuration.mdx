@@ -36,6 +36,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_PERMISSION_BACKENDS` | List of modules to handle permissions, they will be run in the given order | array[string] | ['infrahub.permissions.LocalPermissionBackend'] |
 | `INFRAHUB_PUBLIC_URL` | Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure. | None | None |
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
+| `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
 
 ## Api
 
@@ -272,6 +273,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_STORAGE_DRIVER` | None | string (local, s3) | local |
 | `INFRAHUB_STORAGE_LOCAL` | None | object | Check nested parameters |
 | `INFRAHUB_STORAGE_S3` | None | object | Check nested parameters |
+| `INFRAHUB_STORAGE_MAX_FILE_SIZE` | Maximum file size in MB for file uploads | integer | 50 |
 
 ### INFRAHUB_STORAGE_LOCAL
 

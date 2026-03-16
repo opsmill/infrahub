@@ -3,7 +3,7 @@ import { graphql } from "gql.tada";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_PROPOSED_CHANGE_DETAILS = graphql(`
-  query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {
+  query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID) {
     CoreProposedChange(ids: [$proposedChangeId]) {
       count
       edges {
@@ -71,20 +71,11 @@ const GET_PROPOSED_CHANGE_DETAILS = graphql(`
               }
             }
           }
-          created_by {
-            node {
-              id
-              display_label
-            }
-          }
           comments {
             count
           }
         }
       }
-    }
-    InfrahubTask(related_node__ids: [$taskNodeId]) {
-      count
     }
   }
 `);

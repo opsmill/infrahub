@@ -1,22 +1,13 @@
 import type { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
+import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 
 import type { NodeCore } from "@/entities/nodes/types";
 
 export type ArtifactStatus = "Error" | "Pending" | "Processing" | "Ready";
 
-export type ArtifactContentType =
-  | "application/json"
-  | "application/yaml"
-  | "application/hcl"
-  | "image/svg+xml"
-  | "text/plain"
-  | "text/markdown"
-  | "application/xml"
-  | "text/csv";
-
 export interface ArtifactObject extends NodeCore {
   checksum: NonNullable<CoreArtifact["checksum"]> & { value: string };
-  content_type: NonNullable<CoreArtifact["content_type"]> & { value: ArtifactContentType };
+  content_type: NonNullable<CoreArtifact["content_type"]> & { value: DataViewerContentType };
   storage_id: NonNullable<CoreArtifact["storage_id"]> & { value: string };
   status: NonNullable<CoreArtifact["status"]> & { value: ArtifactStatus };
   definition: NonNullable<CoreArtifact["definition"]> & { node: NodeCore };

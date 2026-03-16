@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Generator
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(autouse=True)
-def parallel_runtime(db: InfrahubDatabase):
+def parallel_runtime(db: InfrahubDatabase) -> Generator[None, None, None]:
     original = db.default_neo4j_runtime
     db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
 
@@ -39,7 +40,7 @@ def parallel_runtime(db: InfrahubDatabase):
 
 
 @pytest.fixture(autouse=True, scope="module")
-def low_query_size_limit():
+def low_query_size_limit() -> Generator[None, None, None]:
     original = config.SETTINGS.database.query_size_limit
     config.SETTINGS.database.query_size_limit = 5
 
@@ -4385,7 +4386,7 @@ async def test_migrated_kind_on_main_then_relationship_update_on_branch(
     person_jane_main,
     person_alfred_main,
     person_albert_main,
-):
+) -> None:
     """Test that when a schema kind is migrated on the default branch, relationships to instances
     of the migrated node can be updated on a branch before the diff is calculated."""
     # Migrate TestPerson kind on default branch

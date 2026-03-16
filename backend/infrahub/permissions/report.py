@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
@@ -25,6 +26,13 @@ def get_permission_report(  # noqa: PLR0911
     action: str,
     global_permission_report: dict[GlobalPermissions, bool],
 ) -> BranchRelativePermissionDecision:
+    # Block mutations on merged branches
+    # Note: Branch delete is allowed via middleware, this covers node permissions
+    # We want this check about the super admin permission as not even an admin account
+    # should be able to modify merged branches or those that need a rebase
+    if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
+        return BranchRelativePermissionDecision.DENY
+
     if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
         return BranchRelativePermissionDecision.ALLOW
 

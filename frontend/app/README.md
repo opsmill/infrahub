@@ -51,4 +51,4 @@ src/
 - `src/shared/api/graphql/generated/` - GraphQL types
 - `src/shared/api/rest/types.generated.ts` - REST types
 
-Regenerate with `npm run codegen` or `npm run codegen:openapi`.
+Regenerate with `npm run codegen:graphql` or `npm run codegen:openapi`.

@@ -446,7 +446,9 @@ async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, cri
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisstringistoolong")
 
 
-async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
+async def test_node_property_getter(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -1223,7 +1225,9 @@ async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabas
         await attr_schema.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
 
 
-async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema) -> None:
+async def test_base_serialization(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+) -> None:
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(db=db, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
     await obj1.save(db=db)
@@ -1266,7 +1270,7 @@ async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, 
 
 
 async def test_to_graphql(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, first_account: Node
 ) -> None:
     schema = criticality_schema.get_attribute("name")
 
@@ -1313,7 +1317,7 @@ async def test_to_graphql(
 
 
 async def test_to_graphql_no_fields(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, first_account: Node
 ) -> None:
     schema = criticality_schema.get_attribute("name")
 
@@ -1362,7 +1366,9 @@ async def test_to_graphql_no_fields(
     assert await attr2.to_graphql(db=db) == expected_data
 
 
-async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema) -> None:
+async def test_attribute_size(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+) -> None:
     obj = await Node.init(db=db, schema="TestAllAttributeTypes")
 
     large_string = "a" * 9_000  # It's over 9000!!!!
@@ -1391,8 +1397,8 @@ async def test_enum_with_default_preserves_is_default(
     db: InfrahubDatabase,
     default_branch: Branch,
     hierarchical_location_data_simple: dict[str, Node],
-    updated_status,
-    expected_is_default,
+    updated_status: str | None,
+    expected_is_default: bool,
 ) -> None:
     site = hierarchical_location_data_simple["paris"]
     rack = await Node.init(db=db, schema="LocationRack")

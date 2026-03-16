@@ -116,6 +116,16 @@ class RepositoryInvalidFileSystemError(RepositoryError):
         self.directory = directory
 
 
+class RepositoryConfigurationError(RepositoryError):
+    """Raised when repository configuration file is missing or invalid."""
+
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message or "Repository configuration file error.",
+        )
+
+
 class CommitNotFoundError(Error):
     HTTP_CODE: int = 400
 
@@ -385,3 +395,18 @@ class MergeFailedError(Error):
     def __init__(self, branch_name: str) -> None:
         self.message = f"Failed to merge branch '{branch_name}'"
         super().__init__(self.message)
+
+
+class BranchStatusError(Error):
+    HTTP_CODE: int = 400
+
+    def __init__(self, identifier: str, message: str) -> None:
+        self.identifier = identifier
+        self.message = message
+        super().__init__(self.message)
+
+
+class BranchAlreadyMergedError(BranchStatusError): ...
+
+
+class BranchNeedsRebaseError(BranchStatusError): ...

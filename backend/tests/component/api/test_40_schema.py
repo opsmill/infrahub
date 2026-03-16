@@ -4,20 +4,24 @@ from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.conftest import BusRPCMock, TestHelper
 
 
 async def test_schema_read_endpoint_default_branch(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     with client:
         response = client.get(
@@ -47,10 +51,10 @@ async def test_schema_read_endpoint_default_branch(
 async def test_schema_read_endpoint_branch1(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     await create_branch(branch_name="branch1", db=db)
 
@@ -74,7 +78,11 @@ async def test_schema_read_endpoint_branch1(
 
 
 async def test_schema_read_endpoint_wrong_branch(
-    db: InfrahubDatabase, client: TestClient, client_headers, default_branch: Branch, car_person_data_generic
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -87,13 +95,67 @@ async def test_schema_read_endpoint_wrong_branch(
     assert response.json() is not None
 
 
+async def test_schema_load_blocked_on_merged_branch(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    """Test that schema load returns 422 on merged branches."""
+    branch = await create_branch(branch_name="merged-schema-test", db=db)
+    branch.status = BranchStatus.MERGED
+    await branch.save(db=db)
+    registry.branch[branch.name] = branch
+
+    with client:
+        response = client.post(
+            f"/api/schema/load?branch={branch.name}",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_simple_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "has been merged and is read-only" in response.json()["errors"][0]["message"]
+
+
+async def test_schema_load_blocked_on_need_rebase_branch(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    """Test that schema load returns 422 on branches needing rebase."""
+    branch = await create_branch(branch_name="rebase-schema-test", db=db)
+    branch.status = BranchStatus.NEED_REBASE
+    await branch.save(db=db)
+    registry.branch[branch.name] = branch
+
+    with client:
+        response = client.post(
+            f"/api/schema/load?branch={branch.name}",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_simple_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert "must be rebased" in response.json()["errors"][0]["message"]
+
+
 async def test_schema_summary_default_branch(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     with client:
         response = client.get(
@@ -114,10 +176,10 @@ async def test_schema_summary_default_branch(
 async def test_schema_kind_default_branch(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     with client:
         response = client.get(
@@ -137,11 +199,11 @@ async def test_schema_kind_default_branch(
 
 async def test_json_schema_kind_default_branch(
     db: InfrahubDatabase,
-    client,
-    client_headers,
+    client: TestClient,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     with client:
         response = client.get(
@@ -166,10 +228,10 @@ async def test_json_schema_kind_default_branch(
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
-    client_headers,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     with client:
         response = client.get(
@@ -184,12 +246,12 @@ async def test_schema_kind_not_valid(
 async def test_schema_load_permission_failure(
     db: InfrahubDatabase,
     client: TestClient,
-    first_account,
+    first_account: Node,
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
     await token.new(db=db, token="unprivileged", account=first_account)
@@ -214,12 +276,12 @@ async def test_schema_load_permission_failure(
 async def test_schema_load_restricted_namespace(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     with client:
         response = client.post(
@@ -235,12 +297,12 @@ async def test_schema_load_restricted_namespace(
 async def test_schema_load_endpoint_not_valid_simple_02(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -256,12 +318,12 @@ async def test_schema_load_endpoint_not_valid_simple_02(
 async def test_schema_load_endpoint_not_valid_simple_03(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -277,12 +339,12 @@ async def test_schema_load_endpoint_not_valid_simple_03(
 async def test_schema_load_endpoint_not_valid_simple_04(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -298,12 +360,12 @@ async def test_schema_load_endpoint_not_valid_simple_04(
 async def test_schema_load_endpoint_not_valid_simple_05(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     with client:
         response = client.post(
@@ -322,10 +384,10 @@ async def test_schema_load_endpoint_not_valid_simple_05(
 async def test_schema_load_endpoint_not_valid_with_generics_02(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    authentication_base,
-    helper,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -341,10 +403,10 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
 async def test_schema_load_endpoint_python_keyword_attribute(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    authentication_base,
-    helper,
+    authentication_base: Node,
+    helper: TestHelper,
 ) -> None:
     """Test that loading a schema with Python keyword as attribute name fails with proper error."""
     with client:
@@ -364,17 +426,17 @@ async def test_schema_load_endpoint_python_keyword_attribute(
 async def test_schema_load_endpoint_constraints_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
-    admin_headers,
-    rpc_bus,
+    admin_headers: dict[str, str],
+    rpc_bus: BusRPCMock,
     default_branch: Branch,
-    prefect_test_fixture,
-    workflow_local,
-    authentication_base,
-    car_person_schema,
-    car_accord_main,
-    car_volt_main,
-    person_john_main,
-    helper,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    car_person_schema: SchemaBranch,
+    car_accord_main: Node,
+    car_volt_main: Node,
+    person_john_main: Node,
+    helper: TestHelper,
 ) -> None:
     # Load the schema in the database
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -443,3 +505,145 @@ async def test_schema_read_endpoints_anonymous_account(
         response = client.get("/api/schema/json_schema/TestCar")
 
     assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+@pytest.mark.parametrize(
+    "reserved_name",
+    [pytest.param(reserved_name, id=reserved_name) for reserved_name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES],
+)
+async def test_schema_load_restricted_names(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+    reserved_name: str,
+) -> None:
+    schema = helper.schema_file("restricted_names_01.json")
+    schema["nodes"][1]["relationships"][0]["name"] = reserved_name
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [schema]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == f"TestingParent: {reserved_name} isn't allowed as a relationship name on hierarchical nodes."
+    )
+
+    schema = helper.schema_file("restricted_names_02.json")
+    schema["nodes"][1]["attributes"][0]["name"] = reserved_name
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [schema]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
+    )
+
+
+async def test_schema_load_reserved_suffix_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_attribute_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on attribute 'foo_from_resource_pool' in 'TestTestNode'"
+    )
+
+
+async def test_schema_load_reserved_suffix_relationship(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_relationship_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on relationship 'bar_from_resource_pool' in 'TestTestNode'"
+    )
+
+
+async def test_schema_check_reserved_suffix_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/check",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_attribute_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on attribute 'foo_from_resource_pool' in 'TestTestNode'"
+    )
+
+
+async def test_schema_check_reserved_suffix_relationship(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/check",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("reserved_suffix_relationship_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == "Reserved suffix '_from_resource_pool' used on relationship 'bar_from_resource_pool' in 'TestTestNode'"
+    )

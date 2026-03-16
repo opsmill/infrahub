@@ -29,6 +29,7 @@ import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-po
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector from "@/entities/resource-manager/ui/resource-selector";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ResourcePoolDetailsPage = () => {
@@ -48,11 +49,32 @@ const ResourcePoolDetailsPage = () => {
 
   const objectKind = data.__typename;
   return (
-    <RequireObjectPermissions objectKind={objectKind}>
+    <ResourcePoolContentWithPermissions
+      resourcePoolId={resourcePoolId!}
+      resourcePoolKind={objectKind}
+    />
+  );
+};
+
+type ResourcePoolContentWithPermissionsProps = {
+  resourcePoolId: string;
+  resourcePoolKind: string;
+};
+
+const ResourcePoolContentWithPermissions = ({
+  resourcePoolId,
+  resourcePoolKind,
+}: ResourcePoolContentWithPermissionsProps) => {
+  const { schema } = useSchema(resourcePoolKind);
+
+  if (!schema) return <NoDataFound />;
+
+  return (
+    <RequireObjectPermissions objectKind={schema.kind!}>
       {({ permission }) => (
         <ResourcePoolContent
-          resourcePoolId={resourcePoolId!}
-          resourcePoolKind={objectKind}
+          resourcePoolId={resourcePoolId}
+          schema={schema}
           permission={permission}
         />
       )}
@@ -62,31 +84,22 @@ const ResourcePoolDetailsPage = () => {
 
 type ResourcePoolContentProps = {
   resourcePoolId: string;
-  resourcePoolKind: string;
+  schema: ModelSchema;
   permission: Permission;
 };
 
-const ResourcePoolContent = ({
-  resourcePoolId,
-  resourcePoolKind,
-  permission,
-}: ResourcePoolContentProps) => {
-  const { schema } = useSchema(resourcePoolKind);
+const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoolContentProps) => {
+  const resourcePoolKind = schema.kind as string;
   const {
     isPending,
     isRefetching,
     error,
     data: resourcePool,
     refetch,
-  } = useGetObject(
-    {
-      objectSchema: schema!,
-      objectId: resourcePoolId,
-    },
-    {
-      enabled: !!schema,
-    }
-  );
+  } = useGetObject({
+    objectSchema: schema,
+    objectId: resourcePoolId,
+  });
 
   const {
     data: resourcePoolUtilization,
@@ -105,8 +118,6 @@ const ResourcePoolContent = ({
       }),
     ]);
   };
-
-  if (!schema) return <NoDataFound />;
 
   if (isPending || isUtilizationPending) {
     return <LoadingIndicator className="h-full" />;

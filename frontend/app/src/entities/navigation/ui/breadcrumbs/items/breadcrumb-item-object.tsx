@@ -5,8 +5,8 @@ import { Link } from "react-router";
 import { Breadcrumb } from "@/shared/components/aria/breadcrumbs";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
+import { Button } from "@/shared/components/ui/button";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";

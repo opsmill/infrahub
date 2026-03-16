@@ -14,7 +14,7 @@ import {
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";

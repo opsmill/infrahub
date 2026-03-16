@@ -1,21 +1,26 @@
 from unittest.mock import ANY, call, patch
 from uuid import uuid4
 
+from fast_depends import Provider
 from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.components import ComponentType
+from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import CheckType, InfrahubKind
+from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus.types import KVTTL
+from infrahub.permissions import AssignedPermissions, PermissionBackend
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
@@ -49,6 +54,22 @@ mutation ProposedChange(
     object {
       id
     }
+  }
+}
+"""
+
+PROPOSED_CHANGE_REVIEW = """
+mutation CoreProposedChangeReview(
+    $proposed_change_id: String!,
+    $decision: ProposedChangeApprovalDecision!
+  ) {
+  CoreProposedChangeReview(data:
+    {
+      id: $proposed_change_id,
+      decision: $decision
+    }
+  ) {
+    ok
   }
 }
 """
@@ -104,7 +125,7 @@ mutation UpdateProposedChange(
 
 
 async def test_create_invalid_branch_combinations(
-    db: InfrahubDatabase, default_branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     branch_name = str(uuid4().hex)
     invalid_branch = str(uuid4().hex)
@@ -218,6 +239,67 @@ async def test_create_invalid_state_combinations(
     assert "A proposed change has to be in the open state during creation" in str(closed.errors)
     assert merged.errors
     assert "A proposed change has to be in the open state during creation" in str(merged.errors)
+
+
+class DummyReviewProposedChangeAllow(PermissionBackend):
+    async def load_permissions(
+        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
+    ) -> AssignedPermissions:
+        return {
+            "global_permissions": [
+                GlobalPermission(
+                    action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            ],
+            "object_permissions": [],
+        }
+
+
+async def test_cannot_approve_own_created_proposed_change(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    registry.permission_backends = [DummyReviewProposedChangeAllow()]
+    branch_name = str(uuid4().hex)
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
+    open_proposed_change = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "sample proposed change",
+            "state": "open",
+        },
+    )
+    assert not open_proposed_change.errors
+    proposed_change_id = open_proposed_change.data["CoreProposedChangeCreate"]["object"]["id"]
+
+    approve_proposed_change = await graphql(
+        schema=gql_params.schema,
+        source=PROPOSED_CHANGE_REVIEW,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "proposed_change_id": proposed_change_id,
+            "decision": "APPROVE",
+        },
+    )
+    assert approve_proposed_change.errors
+    assert "You cannot review your own proposed changes" in str(approve_proposed_change.errors)
 
 
 async def test_duplicate_open_proposed_change_validation(
@@ -479,7 +561,7 @@ async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_m
 
 async def test_merge_proposed_change_with_branch_upgrade_rebase_status(
     db: InfrahubDatabase, register_core_models_schema: None
-):
+) -> None:
     branch_name = "upgrade-rebase-status-proposed-change"
     source_branch = Branch(name=branch_name)
     source_branch.status = BranchStatus.NEED_UPGRADE_REBASE
@@ -513,7 +595,7 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         session_first_account: AccountSession,
         session_admin: AccountSession,
         client: InfrahubClient,
-        dependency_provider,
+        dependency_provider: Provider,
     ) -> None:
         with dependency_provider.scope(build_client, lambda: client):
             cache = MemoryCache()

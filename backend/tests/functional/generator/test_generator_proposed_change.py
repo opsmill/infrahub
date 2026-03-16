@@ -111,7 +111,7 @@ class TestMutationGenerator(TestInfrahubApp):
             client=client, branch=branch.name, proposed_change_id=proposed_change.id
         )
 
-        tags = await client.all(kind="BuiltinTag", branch=branch.name)
+        tags = await client.all(kind="TestingTag", branch=branch.name)
         assert "JOHN__JESKO" not in [tag.name.value for tag in tags]
         assert "John..Jesko" in [tag.name.value for tag in tags]
         assert "john-jesko" in [tag.name.value for tag in tags]

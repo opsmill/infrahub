@@ -1,1 +1,0 @@
-Fixed incorrect merge behavior where removing the source property from an attribute was silently ignored during branch merge.

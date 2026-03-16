@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from infrahub.cli.db import do_migrate
+from infrahub.core.branch import Branch
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.database import InfrahubDatabase
@@ -26,7 +27,7 @@ class Migration001(GraphMigration):
     minimum_version: int = 0
     queries: list = []
 
-    async def validate_migration(self, db):
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         return MigrationResult()
 
 
@@ -37,7 +38,7 @@ class Migration042(GraphMigration):
     minimum_version: int = 41
     queries: list = []
 
-    async def validate_migration(self, db):
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         return MigrationResult()
 
 
@@ -75,9 +76,9 @@ class TestDoMigrate:
     async def test_do_migrate_check_flag(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         test_case: DoMigrateTestCase,
-    ):
+    ) -> None:
         """Test that check=True prevents migrations from running."""
         root_node = await get_root_node(db=db)
         initial_version = root_node.graph_version
@@ -106,8 +107,8 @@ class TestDoMigrate:
     async def test_do_migrate_no_migrations_to_run(
         self,
         db: InfrahubDatabase,
-        default_branch,
-    ):
+        default_branch: Branch,
+    ) -> None:
         """Test that no changes occur when no migrations are applicable."""
         root_node = await get_root_node(db=db)
         initial_version = root_node.graph_version
@@ -135,8 +136,8 @@ class TestDoMigrate:
     async def test_do_migrate_update_graph_version_true_without_migration_number(
         self,
         db: InfrahubDatabase,
-        default_branch,
-    ):
+        default_branch: Branch,
+    ) -> None:
         """Test that update_graph_version=True when no specific migration is requested."""
         root_node = await get_root_node(db=db)
         initial_version = root_node.graph_version
@@ -164,8 +165,8 @@ class TestDoMigrate:
     async def test_do_migrate_update_graph_version_false_with_migration_number(
         self,
         db: InfrahubDatabase,
-        default_branch,
-    ):
+        default_branch: Branch,
+    ) -> None:
         """Test that update_graph_version=False when a specific migration is requested."""
         root_node = await get_root_node(db=db)
         initial_version = root_node.graph_version
@@ -201,8 +202,8 @@ class TestDoMigrate:
     async def test_do_migrate_runs_specific_migration_by_number(
         self,
         db: InfrahubDatabase,
-        default_branch,
-    ):
+        default_branch: Branch,
+    ) -> None:
         """Test that migration_number selects the correct migration."""
         root_node = await get_root_node(db=db)
         initial_version = root_node.graph_version
@@ -231,8 +232,8 @@ class TestDoMigrate:
     async def test_do_migrate_reruns_already_applied_migration(
         self,
         db: InfrahubDatabase,
-        default_branch,
-    ):
+        default_branch: Branch,
+    ) -> None:
         """Test that a specific migration can be re-run even if already applied."""
         root_node = await get_root_node(db=db)
         initial_version = root_node.graph_version

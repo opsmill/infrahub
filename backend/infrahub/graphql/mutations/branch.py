@@ -203,6 +203,8 @@ class BranchRebase(Mutation):
         graphql_context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        if obj.status == BranchStatus.MERGED:
+            raise ValidationError(f"Branch '{obj.name}' has been merged and is read-only. Rebase is not allowed.")
         await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
 
@@ -298,6 +300,8 @@ class BranchMerge(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
         if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
             raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
+        if obj.status == BranchStatus.MERGED:
+            raise ValidationError(f"Branch '{branch_name}' has already been merged")
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(

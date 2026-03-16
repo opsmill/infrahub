@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 
 import fastapi_storages
@@ -7,33 +8,34 @@ from infrahub_sdk.uuidt import UUIDT
 from infrahub import config
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.storage import InfrahubObjectStorage
+from tests.conftest import TestHelper
 
 
-async def test_init_local(helper, local_storage_dir: Path, file1_in_storage: str) -> None:
+async def test_init_local(helper: TestHelper, local_storage_dir: Path, file1_in_storage: str) -> None:
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
     assert isinstance(storage._storage, fastapi_storages.FileSystemStorage)
     assert config.SETTINGS.storage.local.path_ == local_storage_dir
 
 
-async def test_init_s3(helper, s3_storage_bucket: str) -> None:
+async def test_init_s3(helper: TestHelper, s3_storage_bucket: str) -> None:
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
     assert isinstance(storage._storage, fastapi_storages.InfrahubS3ObjectStorage)
     assert config.SETTINGS.storage.s3.endpoint_url == "storage.googleapis.com"
 
 
-async def test_retrieve_file(helper, local_storage_dir: Path, file1_in_storage: str) -> None:
+async def test_retrieve_file(helper: TestHelper, local_storage_dir: Path, file1_in_storage: str) -> None:
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
     file1 = storage.retrieve(identifier=file1_in_storage)
     assert file1
 
 
-async def test_retrieve_file_does_not_exist(helper, local_storage_dir: Path) -> None:
+async def test_retrieve_file_does_not_exist(helper: TestHelper, local_storage_dir: Path) -> None:
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
     with pytest.raises(NodeNotFoundError):
         storage.retrieve(identifier="doesnotexist")
 
 
-async def test_store_file(helper, local_storage_dir: Path) -> None:
+async def test_store_file(helper: TestHelper, local_storage_dir: Path) -> None:
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
     fixture_dir = helper.get_fixtures_dir()
@@ -42,7 +44,7 @@ async def test_store_file(helper, local_storage_dir: Path) -> None:
 
     content_file1 = (files_dir / filenames[0]).read_bytes()
     identifier = str(UUIDT())
-    storage.store(identifier=identifier, content=content_file1)
+    storage.store(identifier=identifier, content=io.BytesIO(content_file1))
 
     file1 = local_storage_dir / identifier
     assert file1.exists()

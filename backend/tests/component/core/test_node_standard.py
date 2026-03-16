@@ -30,7 +30,7 @@ class PadanticStdNode(StandardNode):
     mylistofmodel: list[MyModel]
 
 
-async def test_node_standard_create(db: InfrahubDatabase, empty_database) -> None:
+async def test_node_standard_create(db: InfrahubDatabase, empty_database: None) -> None:
     obj1 = MyStdNode(
         attr1_str="obj1", attr2_int=1, attr4_bool=True, attr5_dict={"key1": "value2", "key2": {"key21": "Value21"}}
     )
@@ -39,7 +39,7 @@ async def test_node_standard_create(db: InfrahubDatabase, empty_database) -> Non
     assert obj1.id is not None
 
 
-async def test_node_standard_delete(db: InfrahubDatabase, empty_database) -> None:
+async def test_node_standard_delete(db: InfrahubDatabase, empty_database: None) -> None:
     obj1 = OtherStdNode(name="obj1")
     await obj1.save(db=db)
     obj2 = OtherStdNode(name="obj2")
@@ -53,7 +53,7 @@ async def test_node_standard_delete(db: InfrahubDatabase, empty_database) -> Non
     assert len(objs) == 1
 
 
-async def test_node_standard_get(db: InfrahubDatabase, empty_database) -> None:
+async def test_node_standard_get(db: InfrahubDatabase, empty_database: None) -> None:
     obj1 = MyStdNode(
         attr1_str="obj1", attr2_int="1", attr4_bool=True, attr5_dict={"key1": "value2", "key2": {"key21": "Value21"}}
     )
@@ -65,7 +65,7 @@ async def test_node_standard_get(db: InfrahubDatabase, empty_database) -> None:
     assert obj11.attr3_int is None
 
 
-async def test_node_standard_update(db: InfrahubDatabase, empty_database) -> None:
+async def test_node_standard_update(db: InfrahubDatabase, empty_database: None) -> None:
     attr5_value = {"key1": "value2", "key2": {"key21": "Value21"}}
     obj1 = MyStdNode(attr1_str="obj1", attr2_int=1, attr4_bool=True, attr5_dict=attr5_value)
     assert await obj1.save(db=db)
@@ -85,7 +85,7 @@ async def test_node_standard_update(db: InfrahubDatabase, empty_database) -> Non
     assert obj12.model_dump(exclude={"uuid"}) == obj11.model_dump(exclude={"uuid"})
 
 
-async def test_node_standard_list(db: InfrahubDatabase, empty_database) -> None:
+async def test_node_standard_list(db: InfrahubDatabase, empty_database: None) -> None:
     obj1 = OtherStdNode(name="obj1")
     await obj1.save(db=db)
     obj2 = OtherStdNode(name="obj2")
@@ -105,7 +105,7 @@ async def test_node_standard_list(db: InfrahubDatabase, empty_database) -> None:
     assert objs[0].model_dump(exclude={"uuid"}) == obj2.model_dump(exclude={"uuid"})
 
 
-async def test_node_standard_pydantic(db: InfrahubDatabase, empty_database) -> None:
+async def test_node_standard_pydantic(db: InfrahubDatabase, empty_database: None) -> None:
     obj1 = PadanticStdNode(
         name="obj1",
         mymodel={"key1": 1, "key2": "value2"},

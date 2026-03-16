@@ -24,11 +24,12 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 class TestSchemaConversionMapping(TestInfrahubApp):
     async def test_schema_conversion_mapping(
-        self, db: InfrahubDatabase, client: InfrahubClient, branch, schemas_conversion
+        self, db: InfrahubDatabase, client: InfrahubClient, branch: Branch, schemas_conversion: dict
     ) -> None:
         res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
         assert len(res.errors) == 0, res.errors
@@ -77,7 +78,12 @@ class TestSchemaConversionMapping(TestInfrahubApp):
 
 class TestConvertObjectType(TestInfrahubApp):
     async def test_convert_object_type(
-        self, db: InfrahubDatabase, client: InfrahubClient, schemas_conversion, branch, service
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schemas_conversion: dict,
+        branch: Branch,
+        service: InfrahubServices,
     ) -> None:
         res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
         assert len(res.errors) == 0, res.errors
@@ -158,7 +164,7 @@ class TestConvertObjectType(TestInfrahubApp):
             )
 
     async def test_raise_on_break_mandatory_relationship(
-        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_mandatory_owner, branch
+        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_mandatory_owner: dict, branch: Branch
     ) -> None:
         # Add a mandatory relationship between TestPerson1 and TestCar, that would no longer exist after converting a TestPerson1 to a TestPerson2.
         res = await client.schema.load(schemas=[schema_conversion_mandatory_owner], branch=branch.name)
@@ -201,9 +207,9 @@ class TestConvertObjectType(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        schema_conversion_unidirectional_relationships,
-        default_branch,
-        service,
+        schema_conversion_unidirectional_relationships: dict,
+        default_branch: Branch,
+        service: InfrahubServices,
     ) -> None:
         # Add a mandatory relationship between TestPerson1 and TestCar, that would no longer exist after converting a TestPerson1 to a TestPerson2.
         res = await client.schema.load(
@@ -242,7 +248,12 @@ class TestConvertObjectType(TestInfrahubApp):
             )
 
     async def test_agnostic_attributes(
-        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_aware_agnostic, default_branch, service
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schema_conversion_aware_agnostic: dict,
+        default_branch: Branch,
+        service: InfrahubServices,
     ) -> None:
         res = await client.schema.load(schemas=[schema_conversion_aware_agnostic], branch=default_branch.name)
         assert len(res.errors) == 0, res.errors
@@ -280,8 +291,8 @@ class TestConvertObjectType(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
-        schema_conversion_agnostic_node_with_aware_attributes,
-        default_branch,
+        schema_conversion_agnostic_node_with_aware_attributes: dict,
+        default_branch: Branch,
     ) -> None:
         res = await client.schema.load(
             schemas=[schema_conversion_agnostic_node_with_aware_attributes], branch=default_branch.name

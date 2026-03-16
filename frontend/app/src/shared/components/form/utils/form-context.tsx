@@ -4,8 +4,8 @@ import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export interface FormContextType {
-  parentSchema: ModelSchema | null;
-  parentData: NodeObject | null;
+  parentSchema?: ModelSchema | null;
+  parentData?: NodeObject | null;
 }
 
 export const FormContext = createContext<FormContextType>({

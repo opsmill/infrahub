@@ -7,22 +7,24 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectPermissions } from "@/entities/permission/domain/get-object-permissions";
+import type { GetPermissionOptions } from "@/entities/permission/utils";
 
-export type GetObjectPermissionsParams = ContextParams & {
+export interface GetObjectPermissionsParams extends ContextParams, GetPermissionOptions {
   kind: string;
   userId?: string;
-};
+}
 
 export const getObjectPermissionsQueryOptions = ({
-  kind,
   userId,
   branchName,
   atDate,
+  branch,
+  kind,
 }: GetObjectPermissionsParams) => {
   return queryOptions({
-    queryKey: [branchName, atDate, "permissions", kind, userId],
+    queryKey: [branchName, atDate, "permissions", kind, userId, branch?.status],
     queryFn: () => {
-      return getObjectPermissions({ kind, branchName, atDate });
+      return getObjectPermissions({ branchName, atDate, branch, kind });
     },
   });
 };
@@ -34,10 +36,11 @@ export const useGetObjectPermissions = (kind: string) => {
 
   return useQuery(
     getObjectPermissionsQueryOptions({
-      kind,
       userId: auth.user?.id,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
+      branch: currentBranch,
+      kind,
     })
   );
 };

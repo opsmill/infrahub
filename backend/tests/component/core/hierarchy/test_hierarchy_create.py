@@ -7,7 +7,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
 
-async def test_create_node_with_invalid_hierarchy(db: InfrahubDatabase, hierarchical_location_data) -> None:
+async def test_create_node_with_invalid_hierarchy(
+    db: InfrahubDatabase, hierarchical_location_data: dict[str, Node]
+) -> None:
     region_schema = registry.schema.get_node_schema(name="LocationRegion", duplicate=True)
     rack_schema = registry.schema.get_node_schema(name="LocationRack", duplicate=True)
     europe = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id)

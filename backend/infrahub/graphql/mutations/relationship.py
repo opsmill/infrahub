@@ -113,7 +113,7 @@ class RelationshipAdd(Mutation):
                     schema=rel_schema, branch=graphql_context.branch, source_kind=source.get_kind(), node=source
                 )
                 await rel.new(db=db, data=node_data)
-                await rel.resolve(db=db)
+                await rel.resolve(db=db, user_id=graphql_context.assigned_user_id)
                 # Save it only if it does not exist
                 if rel.get_peer_id() not in existing_peers.keys():
                     if group_event_type != GroupUpdateType.NONE:

@@ -3,6 +3,7 @@ import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
 import { RelationshipActionsCell } from "@/entities/nodes/relationships/ui/relationship-table/relationship-actions-cell";
 import type { NodeObject } from "@/entities/nodes/types";
+import { PERMISSION_DENY_ALL } from "@/entities/permission/constants";
 import type { Permission } from "@/entities/permission/types";
 
 const columnHelper = createColumnHelper<NodeObject>();
@@ -11,7 +12,7 @@ export type GetRelationshipActionsColumnParams = {
   parentId: string;
   parentKind: string;
   relationshipName: string;
-  permission: Permission;
+  permission?: Permission;
   relationshipsCount: number;
 };
 
@@ -19,7 +20,7 @@ export function getRelationshipActionsColumn({
   parentId,
   parentKind,
   relationshipName,
-  permission,
+  permission = PERMISSION_DENY_ALL,
   relationshipsCount,
 }: GetRelationshipActionsColumnParams): ColumnDef<NodeObject> {
   return columnHelper.display({

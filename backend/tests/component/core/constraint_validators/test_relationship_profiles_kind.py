@@ -56,21 +56,21 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         return registry.schema.register_schema(schema=schema_root, branch=registry.default_branch)
 
     @pytest.fixture
-    async def ship_one(self, db: InfrahubDatabase, schema) -> Node:
+    async def ship_one(self, db: InfrahubDatabase, schema: None) -> Node:
         ship = await Node.init(db=db, schema="TestShip")
         await ship.new(db=db, name="Nostromo", color="grimy black")
         await ship.save(db=db)
         return ship
 
     @pytest.fixture(scope="class")
-    async def space_object_profile(self, db: InfrahubDatabase, schema) -> Node:
+    async def space_object_profile(self, db: InfrahubDatabase, schema: None) -> Node:
         space_profile = await Node.init(db=db, schema="ProfileTestGenericSpaceObject")
         await space_profile.new(db=db, profile_name="small space thing", profile_priority=500, mass=100)
         await space_profile.save(db=db)
         return space_profile
 
     @pytest.fixture(scope="class")
-    async def ship_profile(self, db: InfrahubDatabase, schema) -> Node:
+    async def ship_profile(self, db: InfrahubDatabase, schema: None) -> Node:
         ship_profile = await Node.init(db=db, schema="ProfileTestShip")
         await ship_profile.new(db=db, profile_name="cool ship", profile_priority=400, color="very matte black")
         await ship_profile.save(db=db)

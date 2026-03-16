@@ -9,8 +9,8 @@ import { classNames } from "@/shared/utils/common";
 
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
-import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
   schema: ModelSchema;
@@ -38,7 +38,7 @@ export function ProposedChangeTableFilter({
         className={classNames(cellsStyle, cellHeaderStyle, "rounded-sm border-0 transition-all")}
         {...props}
       >
-        <TableColumnHeaderIcon fieldSchema={columnSchema} />
+        <FieldSchemaIcon fieldSchema={columnSchema} />
 
         <span className="mr-1 truncate">
           {customLabel ?? columnSchema.label ?? columnSchema.name}

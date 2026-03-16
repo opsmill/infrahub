@@ -1,12 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+import { Heading } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Modal } from "@/shared/components/aria/modal";
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
 import SlideOver from "@/shared/components/display/slide-over";
-import { TokenInput } from "@/shared/components/display/token-input";
-import ModalSuccess from "@/shared/components/modals/modal-success";
+import { Button } from "@/shared/components/ui/button";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
@@ -50,23 +51,37 @@ export function AccountTokenCreateAction() {
         />
       </SlideOver>
 
-      {newToken && (
-        <ModalSuccess
-          open
-          title="Token created"
-          setOpen={() => setNewToken("")}
-          onConfirm={() => setNewToken("")}
-          icon="mdi:key"
-        >
-          <Col className="items-center">
-            <Col className="items-center gap-0 text-sm">
-              <span>Please copy your token now.</span>
-              <b className="font-semibold">For security reasons we cannot show it again.</b>
-            </Col>
-            <TokenInput value={newToken} />
-          </Col>
-        </ModalSuccess>
-      )}
+      <Modal
+        isOpen={!!newToken}
+        isDismissable={false}
+        onOpenChange={(isOpen) => !isOpen && setNewToken("")}
+        className="p-0"
+      >
+        <Col className="p-3">
+          <Heading slot="title" className="flex items-center gap-2 font-semibold">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-custom-blue-600">
+              <Icon icon="mdi:key-variant" className="text-white" />
+            </div>
+            Token created
+          </Heading>
+
+          <div className="px-8 py-4">
+            <p>Please copy your token now.</p>
+            <p className="font-semibold">For security reasons we cannot show it again.</p>
+          </div>
+
+          <Row>
+            <div className="h-9 grow rounded-md bg-gray-100 p-2">{newToken}</div>
+            <CopyToClipboard text={newToken} size="square" variant="outline" />
+          </Row>
+        </Col>
+
+        <Row className="justify-end bg-gray-50 p-3">
+          <Button variant="primary" onClick={() => setNewToken("")}>
+            Confirm
+          </Button>
+        </Row>
+      </Modal>
     </>
   );
 }

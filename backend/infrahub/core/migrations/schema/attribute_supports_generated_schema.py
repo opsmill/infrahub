@@ -47,7 +47,7 @@ class ProfilesAttributeAddMigrationQuery(AttributeMigrationQuery, AttributeAddQu
             node_kinds=node_kinds,
             attribute_name=migration.new_attribute_schema.name,
             attribute_kind=migration.new_attribute_schema.kind,
-            branch_support=migration.new_attribute_schema.get_branch(),
+            branch_support=migration.new_attribute_schema.get_branch().value,
             default_value=migration.new_attribute_schema.default_value,
             **kwargs,
         )
@@ -84,7 +84,7 @@ class TemplatesAttributeAddMigrationQuery(AttributeMigrationQuery, AttributeAddQ
             node_kinds=node_kinds,
             attribute_name=migration.new_attribute_schema.name,
             attribute_kind=migration.new_attribute_schema.kind,
-            branch_support=migration.new_attribute_schema.get_branch(),
+            branch_support=migration.new_attribute_schema.get_branch().value,
             default_value=migration.new_attribute_schema.default_value,
             **kwargs,
         )
@@ -136,7 +136,7 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
 
         # Check template support changes
         if (
-            isinstance(self.new_schema, (NodeSchema, GenericSchema))
+            isinstance(self.new_schema, NodeSchema)
             and self.new_schema.generate_template
             and self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
         ):
