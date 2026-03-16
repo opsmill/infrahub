@@ -91,13 +91,6 @@ class IPParentPrefixResult:
     prefix_id: str
     prefix_kind: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> IPParentPrefixResult:
-        return cls(
-            prefix_id=result.get_as_type("parent_prefix_uuid", return_type=str),
-            prefix_kind=result.get_as_type("parent_prefix_kind", return_type=str),
-        )
-
 
 def _get_namespace_id(
     namespace: Node | str | None = None,
@@ -202,7 +195,13 @@ class IPParentPrefixLookupQuery(Query):
         self.return_labels = ["parent_prefix_uuid", "parent_prefix_kind", "prefixlen"]
 
     def get_data(self) -> list[IPParentPrefixResult]:
-        return [IPParentPrefixResult.from_db(result=result) for result in self.get_results()]
+        return [
+            IPParentPrefixResult(
+                prefix_id=result.get_as_type("parent_prefix_uuid", return_type=str),
+                prefix_kind=result.get_as_type("parent_prefix_kind", return_type=str),
+            )
+            for result in self.get_results()
+        ]
 
 
 class IPPrefixSubnetFetch(Query):
