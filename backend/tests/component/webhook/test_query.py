@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.webhook.query import KeyValueGetWebhooksQuery, KeyValueWebhookResult
 from infrahub.webhook.tasks.invalidate import invalidate_webhook_headers
@@ -88,6 +89,73 @@ class TestKeyValueGetWebhooksQuery:
         results = query.get_data()
 
         assert results == KeyValueWebhookResult(webhook_uuids=frozenset({webhook.id}))
+
+    async def test_excluded_when_all_headers_deleted(
+        self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+    ) -> None:
+        """When all headers are deleted from a webhook, the deleted edges should be filtered out."""
+        default_branch.update_schema_hash()
+        kv = await _create_keyvalue(db, default_branch, "x-removed", "X-Removed", "gone")
+        webhook = await _create_webhook(db, default_branch, "hook-remove", headers=[kv])
+
+        # Verify link exists before deletion
+        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=kv.id)
+        await query.execute(db=db)
+        assert query.get_data() == KeyValueWebhookResult(webhook_uuids=frozenset({webhook.id}))
+
+        # Delete all headers from the webhook
+        webhook_refreshed = await NodeManager.get_one(db=db, branch=default_branch, id=webhook.id)
+        await webhook_refreshed.headers.delete(db=db)
+
+        # The deleted edges should be filtered out
+        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=kv.id)
+        await query.execute(db=db)
+        assert query.get_data() == KeyValueWebhookResult(webhook_uuids=frozenset())
+
+    async def test_excluded_when_webhook_deleted(
+        self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+    ) -> None:
+        """When a webhook is deleted, the edge from the webhook side should be filtered out."""
+        default_branch.update_schema_hash()
+        kv = await _create_keyvalue(db, default_branch, "x-del-wh", "X-Del-Wh", "del")
+        webhook = await _create_webhook(db, default_branch, "hook-deleted", headers=[kv])
+
+        # Verify link exists before deletion
+        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=kv.id)
+        await query.execute(db=db)
+        assert query.get_data() == KeyValueWebhookResult(webhook_uuids=frozenset({webhook.id}))
+
+        # Delete the webhook entirely
+        webhook_refreshed = await NodeManager.get_one(db=db, branch=default_branch, id=webhook.id)
+        await webhook_refreshed.delete(db=db)
+
+        # The deleted webhook should not appear
+        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=kv.id)
+        await query.execute(db=db)
+        assert query.get_data() == KeyValueWebhookResult(webhook_uuids=frozenset())
+
+    async def test_partial_removal_still_finds_remaining(
+        self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+    ) -> None:
+        """When one of two webhooks has its headers deleted, only the remaining one is found."""
+        default_branch.update_schema_hash()
+        kv = await _create_keyvalue(db, default_branch, "x-shared-del", "X-Shared-Del", "shared")
+        wh_kept = await _create_webhook(db, default_branch, "hook-kept", headers=[kv])
+        wh_removed = await _create_webhook(db, default_branch, "hook-removed", headers=[kv])
+
+        # Both webhooks linked initially
+        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=kv.id)
+        await query.execute(db=db)
+        assert query.get_data() == KeyValueWebhookResult(webhook_uuids=frozenset({wh_kept.id, wh_removed.id}))
+
+        # Delete headers from only one webhook
+        wh_removed_refreshed = await NodeManager.get_one(db=db, branch=default_branch, id=wh_removed.id)
+        await wh_removed_refreshed.headers.delete(db=db)
+
+        # Only the kept webhook should remain
+        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=kv.id)
+        await query.execute(db=db)
+        assert query.get_data() == KeyValueWebhookResult(webhook_uuids=frozenset({wh_kept.id}))
 
 
 class TestCacheInvalidationFlow:

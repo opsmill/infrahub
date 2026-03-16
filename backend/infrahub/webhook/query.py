@@ -36,13 +36,13 @@ class KeyValueGetWebhooksQuery(Query):
         CALL (kv, rl) {
             MATCH (kv)-[r1:IS_RELATED]->(rl)
             WITH r1 ORDER BY r1.from DESC LIMIT 1
-            WHERE r1.status = "active"
+            WHERE r1.status = "active" AND r1.to IS NULL
             RETURN r1
         }
         CALL (webhook, rl) {
             MATCH (webhook)-[r2:IS_RELATED]->(rl)
             WITH r2 ORDER BY r2.from DESC LIMIT 1
-            WHERE r2.status = "active"
+            WHERE r2.status = "active" AND r2.to IS NULL
             RETURN r2
         }
         """
