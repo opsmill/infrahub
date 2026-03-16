@@ -26,7 +26,7 @@ This release introduces a file objects feature, adds stronger branch life-cycle 
 
 ### File Object: Upload and attach files to Infrahub objects
 
-Infrahub can now store files -- Text files, PDFs, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. Object files behave as all other objects in Infrahub, you can fully customize the schema and relate (or attach) them to other objects.
+Infrahub can now store files -- Text files, PDF, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. Object files behave as all other objects in Infrahub, you can fully customize the schema and relate (or attach) them to other objects.
 
 The contents of the file will be rendered in Infrahub's web interface, if the file has one of the following file types: 
 
@@ -92,7 +92,7 @@ This applies to all pool types:
 - IP Prefix pools
 - Number pools
 
-The feature introduces a new `relationship_properties` field in the GraphQL schema for template relationships, which stores the pool source reference alongside the standard `edges` field. Template inheritance (subtemplates) correctly propagates pool references.
+The feature introduces a new `relationship_properties` field in the GraphQL schema for template relationships, which stores the pool source reference alongside the standard `edges` field. Template inheritance (sub templates) correctly propagates pool references.
 
 A database migration is included to convert any existing template-IP relationships that incorrectly have pool sources into the new `_from_resource_pool` relationship format.
 
@@ -100,7 +100,7 @@ A database migration is included to convert any existing template-IP relationshi
 
 The data and schema diff of a Proposed Change is now preserved and accessible even after the associated branch has been deleted. This is essential for audit and compliance workflows -- during incident investigation or regulatory review, users need to inspect what changes were made, by whom, and when, regardless of whether the source branch still exists.
 
-The diff data is now tied to the Proposed Change itself rather than solely to the branch. The Files and Artifacts tabs on a Proposed Change also handle deleted branches gracefully, showing a user-friendly message instead of an error.
+The diff data is now tied to the Proposed Change itself rather than solely to the branch. The files and artifacts tabs on a Proposed Change also handle deleted branches gracefully, showing a user-friendly message instead of an error.
 
 This feature is a prerequisite for a future capability to automatically delete branches after merge, which will help prevent stale branches that can cause Git synchronization issues.
 
@@ -165,7 +165,7 @@ Infrahub v1.8.0 requires the usage of infrahub-sdk v1.19.0, please update the `i
 
 Notable SDK changes in this release:
 - Added support for the File Object feature
-- Fixed an issue where the SDK tracking feature would fail when deleting a parent node with component relationships (e.g., a device with interfaces). The SDK now correctly handles cascade deletions where component nodes are automatically removed when their parent is deleted, preventing "Unable to find the node" errors in generator workflows.
+- Fixed an issue where the SDK tracking feature would fail when deleting a parent node with component relationships (e.g., a device with interfaces). The SDK now correctly handles cascade deletions where component nodes are automatically removed when their parent is deleted, preventing "Unable to find the node" errors in Generator workflows.
 
 ## Migration of an Infrahub instance
 
@@ -277,4 +277,4 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 - Fix false "unsaved changes" warning when editing objects with generic relationships.
 - Fix task view showing "Name not found" for related nodes that exist only on a branch by querying the correct branch and time context.
 - Fixed adding a relationship from a resource pool within relationship tabs in the object detail view
-- Show a user-friendly message in the Files and Artifacts tabs of a proposed change when the source branch has been deleted.
+- Show a user-friendly message in the files and artifacts tabs of a proposed change when the source branch has been deleted.
