@@ -39,7 +39,7 @@ async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict
 
 KIND_MAP: dict[str, HeaderKind] = {
     InfrahubKind.STATICKEYVALUE: HeaderKind.STATIC,
-    InfrahubKind.ENVIRONMENTVARIABLEKEYVALUE: HeaderKind.ENVIRONMENT,
+    InfrahubKind.ENVKEYVALUE: HeaderKind.ENVIRONMENT,
 }
 
 

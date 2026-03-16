@@ -31,7 +31,7 @@ TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE = BuiltinTriggerDefinition(
         match={
             "infrahub.node.kind": [
                 InfrahubKind.STATICKEYVALUE,
-                InfrahubKind.ENVIRONMENTVARIABLEKEYVALUE,
+                InfrahubKind.ENVKEYVALUE,
             ],
         },
     ),
