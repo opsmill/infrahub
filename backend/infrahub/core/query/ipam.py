@@ -154,37 +154,64 @@ class IPParentPrefixLookupQuery(Query):
         self.params["ip_prefix_attribute_kind"] = PREFIX_ATTRIBUTE_LABEL
 
         query = """
-        // Find AttributeIPNetwork nodes matching possible parent binary addresses
-        OPTIONAL MATCH (av:%(ip_prefix_attribute_kind)s)
-        WHERE av.version = $ip_version
-        AND av.binary_address IN $possible_prefix_list
-        AND any(
-            prefix_and_length IN $possible_prefix_and_length_list
-            WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
-        )
-        WITH av
-        WHERE av IS NOT NULL
-        // Trace back to the BuiltinIPPrefix node
-        MATCH (parent_prefix:%(ip_prefix_kind)s)-[r1:HAS_ATTRIBUTE]->(a:Attribute {name: "prefix"})-[r2:HAS_VALUE]->(av)
-        WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-        WITH parent_prefix, av, r1, r2,
-            r1.status = "active" AND r2.status = "active" AS is_active
-        ORDER BY elementId(parent_prefix), r1.branch_level DESC, r1.from DESC, r1.status ASC,
-            r2.branch_level DESC, r2.from DESC, r2.status ASC
-        WITH parent_prefix, head(collect([av, is_active])) AS av_active
-        WITH parent_prefix, av_active[0] AS av, av_active[1] AS is_active
-        WHERE is_active = TRUE
+        // ------------------
+        // Shortlist candidate AttributeIPNetwork nodes using the binary_address index
+        // ------------------
+        CALL () {
+            OPTIONAL MATCH (av:%(ip_prefix_attribute_kind)s)
+            WHERE av.version = $ip_version
+            AND av.binary_address IN $possible_prefix_list
+            AND any(
+                prefix_and_length IN $possible_prefix_and_length_list
+                WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
+            )
+            // Walk back to BuiltinIPPrefix candidates (unbound from specific av)
+            OPTIONAL MATCH (maybe_parent:%(ip_prefix_kind)s)
+                -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
+                -[:HAS_VALUE]->(av)
+            RETURN DISTINCT maybe_parent
+        }
+        // ------------------
         // Verify the prefix node itself is active on this branch
-        MATCH (parent_prefix)-[r:IS_PART_OF]->(:Root)
-        WHERE %(branch_filter)s
-        WITH parent_prefix, av, r
-        ORDER BY elementId(parent_prefix), r.branch_level DESC, r.from DESC, r.status ASC
-        WITH parent_prefix, av, head(collect(r.status = "active")) AS node_is_active
+        // ------------------
+        CALL (maybe_parent) {
+            OPTIONAL MATCH (maybe_parent)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            WITH maybe_parent, r.status = "active" AS is_active
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            RETURN head(collect(is_active)) = TRUE AS node_is_active
+        }
+        WITH maybe_parent
         WHERE node_is_active = TRUE
-        WITH DISTINCT parent_prefix, av
-        RETURN parent_prefix.uuid AS parent_prefix_uuid,
-            parent_prefix.kind AS parent_prefix_kind,
-            av.prefixlen AS prefixlen
+        // ------------------
+        // Resolve the branch-effective attribute value for each candidate
+        // ------------------
+        CALL (maybe_parent) {
+            OPTIONAL MATCH (maybe_parent)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[r2:HAS_VALUE]->(av:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH maybe_parent, av, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
+            ORDER BY elementId(maybe_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC,
+                r2.branch_level DESC, r2.from DESC, r2.status ASC
+            WITH maybe_parent, head(collect([av, is_active])) AS av_is_active
+            WITH
+                av_is_active[0] AS av,
+                av_is_active[1] AS is_active
+            // Re-check containment against the resolved branch-effective value
+            WITH av, is_active, (
+                av.version = $ip_version
+                AND av.binary_address IN $possible_prefix_list
+                AND any(
+                    prefix_and_length IN $possible_prefix_and_length_list
+                    WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
+                )
+            ) AS is_allowed_value
+            RETURN CASE WHEN is_active = TRUE AND is_allowed_value = TRUE THEN av ELSE NULL END AS allowed_av
+        }
+        WITH maybe_parent, allowed_av
+        WHERE allowed_av IS NOT NULL
+        RETURN maybe_parent.uuid AS parent_prefix_uuid,
+            maybe_parent.kind AS parent_prefix_kind,
+            allowed_av.prefixlen AS prefixlen
         ORDER BY prefixlen DESC
         """ % {
             "branch_filter": branch_filter,
