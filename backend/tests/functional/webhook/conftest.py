@@ -169,7 +169,7 @@ async def webhook_with_headers(db: InfrahubDatabase, initial_dataset: None, clie
     await static_header.new(db=db, name="x-custom-token", key="X-Custom-Token", value="secret123")
     await static_header.save(db=db)
 
-    env_header = await Node.init(schema=InfrahubKind.ENVIRONMENTVARIABLEKEYVALUE, db=db)
+    env_header = await Node.init(schema=InfrahubKind.ENVKEYVALUE, db=db)
     await env_header.new(db=db, name="x-env-key", key="X-Env-Key", value="MY_ENV_VAR")
     await env_header.save(db=db)
 
