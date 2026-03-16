@@ -47,6 +47,7 @@ from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    BRANCH_DELETE,
     BRANCH_MERGE_POST_PROCESS,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
@@ -370,6 +371,13 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             context=context,
             parameters={"branch_name": obj.name},
         )
+
+        if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default and proposed_change_id is None:
+            await get_workflow().submit_workflow(
+                workflow=BRANCH_DELETE,
+                context=context,
+                parameters={"branch": obj.name},
+            )
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
