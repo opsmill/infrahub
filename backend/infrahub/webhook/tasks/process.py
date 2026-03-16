@@ -47,7 +47,8 @@ def _extract_custom_headers(webhook_node: CoreWebhook) -> list[WebhookHeader]:
     if not hasattr(webhook_node, "headers"):
         return []
     headers: list[WebhookHeader] = []
-    for peer in webhook_node.headers.peers:
+    for related in webhook_node.headers.peers:
+        peer = related.peer
         kind = KIND_MAP.get(peer.get_kind())
         if kind is None:
             continue
