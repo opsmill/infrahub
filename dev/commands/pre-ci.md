@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(npx biome*:*)
   - Bash(npx betterer*:*)
   - Bash(npx markdownlint*:*)
+  - Bash(npm run codegen*:*)
 ---
 
 # Pre-CI
@@ -107,6 +108,14 @@ uv run invoke schema.validate-jsonschema
 
 Ensures `schema/schema.graphql` and `schema/openapi.json` are up to date. These regenerate the files then check for uncommitted diffs. If validation fails, the correct file is already on disk — just stage and commit it.
 
+### 8b. Regenerate frontend GraphQL types (gql.tada)
+
+```bash
+cd frontend/app && npm run codegen:graphql
+```
+
+Regenerates `graphql-env.d.ts` and `graphql-cache.d.ts` from `schema/schema.graphql`. If the files change, they need to be staged and committed.
+
 ### 9. Run backend unit tests
 
 ```bash
@@ -131,6 +140,7 @@ Summarize results in a table:
 | Lockfile sync | ... |
 | Generated files | ... |
 | Schema validation | ... |
+| Frontend GraphQL types | ... |
 | Unit tests | ... |
 
 If everything passed, tell the user they're ready to push.
