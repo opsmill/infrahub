@@ -117,23 +117,26 @@ class EventContext(BaseModel):
         )
 
 
+class WebhookHeaderResolutionError(Exception):
+    pass
+
+
 class WebhookHeader(BaseModel):
     key: str
     value: str
     kind: Literal["static", "environment"]
 
-    def resolve(self) -> str | None:
+    def resolve(self) -> str:
         """Resolve the header value based on its kind.
 
-        Returns None if the value cannot be resolved (e.g. missing environment variable).
+        Raises WebhookHeaderResolutionError if the value cannot be resolved.
         """
         if self.kind == "static":
             return self.value
 
         resolved = os.environ.get(self.value)
         if resolved is None:
-            logger.warning("Environment variable '%s' not found, skipping header '%s'", self.value, self.key)
-            return None
+            raise WebhookHeaderResolutionError(f"Environment variable '{self.value}' not found")
         return resolved
 
 
@@ -158,9 +161,10 @@ class Webhook(BaseModel):
         }
 
         for header in self.custom_headers:
-            resolved = header.resolve()
-            if resolved is not None:
-                self._headers[header.key] = resolved
+            try:
+                self._headers[header.key] = header.resolve()
+            except WebhookHeaderResolutionError as exc:
+                logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"

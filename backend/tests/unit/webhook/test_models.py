@@ -140,6 +140,7 @@ def test_assign_headers_skips_missing_environment_variable(caplog: pytest.LogCap
     assert webhook._headers["X-Source"] == "infrahub"
     assert "MISSING_VAR" in caplog.text
     assert "X-API-Key" in caplog.text
+    assert "test" in caplog.text  # webhook name included in warning
 
 
 def test_webhook_signature_with_payload() -> None:

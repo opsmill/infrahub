@@ -1,9 +1,8 @@
-import logging
 from unittest.mock import patch
 
 import pytest
 
-from infrahub.webhook.models import WebhookHeader
+from infrahub.webhook.models import WebhookHeader, WebhookHeaderResolutionError
 
 
 def test_webhook_header_model() -> None:
@@ -29,11 +28,7 @@ def test_webhook_header_resolve_environment() -> None:
         assert header.resolve() == "secret123"
 
 
-def test_webhook_header_resolve_missing_environment(caplog: pytest.LogCaptureFixture) -> None:
+def test_webhook_header_resolve_missing_environment() -> None:
     header = WebhookHeader(key="X-API-Key", value="MISSING_VAR", kind="environment")
-    with patch.dict("os.environ", {}, clear=True), caplog.at_level(logging.WARNING, logger="infrahub.webhook.models"):
-        result = header.resolve()
-
-    assert result is None
-    assert "MISSING_VAR" in caplog.text
-    assert "X-API-Key" in caplog.text
+    with patch.dict("os.environ", {}, clear=True), pytest.raises(WebhookHeaderResolutionError, match="MISSING_VAR"):
+        header.resolve()
