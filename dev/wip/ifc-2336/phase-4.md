@@ -18,6 +18,7 @@ Expose `delete_from_git` as an optional parameter on the `BranchDelete` GraphQL 
 - [ ] Add `BranchDeleteInput` class (new — `BranchNameInput` is unchanged)
 - [ ] Switch `BranchDelete.Arguments` and `mutate()` type hint from `BranchNameInput` to `BranchDeleteInput`
 - [ ] Pass `delete_from_git` through to the `BRANCH_DELETE` workflow parameters
+- [ ] Update `delete_branch()` to accept `delete_from_git: bool = False` and wire it into `should_delete_git`
 - [ ] Write unit tests
 
 ---
@@ -63,6 +64,29 @@ class BranchDelete(Mutation):
     ) -> Self:
 ```
 
+### 4.4 Update `delete_branch()` to accept `delete_from_git`
+
+**File:** `backend/infrahub/core/branch/tasks.py`
+
+Update the flow signature to accept the new parameter:
+
+```python
+@flow(name="branch-delete", flow_run_name="Delete branch {branch}")
+async def delete_branch(
+    branch: str,
+    context: InfrahubContext,
+    delete_from_git: bool = False,
+) -> None:
+```
+
+Update the `should_delete_git` condition to include the explicit flag:
+
+```python
+should_delete_git = (config.SETTINGS.main.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
+```
+
+---
+
 ### 4.3 Pass delete_from_git to the workflow
 
 In the `mutate()` body, extract the flag and include it in both workflow call sites (execute and submit):
@@ -74,7 +98,7 @@ await apply_external_context(graphql_context=graphql_context, context_input=cont
 
 parameters = {
     "branch": obj.name,
-    "delete_from_git": data.get("delete_from_git", False),
+    "delete_from_git": bool(data.delete_from_git),
 }
 
 if wait_until_completion:

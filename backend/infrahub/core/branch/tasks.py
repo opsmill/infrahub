@@ -52,6 +52,7 @@ from infrahub.workflows.catalogue import (
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
+    GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
@@ -431,6 +432,14 @@ async def delete_branch(branch: str, context: InfrahubContext) -> None:
 
         event_service = await get_event_service()
         await event_service.send(event=event)
+
+    should_delete_git = config.SETTINGS.main.delete_git_branch_after_merge and obj.sync_with_git
+    if should_delete_git:
+        await get_workflow().submit_workflow(
+            workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+            context=context,
+            parameters={"branch": branch},
+        )
 
 
 @flow(
