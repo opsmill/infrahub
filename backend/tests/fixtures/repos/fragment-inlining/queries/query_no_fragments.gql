@@ -1,0 +1,12 @@
+query QueryNoFragments {
+  InfraDevice {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}

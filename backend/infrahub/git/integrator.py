@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING, Any
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
+from infrahub_sdk.exceptions import Error as InfrahubSdkError
 from infrahub_sdk.exceptions import ValidationError
+from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -579,9 +581,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
-        local_queries = {
-            query.name: query.load_query(relative_path=commit_wt.directory) for query in config_file.queries
-        }
+
+        local_queries: dict[str, str] = {}
+        for query_config in config_file.queries:
+            try:
+                local_queries[query_config.name] = render_query(
+                    name=query_config.name,
+                    config=config_file,
+                    relative_path=str(commit_wt.directory),
+                )
+            except InfrahubSdkError as exc:
+                log.error(f"Query '{query_config.name}': {exc}")
+                raise
 
         if not local_queries:
             return

@@ -1,0 +1,9 @@
+query QueryTransitive {
+  InfraDevice {
+    edges {
+      node {
+        ...deviceFragment
+      }
+    }
+  }
+}
