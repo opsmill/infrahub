@@ -19,13 +19,13 @@
 
 **Purpose**: Core backend infrastructure that ALL user stories depend on. Must complete before frontend work begins.
 
-- [ ] T001 [P] Add `IPParentPrefixResult` frozen dataclass with `from_db()` classmethod in `backend/infrahub/core/query/ipam.py` — follows `IPPrefixFreeData` pattern, fields: `prefix_id: str`, `prefix_kind: str`
-- [ ] T002 Add `IPParentPrefixLookupQuery` class in `backend/infrahub/core/query/ipam.py` — adapt `_build_possible_parent_prefixes()` from `IPPrefixReconcileQuery`, accept `ip_value: IPv4Address | IPv6Address | IPv4Network | IPv6Network`, query all namespaces, return results ordered by `prefixlen DESC`, use `branch.get_query_filter_path()` for branch safety (depends on T001)
-- [ ] T003 [P] Add `_try_parse_ip_or_prefix()` helper function in `backend/infrahub/graphql/queries/search.py` — try `ipaddress.ip_address(q)` then `ipaddress.ip_network(q, strict=False)`, return parsed object or `None`
-- [ ] T004 Add nullable `parent_prefixes` field to `NodeEdges` GraphQL type in `backend/infrahub/graphql/queries/search.py` — `Field(List(of_type=NonNull(NodeEdge)), required=False)`
-- [ ] T005 Extend `search_resolver()` in `backend/infrahub/graphql/queries/search.py` — after IPv6 normalization, call `_try_parse_ip_or_prefix(q)`, if valid IP/CIDR run `IPParentPrefixLookupQuery` and populate `parent_prefixes` in response, always run existing text search regardless (depends on T002, T003, T004)
-- [ ] T006 [P] Unit tests for `_try_parse_ip_or_prefix()` in `backend/tests/unit/graphql/queries/test_search.py` — test IPv4 address, IPv6 address, CIDR prefix, partial IP returns None, hostname returns None, empty string returns None, IPv6 non-canonical formats
-- [ ] T007 Component tests for parent prefix lookup in `backend/tests/component/graphql/queries/test_search.py` — test IPv4 address returns containing prefixes ordered by specificity, test IPv4 prefix returns parents (excludes exact match), test non-IP query returns `parent_prefixes: null`, test valid IP with no matching prefixes returns empty list, test existing IP address object appears in `edges` alongside parent prefixes in `parent_prefixes` (FR-013), test parent prefix lookup on a non-default branch returns only that branch's prefixes (FR-011)
+- [x] T001 [P] Add `IPParentPrefixResult` frozen dataclass with `from_db()` classmethod in `backend/infrahub/core/query/ipam.py` — follows `IPPrefixFreeData` pattern, fields: `prefix_id: str`, `prefix_kind: str`
+- [x] T002 Add `IPParentPrefixLookupQuery` class in `backend/infrahub/core/query/ipam.py` — adapt `_build_possible_parent_prefixes()` from `IPPrefixReconcileQuery`, accept `ip_value: IPv4Address | IPv6Address | IPv4Network | IPv6Network`, query all namespaces, return results ordered by `prefixlen DESC`, use `branch.get_query_filter_path()` for branch safety (depends on T001)
+- [x] T003 [P] Add `_try_parse_ip_or_prefix()` helper function in `backend/infrahub/graphql/queries/search.py` — try `ipaddress.ip_address(q)` then `ipaddress.ip_network(q, strict=False)`, return parsed object or `None`
+- [x] T004 Add nullable `parent_prefixes` field to `NodeEdges` GraphQL type in `backend/infrahub/graphql/queries/search.py` — `Field(List(of_type=NonNull(NodeEdge)), required=False)`
+- [x] T005 Extend `search_resolver()` in `backend/infrahub/graphql/queries/search.py` — after IPv6 normalization, call `_try_parse_ip_or_prefix(q)`, if valid IP/CIDR run `IPParentPrefixLookupQuery` and populate `parent_prefixes` in response, always run existing text search regardless (depends on T002, T003, T004)
+- [x] T006 [P] Unit tests for `_try_parse_ip_or_prefix()` in `backend/tests/unit/graphql/queries/test_search.py` — test IPv4 address, IPv6 address, CIDR prefix, partial IP returns None, hostname returns None, empty string returns None, IPv6 non-canonical formats
+- [x] T007 Component tests for parent prefix lookup in `backend/tests/component/graphql/queries/test_search.py` — test IPv4 address returns containing prefixes ordered by specificity, test IPv4 prefix returns parents (excludes exact match), test non-IP query returns `parent_prefixes: null`, test valid IP with no matching prefixes returns empty list, test existing IP address object appears in `edges` alongside parent prefixes in `parent_prefixes` (FR-013), test parent prefix lookup on a non-default branch returns only that branch's prefixes (FR-011)
 
 **Checkpoint**: Backend API returns `parent_prefixes` field. Verifiable via direct GraphQL query.
 
@@ -59,8 +59,8 @@
 
 No additional code changes required — the backend `IPParentPrefixLookupQuery` already handles `IPv4Network`/`IPv6Network` inputs and the frontend `SearchParentPrefixes` component renders whatever `parent_prefixes` contains. The `_try_parse_ip_or_prefix()` function parses CIDR notation via `ipaddress.ip_network(q, strict=False)`.
 
-- [ ] T013 [US2] Add component test for CIDR prefix search in `backend/tests/component/graphql/queries/test_search.py` — verify searching "10.1.2.0/24" returns the prefix as a regular result in `edges` AND returns only true parent prefixes (10.1.0.0/16, 10.0.0.0/8) in `parent_prefixes` (exact match excluded)
-- [ ] T014 [US2] Add component test for non-existent prefix search in `backend/tests/component/graphql/queries/test_search.py` — verify searching "10.1.3.0/24" (not in DB) returns parent prefixes in `parent_prefixes` and empty `edges`
+- [x] T013 [US2] Add component test for CIDR prefix search in `backend/tests/component/graphql/queries/test_search.py` — verify searching "10.1.2.0/24" returns the prefix as a regular result in `edges` AND returns only true parent prefixes (10.1.0.0/16, 10.0.0.0/8) in `parent_prefixes` (exact match excluded)
+- [x] T014 [US2] Add component test for non-existent prefix search in `backend/tests/component/graphql/queries/test_search.py` — verify searching "10.1.3.0/24" (not in DB) returns parent prefixes in `parent_prefixes` and empty `edges`
 
 **Checkpoint**: US2 acceptance scenarios 1-2 verified.
 
@@ -76,8 +76,8 @@ No additional code changes required — the backend `IPParentPrefixLookupQuery` 
 
 No code changes required — `_try_parse_ip_or_prefix()` returns `None` for partial IPs (they fail `ipaddress.ip_address()` and `ipaddress.ip_network()` parsing), so `parent_prefixes` stays `null` and the frontend `SearchParentPrefixes` returns `null`.
 
-- [ ] T015 [US3] Add component test for partial IP fallback in `backend/tests/component/graphql/queries/test_search.py` — verify searching "10.1.2" returns `parent_prefixes: null` and regular text search results in `edges`
-- [ ] T016 [US3] Add component test for text search unchanged in `backend/tests/component/graphql/queries/test_search.py` — verify searching "router-core-01" returns `parent_prefixes: null` and existing text search behavior is preserved
+- [x] T015 [US3] Add component test for partial IP fallback in `backend/tests/component/graphql/queries/test_search.py` — verify searching "10.1.2" returns `parent_prefixes: null` and regular text search results in `edges`
+- [x] T016 [US3] Add component test for text search unchanged in `backend/tests/component/graphql/queries/test_search.py` — verify searching "router-core-01" returns `parent_prefixes: null` and existing text search behavior is preserved
 
 **Checkpoint**: US3 acceptance scenarios 1-2 verified. Existing search behavior confirmed unchanged.
 
@@ -103,12 +103,12 @@ No code changes required — `SearchParentPrefixes` reuses `NodesOptions` which 
 
 **Purpose**: Edge cases, IPv6 support verification, documentation, changelog
 
-- [ ] T018 [P] Add component tests for IPv6 parent prefix lookup in `backend/tests/component/graphql/queries/test_search.py` — test IPv6 address search, test IPv6 with non-canonical formatting (FR-006), test IPv6 CIDR prefix search
-- [ ] T019 [P] Add component test for multi-namespace results in `backend/tests/component/graphql/queries/test_search.py` — verify same IP in multiple namespaces returns all matching prefixes with namespace context (FR-004)
-- [ ] T020 [P] Add Towncrier changelog fragment in `changelog/` — describe new parent prefix lookup in search anywhere dialog
+- [x] T018 [P] Add component tests for IPv6 parent prefix lookup in `backend/tests/component/graphql/queries/test_search.py` — test IPv6 address search, test IPv6 with non-canonical formatting (FR-006), test IPv6 CIDR prefix search
+- [x] T019 [P] Add component test for multi-namespace results in `backend/tests/component/graphql/queries/test_search.py` — verify same IP in multiple namespaces returns all matching prefixes with namespace context (FR-004)
+- [x] T020 [P] Add Towncrier changelog fragment in `changelog/` — describe new parent prefix lookup in search anywhere dialog
 - [ ] T021 [P] Add user-facing documentation in `docs/` — document the parent prefix lookup feature in the search anywhere section, covering IP address search, CIDR prefix search, IPv6 support, and namespace display
-- [ ] T022 Run `uv run invoke format` and `uv run invoke lint` (backend) and `cd frontend/app && npm run biome:fix` (frontend) to verify all code passes quality gates
-- [ ] T023 Run `uv run invoke backend.generate` to regenerate `schema/schema.graphql` after adding `parent_prefixes` field to `NodeEdges` GraphQL type
+- [x] T022 Run `uv run invoke format` and `uv run invoke lint` (backend) and `cd frontend/app && npm run biome:fix` (frontend) to verify all code passes quality gates
+- [x] T023 Run `uv run invoke schema.generate-graphqlschema` to regenerate `schema/schema.graphql` after adding `parent_prefixes` field to `NodeEdges` GraphQL type
 
 ---
 
