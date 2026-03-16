@@ -1980,7 +1980,7 @@ type CoreCustomWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   display_label: String
   """The event type that triggers the webhook"""
   event_type: TextAttribute
-  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreKeyValue!
+  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, value__is_protected: Boolean, value__owner__id: ID, value__source__id: ID, value__value: String, value__values: [String]): NestedPaginatedCoreKeyValue!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -2355,7 +2355,7 @@ type CoreEnvironmentVariableKeyValue implements CoreKeyValue & CoreNode {
   """Unique name identifying this key-value pair"""
   name: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  """Environment variable name to resolve at send time (required)"""
+  """The value portion of the key-value pair"""
   value: TextAttribute
 }
 
@@ -2377,7 +2377,7 @@ input CoreEnvironmentVariableKeyValueCreateInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
-  """Environment variable name to resolve at send time"""
+  """The value portion of the key-value pair"""
   value: TextAttributeCreate
 }
 
@@ -2407,7 +2407,7 @@ input CoreEnvironmentVariableKeyValueUpdateInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """Environment variable name to resolve at send time"""
+  """The value portion of the key-value pair"""
   value: TextAttributeUpdate
 }
 
@@ -2430,7 +2430,7 @@ input CoreEnvironmentVariableKeyValueUpsertInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """Environment variable name to resolve at send time"""
+  """The value portion of the key-value pair"""
   value: TextAttributeUpdate
 }
 
@@ -4289,6 +4289,8 @@ interface CoreKeyValue {
   """Unique name identifying this key-value pair"""
   name: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """The value portion of the key-value pair"""
+  value: TextAttribute
 }
 
 """
@@ -4310,6 +4312,8 @@ input CoreKeyValueUpdateInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeUpdate
 }
 
 """Element of the Menu"""
@@ -6472,7 +6476,7 @@ type CoreStandardWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   display_label: String
   """The event type that triggers the webhook"""
   event_type: TextAttribute
-  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreKeyValue!
+  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, value__is_protected: Boolean, value__owner__id: ID, value__source__id: ID, value__value: String, value__values: [String]): NestedPaginatedCoreKeyValue!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -6603,7 +6607,7 @@ type CoreStaticKeyValue implements CoreKeyValue & CoreNode {
   """Unique name identifying this key-value pair"""
   name: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  """The plain-text value (required)"""
+  """The value portion of the key-value pair"""
   value: TextAttribute
 }
 
@@ -6623,7 +6627,7 @@ input CoreStaticKeyValueCreateInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
-  """The plain-text value"""
+  """The value portion of the key-value pair"""
   value: TextAttributeCreate
 }
 
@@ -6649,7 +6653,7 @@ input CoreStaticKeyValueUpdateInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The plain-text value"""
+  """The value portion of the key-value pair"""
   value: TextAttributeUpdate
 }
 
@@ -6670,7 +6674,7 @@ input CoreStaticKeyValueUpsertInput {
   """Unique name identifying this key-value pair"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The plain-text value"""
+  """The value portion of the key-value pair"""
   value: TextAttributeUpdate
 }
 
@@ -7281,7 +7285,7 @@ interface CoreWebhook {
   display_label: String
   """The event type that triggers the webhook"""
   event_type: TextAttribute
-  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreKeyValue!
+  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, value__is_protected: Boolean, value__owner__id: ID, value__source__id: ID, value__value: String, value__values: [String]): NestedPaginatedCoreKeyValue!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -15497,6 +15501,11 @@ type Query {
     headers__name__source__id: ID
     headers__name__value: String
     headers__name__values: [String]
+    headers__value__is_protected: Boolean
+    headers__value__owner__id: ID
+    headers__value__source__id: ID
+    headers__value__value: String
+    headers__value__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -19185,6 +19194,12 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    value__is_protected: Boolean
+    value__isnull: Boolean
+    value__owner__id: ID
+    value__source__id: ID
+    value__value: String
+    value__values: [String]
   ): PaginatedCoreKeyValue!
   CoreMenu(
     any__is_protected: Boolean
@@ -22863,6 +22878,11 @@ type Query {
     headers__name__source__id: ID
     headers__name__value: String
     headers__name__values: [String]
+    headers__value__is_protected: Boolean
+    headers__value__owner__id: ID
+    headers__value__source__id: ID
+    headers__value__value: String
+    headers__value__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -24524,6 +24544,11 @@ type Query {
     headers__name__source__id: ID
     headers__name__value: String
     headers__name__values: [String]
+    headers__value__is_protected: Boolean
+    headers__value__owner__id: ID
+    headers__value__source__id: ID
+    headers__value__value: String
+    headers__value__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
