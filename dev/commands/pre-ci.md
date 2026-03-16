@@ -6,6 +6,8 @@ allowed-tools:
   - Bash(uv run ruff check:*)
   - Bash(uv lock --check:*)
   - Bash(cd frontend*:*)
+  - Bash(npx biome*:*)
+  - Bash(npx betterer*:*)
   - Bash(npx markdownlint*:*)
 ---
 
@@ -33,7 +35,23 @@ uv run invoke docs.format
 
 Auto-fixes Markdown formatting issues.
 
-### 3. Lint Python code (ruff + ty)
+### 3. Format and lint frontend code (Biome)
+
+```bash
+cd frontend/app && npx biome check --write .
+```
+
+Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports errors that cannot be auto-fixed, report them to the user.
+
+### 3b. Check TypeScript regressions (Betterer)
+
+```bash
+cd frontend/app && npx betterer
+```
+
+Ensures no new TypeScript errors are introduced. The issue count must stay the same or decrease. If it increases, report the new issues to the user.
+
+### 4. Lint Python code (ruff + ty)
 
 ```bash
 uv run invoke main.lint
@@ -48,7 +66,7 @@ Run these separately to avoid `uv run invoke lint` which includes a `yamllint -s
 uv run ruff check <changed-files>
 ```
 
-### 3b. Type-check with mypy
+### 4b. Type-check with mypy
 
 ```bash
 uv run invoke backend.mypy
@@ -56,7 +74,7 @@ uv run invoke backend.mypy
 
 Runs mypy on the backend. Report any errors — these are not auto-fixable.
 
-### 4. Lint documentation (markdownlint + vale)
+### 5. Lint documentation (markdownlint + vale)
 
 ```bash
 uv run invoke docs.lint
@@ -64,7 +82,7 @@ uv run invoke docs.lint
 
 Report any errors. Note: some pre-existing errors in `docs/docs/` may exist — only flag errors in files the user has changed.
 
-### 5. Check lockfile is in sync
+### 6. Check lockfile is in sync
 
 ```bash
 uv lock --check
@@ -72,7 +90,7 @@ uv lock --check
 
 Ensures `uv.lock` matches `pyproject.toml`. If this fails, run `uv lock` and commit the updated lockfile.
 
-### 6. Validate generated files
+### 7. Validate generated files
 
 ```bash
 uv run invoke backend.validate-generated
@@ -80,7 +98,7 @@ uv run invoke backend.validate-generated
 
 Ensures generated schema and protocol files are up to date. If this fails, run `uv run invoke backend.generate` and report the regenerated files.
 
-### 7. Validate GraphQL and JSON schemas
+### 8. Validate GraphQL and JSON schemas
 
 ```bash
 uv run invoke schema.validate-graphqlschema
@@ -89,7 +107,7 @@ uv run invoke schema.validate-jsonschema
 
 Ensures `schema/schema.graphql` and `schema/openapi.json` are up to date. These regenerate the files then check for uncommitted diffs. If validation fails, the correct file is already on disk — just stage and commit it.
 
-### 8. Run backend unit tests
+### 9. Run backend unit tests
 
 ```bash
 uv run invoke backend.test-unit
@@ -105,6 +123,8 @@ Summarize results in a table:
 |-------|--------|
 | Python format | ... |
 | Docs format | ... |
+| Frontend format/lint | ... |
+| TS regressions (Betterer) | ... |
 | Python lint | ... |
 | mypy | ... |
 | Docs lint | ... |
