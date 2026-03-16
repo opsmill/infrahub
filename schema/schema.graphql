@@ -10624,6 +10624,7 @@ type NodeEdge {
 type NodeEdges {
   count: Int!
   edges: [NodeEdge!]!
+  parent_prefixes: [NodeEdge!]
 }
 
 type NodeMutatedEvent implements EventNodeInterface {
