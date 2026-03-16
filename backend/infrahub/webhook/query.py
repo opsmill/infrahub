@@ -33,6 +33,18 @@ class KeyValueGetWebhooksQuery(Query):
         MATCH (kv:CoreKeyValue {uuid: $keyvalue_id})
               -[e1:IS_RELATED]->(rl:Relationship {name: "webhook__headers"})
               <-[e2:IS_RELATED]-(webhook:CoreWebhook)
+        CALL (kv, rl) {
+            MATCH (kv)-[r1:IS_RELATED]->(rl)
+            WITH r1 ORDER BY r1.from DESC LIMIT 1
+            WHERE r1.status = "active"
+            RETURN r1
+        }
+        CALL (webhook, rl) {
+            MATCH (webhook)-[r2:IS_RELATED]->(rl)
+            WITH r2 ORDER BY r2.from DESC LIMIT 1
+            WHERE r2.status = "active"
+            RETURN r2
+        }
         """
         self.add_to_query(query)
         self.return_labels = ["DISTINCT webhook.uuid AS webhook_uuid"]
