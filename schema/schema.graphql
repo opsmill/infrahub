@@ -2340,7 +2340,7 @@ input CoreDataValidatorUpsertInput {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type CoreEnvironmentVariableKeyValue implements CoreKeyValue & CoreNode {
+type CoreEnvKeyValue implements CoreKeyValue & CoreNode {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   """Optional description of this key-value pair"""
   description: TextAttribute
@@ -2362,12 +2362,12 @@ type CoreEnvironmentVariableKeyValue implements CoreKeyValue & CoreNode {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type CoreEnvironmentVariableKeyValueCreate {
-  object: CoreEnvironmentVariableKeyValue
+type CoreEnvKeyValueCreate {
+  object: CoreEnvKeyValue
   ok: Boolean
 }
 
-input CoreEnvironmentVariableKeyValueCreateInput {
+input CoreEnvKeyValueCreateInput {
   """Optional description of this key-value pair"""
   description: TextAttributeCreate
   id: String
@@ -2384,19 +2384,19 @@ input CoreEnvironmentVariableKeyValueCreateInput {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type CoreEnvironmentVariableKeyValueDelete {
+type CoreEnvKeyValueDelete {
   ok: Boolean
 }
 
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type CoreEnvironmentVariableKeyValueUpdate {
-  object: CoreEnvironmentVariableKeyValue
+type CoreEnvKeyValueUpdate {
+  object: CoreEnvKeyValue
   ok: Boolean
 }
 
-input CoreEnvironmentVariableKeyValueUpdateInput {
+input CoreEnvKeyValueUpdateInput {
   """Optional description of this key-value pair"""
   description: TextAttributeUpdate
   hfid: [String]
@@ -2414,12 +2414,12 @@ input CoreEnvironmentVariableKeyValueUpdateInput {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type CoreEnvironmentVariableKeyValueUpsert {
-  object: CoreEnvironmentVariableKeyValue
+type CoreEnvKeyValueUpsert {
+  object: CoreEnvKeyValue
   ok: Boolean
 }
 
-input CoreEnvironmentVariableKeyValueUpsertInput {
+input CoreEnvKeyValueUpsertInput {
   """Optional description of this key-value pair"""
   description: TextAttributeUpdate
   hfid: [String]
@@ -7698,8 +7698,8 @@ type EdgedCoreDataValidator {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type EdgedCoreEnvironmentVariableKeyValue {
-  node: CoreEnvironmentVariableKeyValue
+type EdgedCoreEnvKeyValue {
+  node: CoreEnvKeyValue
   node_metadata: InfrahubNodeMetadata
 }
 
@@ -9004,19 +9004,19 @@ type Mutation {
   """
   A key-value pair whose value is resolved from an environment variable at send time
   """
-  CoreEnvironmentVariableKeyValueCreate(context: ContextInput, data: CoreEnvironmentVariableKeyValueCreateInput!): CoreEnvironmentVariableKeyValueCreate
+  CoreEnvKeyValueCreate(context: ContextInput, data: CoreEnvKeyValueCreateInput!): CoreEnvKeyValueCreate
   """
   A key-value pair whose value is resolved from an environment variable at send time
   """
-  CoreEnvironmentVariableKeyValueDelete(context: ContextInput, data: DeleteInput!): CoreEnvironmentVariableKeyValueDelete
+  CoreEnvKeyValueDelete(context: ContextInput, data: DeleteInput!): CoreEnvKeyValueDelete
   """
   A key-value pair whose value is resolved from an environment variable at send time
   """
-  CoreEnvironmentVariableKeyValueUpdate(context: ContextInput, data: CoreEnvironmentVariableKeyValueUpdateInput!): CoreEnvironmentVariableKeyValueUpdate
+  CoreEnvKeyValueUpdate(context: ContextInput, data: CoreEnvKeyValueUpdateInput!): CoreEnvKeyValueUpdate
   """
   A key-value pair whose value is resolved from an environment variable at send time
   """
-  CoreEnvironmentVariableKeyValueUpsert(context: ContextInput, data: CoreEnvironmentVariableKeyValueUpsertInput!): CoreEnvironmentVariableKeyValueUpsert
+  CoreEnvKeyValueUpsert(context: ContextInput, data: CoreEnvKeyValueUpsertInput!): CoreEnvKeyValueUpsert
   """A check related to a file in a Git Repository"""
   CoreFileCheckCreate(context: ContextInput, data: CoreFileCheckCreateInput!): CoreFileCheckCreate
   """A check related to a file in a Git Repository"""
@@ -9697,8 +9697,8 @@ type NestedEdgedCoreDataValidator {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type NestedEdgedCoreEnvironmentVariableKeyValue {
-  node: CoreEnvironmentVariableKeyValue
+type NestedEdgedCoreEnvKeyValue {
+  node: CoreEnvKeyValue
   node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
@@ -10469,9 +10469,9 @@ type NestedPaginatedCoreDataValidator {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type NestedPaginatedCoreEnvironmentVariableKeyValue {
+type NestedPaginatedCoreEnvKeyValue {
   count: Int!
-  edges: [NestedEdgedCoreEnvironmentVariableKeyValue!]!
+  edges: [NestedEdgedCoreEnvKeyValue!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -11257,9 +11257,9 @@ type PaginatedCoreDataValidator {
 """
 A key-value pair whose value is resolved from an environment variable at send time
 """
-type PaginatedCoreEnvironmentVariableKeyValue {
+type PaginatedCoreEnvKeyValue {
   count: Int!
-  edges: [EdgedCoreEnvironmentVariableKeyValue!]!
+  edges: [EdgedCoreEnvKeyValue!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -15962,7 +15962,7 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreDataValidator!
-  CoreEnvironmentVariableKeyValue(
+  CoreEnvKeyValue(
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -16047,7 +16047,7 @@ type Query {
     value__source__id: ID
     value__value: String
     value__values: [String]
-  ): PaginatedCoreEnvironmentVariableKeyValue!
+  ): PaginatedCoreEnvKeyValue!
   CoreFileCheck(
     any__is_protected: Boolean
     any__owner__id: ID

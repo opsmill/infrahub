@@ -56,7 +56,7 @@ core_static_key_value = NodeSchema(
 )
 
 core_environment_variable_key_value = NodeSchema(
-    name="EnvironmentVariableKeyValue",
+    name="EnvKeyValue",
     namespace="Core",
     description="A key-value pair whose value is resolved from an environment variable at send time",
     label="Environment Variable Key Value",
