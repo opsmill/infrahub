@@ -36,6 +36,7 @@ core_key_value = GenericSchema(
             description="Optional description of this key-value pair",
             order_weight=3000,
         ),
+        Attr(name="value", kind="Text", description="The value portion of the key-value pair", order_weight=4000),
     ],
 )
 
@@ -52,9 +53,6 @@ core_static_key_value = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.KEYVALUE],
-    attributes=[
-        Attr(name="value", kind="Text", description="The plain-text value", order_weight=4000),
-    ],
 )
 
 core_environment_variable_key_value = NodeSchema(
@@ -70,12 +68,4 @@ core_environment_variable_key_value = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.KEYVALUE],
-    attributes=[
-        Attr(
-            name="value",
-            kind="Text",
-            description="Environment variable name to resolve at send time",
-            order_weight=4000,
-        ),
-    ],
 )

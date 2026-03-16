@@ -151,6 +151,7 @@ class CoreKeyValue(CoreNode):
     name: String
     key: String
     description: StringOptional
+    value: String
 
 
 class CoreMenu(CoreNode):
@@ -351,7 +352,7 @@ class CoreDataValidator(CoreValidator):
 
 
 class CoreEnvironmentVariableKeyValue(CoreKeyValue):
-    value: String
+    pass
 
 
 class CoreFileCheck(CoreCheck):
@@ -559,7 +560,7 @@ class CoreStandardWebhook(CoreWebhook, CoreTaskTarget):
 
 
 class CoreStaticKeyValue(CoreKeyValue):
-    value: String
+    pass
 
 
 class CoreThreadComment(CoreComment):
