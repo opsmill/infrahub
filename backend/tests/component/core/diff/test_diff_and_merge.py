@@ -666,7 +666,7 @@ class TestDiffAndMerge:
 
         await verify_no_duplicate_paths(db=db)
 
-    @pytest.mark.parametrize("new_property,expected_action", [(True, DiffAction.UPDATED), (False, DiffAction.REMOVED)])
+    @pytest.mark.parametrize("new_property", [True, False])
     async def test_single_property_update(
         self,
         db: InfrahubDatabase,
@@ -677,7 +677,6 @@ class TestDiffAndMerge:
         person_alfred_main: Node,
         car_camry_main: Node,
         new_property: bool,
-        expected_action: DiffAction,
     ) -> None:
         # Capture initial metadata before any changes
         person_before = await NodeManager.get_one(
