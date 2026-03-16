@@ -94,6 +94,12 @@ export function ObjectDetailsMenu({
                 Tasks
               </MenuItem>
               <MenuItem
+                href={constructPath("/path-traversal", [{ name: "source", value: objectData.id }])}
+              >
+                <Icon icon="mdi:map-marker-path" />
+                Find paths
+              </MenuItem>
+              <MenuItem
                 href={constructPath("/schema", [{ name: "kind", value: objectSchema.kind }])}
               >
                 <Icon icon="mdi:code-json" />

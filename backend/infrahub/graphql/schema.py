@@ -41,6 +41,8 @@ from .queries import (
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubDependencies,
+    InfrahubPathTraversal,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
@@ -68,6 +70,8 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 
+    InfrahubDependencies = InfrahubDependencies
+    InfrahubPathTraversal = InfrahubPathTraversal
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
     InfrahubTask = Task

@@ -5,6 +5,7 @@ from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvai
 from .proposed_change import ProposedChangeAvailableActions
 from .relationship import Relationship
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
+from .path import InfrahubDependencies, InfrahubPathTraversal
 from .search import InfrahubSearchAnywhere
 from .status import InfrahubStatus
 from .task import Task
@@ -17,6 +18,8 @@ __all__ = [
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
     "InfrahubInfo",
+    "InfrahubDependencies",
+    "InfrahubPathTraversal",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
     "InfrahubSearchAnywhere",
