@@ -6,13 +6,13 @@ import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-This guide shows you how to create comprehensive backups of your Infrahub deployment and restore them when needed. You'll learn to backup the Neo4j graph database, artifact storage, and task management data to ensure complete data recovery capabilities.
+This guide shows you how to create comprehensive backups of your Infrahub deployment and restore them when needed. You'll learn to backup the Neo4j graph database, object storage, and task management data to ensure complete data recovery capabilities.
 
 ## Prerequisites
 
 - Running Infrahub deployment (Docker Compose or Kubernetes)
 - Administrative access to the Neo4j database
-- Access to the artifact storage location (S3 or local filesystem)
+- Access to the object storage location (S3 or local filesystem)
 - Sufficient storage space for backup files
 - For cluster deployments: Understanding of your cluster topology
 
@@ -70,7 +70,7 @@ The tool automatically:
 - Calculates SHA256 checksums for integrity verification
 
 :::note
-We plan to add artifact storage backup in a future release. Handle artifact storage backups separately for now.
+We plan to add object storage backup in a future release. Handle object storage backups separately for now.
 :::
 
 </TabItem>
@@ -127,26 +127,28 @@ python -m utilities.db_backup neo4j backup \
 </TabItem>
 </Tabs>
 
-### Step 3: Backup the artifact store
+### Step 3: Backup the object storage
+
+The [object storage](../topics/object-storage.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
 
 <Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 
-If using S3 for artifact storage, use AWS CLI or your preferred S3 backup tool:
+If using S3 for object storage, use AWS CLI or your preferred S3 backup tool:
 
 ```bash
 # Sync S3 bucket to local backup directory
-aws s3 sync s3://your-infrahub-bucket /backup/artifacts/
+aws s3 sync s3://your-infrahub-bucket /backup/object_store/
 ```
 
 </TabItem>
 <TabItem value="local" label="Local Filesystem">
 
-For local filesystem storage, copy the artifact directory:
+For local filesystem storage, copy the object storage directory:
 
 ```bash
-# Copy artifacts directory to backup location
-docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/artifacts/
+# Copy object storage directory to backup location
+docker compose cp infrahub-server:/opt/infrahub/storage/. /backup/object_store/
 ```
 
 </TabItem>
@@ -262,22 +264,22 @@ python -m utilities.db_backup neo4j restore \
 </TabItem>
 </Tabs>
 
-### Step 3: Restore the artifact store
+### Step 3: Restore the object storage
 
 <Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 
 ```bash
 # Restore S3 bucket from backup
-aws s3 sync /backup/artifacts/ s3://your-infrahub-bucket
+aws s3 sync /backup/object_store/ s3://your-infrahub-bucket
 ```
 
 </TabItem>
 <TabItem value="local" label="Local Filesystem">
 
 ```bash
-# Restore artifacts directory
-cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
+# Restore object storage directory into the container
+docker compose cp /backup/object_store/. infrahub-server:/opt/infrahub/storage/
 ```
 
 </TabItem>
