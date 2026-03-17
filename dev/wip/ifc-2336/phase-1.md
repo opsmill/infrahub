@@ -1,6 +1,6 @@
 # Phase 1: Configuration Settings
 
-**Status:** ⬜ Todo
+**Status:** ✅ Done
 **Priority:** P1
 **Requirements:** FR-001, FR-002, FR-011
 
@@ -14,10 +14,10 @@ Add two global configuration settings to `MainSettings`. Both default to `False`
 
 ## Checklist
 
-- [ ] Add `delete_branch_after_merge` to `MainSettings`
-- [ ] Add `delete_git_branch_after_merge` to `MainSettings`
-- [ ] Add cross-field validator that rejects `delete_git_branch_after_merge=True` when `delete_branch_after_merge=False`
-- [ ] Write unit tests
+- [x] Add `delete_branch_after_merge` to `MainSettings`
+- [x] Add `delete_git_branch_after_merge` to `MainSettings`
+- [x] Add cross-field validator that rejects `delete_git_branch_after_merge=True` when `delete_branch_after_merge=False`
+- [x] Write unit tests
 
 ---
 
