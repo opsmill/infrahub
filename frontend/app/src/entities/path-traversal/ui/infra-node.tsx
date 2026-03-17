@@ -17,6 +17,9 @@ export type InfraNodeData = {
 };
 
 export function InfraNode({ data }: NodeProps) {
+  // React Flow's NodeProps uses a generic Record<string, unknown> for data.
+  // The `as` assertion is the standard xyflow pattern since NodeProps.data
+  // cannot be narrowed via type guards at the component boundary.
   const nodeData = data as InfraNodeData;
   const isSource = nodeData.isSource;
   const isDestination = nodeData.isDestination;

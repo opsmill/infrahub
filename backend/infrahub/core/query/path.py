@@ -31,6 +31,18 @@ class PathData:
     depth: int
 
 
+# Namespaces excluded from traversal by default.
+# These contain internal/system nodes that add noise to path results.
+DEFAULT_EXCLUDED_NAMESPACES = (
+    "Core",
+    "Internal",
+    "Builtin",
+    "Lineage",
+    "Profile",
+    "Template",
+)
+
+
 class PathTraversalQuery(Query):
     name = "path_traversal"
     type = QueryType.READ
@@ -45,6 +57,8 @@ class PathTraversalQuery(Query):
         max_paths: int = 10,
         node_filter: list[str] | None = None,
         relationship_filter: list[str] | None = None,
+        excluded_namespaces: list[str] | None = None,
+        excluded_kinds: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         if source_id == destination_id:
@@ -60,6 +74,8 @@ class PathTraversalQuery(Query):
         self.max_paths = max_paths
         self.node_filter = node_filter or []
         self.relationship_filter = relationship_filter or []
+        self.excluded_namespaces = excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
+        self.excluded_kinds = excluded_kinds or []
 
         super().__init__(**kwargs)
 
@@ -78,6 +94,27 @@ class PathTraversalQuery(Query):
         where_clauses = [
             f"all(r IN relationships(path) WHERE ({branch_filter}))",
         ]
+
+        # Namespace exclusion: skip intermediate nodes from system namespaces
+        # Source and target are always allowed through; Relationship vertices are skipped.
+        if self.excluded_namespaces:
+            self.params["excluded_namespaces"] = self.excluded_namespaces
+            where_clauses.append(
+                "all(n IN nodes(path) WHERE "
+                "n.uuid IN [$source_uuid, $target_uuid] "
+                "OR NOT n:Node "  # Allow Relationship vertices through
+                "OR NOT n.namespace IN $excluded_namespaces)"
+            )
+
+        # Kind exclusion: skip specific kinds from the path
+        if self.excluded_kinds:
+            self.params["excluded_kinds"] = self.excluded_kinds
+            where_clauses.append(
+                "all(n IN nodes(path) WHERE "
+                "n.uuid IN [$source_uuid, $target_uuid] "
+                "OR NOT n:Node "
+                "OR NOT n.kind IN $excluded_kinds)"
+            )
 
         # Node kind filter: allow source/target to be any kind, filter intermediates
         if self.node_filter:
@@ -100,52 +137,58 @@ class PathTraversalQuery(Query):
 
         where_str = " AND ".join(where_clauses)
 
-        # Find candidate paths, then validate each edge in the path.
-        #
-        # For each edge (relationship) in a candidate path, we need to find
-        # the LATEST version of that edge (highest branch_level, most recent from)
-        # and check if it's active. This handles the case where an edge was
-        # deleted on a branch: the branch_filter matches both the active edge
-        # on the default branch AND the deleted edge on the feature branch.
-        # By picking the latest version and checking its status, we correctly
-        # exclude paths that go through branch-deleted edges.
-        #
-        # Pattern from attribute.py:
-        #   CALL (a, np) {
-        #       MATCH (a)-[r:REL]->(np) WHERE branch_filter
-        #       ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-        #       LIMIT 1
-        #       RETURN r AS latest_edge
-        #   }
-        #   WHERE latest_edge.status = "active"
-        #
-        # For paths, we apply this to every edge via UNWIND + CALL:
-        query = f"""
-        MATCH (source:Node {{ uuid: $source_uuid }}), (target:Node {{ uuid: $target_uuid }})
-        MATCH path = (source)-[:IS_RELATED*2..{max_edge_length}]-(target)
-        WHERE {where_str}
-        WITH path, length(path) AS path_length
-        // Validate each edge: check that its latest version is active
-        WITH path, path_length, relationships(path) AS rels
-        UNWIND range(0, size(rels) - 1) AS idx
-        WITH path, path_length, rels[idx] AS candidate_rel, startNode(rels[idx]) AS sn, endNode(rels[idx]) AS en
-        // For each edge, find the latest version between the same two nodes
-        CALL (sn, en) {{
-            MATCH (sn)-[r:IS_RELATED]-(en)
-            WHERE ({branch_filter})
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }}
-        // Keep only edges where the latest version is active
-        WITH path, path_length, r.status = "active" AS edge_active
-        // Group back by path: all edges must be active
-        WITH path, path_length, collect(edge_active) AS edge_statuses
-        WHERE ALL(s IN edge_statuses WHERE s = true)
-        RETURN DISTINCT path, path_length
-        ORDER BY path_length ASC
-        LIMIT {self.max_paths}
-        """
+        if self.branch.is_default:
+            # On the default branch, there are no branch-deleted edges to worry
+            # about. We can filter directly for active status, which is much faster.
+            query = f"""
+            MATCH (source:Node {{ uuid: $source_uuid }}), (target:Node {{ uuid: $target_uuid }})
+            MATCH path = (source)-[:IS_RELATED*2..{max_edge_length}]-(target)
+            WHERE {where_str}
+            AND all(r IN relationships(path) WHERE r.status = "active")
+            RETURN path, length(path) AS path_length
+            ORDER BY path_length ASC
+            LIMIT {self.max_paths}
+            """
+        else:
+            # On non-default branches, an edge might be active on the default
+            # branch but deleted on this branch. We need to check each edge's
+            # latest version (highest branch_level, most recent from) and only
+            # keep paths where all edges are active at that version.
+            #
+            # Pattern from attribute.py:
+            #   CALL (a, np) {
+            #       MATCH (a)-[r:REL]->(np) WHERE branch_filter
+            #       ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            #       LIMIT 1
+            #       RETURN r
+            #   }
+            #   WHERE r.status = "active"
+            #
+            # First find a limited set of candidate paths, then validate edges:
+            query = f"""
+            MATCH (source:Node {{ uuid: $source_uuid }}), (target:Node {{ uuid: $target_uuid }})
+            MATCH path = (source)-[:IS_RELATED*2..{max_edge_length}]-(target)
+            WHERE {where_str}
+            WITH path, length(path) AS path_length
+            ORDER BY path_length ASC
+            LIMIT {self.max_paths * 5}
+            WITH path, path_length, relationships(path) AS rels
+            UNWIND range(0, size(rels) - 1) AS idx
+            WITH path, path_length, startNode(rels[idx]) AS sn, endNode(rels[idx]) AS en
+            CALL (sn, en) {{
+                MATCH (sn)-[r:IS_RELATED]-(en)
+                WHERE ({branch_filter})
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }}
+            WITH path, path_length, r.status = "active" AS edge_active
+            WITH path, path_length, collect(edge_active) AS edge_statuses
+            WHERE ALL(s IN edge_statuses WHERE s = true)
+            RETURN DISTINCT path, path_length
+            ORDER BY path_length ASC
+            LIMIT {self.max_paths}
+            """
 
         self.add_to_query(query)
         self.return_labels = ["path", "length(path) AS path_length"]

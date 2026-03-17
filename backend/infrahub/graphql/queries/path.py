@@ -65,6 +65,16 @@ class PathTraversalInput(InputObjectType):
     relationship_filter = List(
         of_type=NonNull(String), required=False, description="Filter to only follow relationships with these names"
     )
+    excluded_namespaces = List(
+        of_type=NonNull(String),
+        required=False,
+        description="Namespaces to exclude from traversal. Pass empty list to include all.",
+    )
+    excluded_kinds = List(
+        of_type=NonNull(String),
+        required=False,
+        description="Specific node kinds to exclude from traversal paths.",
+    )
 
 
 async def path_traversal_resolver(
@@ -80,6 +90,9 @@ async def path_traversal_resolver(
     max_paths = data.max_paths or 10
     node_filter = list(data.node_filter) if data.node_filter else []
     relationship_filter = list(data.relationship_filter) if data.relationship_filter else []
+    # None means use defaults; empty list means include all namespaces
+    excluded_namespaces = list(data.excluded_namespaces) if data.excluded_namespaces is not None else None
+    excluded_kinds = list(data.excluded_kinds) if data.excluded_kinds else []
 
     # Validate source and destination are different
     if source_id == destination_id:
@@ -117,6 +130,8 @@ async def path_traversal_resolver(
             max_paths=max_paths,
             node_filter=node_filter,
             relationship_filter=relationship_filter,
+            excluded_namespaces=excluded_namespaces,
+            excluded_kinds=excluded_kinds,
         )
         await query.execute(db=graphql_context.db)
     except ValueError as exc:

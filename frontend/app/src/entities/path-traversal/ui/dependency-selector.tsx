@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { NodePicker } from "./node-picker";
+import { HIDDEN_NAMESPACES } from "./utils";
 
 type DependencySelectorProps = {
   onSearch: (params: { sourceId: string; targetKinds: string[]; maxDepth: number }) => void;
@@ -22,7 +23,8 @@ export function DependencySelector({
   const [maxDepth, setMaxDepth] = useState(5);
   const [kindSearch, setKindSearch] = useState("");
 
-  const nodeSchemas = useAtomValue(nodeSchemasAtom);
+  const allNodeSchemas = useAtomValue(nodeSchemasAtom);
+  const nodeSchemas = allNodeSchemas.filter((s) => !HIDDEN_NAMESPACES.has(s.namespace as string));
   const filteredKinds = kindSearch
     ? nodeSchemas.filter(
         (s) =>

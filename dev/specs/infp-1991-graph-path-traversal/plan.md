@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add a graph path traversal feature that allows users to select two infrastructure nodes and discover all paths connecting them through the graph. The backend uses Neo4j's native `allShortestPaths` with Infrahub's existing branch-aware temporal filtering. The frontend provides a visual representation of discovered paths. Exposed as a top-level GraphQL query following the `InfrahubSearchAnywhere` pattern.
+Add a graph path traversal feature that allows users to select two infrastructure nodes and discover all paths connecting them through the graph. The backend uses Neo4j's native variable-length path matching with branch-aware edge validation. The frontend provides a visual representation of discovered paths. Exposed as a top-level GraphQL query following the `InfrahubSearchAnywhere` pattern.
 
 ## Technical Context
 
@@ -16,8 +16,8 @@ Add a graph path traversal feature that allows users to select two infrastructur
 **Target Platform**: Linux server (backend), Web browser (frontend)
 **Project Type**: Web application (backend + frontend)
 **Performance Goals**: Path discovery < 5 seconds for graphs up to 100K nodes
-**Constraints**: Must respect branch/temporal filtering; max 20 hops default; parameterized Cypher only
-**Scale/Scope**: Typical infrastructure graphs (1K-100K nodes), up to 10 paths returned per query
+**Constraints**: Must respect branch/temporal filtering; max 5 hops default; upper limit 20; parameterized Cypher only
+**Scale/Scope**: Typical infrastructure graphs (1K-100K nodes), up to 10 paths returned per query. Dependencies query for fan-out discovery
 
 ## Constitution Check
 
@@ -60,36 +60,41 @@ backend/
 ├── infrahub/
 │   ├── core/
 │   │   └── query/
-│   │       └── path.py              # NEW: PathTraversalQuery (Cypher query class)
+│   │       ├── path.py              # PathTraversalQuery + namespace/kind exclusion
+│   │       └── dependencies.py      # DependencyQuery (fan-out discovery)
 │   └── graphql/
 │       ├── queries/
-│       │   ├── path.py              # NEW: GraphQL types, resolver, Field
-│       │   └── __init__.py          # MODIFIED: export InfrahubPathTraversal
-│       └── schema.py                # MODIFIED: register in InfrahubBaseQuery
+│       │   ├── path.py              # GraphQL types, resolvers for both queries
+│       │   └── __init__.py          # exports
+│       └── schema.py                # InfrahubBaseQuery registration
+│   └── menu/
+│       └── menu.py                  # Navigation menu entry
 └── tests/
-    ├── unit/core/query/
-    │   └── test_path.py             # NEW: Unit tests for query construction
-    └── unit/graphql/queries/
-        └── test_path.py             # NEW: Unit tests for resolver
+    └── unit/core/
+        └── test_path_traversal_query.py
 
 frontend/app/
 ├── src/
 │   ├── entities/
-│   │   └── path-traversal/          # NEW: Feature slice
+│   │   └── path-traversal/
 │   │       ├── domain/
 │   │       │   ├── path-traversal.query-keys.ts
 │   │       │   ├── path-traversal.query.ts
-│   │       │   └── get-path-traversal.ts
+│   │       │   ├── get-path-traversal.ts
+│   │       │   ├── get-dependencies.ts
+│   │       │   └── dependencies.query.ts
 │   │       └── ui/
-│   │           ├── path-traversal-page.tsx
-│   │           ├── path-visualization.tsx
-│   │           └── node-selector.tsx
-│   └── pages/
-│       └── path-traversal/          # NEW: Route page
-│           └── page.tsx
-└── tests/
-    └── unit/entities/path-traversal/
-        └── path-visualization.test.tsx  # NEW: Component tests
+│   │           ├── path-traversal-page.tsx   # Main page with Path/Dependencies modes
+│   │           ├── path-flow-graph.tsx       # React Flow graph visualization
+│   │           ├── infra-node.tsx            # Custom node with tooltips, context menu
+│   │           ├── path-edge.tsx             # Custom edge with glow animation
+│   │           ├── node-selector.tsx         # Path mode: source + destination pickers
+│   │           ├── node-picker.tsx           # Kind-first search or UUID input
+│   │           ├── dependency-selector.tsx   # Dependencies mode: source + target kinds
+│   │           └── utils.ts                 # Colors, formatting, hidden namespaces
+│   ├── pages/
+│   │   └── path-traversal/index.tsx
+│   └── app/router.tsx                       # Route registration
 ```
 
 **Structure Decision**: Follows the existing web application layout with Feature-Sliced Design for the frontend. Backend additions mirror existing query and GraphQL patterns exactly. Two new frontend dependencies: `@xyflow/react` for graph visualization and `dagre` for hierarchical layout computation.

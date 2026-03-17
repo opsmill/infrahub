@@ -1,6 +1,9 @@
+import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { useEffect, useState } from "react";
 
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   Combobox,
   ComboboxContent,
@@ -10,6 +13,7 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
@@ -22,14 +26,59 @@ type NodePickerProps = {
   onChange: (id: string, displayLabel: string) => void;
 };
 
+/** Resolve a UUID to its kind and display_label via CoreNode query */
+async function resolveUuid(
+  uuid: string,
+  branchName: string
+): Promise<{ kind: string; displayLabel: string } | null> {
+  const queryString = jsonToGraphQLQuery({
+    query: {
+      CoreNode: {
+        __args: { ids: [uuid] },
+        edges: { node: { __typename: true, display_label: true } },
+      },
+    },
+  });
+
+  const { data } = await graphqlClient.query({
+    query: gql(queryString),
+    context: { branch: branchName },
+  });
+
+  const node = data?.CoreNode?.edges?.[0]?.node;
+  if (!node) return null;
+
+  return {
+    kind: node.__typename ?? "",
+    displayLabel: node.display_label ?? node.__typename ?? "",
+  };
+}
+
 export function NodePicker({ label, value, displayLabel, onChange }: NodePickerProps) {
   const [mode, setMode] = useState<"search" | "uuid">("search");
   const [selectedKind, setSelectedKind] = useState("");
   const [kindOpen, setKindOpen] = useState(false);
   const [nodeOpen, setNodeOpen] = useState(false);
   const [uuidInput, setUuidInput] = useState(value);
+  const [isResolving, setIsResolving] = useState(false);
 
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
+  const { currentBranch } = useCurrentBranch();
+
+  // Auto-resolve UUID on mount when value exists but no displayLabel
+  useEffect(() => {
+    if (value && !displayLabel) {
+      setIsResolving(true);
+      resolveUuid(value, currentBranch.name)
+        .then((resolved) => {
+          if (resolved) {
+            onChange(value, resolved.displayLabel);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsResolving(false));
+    }
+  }, []); // Only on mount
 
   function handleSelectNode(node: RelationshipNode) {
     const nodeLabel = getNodeLabel(node);
@@ -37,10 +86,22 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
     setNodeOpen(false);
   }
 
-  function handleUuidSubmit() {
+  async function handleUuidSubmit() {
     const trimmed = uuidInput.trim();
-    if (trimmed) {
-      onChange(trimmed, trimmed.slice(0, 8) + "...");
+    if (!trimmed) return;
+
+    setIsResolving(true);
+    try {
+      const resolved = await resolveUuid(trimmed, currentBranch.name);
+      if (resolved) {
+        onChange(trimmed, resolved.displayLabel);
+      } else {
+        onChange(trimmed, `${trimmed.slice(0, 8)}...`);
+      }
+    } catch {
+      onChange(trimmed, `${trimmed.slice(0, 8)}...`);
+    } finally {
+      setIsResolving(false);
     }
   }
 
@@ -67,18 +128,26 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
       </div>
 
       {mode === "uuid" ? (
-        <input
-          type="text"
-          value={uuidInput}
-          onChange={(e) => setUuidInput(e.target.value)}
-          onBlur={handleUuidSubmit}
-          onKeyDown={(e) => e.key === "Enter" && handleUuidSubmit()}
-          placeholder="Paste node UUID..."
-          className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={uuidInput}
+            onChange={(e) => setUuidInput(e.target.value)}
+            onBlur={() => handleUuidSubmit()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleUuidSubmit();
+            }}
+            placeholder="Paste node UUID..."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          {isResolving && (
+            <span className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 text-xs">
+              Resolving...
+            </span>
+          )}
+        </div>
       ) : (
         <div className="space-y-1.5">
-          {/* Kind selector using Combobox */}
           <Combobox open={kindOpen} onOpenChange={setKindOpen}>
             <ComboboxTrigger className="w-full">
               {selectedSchema ? (
@@ -109,7 +178,6 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
             </ComboboxContent>
           </Combobox>
 
-          {/* Node selector using RelationshipComboboxList */}
           {selectedKind && (
             <Combobox open={nodeOpen} onOpenChange={setNodeOpen}>
               <ComboboxTrigger className="w-full">
@@ -131,7 +199,6 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
         </div>
       )}
 
-      {/* Selected value chip */}
       {value && (
         <div className="flex items-center gap-2 rounded bg-blue-50 px-2 py-1.5">
           <div className="min-w-0 flex-1">

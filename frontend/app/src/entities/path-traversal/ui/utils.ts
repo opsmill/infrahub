@@ -22,3 +22,13 @@ export function getKindColor(kind: string): string {
 export function formatRelName(name: string): string {
   return name.replace(/__/g, " / ");
 }
+
+/** Namespaces always excluded by the backend — no need to show in the UI */
+export const HIDDEN_NAMESPACES = new Set([
+  "Core",
+  "Internal",
+  "Builtin",
+  "Lineage",
+  "Profile",
+  "Template",
+]);

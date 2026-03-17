@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.path import PathData, PathNodeData, PathRelationshipData
+from infrahub.core.query.path import DEFAULT_EXCLUDED_NAMESPACES, PathData, PathNodeData, PathRelationshipData
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -32,6 +32,7 @@ class DependencyQuery(Query):
         target_kinds: list[str],
         max_depth: int = 5,
         max_results: int = 50,
+        excluded_namespaces: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         if not target_kinds:
@@ -45,6 +46,7 @@ class DependencyQuery(Query):
         self.target_kinds = target_kinds
         self.max_depth = max_depth
         self.max_results = max_results
+        self.excluded_namespaces = excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -55,6 +57,18 @@ class DependencyQuery(Query):
 
         max_edge_length = self.max_depth * 2
 
+        # Build namespace exclusion for intermediate nodes
+        namespace_filter = ""
+        if self.excluded_namespaces:
+            self.params["excluded_namespaces"] = self.excluded_namespaces
+            namespace_filter = (
+                "AND all(n IN nodes(path) WHERE "
+                "n.uuid = $source_uuid "
+                "OR NOT n:Node "
+                "OR n.kind IN $target_kinds "
+                "OR NOT n.namespace IN $excluded_namespaces) "
+            )
+
         # Find all reachable nodes of the target kinds, returning the shortest
         # path to each so the frontend can render the graph.
         query = f"""
@@ -63,6 +77,7 @@ class DependencyQuery(Query):
         WHERE target.kind IN $target_kinds
         AND target.uuid <> $source_uuid
         AND all(r IN relationships(path) WHERE ({branch_filter}))
+        {namespace_filter}
         WITH DISTINCT target, path, length(path) / 2 AS depth
         ORDER BY depth ASC
         WITH target, collect(path)[0] AS shortest_path, min(depth) AS min_depth

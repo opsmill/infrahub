@@ -35,6 +35,7 @@ export type GetPathTraversalParams = {
   maxPaths?: number;
   nodeFilter?: string[];
   relationshipFilter?: string[];
+  excludedKinds?: string[];
   branchName?: string;
   atDate?: Date | string | null;
 };
@@ -49,6 +50,7 @@ export async function getPathTraversal(
     maxPaths,
     nodeFilter,
     relationshipFilter,
+    excludedKinds,
     branchName,
     atDate,
   } = params;
@@ -62,6 +64,7 @@ export async function getPathTraversal(
   if (maxPaths !== undefined) dataArgs.max_paths = maxPaths;
   if (nodeFilter?.length) dataArgs.node_filter = nodeFilter;
   if (relationshipFilter?.length) dataArgs.relationship_filter = relationshipFilter;
+  if (excludedKinds?.length) dataArgs.excluded_kinds = excludedKinds;
 
   const queryObj = {
     query: {

@@ -10,6 +10,7 @@ type TraversalParams = ContextParams & {
   maxPaths?: number;
   nodeFilter?: string[];
   relationshipFilter?: string[];
+  excludedKinds?: string[];
 };
 
 export const pathTraversalKeys = {
@@ -25,5 +26,6 @@ export const pathTraversalKeys = {
       params.maxPaths,
       params.nodeFilter,
       params.relationshipFilter,
+      params.excludedKinds,
     ] as const,
 };

@@ -89,6 +89,7 @@ export function PathTraversalPage() {
   const [maxDepth, setMaxDepth] = useState(initialDepth);
   const [maxPaths, setMaxPaths] = useState(initialMaxPaths);
   const [nodeFilter, setNodeFilter] = useState<string[]>([]);
+  const [excludedKinds, setExcludedKinds] = useState<string[]>([]);
   const [selectedPathIndex, setSelectedPathIndex] = useState(initialSelectedPath);
   const [queryEnabled, setQueryEnabled] = useState(!!initialSourceId && !!initialDestinationId);
   const [copyFeedback, setCopyFeedback] = useState("");
@@ -101,7 +102,7 @@ export function PathTraversalPage() {
   const [depsQueryEnabled, setDepsQueryEnabled] = useState(false);
 
   const { data, isLoading, error } = useGetPathTraversal(
-    { sourceId, destinationId, maxDepth, maxPaths, nodeFilter },
+    { sourceId, destinationId, maxDepth, maxPaths, nodeFilter, excludedKinds },
     { enabled: mode === "path" && queryEnabled && !!sourceId && !!destinationId }
   );
 
@@ -148,12 +149,14 @@ export function PathTraversalPage() {
     maxDepth: number;
     maxPaths: number;
     nodeFilter: string[];
+    excludedKinds: string[];
   }) {
     setSourceId(params.sourceId);
     setDestinationId(params.destinationId);
     setMaxDepth(params.maxDepth);
     setMaxPaths(params.maxPaths);
     setNodeFilter(params.nodeFilter);
+    setExcludedKinds(params.excludedKinds);
     setSelectedPathIndex(0);
     setQueryEnabled(true);
     updateSearchParams({
@@ -192,6 +195,18 @@ export function PathTraversalPage() {
         }
       }
 
+      // Arrow up/down to navigate paths
+      const totalPaths =
+        mode === "path" ? (data?.paths.length ?? 0) : (depsData?.dependency_nodes.length ?? 0);
+      if (totalPaths > 0 && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault();
+        const next =
+          e.key === "ArrowDown"
+            ? Math.min(selectedPathIndex + 1, totalPaths - 1)
+            : Math.max(selectedPathIndex - 1, 0);
+        handleSelectPath(next);
+      }
+
       // Escape to clear query
       if (e.key === "Escape") {
         if (mode === "path") {
@@ -204,7 +219,7 @@ export function PathTraversalPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [data, mode]);
+  }, [data, depsData, mode, selectedPathIndex]);
 
   async function handleCopyPath(text: string) {
     await navigator.clipboard.writeText(text);
@@ -306,10 +321,13 @@ export function PathTraversalPage() {
                   onSearch={handleSearch}
                   isLoading={isLoading}
                   initialSourceId={initialSourceId}
+                  initialDestinationId={initialDestinationId}
                   maxDepth={maxDepth}
                   maxPaths={maxPaths}
+                  excludedKinds={excludedKinds}
                   onMaxDepthChange={setMaxDepth}
                   onMaxPathsChange={setMaxPaths}
+                  onExcludedKindsChange={setExcludedKinds}
                 />
 
                 {/* Results */}
@@ -498,6 +516,9 @@ export function PathTraversalPage() {
             data={data}
             selectedPathIndex={selectedPathIndex}
             onPathSelect={setSelectedPathIndex}
+            onExcludeKind={(kind) => {
+              setExcludedKinds((prev) => (prev.includes(kind) ? prev : [...prev, kind]));
+            }}
           />
         )}
 

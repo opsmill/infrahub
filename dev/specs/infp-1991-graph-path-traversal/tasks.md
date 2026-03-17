@@ -100,15 +100,67 @@
 
 ---
 
+## Phase 5b: UI Enhancements (implemented during development)
+
+**Purpose**: Interactive improvements to the path traversal UI
+
+- [x] T036 Add "Find Paths" menu item to object detail page Actions menu in `frontend/app/src/entities/nodes/object/ui/object-details/object-details-menu.tsx`
+- [x] T037 Add navigation menu entry for Path Traversal in `backend/infrahub/menu/menu.py`
+- [x] T038 Implement node search with kind-first picker using existing Combobox and RelationshipComboboxList in `frontend/app/src/entities/path-traversal/ui/node-picker.tsx`
+- [x] T039 Add right-click context menu on graph nodes (Open details, Set as source, Set as destination, Copy ID, Exclude kind) in `frontend/app/src/entities/path-traversal/ui/path-flow-graph.tsx`
+- [x] T040 Add keyboard shortcuts (1-9 for paths, Arrow Up/Down navigation, Escape to clear) in `frontend/app/src/entities/path-traversal/ui/path-traversal-page.tsx`
+- [x] T041 Add URL persistence for source, destination, depth, maxPaths, selectedPath, mode in `frontend/app/src/entities/path-traversal/ui/path-traversal-page.tsx`
+- [x] T042 Add collapsible left panel with smooth transition in `frontend/app/src/entities/path-traversal/ui/path-traversal-page.tsx`
+- [x] T043 Add layout direction toggle (LR/TB) and fit-view button in `frontend/app/src/entities/path-traversal/ui/path-flow-graph.tsx`
+- [x] T044 Add color-coded nodes by kind with consistent hash-based colors in `frontend/app/src/entities/path-traversal/ui/utils.ts` and `infra-node.tsx`
+- [x] T045 Add animated glow on highlighted path edges in `frontend/app/src/entities/path-traversal/ui/path-edge.tsx`
+- [x] T046 Add readable relationship names (replace __ with /) in `frontend/app/src/entities/path-traversal/ui/utils.ts`
+- [x] T047 Add kind count summary per path in path list sidebar
+- [x] T048 Add copy path as text (per path and copy all) with clipboard integration
+- [x] T049 Add SOURCE/DEST badges and hover tooltips with click-to-navigate on graph nodes in `frontend/app/src/entities/path-traversal/ui/infra-node.tsx`
+- [x] T050 Add swap source/destination button in `frontend/app/src/entities/path-traversal/ui/node-selector.tsx`
+
+---
+
+## Phase 5c: Dependencies Feature
+
+**Purpose**: Fan-out dependency discovery from a single source node
+
+- [x] T051 Implement `DependencyQuery` in `backend/infrahub/core/query/dependencies.py` — find all reachable nodes of specified kinds from a source node
+- [x] T052 Add `InfrahubDependencies` GraphQL query with types and resolver in `backend/infrahub/graphql/queries/path.py`
+- [x] T053 Register `InfrahubDependencies` in `backend/infrahub/graphql/queries/__init__.py` and `schema.py`
+- [x] T054 Create frontend fetch function and types in `frontend/app/src/entities/path-traversal/domain/get-dependencies.ts`
+- [x] T055 Create `useGetDependencies` hook in `frontend/app/src/entities/path-traversal/domain/dependencies.query.ts`
+- [x] T056 Create `DependencySelector` component in `frontend/app/src/entities/path-traversal/ui/dependency-selector.tsx`
+- [x] T057 Add Path/Dependencies mode toggle to page with conditional rendering
+
+---
+
+## Phase 5d: Namespace and Kind Exclusion
+
+**Purpose**: Filter out system nodes and specific kinds from traversal
+
+- [x] T058 Add `excluded_namespaces` parameter with defaults (Core, Internal, Builtin, Lineage, Profile, Template) to `PathTraversalQuery` in `backend/infrahub/core/query/path.py`
+- [x] T059 Add `excluded_kinds` parameter to `PathTraversalQuery` for specific kind exclusion
+- [x] T060 Add both parameters to `PathTraversalInput` GraphQL type and resolver
+- [x] T061 Add excluded kinds UI with chips display and searchable checkbox list in `frontend/app/src/entities/path-traversal/ui/node-selector.tsx`
+- [x] T062 Add "Exclude this kind" to right-click context menu in `frontend/app/src/entities/path-traversal/ui/path-flow-graph.tsx`
+- [x] T063 Hide system namespace kinds from UI kind lists using `HIDDEN_NAMESPACES` in `frontend/app/src/entities/path-traversal/ui/utils.ts`
+- [x] T064 Add `excludedKinds` to query key factory for automatic re-fetch on change
+
+---
+
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 **Purpose**: Documentation, cleanup, and cross-story improvements
 
-- [ ] T031 [P] Add changelog fragment in `changelog/` — create Towncrier fragment describing the new Graph Path Traversal feature (user-facing description)
+- [x] T031 [P] Add changelog fragment in `changelog/` — create Towncrier fragment describing the new Graph Path Traversal feature (user-facing description)
 - [ ] T032 [P] Add user documentation in `docs/` — document the `InfrahubPathTraversal` GraphQL query with examples, parameters, and response format. Include UI screenshots/description of the path visualization page.
 - [x] T033 Run `uv run invoke format` and `cd frontend/app && npm run biome:fix` — ensure all new code passes formatting and linting
 - [x] T034 Run `uv run invoke lint` and verify zero lint errors in new files
-- [ ] T035 Run full test suite: `uv run invoke backend.test-unit` and `cd frontend/app && npm run test` — verify no regressions
+- [x] T035 Run full test suite: `uv run invoke backend.test-unit` and `cd frontend/app && npm run test` — verify no regressions
+- [x] T065 Add Playwright E2E test for path traversal page in `frontend/app/tests/e2e/path-traversal.spec.ts` — test selecting nodes, finding paths, graph rendering, path switching, context menu
+- [x] T066 Add frontend unit tests for utility functions (getKindColor, formatRelName, HIDDEN_NAMESPACES) in `frontend/app/src/entities/path-traversal/ui/utils.test.ts`
 
 ---
 

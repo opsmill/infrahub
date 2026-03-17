@@ -55,11 +55,27 @@ As a platform engineer, I want to constrain path traversal to specific node kind
 
 ---
 
+### User Story 4 - Dependency Discovery (Priority: P4)
+
+As a network engineer, I want to select one node and find all connected nodes of specific kinds, so I can understand what services or infrastructure depend on that node and assess the impact of changes or outages.
+
+**Why this priority**: Dependency discovery builds on the path traversal engine to answer operational questions like "if this interface goes down, what services are affected?"
+
+**Independent Test**: Can be tested by querying dependencies from a known node with specific target kinds and verifying all reachable nodes of those kinds are returned with their shortest paths.
+
+**Acceptance Scenarios**:
+
+1. **Given** a source node and a list of target kinds, **When** the user requests dependency discovery, **Then** the system returns all reachable nodes of those kinds with their shortest paths from the source.
+2. **Given** a source node with no reachable nodes of the target kinds, **When** queried, **Then** the system returns an empty result.
+3. **Given** dependency results, **When** displayed, **Then** results are shown as an interactive graph (same as path traversal) with nodes grouped by kind and sorted by distance.
+
+---
+
 ### Edge Cases
 
 - What happens when a user selects the same node as both start and end point? The system should return an informative message that start and end nodes must be different.
 - How does the system handle circular paths (cycles in the graph)? The system should detect cycles and avoid infinite traversal by enforcing a maximum depth.
-- What happens when the graph is very large and there are thousands of possible paths? The system should enforce a configurable maximum number of paths returned (default: 10) and a maximum traversal depth (default: 20 hops).
+- What happens when the graph is very large and there are thousands of possible paths? The system should enforce a configurable maximum number of paths returned (default: 10) and a maximum traversal depth (default: 5, maximum: 20 hops).
 - How does the feature behave across branches? Path traversal must respect the current branch context, only following relationships that are active on the selected branch at the queried point in time.
 - What happens if one of the specified nodes does not exist? The system should return a clear error identifying which node was not found.
 
@@ -69,7 +85,7 @@ As a platform engineer, I want to constrain path traversal to specific node kind
 
 - **FR-001**: System MUST accept two node identifiers (by ID or unique key) and return all paths connecting them through the graph.
 - **FR-002**: System MUST return paths as ordered sequences of nodes and relationships from start to end.
-- **FR-003**: System MUST enforce a configurable maximum traversal depth to prevent unbounded queries (default: 20 hops).
+- **FR-003**: System MUST enforce a configurable maximum traversal depth to prevent unbounded queries (default: 5 hops, max: 20).
 - **FR-004**: System MUST enforce a configurable maximum number of paths returned per query (default: 10).
 - **FR-005**: System MUST respect branch context when traversing — only active relationships on the current branch at the current time are followed.
 - **FR-006**: System MUST return an empty result set with appropriate messaging when no path exists between the two nodes.
@@ -81,6 +97,11 @@ As a platform engineer, I want to constrain path traversal to specific node kind
 - **FR-012**: System MUST provide a visual representation of path results in the user interface showing nodes and their connecting relationships.
 - **FR-013**: System MUST allow users to select start and end nodes from the UI to initiate a path query.
 - **FR-014**: System MUST return metadata for each node and relationship in the path (kind, display label, key attributes).
+- **FR-015**: System MUST support excluding specific node kinds from traversal paths.
+- **FR-016**: System MUST support excluding nodes from specific namespaces (default: Core, Internal, Builtin, Lineage, Profile, Template) from traversal paths.
+- **FR-017**: System MUST provide a dependency discovery mode that, given one source node and a list of target kinds, finds all reachable nodes of those kinds.
+- **FR-018**: System MUST allow users to initiate path traversal from an object's detail page via an action menu.
+- **FR-019**: System MUST support keyboard navigation for switching between discovered paths.
 
 ### Key Entities
 
@@ -106,3 +127,4 @@ As a platform engineer, I want to constrain path traversal to specific node kind
 - The feature builds on the existing branch-aware query infrastructure, reusing temporal and branch filtering patterns already established in the codebase.
 - Performance is acceptable for typical infrastructure graphs (thousands to tens of thousands of nodes); optimization for graphs exceeding 100,000 nodes is a future concern.
 - The visual representation will integrate into the existing Infrahub web UI rather than requiring a separate application.
+- Default namespace exclusions (Core, Internal, Builtin, etc.) are applied automatically to keep results focused on user-defined infrastructure data.

@@ -62,6 +62,7 @@ type PathFlowGraphProps = {
   data: PathTraversalResponse;
   selectedPathIndex: number;
   onPathSelect?: (index: number) => void;
+  onExcludeKind?: (kind: string) => void;
 };
 
 type ContextMenuState = {
@@ -101,9 +102,11 @@ function FitViewButton() {
 function NodeContextMenu({
   menu,
   onClose,
+  onExcludeKind,
 }: {
   menu: NonNullable<ContextMenuState>;
   onClose: () => void;
+  onExcludeKind?: (kind: string) => void;
 }) {
   function handleCopyId() {
     navigator.clipboard.writeText(menu.nodeId);
@@ -157,12 +160,27 @@ function NodeContextMenu({
         >
           Copy ID
         </button>
+        {onExcludeKind && (
+          <>
+            <div className="mx-2 my-0.5 border-gray-100 border-t" />
+            <button
+              type="button"
+              onClick={() => {
+                onExcludeKind(menu.nodeKind);
+                onClose();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-600 text-xs hover:bg-red-50"
+            >
+              Exclude {menu.nodeKind}
+            </button>
+          </>
+        )}
       </div>
     </>
   );
 }
 
-export function PathFlowGraph({ data, selectedPathIndex }: PathFlowGraphProps) {
+export function PathFlowGraph({ data, selectedPathIndex, onExcludeKind }: PathFlowGraphProps) {
   const [direction, setDirection] = useState<"LR" | "TB">("LR");
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
 
@@ -337,7 +355,13 @@ export function PathFlowGraph({ data, selectedPathIndex }: PathFlowGraphProps) {
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
       </ReactFlow>
 
-      {contextMenu && <NodeContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />}
+      {contextMenu && (
+        <NodeContextMenu
+          menu={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onExcludeKind={onExcludeKind}
+        />
+      )}
     </div>
   );
 }
