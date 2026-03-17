@@ -645,3 +645,10 @@ async def test_search_parent_prefix_branch_effective_value(
     data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.2.1")
     parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
     assert ip_dataset_01["net143"].id in parent_ids  # 10.10.2.0/27 on this branch
+
+    # On the default branch, 10.10.1.0/27 should still appear as a parent for 10.10.1.1
+    default_branch.update_schema_hash()
+    gql_params_default = await prepare_graphql_params(db=db, branch=default_branch)
+    data = await _search_with_parent_prefixes(gql_params=gql_params_default, query="10.10.1.1")
+    parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
+    assert ip_dataset_01["net143"].id in parent_ids  # still 10.10.1.0/27 on default branch
