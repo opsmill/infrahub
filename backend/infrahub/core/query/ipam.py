@@ -180,10 +180,9 @@ class IPParentPrefixLookupQuery(Query):
         CALL (maybe_parent) {
             OPTIONAL MATCH (maybe_parent)-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
-            WITH r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            WITH head(collect(r)) AS latest_r
-            RETURN latest_r IS NOT NULL AND latest_r.status = "active" AS node_is_active
+            LIMIT 1
+            RETURN r IS NOT NULL AND r.status = "active" AS node_is_active
         }
         WITH maybe_parent
         WHERE node_is_active = TRUE
@@ -193,11 +192,10 @@ class IPParentPrefixLookupQuery(Query):
         CALL (maybe_parent) {
             OPTIONAL MATCH (maybe_parent)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[r2:HAS_VALUE]->(av:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-            WITH av, r1, r2
             ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC,
                 r2.branch_level DESC, r2.from DESC, r2.status ASC
-            WITH head(collect([av, r1, r2])) AS latest
-            WITH latest[0] AS av, latest[1] AS r1, latest[2] AS r2
+            LIMIT 1
+            WITH av, r1, r2
             WHERE r1.status = "active" AND r2.status = "active"
             // ------------------
             // Re-check containment against the resolved branch-effective value
