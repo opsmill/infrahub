@@ -1,6 +1,6 @@
 # Phase 2: Auto-delete Infrahub Branch After Merge
 
-**Status:** ⬜ Todo
+**Status:** ✅ Done
 **Priority:** P1
 **Requirements:** FR-003, FR-004, FR-006, FR-012, FR-014
 **Depends on:** Phase 1
@@ -15,11 +15,11 @@ After a successful merge (standard or proposed change), if `delete_branch_after_
 
 ## Checklist
 
-- [ ] Update `merge_branch()` to submit `BRANCH_DELETE` after successful merge
-- [ ] Update `merge_proposed_change()` to submit `BRANCH_DELETE` after successful merge
-- [ ] Guard against deleting the default branch (FR-014)
-- [ ] Guard against deleting when other open proposed changes exist (edge case)
-- [ ] Write functional tests
+- [x] Update `merge_branch()` to submit `BRANCH_DELETE` after successful merge
+- [x] Update `merge_proposed_change()` to submit `BRANCH_DELETE` after successful merge
+- [x] Guard against deleting the default branch (FR-014)
+- [x] Guard against deleting when other open proposed changes exist (edge case)
+- [x] Write functional tests
 
 ---
 

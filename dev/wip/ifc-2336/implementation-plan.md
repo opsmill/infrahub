@@ -14,9 +14,9 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 
 | Phase | Description                             | Priority | Status      | Tests                |
 |-------|-----------------------------------------|----------|-------------|----------------------|
-| 1     | Configuration settings                  | P1       | ⬜ Todo     | 3 unit tests         |
-| 2     | Auto-delete Infrahub branch after merge | P1       | ⬜ Todo     | 4 functional tests   |
-| 3     | Git branch deletion workflow            | P2       | ⬜ Todo     | 3 unit tests         |
+| 1     | Configuration settings                  | P1       | ✅ Done     | 3 unit tests         |
+| 2     | Auto-delete Infrahub branch after merge | P1       | ✅ Done     | 4 functional tests   |
+| 3     | Git branch deletion workflow            | P2       | ✅ Done     | 7 component+functional tests |
 | 4     | Manual delete with Git option           | P3       | ⬜ Todo     | 2 unit tests         |
 
 **Total Tests:** 12 tests (5 unit + 4 functional + 3 unit)
