@@ -37,6 +37,8 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_PUBLIC_URL` | Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure. | None | None |
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
 | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
+| `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` | When enabled, the Infrahub branch is automatically deleted after a successful merge. | boolean | False |
+| `INFRAHUB_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
 
 ## Api
 
