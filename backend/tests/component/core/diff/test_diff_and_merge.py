@@ -669,6 +669,159 @@ class TestDiffAndMerge:
 
         await verify_no_duplicate_paths(db=db)
 
+    @pytest.mark.parametrize("new_property", [True, False])
+    async def test_single_property_update(
+        self,
+        db: InfrahubDatabase,
+        diff_repository: DiffRepository,
+        default_branch: Branch,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_camry_main: Node,
+        new_property: bool,
+    ) -> None:
+        # Capture initial metadata before any changes
+        person_before = await NodeManager.get_one(
+            db=db, id=person_jane_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        person_before.get_attribute("height").source = person_john_main
+        await person_before.save(db=db)
+        person_created_at = person_before._get_created_at()
+        person_created_by = person_before._get_created_by()
+
+        car_before = await NodeManager.get_one(
+            db=db, id=car_camry_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        owner_rel_manager = car_before.get_relationship("owner")
+        owner_rel = (await owner_rel_manager.get_relationships(db=db))[0]
+        owner_rel.source = person_john_main
+        before_car_source_update = Timestamp()
+        await car_before.save(db=db)
+        after_car_source_update = Timestamp()
+        car_created_at = car_before._get_created_at()
+        car_created_by = car_before._get_created_by()
+
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_jane_main.id)
+        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+        owner_rel_manager = car_branch.get_relationship("owner")
+        owner_rel = (await owner_rel_manager.get_relationships(db=db))[0]
+
+        if new_property:
+            person_branch.get_attribute("height").source = person_alfred_main
+            owner_rel.source = person_alfred_main
+        else:
+            person_branch.get_attribute("height").clear_source()
+            owner_rel.clear_source()
+        await person_branch.save(db=db, user_id="branch-user")
+        await car_branch.save(db=db, user_id="branch-user-2")
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        )
+
+        person_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=person_jane_main.id)
+        assert person_node.action is DiffAction.UPDATED
+        car_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=car_camry_main.id)
+        assert car_node.action is DiffAction.UPDATED
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        at = Timestamp()
+        await diff_merger.merge_graph(at=at)
+
+        updated_person = await NodeManager.get_one(
+            db=db,
+            id=person_jane_main.id,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES,
+        )
+        assert updated_person.get_attribute("height").value == person_jane_main.get_attribute("height").value
+        if new_property:
+            assert updated_person.get_attribute("height").source_id == person_alfred_main.id
+        else:
+            assert updated_person.get_attribute("height").source_id is None
+
+        updated_car = await NodeManager.get_one(
+            db=db,
+            id=car_camry_main.id,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES,
+        )
+        # Fetch relationship via lazy get_relationships to include source/owner metadata
+        # (prefetch_relationships does not populate LINKED_NODES on relationships)
+        owner_rel_manager = updated_car.get_relationship("owner")
+        owner_rel = (await owner_rel_manager.get_relationships(db=db))[0]
+        assert owner_rel.peer_id == person_jane_main.id
+        if new_property:
+            assert owner_rel.source_id == person_alfred_main.id
+        else:
+            assert owner_rel.source_id is None
+
+        # Validate person node metadata
+        assert updated_person._get_created_at() == person_created_at
+        assert updated_person._get_created_by() == person_created_by
+        assert updated_person._get_updated_at() == at
+
+        # Validate the height attribute metadata
+        height_attr = updated_person.get_attribute("height")
+        assert height_attr._get_created_at() == person_created_at
+        assert height_attr._get_created_by() == person_created_by
+        assert height_attr._get_updated_at() == at
+        assert height_attr._get_updated_by() == "branch-user"
+
+        # Validate other attributes were NOT updated (name attribute)
+        name_attr = updated_person.get_attribute("name")
+        assert name_attr._get_created_at() == person_created_at
+        assert name_attr._get_created_by() == person_created_by
+        assert name_attr._get_updated_at() == person_created_at
+        assert name_attr._get_updated_by() == person_created_by
+
+        # Validate car node metadata
+        assert updated_car._get_created_at() == car_created_at
+        assert updated_car._get_created_by() == car_created_by
+        assert updated_car._get_updated_at() == at
+        assert updated_car._get_updated_by() == "branch-user-2"
+
+        # Validate relationship metadata (requires prefetch_relationships for timestamps)
+        updated_car_with_rels = await NodeManager.get_one(
+            db=db, id=car_camry_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        owner_rel_with_meta = await updated_car_with_rels.get_relationship("owner").get(db=db)
+        assert owner_rel_with_meta._get_updated_at() == at
+        assert owner_rel_with_meta._get_updated_by() == "branch-user-2"
+
+        await verify_no_duplicate_paths(db=db)
+
+        # Rollback verification
+        await diff_merger.rollback(at=at)
+
+        rolled_back_person = await NodeManager.get_one(
+            db=db,
+            id=person_jane_main.id,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES,
+        )
+        assert rolled_back_person.get_attribute("height").source_id == person_john_main.id
+        # Node metadata should be restored to pre-merge state
+        assert rolled_back_person._get_created_at() == person_created_at
+        assert rolled_back_person._get_created_by() == person_created_by
+
+        rolled_back_car = await NodeManager.get_one(
+            db=db,
+            id=car_camry_main.id,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES,
+        )
+        rolled_back_owner_rel_manager = rolled_back_car.get_relationship("owner")
+        rolled_back_owner_rel = (await rolled_back_owner_rel_manager.get_relationships(db=db))[0]
+        assert rolled_back_owner_rel.source_id == person_john_main.id
+        # Car metadata should be restored to when the source was updated on main
+        assert before_car_source_update < rolled_back_car._get_updated_at() < after_car_source_update
+        assert rolled_back_car._get_updated_by() == car_created_by
+
+        await verify_no_duplicate_paths(db=db)
+
     async def test_one_many_relationship_added(
         self,
         db: InfrahubDatabase,
