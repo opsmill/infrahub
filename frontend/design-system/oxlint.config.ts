@@ -21,6 +21,7 @@ export default defineConfig({
   ],
   rules: {
     "eslint/arrow-body-style": "off",
+    "eslint/func-style": "off",
     "eslint/max-lines-per-function": "off",
     "eslint/no-ternary": "off",
     "eslint/sort-imports": "off",
@@ -28,6 +29,7 @@ export default defineConfig({
     "oxc/no-rest-spread-properties": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
     "react-perf/jsx-props-no-spreading": "off",
+    "react/button-has-type": "off",
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
     "react/jsx-props-no-spreading": "off",
