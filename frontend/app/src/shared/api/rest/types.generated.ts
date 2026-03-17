@@ -1706,6 +1706,18 @@ export interface components {
              * @default true
              */
             diff_update_after_merge: boolean;
+            /**
+             * Delete Branch After Merge
+             * @description When enabled, the Infrahub branch is automatically deleted after a successful merge.
+             * @default false
+             */
+            delete_branch_after_merge: boolean;
+            /**
+             * Delete Git Branch After Merge
+             * @description When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled.
+             * @default false
+             */
+            delete_git_branch_after_merge: boolean;
         };
         /** Menu */
         Menu: {
