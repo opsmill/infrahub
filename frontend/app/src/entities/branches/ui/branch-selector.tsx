@@ -45,7 +45,7 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-72 rounded-lg border-neutral-200 p-0 shadow-none"
+          className="h-8 w-60 rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
         >
           <div className="inline-flex h-full min-w-0 grow items-center justify-between gap-1.5 overflow-hidden border-gray-200 border-r px-3">
