@@ -151,7 +151,7 @@ class BranchMerger:
         self,
         at: str | Timestamp | None = None,
     ) -> EnrichedDiffRoot:
-        """Perform the merge. Caller must hold the global merge lock."""
+        """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
         log.info("Updating diff for merge")
