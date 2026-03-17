@@ -74,7 +74,9 @@ class PathTraversalQuery(Query):
         self.max_paths = max_paths
         self.node_filter = node_filter or []
         self.relationship_filter = relationship_filter or []
-        self.excluded_namespaces = excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
+        self.excluded_namespaces = (
+            excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
+        )
         self.excluded_kinds = excluded_kinds or []
 
         super().__init__(**kwargs)

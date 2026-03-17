@@ -170,8 +170,7 @@ async def path_traversal_resolver(
     paths = []
     for path_data in path_data_list:
         nodes = [
-            {"id": n.uuid, "kind": n.kind, "display_label": display_labels.get(n.uuid, n.kind)}
-            for n in path_data.nodes
+            {"id": n.uuid, "kind": n.kind, "display_label": display_labels.get(n.uuid, n.kind)} for n in path_data.nodes
         ]
         relationships = [{"id": r.uuid, "name": r.name, "direction": r.direction} for r in path_data.relationships]
         paths.append(
@@ -216,9 +215,7 @@ class DependencyResultType(ObjectType):
     dependency_nodes = Field(
         List(of_type=NonNull(DependencyNodeType)), required=True, description="Dependent nodes reachable from source"
     )
-    paths = Field(
-        List(of_type=NonNull(PathResultType)), required=True, description="All paths to dependent nodes"
-    )
+    paths = Field(List(of_type=NonNull(PathResultType)), required=True, description="All paths to dependent nodes")
     total_found = Field(Int, required=True, description="Total dependent nodes found")
 
 
@@ -298,9 +295,7 @@ async def dependency_resolver(
             {"id": pn.uuid, "kind": pn.kind, "display_label": display_labels.get(pn.uuid, pn.kind)}
             for pn in path_data.nodes
         ]
-        relationships = [
-            {"id": r.uuid, "name": r.name, "direction": r.direction} for r in path_data.relationships
-        ]
+        relationships = [{"id": r.uuid, "name": r.name, "direction": r.direction} for r in path_data.relationships]
         return {"nodes": nodes, "relationships": relationships, "depth": path_data.depth}
 
     dependency_nodes = []

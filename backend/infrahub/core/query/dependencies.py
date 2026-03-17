@@ -46,7 +46,9 @@ class DependencyQuery(Query):
         self.target_kinds = target_kinds
         self.max_depth = max_depth
         self.max_results = max_results
-        self.excluded_namespaces = excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
+        self.excluded_namespaces = (
+            excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
+        )
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
