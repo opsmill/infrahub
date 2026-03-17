@@ -1,3 +1,4 @@
+---
 # Schema Contract: Virtual Relationship Definition
 #
 # This defines the user-facing YAML schema format for virtual relationships.
@@ -79,7 +80,9 @@ extension_with_virtual_relationships:
 # Validation errors
 validation_errors:
   - code: VIRTUAL_REL_INVALID_PATH_SEGMENT
-    message: "Virtual relationship '{name}' on '{node_kind}': segment '{segment}' is not a valid relationship on '{current_kind}'"
+    message: >-
+      Virtual relationship '{name}' on '{node_kind}': segment '{segment}'
+      is not a valid relationship on '{current_kind}'
   - code: VIRTUAL_REL_PATH_TOO_SHORT
     message: "Virtual relationship '{name}' on '{node_kind}': path must have at least 2 segments"
   - code: VIRTUAL_REL_PATH_TOO_LONG
