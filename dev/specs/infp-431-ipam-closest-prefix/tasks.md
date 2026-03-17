@@ -39,11 +39,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Extend GraphQL query in `frontend/app/src/entities/navigation/api/search.ts` — add `parent_prefixes { node { id kind } }` field to the `SEARCH` query
-- [ ] T009 [US1] Extend domain types in `frontend/app/src/entities/navigation/domain/search-anywhere.ts` — add `parentPrefixes: Array<ObjectResult> | null` to the return type, map from `parent_prefixes` field in API response
-- [ ] T010 [US1] Update query hook in `frontend/app/src/entities/navigation/ui/queries/search-anywhere.query.ts` — ensure `parentPrefixes` is exposed from `useGetSearchAnywhere()` return value
-- [ ] T011 [US1] Create `SearchParentPrefixes` component in `frontend/app/src/entities/navigation/ui/search-anywhere/search-parent-prefixes.tsx` — follow `SearchNodes` pattern, read `parentPrefixes` from search response, render each result using the existing `NodesOptions` component inside a `SearchAnywhereGroup` with heading "Parent Prefixes", show empty state message when `parentPrefixes` is an empty array, return null when `parentPrefixes` is null
-- [ ] T012 [US1] Add `SearchParentPrefixes` to `frontend/app/src/entities/navigation/ui/search-anywhere/search-anywhere.tsx` — insert between `SearchActions` and `SearchNodes` in the `Command.List`
+- [x] T008 [US1] Extend GraphQL query in `frontend/app/src/entities/navigation/api/search.ts` — add `parent_prefixes { node { id kind } }` field to the `SEARCH` query
+- [x] T009 [US1] Extend domain types in `frontend/app/src/entities/navigation/domain/search-anywhere.ts` — add `parentPrefixes: Array<ObjectResult> | null` to the return type, map from `parent_prefixes` field in API response
+- [x] T010 [US1] Update query hook in `frontend/app/src/entities/navigation/ui/queries/search-anywhere.query.ts` — ensure `parentPrefixes` is exposed from `useGetSearchAnywhere()` return value
+- [x] T011 [US1] Create `SearchParentPrefixes` component in `frontend/app/src/entities/navigation/ui/search-anywhere/search-parent-prefixes.tsx` — follow `SearchNodes` pattern, read `parentPrefixes` from search response, render each result using the existing `NodesOptions` component inside a `SearchAnywhereGroup` with heading "Parent Prefixes", show empty state message when `parentPrefixes` is an empty array, return null when `parentPrefixes` is null
+- [x] T012 [US1] Add `SearchParentPrefixes` to `frontend/app/src/entities/navigation/ui/search-anywhere/search-anywhere.tsx` — insert between `SearchActions` and `SearchNodes` in the `Command.List`
 
 **Checkpoint**: Searching for an IPv4 address in the search dialog shows parent prefixes in a dedicated section above regular search results. US1 acceptance scenarios 1-4 are verifiable.
 
@@ -93,7 +93,7 @@ No code changes required — `_try_parse_ip_or_prefix()` returns `None` for part
 
 No code changes required — `SearchParentPrefixes` reuses `NodesOptions` which uses `getObjectDetailsUrl()`, and `getObjectDetailsUrl` already routes `BuiltinIPPrefix` to `/ipam/{kind}/{id}`.
 
-- [ ] T017 [US4] Add E2E test for search-to-navigate workflow in `frontend/app/tests/e2e/search-parent-prefixes.spec.ts` — open Cmd+K, type a valid IP address, verify "Parent Prefixes" section appears, click a prefix result, verify navigation to prefix detail page
+- [x] T017 [US4] Add E2E test for search-to-navigate workflow in `frontend/app/tests/e2e/search-parent-prefixes.spec.ts` — open Cmd+K, type a valid IP address, verify "Parent Prefixes" section appears, click a prefix result, verify navigation to prefix detail page
 
 **Checkpoint**: Full end-to-end workflow verified.
 
