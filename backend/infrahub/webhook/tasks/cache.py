@@ -22,14 +22,3 @@ async def invalidate_webhook_cache(webhook_ids: AbstractSet[str]) -> None:
     for wid in webhook_ids:
         await cache.delete(key=f"{CACHE_KEY_PREFIX}:{wid}")
     log.info(f"Invalidated cache for {len(webhook_ids)} webhook(s)")
-
-
-@task(name="webhook-invalidate-all-caches", task_run_name="Invalidate all webhook caches", cache_policy=NONE)
-async def invalidate_all_webhook_caches() -> None:
-    """Delete all cached webhook data."""
-    cache = await get_cache()
-    log = get_run_logger()
-    keys = await cache.list_keys(f"{CACHE_KEY_PREFIX}:*")
-    for key in keys:
-        await cache.delete(key=key)
-    log.info(f"Invalidated {len(keys)} webhook cache entries")

@@ -186,7 +186,7 @@ Three headers are added to signed requests:
 - **Cache miss**: Falls back to fetching the webhook node from the database via SDK, then caches the result
 - **Invalidation**: Three paths clear the cache:
   1. `_configure_one()` (on create/update) and `_delete_automation()` (on delete) invalidate a single webhook's cache via `invalidate_webhook_cache(webhook_ids=...)`
-  2. `_reconcile_all()` invalidates **all** webhook caches via `invalidate_all_webhook_caches()`, which uses `cache.list_keys("webhook:*")` to find and delete every entry — this covers deactivated webhooks that wouldn't appear in the active trigger list
+  2. `_reconcile_all()` invalidates caches for **updated** and **deleted** webhooks only (via `invalidate_webhook_cache(webhook_ids=...)`), extracted from the `TriggerSetupReport`. New webhooks have no cache entry, and unchanged webhooks need no invalidation.
   3. When a `CoreKeyValue` header is modified, `TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE` fires `invalidate_webhook_headers`, which queries affected webhooks via `KeyValueGetWebhooksQuery` and deletes their cache entries
 
 ## Prefect Workflows
