@@ -1,6 +1,6 @@
 # Feature Specification: IPAM Parent Prefix Lookup
 
-**Feature Branch**: `001-ipam-prefix-lookup`
+**Feature Branch**: `gma-431-ipam-closest-prefix`
 **Created**: 2026-02-17
 **Status**: Draft
 **Input**: User description: "IP address/prefix lookup with parent prefix fallback for IPAM search"
