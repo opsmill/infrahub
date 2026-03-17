@@ -157,29 +157,33 @@ class IPParentPrefixLookupQuery(Query):
         // ------------------
         // Shortlist candidate AttributeIPNetwork nodes using the binary_address index
         // ------------------
-        CALL () {
-            OPTIONAL MATCH (av:%(ip_prefix_attribute_kind)s)
-            WHERE av.version = $ip_version
-            AND av.binary_address IN $possible_prefix_list
-            AND any(
-                prefix_and_length IN $possible_prefix_and_length_list
-                WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
-            )
-            // Walk back to BuiltinIPPrefix candidates (unbound from specific av)
-            OPTIONAL MATCH (maybe_parent:%(ip_prefix_kind)s)
-                -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
-                -[:HAS_VALUE]->(av)
-            RETURN DISTINCT maybe_parent
-        }
+        OPTIONAL MATCH (av:%(ip_prefix_attribute_kind)s)
+        WHERE av.version = $ip_version
+        AND av.binary_address IN $possible_prefix_list
+        AND any(
+            prefix_and_length IN $possible_prefix_and_length_list
+            WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
+        )
+        // ------------------
+        // Walk back to BuiltinIPPrefix candidates (unbound from specific av)
+        // ------------------
+        WITH av
+        WHERE av IS NOT NULL
+        OPTIONAL MATCH (maybe_parent:%(ip_prefix_kind)s)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
+            -[:HAS_VALUE]->(av)
+        WITH DISTINCT maybe_parent
+        WHERE maybe_parent IS NOT NULL
         // ------------------
         // Verify the prefix node itself is active on this branch
         // ------------------
         CALL (maybe_parent) {
             OPTIONAL MATCH (maybe_parent)-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
-            WITH maybe_parent, r.status = "active" AS is_active
+            WITH r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            RETURN head(collect(is_active)) = TRUE AS node_is_active
+            WITH head(collect(r)) AS latest_r
+            RETURN latest_r IS NOT NULL AND latest_r.status = "active" AS node_is_active
         }
         WITH maybe_parent
         WHERE node_is_active = TRUE
@@ -189,15 +193,16 @@ class IPParentPrefixLookupQuery(Query):
         CALL (maybe_parent) {
             OPTIONAL MATCH (maybe_parent)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[r2:HAS_VALUE]->(av:AttributeValue)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
-            WITH maybe_parent, av, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
-            ORDER BY elementId(maybe_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC,
+            WITH av, r1, r2
+            ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC,
                 r2.branch_level DESC, r2.from DESC, r2.status ASC
-            WITH maybe_parent, head(collect([av, is_active])) AS av_is_active
-            WITH
-                av_is_active[0] AS av,
-                av_is_active[1] AS is_active
+            WITH head(collect([av, r1, r2])) AS latest
+            WITH latest[0] AS av, latest[1] AS r1, latest[2] AS r2
+            WHERE r1.status = "active" AND r2.status = "active"
+            // ------------------
             // Re-check containment against the resolved branch-effective value
-            WITH av, is_active, (
+            // ------------------
+            WITH av, (
                 av.version = $ip_version
                 AND av.binary_address IN $possible_prefix_list
                 AND any(
@@ -205,7 +210,7 @@ class IPParentPrefixLookupQuery(Query):
                     WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
                 )
             ) AS is_allowed_value
-            RETURN CASE WHEN is_active = TRUE AND is_allowed_value = TRUE THEN av ELSE NULL END AS allowed_av
+            RETURN CASE WHEN is_allowed_value = TRUE THEN av ELSE NULL END AS allowed_av
         }
         WITH maybe_parent, allowed_av
         WHERE allowed_av IS NOT NULL
