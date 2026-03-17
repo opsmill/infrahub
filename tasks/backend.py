@@ -220,6 +220,7 @@ def _generate_schemas(context: Context) -> None:
         generic_schema,
         node_schema,
         relationship_schema,
+        virtual_relationship_schema,
     )
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
@@ -249,6 +250,12 @@ def _generate_schemas(context: Context) -> None:
     )
     relationship_schema_output = f"{generated}/relationship_schema.py"
     Path(relationship_schema_output).write_text(relationship_rendered, encoding="utf-8")
+
+    virtual_relationship_rendered = template.render(
+        schema="VirtualRelationshipSchema", node=virtual_relationship_schema, parent="HashableModel"
+    )
+    virtual_relationship_schema_output = f"{generated}/virtual_relationship_schema.py"
+    Path(virtual_relationship_schema_output).write_text(virtual_relationship_rendered, encoding="utf-8")
 
     execute_command(context=context, command=f"ruff format {generated}")
     execute_command(context=context, command=f"ruff check --fix {generated}")

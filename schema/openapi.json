@@ -2451,6 +2451,15 @@
                         "description": "Node Relationships",
                         "update": "not_applicable"
                     },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships",
+                        "description": "Virtual relationships that traverse multi-hop paths to collect target nodes",
+                        "update": "not_applicable"
+                    },
                     "hierarchical": {
                         "type": "boolean",
                         "title": "Hierarchical",
@@ -2735,6 +2744,15 @@
                         "type": "array",
                         "title": "Relationships",
                         "description": "Node Relationships",
+                        "update": "not_applicable"
+                    },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships",
+                        "description": "Virtual relationships that traverse multi-hop paths to collect target nodes",
                         "update": "not_applicable"
                     },
                     "inherit_from": {
@@ -3062,6 +3080,15 @@
                         "description": "Node Relationships",
                         "update": "not_applicable"
                     },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships",
+                        "description": "Virtual relationships that traverse multi-hop paths to collect target nodes",
+                        "update": "not_applicable"
+                    },
                     "inherit_from": {
                         "items": {
                             "type": "string"
@@ -3331,6 +3358,15 @@
                         "type": "array",
                         "title": "Relationships",
                         "description": "Node Relationships",
+                        "update": "not_applicable"
+                    },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships",
+                        "description": "Virtual relationships that traverse multi-hop paths to collect target nodes",
                         "update": "not_applicable"
                     },
                     "inherit_from": {
@@ -4650,6 +4686,15 @@
                         "description": "Node Relationships",
                         "update": "not_applicable"
                     },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships",
+                        "description": "Virtual relationships that traverse multi-hop paths to collect target nodes",
+                        "update": "not_applicable"
+                    },
                     "hierarchical": {
                         "type": "boolean",
                         "title": "Hierarchical",
@@ -5172,6 +5217,13 @@
                         },
                         "type": "array",
                         "title": "Relationships"
+                    },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships"
                     }
                 },
                 "additionalProperties": false,
@@ -5417,6 +5469,15 @@
                         "type": "array",
                         "title": "Relationships",
                         "description": "Node Relationships",
+                        "update": "not_applicable"
+                    },
+                    "virtual_relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/VirtualRelationshipSchema"
+                        },
+                        "type": "array",
+                        "title": "Virtual Relationships",
+                        "description": "Virtual relationships that traverse multi-hop paths to collect target nodes",
                         "update": "not_applicable"
                     },
                     "inherit_from": {
@@ -6517,6 +6578,106 @@
                     "type"
                 ],
                 "title": "ValidationError"
+            },
+            "VirtualRelationshipSchema": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the virtual relationship schema",
+                        "update": "not_applicable"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/HashableModelState",
+                        "description": "Expected state of the virtual relationship after loading the schema",
+                        "default": "present",
+                        "update": "not_applicable"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[a-z0-9\\_]+$",
+                        "title": "Name",
+                        "description": "Virtual relationship name, must be unique within a model and must be all lowercase.",
+                        "update": "allowed"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name. Will be autogenerated if not provided.",
+                        "update": "allowed"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the virtual relationship.",
+                        "update": "allowed"
+                    },
+                    "path": {
+                        "type": "string",
+                        "title": "Path",
+                        "description": "Traversal path through relationships using __ separator. Min 2, max 10 segments.",
+                        "update": "validate_constraint"
+                    },
+                    "peer": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "pattern": "^[A-Z][a-zA-Z0-9]+$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Peer",
+                        "description": "Type (kind) of target nodes at the end of the path. Derived from path during schema processing if not explicitly specified.",
+                        "update": "validate_constraint"
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Number used to order the virtual relationship in the frontend. Lowest value will be ordered first.",
+                        "update": "allowed"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "path"
+                ],
+                "title": "VirtualRelationshipSchema"
             }
         },
         "securitySchemes": {

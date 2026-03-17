@@ -10,9 +10,16 @@ import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema, VirtualRelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
+
+function getVirtualRelationshipsForTabs(
+  virtualRelationships: VirtualRelationshipSchema[] | undefined
+) {
+  if (!virtualRelationships) return [];
+  return [...virtualRelationships].sort((a, b) => (a.order_weight ?? 0) - (b.order_weight ?? 0));
+}
 
 interface ObjectDetailsTabsProps {
   objectSchema: ModelSchema;
@@ -25,6 +32,9 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const objectId = objectData.id;
   const objectKind = objectData.__typename;
   const relationshipsTabs = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
+  const virtualRelationshipsTabs = getVirtualRelationshipsForTabs(
+    objectSchema.virtual_relationships
+  );
   const isTaskTarget = isOfKind(TASK_TARGET, objectSchema);
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
@@ -46,6 +56,16 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
               objectKind={objectKind}
               objectId={objectId}
               relationshipSchema={tab}
+            />
+          );
+        })}
+        {virtualRelationshipsTabs.map((vr) => {
+          return (
+            <RelationshipTab
+              key={vr.name}
+              objectKind={objectKind}
+              objectId={objectId}
+              relationshipSchema={vr}
             />
           );
         })}

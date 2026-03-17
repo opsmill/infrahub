@@ -56,6 +56,7 @@ from .resolvers.resolver import (
     parent_field_name_resolver,
     single_relationship_resolver,
 )
+from .resolvers.virtual_relationship import virtual_relationship_resolver
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 from .types import (
@@ -482,6 +483,19 @@ class GraphQLSchemaManager:
                 )
                 node_type._meta.fields["descendants"] = graphene.Field(
                     peer_type, required=True, resolver=descendants_resolver, **peer_filters
+                )
+
+            # Add virtual relationship fields
+            for vr in node_schema.virtual_relationships:
+                if not vr.peer:
+                    continue
+                vr_peer_schema = self.schema.get(name=vr.peer, duplicate=False)
+                if vr_peer_schema.namespace == "Internal":
+                    continue
+                vr_peer_type = self.get_type(name=f"NestedPaginated{vr_peer_schema.kind}")
+                vr_peer_filters = self.generate_filters(schema=vr_peer_schema, top_level=False)
+                node_type._meta.fields[vr.name] = graphene.Field(
+                    vr_peer_type, required=True, resolver=virtual_relationship_resolver, **vr_peer_filters
                 )
 
     def generate_query_mixin(self) -> type[object]:

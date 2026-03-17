@@ -644,6 +644,7 @@ class SchemaBranch:
         self.manage_profile_relationships()
         self.add_hierarchy_generic()
         self.add_hierarchy_node()
+        self.process_virtual_relationships()
 
     def process_validate(self) -> None:
         for validator in self.validators:
@@ -667,6 +668,7 @@ class SchemaBranch:
         self.validate_human_friendly_id()
         self.validate_required_relationships()
         self.validate_inherited_relationships_fields()
+        self.validate_virtual_relationships()
 
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
@@ -1141,9 +1143,10 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            if names_dup := duplicates(node.attribute_names + node.relationship_names):
+            vr_names = [vr.name for vr in node.virtual_relationships]
+            if names_dup := duplicates(node.attribute_names + node.relationship_names + vr_names):
                 raise ValueError(
-                    f"{node.kind}: Names of attributes and relationships must be unique : {names_dup}"
+                    f"{node.kind}: Names of attributes, relationships, and virtual relationships must be unique : {names_dup}"
                 ) from None
 
             if node.kind in INTERNAL_SCHEMA_NODE_KINDS:
@@ -1539,6 +1542,9 @@ class SchemaBranch:
             for item in node.relationships + node.attributes:
                 if not item.label:
                     return True
+            for vr in node.virtual_relationships:
+                if not vr.label:
+                    return True
             return False
 
         for name in self.all_names:
@@ -1558,6 +1564,10 @@ class SchemaBranch:
             for rel in node.relationships:
                 if not rel.label:
                     rel.label = format_label(rel.name)
+
+            for vr in node.virtual_relationships:
+                if not vr.label:
+                    vr.label = format_label(vr.name)
 
             self.set(name=name, schema=node)
 
@@ -2844,6 +2854,103 @@ class SchemaBranch:
                 updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
                 core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
+
+    def _find_relationship_for_virtual_path(self, kind: str, relationship_name: str) -> RelationshipSchema | None:
+        """Find a relationship on a kind, checking concrete implementations if the kind is a generic.
+
+        When a peer kind is a Generic (e.g., DcimInterface), a relationship may not exist
+        directly on that generic but may be available on concrete nodes that inherit from it
+        (via other generics they also inherit from). For example, InterfacePhysical inherits
+        from both DcimInterface and DcimEndpoint — so 'connector' from DcimEndpoint is
+        available on InterfacePhysical even though it's not on DcimInterface.
+        """
+        try:
+            schema = self.get(name=kind, duplicate=False)
+        except SchemaNotFoundError:
+            return None
+
+        # Direct lookup
+        rel = schema.get_relationship_or_none(name=relationship_name)
+        if rel:
+            return rel
+
+        # For generics, check if any concrete node that uses this generic has the relationship
+        if isinstance(schema, GenericSchema) and hasattr(schema, "used_by"):
+            for concrete_kind in schema.used_by or []:
+                try:
+                    concrete_schema = self.get(name=concrete_kind, duplicate=False)
+                except SchemaNotFoundError:
+                    continue
+                rel = concrete_schema.get_relationship_or_none(name=relationship_name)
+                if rel:
+                    return rel
+
+        return None
+
+    def process_virtual_relationships(self) -> None:
+        """Derive peer kind from path for all virtual relationships."""
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            if not node.virtual_relationships:
+                continue
+
+            node = node.duplicate()
+            for vr in node.virtual_relationships:
+                if vr.peer:
+                    continue
+                segments = vr.get_path_segments()
+                current_kind = node.kind
+                resolved = True
+                for segment in segments:
+                    rel = self._find_relationship_for_virtual_path(kind=current_kind, relationship_name=segment)
+                    if not rel:
+                        resolved = False
+                        break
+                    current_kind = rel.peer
+                if resolved:
+                    vr.peer = current_kind
+            self.set(name=name, schema=node)
+
+    def validate_virtual_relationships(self) -> None:
+        """Validate all virtual relationship definitions."""
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            for vr in node.virtual_relationships:
+                segments = vr.get_path_segments()
+
+                if len(segments) < 2:
+                    raise ValueError(
+                        f"{node.kind}: Virtual relationship '{vr.name}' path must have at least 2 segments, got {len(segments)}"
+                    )
+                if len(segments) > 10:
+                    raise ValueError(
+                        f"{node.kind}: Virtual relationship '{vr.name}' path must have at most 10 segments, got {len(segments)}"
+                    )
+
+                current_kind = node.kind
+                visited_kinds: set[str] = {current_kind}
+                for i, segment in enumerate(segments):
+                    rel = self._find_relationship_for_virtual_path(kind=current_kind, relationship_name=segment)
+                    if not rel:
+                        raise ValueError(
+                            f"{node.kind}: Virtual relationship '{vr.name}' path segment '{segment}' "
+                            f"is not a valid relationship on '{current_kind}'"
+                        )
+
+                    current_kind = rel.peer
+
+                    if i < len(segments) - 1 and current_kind in visited_kinds:
+                        raise ValueError(
+                            f"{node.kind}: Virtual relationship '{vr.name}' path creates a circular reference "
+                            f"through '{current_kind}'"
+                        )
+                    visited_kinds.add(current_kind)
+
+                if vr.peer and vr.peer != current_kind:
+                    raise ValueError(
+                        f"{node.kind}: Virtual relationship '{vr.name}' specifies peer '{vr.peer}' but "
+                        f"path resolves to '{current_kind}'"
+                    )
 
 
 def _format_display_label_component(component: str) -> str:

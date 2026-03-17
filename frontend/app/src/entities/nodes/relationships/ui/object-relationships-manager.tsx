@@ -29,7 +29,12 @@ export function ObjectRelationshipsManager({
   const relationshipDefinition = parentNodeSchema.relationships?.find(
     (r) => r?.name === relationshipName
   );
-  const { schema: relationshipSchema } = useSchema(relationshipDefinition?.peer);
+  const virtualRelationshipDefinition = parentNodeSchema.virtual_relationships?.find(
+    (vr) => vr?.name === relationshipName
+  );
+  const isVirtualRelationship = !relationshipDefinition && !!virtualRelationshipDefinition;
+  const peerKind = relationshipDefinition?.peer ?? virtualRelationshipDefinition?.peer;
+  const { schema: relationshipSchema } = useSchema(peerKind);
 
   if (!relationshipSchema) {
     toast(
@@ -48,13 +53,15 @@ export function ObjectRelationshipsManager({
 
   return (
     <ObjectTableProvider schema={relationshipSchema}>
-      <Row className="justify-end p-2">
-        <RelationshipsButtons
-          permission={permission}
-          schema={parentNodeSchema}
-          objectDetailsData={parentNodeData}
-        />
-      </Row>
+      {!isVirtualRelationship && (
+        <Row className="justify-end p-2">
+          <RelationshipsButtons
+            permission={permission}
+            schema={parentNodeSchema}
+            objectDetailsData={parentNodeData}
+          />
+        </Row>
+      )}
       <RelationshipTable
         parentKind={parentNodeSchema.kind!}
         parentId={parentNodeData.id}

@@ -8,7 +8,7 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
-import type { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema, VirtualRelationshipSchema } from "@/entities/schema/types";
 
 export interface ObjectDetailsTabProps extends LinkProps {
   isActive?: boolean;
@@ -37,7 +37,7 @@ export function ObjectDetailsTab({ isActive, className, ...props }: ObjectDetail
 export interface RelationshipTabProps extends Omit<LinkProps, "to"> {
   objectKind: string;
   objectId: string;
-  relationshipSchema: RelationshipSchema;
+  relationshipSchema: RelationshipSchema | VirtualRelationshipSchema;
 }
 
 export function RelationshipTab({

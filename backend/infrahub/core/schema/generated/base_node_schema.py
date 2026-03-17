@@ -8,6 +8,7 @@ from infrahub.core.constants import BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TC001
 from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TC001
+from infrahub.core.schema.virtual_relationship_schema import VirtualRelationshipSchema  # noqa: TC001
 
 
 class GeneratedBaseNodeSchema(HashableModel):
@@ -108,4 +109,9 @@ class GeneratedBaseNodeSchema(HashableModel):
     )
     relationships: list[RelationshipSchema] = Field(
         default_factory=list, description="Node Relationships", json_schema_extra={"update": "not_applicable"}
+    )
+    virtual_relationships: list[VirtualRelationshipSchema] = Field(
+        default_factory=list,
+        description="Virtual relationships that traverse multi-hop paths to collect target nodes",
+        json_schema_extra={"update": "not_applicable"},
     )

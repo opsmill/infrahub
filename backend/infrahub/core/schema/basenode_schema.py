@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema.virtual_relationship_schema import VirtualRelationshipSchema
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
@@ -68,7 +69,7 @@ def _json_schema_extra(schema: JsonDict) -> None:
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
-    _exclude_from_hash: list[str] = ["attributes", "relationships"]
+    _exclude_from_hash: list[str] = ["attributes", "relationships", "virtual_relationships"]
     _sort_by: list[str] = ["namespace", "name"]
 
     model_config = ConfigDict(extra="forbid", json_schema_extra=_json_schema_extra)
@@ -135,6 +136,14 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
 
+    @field_validator("virtual_relationships", mode="before")
+    @classmethod
+    def coerce_virtual_relationships_none(cls, value: Any) -> Any:
+        """Coerce None to empty list — data loaded from DB may pass None for missing fields."""
+        if value is None:
+            return []
+        return value
+
     @field_validator("attributes", mode="before")
     @classmethod
     def set_attribute_type(cls, raw_attributes: Any) -> Any:
@@ -169,13 +178,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def to_dict(self) -> dict:
         data = self.model_dump(
-            exclude_unset=True, exclude_none=True, exclude_defaults=True, exclude={"attributes", "relationships"}
+            exclude_unset=True,
+            exclude_none=True,
+            exclude_defaults=True,
+            exclude={"attributes", "relationships", "virtual_relationships"},
         )
         for field_name, value in data.items():
             if isinstance(value, Enum):
                 data[field_name] = value.value
         data["attributes"] = [attr.to_dict() for attr in self.attributes]
         data["relationships"] = [rel.to_dict() for rel in self.relationships]
+        if self.virtual_relationships:
+            data["virtual_relationships"] = [vr.to_dict() for vr in self.virtual_relationships]
         return data
 
     def get_hash(self, display_values: bool = False) -> str:
@@ -189,6 +203,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         for rel_name in sorted(self.relationship_names):
             md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
+
+        for vr_name in sorted(self.virtual_relationship_names):
+            md5hash.update(self.get_virtual_relationship(name=vr_name).get_hash(display_values=display_values).encode())
 
         return md5hash.hexdigest()
 
@@ -445,6 +462,22 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     @property
     def local_relationship_names(self) -> list[str]:
         return [item.name for item in self.local_relationships]
+
+    @property
+    def virtual_relationship_names(self) -> list[str]:
+        return [item.name for item in self.virtual_relationships]
+
+    def get_virtual_relationship(self, name: str) -> VirtualRelationshipSchema:
+        for item in self.virtual_relationships:
+            if item.name == name:
+                return item
+        raise ValueError(f"Unable to find the virtual relationship {name}")
+
+    def get_virtual_relationship_or_none(self, name: str) -> VirtualRelationshipSchema | None:
+        for item in self.virtual_relationships:
+            if item.name == name:
+                return item
+        return None
 
     @property
     def unique_attributes(self) -> list[AttributeSchema]:

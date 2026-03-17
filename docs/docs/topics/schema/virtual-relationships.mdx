@@ -1,0 +1,108 @@
+---
+title: Virtual Relationships
+---
+
+# Virtual Relationships
+
+Virtual relationships are computed, read-only relationships that traverse multi-hop paths in the graph. They let you expose indirect connections between nodes without duplicating data or creating redundant direct relationships.
+
+For example, a `Rack` that contains `Bay` objects, which contain `LineCard` objects, which contain `Module` objects, which contain `Interface` objects, can expose a virtual relationship that collects all `Interface` nodes reachable through that path -- directly on the `Rack`.
+
+## Defining virtual relationships in schema
+
+Add a `virtual_relationships` key to any node definition. Each entry requires:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Unique name for the virtual relationship on this node. |
+| `label` | string | no | Human-readable label for the UI. |
+| `description` | string | no | Description of what this virtual relationship represents. |
+| `path` | string | yes | Double-underscore separated chain of relationship names to traverse. |
+
+### Path notation
+
+The `path` field uses double-underscore (`__`) notation to chain relationship names from the source node to the target:
+
+```
+bays__line_cards__modules__interfaces
+```
+
+Each segment is the name of a relationship defined on the node reached by the previous segment. The first segment is a relationship on the node that owns the virtual relationship.
+
+### Constraints
+
+- **Minimum segments:** 2 (a single-hop path is just a regular relationship).
+- **Maximum segments:** 10.
+- **No circular references:** The path must not loop back to the originating node type.
+
+## Example schema
+
+```yaml
+nodes:
+  - name: Rack
+    namespace: Infra
+    attributes:
+      - name: name
+        kind: Text
+    relationships:
+      - name: bays
+        peer: InfraBay
+        cardinality: many
+    virtual_relationships:
+      - name: all_interfaces
+        label: "All Interfaces"
+        description: "Every interface reachable through bays, line cards, and modules."
+        path: "bays__line_cards__modules__interfaces"
+```
+
+## Querying via GraphQL
+
+Virtual relationships appear in GraphQL exactly like regular many-cardinality relationships. You get `count`, `edges`, and full support for filtering and pagination.
+
+```graphql
+query {
+  InfraRack(name__value: "rack-01") {
+    edges {
+      node {
+        name {
+          value
+        }
+        all_interfaces {
+          count
+          edges {
+            node {
+              name {
+                value
+              }
+              speed {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+You can apply the same filters and pagination arguments available on standard many-relationships:
+
+```graphql
+all_interfaces(name__value: "eth0", limit: 10, offset: 0) {
+  count
+  edges {
+    node {
+      name { value }
+    }
+  }
+}
+```
+
+## Read-only
+
+Virtual relationships are strictly read-only. You cannot create, update, or delete edges through a virtual relationship. All mutations must go through the underlying concrete relationships that form the path.
+
+## Branch support
+
+Virtual relationships work across branches. When you query a virtual relationship on a specific branch, each hop in the path is resolved using that branch's state, so the result reflects the branched view of every intermediate relationship.

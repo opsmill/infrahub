@@ -11,6 +11,8 @@ export type ModelSchema = GenericSchema | NodeSchema | ProfileSchema | TemplateS
 
 export type RelationshipSchema = components["schemas"]["RelationshipSchema"];
 
+export type VirtualRelationshipSchema = components["schemas"]["VirtualRelationshipSchema"];
+
 export type AttributeSchema = components["schemas"]["AttributeSchema-Output"];
 
 export type AttributeKind = (typeof ATTRIBUTE_KIND)[keyof typeof ATTRIBUTE_KIND];

@@ -22,6 +22,7 @@ from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
 from .template_schema import TemplateSchema
+from .virtual_relationship_schema import VirtualRelationshipSchema
 
 NonGenericSchemaTypes = NodeSchema | ProfileSchema | TemplateSchema
 MainSchemaTypes = NonGenericSchemaTypes | GenericSchema
@@ -36,6 +37,7 @@ class BaseNodeExtensionSchema(HashableModel):
     kind: str
     attributes: list[AttributeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
+    virtual_relationships: list[VirtualRelationshipSchema] = Field(default_factory=list)
 
 
 class NodeExtensionSchema(BaseNodeExtensionSchema):
@@ -159,7 +161,7 @@ class SchemaRoot(BaseModel):
         for node in self.nodes + self.generics:
             if not node.id:
                 node.id = str(uuid.uuid4())
-            for item in node.relationships + node.attributes:
+            for item in node.relationships + node.attributes + node.virtual_relationships:
                 if not item.id:
                     item.id = str(uuid.uuid4())
 
@@ -188,6 +190,7 @@ __all__ = [
     "SchemaAttributePathValue",
     "SchemaRoot",
     "TemplateSchema",
+    "VirtualRelationshipSchema",
     "core_models",
     "internal_schema",
 ]
