@@ -1,0 +1,142 @@
+# GraphQL Contract: Virtual Relationships
+#
+# Virtual relationships appear as fields on node types, using the same
+# NestedPaginated/NestedEdged wrapper types as regular many-cardinality
+# relationships. The key difference: no "properties" on edges (no stored
+# relationship metadata).
+
+# ============================================================
+# Example: Device with virtual relationship "all_interfaces"
+# ============================================================
+
+# The Device type gets a new field generated from the virtual relationship
+type InfraDevice {
+  # ... existing attributes and relationships ...
+
+  # Virtual relationship field (auto-generated)
+  # Uses same NestedPaginated wrapper as regular many-cardinality relationships
+  all_interfaces(
+    offset: Int
+    limit: Int
+    order: OrderInput
+    ids: [ID]
+    # All filters from the target kind (InfraInterface) are available:
+    name__value: String
+    name__values: [String]
+    enabled__value: Boolean
+    # etc.
+  ): NestedPaginatedInfraInterface!
+
+  affected_services(
+    offset: Int
+    limit: Int
+    order: OrderInput
+    ids: [ID]
+  ): NestedPaginatedInfraService!
+}
+
+# The edge type for virtual relationships omits "properties" and
+# "relationship_metadata" since there is no stored relationship node
+type NestedEdgedInfraInterface {
+  node: InfraInterface
+  node_metadata: InfrahubNodeMetadata
+  # NOTE: "properties" field is NOT present for virtual relationships
+  # NOTE: "relationship_metadata" field is NOT present for virtual relationships
+}
+
+type NestedPaginatedInfraInterface {
+  count: Int!
+  edges: [NestedEdgedInfraInterface!]!
+  permissions: PaginatedObjectPermission!
+}
+
+# ============================================================
+# Example Queries
+# ============================================================
+
+# Query 1: Get all interfaces of a device via virtual relationship
+# Same syntax as querying a regular relationship
+query GetDeviceAllInterfaces {
+  InfraDevice(ids: ["device-uuid"]) {
+    edges {
+      node {
+        id
+        hostname { value }
+        all_interfaces {
+          count
+          edges {
+            node {
+              id
+              name { value }
+              enabled { value }
+              display_label
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Query 2: Filtered virtual relationship
+query GetDeviceEnabledInterfaces {
+  InfraDevice(ids: ["device-uuid"]) {
+    edges {
+      node {
+        all_interfaces(enabled__value: true, limit: 20, offset: 0) {
+          count
+          edges {
+            node {
+              id
+              name { value }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Query 3: Impact analysis - affected services
+query GetDeviceAffectedServices {
+  InfraDevice(ids: ["device-uuid"]) {
+    edges {
+      node {
+        hostname { value }
+        affected_services {
+          count
+          edges {
+            node {
+              id
+              display_label
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Query 4: Empty result (device with no interfaces)
+# Returns count: 0, edges: [] — NOT an error
+query GetEmptyVirtualRelationship {
+  InfraDevice(ids: ["empty-device-uuid"]) {
+    edges {
+      node {
+        all_interfaces {
+          count  # Returns 0
+          edges  # Returns []
+        }
+      }
+    }
+  }
+}
+
+# ============================================================
+# Schema Introspection
+# ============================================================
+
+# Virtual relationships are visible in GraphQL introspection
+# as regular fields on the node type. No special introspection
+# is needed — they behave identically to many-cardinality
+# relationship fields from the consumer's perspective.

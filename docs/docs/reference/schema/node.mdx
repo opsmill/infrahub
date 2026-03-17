@@ -36,6 +36,7 @@ Below is the list of all available options to define a Node in the schema
 | [**parent**](#parent) | Attribute | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. | False |
 | [**state**](#state) | Attribute | Expected state of the node/generic after loading the schema | False |
 | [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
+| [**virtual_relationships**](#virtual_relationships) | Attribute | Virtual relationships that traverse multi-hop paths to collect target nodes | False |
 | [**attributes**](#attributes) | Relationship | List of supported Attributes for the Node. | False |
 | [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
 
@@ -281,6 +282,17 @@ Below is the list of all available options to define a Node in the schema
 | **Name** | uniqueness_constraints |
 | **Kind** | `List` |
 | **Description** | List of multi-element uniqueness constraints that can combine relationships and attributes |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### virtual_relationships
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | virtual_relationships |
+| **Kind** | `List` |
+| **Description** | Virtual relationships that traverse multi-hop paths to collect target nodes |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |

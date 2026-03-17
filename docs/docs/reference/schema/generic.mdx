@@ -33,6 +33,7 @@ Below is the list of all available options to define a Generic in the schema
 | [**state**](#state) | Attribute | Expected state of the node/generic after loading the schema | False |
 | [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
 | [**used_by**](#used_by) | Attribute | List of Nodes that are referencing this Generic | False |
+| [**virtual_relationships**](#virtual_relationships) | Attribute | Virtual relationships that traverse multi-hop paths to collect target nodes | False |
 | [**attributes**](#attributes) | Relationship |  | False |
 | [**relationships**](#relationships) | Relationship |  | False |
 
@@ -245,6 +246,17 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | used_by |
 | **Kind** | `List` |
 | **Description** | List of Nodes that are referencing this Generic |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### virtual_relationships
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | virtual_relationships |
+| **Kind** | `List` |
+| **Description** | Virtual relationships that traverse multi-hop paths to collect target nodes |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
