@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import ujson
 from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
@@ -9,11 +9,12 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import KVTTL
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
-from ..models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
+from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
 if TYPE_CHECKING:
     from httpx import Response
@@ -36,9 +37,9 @@ async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict
     return response
 
 
-KIND_MAP: dict[str, Literal["static", "environment"]] = {
-    "CoreStaticKeyValue": "static",
-    "CoreEnvKeyValue": "environment",
+KIND_MAP: dict[str, HeaderKind] = {
+    InfrahubKind.STATICKEYVALUE: HeaderKind.STATIC,
+    InfrahubKind.ENVKEYVALUE: HeaderKind.ENVIRONMENT,
 }
 
 

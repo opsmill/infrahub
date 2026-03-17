@@ -7,7 +7,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_PROCESS, WORKER_POOLS
+from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS, WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -93,6 +93,7 @@ async def webhook_deployment(db: InfrahubDatabase, prefect_client: PrefectClient
     await setup_worker_pools(client=prefect_client)
     await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
     await WEBHOOK_CONFIGURE.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_INVALIDATE_HEADERS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
 
 @pytest.fixture(scope="class")

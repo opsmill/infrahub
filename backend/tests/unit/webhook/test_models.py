@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 
 from infrahub.core.timestamp import Timestamp
-from infrahub.webhook.models import CustomWebhook, StandardWebhook, WebhookHeader
+from infrahub.webhook.models import CustomWebhook, HeaderKind, StandardWebhook, WebhookHeader
 
 
 def test_standard_webhook() -> None:
@@ -52,7 +52,7 @@ def test_assign_headers_with_static_custom_header() -> None:
         url="http://test.com",
         event_type="test",
         validate_certificates=True,
-        custom_headers=[WebhookHeader(key="Authorization", value="Bearer token", kind="static")],
+        custom_headers=[WebhookHeader(key="Authorization", value="Bearer token", kind=HeaderKind.STATIC)],
     )
     webhook._assign_headers()
 
@@ -69,7 +69,7 @@ def test_custom_header_overrides_default() -> None:
         url="http://test.com",
         event_type="test",
         validate_certificates=True,
-        custom_headers=[WebhookHeader(key="Content-Type", value="text/plain", kind="static")],
+        custom_headers=[WebhookHeader(key="Content-Type", value="text/plain", kind=HeaderKind.STATIC)],
     )
     webhook._assign_headers()
 
@@ -80,8 +80,8 @@ def test_custom_header_overrides_default() -> None:
 def test_cache_roundtrip_preserves_custom_headers() -> None:
     """to_cache()/from_cache() roundtrip preserves custom_headers."""
     headers = [
-        WebhookHeader(key="X-Source", value="infrahub", kind="static"),
-        WebhookHeader(key="Y-Source", value="opsmill", kind="static"),
+        WebhookHeader(key="X-Source", value="infrahub", kind=HeaderKind.STATIC),
+        WebhookHeader(key="Y-Source", value="opsmill", kind=HeaderKind.STATIC),
     ]
     webhook = StandardWebhook(
         name="test",
@@ -108,7 +108,7 @@ def test_assign_headers_resolves_environment_variable() -> None:
         url="http://test.com",
         event_type="test",
         validate_certificates=True,
-        custom_headers=[WebhookHeader(key="X-API-Key", value="MY_API_KEY", kind="environment")],
+        custom_headers=[WebhookHeader(key="X-API-Key", value="MY_API_KEY", kind=HeaderKind.ENVIRONMENT)],
     )
 
     with patch.dict("os.environ", {"MY_API_KEY": "secret123"}):
@@ -127,8 +127,8 @@ def test_assign_headers_skips_missing_environment_variable(caplog: pytest.LogCap
         event_type="test",
         validate_certificates=True,
         custom_headers=[
-            WebhookHeader(key="X-API-Key", value="MISSING_VAR", kind="environment"),
-            WebhookHeader(key="X-Source", value="infrahub", kind="static"),
+            WebhookHeader(key="X-API-Key", value="MISSING_VAR", kind=HeaderKind.ENVIRONMENT),
+            WebhookHeader(key="X-Source", value="infrahub", kind=HeaderKind.STATIC),
         ],
     )
 
