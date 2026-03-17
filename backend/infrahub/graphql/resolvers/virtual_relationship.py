@@ -167,8 +167,12 @@ async def virtual_relationship_resolver(
     relationship_schemas = _resolve_path_relationship_schemas(db=db, node_schema=node_schema, vr_schema=vr_schema)
     filters = _build_filters(kwargs)
     peer_ids = await _get_traversal_peer_ids(
-        db=db, source_id=source_id, vr_schema=vr_schema,
-        relationship_schemas=relationship_schemas, branch=branch, at=at,
+        db=db,
+        source_id=source_id,
+        vr_schema=vr_schema,
+        relationship_schemas=relationship_schemas,
+        branch=branch,
+        at=at,
     )
 
     if not peer_ids:
@@ -177,8 +181,14 @@ async def virtual_relationship_resolver(
 
     if filters:
         nodes_list, filtered_count = await _fetch_nodes_filtered(
-            db=db, peer_ids=peer_ids, vr_schema=vr_schema,
-            filters=filters, branch=branch, at=at, limit=limit, offset=offset,
+            db=db,
+            peer_ids=peer_ids,
+            vr_schema=vr_schema,
+            filters=filters,
+            branch=branch,
+            at=at,
+            limit=limit,
+            offset=offset,
         )
         if "count" in fields:
             response["count"] = filtered_count
@@ -187,13 +197,22 @@ async def virtual_relationship_resolver(
     else:
         if "count" in fields:
             response["count"] = await _get_traversal_count(
-                db=db, source_id=source_id, vr_schema=vr_schema,
-                relationship_schemas=relationship_schemas, branch=branch, at=at,
+                db=db,
+                source_id=source_id,
+                vr_schema=vr_schema,
+                relationship_schemas=relationship_schemas,
+                branch=branch,
+                at=at,
             )
         if not node_fields:
             return response
         nodes_map, ordered_ids = await _fetch_nodes_by_ids(
-            db=db, peer_ids=peer_ids, branch=branch, at=at, limit=limit, offset=offset,
+            db=db,
+            peer_ids=peer_ids,
+            branch=branch,
+            at=at,
+            limit=limit,
+            offset=offset,
         )
 
     entries = []
@@ -203,7 +222,9 @@ async def virtual_relationship_resolver(
             if not node:
                 continue
             node_data = await node.to_graphql(
-                db=dbs, fields=node_fields, related_node_ids=graphql_context.related_node_ids,
+                db=dbs,
+                fields=node_fields,
+                related_node_ids=graphql_context.related_node_ids,
             )
             entry: dict[str, Any] = {"node": node_data}
             if edges.get("node_metadata"):
