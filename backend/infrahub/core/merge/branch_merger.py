@@ -10,10 +10,9 @@ from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import MergeFailedError, ValidationError
+from infrahub.git.models import GitRepositoryMerge
 from infrahub.log import get_logger
-
-from ..git.models import GitRepositoryMerge
-from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -152,27 +151,27 @@ class BranchMerger:
         self,
         at: str | Timestamp | None = None,
     ) -> EnrichedDiffRoot:
-        """Merge the current branch into main."""
+        """Perform the merge. Caller must hold the global merge lock."""
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
-
         log.info("Updating diff for merge")
         await self.diff_coordinator.update_branch_diff(
             base_branch=self.destination_branch, diff_branch=self.source_branch
         )
         log.info("Diff updated for merge")
 
-        log.info("Acquiring lock for merge")
+        log.info("Acquiring diff lock for merge")
         async with self.diff_locker.acquire_lock(
             target_branch_name=self.destination_branch.name,
             source_branch_name=self.source_branch.name,
             is_incremental=False,
         ):
-            log.info("Lock acquired for merge")
+            log.info("Diff lock acquired for merge")
             try:
                 errors: list[str] = []
                 async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
-                    diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+                    diff_branch_name=self.source_branch.name,
+                    tracking_id=BranchTrackingId(name=self.source_branch.name),
                 ):
                     if conflict.selected_branch is None or conflict.resolvable is False:
                         errors.append(conflict_path)
