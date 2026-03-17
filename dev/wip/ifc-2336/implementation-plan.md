@@ -6,7 +6,7 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 
 **Spec**: [dev/specs/infp-389-branch-merge-delete/spec.md](../../specs/infp-389-branch-merge-delete/spec.md)
 **Jira**: INFP-389
-**Scope**: Backend only
+**Scope**: Backend + docs + frontend types (generated)
 
 ---
 
@@ -17,9 +17,9 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 | 1     | Configuration settings                  | P1       | ✅ Done     | 3 unit tests         |
 | 2     | Auto-delete Infrahub branch after merge | P1       | ✅ Done     | 4 functional tests   |
 | 3     | Git branch deletion workflow            | P2       | ✅ Done     | 7 component+functional tests |
-| 4     | Manual delete with Git option           | P3       | ⬜ Todo     | 2 unit tests         |
+| 4     | Manual delete with Git option           | P3       | ✅ Done     | 2 functional tests   |
 
-**Total Tests:** 12 tests (5 unit + 4 functional + 3 unit)
+**Total Tests:** 16 tests (3 unit + 4 functional + 7 component+functional + 2 functional)
 
 ---
 

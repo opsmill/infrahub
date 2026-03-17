@@ -208,6 +208,11 @@ type BranchDelete {
   task: TaskInfo
 }
 
+input BranchDeleteInput {
+  delete_from_git: Boolean = false
+  name: String
+}
+
 type BranchDeletedEvent implements EventNodeInterface {
   """The account ID that triggered the event."""
   account_id: String
@@ -8564,7 +8569,7 @@ type MacAddress implements AttributeInterface {
 
 type Mutation {
   BranchCreate(background_execution: Boolean @deprecated(reason: "Please use `wait_until_completion` instead"), context: ContextInput, data: BranchCreateInput!, wait_until_completion: Boolean): BranchCreate
-  BranchDelete(context: ContextInput, data: BranchNameInput!, wait_until_completion: Boolean): BranchDelete
+  BranchDelete(context: ContextInput, data: BranchDeleteInput!, wait_until_completion: Boolean): BranchDelete
   BranchMerge(context: ContextInput, data: BranchNameInput!, wait_until_completion: Boolean): BranchMerge
   BranchRebase(context: ContextInput, data: BranchNameInput!, wait_until_completion: Boolean): BranchRebase
   BranchUpdate(context: ContextInput, data: BranchUpdateInput!): BranchUpdate
