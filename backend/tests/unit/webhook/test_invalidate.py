@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from infrahub.webhook.query import KeyValueWebhookResult
 from infrahub.webhook.tasks.invalidate import invalidate_webhook_headers
 
 if TYPE_CHECKING:
@@ -41,6 +40,7 @@ def _patch_prefect_logger() -> Any:
 
 async def test_skips_when_no_event_data(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+        # Act
         await invalidate_webhook_headers.fn(event_type=None, event_data=None)
 
     assert "No KeyValue ID provided, skipping" in caplog.text
@@ -48,27 +48,30 @@ async def test_skips_when_no_event_data(caplog: pytest.LogCaptureFixture) -> Non
 
 async def test_skips_when_no_node_id_in_event_data(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+        # Act
         await invalidate_webhook_headers.fn(event_type="infrahub.node.updated", event_data={"node_id": None})
 
     assert "No KeyValue ID provided, skipping" in caplog.text
 
 
 @patch("infrahub.webhook.tasks.invalidate.invalidate_webhook_cache", new_callable=AsyncMock)
-@patch("infrahub.webhook.tasks.invalidate.KeyValueGetWebhooksQuery")
+@patch("infrahub.webhook.tasks.invalidate.NodeManager")
 @patch("infrahub.webhook.tasks.invalidate.get_database")
 async def test_invalidates_when_webhooks_found(
     mock_get_database: AsyncMock,
-    mock_query_cls: MagicMock,
+    mock_node_manager: MagicMock,
     mock_invalidate: AsyncMock,
 ) -> None:
     mock_db, _mock_session = _mock_database_with_session()
     mock_get_database.return_value = mock_db
 
-    mock_query = MagicMock()
-    mock_query.get_data.return_value = KeyValueWebhookResult(webhook_uuids=frozenset({"wh-1", "wh-2"}))
-    mock_query.execute = AsyncMock()
-    mock_query_cls.init = AsyncMock(return_value=mock_query)
+    mock_wh1 = MagicMock()
+    mock_wh1.id = "wh-1"
+    mock_wh2 = MagicMock()
+    mock_wh2.id = "wh-2"
+    mock_node_manager.query = AsyncMock(return_value=[mock_wh1, mock_wh2])
 
+    # Act
     await invalidate_webhook_headers.fn(
         event_type="infrahub.node.updated",
         event_data={"node_id": "kv-123"},
@@ -78,23 +81,21 @@ async def test_invalidates_when_webhooks_found(
 
 
 @patch("infrahub.webhook.tasks.invalidate.invalidate_webhook_cache", new_callable=AsyncMock)
-@patch("infrahub.webhook.tasks.invalidate.KeyValueGetWebhooksQuery")
+@patch("infrahub.webhook.tasks.invalidate.NodeManager")
 @patch("infrahub.webhook.tasks.invalidate.get_database")
 async def test_logs_when_no_webhooks_found(
     mock_get_database: AsyncMock,
-    mock_query_cls: MagicMock,
+    mock_node_manager: MagicMock,
     mock_invalidate: AsyncMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     mock_db, _mock_session = _mock_database_with_session()
     mock_get_database.return_value = mock_db
 
-    mock_query = MagicMock()
-    mock_query.get_data.return_value = KeyValueWebhookResult(webhook_uuids=frozenset())
-    mock_query.execute = AsyncMock()
-    mock_query_cls.init = AsyncMock(return_value=mock_query)
+    mock_node_manager.query = AsyncMock(return_value=[])
 
     with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
+        # Act
         await invalidate_webhook_headers.fn(
             event_type="infrahub.node.updated",
             event_data={"node_id": "kv-456"},

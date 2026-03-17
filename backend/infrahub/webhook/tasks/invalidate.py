@@ -6,9 +6,10 @@ from prefect import flow
 from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
 
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.workers.dependencies import get_database
 
-from ..query import KeyValueGetWebhooksQuery
 from .cache import invalidate_webhook_cache
 
 if TYPE_CHECKING:
@@ -54,11 +55,15 @@ async def invalidate_webhook_headers(
     database = await get_database()
 
     async with database.start_session(read_only=True) as db:
-        query = await KeyValueGetWebhooksQuery.init(db=db, keyvalue_id=keyvalue_id)
-        await query.execute(db=db)
-        result = query.get_data()
+        webhooks = await NodeManager.query(
+            db=db,
+            schema=InfrahubKind.WEBHOOK,
+            filters={"headers__ids": [keyvalue_id]},
+            branch_agnostic=True,
+        )
+        webhook_uuids = frozenset(w.id for w in webhooks)
 
-    if result.webhook_uuids:
-        await invalidate_webhook_cache(webhook_ids=result.webhook_uuids)
+    if webhook_uuids:
+        await invalidate_webhook_cache(webhook_ids=webhook_uuids)
     else:
         log.info(f"No webhooks reference KeyValue {keyvalue_id}")
