@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, assert_never
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -137,13 +137,16 @@ class WebhookHeader(BaseModel):
 
         Raises WebhookHeaderResolutionError if the value cannot be resolved.
         """
-        if self.kind == HeaderKind.STATIC:
-            return self.value
-
-        resolved = os.environ.get(self.value)
-        if resolved is None:
-            raise WebhookHeaderResolutionError(f"Environment variable '{self.value}' not found")
-        return resolved
+        match self.kind:
+            case HeaderKind.STATIC:
+                return self.value
+            case HeaderKind.ENVIRONMENT:
+                resolved = os.environ.get(self.value)
+                if resolved is None:
+                    raise WebhookHeaderResolutionError(f"Environment variable '{self.value}' not found")
+                return resolved
+            case _:
+                assert_never(self.kind)
 
 
 class Webhook(BaseModel):
