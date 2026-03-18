@@ -3,10 +3,14 @@
 name: 'Chromatic Publish'
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/packages/ui/**'
   push:
     branches:
       - develop
       - stable
+      - release-*
     paths:
       - 'frontend/packages/ui/**'
 
