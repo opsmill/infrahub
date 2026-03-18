@@ -1,5 +1,4 @@
 import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
@@ -20,7 +19,6 @@ import {
 } from "@/shared/config/constants";
 
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
@@ -95,7 +93,6 @@ interface ArtifactContentDiffProps {
 
 export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
@@ -144,18 +141,15 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
 
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
-  const approverId = auth?.data?.sub;
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
   };
 
   const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId || !id) {
+    if (!comment || !id) {
       return;
     }
-
-    const newDate = formatISO(new Date());
 
     const lineNumber = displayAddComment.isNormal
       ? displayAddComment.side === "new"
@@ -166,12 +160,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     const newThread = {
       change: {
         id: proposedChangeId,
-      },
-      created_at: {
-        value: newDate,
-      },
-      created_by: {
-        id: approverId,
       },
       resolved: {
         value: false,
@@ -199,12 +187,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,

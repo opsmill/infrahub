@@ -31,6 +31,12 @@ query {
 
         comments {
           edges {
+            node_metadata {
+              created_at
+              created_by {
+                display_label
+              }
+            }
             node {
               id
 
@@ -38,15 +44,6 @@ query {
                 value
               }
 
-              created_by {
-                node {
-                  display_label
-                }
-              }
-
-              created_at {
-                value
-              }
             }
           }
         }
