@@ -1,0 +1,52 @@
+---
+# .github/workflows/bug-agent-analyst.yml
+# Triggered when someone posts "/bug-analyze" on a bug issue.
+# Responsibility: root cause analysis + failing replication test.
+# Outputs a structured comment that the bug fixer agent will read.
+
+name: "Bug analyst agent"
+
+"on":
+  issue_comment:
+    types: [created]
+
+jobs:
+  analyse:
+    if: |
+      contains(github.event.comment.body, '/bug-analyze') &&
+      contains(github.event.issue.labels.*.name, 'type/bug') &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read prompt
+        id: prompt
+        run: |
+          echo "PROMPT<<EOF" >> $GITHUB_OUTPUT
+          cat .github/bug-agent-pipeline/analyst.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - uses: anthropics/claude-code-action@6062f3709600659be5e47fcddf2cf76993c235c2 # main 2026-03-23
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # model: claude-opus-4-6
+          prompt: |
+            ${{ steps.prompt.outputs.PROMPT }}
+
+            ## Bug report
+            Title: ${{ github.event.issue.title }}
+            Body:
+            ${{ github.event.issue.body }}
+            Reporter: ${{ github.event.issue.user.login }}
+            URL: ${{ github.event.issue.html_url }}

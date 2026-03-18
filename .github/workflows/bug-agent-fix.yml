@@ -1,0 +1,48 @@
+---
+# .github/workflows/bug-agent-fix.yml
+# Triggered when the bug analyst agent posts its analysis comment (detected via the AGENT_ANALYSIS_COMPLETE marker).
+# Responsibility: implement the fix and open a draft PR.
+
+name: "Bug fixer agent"
+
+"on":
+  issue_comment:
+    types: [created]
+
+jobs:
+  fix:
+    if: |
+      contains(github.event.comment.body, 'AGENT_ANALYSIS_COMPLETE') &&
+      contains(github.event.issue.labels.*.name, 'type/bug')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read prompt
+        id: prompt
+        run: |
+          echo "PROMPT<<EOF" >> $GITHUB_OUTPUT
+          cat .github/bug-agent-pipeline/fixer.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - uses: anthropics/claude-code-action@main
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # model: claude-opus-4-6
+          prompt: |
+            ${{ steps.prompt.outputs.PROMPT }}
+
+            ## Original bug report
+            Title: ${{ github.event.issue.title }}
+            URL: ${{ github.event.issue.html_url }}
+            Issue number: ${{ github.event.issue.number }}
+
+            ## Analysis from the bug analyst agent
+            ${{ github.event.comment.body }}
