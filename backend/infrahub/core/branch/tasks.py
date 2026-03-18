@@ -340,7 +340,7 @@ async def _do_merge_branch(
             diff_repository=diff_repository,
             source_branch=obj,
             diff_locker=DiffLocker(),
-            workflow=get_workflow(),
+            workflow=workflow,
         )
         branch_diff = await merger.merge(at=merge_at)
 
@@ -388,7 +388,7 @@ async def _do_merge_branch(
         target_branch_name=registry.default_branch,
     )
     if ipam_node_details:
-        await get_workflow().submit_workflow(
+        await workflow.submit_workflow(
             workflow=IPAM_RECONCILIATION,
             context=context,
             parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
@@ -396,7 +396,6 @@ async def _do_merge_branch(
     # -------------------------------------------------------------
     # remove tracking ID from the diff because there is no diff after the merge
     # -------------------------------------------------------------
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
     await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
     await diff_repository.freeze_diffs_for_branch(branch_name=obj.name)
 
