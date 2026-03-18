@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.webhook.constants import CACHE_KEY_PREFIX
 from infrahub.webhook.tasks.invalidate import invalidate_webhook_headers
 from tests.adapters.cache import MemoryCache
 
@@ -66,12 +67,12 @@ class TestCacheInvalidationFlow:
         webhook = await _create_webhook(db, default_branch, "hook-1", headers=[kv])
 
         cache = MemoryCache()
-        await cache.set(key=f"webhook:{webhook.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook.id}", value='{"cached": true}')
 
         # Act
         await _run_invalidation(db, cache, kv.id)
 
-        assert await cache.get(f"webhook:{webhook.id}") is None
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{webhook.id}") is None
 
     async def test_returns_empty_for_unlinked_keyvalue(
         self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
@@ -80,12 +81,12 @@ class TestCacheInvalidationFlow:
         kv = await _create_keyvalue(db, default_branch, "x-unused", "X-Unused", "unused")
 
         cache = MemoryCache()
-        await cache.set(key="webhook:some-id", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:some-id", value='{"cached": true}')
 
         # Act
         await _run_invalidation(db, cache, kv.id)
 
-        assert await cache.get("webhook:some-id") == '{"cached": true}'
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:some-id") == '{"cached": true}'
 
     async def test_invalidate_removes_linked_webhook_cache_keys(
         self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
@@ -96,16 +97,16 @@ class TestCacheInvalidationFlow:
         wh2 = await _create_webhook(db, default_branch, "hook-y", headers=[kv])
 
         cache = MemoryCache()
-        await cache.set(key=f"webhook:{wh1.id}", value='{"cached": true}')
-        await cache.set(key=f"webhook:{wh2.id}", value='{"cached": true}')
-        await cache.set(key="webhook:unrelated-id", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{wh1.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{wh2.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:unrelated-id", value='{"cached": true}')
 
         # Act
         await _run_invalidation(db, cache, kv.id)
 
-        assert await cache.get(f"webhook:{wh1.id}") is None
-        assert await cache.get(f"webhook:{wh2.id}") is None
-        assert await cache.get("webhook:unrelated-id") == '{"cached": true}'
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{wh1.id}") is None
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{wh2.id}") is None
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:unrelated-id") == '{"cached": true}'
 
     async def test_invalidates_webhook_with_multiple_headers(
         self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
@@ -116,12 +117,12 @@ class TestCacheInvalidationFlow:
         webhook = await _create_webhook(db, default_branch, "hook-multi", headers=[kv1, kv2])
 
         cache = MemoryCache()
-        await cache.set(key=f"webhook:{webhook.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook.id}", value='{"cached": true}')
 
         # Act
         await _run_invalidation(db, cache, kv1.id)
 
-        assert await cache.get(f"webhook:{webhook.id}") is None
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{webhook.id}") is None
 
     async def test_excluded_when_all_headers_deleted(
         self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
@@ -135,14 +136,14 @@ class TestCacheInvalidationFlow:
         webhook_refreshed = await NodeManager.get_one(db=db, branch=default_branch, id=webhook.id)
 
         cache = MemoryCache()
-        await cache.set(key=f"webhook:{webhook.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook.id}", value='{"cached": true}')
 
         await webhook_refreshed.headers.delete(db=db)
 
         # Act
         await _run_invalidation(db, cache, kv.id)
 
-        assert await cache.get(f"webhook:{webhook.id}") == '{"cached": true}'
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{webhook.id}") == '{"cached": true}'
 
     async def test_partial_removal_still_finds_remaining(
         self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
@@ -157,13 +158,13 @@ class TestCacheInvalidationFlow:
         wh_removed_refreshed = await NodeManager.get_one(db=db, branch=default_branch, id=wh_removed.id)
 
         cache = MemoryCache()
-        await cache.set(key=f"webhook:{wh_kept.id}", value='{"cached": true}')
-        await cache.set(key=f"webhook:{wh_removed.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{wh_kept.id}", value='{"cached": true}')
+        await cache.set(key=f"{CACHE_KEY_PREFIX}:{wh_removed.id}", value='{"cached": true}')
 
         # Delete headers from only one webhook
         await wh_removed_refreshed.headers.delete(db=db)
 
         await _run_invalidation(db, cache, kv.id)
 
-        assert await cache.get(f"webhook:{wh_kept.id}") is None
-        assert await cache.get(f"webhook:{wh_removed.id}") == '{"cached": true}'
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{wh_kept.id}") is None
+        assert await cache.get(f"{CACHE_KEY_PREFIX}:{wh_removed.id}") == '{"cached": true}'

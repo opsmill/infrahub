@@ -79,6 +79,15 @@ class TriggerSetupReport(BaseModel):
         unchanged = self._unchanged_triggers_with_type(trigger_type=trigger_type)
         return created + updated + refreshed + unchanged
 
+    def prefect_updated_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        """Return pre-existing triggers that were updated in Prefect.
+
+        This corresponds to TriggerComparison.update_prefect (REFRESH + UPDATE).
+        """
+        updated = self._updated_triggers_with_type(trigger_type=trigger_type)
+        refreshed = self._refreshed_triggers_with_type(trigger_type=trigger_type)
+        return updated + refreshed
+
     def modified_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
         """Return all created and updated triggers that match the specified type.
 

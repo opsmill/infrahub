@@ -184,7 +184,10 @@ Three headers are added to signed requests:
 - **TTL**: 2 hours (`KVTTL.TWO_HOURS`)
 - **Storage**: Redis via the cache service
 - **Cache miss**: Falls back to fetching the webhook node from the database via SDK, then caches the result
-- **Invalidation**: Cache is cleared by `_configure_one()` (on create/update) and `_delete_automation()` (on delete), both routed through the unified `configure_webhook` flow. Additionally, when a `CoreKeyValue` header is modified, `TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE` fires `invalidate_webhook_headers`, which queries affected webhooks via `KeyValueGetWebhooksQuery` and deletes their cache entries
+- **Invalidation**: Three paths clear the cache:
+  1. `_configure_one()` (on create/update) and `_delete_automation()` (on delete) invalidate a single webhook's cache via `invalidate_webhook_cache(webhook_ids=...)`
+  2. `_reconcile_all()` invalidates caches for **updated** and **deleted** webhooks only (via `invalidate_webhook_cache(webhook_ids=...)`), extracted from the `TriggerSetupReport`. New webhooks have no cache entry, and unchanged webhooks need no invalidation.
+  3. When a `CoreKeyValue` header is modified, `TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE` fires `invalidate_webhook_headers`, which queries affected webhooks via `KeyValueGetWebhooksQuery` and deletes their cache entries
 
 ## Prefect Workflows
 

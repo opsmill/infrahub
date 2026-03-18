@@ -8,6 +8,8 @@ from prefect.logging import get_run_logger
 
 from infrahub.workers.dependencies import get_cache
 
+from ..constants import CACHE_KEY_PREFIX
+
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
@@ -18,5 +20,5 @@ async def invalidate_webhook_cache(webhook_ids: AbstractSet[str]) -> None:
     cache = await get_cache()
     log = get_run_logger()
     for wid in webhook_ids:
-        await cache.delete(key=f"webhook:{wid}")
+        await cache.delete(key=f"{CACHE_KEY_PREFIX}:{wid}")
     log.info(f"Invalidated cache for {len(webhook_ids)} webhook(s)")

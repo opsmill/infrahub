@@ -6,6 +6,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.webhook.constants import CACHE_KEY_PREFIX
 from infrahub.webhook.tasks.invalidate import invalidate_webhook_headers
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -48,7 +49,7 @@ class TestWebhookInvalidateHeaders(TestInfrahubApp):
         webhook_with_headers: Node,
         webhook_deployment: None,
     ) -> None:
-        cache_key = f"webhook:{webhook_with_headers.id}"
+        cache_key = f"{CACHE_KEY_PREFIX}:{webhook_with_headers.id}"
         await memory_cache.set(key=cache_key, value='{"cached": true}')
         assert await memory_cache.get(key=cache_key) is not None
 
@@ -66,7 +67,7 @@ class TestWebhookInvalidateHeaders(TestInfrahubApp):
         webhook_with_headers: Node,
         webhook_deployment: None,
     ) -> None:
-        cache_key = f"webhook:{webhook_with_headers.id}"
+        cache_key = f"{CACHE_KEY_PREFIX}:{webhook_with_headers.id}"
         await memory_cache.set(key=cache_key, value='{"cached": true}')
 
         unlinked_kv = await Node.init(schema=InfrahubKind.STATICKEYVALUE, db=db)

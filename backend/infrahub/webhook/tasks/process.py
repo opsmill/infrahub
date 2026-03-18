@@ -14,6 +14,7 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
+from ..constants import CACHE_KEY_PREFIX
 from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
 if TYPE_CHECKING:
@@ -101,13 +102,15 @@ async def webhook_process(
     if branch_name:
         await add_tags(branches=[branch_name])
 
-    webhook_data_str = await cache.get(key=f"webhook:{webhook_id}")
+    webhook_data_str = await cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook_id}")
     if not webhook_data_str:
         log.info(f"Webhook {webhook_id} not found in cache")
         webhook_node = await client.get(kind=webhook_kind, id=webhook_id, prefetch_relationships=True)
         webhook = await convert_node_to_webhook(webhook_node=webhook_node, client=client)
         webhook_data = webhook.to_cache()
-        await cache.set(key=f"webhook:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS)
+        await cache.set(
+            key=f"{CACHE_KEY_PREFIX}:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS
+        )
 
     else:
         webhook_data = ujson.loads(webhook_data_str)
