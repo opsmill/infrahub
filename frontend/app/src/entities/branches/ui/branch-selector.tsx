@@ -162,10 +162,10 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
       onSelect={onChange}
       value={branch.name}
     >
-      <div className="flex w-full min-w-0 items-center">
+      <div className="flex w-full items-center overflow-hidden">
         <span className="truncate">{branch.name}</span>
 
-        <div className="ml-auto inline-flex shrink-0 items-center gap-1">
+        <div className="ml-auto inline-flex items-center gap-1">
           {branch.is_default && (
             <span className="rounded-sm border border-gray-200 px-1.5 text-gray-400 text-xs">
               default
