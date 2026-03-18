@@ -68,7 +68,6 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 - `infrahub.artifact.deleted`
 - `infrahub.group.member_added`
 - `infrahub.group.member_removed`
-- `infrahub.validator.member_removed`
 
 :::
 
@@ -245,7 +244,7 @@ Webhooks can include custom HTTP headers in every request they send. This is use
 Custom headers are defined as reusable **key-value pair** entities that can be shared across multiple webhooks:
 
 - **Static Key-Value** (`CoreStaticKeyValue`): The header value is stored as plain text and sent as-is. Use this for non-sensitive metadata like `X-Source-System: infrahub` or for authentication tokens like `Authorization: Bearer <token>`.
-- **Environment Variable Key-Value** (`CoreEnvironmentVariableKeyValue`): The stored value is the *name* of an environment variable. The actual value is resolved from the Prefect worker's environment at the time the webhook request is sent. Use this when secrets are managed externally (for example, Kubernetes secrets or HashiCorp Vault).
+- **Environment Variable Key-Value** (`CoreEnvKeyValue`): The stored value is the *name* of an environment variable. The actual value is resolved from the Prefect worker's environment at the time the webhook request is sent. Use this when secrets are managed externally (for example, Kubernetes secrets or HashiCorp Vault).
 
 ### Creating and associating headers
 

@@ -26,13 +26,15 @@ configure_webhook flow
        └─ WebhookAction.RECONCILE_ALL ──► _reconcile_all()
              └──► Full sync via setup_triggers_specific()
 
-KeyValue CRUD (create/update/delete header)
+KeyValue update (header value changed)
        │
        ▼
 Built-in Trigger (TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE)
-       │  (empty parameters → forces RECONCILE_ALL)
+       │
        ▼
-configure_webhook flow → _reconcile_all()
+invalidate_webhook_headers flow
+       └──► Queries webhooks referencing the changed KeyValue
+       └──► Invalidates their cache entries
 
                                           ┌─────────────────────┐
 Application Event (e.g. node.created) ──► │ Prefect Automation   │
@@ -85,7 +87,7 @@ Normalized representation of the event extracted from Prefect's raw event payloa
 
 ### `WebhookHeader`
 
-Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up `os.environ.get(value)` and returns `None` if the variable is missing.
+Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing (the caller catches this and skips the header with a warning log).
 
 ### `Webhook` class hierarchy
 
@@ -217,7 +219,7 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 
 - **`TRIGGER_WEBHOOK_CONFIGURE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreCustomWebhook` and `CoreStandardWebhook` nodes. Invokes `WEBHOOK_CONFIGURE` with the event type and node data. The `configure_webhook` flow uses `WebhookConfigureParams` and the `EVENT_TO_ACTION` mapping to route to the correct handler.
 
-- **`TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreStaticKeyValue` and `CoreEnvironmentVariableKeyValue` nodes. Invokes `WEBHOOK_INVALIDATE_HEADERS` which resolves which webhooks reference the changed KeyValue (via `KeyValueGetWebhooksQuery` traversing the `webhook__headers` relationship) and clears their cache entries.
+- **`TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE`**: Fires on `infrahub.node.updated` for `CoreStaticKeyValue` and `CoreEnvironmentVariableKeyValue` nodes. Invokes `WEBHOOK_INVALIDATE_HEADERS` with the event type and node data. The `invalidate_webhook_headers` flow resolves which webhooks reference the changed KeyValue (via `NodeManager.query` with `headers__ids` filter) and clears their cache entries.
 
 ## Key Locations
 
