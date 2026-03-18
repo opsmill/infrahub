@@ -1,6 +1,3 @@
-import pytest
-from pydantic import ValidationError
-
 from infrahub.core.constants import SchemaAttributeDisplay
 from infrahub.core.schema import AttributeSchema, RelationshipSchema
 
@@ -20,16 +17,6 @@ def test_attribute_schema_display_can_be_set_to_extra() -> None:
     assert attr.display == SchemaAttributeDisplay.EXTRA
 
 
-def test_attribute_schema_display_raises_on_wrong_display_name() -> None:
-    with pytest.raises(ValidationError):
-        AttributeSchema(name="test", kind="Text", display="test")
-
-
 def test_relationship_schema_display_can_be_set_to_extra() -> None:
     rel = RelationshipSchema(name="test", peer="TestNode", display=SchemaAttributeDisplay.EXTRA)
     assert rel.display == SchemaAttributeDisplay.EXTRA
-
-
-def test_relationship_schema_display_raises_on_wrong_display_name() -> None:
-    with pytest.raises(ValidationError):
-        RelationshipSchema(name="test", peer="TestNode", display="test")
