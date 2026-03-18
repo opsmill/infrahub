@@ -27,7 +27,6 @@ export const searchAnywhere: SearchAnywhere = async (params) => {
   return {
     count: InfrahubSearchAnywhere.count,
     matchingObjects: InfrahubSearchAnywhere.edges?.map(({ node }) => node) ?? [],
-    parentPrefixes:
-      InfrahubSearchAnywhere.parent_prefixes?.map(({ node }) => node) ?? null,
+    parentPrefixes: InfrahubSearchAnywhere.parent_prefixes?.map(({ node }) => node) ?? null,
   };
 };

@@ -21,20 +21,14 @@ export const SearchParentPrefixes = () => {
     }
   );
 
-  if (query === "") {
-    return null;
-  }
+  if (query === "") return null;
 
-  if (isPending) {
-    return null;
-  }
+  if (isPending) return null;
 
   if (error) return null;
 
   // parent_prefixes is null when query is not an IP/CIDR
-  if (!data.parentPrefixes) {
-    return null;
-  }
+  if (!data.parentPrefixes) return null;
 
   if (data.parentPrefixes.length === 0) {
     return (
