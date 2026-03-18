@@ -1,5 +1,7 @@
 from enum import StrEnum
 
+CACHE_KEY_PREFIX = "webhook"
+
 
 class WebhookAction(StrEnum):
     CONFIGURE = "configure"
