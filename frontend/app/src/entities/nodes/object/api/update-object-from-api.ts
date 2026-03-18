@@ -20,7 +20,7 @@ export interface UpdateObjectFromApiParams extends BranchContextParams {
 export function updateObjectFromApi({
   data,
   objectKind,
-  profileIds = [],
+  profileIds,
   branchName,
   file,
 }: UpdateObjectFromApiParams) {
@@ -81,7 +81,7 @@ export function updateObjectFromApi({
       __args: {
         data: {
           ...objectData,
-          ...(profileIds?.length
+          ...(profileIds !== undefined
             ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
             : {}),
         },

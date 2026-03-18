@@ -578,6 +578,40 @@ describe("getFieldDefaultValue", () => {
       });
     });
 
+    it("returns pool value from template when field value is null and companion relationship has pool", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+      const objectTemplate: NodeObject = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        weight: {
+          value: null,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
     it("returns null when template field value is null and source is not a pool", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
@@ -700,6 +734,128 @@ describe("getFieldDefaultValue", () => {
           kind: "FakePool",
         },
         value: "my-default-value",
+      });
+    });
+  });
+
+  describe("when attribute has _from_resource_pool companion relationship set", () => {
+    it("returns pool value when companion relationship has a node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: null,
+          is_default: true,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns pool value when is_default is false and companion relationship has a node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: 10,
+          is_default: false,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns schema default when is_default is true and companion relationship has no node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: null,
+          is_default: true,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: null,
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: null,
+      });
+    });
+
+    it("does not return pool value when companion relationship has no node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: 42,
+          is_default: false,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: null,
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: { type: "user" },
+        value: 42,
       });
     });
   });

@@ -30,7 +30,7 @@ const avatarVariants = cva("flex items-center justify-center rounded-full", {
 });
 
 interface AvatarProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof avatarVariants> {
-  name?: string;
+  name?: string | null;
   text?: string;
   isLoading?: boolean;
 }

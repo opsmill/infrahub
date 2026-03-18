@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
@@ -19,7 +18,7 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import SchemaElementPathType
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
@@ -54,6 +53,9 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.creation_context import NodeCreationContext
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema.schema_branch_display import TemplateLabel
+    from infrahub.core.schema.schema_branch_hfid import HFIDDefinition
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
@@ -214,7 +216,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
             return value
 
-        return await self.render_display_label(db=db)
+        if not self._schema.display_label:
+            return repr(self)
+
+        display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+        await display_label.compute(db=db, node=self)
+        return display_label.get_value(node=self, at=self._at) or ""
 
     def has_display_label(self) -> bool:
         return self._display_label is not None
@@ -363,22 +370,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
         """
         number_pool_id: str | None = None
-        # Templates should not allocate from pools - just store the reference
-        # Actual allocation happens when creating objects from the template
+        # Templates must use _from_resource_pool relationships, not from_pool
         if isinstance(self._schema, TemplateSchema):
             if attribute.from_pool:
-                try:
-                    number_pool_id = str(attribute.from_pool["id"])
-                except KeyError as exc:
-                    raise ValidationError(
-                        {f"{attribute.name}.from_pool": "Missing 'id' in from_pool reference."}
-                    ) from exc
-                attribute.source = number_pool_id
-                attribute.value = None
-                allocate_resources = False
-            elif attribute.from_pool is None:
-                attribute.clear_source()
-                return
+                pool_rel_name = f"{attribute.name}{RESOURCE_POOL_REL_SUFFIX}"
+                raise ValidationError(
+                    {
+                        f"{attribute.name}.from_pool": (
+                            f"'from_pool' is not supported on template attributes. Set the '{pool_rel_name}' relationship on this template instead."
+                        )
+                    }
+                )
 
         # Case 1: Schema-defined NumberPool attribute
         if (
@@ -421,6 +423,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             ) from exc
 
         if not allocate_resources:
+            attribute.source = number_pool.id
             return
 
         if (
@@ -429,7 +432,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         ):
             try:
                 next_free = await number_pool.get_resource(
-                    db=db, branch=self._branch, node=self, attribute=attribute.schema
+                    db=db, branch=self._branch, identifier=self.get_id(), attribute=attribute.schema
                 )
             except PoolExhaustedError as exc:
                 raise ValidationError(
@@ -782,27 +785,36 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return self
 
-    async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
+    @staticmethod
+    def _merge_relationship_fields(
+        definitions: list[HFIDDefinition | TemplateLabel],
+    ) -> dict[str, set[str]]:
+        """Merge ``relationship_fields`` from the given definitions into a single mapping."""
         extra_filters: dict[str, set[str]] = {}
+        for definition in definitions:
+            for rel_name, attrs in definition.relationship_fields.items():
+                extra_filters.setdefault(rel_name, set()).update(attrs)
+        return extra_filters
 
-        if not self._existing:
-            # If we are creating a new node, we need to resolve extra filters from HFID and Display Labels,
-            # if we don't do this the fields might be blank
-            schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
-            try:
-                hfid_identifier = schema_branch.hfids.get_node_definition(kind=self._schema.kind)
-                for rel_name, attrs in hfid_identifier.relationship_fields.items():
-                    extra_filters.setdefault(rel_name, set()).update(attrs)
-            except KeyError:
-                # No HFID defined for this kind
-                ...
-            try:
-                display_label_identifier = schema_branch.display_labels.get_template_node(kind=self._schema.kind)
-                for rel_name, attrs in display_label_identifier.relationship_fields.items():
-                    extra_filters.setdefault(rel_name, set()).update(attrs)
-            except KeyError:
-                # No Display Label defined for this kind
-                ...
+    def _collect_extra_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
+        """Collect peer attributes that must be loaded during relationship resolution."""
+        definitions: list[HFIDDefinition | TemplateLabel] = []
+
+        # If we are creating a new node, we need to resolve extra filters from Display Labels or HFIDs, if we don't do
+        # this the fields might be blank.
+        # We could also need it when we need to recompute the Display Labels or HFIDs
+        if (not self._existing) or self._human_friendly_id:
+            if hfid := schema_branch.hfids.get_template_nodes().get(self._schema.kind):
+                definitions.append(hfid)
+        if (not self._existing) or self._display_label:
+            if display_labels := schema_branch.display_labels.get_template_nodes().get(self._schema.kind):
+                definitions.append(display_labels)
+
+        return self._merge_relationship_fields(definitions)
+
+    async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
+        schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
+        extra_filters = self._collect_extra_filters(schema_branch=schema_branch)
 
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
@@ -1157,33 +1169,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
-
-    async def render_display_label(self, db: InfrahubDatabase | None = None) -> str:  # noqa: ARG002
-        if not self._schema.display_labels:
-            return repr(self)
-
-        display_elements = []
-        for item in self._schema.display_labels:
-            item_elements = item.split("__")
-            if len(item_elements) != 2:
-                raise ValidationError("Display Label can only have one level")
-
-            if item_elements[0] not in self._schema.attribute_names:
-                raise ValidationError("Only Attribute can be used in Display Label")
-
-            attr = getattr(self, item_elements[0])
-            attr_value = getattr(attr, item_elements[1])
-            if isinstance(attr_value, Enum):
-                display_elements.append(attr_value.value)
-            else:
-                display_elements.append(attr_value)
-
-        if not display_elements or all(de is None for de in display_elements):
-            return ""
-        display_label = " ".join([str(de) for de in display_elements])
-        if not display_label.strip():
-            return repr(self)
-        return display_label.strip()
 
     async def set_human_friendly_id(self, value: list[str] | None) -> None:
         """Set the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""

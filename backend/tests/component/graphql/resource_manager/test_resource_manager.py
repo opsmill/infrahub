@@ -110,11 +110,7 @@ CREATE_TEMPLATE_TICKET_WITH_POOL = """
 mutation CreateTemplateTicketWithPool($pool_id: String!) {
     TemplateTestingTicketCreate(data: {
         template_name: { value: "bad-pool-template" }
-        ticket_id: {
-            from_pool: {
-                id: $pool_id
-            }
-        }
+        ticket_id_from_resource_pool: { id: $pool_id }
     }) {
         ok
     }
@@ -487,7 +483,7 @@ async def test_create_template_with_invalid_number_pool_id(
     )
 
     assert result.errors
-    assert f"The pool requested {{'id': '{FAKE_POOL_ID}'}} was not found." in str(result.errors[0])
+    assert f"Unable to find the node {FAKE_POOL_ID} / CoreNumberPool in the database." in str(result.errors[0])
 
 
 async def test_update_object_with_invalid_number_pool_id(

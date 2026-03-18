@@ -1700,6 +1700,12 @@ export interface components {
              * @default true
              */
             schema_strict_mode: boolean;
+            /**
+             * Diff Update After Merge
+             * @description When enabled, diff updates are triggered for active branches after a branch merge.
+             * @default true
+             */
+            diff_update_after_merge: boolean;
         };
         /** Menu */
         Menu: {

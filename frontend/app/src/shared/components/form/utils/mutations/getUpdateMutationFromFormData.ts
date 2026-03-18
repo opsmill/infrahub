@@ -42,9 +42,13 @@ export const getUpdateMutationFromFormData = ({
           typeof fieldData.value === "object" &&
           "from_pool" in fieldData.value
         ) {
+          const clearField =
+            field.type === "relationship"
+              ? { [field.name]: null }
+              : { [field.name]: { value: null } };
           return {
             ...acc,
-            [field.name]: null,
+            ...clearField,
             [fromPoolField]: { id: fieldData.value.from_pool.id },
           };
         }
@@ -59,7 +63,11 @@ export const getUpdateMutationFromFormData = ({
               ...(fromPoolField ? { [fromPoolField]: null } : {}),
             };
           }
-          return { ...acc, [field.name]: { value: null } };
+          return {
+            ...acc,
+            [field.name]: { value: null },
+            ...(fromPoolField ? { [fromPoolField]: null } : {}),
+          };
         }
 
         if (typeof fieldData.value === "object") {
@@ -97,6 +105,7 @@ export const getUpdateMutationFromFormData = ({
         return {
           ...acc,
           [field.name]: { value: fieldData.value === "" ? null : fieldData.value },
+          ...(fromPoolField ? { [fromPoolField]: null } : {}),
         };
       }
       case "profile":

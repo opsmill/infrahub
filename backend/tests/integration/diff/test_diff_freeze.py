@@ -476,3 +476,59 @@ class TestDiffFreeze(TestInfrahubApp):
         # Current diff should have updated time range
         assert current_diff.from_time == frozen_diff.from_time  # Same branch creation time
         assert current_diff.to_time >= second_change_time
+
+    async def test_freeze_diff_on_branch_delete_without_proposed_change(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        initial_dataset: dict[str, Node],
+        client: InfrahubClient,
+    ) -> None:
+        """Test that deleting a branch freezes its branch-tracking diff even without a proposed change."""
+        branch_name = "delete-no-pc-freeze-test"
+
+        # Step 1: Create branch and make changes
+        branch = await create_branch(db=db, branch_name=branch_name)
+
+        eve = await Node.init(schema=TestKind.PERSON, db=db, branch=branch.name)
+        await eve.new(db=db, name="Eve", height=160, description="Person on branch without PC")
+        await eve.save(db=db)
+
+        # Step 2: Run DiffUpdate to create a branch-tracking diff
+        result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": branch_name})
+        assert result["DiffUpdate"]["ok"]
+
+        # Verify diff exists and is not frozen
+        component_registry = get_component_registry()
+        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_before_delete = await diff_repo.get_one(
+            tracking_id=BranchTrackingId(name=branch_name),
+            diff_branch_name=branch_name,
+        )
+        assert diff_before_delete.is_frozen is False
+        assert isinstance(diff_before_delete.tracking_id, BranchTrackingId)
+        assert diff_before_delete.proposed_change_id is None
+        assert len(diff_before_delete.nodes) == 1
+        assert any(n.label == "Eve" for n in diff_before_delete.nodes)
+
+        # Step 3: Delete the branch (no proposed change involved)
+        result = await client.execute_graphql(query=BRANCH_DELETE, variables={"branch_name": branch_name})
+        assert result["BranchDelete"]["ok"]
+
+        # Step 4: Verify the diff is now frozen with FrozenTrackingId
+        frozen_metadata = await diff_repo.get_roots_metadata(
+            diff_branch_names=[branch_name, default_branch.name],
+            tracking_id=FrozenTrackingId(name=branch_name),
+        )
+        assert len(frozen_metadata) == 2, "Deleted branch should have 2 frozen diff roots (branch + base)"
+        for m in frozen_metadata:
+            assert m.is_frozen is True
+            assert isinstance(m.tracking_id, FrozenTrackingId)
+            assert m.tracking_id.name == branch_name
+
+        # Original BranchTrackingId should no longer find any diffs
+        active_metadata = await diff_repo.get_roots_metadata(
+            diff_branch_names=[branch_name],
+            tracking_id=BranchTrackingId(name=branch_name),
+        )
+        assert len(active_metadata) == 0

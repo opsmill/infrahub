@@ -5,11 +5,13 @@ import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-
 
 export interface DataTabProps {
   sourceBranch: string;
+  proposedChangeId?: string;
 }
 
-export function DataTab({ sourceBranch }: DataTabProps) {
+export function DataTab({ sourceBranch, proposedChangeId }: DataTabProps) {
   const { isPending, data, error } = useGetDiffSummary({
     branch: sourceBranch,
+    proposedChangeId,
     filters: {
       namespace: { excludes: ["Schema", "Profile"] },
       status: { excludes: ["UNCHANGED"] },

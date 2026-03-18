@@ -102,7 +102,7 @@ test.describe("/ipam - IP Namespace", () => {
 
   test("shows error when ip namespace does not exist", async ({ page }) => {
     await page.goto(`/ipam?namespace=non-existent&branch=${BRANCH_NAME}`);
-    await expect(page.getByText("IP Namespace non-existent not found.")).toBeVisible();
+    await expect(page.getByText("Cannot find IP Namespace with id non-existent")).toBeVisible();
 
     await page.getByRole("link", { name: "Go to default IP namespace" }).click();
     await expect(page.getByTestId("namespace-select")).toContainText("default");

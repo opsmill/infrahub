@@ -14,13 +14,13 @@ import {
 
 type DiffFilterProps = GetDiffSummaryParams;
 
-export function DiffFilter({ branch, filters }: DiffFilterProps) {
+export function DiffFilter({ branch, filters, proposedChangeId }: DiffFilterProps) {
   const [statusFilterQSP, setQsp] = useQueryState(
     QSP.STATUS,
     parseAsString.withOptions({ shallow: false })
   );
 
-  const { error, data, isPending } = useGetDiffSummary({ branch, filters });
+  const { error, data, isPending } = useGetDiffSummary({ branch, filters, proposedChangeId });
 
   const handleFilter = (value: DiffStatus) => {
     setQsp(value === statusFilterQSP ? null : value);

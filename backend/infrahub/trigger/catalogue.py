@@ -10,7 +10,7 @@ from infrahub.profiles.triggers import TRIGGER_PROFILE_REFRESH_SETUP
 from infrahub.schema.triggers import TRIGGER_SCHEMA_UPDATED
 from infrahub.trigger.models import TriggerDefinition
 from infrahub.trigger.system import TRIGGER_CRASH_ZOMBIE_FLOWS
-from infrahub.webhook.triggers import TRIGGER_WEBHOOK_DELETE, TRIGGER_WEBHOOK_SETUP_UPDATE
+from infrahub.webhook.triggers import TRIGGER_WEBHOOK_CONFIGURE
 
 builtin_triggers: list[TriggerDefinition] = [
     TRIGGER_ACTION_RULE_UPDATE,
@@ -22,6 +22,5 @@ builtin_triggers: list[TriggerDefinition] = [
     TRIGGER_HFID_ALL_SCHEMA,
     TRIGGER_PROFILE_REFRESH_SETUP,
     TRIGGER_SCHEMA_UPDATED,
-    TRIGGER_WEBHOOK_DELETE,
-    TRIGGER_WEBHOOK_SETUP_UPDATE,
+    TRIGGER_WEBHOOK_CONFIGURE,
 ]

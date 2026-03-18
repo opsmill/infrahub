@@ -28,7 +28,7 @@ By creating multiple rules and actions, you can build automated workflows.
 
 1. Circuit is added to `provisioning_circuits` group
 2. → Group trigger rule detects the addition
-3. → Generator action runs `create_circuit_endpoints` generator
+3. → Generator action runs `create_circuit_endpoints` Generator
 
 ## Step-by-step guide
 
@@ -56,9 +56,9 @@ A Group Action allows you to add or remove nodes from a group when triggered.
 
 ![Group Action details](../media/guides/events/grp_actions-details.png)
 
-#### Creating a generator action
+#### Creating a Generator action
 
-A Generator Action allows you to run a generator when triggered.
+A Generator Action allows you to run a Generator when triggered.
 
 1. Navigate to the Actions page
 
@@ -66,7 +66,7 @@ A Generator Action allows you to run a generator when triggered.
 
 3. Configure the Generator Action:
    - Enter a name (example: `create_circuit_endpoints`)
-   - Select the generator (example: `create_circuit_endpoints`)
+   - Select the Generator (example: `create_circuit_endpoints`)
    - Click "Save"
 
 ![Generator Action creation form](../media/guides/events/generator-action-form-creation.png)
@@ -116,7 +116,7 @@ A Group Trigger Rule allows you to detect changes to group membership and execut
    - Select the kind (example: "Standard Group Core")
    - Choose the standard group (example: `provisioning_circuits`)
    - Select the action kind (example: "Generator Action Core")
-   - Choose the generator action (example: `create_circuit_endpoints`)
+   - Choose the Generator action (example: `create_circuit_endpoints`)
    - Click "Save"
 
 ![Group Trigger form creation](../media/guides/events/group-trigger-form-creation.png)

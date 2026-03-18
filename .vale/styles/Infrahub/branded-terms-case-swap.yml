@@ -7,8 +7,12 @@ action:
   name: replace
 swap:
   (?<![\.|/|#])ansible[\.!]?\s: Ansible
+  (?<=[a-z] )Artifact[\.!]?\s: artifact
+  (?<=[a-z] )Artifacts[\.!]?\s: artifacts
   (?<![\.|/|#])docker[\.!]?\s: Docker
   (?<![\.|/|#])[Dd]ockerhub[\.!]?\s: DockerHub
+  (?<![\.|/|#])generator[\.!]?\s: Generator
+  (?<![\.|/|#])generators[\.!]?\s: Generators
   (?<![\.|/|#])[Gg]ithub[\.!]?\s: GitHub
   (?<![\.|/|#])[Gg]itlab[\.!]?\s: GitLab
   (?:gitpod): GitPod
@@ -28,9 +32,16 @@ swap:
   (?:Openconfig): OpenConfig
   (?<![\.|/|#])opsmill[\.!]?\s: OpsMill
   (?:[Pp]ostgre[Ss]ql): PostgreSQL
+  (?<![\.|/|#])profile[\.!]?\s: Profile
+  (?<![\.|/|#])profiles[\.!]?\s: Profiles
   (?:[^/]prometheus): Prometheus
   (?<![\.|/|#])python[\.!]?\s: Python
   (?<![\.|/|#])[Rr]abbitmq[\.!]?\s: RabbitMQ
+  (?<![\.|/|#])(?:resource [Mm]anager|Resource manager)[\.!]?\s: Resource Manager
+  (?<![\.|/|#])[Rr]esource [Mm]anagers[\.!]?\s: Resource Manager
   (?:[^/]terraform): Terraform
+  (?<![\.|/|#])transformation[\.!]?\s: Transformation
+  (?<![\.|/|#])transformations[\.!]?\s: Transformations
+  (?<![\.|/|#])[Tt]ransforms[\.!]?\s: Transformations
   (?:ubuntu): Ubuntu
   (?:[Vv]s\W?[Cc]ode): VS Code
