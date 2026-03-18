@@ -36,6 +36,7 @@ from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
+from ..query.freeze_by_branch import EnrichedDiffFreezeByBranchQuery
 from ..query.freeze_by_proposed_change import EnrichedDiffFreezeByProposedChangeQuery
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
@@ -415,6 +416,14 @@ class DiffRepository:
         query = await EnrichedDiffFreezeByProposedChangeQuery.init(
             db=self.db,
             proposed_change_id=proposed_change_id,
+        )
+        await query.execute(db=self.db)
+
+    async def freeze_diffs_for_branch(self, branch_name: str) -> None:
+        """Freeze branch-tracking diffs (and their partners) by setting is_frozen and updating tracking_id."""
+        query = await EnrichedDiffFreezeByBranchQuery.init(
+            db=self.db,
+            branch_name=branch_name,
         )
         await query.execute(db=self.db)
 

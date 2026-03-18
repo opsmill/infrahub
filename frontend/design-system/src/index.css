@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: InterVariable;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(https://rsms.me/inter/font-files/InterVariable.woff2) format("woff2");
+}
+
+@theme {
+  --font-sans: InterVariable, sans-serif;
+  --color-custom-blue-700: #087895;
+  --color-custom-blue-green: #0b6581;
+}
+
+body {
+  color: var(--color-stone-800);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
