@@ -372,7 +372,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             parameters={"branch_name": obj.name},
         )
 
-        if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default and proposed_change_id is None:
+        if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default:
             await get_workflow().submit_workflow(
                 workflow=BRANCH_DELETE,
                 context=context,
