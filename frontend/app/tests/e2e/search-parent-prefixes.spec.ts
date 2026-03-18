@@ -47,6 +47,19 @@ test.describe("search anywhere - parent prefix lookup", () => {
     });
   });
 
+  test("should show empty parent prefixes state for IP with no matches", async ({ page }) => {
+    await page.goto("/");
+
+    await test.step("open search anywhere and search for unmatched IP", async () => {
+      await page.getByTestId("search-anywhere-trigger").click();
+      await page.getByTestId("search-anywhere-input").fill("203.0.113.5");
+
+      const searchDialog = page.getByTestId("search-anywhere");
+      await expect(searchDialog.getByText("Parent Prefixes")).toBeVisible();
+      await expect(searchDialog.getByText("No containing prefixes found")).toBeVisible();
+    });
+  });
+
   test("should navigate to prefix detail page when clicking a parent prefix result", async ({
     page,
   }) => {
