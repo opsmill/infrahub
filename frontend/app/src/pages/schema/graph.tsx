@@ -1,6 +1,5 @@
 import { SchemaVisualizer, type SchemaVisualizerData } from "infrahub-schema-visualizer";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
 
 import {
   genericSchemasAtom,
@@ -15,10 +14,7 @@ function SchemaGraph() {
   const profiles = useAtomValue(profileSchemasAtom);
   const templates = useAtomValue(templateSchemasAtom);
 
-  const schemaData: SchemaVisualizerData = useMemo(
-    () => ({ nodes, generics, profiles, templates }),
-    [nodes, generics, profiles, templates]
-  );
+  const schemaData: SchemaVisualizerData = { nodes, generics, profiles, templates };
 
   return (
     <div className="flex min-h-125 flex-1">
