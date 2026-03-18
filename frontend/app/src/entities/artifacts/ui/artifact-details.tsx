@@ -41,6 +41,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
 
   const contentType = artifact.content_type.value;
   const extension = getExtensionFromContentType(contentType);
+  const storageId = artifact.storage_id.value;
 
   return (
     <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
@@ -57,12 +58,18 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           </Row>
         </Col>
 
-        <ArtifactFile
-          storageId={artifact.storage_id.value}
-          fileName={`${artifactId}.${extension}`}
-          contentType={contentType}
-          className="m-1 grow overflow-hidden"
-        />
+        {storageId ? (
+          <ArtifactFile
+            storageId={storageId}
+            fileName={`${artifactId}.${extension}`}
+            contentType={contentType}
+            className="m-1 grow overflow-hidden"
+          />
+        ) : (
+          <div className="flex grow items-center justify-center p-4 text-gray-500">
+            No artifact content available
+          </div>
+        )}
       </Content.Card>
       <Card className="min-w-90 overflow-auto p-0">
         <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
