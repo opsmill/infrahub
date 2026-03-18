@@ -192,10 +192,6 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "/schema-graph",
-                element: <Navigate to="/schema/graph" replace />,
-              },
-              {
                 path: "ipam",
                 children: [
                   {
