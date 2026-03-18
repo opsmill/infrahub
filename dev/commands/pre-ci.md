@@ -5,6 +5,7 @@ allowed-tools:
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
   - Bash(uv lock --check:*)
+  - Bash(uv lock:*)
   - Bash(cd frontend*:*)
   - Bash(npm run codegen*:*)
   - Bash(npx biome*:*)
