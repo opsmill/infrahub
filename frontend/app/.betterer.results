@@ -5,6 +5,9 @@
 //
 exports[`fix ts error`] = {
   value: `{
+    "src/entities/artifacts/types.ts:1095909013": [
+      [0, 34, 38, "tsc: Cannot find module \'@/shared/api/graphql/generated/types\' or its corresponding type declarations.", "2563440334"]
+    ],
     "src/entities/authentication/ui/login.tsx:975690659": [
       [74, 7, 10, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; autoFocus: true; } | { name: string; label: string; rules: { validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'InputFieldProps\'.", "1610618705"],
       [81, 7, 18, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; } | { name: string; label: string; rules: { validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'FormFieldProps\'.", "913787886"]
