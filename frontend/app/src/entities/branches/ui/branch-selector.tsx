@@ -48,7 +48,7 @@ export default function BranchSelector() {
           className="h-8 w-60 rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
         >
-          <div className="inline-flex h-full grow items-center justify-between gap-1.5 border-gray-200 border-r px-3">
+          <div className="inline-flex h-full grow items-center justify-between gap-1.5 overflow-hidden border-gray-200 border-r px-3">
             <div className="inline-flex min-w-0 items-center gap-1.5">
               <Icon icon="mdi:source-branch" className="shrink-0" />
               <span className="truncate">{currentBranch.name}</span>
@@ -101,6 +101,7 @@ function BranchSelect({
       <Command
         style={{
           minWidth: "var(--radix-popover-trigger-width)",
+          maxWidth: "320px",
           maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
         }}
       >
@@ -161,7 +162,7 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
       onSelect={onChange}
       value={branch.name}
     >
-      <div className="flex w-full items-center truncate">
+      <div className="flex w-full items-center overflow-hidden">
         <span className="truncate">{branch.name}</span>
 
         <div className="ml-auto inline-flex items-center gap-1">
