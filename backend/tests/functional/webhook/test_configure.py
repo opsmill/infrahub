@@ -148,14 +148,21 @@ class TestWebhookConfigure(TestInfrahubApp):
         webhook2: Node,
         webhook_deployment: None,
     ) -> None:
-        """Test that reconcile_all invalidates all webhook caches."""
+        """Test that reconcile_all invalidates caches for updated webhooks."""
+        # Modify webhook so reconcile detects it as needing an update
+        original_name = webhook1.name.value
+        webhook1.name.value = "Webhook1-modified"
+        await webhook1.save(db=db)
+
         await memory_cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook1.id}", value='{"cached": true}')
-        await memory_cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook2.id}", value='{"cached": true}')
 
         await configure_webhook()
 
         assert await memory_cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook1.id}") is None
-        assert await memory_cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook2.id}") is None
+
+        # Restore original name
+        webhook1.name.value = original_name
+        await webhook1.save(db=db)
 
     async def test_configure_webhook_on_failure_logs_error(
         self, webhook_deployment: None, caplog: pytest.LogCaptureFixture
