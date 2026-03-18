@@ -2,11 +2,17 @@
 # yamllint disable rule:truthy rule:truthy rule:line-length
 name: 'Chromatic Publish'
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/packages/ui/**'
   push:
     branches:
       - develop
+      - stable
+      - release-*
     paths:
-      - 'frontend/design-system/**'
+      - 'frontend/packages/ui/**'
 
 permissions:
   contents: read
@@ -15,7 +21,7 @@ jobs:
   chromatic:
     defaults:
       run:
-        working-directory: ./frontend/design-system
+        working-directory: ./frontend/packages/ui
     name: Run Chromatic
     runs-on: ubuntu-latest
     steps:
@@ -36,7 +42,7 @@ jobs:
         uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          workingDir: ./frontend/design-system
+          workingDir: ./frontend/packages/ui
       - name: Outputs Storybook URL
         run: |
           echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"
