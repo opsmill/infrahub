@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
+import { LinkButton } from "@/shared/components/ui/button";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {

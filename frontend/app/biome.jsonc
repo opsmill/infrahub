@@ -55,6 +55,7 @@
           }
         },
         "useSortedAttributes": "off",
+        "useSortedInterfaceMembers": "off",
         "useSortedKeys": "off",
         "useSortedProperties": "off"
       }
@@ -102,16 +103,12 @@
         "useExhaustiveDependencies": "off",
         "useHookAtTopLevel": "off",
         "useImportExtensions": "off",
-        "noSwitchDeclarations": "off",
         "useUniqueElementIds": "off"
       },
       "nursery": {
         "useFind": "error",
-        "useConsistentArrowReturn": "off",
         "useExhaustiveSwitchCases": "off",
         "noUnnecessaryConditions": "off",
-        "useMaxParams": "off",
-        "noReactForwardRef": "off",
         "noShadow": "off"
       },
       "performance": {
@@ -166,6 +163,7 @@
         "noImplicitAnyLet": "off",
         "noReactSpecificProps": "off",
         "useIterableCallbackReturn": "off",
+        "noSkippedTests": "off",
         "useAwait": "off"
       }
     }

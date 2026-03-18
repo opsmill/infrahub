@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,16 +55,14 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {showDeleteModal && (
-        <DeleteObjectModal
-          objectKind={PROPOSED_CHANGE_OBJECT}
-          objectId={objectId}
-          objectLabel={objectLabel}
-          open={true}
-          setOpen={() => setShowDeleteModal(false)}
-          toastMessage={`Proposed changes ${objectLabel} deleted`}
-        />
-      )}
+      <DeleteObjectModal
+        objectKind={PROPOSED_CHANGE_OBJECT}
+        objectId={objectId}
+        objectLabel={objectLabel}
+        isOpen={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        toastMessage={`Proposed changes ${objectLabel} deleted`}
+      />
     </>
   );
 }

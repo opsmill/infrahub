@@ -101,8 +101,6 @@ async def process_hfid(
     else:
         hfid_definition = schema_branch.hfids.get_related_definition(related_kind=node_kind, target_kind=target_kind)
 
-    # jinja_template = Jinja2Template(template=display_label_template.template)
-    # variables = jinja_template.get_variables()
     hfid_graphql = HFIDGraphQL(
         node_schema=node_schema, variables=hfid_definition.hfid, filter_key=hfid_definition.filter_key
     )

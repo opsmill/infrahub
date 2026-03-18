@@ -24,21 +24,21 @@ This release delivers major enhancements focused on data lifecycle management, s
 
 We've made extensive architectural refactors across the board: HFIDs and Profiles are now computed at write time for faster reads, and the display_label property has been modernized to use Jinja2 templating, supporting relationships for richer context.
 
-For automation, we introduced controls to disable generator runs during CI/merge events to eliminate redundancy. We also delivered a crucial new Backup & Restore Tool to orchestrate consistent recovery procedures across Neo4j, PostgreSQL, and artifact storage (initially supporting Docker Compose).
+For automation, we introduced controls to disable Generator runs during CI/merge events to eliminate redundancy. We also delivered a crucial new Backup & Restore Tool to orchestrate consistent recovery procedures across Neo4j, PostgreSQL, and artifact storage (initially supporting Docker Compose).
 
 Finally, we've ensured Webhooks are more consistent by aligning custom webhook data formats with standard events, and improved overall efficiency via memory optimizations in multi-branch setups.
 
 # Main changes
 
-## Disable generator in Infrahub's CI pipeline and after a branch merge operation
+## Disable Generator in Infrahub's CI pipeline and after a branch merge operation
 
 To provide a cleaner experience when setting up event-based Generators, we've introduced the capability to selectively disable Generators during specific lifecycle events: CI pipeline execution and branch merge operations.
 
 Previously, Generators could be triggered multiple times, leading to redundant processing: once by their configured event trigger rules, again during the Proposed Change (CI) phase, and finally after merging into the main branch.
 
-You can now prevent this overlap by optionally disabling generator execution on a per-generator basis directly within your repository configuration file, `.infrahub.yml`. This ensures your automation runs only when you explicitly intend it to, giving you finer control over when your generation logic executes.
+You can now prevent this overlap by optionally disabling Generator execution on a per-Generator basis directly within your repository configuration file, `.infrahub.yml`. This ensures your automation runs only when you explicitly intend it to, giving you finer control over when your generation logic executes.
 
-Benefit: Eliminates redundant generator runs
+Benefit: Eliminates redundant Generator runs
 
 Requirement: This feature requires using version 1.15.0 or newer of the Infrahub Python SDK.
 
@@ -143,7 +143,7 @@ An example of the format of the event data:
 }
 ```
 
-⚠ !!! ***WARNING** this is a breaking change, existing Python transforms for custom webhooks will need to be adapted to handle this new format.
+⚠ !!! ***WARNING** this is a breaking change, existing Python Transformations for custom webhooks will need to be adapted to handle this new format.
 
 ### Artifact definition name has been added to the webhook payload for artifact events
 
@@ -265,7 +265,7 @@ Migrate to try/except for handling errors raised by these methods. The deprecate
   - Diff tree and list of changes can be scrolled separately
   ([#5451](https://github.com/opsmill/infrahub/issues/5451))
 - fix to allow updating the node kind to null when creating or updating a webhook ([#6397](https://github.com/opsmill/infrahub/issues/6397))
-- Breaking change: The format of the data payload has been corrected for transform based webhooks so that they are consistent with standard webhooks as well as custom webhooks (without an attached transform). Due to this change any transforms attached to a webhook needs to be updated to account for the new format. ([#6815](https://github.com/opsmill/infrahub/issues/6815))
+- Breaking change: The format of the data payload has been corrected for Transformation-based webhooks so that they are consistent with standard webhooks as well as custom webhooks (without an attached Transformation). Due to this change any Transformations attached to a webhook needs to be updated to account for the new format. ([#6815](https://github.com/opsmill/infrahub/issues/6815))
 - Fixed an issue with resource pools allocating duplicate values on concurrent mutations. ([#7254](https://github.com/opsmill/infrahub/issues/7254))
 - Prevent creation of attributes with state `absent` ([#7353](https://github.com/opsmill/infrahub/issues/7353))
 - Prevent creation of nodes with state `absent` ([#7354](https://github.com/opsmill/infrahub/issues/7354))
@@ -273,7 +273,7 @@ Migrate to try/except for handling errors raised by these methods. The deprecate
 - Fixed incorrect data diff counter when viewing a branch or proposed changes
 - Improved 401 in UI: parallel queries now share a single refresh token call instead of each triggering their own.
 - Performance improvements thanks to more granular locking on mutations.
-- Resolved a problem that caused generator checks to fail when retrying requests
+- Resolved a problem that caused Generator checks to fail when retrying requests
 
 ## Housekeeping
 

@@ -252,7 +252,7 @@ RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3, e4
     @pytest.fixture(params=["vertex_add", "vertex_delete", "edge_add", "edge_delete"])
     async def broken_patch_runner(
         self,
-        request,
+        request: pytest.FixtureRequest,
         broken_vertex_adder_patch_runner: PatchRunner,
         broken_vertex_deleter_patch_runner: PatchRunner,
         broken_edge_adder_patch_runner: PatchRunner,

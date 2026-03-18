@@ -26,13 +26,15 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.registry import registry
+from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, get_nodes
 from infrahub.database import InfrahubDatabase
 
 
 async def test_query_NodeCreateAllQuery(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, first_account
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, first_account: Node
 ) -> None:
     obj = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await obj.new(db=db, name="John", height=180)
@@ -55,7 +57,7 @@ async def test_query_NodeCreateAllQuery(
 
 
 async def test_query_NodeCreateAllQuery_iphost(
-    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ) -> None:
     obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
     await obj.new(db=db, ipaddress="10.2.5.2/24")
@@ -76,7 +78,7 @@ async def test_query_NodeCreateAllQuery_iphost(
 
 
 async def test_query_NodeCreateAllQuery_ipnetwork(
-    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ) -> None:
     obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
     await obj.new(db=db, prefix="10.2.5.0/24")
@@ -98,7 +100,12 @@ async def test_query_NodeCreateAllQuery_ipnetwork(
 
 
 async def test_query_NodeListGetInfoQuery(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     right_now = Timestamp()
     ids = [person_john_main.id, person_jim_main.id, person_albert_main.id]
@@ -135,7 +142,12 @@ async def test_query_NodeListGetInfoQuery(
 
 
 async def test_query_NodeListGetInfoQuery_renamed(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get_schema_branch(name=branch.name)
     candidate_schema = schema.duplicate()
@@ -164,7 +176,7 @@ async def test_query_NodeListGetInfoQuery_renamed(
         assert sorted(result) == ["CoreNode", "Node", "Test2NewPerson"]
 
 
-async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     default_branch = await registry.get_branch(db=db, branch="main")
     branch1 = await registry.get_branch(db=db, branch="branch1")
 
@@ -187,7 +199,11 @@ async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, 
 
 
 async def test_query_NodeListGetAttributeQuery_with_source(
-    db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
 ) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4, _source=first_account)
@@ -222,7 +238,7 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     )
 
 
-async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     default_branch = await registry.get_branch(db=db, branch="main")
     branch1 = await registry.get_branch(db=db, branch="branch1")
 
@@ -265,8 +281,8 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
 async def test_query_NodeListGetAttributeQuery_branch_agnostic(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    person_jim_main,
+    person_john_main: Node,
+    person_jim_main: Node,
 ) -> None:
     right_now = Timestamp()
     ids = [person_john_main.id, person_jim_main.id]
@@ -294,7 +310,7 @@ async def test_query_NodeListGetAttributeQuery_branch_agnostic(
             assert attr.updated_by == SYSTEM_USER_ID
 
 
-async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, base_dataset_02) -> None:
+async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     default_branch = await registry.get_branch(db=db, branch="main")
     branch1 = await registry.get_branch(db=db, branch="branch1")
 
@@ -340,7 +356,7 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
 
 
 async def test_query_NodeListGetRelationshipsQuery(
-    db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main, tag_blue_main, tag_red_main
+    db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main: Node, tag_blue_main: Node, tag_red_main: Node
 ) -> None:
     default_branch = await registry.get_branch(db=db, branch="main")
     query = await NodeListGetRelationshipsQuery.init(
@@ -358,7 +374,7 @@ async def test_query_NodeListGetRelationshipsQuery(
 
 
 async def test_query_NodeListGetRelationshipsQuery_branch_agnostic(
-    db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main, tag_blue_main, tag_red_main
+    db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main: Node, tag_blue_main: Node, tag_red_main: Node
 ) -> None:
     right_now = Timestamp()
 
@@ -471,8 +487,12 @@ async def test_query_NodeListGetRelationshipsQuery_hierarchical(
 
 
 async def test_query_NodeListGetRelationshipsQuery_pagination_and_parallel_runtime(
-    db: InfrahubDatabase, default_branch: Branch, person_tag_schema, query_limit_of_one, neo4j_runtime_parallel
-):
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_tag_schema: None,
+    query_limit_of_one: None,
+    neo4j_runtime_parallel: None,
+) -> None:
     """
     Test all expected results are returned with pagination and parallel runtime
     """
@@ -523,7 +543,7 @@ async def test_query_NodeDeleteQuery(
 async def test_query_NodeGetHierarchyQuery_ancestors(
     db: InfrahubDatabase,
     default_branch: Branch,
-    hierarchical_location_data,
+    hierarchical_location_data: dict[str, Node],
 ) -> None:
     node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
 

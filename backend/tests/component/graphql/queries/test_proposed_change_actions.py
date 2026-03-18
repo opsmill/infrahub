@@ -2,7 +2,6 @@ from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.permissions import LocalPermissionBackend
@@ -98,9 +97,8 @@ async def test_proposed_change_open(
         destination_branch="main",
         source_branch=branch_name,
         state="open",
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
@@ -156,9 +154,8 @@ async def test_proposed_change_closed(
         destination_branch="main",
         source_branch=branch_name,
         state="closed",
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
@@ -219,9 +216,8 @@ async def test_proposed_change_draft(
         source_branch=branch_name,
         state="open",
         is_draft=True,
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 

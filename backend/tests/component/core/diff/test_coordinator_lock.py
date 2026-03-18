@@ -5,7 +5,6 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config, lock
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
@@ -15,17 +14,21 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.definitions.core.repository import core_read_only_repository, core_repository
-from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
 
 class TestDiffCoordinatorLocks:
+    @pytest.fixture(autouse=True)
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
+        return
+
     @pytest.fixture
-    async def branch_with_data(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Branch:
+    async def branch_with_data(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+    ) -> Branch:
         lock.initialize_lock(local_only=True)
         branch_1 = await create_branch(branch_name="branch_1", db=db)
         for _ in range(10):
@@ -43,26 +46,6 @@ class TestDiffCoordinatorLocks:
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
-
-    @pytest.fixture
-    async def dummy_repository_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        dummy_repository = NodeSchema(
-            name=core_repository.name,
-            namespace=core_repository.namespace,
-        )
-        schema = SchemaRoot(nodes=[dummy_repository])
-        registry.schema.register_schema(schema=schema, branch=default_branch.name)
-        default_branch.update_schema_hash()
-        await default_branch.save(db=db)
-
-        dummy_repository = NodeSchema(
-            name=core_read_only_repository.name,
-            namespace=core_read_only_repository.namespace,
-        )
-        schema = SchemaRoot(nodes=[dummy_repository])
-        registry.schema.register_schema(schema=schema, branch=default_branch.name)
-        default_branch.update_schema_hash()
-        await default_branch.save(db=db)
 
     async def get_diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
@@ -195,7 +178,6 @@ class TestDiffCoordinatorLocks:
         default_branch: Branch,
         diff_repository: DiffRepository,
         branch_with_data: Branch,
-        dummy_repository_schema: None,
     ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
@@ -230,7 +212,6 @@ class TestDiffCoordinatorLocks:
         default_branch: Branch,
         diff_repository: DiffRepository,
         branch_with_data: Branch,
-        dummy_repository_schema: None,
     ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
@@ -266,3 +247,42 @@ class TestDiffCoordinatorLocks:
         assert results[0].uuid == results[1].uuid
         assert results[0].partner_uuid == results[1].partner_uuid
         assert results[0].tracking_id == results[1].tracking_id
+
+    async def test_proposed_change_linked_when_waiting_for_lock(
+        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
+    ) -> None:
+        """Test that when a diff update with proposed_change_id waits for an in-progress update,
+        the proposed change still gets linked to the diff.
+
+        This tests the race condition scenario:
+        1. Request A starts diff update (acquires lock)
+        2. Request B starts diff update with proposed_change_id, detects lock is held, waits
+        3. Request A completes and releases lock
+        4. Request B should link the proposed_change to the cached diff
+        """
+        diff_branch = branch_with_data
+        diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
+
+        # Create a mock proposed change node in the database
+        proposed_change_id = str(uuid4())
+        await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": proposed_change_id})
+
+        # Run two concurrent updates - one without proposed_change_id, one with
+        results = await asyncio.gather(
+            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            diff_coordinator.update_branch_diff(
+                base_branch=default_branch, diff_branch=diff_branch, proposed_change_id=proposed_change_id
+            ),
+        )
+
+        # Both should return the same diff
+        assert len(results) == 2
+        assert results[0].uuid == results[1].uuid
+        assert results[1].proposed_change_id == proposed_change_id
+
+        # Verify via diff_repository.get_roots_metadata that the diff is linked to the proposed change
+        metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[diff_branch.name], proposed_change_id=proposed_change_id
+        )
+        diff_uuids = {m.uuid for m in metadata}
+        assert results[0].uuid in diff_uuids, "Diff should be retrievable by proposed_change_id"

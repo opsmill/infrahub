@@ -22,6 +22,10 @@ If you are already familiar with [Schema Development](../guides/create-schema.md
 
 At the node level, the `generate_template` property allows users to enable template generation for a given node and its associated components.
 
+:::warning
+`generate_template` is only available on **node** definitions. It does not exist on generics.
+:::
+
 ```yaml
 ---
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json

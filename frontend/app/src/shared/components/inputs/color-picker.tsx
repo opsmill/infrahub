@@ -1,4 +1,4 @@
-import { Colorful, type ColorResult, type HsvaColor } from "@uiw/react-color/src/index";
+import { Colorful, type ColorResult, type HsvaColor } from "@uiw/react-color";
 import { forwardRef, useState } from "react";
 
 import { Input } from "@/shared/components/ui/input";

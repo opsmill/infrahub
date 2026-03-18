@@ -4,17 +4,19 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from infrahub.core.branch import Branch
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from tests.conftest import TestHelper
 
 
 async def test_file_upload(
     db: InfrahubDatabase,
     client: TestClient,
-    helper,
+    helper: TestHelper,
     local_storage_dir: Path,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    authentication_base,
+    authentication_base: Node,
 ) -> None:
     files_dir = helper.get_fixtures_dir() / "schemas"
     filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
@@ -39,11 +41,11 @@ async def test_file_upload(
 async def test_content_upload(
     db: InfrahubDatabase,
     client: TestClient,
-    helper,
+    helper: TestHelper,
     local_storage_dir: Path,
-    admin_headers,
+    admin_headers: dict[str, str],
     default_branch: Branch,
-    authentication_base,
+    authentication_base: Node,
 ) -> None:
     files_dir = helper.get_fixtures_dir() / "schemas"
     filenames = [item.name for item in files_dir.iterdir() if item.is_file()]

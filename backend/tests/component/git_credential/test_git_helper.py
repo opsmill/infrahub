@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from pytest_httpx import HTTPXMock
 from typer.testing import CliRunner
 
 # This patch prevents `OSError: pytest: reading from stdin while output is captured!  Consider using `-s`.`
@@ -25,7 +26,9 @@ def test_parse_helper_get_input() -> None:
         parse_helper_get_input(text=data_in)
 
 
-def test_get_with_path(mock_core_schema_01, mock_repositories_query, mock_credential_query) -> None:
+def test_get_with_path(
+    mock_core_schema_01: HTTPXMock, mock_repositories_query: HTTPXMock, mock_credential_query: HTTPXMock
+) -> None:
     input_data = "protocol=https\nhost=github.com\npath=opsmill/infrahub-demo-edge.git"
 
     result = runner.invoke(

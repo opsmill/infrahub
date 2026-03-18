@@ -52,9 +52,9 @@ class TestNeedsRebaseStatus(TestInfrahubApp):
 
         assert f"Branch {branch_name} must be rebased before any updates can be made" in exc.value.message
 
-        with pytest.raises(ValueError) as exc:
-            await client.schema.load([car_person_schema_unique_owner], branch=branch_name)
-        assert f"Branch {branch_name} must be rebased before any updates can be made" in str(exc.value)
+        response = await client.schema.load([car_person_schema_unique_owner], branch=branch_name)
+        assert response.errors
+        assert f"Branch {branch_name} must be rebased before any updates can be made" in str(response.errors)
 
         # We should still be able to rebase the branch
         query = Mutation(

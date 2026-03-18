@@ -14,5 +14,5 @@ class Generator(InfrahubGenerator):
                 "name": f"{owner_name.upper()}__{car_name.upper()}",
                 "description": "Tag",
             }
-            obj = await self.client.create(kind="BuiltinTag", data=payload)
+            obj = await self.client.create(kind="TestingTag", data=payload)
             await obj.save(allow_upsert=True)

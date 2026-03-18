@@ -2,9 +2,9 @@ import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { forwardRef } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -128,7 +128,7 @@ export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipCom
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
             {data.pages.map((page) => {
-              return page.items
+              return page
                 .filter((node) => !value?.some((v) => v.id === node.id))
                 .map((n) => {
                   const node = n as unknown as PermissionNode;

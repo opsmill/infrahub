@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Button as AriaButton, type ButtonProps as AriaButtonProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 const toolbarButtonVariants = cva(
@@ -31,4 +32,28 @@ export function ToolbarButton({ className, variant, ...props }: ToolbarButtonPro
       {...props}
     />
   );
+}
+
+export interface ToolbarButtonWithTooltipProps extends ToolbarButtonProps {
+  tooltipContent?: TooltipProps["content"];
+  tooltipEnabled?: TooltipProps["enabled"];
+}
+
+export function ToolbarButtonWithTooltip({
+  tooltipContent,
+  tooltipEnabled,
+  isDisabled,
+  ...props
+}: ToolbarButtonWithTooltipProps) {
+  if (isDisabled && tooltipEnabled) {
+    return (
+      <Tooltip enabled={tooltipEnabled} content={tooltipContent} side="top">
+        <span className="inline-flex">
+          <ToolbarButton isDisabled={isDisabled} {...props} />
+        </span>
+      </Tooltip>
+    );
+  }
+
+  return <ToolbarButton isDisabled={isDisabled} {...props} />;
 }

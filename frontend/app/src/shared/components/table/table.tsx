@@ -2,8 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import { isValidElement, type ReactNode } from "react";
 import { Link } from "react-router";
 
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import NoDataFound from "@/shared/components/errors/no-data-found";
+import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -7,7 +7,10 @@ from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFie
 
 from infrahub.core.constants.infrahubkind import NUMBERPOOL
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
+from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -154,6 +157,11 @@ class TestConvertObjectType(TestInfrahubApp):
 
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
+    async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
+        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        await snps.run()
+
     @pytest.fixture
     async def schemas_person(self, node_group_schema: None, data_schema: None) -> SchemaRoot:
         person_generic = GenericSchema(
@@ -191,6 +199,8 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     ) -> None:
         response = await client.schema.load(schemas=[schemas_person.model_dump()])
         assert len(response.errors) == 0, response.errors
+
+        await self._run_number_pool_validator(db)
 
         # Create some objects
         persons: dict[str, InfrahubNode] = {}

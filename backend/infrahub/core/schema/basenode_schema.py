@@ -112,6 +112,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return False
 
     @property
+    def is_file_object(self) -> bool:
+        return False
+
+    @property
     def kind(self) -> str:
         if self.namespace == "Attribute":
             return self.name
@@ -320,6 +324,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         for item in self.attributes:
             if item.id == id:
                 return item
+            # Also check source_attribute_id for inherited attributes
+            if item.inherited and item.source_attribute_id == id:
+                return item
 
         raise ValueError(f"Unable to find the attribute with the ID: {id}")
 
@@ -375,7 +382,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_attributes_name_id_map(self) -> dict[str, str]:
         name_id_map = {}
         for attr in self.attributes:
-            name_id_map[attr.name] = INHERITED if attr.inherited else attr.id
+            if attr.inherited:
+                # Use source_attribute_id for rename detection if available
+                name_id_map[attr.name] = attr.source_attribute_id or INHERITED
+            else:
+                name_id_map[attr.name] = attr.id
         return name_id_map
 
     def get_relationship_name_id_map(self) -> dict[str, str]:

@@ -14,6 +14,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
 interface BranchAttributesProps {
   branch: BranchDetail;
@@ -32,7 +33,9 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
           <BranchAttributeLabel>
             <CircleIcon className="size-3.5" /> Status
           </BranchAttributeLabel>
-          <BranchAttributeValue>{branch.status}</BranchAttributeValue>
+          <BranchAttributeValue>
+            <BranchStatusBadge status={branch.status} showOpen />
+          </BranchAttributeValue>
         </>
       )}
 

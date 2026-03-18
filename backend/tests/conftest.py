@@ -42,6 +42,7 @@ from infrahub.core.schema.definitions.core import (
     core_generic_account,
     core_profile_schema_definition,
 )
+from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
@@ -294,6 +295,28 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
     schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     return schema_branch
+
+
+def do_register_simplified_proposed_change_schema(branch: Branch) -> SchemaBranch:
+    """Register a minimal CoreProposedChange schema with only the attributes needed for queries."""
+
+    minimal_pc = NodeSchema(
+        name=core_proposed_change.name,
+        namespace=core_proposed_change.namespace,
+        branch=core_proposed_change.branch,
+        attributes=[
+            attr for attr in core_proposed_change.attributes if attr.name in {"name", "source_branch", "state"}
+        ],
+    )
+    schema = SchemaRoot(nodes=[minimal_pc])
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
+async def register_simplified_proposed_change_schema(default_branch: Branch) -> SchemaBranch:
+    return do_register_simplified_proposed_change_schema(branch=default_branch)
 
 
 @pytest.fixture(scope="session")

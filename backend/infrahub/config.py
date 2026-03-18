@@ -201,6 +201,10 @@ class MainSettings(BaseSettings):
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
     )
+    diff_update_after_merge: bool = Field(
+        default=True,
+        description="When enabled, diff updates are triggered for active branches after a branch merge.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -271,6 +275,7 @@ class StorageSettings(BaseSettings):
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
+    max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
 
 
 class DatabaseSettings(BaseSettings):

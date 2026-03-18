@@ -4,9 +4,9 @@ import { useAtom } from "jotai";
 import { use, useState } from "react";
 import { useParams } from "react-router";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
 import SlideOver from "@/shared/components/display/slide-over";
+import { Button } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/shared/config/constants";
 

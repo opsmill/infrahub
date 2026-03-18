@@ -29,6 +29,5 @@ export const getProposedChangeDetails = async (params: GetProposedChangeDetailsP
   return {
     proposedChangeData,
     metadata: proposedChangeMetadata as NodeMetadata,
-    tasksCount: data.InfrahubTask.count,
   };
 };

@@ -7,6 +7,7 @@ from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.enum import ConstraintIdentifier
 
@@ -123,7 +124,7 @@ def person_cars_node_diff(
 
 
 class TestConstraintDeterminer:
-    async def test_no_node_diffs(self, car_person_schema, default_branch) -> None:
+    async def test_no_node_diffs(self, car_person_schema: SchemaBranch, default_branch: Branch) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
 
@@ -132,7 +133,10 @@ class TestConstraintDeterminer:
         assert constraints == []
 
     async def test_one_attribute_update_node_diff(
-        self, car_person_schema, default_branch, person_name_node_diff
+        self,
+        car_person_schema: SchemaBranch,
+        default_branch: Branch,
+        person_name_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
@@ -149,7 +153,12 @@ class TestConstraintDeterminer:
         assert len(relevant_constraints) == len(constraint_info_set)
         assert set(relevant_constraints) == constraint_info_set
 
-    async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff) -> None:
+    async def test_many_relationship_update(
+        self,
+        car_person_schema: SchemaBranch,
+        default_branch: Branch,
+        person_cars_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
+    ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_cars_node_diff
@@ -160,7 +169,10 @@ class TestConstraintDeterminer:
         assert constraint_info_set < set(constraints)
 
     async def test_node_property_constraints_included(
-        self, car_person_schema, default_branch, person_name_node_diff
+        self,
+        car_person_schema: SchemaBranch,
+        default_branch: Branch,
+        person_name_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)

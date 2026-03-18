@@ -1,7 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
+import { Row } from "@/shared/components/container";
+import { Button } from "@/shared/components/ui/button";
 import { MAX_PASSWORD_DOTS_DISPLAY, MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 type tPasswordDisplayProps = {
@@ -14,22 +15,22 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
   const [display, setDisplay] = useState(false);
 
   const displayButton = (
-    <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={() => setDisplay(!display)}>
+    <Button variant="ghost" size="icon" onClick={() => setDisplay(!display)}>
       <Icon icon={display ? "mdi:eye" : "mdi:eye-off"} className="text-gray-600" />
     </Button>
   );
 
   if (display) {
     return (
-      <div className="flex items-center">
-        <div className="mr-1">{displayButton}</div>
+      <Row>
+        {displayButton}
 
         <div>
           {value?.length > MAX_VALUE_LENGTH_DISPLAY
             ? `${value.substr(0, MAX_VALUE_LENGTH_DISPLAY)}...`
             : value}
         </div>
-      </div>
+      </Row>
     );
   }
 
@@ -40,10 +41,10 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
   ));
 
   return (
-    <div className="flex items-center">
-      <div>{displayButton}</div>
+    <Row>
+      {displayButton}
 
       <div className="flex items-center">{passwordCircles}</div>
-    </div>
+    </Row>
   );
 };

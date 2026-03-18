@@ -33,7 +33,7 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
     }
   );
 
-  const flatData = React.useMemo(() => data?.pages?.flatMap((page) => page.items) ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   const isLoading = isPending || isFetchingNextPage;
 
@@ -81,7 +81,7 @@ export const Component = () => {
   }
 
   return (
-    <RequireObjectPermissions objectKind={IP_NAMESPACE_GENERIC} loadingClassName="h-full">
+    <RequireObjectPermissions objectKind={schema.kind!} loadingClassName="h-full">
       {({ permission }) => {
         return <IpamNamespaceListPage namespaceSchema={schema} permission={permission} />;
       }}

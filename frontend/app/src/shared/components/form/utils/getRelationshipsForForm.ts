@@ -5,32 +5,27 @@ import {
   IP_PREFIX_GENERIC,
   IP_SUMMARY_RELATIONSHIPS_BLACKLIST,
 } from "@/entities/ipam/constants";
-import type { RelationshipKind } from "@/entities/nodes/types";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export const getRelationshipsForForm = (
-  relationships: Array<RelationshipSchema>,
-  isUpdate?: boolean,
-  schema?: ModelSchema
-) => {
-  // Filter relationships based on cardinality and kind for form inclusion
-  // For create forms, include relationships with cardinality 'one', eligible kinds, or mandatory cardinality 'many'
-  // For update forms, only include relationships with cardinality 'one' or those with eligible kinds (Attribute or Parent). Other should be display as tabs on details view
-  return relationships.filter((relationship) => {
+  schema: ModelSchema,
+  isUpdate?: boolean
+): Array<RelationshipSchema> => {
+  const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
+
+  return (schema.relationships ?? []).filter((relationship) => {
     if (relationship.cardinality === "one" && relationship.kind !== "Template") return true;
     if (!isUpdate && relationship.name === "member_of_groups") return true;
 
-    if (schema && (isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema))) {
+    if (isIpamSchema) {
       return !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(relationship.name);
     }
 
-    const isPeerKindEligibleForForm = relationshipKindForForm.includes(
-      relationship.kind as RelationshipKind
-    );
+    const isEligibleKind = relationshipKindForForm.includes(relationship.kind);
 
-    if (isUpdate) return isPeerKindEligibleForForm;
+    if (isUpdate) return isEligibleKind;
 
-    return isPeerKindEligibleForForm || !relationship.optional;
+    return isEligibleKind || !relationship.optional;
   });
 };

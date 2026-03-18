@@ -1,5 +1,9 @@
+from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.services import InfrahubServices
 from tests.helpers.graphql import graphql_mutation, graphql_query
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -9,11 +13,11 @@ class TestNumberSupportsLargeInter(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
-        register_core_models_schema,
-        session_admin,
-        person_john_main,
-        service,
+        car_person_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        person_john_main: Node,
+        service: InfrahubServices,
     ) -> None:
         query = """
         mutation {

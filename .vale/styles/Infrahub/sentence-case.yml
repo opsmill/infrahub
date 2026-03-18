@@ -61,6 +61,14 @@ exceptions:
   - Generics
   - Docker
   - Profiles
+  - Profile
+  - Transformation
+  - Transformations
+  - Generator
+  - Generators
+  - Resource
+  - Manager
+  - Jinja
   - Display
   - Label
   - Enterprise

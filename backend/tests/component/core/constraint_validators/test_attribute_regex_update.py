@@ -12,7 +12,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
@@ -46,7 +46,7 @@ async def test_query(
 
 
 async def test_query_NULL_allowed(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, person_john_main: Node
 ) -> None:
     car_schema = registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
@@ -92,7 +92,7 @@ async def test_query_NULL_allowed(
 
 
 async def test_query_update_on_branch(
-    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     person_john_main.name.value = "little john"
     await person_john_main.save(db=db)
@@ -124,7 +124,7 @@ async def test_query_update_on_branch(
 
 
 async def test_query_node_deleted_on_branch(
-    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     person_john_main.name.value = "little john"
     await person_john_main.save(db=db)
@@ -155,7 +155,7 @@ async def test_query_node_deleted_on_branch(
 
 
 async def test_validator(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])

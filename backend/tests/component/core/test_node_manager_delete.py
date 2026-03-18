@@ -1,6 +1,7 @@
 from typing import AsyncGenerator
 
 import pytest
+from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -33,7 +34,12 @@ async def test_delete_succeeds(
 
 
 async def test_delete_prevented(
-    db, default_branch, car_camry_main, car_accord_main, person_albert_main, person_jane_main
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    person_albert_main: Node,
+    person_jane_main: Node,
 ) -> None:
     with pytest.raises(ValidationError) as exc:
         await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
@@ -46,13 +52,13 @@ async def test_delete_prevented(
 
 
 async def test_one_sided_relationship(
-    db,
-    default_branch,
-    car_camry_main,
-    car_accord_main,
-    person_albert_main,
-    person_jane_main,
-    car_person_schema_unregistered,
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    person_albert_main: Node,
+    person_jane_main: Node,
+    car_person_schema_unregistered: SchemaRoot,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
@@ -81,7 +87,12 @@ async def test_one_sided_relationship(
 
 
 async def test_source_node_already_deleted(
-    db, default_branch, car_camry_main, car_accord_main, person_albert_main, person_jane_main
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    person_albert_main: Node,
+    person_jane_main: Node,
 ) -> None:
     car = await NodeManager.get_one(db=db, id=car_camry_main.id)
     await car.delete(db=db)
@@ -113,7 +124,13 @@ async def test_cascade_delete_not_prevented(
 
 
 async def test_delete_with_cascade_on_many_relationship(
-    db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
@@ -127,7 +144,11 @@ async def test_delete_with_cascade_on_many_relationship(
 
 
 async def test_delete_with_cascade_on_one_relationship(
-    db, default_branch, car_camry_main, car_accord_main, person_john_main
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    person_john_main: Node,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
@@ -141,7 +162,13 @@ async def test_delete_with_cascade_on_one_relationship(
 
 
 async def test_delete_with_cascade_multiple_input_nodes(
-    db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
@@ -155,7 +182,13 @@ async def test_delete_with_cascade_multiple_input_nodes(
 
 
 async def test_delete_with_cascade_both_directions_succeeds(
-    db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
+    db: AsyncGenerator[InfrahubDatabase, None],
+    default_branch: Branch,
+    car_camry_main: Node,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
@@ -171,7 +204,7 @@ async def test_delete_with_cascade_both_directions_succeeds(
 
 
 async def test_delete_with_required_on_generic_prevented(
-    db, default_branch, dependent_generics_schema: SchemaBranch
+    db: AsyncGenerator[InfrahubDatabase, None], default_branch: Branch, dependent_generics_schema: SchemaBranch
 ) -> None:
     human = await Node.init(db=db, schema="TestHuman", branch=default_branch)
     await human.new(db=db, name="Jane", height=180)
@@ -191,7 +224,7 @@ async def test_delete_with_required_on_generic_prevented(
 
 
 async def test_delete_with_cascade_on_generic_allowed(
-    db, default_branch, dependent_generics_schema: SchemaBranch
+    db: AsyncGenerator[InfrahubDatabase, None], default_branch: Branch, dependent_generics_schema: SchemaBranch
 ) -> None:
     # set TestPerson.animals to be cascade delete
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -214,7 +247,9 @@ async def test_delete_with_cascade_on_generic_allowed(
 
 
 class TestDeleteUnidirectionalRelationship(TestInfrahubApp):
-    async def test_delete_unidirectional_optional_relationship(self, db, client, default_branch) -> None:
+    async def test_delete_unidirectional_optional_relationship(
+        self, db: AsyncGenerator[InfrahubDatabase, None], client: InfrahubClient, default_branch: Branch
+    ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
         owner = await Node.init(schema=TestKind.PERSON, db=db)

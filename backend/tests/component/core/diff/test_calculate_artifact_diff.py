@@ -15,7 +15,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.fixture
 async def car_person_data_artifact_diff(
     db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]
-):
+) -> dict[str, Node | Branch]:
     g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)

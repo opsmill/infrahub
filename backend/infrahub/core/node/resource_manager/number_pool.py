@@ -28,7 +28,7 @@ class CoreNumberPool(Node):
         """Returns the number of excluded values for the attribute of the number pool."""
 
         pool_node = registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
-        attribute = [attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value][0]  # type: ignore [attr-defined]
+        attribute = next(attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value)  # type: ignore [attr-defined]
         if not isinstance(attribute.parameters, NumberAttributeParameters):
             return 0
 
@@ -86,16 +86,14 @@ class CoreNumberPool(Node):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        node: Node,
         attribute: AttributeSchema,
-        identifier: str | None = None,
+        identifier: str,
         at: Timestamp | None = None,
     ) -> int:
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # NOTE: ideally we should use the HFID as the identifier (if available)
             # one of the challenge with using the HFID is that it might change over time
             # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
-            identifier = identifier or node.get_id()
 
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing number and allocate the next available

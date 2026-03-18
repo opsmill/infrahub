@@ -1,8 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import type { FC } from "react";
+import { Button } from "react-aria-components";
 
-import { Button } from "@/shared/components/buttons/button";
+import { Row } from "@/shared/components/container";
 import type { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
 
 import { boldCommand, type EditorCommand, italicCommand, strikethroughCommand } from "../commands";
@@ -19,19 +20,18 @@ const ToolBar: FC<ToolbarProps> = ({ codeMirror }) => {
   const commands: EditorCommand[] = [boldCommand, italicCommand, strikethroughCommand];
 
   return (
-    <div className="flex items-center gap-2 pr-2">
+    <Row>
       {commands.map(({ label, icon, onClick }) => (
         <Button
-          key={label} // Using the label as a key for uniqueness
-          className="border-none bg-white p-0 text-xl shadow-none"
-          type="button"
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded text-lg hover:bg-gray-100"
+          key={label}
           aria-label={label}
           onMouseDown={handleButtonMouseDown(onClick)}
         >
           <Icon icon={icon} />
         </Button>
       ))}
-    </div>
+    </Row>
   );
 };
 
@@ -50,11 +50,14 @@ export const MarkdownEditorHeader: FC<EditorHeaderProps> = ({
   editLabel,
   previewLabel,
 }) => (
-  <div className="flex justify-between overflow-auto border-gray-200 border-b">
-    <Button onClick={onPreviewToggle} className="rounded-none rounded-tl-md border-none bg-white">
+  <Row className="justify-between overflow-auto border-gray-200 border-b pr-2">
+    <Button
+      onClick={onPreviewToggle}
+      className="rounded-tl-md bg-white px-2 py-1.5 font-semibold text-sm hover:bg-gray-100"
+    >
       {previewMode ? (editLabel ?? "Continue editing") : (previewLabel ?? "Preview")}
     </Button>
 
     {!previewMode && <ToolBar codeMirror={codeMirror} />}
-  </div>
+  </Row>
 );

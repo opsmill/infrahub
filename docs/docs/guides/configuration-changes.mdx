@@ -58,7 +58,7 @@ Avoid mixing multiple configuration methods as it can lead to confusion about wh
 
 :::
 
-### Option A: Use a .env file (recommended)
+### Option A: use a .env file (recommended)
 
 Create or edit a `.env` file in the same directory as your `docker-compose.yml` file:
 
@@ -68,7 +68,7 @@ INFRAHUB_HTTP_TIMEOUT=20
 
 This method is preferred for persistent configuration as Docker Compose automatically loads variables from the `.env` file.
 
-### Option B: Export in your shell
+### Option B: export in your shell
 
 Export the environment variable in your shell session:
 
@@ -78,7 +78,7 @@ export INFRAHUB_HTTP_TIMEOUT=20
 
 This method works for temporary changes or testing, but the variable persists only for the current shell session.
 
-### Option C: Use a .toml file (not recommended)
+### Option C: use a .toml file (not recommended)
 
 Create or edit an `infrahub.toml` file with your configuration:
 
@@ -91,7 +91,7 @@ Then reference the TOML file when starting Infrahub. The application will automa
 
 :::note
 
-TOML configuration files use lowercase with underscores for setting names (e.g., `http_timeout`) rather than the uppercase environment variable format (e.g., `INFRAHUB_HTTP_TIMEOUT`).
+TOML configuration files use lowercase with underscores for setting names (for example, `http_timeout`) rather than the uppercase environment variable format (for example, `INFRAHUB_HTTP_TIMEOUT`).
 
 :::
 

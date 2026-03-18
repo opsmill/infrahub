@@ -14,7 +14,7 @@ from infrahub.database import InfrahubDatabase
         (ipaddress.ip_interface("192.0.22.23/22"), "11000000000000000001011000010111"),
     ],
 )
-def test_convert_ip_to_binary_str(input, response) -> None:
+def test_convert_ip_to_binary_str(input: ipaddress.IPv4Network | ipaddress.IPv4Interface, response: str) -> None:
     assert convert_ip_to_binary_str(obj=input) == response
 
 

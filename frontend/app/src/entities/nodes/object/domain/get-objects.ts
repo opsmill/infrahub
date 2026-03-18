@@ -10,7 +10,7 @@ import {
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
-import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
@@ -27,7 +27,7 @@ export type GetObjectsParams = ContextParams &
     relationshipsOptions?: AddAttributesToRequestOptions;
   };
 
-export type GetObjects = (args: GetObjectsParams) => Promise<PaginatedResponse<NodeObject>>;
+export type GetObjects = (args: GetObjectsParams) => Promise<Array<NodeObject>>;
 
 export const getObjects: GetObjects = async ({
   schema,
@@ -55,7 +55,6 @@ export const getObjects: GetObjects = async ({
           offset,
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
-        count: true,
         edges: {
           node: {
             id: true,
@@ -70,7 +69,7 @@ export const getObjects: GetObjects = async ({
   });
 
   const query = gql(queryString);
-  const { data } = await graphqlClient.query({
+  const { data, errors } = await graphqlClient.query({
     query,
     context: {
       branch: branchName,
@@ -78,9 +77,9 @@ export const getObjects: GetObjects = async ({
     },
   });
 
-  const result = data[schemaKind];
-  return {
-    items: result?.edges?.map((edge: any) => edge.node) ?? [],
-    count: result?.count ?? 0,
-  };
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
+
+  return data[schemaKind]?.edges?.map(({ node }: { node: NodeObject }) => node) ?? [];
 };

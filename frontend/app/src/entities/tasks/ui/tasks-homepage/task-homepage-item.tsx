@@ -10,7 +10,7 @@ import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import type { TaskHomepageNode } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage";
+import type { TaskHomepageNode } from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage";
 
 export const TaskHomepageItem = ({
   id,
