@@ -92,12 +92,12 @@ exports[`fix ts error`] = {
     "src/entities/diff/node-diff/types.ts:3526453780": [
       [0, 39, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:782945968": [
+    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:3324408954": [
       [10, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
       [33, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
-      [352, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [354, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [356, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
+      [351, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [353, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [355, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
     "src/entities/diff/ui/file-diff/file-content-diff.tsx:2401456629": [
       [28, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
