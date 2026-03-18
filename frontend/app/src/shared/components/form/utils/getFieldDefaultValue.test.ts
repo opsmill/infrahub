@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { ProfileData } from "@/shared/components/form/object-form";
-import {
-  type GetFieldDefaultValue,
-  getFieldDefaultValue,
-} from "@/shared/components/form/utils/getFieldDefaultValue";
+import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { store } from "@/shared/stores";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -279,27 +276,13 @@ describe("getFieldDefaultValue", () => {
 
     it("returns profile's value with the highest priority + order by id ASC", () => {
       // GIVEN
-      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
-        id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-        state: "present",
+      const fieldSchema = generateAttributeSchema({
         name: "name",
-        kind: "Text",
-        enum: null,
-        choices: null,
-        regex: null,
-        max_length: null,
-        min_length: null,
-        label: "Name",
-        description: null,
-        read_only: false,
         unique: true,
         optional: false,
-        branch: "aware",
         order_weight: 1000,
         default_value: "test-value-form-schema",
-        inherited: false,
-        allow_override: "any",
-      };
+      });
 
       const profiles: Array<ProfileData> = [
         {
@@ -354,27 +337,13 @@ describe("getFieldDefaultValue", () => {
 
     it("returns the 1st profile that contains any not null value", () => {
       // GIVEN
-      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
-        id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-        state: "present",
+      const fieldSchema = generateAttributeSchema({
         name: "name",
-        kind: "Text",
-        enum: null,
-        choices: null,
-        regex: null,
-        max_length: null,
-        min_length: null,
-        label: "Name",
-        description: null,
-        read_only: false,
         unique: true,
         optional: false,
-        branch: "aware",
         order_weight: 1000,
         default_value: "test-value-form-schema",
-        inherited: false,
-        allow_override: "any",
-      };
+      });
 
       const profiles: Array<ProfileData> = [
         {
@@ -420,27 +389,13 @@ describe("getFieldDefaultValue", () => {
   describe("when source is schema", () => {
     it("returns schema's default value when it exists, and no profile nor current object field value are provided", () => {
       // GIVEN
-      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
-        id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
-        state: "present",
+      const fieldSchema = generateAttributeSchema({
         name: "name",
-        kind: "Text",
-        enum: null,
-        choices: null,
-        regex: null,
-        max_length: null,
-        min_length: null,
-        label: "Name",
-        description: null,
-        read_only: false,
         unique: true,
         optional: false,
-        branch: "aware",
         order_weight: 1000,
         default_value: "test-value-form-schema",
-        inherited: false,
-        allow_override: "any",
-      };
+      });
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema });
