@@ -101,7 +101,7 @@ def main() -> None:
 
     keywords = [k.strip() for k in keyword_list.split(",") if k.strip()]
     exclude_dirs = {".git", "node_modules"}
-    exclude_patterns = ("*.log", "*.lock", ".env", "package-lock.json")
+    exclude_patterns = ("*.log", "*.lock", ".env", "package-lock.json", "pnpm-lock.yaml")
     repo_root = Path.cwd()
 
     violations = find_keyword_violations(keywords, repo_root, exclude_dirs, exclude_patterns)
