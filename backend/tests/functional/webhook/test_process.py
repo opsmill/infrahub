@@ -38,6 +38,31 @@ class TestWebhookProcess(TestInfrahubApp):
             "event_type": "infrahub.branch.created",
             "validate_certificates": False,
             "shared_key": "1234567890",
+            "custom_headers": [],
+            "webhook_type": "StandardWebhook",
+        }
+
+    async def test_convert_node_to_webhook_with_headers(
+        self,
+        db: InfrahubDatabase,
+        webhook_with_headers: Node,
+        client: InfrahubClient,
+    ) -> None:
+        webhook = await client.get(
+            kind=InfrahubKind.STANDARDWEBHOOK, id=webhook_with_headers.id, prefetch_relationships=True
+        )
+        converted_webhook = await convert_node_to_webhook(webhook_node=webhook, client=client)
+
+        assert converted_webhook.model_dump() == {
+            "name": "WebhookWithHeaders",
+            "url": "https://url.mock",
+            "event_type": "infrahub.branch.created",
+            "validate_certificates": False,
+            "shared_key": "1234567890",
+            "custom_headers": [
+                {"key": "X-Custom-Token", "value": "secret123", "kind": "static"},
+                {"key": "X-Env-Key", "value": "MY_ENV_VAR", "kind": "environment"},
+            ],
             "webhook_type": "StandardWebhook",
         }
 
@@ -63,6 +88,7 @@ class TestWebhookProcess(TestInfrahubApp):
             "transform_timeout": 5,
             "url": "https://url.mock",
             "validate_certificates": False,
+            "custom_headers": [],
             "webhook_type": "TransformWebhook",
         }
 

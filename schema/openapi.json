@@ -3736,6 +3736,12 @@
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -3995,6 +4001,12 @@
                         ],
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
+                        "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
                         "update": "allowed"
                     }
                 },
@@ -5934,6 +5946,12 @@
                         "title": "Deprecation",
                         "description": "Mark relationship as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -6056,6 +6074,14 @@
                     "token_path"
                 ],
                 "title": "SSOProviderInfo"
+            },
+            "SchemaAttributeDisplay": {
+                "type": "string",
+                "enum": [
+                    "default",
+                    "extra"
+                ],
+                "title": "SchemaAttributeDisplay"
             },
             "SchemaBranchHash": {
                 "properties": {

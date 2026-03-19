@@ -566,7 +566,7 @@ infrahub:
           host: "infrahub-cache-master"
 ```
 
-The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (e.g. `4.0.0`) does not require it.
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (for example, `4.0.0`) does not require it.
 
 :::
 
@@ -574,7 +574,7 @@ The `host` value should match your Redis service name. If you deployed Redis usi
 
 If you are upgrading from a Helm chart version earlier than 4.0.0, update your `values.yml` file:
 
-1. **Remove old configuration preset values:** Delete any environment variables and settings that were previously copied from sizing presets (i.e., `INFRAHUB_CACHE_ADDRESS`, `PREFECT_REDIS_MESSAGING_HOST`, replica counts, resource limits). The flavored charts now handle these automatically.
+1. **Remove old configuration preset values:** Delete any environment variables and settings that were previously copied from sizing presets (for example, `INFRAHUB_CACHE_ADDRESS`, `PREFECT_REDIS_MESSAGING_HOST`, replica counts, resource limits). The flavored charts now handle these automatically.
 
 2. **Add the Redis host configuration:** Add the following to your `values.yml` file:
 

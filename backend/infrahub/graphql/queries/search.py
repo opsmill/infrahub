@@ -9,6 +9,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
 
@@ -30,6 +31,7 @@ class NodeEdge(ObjectType):
 class NodeEdges(ObjectType):
     count = Field(Int, required=True)
     edges = Field(List(of_type=NonNull(NodeEdge)), required=True)
+    parent_prefixes = Field(List(of_type=NonNull(NodeEdge)), required=False)
 
 
 def _collapse_ipv6(s: str) -> str:
@@ -98,6 +100,20 @@ def _collapse_ipv6(s: str) -> str:
     return compressed_address
 
 
+def _try_parse_ip_or_prefix(
+    q: str,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | ipaddress.IPv4Network | ipaddress.IPv6Network | None:
+    """Try to parse a query string as an IP address or CIDR prefix.
+
+    Returns the parsed object or None if the string is not a valid IP/CIDR.
+    """
+    with contextlib.suppress(ValueError):
+        return ipaddress.ip_address(q)
+    with contextlib.suppress(ValueError):
+        return ipaddress.ip_network(q, strict=False)
+    return None
+
+
 async def search_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
@@ -122,6 +138,18 @@ async def search_resolver(
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
             q = _collapse_ipv6(q)
+
+        # Detect if the query is a valid IP address or CIDR prefix for parent prefix lookup
+        parsed_ip = _try_parse_ip_or_prefix(q)
+        if parsed_ip is not None and "parent_prefixes" in fields:
+            prefix_query = await IPParentPrefixLookupQuery.init(
+                db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, ip_value=parsed_ip
+            )
+            await prefix_query.execute(db=graphql_context.db)
+            parent_prefix_results = [
+                {"node": {"id": result.prefix_id, "kind": result.prefix_kind}} for result in prefix_query.get_data()
+            ]
+            response["parent_prefixes"] = parent_prefix_results
 
         if case_sensitive:
             # Case-sensitive search using the dedicated query

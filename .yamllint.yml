@@ -11,6 +11,7 @@ ignore: |
   # https://github.com/sbaudoin/yamllint/issues/16
   /helm/templates
   /python_sdk
+  /frontend/packages/schema-visualizer
 
 rules:
   new-lines: disable

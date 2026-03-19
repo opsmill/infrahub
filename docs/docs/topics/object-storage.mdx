@@ -2,76 +2,139 @@
 title: Object storage
 ---
 
+import ReferenceLink from "../../src/components/Card";
+
 # Object storage
 
-Infrahub provides an interface to store and retrieve files or objects in object storage. Object storage is used internally within Infrahub to store rendered artifacts, but you can also use it to store any text-based file or content.
+Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](./file-object.mdx) and rendered [artifacts](./artifact.mdx). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
 
-You can interact with object storage through the REST API and Python SDK. For practical steps, see the [object storage guide](../guides/object-storage.mdx) and the [object storage Python SDK guide]($(base_url)python-sdk/guides/object-storage).
+## What uses object storage
 
-## Supported storage backends
+Object storage serves two use cases in Infrahub:
 
-Infrahub supports two storage backends:
+- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](./permissions-roles.mdx). See [file objects](./file-object.mdx) for details.
+- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](./artifact.mdx) for details.
 
-- Local storage (configured by default)
-- AWS S3 (or S3-compatible) storage
+Both file objects and artifacts store a `storage_id` in the graph database that references the content in object storage. The difference is in how the content is created — user uploads for file objects, automated Transformations for artifacts — and how access is governed.
 
-You configure the backend by setting the appropriate environment variables. These variables are typically set in your Docker Compose YAML file or in the deployment environment for your containers. See the [Infrahub configuration reference](../reference/configuration.mdx) for a full list of options.
+## Storage backends
 
----
-
-### Local storage
-
-By default, Infrahub uses local storage for artifacts and files. No additional configuration is required unless you want to change the storage location.
-
-To explicitly configure local storage, set the following environment variables in your Docker Compose YAML file or deployment environment:
-
-```yaml
-    # ... other configuration ...
-      INFRAHUB_STORAGE_DRIVER: "local"
-      INFRAHUB_STORAGE_LOCAL_PATH: "/opt/infrahub/storage"
-    # ... other configuration ...
-```
-
-All Infrahub API servers and task workers must have access to the specified directory.
-
----
-
-### AWS S3 storage
-
-To use AWS S3 or any S3-compatible storage, set the following environment variables in your Docker Compose YAML file or deployment environment:
-
-```yaml
-    # ... other configuration ...
-    INFRAHUB_STORAGE_DRIVER: "s3"
-    AWS_ACCESS_KEY_ID: "my_access_key"
-    AWS_SECRET_ACCESS_KEY: "secret_access_key"
-    INFRAHUB_STORAGE_BUCKET_NAME: "my-infrahub-bucket"
-    INFRAHUB_STORAGE_ENDPOINT_URL: "s3.eu-central-1.amazonaws.com"
-    # ... other configuration ...
-```
-
-For all available configuration options and environment variables, refer to the [Infrahub configuration reference](../reference/configuration.mdx#infrahub_storage_s3).
-
----
+Infrahub supports two storage backends. The choice of backend is transparent to the rest of the system — all API endpoints, SDK methods, and internal operations work identically regardless of which backend is configured.
 
 :::info
-You can switch between storage backends by changing the value of `INFRAHUB_STORAGE_DRIVER` and updating the relevant environment variables in your deployment configuration.
+Use **local filesystem** storage for development and testing. For production and multi-node deployments, use **S3-compatible storage** to avoid shared filesystem requirements.
 :::
 
-:::warning
-If you change the storage driver (for example, from `local` to `s3` or vice versa), **existing artifacts will not be automatically migrated**.  
-To regenerate artifacts:
+### Local filesystem
 
-- You must either delete the old artifacts, or
-- Manually update their checksum values and regenerate them.
+The default backend stores files on the local filesystem. This is suitable for development, testing, and single-node deployments.
 
-Failing to do so may result in missing or stale artifact files.
+```yaml
+INFRAHUB_STORAGE_DRIVER: "local"
+INFRAHUB_STORAGE_LOCAL_PATH: "/opt/infrahub/storage"
+```
+
+All Infrahub API servers and task workers must have access to the configured directory. In multi-node deployments with local storage, this typically means a shared network filesystem.
+
+### S3-compatible storage
+
+For production and multi-node deployments, Infrahub supports Amazon S3 and any S3-compatible service (MinIO, Ceph, and others).
+
+```yaml
+INFRAHUB_STORAGE_DRIVER: "s3"
+AWS_ACCESS_KEY_ID: "my_access_key"
+AWS_SECRET_ACCESS_KEY: "secret_access_key"
+INFRAHUB_STORAGE_BUCKET_NAME: "my-infrahub-bucket"
+INFRAHUB_STORAGE_ENDPOINT_URL: "s3.eu-central-1.amazonaws.com"
+```
+
+Additional S3 options include SSL configuration, ACL defaults, query string authentication, and custom domains. See the [configuration reference](../reference/configuration.mdx) for the full list.
+
+## How it works
+
+### Concepts and definitions
+
+**Object storage** is a key-value store where each entry is identified by a UUID. When content is uploaded, Infrahub generates a UUID using a time-sortable format (UUIDT), stores the content under that key, and returns the identifier to the caller. All subsequent operations — retrieval, deletion — reference this identifier.
+
+A **storage driver** is the backend that handles the actual persistence of content. Infrahub abstracts the driver behind a unified interface, so the rest of the system interacts with object storage the same way regardless of whether files land on a local filesystem or in an S3 bucket.
+
+A **storage identifier** (or `storage_id`) is the UUID that links a graph node to its stored content. File object nodes and artifact nodes both carry a `storage_id` attribute that points to the corresponding entry in object storage.
+
+### Architecture
+
+The object storage layer sits between the Infrahub API and the configured storage backend. It exposes four operations:
+
+- **Store**: Write content under a given identifier
+- **Retrieve**: Read content as a decoded string by identifier
+- **Retrieve binary**: Read content as raw bytes by identifier
+- **Delete**: Remove content by identifier
+
+These operations are driver-agnostic. The `InfrahubObjectStorage` class loads the configured driver at startup and delegates all calls to it. This design means that adding a new storage backend only requires implementing the driver interface — no changes to the API or core logic.
+
+### Immutability
+
+Content in object storage is immutable. Once a file is stored, it is never modified in place. When a file is updated, Infrahub stores the new version under a new UUID. The previous version remains in storage, which is what enables time travel and branch isolation for file objects and artifacts.
+
+This approach avoids the complexity of in-place updates and means the storage layer does not need to understand branches, merge conflicts, or version history. All of that logic lives in the graph database, where Infrahub already has mature support for it.
+
+### Relationship to the graph database
+
+The graph database and object storage serve complementary roles:
+
+```text
+Graph database (branch-aware, time-aware):
+  Stores metadata, relationships, and storage_id references
+  Handles branching, merging, time travel, permissions
+
+Object storage (branch-agnostic):
+  Stores raw file content by UUID
+  Simple key-value store, no version control logic
+```
+
+When you query a file object on a specific branch or at a specific point in time, the graph database resolves which `storage_id` was active in that context. The storage layer then retrieves the corresponding content. This separation keeps both systems focused on their core responsibility.
+
+## Operational considerations
+
+### File size limits
+
+The maximum upload size defaults to 50 MB and can be adjusted through the `INFRAHUB_STORAGE_MAX_FILE_SIZE` environment variable (value in MB). For deployments behind a reverse proxy, the proxy must also be configured to allow matching request body sizes (for example, `client_max_body_size` in NGINX or request size middleware in Traefik).
+
+<ReferenceLink title="How to configure Infrahub" url="../guides/configuration-changes" />
+
+### Storage growth
+
+Because object storage is immutable, content accumulates over time. Every file update creates a new entry while the previous version remains in storage to support time travel and branch history. There is currently no automatic garbage collection for orphaned content. In environments with frequent file updates, storage usage should be monitored.
+
+### Shared access in multi-node deployments
+
+When using local filesystem storage across multiple API servers or task workers, all nodes must have access to the same storage directory. This typically requires a shared network filesystem (NFS or similar). S3-compatible storage avoids this constraint entirely since all nodes access the same bucket over the network.
+
+<ReferenceLink title="Production deployment guide" url="../guides/production-deployment" />
+
+### Backups
+
+Object storage should be included in your backup strategy alongside the graph database. The two are tightly coupled: the graph database holds `storage_id` references that point to content in object storage. Restoring one without the other results in broken references (dangling `storage_id` values pointing to missing files) or orphaned files (content in storage with no corresponding graph node).
+
+:::warning Data loss risk
+Unlike artifacts, which can be regenerated from their definitions, user-uploaded file objects may only exist in object storage. If storage is lost without a backup, those files are unrecoverable.
 :::
 
----
+<ReferenceLink title="How to backup object storage" url="../guides/database-backup#step-3-backup-the-object-storage" />
 
-## Object model
+### Backend migration
 
-Objects or files stored within object storage are identified by a unique identifier (UUID). This identifier is assigned when the object is created. All interactions with the object use this identifier.
+:::warning Backend migration
+Switching storage backends (for example, from `local` to `s3`) does not migrate existing content. Files stored under the previous backend become inaccessible. Artifacts can be regenerated, but user-uploaded file objects must be re-uploaded.
+:::
 
-For more details on configuration options, see the [Infrahub configuration reference](../reference/configuration.mdx).
+## Connection to other concepts
+
+- **[File objects](./file-object.mdx)**: The primary way users interact with stored files. File objects are graph nodes that combine metadata with a reference to content in object storage.
+- **[Artifacts](./artifact.mdx)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
+- **[Permissions and roles](./permissions-roles.mdx)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
+
+## Further reading
+
+- [Object storage guide](../guides/object-storage.mdx): Practical steps for uploading and retrieving content
+- [File objects](./file-object.mdx): Attaching files to nodes with full version control
+- [Configuration reference](../reference/configuration.mdx): All storage-related environment variables and settings
