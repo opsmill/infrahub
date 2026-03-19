@@ -62,7 +62,9 @@ def test_delete_git_branch_after_merge_defaults_to_false() -> None:
 
 def test_delete_git_branch_after_merge_without_delete_branch_after_merge_raises() -> None:
     with pytest.raises(ValueError, match=re.escape("requires 'main.delete_branch_after_merge' to be enabled")):
-        Settings(git={"delete_git_branch_after_merge": True}, main={"delete_branch_after_merge": False})
+        Settings(
+            git=GitSettings(delete_git_branch_after_merge=True), main=MainSettings(delete_branch_after_merge=False)
+        )
 
 
 def test_storage_max_file_size() -> None:
