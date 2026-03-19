@@ -4742,3 +4742,44 @@ async def test_schema_loading_when_node_inherits_from_core_repository(
         schema.validate_restricted_namespaces_from_generic()
 
     assert "Generic node 'CoreGenericRepository' has restricted namespaces: ['Core']" in str(error.value)
+
+
+async def test_restricted_namespaces_enforced_with_multi_generic_inheritance() -> None:
+    """When a node inherits from multiple generics and only one has restricted_namespaces,
+    the restriction from that generic must still be enforced."""
+    schema_data = {
+        "generics": [
+            {
+                "name": "GenericA",
+                "namespace": "Core",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "restricted_namespaces": ["Core"],
+            },
+            {
+                "name": "GenericB",
+                "namespace": "Animal",
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [{"name": "color", "kind": "Text"}],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "NodeC",
+                "namespace": "Bad",
+                "attributes": [{"name": "extra", "kind": "Text"}],
+                "inherit_from": ["CoreGenericA", "AnimalGenericB"],
+            }
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_data))
+
+    with pytest.raises(ValueError) as error:
+        schema.validate_restricted_namespaces_from_generic()
+
+    assert "does not comply with this restriction as its namespace" in str(error.value)
+    assert "CoreGenericA" in str(error.value)
