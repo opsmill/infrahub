@@ -1722,12 +1722,6 @@ export interface components {
              * @default false
              */
             delete_branch_after_merge: boolean;
-            /**
-             * Delete Git Branch After Merge
-             * @description When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled.
-             * @default false
-             */
-            delete_git_branch_after_merge: boolean;
         };
         /** Menu */
         Menu: {

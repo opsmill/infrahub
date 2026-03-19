@@ -5029,12 +5029,6 @@
                         "title": "Delete Branch After Merge",
                         "description": "When enabled, the Infrahub branch is automatically deleted after a successful merge.",
                         "default": false
-                    },
-                    "delete_git_branch_after_merge": {
-                        "type": "boolean",
-                        "title": "Delete Git Branch After Merge",
-                        "description": "When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled.",
-                        "default": false
                     }
                 },
                 "additionalProperties": false,

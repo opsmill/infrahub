@@ -38,7 +38,6 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
 | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
 | `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` | When enabled, the Infrahub branch is automatically deleted after a successful merge. | boolean | False |
-| `INFRAHUB_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
 
 ## Api
 
@@ -61,6 +60,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_GIT_USER_EMAIL` | Email of the git user. This will be used as the user email when Infrahub commits code to a repository | string | infrahub@opsmill.com |
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
+| `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires main.delete_branch_after_merge to be enabled. | boolean | False |
 
 ## Dev
 
