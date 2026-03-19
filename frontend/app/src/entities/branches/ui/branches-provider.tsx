@@ -63,7 +63,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }, [branches, branchInQueryString]);
 
   if (isPending) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   if (error) {
@@ -71,7 +71,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }
 
   if (currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;
