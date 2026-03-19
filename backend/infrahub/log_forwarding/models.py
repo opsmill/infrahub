@@ -1,13 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003
 from enum import IntEnum, StrEnum
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, computed_field
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
 
 LOG_AUTH = 4
 LOG_LOCAL0 = 16
