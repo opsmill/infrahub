@@ -650,9 +650,9 @@ class SchemaBranch:
             validator.check(schema_branch=self)
 
         self.validate_names()
-        self.validate_restricted_namespaces_from_generic()
         self.validate_python_keywords()
         self.validate_kinds()
+        self.validate_restricted_namespaces_from_generic()
         self.validate_computed_attributes()
         self.validate_attribute_parameters()
         self.validate_default_values()
