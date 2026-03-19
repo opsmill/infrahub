@@ -198,24 +198,42 @@ class NumberPoolGetAllocated(Query):
         )
         self.params.update(branch_params)
 
+        hs_branch_filter, hs_branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, variable_name="hs_int"
+        )
+        self.params.update(hs_branch_params)
+
         query = """
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
         MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
+        CALL (a) {
+            MATCH (a)-[hs_int:HAS_SOURCE]->(pool:%(number_pool_kind)s)
+            WHERE (%(hs_branch_filter)s) AND hs_int.status = "active"
+            RETURN true AS hs_active
+            LIMIT 1
+        }
+        WITH n, ha, a, hv, av, hs, pool, ir, hs_active
         WHERE
-            pool.uuid = $pool_id
+            hs_active = TRUE
+            AND pool.uuid = $pool_id
             AND av.value >= $start_range and av.value <= $end_range
             AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"
-            AND hs.status = "active"
         """ % {
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
             "branch_filter": branch_filter,
+            "hs_branch_filter": hs_branch_filter,
         }
         self.add_to_query(query)
 
-        self.return_labels = ["n.uuid as id", "hv.branch as branch", "av.value as value", "ir.identifier as identifier"]
+        self.return_labels = [
+            "DISTINCT n.uuid as id",
+            "hv.branch as branch",
+            "av.value as value",
+            "ir.identifier as identifier",
+        ]
         self.order_by = ["av.value"]
 
     def get_data(self) -> list[NumberPoolAllocatedResult]:

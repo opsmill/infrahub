@@ -4,6 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import (
@@ -98,11 +99,9 @@ async def test_NumberPoolGetUsed(
     await create_objects(db=db, schema=request_schema, branch=default_branch.name, start=1, end=6)
 
     # Identify the NumberPool for each model
-    pools: list[CoreNumberPool] = await registry.schema.query(
-        db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch.name
-    )
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
     assert len(pools) == 2
-    incident_pool = next(pool for pool in pools if pool.node.value == INCIDENT.kind)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
     # Validate that the incident NumberPool has 3 used values
     assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [1, 2, 3]
@@ -142,10 +141,8 @@ async def test_NumberPoolGetAllocated_returns_identifier(
     """Test that NumberPoolGetAllocated returns the identifier (node UUID) from the IS_RESERVED relationship."""
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
-    pools: list[CoreNumberPool] = await registry.schema.query(
-        db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch.name
-    )
-    incident_pool = next(pool for pool in pools if pool.node.value == INCIDENT.kind)
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
     query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True)
 
@@ -163,6 +160,98 @@ async def test_NumberPoolGetAllocated_returns_identifier(
         assert result.identifier == incident.get_id()
 
 
+async def test_NumberPoolGetAllocated_excludes_deleted(
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
+) -> None:
+    """When a node is deleted on main branch, NumberPoolGetAllocated should not return it."""
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+    incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+    incident2 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=default_branch)
+    await incident2.delete(db=db)
+
+    query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True)
+    await query.execute(db=db)
+    results = query.get_data()
+
+    allocated_values = sorted([r.value for r in results])
+    assert allocated_values == [1, 3], (
+        f"Expected deleted allocation (value=2) to be excluded on branch, got {allocated_values}"
+    )
+
+
+async def test_NumberPoolGetAllocated_includes_allocation_active_on_other_branch(
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
+) -> None:
+    """When a node created on main is deleted on a branch, NumberPoolGetAllocated still returns it.
+
+    The allocation is still active on main (HAS_SOURCE edge remains active there),
+    so it should appear in the allocated list regardless of the branch-local deletion.
+    """
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+    incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+    # Create a branch and delete incident #2 on that branch
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    incident2 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=branch2)
+    await incident2.delete(db=db)
+
+    # Query on branch2 — the allocation is still active on main, so it should appear
+    query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=branch2, branch_agnostic=True)
+    await query.execute(db=db)
+    results = query.get_data()
+
+    allocated_values = sorted([r.value for r in results])
+    assert allocated_values == [1, 2, 3], (
+        f"Expected allocation (value=2) to remain visible (active on main), got {allocated_values}"
+    )
+
+
+async def test_NumberPoolGetAllocated_includes_allocation_when_source_cleared_on_branch(
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
+) -> None:
+    """When HAS_SOURCE is cleared on a branch, the allocation still appears because it is active on main.
+
+    Setup: 3 incidents allocated on default branch → values [1, 2, 3].
+    Then on br1, clear the source of incident #2's number attribute.
+    The default branch still has an active HAS_SOURCE edge for incident #2,
+    so the allocation remains visible — it is still allocated from the pool's perspective.
+    """
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+    incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+    # Create a branch and clear the source on incident #2's number attribute
+    br1 = await create_branch(db=db, branch_name="br1")
+    incident2 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=br1)
+    incident2.get_attribute("number").clear_source()
+    await incident2.save(db=db)
+
+    # Query on br1 — the allocation is still active on main, so it should appear
+    query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=br1, branch_agnostic=True)
+    await query.execute(db=db)
+    results = query.get_data()
+
+    allocated_values = sorted([r.value for r in results])
+    assert allocated_values == [1, 2, 3], (
+        f"Expected allocation (value=2) to remain visible (active on main), got {allocated_values}"
+    )
+
+
 async def test_PoolChangeReserved(
     db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch, run_number_pool_validation: None
 ) -> None:
@@ -173,11 +262,9 @@ async def test_PoolChangeReserved(
     await create_objects(db=db, schema=request_schema, branch=default_branch.name, start=1, end=6)
     incident = incidents[1]
 
-    pools: list[CoreNumberPool] = await registry.schema.query(
-        db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch.name
-    )
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
     assert len(pools) == 2
-    incident_pool = next(pool for pool in pools if pool.node.value == INCIDENT.kind)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
     reservations_before = await get_reservations(db=db, pool=incident_pool, branch=default_branch)
     assert len(reservations_before) == 3
