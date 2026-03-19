@@ -13,6 +13,7 @@ import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
+  templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 
 function SchemaLayout() {
@@ -20,12 +21,13 @@ function SchemaLayout() {
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
+  const templates = useAtomValue(templateSchemasAtom);
 
   return (
     <Content.Card className="flex h-[calc(100%-1rem)] flex-col">
       <Content.CardTitle
         title="Schema"
-        badgeContent={nodes.length + generics.length + profiles.length}
+        badgeContent={nodes.length + generics.length + profiles.length + templates.length}
         className="w-full"
         end={
           <LinkToggleButtonGroup>
