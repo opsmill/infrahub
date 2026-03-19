@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from infrahub.config import SETTINGS, GitSettings, HTTPSettings, StorageSettings, UserInfoMethod, load
 from tests.conftest import TestHelper
 
-TEST_DATA_DIR = Path(__file__).parent / "test_data"
+TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def test_load_sso_config(helper: TestHelper) -> None:
