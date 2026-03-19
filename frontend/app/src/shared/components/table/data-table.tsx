@@ -81,14 +81,6 @@ export function DataTable<T extends NodeCore>({
 
   return (
     <div className="grid content-start" style={style} {...props}>
-      {selectedRows.length > 0 && (
-        <ObjectTableToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-          renderMore={toolbarActions}
-        />
-      )}
-
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
@@ -126,6 +118,14 @@ export function DataTable<T extends NodeCore>({
             )}
           </div>
         ))}
+
+      {selectedRows.length > 0 && (
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={table.resetRowSelection}
+          renderMore={toolbarActions}
+        />
+      )}
     </div>
   );
 }

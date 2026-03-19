@@ -9,7 +9,8 @@ React TypeScript frontend built with Vite, using Tailwind CSS for styling.
 ## Commands
 
 ```bash
-cd frontend/app && npm install     # Install dependencies
+cd frontend/app && npm run setup   # Init submodules + install all dependencies (run first)
+cd frontend/app && npm install     # Install app dependencies only (submodule must already be initialized)
 cd frontend/app && npm run dev     # Start dev server
 cd frontend/app && npm run build   # Production build
 cd frontend/app && npm run test    # Run unit tests

@@ -284,6 +284,11 @@ class HashableModelState(InfrahubStringEnum):
     ABSENT = "absent"
 
 
+class SchemaAttributeDisplay(InfrahubStringEnum):
+    DEFAULT = "default"
+    EXTRA = "extra"
+
+
 class RelationshipCardinality(InfrahubStringEnum):
     ONE = "one"
     MANY = "many"

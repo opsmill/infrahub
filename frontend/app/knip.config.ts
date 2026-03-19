@@ -5,13 +5,13 @@ const config: KnipConfig = {
 
   ignore: [
     // Generated files
-    "src/shared/api/graphql/graphql-env.d.ts",
     "src/shared/api/graphql/graphql-cache.d.ts",
     "src/shared/api/rest/types.generated.ts",
   ],
 
   ignoreDependencies: [
     "@betterer/typescript", // for betterer typescript regressions
+    "infrahub-schema-visualizer", // local file dependency, knip cannot detect usage
     "monaco-graphql", // for graphiql,
     "ts-node", // for graphql autocompletion in Jetbrains IDE
     "vitest-browser-react", // for vitest browser mode

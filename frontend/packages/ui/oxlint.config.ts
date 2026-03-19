@@ -1,0 +1,41 @@
+import { defineConfig } from "oxlint";
+
+export default defineConfig({
+  categories: {
+    correctness: "error",
+    nursery: "error",
+    pedantic: "error",
+    perf: "error",
+    restriction: "error",
+    style: "error",
+    suspicious: "error",
+  },
+  plugins: [
+    "oxc",
+    "typescript",
+    "react",
+    "react-perf",
+    "jsx-a11y",
+    "vitest",
+    "unicorn",
+  ],
+  rules: {
+    "eslint/arrow-body-style": "off",
+    "eslint/func-style": "off",
+    "eslint/max-lines-per-function": "off",
+    "eslint/no-ternary": "off",
+    "eslint/sort-imports": "off",
+    "eslint/sort-keys": "off",
+    "oxc/no-rest-spread-properties": "off",
+    "react-perf/jsx-no-new-object-as-prop": "off",
+    "react-perf/jsx-props-no-spreading": "off",
+    "react/button-has-type": "off",
+    "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
+    "react/jsx-max-depth": "off",
+    "react/jsx-props-no-spreading": "off",
+    "react/only-export-components": "off",
+    "react/react-in-jsx-scope": "off",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/explicit-module-boundary-types": "off",
+  },
+});
