@@ -1,3 +1,3 @@
 #!/bin/sh
 
-cd docs && pnpm install && pnpm run build
+cd docs && npm install && npm run build

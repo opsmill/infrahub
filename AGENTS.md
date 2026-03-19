@@ -72,7 +72,7 @@ uv run invoke docs.lint               # Lint documentation
 ```bash
 uv run invoke dev.build               # Build Docker containers
 cd frontend/app && pnpm run build     # Build frontend
-cd docs && pnpm run build             # Build documentation
+cd docs && npm run build              # Build documentation
 ```
 
 ## Coding Standards
