@@ -109,16 +109,18 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
-        run: npx biome ci .
+        run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
-        run: npm run knip
+        run: pnpm run knip
       - name: Check TypeScript regressions (Betterer)
-        run: npx betterer ci
+        run: pnpm exec betterer ci
 
   frontend-validate-openapi-types:
     if: |
@@ -138,12 +140,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
-        run: npm run codegen:openapi
+        run: pnpm run codegen:openapi
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code src/shared/api/rest/types.generated.ts; then
@@ -153,7 +157,7 @@ jobs:
             echo ""
             echo "To fix this, run the following commands from the repository root:"
             echo "  cd frontend/app"
-            echo "  npm run codegen:openapi"
+            echo "  pnpm run codegen:openapi"
             echo "  git add src/shared/api/rest/types.generated.ts"
             echo "  git commit -m 'chore: regenerate OpenAPI types'"
             exit 1
@@ -177,12 +181,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
-        run: npm run codegen:graphql
+        run: pnpm run codegen:graphql
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts; then
@@ -192,7 +198,7 @@ jobs:
             echo ""
             echo "To fix this, run the following commands from the repository root:"
             echo "  cd frontend/app"
-            echo "  npm run codegen:graphql"
+            echo "  pnpm run codegen:graphql"
             echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
             echo "  git commit -m 'chore: regenerate GraphQL types'"
             exit 1
@@ -715,17 +721,19 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: "Install frontend"
         working-directory: ./frontend/app
-        run: npm install
+        run: pnpm install --frozen-lockfile
       - name: Install Playwright Browsers
         working-directory: ./frontend/app
-        run: npx playwright install chromium
+        run: pnpm exec playwright install chromium
       - name: "Run unit tests"
         working-directory: ./frontend/app
-        run: "npm run test:coverage"
+        run: "pnpm run test:coverage"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -810,8 +818,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: docs/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
@@ -823,9 +833,9 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Install npm dependencies"
+      - name: "Install pnpm dependencies"
         working-directory: ./docs
-        run: npm install
+        run: pnpm install --frozen-lockfile
       - name: "Build docs"
         run: "uv run invoke docs.build"
 
@@ -847,8 +857,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: docs/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
@@ -987,8 +999,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
@@ -1051,14 +1065,14 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --no-shell
+        run: pnpm exec playwright install chromium --no-shell
 
       # Make chromium ignore netlink messages by returning ReadMessages early
       - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run --no-shell | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --dry-run --no-shell | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
       - name: Chrome func offset
         run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
       - name: Patch chromium
@@ -1066,7 +1080,7 @@ jobs:
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: npx playwright test artifact
+        run: pnpm exec playwright test artifact
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -1081,7 +1095,7 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Run Playwright tests
-        run: npm run ci:test:e2e
+        run: pnpm run ci:test:e2e
 
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'

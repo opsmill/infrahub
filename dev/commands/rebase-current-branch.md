@@ -116,12 +116,12 @@ git add docs/docs/reference/schema/
 
 ### package-lock.json
 
-If `frontend/app/package-lock.json` has conflicts:
+If `frontend/app/pnpm-lock.yaml` has conflicts:
 
 ```bash
-git checkout --theirs frontend/app/package-lock.json
-cd frontend/app && npm install
-git add frontend/app/package-lock.json
+git checkout --theirs frontend/app/pnpm-lock.yaml
+cd frontend/app && pnpm install
+git add frontend/app/pnpm-lock.yaml
 ```
 
 ### Generated GraphQL Types
@@ -129,7 +129,7 @@ git add frontend/app/package-lock.json
 If the backend GraphQL schema changed, regenerate frontend types:
 
 ```bash
-cd frontend/app && npm run codegen:graphql
+cd frontend/app && pnpm run codegen:graphql
 git add frontend/app/src/shared/api/graphql/generated/
 ```
 

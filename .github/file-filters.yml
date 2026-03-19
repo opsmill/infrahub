@@ -51,7 +51,7 @@ vale_files: &vale_files
 doc_files: &doc_files
   - "docs/**"
   - package.json
-  - package-lock.json
+  - pnpm-lock.yaml
 
 release_files: &release_files
   - "changelog/*.md"

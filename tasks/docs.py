@@ -19,7 +19,7 @@ DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 @task
 def build(context: Context) -> None:
     """Build documentation website."""
-    exec_cmd = "npm run build"
+    exec_cmd = "pnpm run build"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
@@ -85,7 +85,7 @@ def generate_infrahub_events(context: Context) -> None:  # noqa: ARG001
 @task
 def install(context: Context) -> None:
     """Install documentation dependencies."""
-    exec_cmd = "npm install"
+    exec_cmd = "pnpm install"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
@@ -107,7 +107,7 @@ def validate(context: Context) -> None:
 def serve(context: Context) -> None:
     """Run documentation server in development mode."""
 
-    exec_cmd = "npm run serve"
+    exec_cmd = "pnpm run serve"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
         context.run(exec_cmd)
@@ -137,7 +137,7 @@ def markdownlint(context: Context) -> None:
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
     if not has_markdownlint:
-        raise SystemExit("Error: markdownlint-cli2 is not installed. Run: cd docs && npm install")
+        raise SystemExit("Error: markdownlint-cli2 is not installed. Run: cd docs && pnpm install")
     exec_cmd = "markdownlint-cli2 'docs/docs/**/*.md' 'docs/docs/**/*.mdx'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):

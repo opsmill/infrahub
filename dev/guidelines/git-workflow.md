@@ -99,7 +99,7 @@ Add changelog fragments to `changelog/` using Towncrier. See [Changelog Guidelin
 ## Critical Rules
 
 - Never force push to `stable` or `develop`
-- Always run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
+- Always run formatters before committing (`uv run invoke format`, `pnpm run biome:fix`)
 - Include issue references in commit messages when applicable
 
 ## See Also

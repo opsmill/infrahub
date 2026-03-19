@@ -13,12 +13,12 @@ Documentation generated for Infrahub must reflect this novel approach, providing
 - **Monorepo**: Contains backend (Python), frontend (React), docs, and infrastructure tools.
 - **Backend**: Located in `backend/infrahub/`, implements the core graph-based infrastructure datastore, API, and business logic.
 - **Frontend**: Under `frontend/app/` and `frontend/packages/`, built with React (Create React App) and custom UI packages.
-- **Docs**: In `docs/`, built with Docusaurus. Use `npm start` for local dev, `npm run build` to generate static site.
+- **Docs**: In `docs/`, built with Docusaurus. Use `pnpm start` for local dev, `pnpm run build` to generate static site.
 
 ## Developer Workflows
 
 - **Backend**: Use uv for dependency management (`pyproject.toml`). Run tests with `pytest` or via `invoke` tasks.
-- **Frontend**: Use npm scripts (`npm start`, `npm test`, `npm run build`) in `frontend/app/`.
+- **Frontend**: Use pnpm scripts (`pnpm start`, `pnpm test`, `pnpm run build`) in `frontend/app/`.
 - **Docs**: Develop in `docs/`, preview with `invoke docs.build docs.serve`. Validate docs site with `invoke docs.validate`.
 
 ## Project Conventions

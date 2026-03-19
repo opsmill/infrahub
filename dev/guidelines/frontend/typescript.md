@@ -55,7 +55,7 @@ if (isUserData(response)) {
 ## Imports
 
 - Use `@/` alias: `import { Button } from "@/shared/components/buttons/button"`
-- Biome handles import order (`npm run biome:fix`)
+- Biome handles import order (`pnpm run biome:fix`)
 
 ## Constants
 

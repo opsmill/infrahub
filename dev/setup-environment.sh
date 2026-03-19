@@ -89,18 +89,18 @@ fi
 # Frontend Dependencies
 # ------------------------------------------------------------------------------
 echo ""
-echo "Installing frontend dependencies with npm..."
-if command -v npm &> /dev/null; then
+echo "Installing frontend dependencies with pnpm..."
+if command -v pnpm &> /dev/null; then
     if [ -d "$PROJECT_DIR/frontend/app" ]; then
         cd "$PROJECT_DIR/frontend/app"
-        npm install
+        pnpm install
         echo "Frontend dependencies installed"
         cd "$PROJECT_DIR"
     else
         echo "Warning: Frontend directory not found at $PROJECT_DIR/frontend/app"
     fi
 else
-    echo "Warning: npm not found. Please install Node.js first"
+    echo "Warning: pnpm not found. Install via: npm install -g pnpm"
 fi
 
 # ------------------------------------------------------------------------------
@@ -167,8 +167,8 @@ echo "Available commands:"
 echo "  uv run invoke backend.test-unit    - Run backend unit tests"
 echo "  uv run invoke format               - Format Python code"
 echo "  uv run invoke lint                 - Lint Python code"
-echo "  cd frontend/app && npm run test    - Run frontend tests"
-echo "  cd frontend/app && npm run biome:fix - Format/lint frontend"
+echo "  cd frontend/app && pnpm run test    - Run frontend tests"
+echo "  cd frontend/app && pnpm run biome:fix - Format/lint frontend"
 echo ""
 
 exit 0

@@ -9,13 +9,13 @@ React TypeScript frontend built with Vite, using Tailwind CSS for styling.
 ## Commands
 
 ```bash
-cd frontend/app && npm install     # Install dependencies
-cd frontend/app && npm run dev     # Start dev server
-cd frontend/app && npm run build   # Production build
-cd frontend/app && npm run test    # Run unit tests
-cd frontend/app && npm run test:e2e # Run E2E tests
-cd frontend/app && npm run biome:fix # Format and lint
-cd frontend/app && npm run codegen # Generate GraphQL types
+cd frontend/app && pnpm install     # Install dependencies
+cd frontend/app && pnpm run dev     # Start dev server
+cd frontend/app && pnpm run build   # Production build
+cd frontend/app && pnpm run test    # Run unit tests
+cd frontend/app && pnpm run test:e2e # Run E2E tests
+cd frontend/app && pnpm run biome:fix # Format and lint
+cd frontend/app && pnpm run codegen # Generate GraphQL types
 ```
 
 ## See Also

@@ -38,15 +38,17 @@ FROM docker.io/node:22-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 RUN mkdir /source
 
-COPY frontend/app/package.json  frontend/app/package-lock.json /source/
+COPY frontend/app/package.json frontend/app/pnpm-lock.yaml /source/
 
 WORKDIR /source
 
-RUN npm install --omit=dev
+RUN pnpm install --frozen-lockfile
 COPY frontend/app/ /source/
-RUN npm run build && npm cache clean --force
+RUN pnpm run build
 
 # ****************************************************************
 # STAGE : Documentation
@@ -55,16 +57,16 @@ ENV DOCS_IN_APP=1
 
 RUN mkdir /docs
 
-COPY docs/package.json  docs/package-lock.json /docs/
+COPY docs/package.json docs/pnpm-lock.yaml /docs/
 COPY backend/infrahub/config.py /backend/infrahub/
 COPY models/ /models/
 COPY python_sdk/docs/docs/python-sdk/examples/  /python_sdk/examples/
 COPY development/ /development/
 WORKDIR /docs
 
-RUN npm install --omit=dev
+RUN pnpm install --frozen-lockfile
 COPY docs/ /docs/
-RUN npm run build && npm cache clean --force
+RUN pnpm run build
 
 # ****************************************************************
 # STAGE : Backend
