@@ -1,0 +1,164 @@
+import json
+import os
+from unittest.mock import patch
+
+import pytest
+from pydantic import ValidationError
+
+from infrahub.config import (
+    EnterpriseFeatures,
+    ExtraLogLevel,
+    LogForwardingDestination,
+    LogForwardingSettings,
+    SyslogFormat,
+    SyslogProtocol,
+    load,
+)
+
+
+def test_log_forwarding_destination_valid() -> None:
+    dest = LogForwardingDestination(name="siem-primary", type="syslog", host="syslog.example.com", port=514)
+    assert dest.name == "siem-primary"
+    assert dest.type == "syslog"
+    assert dest.host == "syslog.example.com"
+    assert dest.port == 514
+    assert dest.protocol.value == "tcp"
+    assert dest.format.value == "rfc5424"
+    assert dest.tcp_framing.value == "newline"
+    assert dest.tls_enabled is False
+    assert dest.queue_size == 10000
+    assert dest.max_reconnect_interval == 60
+    assert dest.shutdown_drain_timeout == 10
+    assert dest.forward_application_logs is False
+    assert dest.min_log_severity == ExtraLogLevel.WARNING
+
+
+@pytest.mark.parametrize("invalid_port", [0, -1, 65536, 70000])
+def test_log_forwarding_destination_rejects_invalid_port(invalid_port: int) -> None:
+    with pytest.raises(ValidationError):
+        LogForwardingDestination(name="test", type="syslog", host="localhost", port=invalid_port)
+
+
+def test_log_forwarding_destination_rejects_tls_with_udp() -> None:
+    with pytest.raises(ValueError, match="TLS is only supported with TCP protocol, not UDP"):
+        LogForwardingDestination(
+            name="test", type="syslog", host="localhost", port=514, protocol=SyslogProtocol.UDP, tls_enabled=True
+        )
+
+
+def test_log_forwarding_destination_allows_tls_with_tcp() -> None:
+    dest = LogForwardingDestination(
+        name="test", type="syslog", host="localhost", port=6514, protocol=SyslogProtocol.TCP, tls_enabled=True
+    )
+    assert dest.tls_enabled is True
+
+
+@pytest.mark.parametrize("invalid_queue_size", [0, -5])
+def test_log_forwarding_destination_rejects_invalid_queue_size(invalid_queue_size: int) -> None:
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        LogForwardingDestination(name="test", type="syslog", host="localhost", port=514, queue_size=invalid_queue_size)
+
+
+def test_log_forwarding_settings_empty_destinations() -> None:
+    settings = LogForwardingSettings()
+    assert settings.destinations == []
+    assert settings.enterprise_features == []
+
+
+def test_log_forwarding_settings_duplicate_names_rejected() -> None:
+    with pytest.raises(ValidationError, match="Destination names must be unique"):
+        LogForwardingSettings(
+            destinations=[
+                LogForwardingDestination(name="dup", type="syslog", host="host1", port=514),
+                LogForwardingDestination(name="dup", type="syslog", host="host2", port=515),
+            ]
+        )
+
+
+def test_log_forwarding_settings_unique_names_accepted() -> None:
+    settings = LogForwardingSettings(
+        destinations=[
+            LogForwardingDestination(name="primary", type="syslog", host="host1", port=514),
+            LogForwardingDestination(name="secondary", type="syslog", host="host2", port=515),
+        ]
+    )
+    assert len(settings.destinations) == 2
+
+
+def test_log_forwarding_enterprise_feature_not_detected_when_empty() -> None:
+    config = load(config_data={})
+    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG not in config.enterprise_features
+
+
+def test_log_forwarding_enterprise_feature_detected() -> None:
+    settings = LogForwardingSettings(
+        destinations=[
+            LogForwardingDestination(name="siem", type="syslog", host="syslog.example.com", port=514),
+        ]
+    )
+    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in settings.enterprise_features
+
+
+def test_log_forwarding_toml_parsing_multiple_destinations() -> None:
+    config_data = {
+        "log_forwarding": {
+            "destinations": [
+                {
+                    "name": "siem-primary",
+                    "type": "syslog",
+                    "host": "syslog.example.com",
+                    "port": 514,
+                    "protocol": "tcp",
+                    "format": "rfc5424",
+                },
+                {
+                    "name": "siem-secondary",
+                    "type": "syslog",
+                    "host": "syslog2.example.com",
+                    "port": 1514,
+                    "protocol": "udp",
+                    "format": "rfc3164",
+                },
+            ]
+        }
+    }
+    config = load(config_data=config_data)
+    assert len(config.log_forwarding.destinations) == 2
+    dest1 = config.log_forwarding.destinations[0]
+    assert dest1.name == "siem-primary"
+    assert dest1.host == "syslog.example.com"
+    assert dest1.protocol is SyslogProtocol.TCP
+    assert dest1.format is SyslogFormat.RFC5424
+    dest2 = config.log_forwarding.destinations[1]
+    assert dest2.name == "siem-secondary"
+    assert dest2.host == "syslog2.example.com"
+    assert dest2.protocol is SyslogProtocol.UDP
+    assert dest2.format is SyslogFormat.RFC3164
+    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in config.enterprise_features
+
+
+def test_log_forwarding_destinations_from_environment_variable() -> None:
+    destinations_json = json.dumps(
+        [
+            {"name": "siem1", "type": "syslog", "host": "host1.example.com", "port": 514},
+            {"name": "siem2", "type": "syslog", "host": "host2.example.com", "port": 1514, "protocol": "udp"},
+        ]
+    )
+    with patch.dict(os.environ, {"INFRAHUB_LOG_FORWARDING_DESTINATIONS": destinations_json}):
+        settings = LogForwardingSettings()
+    assert len(settings.destinations) == 2
+    assert settings.destinations[0].name == "siem1"
+    assert settings.destinations[0].host == "host1.example.com"
+    assert settings.destinations[1].name == "siem2"
+    assert settings.destinations[1].protocol.value == "udp"
+
+
+def test_settings_enterprise_features_aggregates_log_forwarding() -> None:
+    config_data = {
+        "log_forwarding": {"destinations": [{"name": "siem", "type": "syslog", "host": "localhost", "port": 514}]},
+        "policy": {"required_proposed_change_approvals": 2},
+    }
+    config = load(config_data=config_data)
+    features = config.enterprise_features
+    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in features
+    assert EnterpriseFeatures.PROPOSED_CHANGE_REQUIRE_APPROVAL in features

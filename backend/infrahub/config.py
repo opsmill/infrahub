@@ -8,7 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -53,6 +53,7 @@ def default_append_git_suffix_domains() -> list[str]:
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
+    LOG_FORWARDING_SYSLOG = "log_forwarding_syslog"
 
 
 class UserInfoMethod(StrEnum):
@@ -876,6 +877,80 @@ class TraceSettings(BaseSettings):
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
 
 
+class SyslogProtocol(StrEnum):
+    TCP = "tcp"
+    UDP = "udp"
+
+
+class SyslogFormat(StrEnum):
+    RFC5424 = "rfc5424"
+    RFC3164 = "rfc3164"
+
+
+class TcpFraming(StrEnum):
+    NEWLINE = "newline"
+    OCTET_COUNTING = "octet-counting"
+
+
+class LogForwardingDestination(BaseSettings):
+    name: str = Field(description="Unique name for the destination, used in all observability output.")
+    type: Literal["syslog"] = Field(description="Destination type.")
+    host: str = Field(description="Destination host or IP address.")
+    port: int = Field(ge=1, le=65535, description="Destination port number.")
+    protocol: SyslogProtocol = Field(default=SyslogProtocol.TCP, description="Transport protocol (tcp or udp).")
+    format: SyslogFormat = Field(default=SyslogFormat.RFC5424, description="Syslog format standard.")
+    tcp_framing: TcpFraming = Field(
+        default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
+    )
+    tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
+    tls_ca_bundle: str | None = Field(
+        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+    )
+    queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
+    max_reconnect_interval: int = Field(
+        default=60, ge=1, description="Maximum reconnection backoff interval in seconds."
+    )
+    shutdown_drain_timeout: int = Field(
+        default=10, ge=0, description="Seconds to wait for queue drain on graceful shutdown."
+    )
+    forward_application_logs: bool = Field(
+        default=False, description="Forward application log messages to this destination."
+    )
+    min_log_severity: ExtraLogLevel = Field(
+        default=ExtraLogLevel.WARNING,
+        description="Minimum Python log severity to forward when application log forwarding is enabled.",
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_protocol(self) -> Self:
+        if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
+            raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        return self
+
+
+class LogForwardingSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOG_FORWARDING_")
+    destinations: list[LogForwardingDestination] = Field(
+        default_factory=list,
+        description="List of log forwarding destinations. (Enterprise only: not available in the community version.)",
+    )
+
+    @field_validator("destinations")
+    @classmethod
+    def validate_unique_names(cls, v: list[LogForwardingDestination]) -> list[LogForwardingDestination]:
+        names = [d.name for d in v]
+        if len(names) != len(set(names)):
+            raise ValueError("Destination names must be unique")
+        return v
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by log forwarding configuration."""
+        if any(d.type == "syslog" for d in self.destinations):
+            return [EnterpriseFeatures.LOG_FORWARDING_SYSLOG]
+        return []
+
+
 class PolicySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_POLICY_")
     required_proposed_change_approvals: int = Field(
@@ -1038,6 +1113,7 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+    log_forwarding: LogForwardingSettings = LogForwardingSettings()
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
@@ -1048,7 +1124,7 @@ class Settings(BaseSettings):
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features
+        return self.policy.enterprise_features + self.log_forwarding.enterprise_features
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:
