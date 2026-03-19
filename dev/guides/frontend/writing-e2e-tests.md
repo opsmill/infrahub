@@ -372,10 +372,10 @@ test.beforeEach(async function ({ page }) {
 cd frontend/app
 
 # Run all E2E tests
-npm run test:e2e
+pnpm run test:e2e
 
 # Run a specific test file
-npx playwright test tests/e2e/objects/object-update.spec.ts
+pnpm exec playwright test tests/e2e/objects/object-update.spec.ts
 
 # Run with UI mode for debugging
 npx playwright test --ui

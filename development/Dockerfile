@@ -38,21 +38,30 @@ FROM docker.io/node:22-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
-# Create directory structure that matches the relative paths in package.json
-# App is at /frontend/app, packages at /frontend/packages
-RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
-# Copy the schema-visualizer package (app imports it directly as TypeScript source)
-COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
-WORKDIR /frontend/packages/schema-visualizer
-RUN npm install
+# Copy workspace config files first (for layer caching)
+RUN mkdir -p /frontend
+COPY frontend/pnpm-workspace.yaml frontend/package.json /frontend/
 
-# Copy the app package.json and install dependencies
-COPY frontend/app/package.json frontend/app/package-lock.json /frontend/app/
+# Copy all package.json files for workspace resolution
+COPY frontend/app/package.json /frontend/app/
+COPY frontend/packages/schema-visualizer/package.json /frontend/packages/schema-visualizer/
+COPY frontend/packages/ui/package.json /frontend/packages/ui/
+COPY frontend/packages/plugins/template/package.json /frontend/packages/plugins/template/
+
+# Copy lockfile and install dependencies
+COPY frontend/pnpm-lock.yaml /frontend/
+WORKDIR /frontend
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy all source
+COPY frontend/ /frontend/
+
+# Build the app
 WORKDIR /frontend/app
-RUN npm install --omit=dev
-COPY frontend/app/ /frontend/app/
-RUN npm run build && npm cache clean --force
+RUN pnpm run build
 
 # ****************************************************************
 # STAGE : Documentation

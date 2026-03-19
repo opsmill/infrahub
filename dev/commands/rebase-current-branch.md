@@ -114,14 +114,14 @@ git add docs/docs/reference/schema/
 
 > **Skip this section if `--skip-frontend` is set.** For conflicts in frontend files when skipping, use `git checkout --theirs <file>` to accept the target branch version, or `git checkout HEAD -- <file>` to keep your version.
 
-### package-lock.json
+### pnpm-lock.yaml
 
-If `frontend/app/package-lock.json` has conflicts:
+If `frontend/pnpm-lock.yaml` has conflicts:
 
 ```bash
-git checkout --theirs frontend/app/package-lock.json
-cd frontend/app && npm install
-git add frontend/app/package-lock.json
+git checkout --theirs frontend/pnpm-lock.yaml
+cd frontend && pnpm install
+git add frontend/pnpm-lock.yaml
 ```
 
 ### Generated GraphQL Types
@@ -129,7 +129,7 @@ git add frontend/app/package-lock.json
 If the backend GraphQL schema changed, regenerate frontend types:
 
 ```bash
-cd frontend/app && npm run codegen:graphql
+cd frontend/app && pnpm run codegen:graphql
 git add frontend/app/src/shared/api/graphql/generated/
 ```
 

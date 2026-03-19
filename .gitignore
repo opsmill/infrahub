@@ -7,7 +7,8 @@ script.py
 **/*.local.*
 local/*
 **/.vscode/settings.json
-node_modules/*
+node_modules/
+.pnpm-store/
 development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
 .DS_Store
@@ -47,4 +48,4 @@ helm/Chart.lock
 python_testcontainers/dist/*
 python_testcontainers/infrahub_testcontainers.egg-info/*
 
-schema/node_modules/*
+schema/node_modules/

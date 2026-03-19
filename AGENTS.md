@@ -26,7 +26,7 @@ Responses must be direct and substantive. Do not use filler phrases, compliments
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 7.3, Tailwind CSS 4.1
 - **Testing:** pytest 9.0, Vitest 4.0, Playwright 1.56
 - **Linting:** ruff 0.15, mypy 1.15, Biome 2.3
-- **Package Managers:** uv (Python), npm (Frontend)
+- **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.0
 
 ## File Structure
@@ -46,7 +46,7 @@ Responses must be direct and substantive. Do not use filler phrases, compliments
 
 ```bash
 uv sync --all-groups                  # Install Python dependencies
-cd frontend/app && npm install        # Install frontend dependencies
+cd frontend && pnpm install           # Install frontend dependencies
 ```
 
 ### Testing
@@ -54,8 +54,8 @@ cd frontend/app && npm install        # Install frontend dependencies
 ```bash
 uv run invoke backend.test-unit       # Backend unit tests
 uv run invoke backend.test-integration # Backend integration tests
-cd frontend/app && npm run test       # Frontend unit tests
-cd frontend/app && npm run test:e2e   # Frontend E2E tests
+cd frontend/app && pnpm run test      # Frontend unit tests
+cd frontend/app && pnpm run test:e2e  # Frontend E2E tests
 ```
 
 ### Linting & Formatting
@@ -63,7 +63,7 @@ cd frontend/app && npm run test:e2e   # Frontend E2E tests
 ```bash
 uv run invoke format                  # Format all Python code
 uv run invoke lint                    # Lint all Python code
-cd frontend/app && npm run biome:fix  # Format/lint frontend
+cd frontend/app && pnpm run biome:fix # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
@@ -71,7 +71,7 @@ uv run invoke docs.lint               # Lint documentation
 
 ```bash
 uv run invoke dev.build               # Build Docker containers
-cd frontend/app && npm run build      # Build frontend
+cd frontend/app && pnpm run build     # Build frontend
 cd docs && npm run build              # Build documentation
 ```
 
@@ -93,7 +93,7 @@ cd docs && npm run build              # Build documentation
 
 Regenerate backend (offline): `uv run invoke backend.generate`
 Export GraphQL/OpenAPI schemas (requires running instance): `infrahub dev export-graphql-schema`
-Regenerate frontend types (offline, reads local schema files): `cd frontend/app && npm run codegen`
+Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm run codegen`
 
 See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
@@ -101,7 +101,7 @@ See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ### Always Do
 
-- Run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
+- Run formatters before committing (`uv run invoke format`, `pnpm run biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
 

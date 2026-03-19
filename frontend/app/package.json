@@ -1,20 +1,20 @@
 {
-  "name": "frontend",
+  "name": "@infrahub/app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "git submodule update --init --recursive && npm install --prefix ../packages/schema-visualizer",
-    "submodule:update": "git submodule update --remote frontend/packages/schema-visualizer && npm install --prefix ../packages/schema-visualizer",
+    "setup": "git submodule update --init --recursive",
+    "submodule:update": "git submodule update --remote frontend/packages/schema-visualizer",
     "start": "vite",
     "dev": "VITE_DEVTOOLS=1 vite",
-    "build": "npm install --prefix ../packages/schema-visualizer && vite build",
+    "build": "vite build",
     "serve": "vite preview",
-    "build-serve": "npm run build && npm run serve",
+    "build-serve": "pnpm run build && pnpm run serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
-    "codegen:openapi": "npx openapi-typescript ../../schema/openapi.json --output src/shared/api/rest/types.generated.ts",
+    "codegen:openapi": "pnpm exec openapi-typescript ../../schema/openapi.json --output src/shared/api/rest/types.generated.ts",
     "codegen:graphql": "gql.tada generate output && gql.tada generate turbo",
-    "ci:test:e2e": "CI=1 DEBUG=pw:browser npm run test:e2e 2>/dev/null",
+    "ci:test:e2e": "CI=1 DEBUG=pw:browser pnpm run test:e2e 2>/dev/null",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
@@ -69,7 +69,8 @@
     "graphiql": "^5.2.2",
     "graphql": "^16.13.1",
     "handlebars": "^4.7.8",
-    "infrahub-schema-visualizer": "file:../packages/schema-visualizer",
+    "@infrahub/ui": "workspace:*",
+    "infrahub-schema-visualizer": "workspace:*",
     "jotai": "^2.18.1",
     "json-to-graphql-query": "^2.2.5",
     "lucide-react": "^0.577.0",
@@ -132,16 +133,6 @@
     "ultracite": "^7.2.5",
     "vitest": "^4.0.18",
     "vitest-browser-react": "^2.0.5"
-  },
-  "overrides": {
-    "graphiql-explorer": {
-      "graphql": "^16.11.0",
-      "react": "19.2.4",
-      "react-dom": "19.2.4"
-    },
-    "react-syntax-highlighter": {
-      "prismjs": "^1.30.0"
-    }
   },
   "browserslist": {
     "production": [
