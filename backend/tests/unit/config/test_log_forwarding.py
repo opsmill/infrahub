@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +15,8 @@ from infrahub.config import (
     SyslogProtocol,
     load,
 )
+
+TEST_DIR = Path(__file__).parent
 
 
 def test_log_forwarding_destination_valid() -> None:
@@ -151,6 +154,38 @@ def test_log_forwarding_destinations_from_environment_variable() -> None:
     assert settings.destinations[0].host == "host1.example.com"
     assert settings.destinations[1].name == "siem2"
     assert settings.destinations[1].protocol.value == "udp"
+
+
+def test_log_forwarding_from_toml_file() -> None:
+    config_file = str(TEST_DIR / "log_forwarding_multi_dest.toml")
+    config = load(config_file_name=config_file)
+
+    assert len(config.log_forwarding.destinations) == 2
+    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in config.enterprise_features
+
+    primary = config.log_forwarding.destinations[0]
+    assert primary.name == "siem-primary"
+    assert primary.host == "syslog.example.com"
+    assert primary.port == 514
+    assert primary.protocol is SyslogProtocol.TCP
+    assert primary.format is SyslogFormat.RFC5424
+    assert primary.tls_enabled is True
+    assert primary.tls_ca_bundle == "/etc/ssl/certs/ca-certificates.crt"
+    assert primary.queue_size == 50000
+    assert primary.forward_application_logs is True
+    assert primary.min_log_severity == ExtraLogLevel.INFO
+
+    backup = config.log_forwarding.destinations[1]
+    assert backup.name == "backup-collector"
+    assert backup.host == "syslog-backup.example.com"
+    assert backup.port == 1514
+    assert backup.protocol is SyslogProtocol.UDP
+    assert backup.format is SyslogFormat.RFC3164
+    assert backup.tls_enabled is False
+    assert backup.queue_size == 5000
+    assert backup.shutdown_drain_timeout == 5
+    assert backup.forward_application_logs is False
+    assert backup.min_log_severity == ExtraLogLevel.WARNING
 
 
 def test_settings_enterprise_features_aggregates_log_forwarding() -> None:
