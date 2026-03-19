@@ -53,16 +53,20 @@ class TestWebhookProcess(TestInfrahubApp):
         )
         converted_webhook = await convert_node_to_webhook(webhook_node=webhook, client=client)
 
-        assert converted_webhook.model_dump() == {
+        dumped = converted_webhook.model_dump()
+        assert sorted(dumped.pop("custom_headers"), key=lambda h: h.get("key")) == sorted(
+            [
+                {"key": "X-Custom-Token", "value": "secret123", "kind": "static"},
+                {"key": "X-Env-Key", "value": "MY_ENV_VAR", "kind": "environment"},
+            ],
+            key=lambda h: h.get("key"),
+        )
+        assert dumped == {
             "name": "WebhookWithHeaders",
             "url": "https://url.mock",
             "event_type": "infrahub.branch.created",
             "validate_certificates": False,
             "shared_key": "1234567890",
-            "custom_headers": [
-                {"key": "X-Custom-Token", "value": "secret123", "kind": "static"},
-                {"key": "X-Env-Key", "value": "MY_ENV_VAR", "kind": "environment"},
-            ],
             "webhook_type": "StandardWebhook",
         }
 
