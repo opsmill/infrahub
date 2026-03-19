@@ -42,6 +42,10 @@ export default defineConfig({
     trace: process.env.CI ? "retain-on-failure" : "on",
     screenshot: process.env.CI ? "only-on-failure" : "on",
     video: process.env.CI ? "retain-on-failure" : "on",
+    // Prevent Chromium hangs in CI caused by netlink socket noise
+    launchOptions: {
+      args: ["--disable-dev-shm-usage", "--disable-features=NetworkServiceSandbox"],
+    },
   },
 
   /* Configure projects for major browsers */
