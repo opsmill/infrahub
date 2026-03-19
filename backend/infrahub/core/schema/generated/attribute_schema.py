@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import Field
 
-from infrahub.core.constants import AllowOverrideType, BranchSupportType, HashableModelState
+from infrahub.core.constants import AllowOverrideType, BranchSupportType, HashableModelState, SchemaAttributeDisplay
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
@@ -134,5 +134,10 @@ class GeneratedAttributeSchema(HashableModel):
         default=None,
         description="Mark attribute as deprecated and provide a user-friendly message to display",
         max_length=128,
+        json_schema_extra={"update": "allowed"},
+    )
+    display: SchemaAttributeDisplay = Field(
+        default=SchemaAttributeDisplay.DEFAULT,
+        description="Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
         json_schema_extra={"update": "allowed"},
     )

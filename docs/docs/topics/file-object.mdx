@@ -2,17 +2,19 @@
 title: File objects
 ---
 
+import ReferenceLink from "../../src/components/Card";
+
 # File objects
 
-Infrastructure management often involves more than just structured data. Contracts, compliance reports, network diagrams, configuration backups, and firmware images are all essential assets that relate directly to the devices, circuits, and services they describe. Infrahub's file object feature lets you attach files to any node in the graph, making these documents first-class citizens of your infrastructure data model with full version control, branch isolation, and permission enforcement.
+Infrastructure management often involves more than just structured data. Contracts, documents, and pictures are all essential assets that relate directly to the devices, circuits, and services they describe. Infrahub's file object feature lets you attach files to any node in the graph, making these files first-class citizens of your infrastructure data model with full version control, branch isolation, and permission enforcement.
 
 ![Detail view of a circuit contract file object showing metadata, file preview, and activity log](../media/topics/object_file_topic.png)
 
 ## Why file objects matter
 
-In many organizations, infrastructure documentation lives in separate systems: contracts in a shared drive, diagrams in a wiki, firmware in an FTP server. This separation creates a gap between the data that describes the infrastructure and the files that support it. When a circuit contract expires, the team managing the circuit may not know where to find the document. When a firmware image needs to be traced back to a specific device deployment, the link between the two is maintained manually, if at all.
+In many organizations, infrastructure documentation lives in separate systems: contracts in a shared drive, documents in a wiki, pictures on a file server. This separation creates a gap between the data that describes the infrastructure and the files that support it. When a circuit contract expires, the team managing the circuit may not know where to find the document. When a site photo needs to be traced back to a specific installation, the link between the two is maintained manually, if at all.
 
-File objects bridge this gap by storing files alongside the infrastructure data they relate to. A circuit contract becomes a node in the graph, linked to the circuit it covers. A firmware image becomes a node linked to the device models it supports. This means that when you query a circuit, you can also retrieve its contracts, and when you view a device, you can access its associated firmware, all from the same system and the same API.
+File objects bridge this gap by storing files alongside the infrastructure data they relate to. A circuit contract becomes a node in the graph, linked to the circuit it covers. A site photo becomes a node linked to the location it documents. This means that when you query a circuit, you can also retrieve its contracts, and when you view a site, you can access its associated pictures, all from the same system and the same API.
 
 ## Concepts and definitions
 
@@ -73,23 +75,11 @@ You can also define relationships from the other direction. A `NetworkCircuit` n
 
 ### Storage architecture
 
-Infrahub's file storage follows two key principles: immutability and separation of concerns.
-
-Files are stored in a content-addressable store that is completely separate from the graph database. The storage layer is a key-value system where each file is identified by a UUID. Once a file is stored, it is never modified or deleted. This immutability is what enables version control and time travel for files.
+File content is persisted in Infrahub's [object storage](./object-storage.mdx) layer, which is completely separate from the graph database. The storage layer is an immutable key-value system where each file is identified by a UUID. Once a file is stored, it is never modified or deleted. This immutability is what enables version control and time travel for files.
 
 The graph database handles all the branch-aware, time-aware logic. A file object node contains a `storage_id` attribute that points to the stored file. When you update a file, Infrahub stores the new version under a new UUID and updates the node's `storage_id` on the current branch. The original file remains untouched in storage, and any branch or point in time that referenced the old `storage_id` continues to resolve to the original file.
 
-```text
-Storage layer (branch-agnostic):
-  "abc-123" → file bytes (original version)
-  "def-456" → file bytes (updated version)
-
-Graph database (branch-aware):
-  Branch "main":    NetworkCircuitContract { storage_id: "abc-123" }
-  Branch "feature": NetworkCircuitContract { storage_id: "def-456" }
-```
-
-This design means that the storage layer does not need to understand branches or time. It stores files and retrieves them by UUID. All the complexity of version control lives in the graph database, where Infrahub already has mature support for branching, merging, and time travel.
+<ReferenceLink title="Object storage" url="./object-storage" />
 
 ### Version control integration
 
@@ -115,13 +105,13 @@ A network team managing hundreds of circuits can define a `NetworkCircuitContrac
 
 When a contract is renewed, the team uploads the new document on a branch, updates the contract dates, and submits a proposed change for review. The main branch continues to show the original contract until the change is approved and merged.
 
-### Firmware management
+### Documents
 
-An operations team can create a `FirmwareImage` file object type linked to device models. Firmware binaries are uploaded and associated with the device platforms they support. When planning an upgrade, the team can query which firmware version is currently linked to each device model and download the image directly from Infrahub.
+Teams can attach operational documents — handover reports, maintenance logs, or compliance certificates — to the infrastructure nodes they relate to. Because file objects support time travel, the team can retrieve the document that was active at any point in time, which is valuable during audits.
 
-### Compliance documentation
+### Pictures
 
-A security team can attach audit reports, compliance certificates, or policy documents to the infrastructure nodes they relate to. Because file objects support time travel, the team can retrieve the compliance document that was active at any point in time, which is valuable during audits.
+Site photos, rack elevation pictures, or equipment labels can be stored as file objects linked to locations or devices. When a site is surveyed, the team uploads pictures and associates them with the relevant nodes. Anyone querying the site can view the photos alongside the structured data.
 
 ## Connection to other concepts
 
@@ -134,7 +124,7 @@ File objects build on several existing Infrahub features:
 - **[Permissions and roles](./permissions-roles.mdx)**: File access is controlled by the same role-based permissions as other data.
 - **[Artifact](./artifact.mdx)**: While artifacts are system-generated outputs from transformations, file objects are user-uploaded documents. Both use the object storage layer, but they serve different purposes.
 
-## Configuration
+## Operational considerations
 
 ### File size limits
 
@@ -144,7 +134,19 @@ The maximum upload size defaults to 50 MB and can be adjusted through Infrahub's
 INFRAHUB_STORAGE_MAX_FILE_SIZE=200   # in MB, default is 50
 ```
 
-For production deployments behind a reverse proxy, the proxy must also allow large request bodies. See the [configuration reference](../reference/configuration.mdx) for details.
+For production deployments behind a reverse proxy, the proxy must also allow large request bodies.
+
+<ReferenceLink title="How to configure Infrahub" url="../guides/configuration-changes" />
+
+### Backups
+
+The file content for file objects is stored in the [object storage](./object-storage.mdx) layer, which is separate from the graph database.
+
+:::warning Data loss risk
+Unlike artifacts, which can be regenerated from their definitions, user-uploaded files may only exist in object storage. Losing object storage without a backup means those files are unrecoverable. Both the graph database and object storage must be backed up together to maintain consistency.
+:::
+
+<ReferenceLink title="How to backup object storage" url="../guides/database-backup#step-3-backup-the-object-storage" />
 
 ## Further reading
 
