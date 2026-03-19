@@ -57,16 +57,16 @@ ENV DOCS_IN_APP=1
 
 RUN mkdir /docs
 
-COPY docs/package.json docs/pnpm-lock.yaml /docs/
+COPY docs/package.json  docs/package-lock.json /docs/
 COPY backend/infrahub/config.py /backend/infrahub/
 COPY models/ /models/
 COPY python_sdk/docs/docs/python-sdk/examples/  /python_sdk/examples/
 COPY development/ /development/
 WORKDIR /docs
 
-RUN pnpm install --frozen-lockfile
+RUN npm install --omit=dev
 COPY docs/ /docs/
-RUN pnpm run build
+RUN npm run build && npm cache clean --force
 
 # ****************************************************************
 # STAGE : Backend
