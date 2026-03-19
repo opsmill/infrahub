@@ -26,6 +26,16 @@ configure_webhook flow
        └─ WebhookAction.RECONCILE_ALL ──► _reconcile_all()
              └──► Full sync via setup_triggers_specific()
 
+KeyValue update (header value changed)
+       │
+       ▼
+Built-in Trigger (TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE)
+       │
+       ▼
+invalidate_webhook_headers flow
+       └──► Queries webhooks referencing the changed KeyValue
+       └──► Invalidates their cache entries
+
                                           ┌─────────────────────┐
 Application Event (e.g. node.created) ──► │ Prefect Automation   │
                                           │ (event matching)     │
@@ -75,6 +85,10 @@ Bridges Infrahub webhooks to Prefect automations. Extends `TriggerDefinition` wi
 
 Normalized representation of the event extracted from Prefect's raw event payload. Contains `id`, `branch`, `account_id`, `occured_at`, and `event` type. Created via `from_event()` which parses the nested context structure from Prefect.
 
+### `WebhookHeader`
+
+Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing (the caller catches this and skips the header with a warning log).
+
 ### `Webhook` class hierarchy
 
 `Webhook` (base) → `StandardWebhook`, `CustomWebhook`, `TransformWebhook`
@@ -82,9 +96,11 @@ Normalized representation of the event extracted from Prefect's raw event payloa
 The base class handles:
 
 - Payload preparation (`_prepare_payload`)
-- Header assignment with optional HMAC signing (`_assign_headers`)
+- Header assignment with custom headers and optional HMAC signing (`_assign_headers`)
 - HTTP delivery via `send()`
 - Cache serialization (`to_cache` / `from_cache`)
+
+The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_assign_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time (missing vars are skipped with a warning log).
 
 ## Schema (GraphQL)
 
@@ -203,7 +219,7 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 
 - **`TRIGGER_WEBHOOK_CONFIGURE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreCustomWebhook` and `CoreStandardWebhook` nodes. Invokes `WEBHOOK_CONFIGURE` with the event type and node data. The `configure_webhook` flow uses `WebhookConfigureParams` and the `EVENT_TO_ACTION` mapping to route to the correct handler.
 
-- **`TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE`**: Fires on `infrahub.node.created`, `infrahub.node.updated`, and `infrahub.node.deleted` for `CoreStaticKeyValue` and `CoreEnvironmentVariableKeyValue` nodes. Invokes `WEBHOOK_INVALIDATE_HEADERS` which resolves which webhooks reference the changed KeyValue (via `KeyValueGetWebhooksQuery` traversing the `webhook__headers` relationship) and clears their cache entries.
+- **`TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE`**: Fires on `infrahub.node.updated` for `CoreStaticKeyValue` and `CoreEnvironmentVariableKeyValue` nodes. Invokes `WEBHOOK_INVALIDATE_HEADERS` with the event type and node data. The `invalidate_webhook_headers` flow resolves which webhooks reference the changed KeyValue (via `NodeManager.query` with `headers__ids` filter) and clears their cache entries.
 
 ## Key Locations
 
@@ -220,7 +236,9 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Schema definitions | `backend/infrahub/core/schema/definitions/core/webhook.py` |
 | GraphQL mutations | `backend/infrahub/graphql/mutations/webhook.py` |
 | Workflow catalogue | `backend/infrahub/workflows/catalogue.py` |
-| Unit tests | `backend/tests/unit/webhook/test_models.py` |
+| KeyValue schema | `backend/infrahub/core/schema/definitions/core/key_value.py` |
+| Unit tests (models) | `backend/tests/unit/webhook/test_models.py` |
+| Unit tests (triggers) | `backend/tests/unit/webhook/test_triggers.py` |
 | Functional tests (configure) | `backend/tests/functional/webhook/test_configure.py` |
 | Functional tests (process) | `backend/tests/functional/webhook/test_process.py` |
 | Mutation tests | `backend/tests/component/graphql/mutations/test_webhook.py` |

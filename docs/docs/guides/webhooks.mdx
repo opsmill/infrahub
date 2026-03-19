@@ -208,3 +208,71 @@ mutation CreateCustomWebhook {
 2. Check that your external endpoint received the transformed payload.
 
 For troubleshooting, check the Infrahub logs for webhook delivery status and any Transformation errors.
+
+# Adding custom headers
+
+Webhooks can include custom HTTP headers for authentication, routing metadata, or any other headers the receiving system requires. Headers are defined as reusable key-value pair entities — either static values or references to environment variables — and can be shared across multiple webhooks. For details on header types, merge behavior, and environment variable resolution, see the [webhooks topic](../topics/webhooks.mdx#custom-headers).
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+1. Navigate to **Integrations** > **Key/Value**.
+2. Click **+ Add Key Value**.
+3. Fill in the fields:
+   - **Name**: A human-friendly identifier, such as "API Auth Token"
+   - **Key**: The HTTP header field name, such as `Authorization`
+   - **Value**: The header value, such as `Bearer eyJhbGci...`
+4. Click **Save**.
+5. Navigate to **Integrations** > **Webhooks** and select your webhook.
+6. In the **Headers** relationship, associate the key-value pair you created.
+7. Click **Save**.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+First, create a key-value pair for the header:
+
+```graphql
+mutation CreateHeader {
+  CoreStaticKeyValueCreate(
+    data: {
+      name: {value: "API Auth Token"}
+      key: {value: "Authorization"}
+      value: {value: "Bearer eyJhbGci..."}
+    }
+  ) {
+    object {
+      id
+      display_label
+    }
+  }
+}
+```
+
+Then, update your webhook to associate the header:
+
+```graphql
+mutation AddHeaderToWebhook {
+  CoreStandardWebhookUpdate(
+    data: {
+      id: "<webhook-id>"
+      headers: [{id: "<header-id>"}]
+    }
+  ) {
+    object {
+      id
+      display_label
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+:::info
+
+Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not just the token). For environment-variable-based headers that resolve secrets at send time, use `CoreEnvKeyValue` instead — see the [webhooks topic](../topics/webhooks.mdx#environment-variable-resolution) for details.
+
+:::
