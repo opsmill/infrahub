@@ -19,7 +19,7 @@ DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 @task
 def build(context: Context) -> None:
     """Build documentation website."""
-    exec_cmd = "pnpm run build"
+    exec_cmd = "npm run build"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
@@ -85,7 +85,7 @@ def generate_infrahub_events(context: Context) -> None:  # noqa: ARG001
 @task
 def install(context: Context) -> None:
     """Install documentation dependencies."""
-    exec_cmd = "pnpm install"
+    exec_cmd = "npm install"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
@@ -107,7 +107,7 @@ def validate(context: Context) -> None:
 def serve(context: Context) -> None:
     """Run documentation server in development mode."""
 
-    exec_cmd = "pnpm run serve"
+    exec_cmd = "npm run serve"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
         context.run(exec_cmd)
