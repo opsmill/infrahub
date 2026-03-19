@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 def _invalidate_webhook_headers_run_name() -> str:
     params = flow_run.parameters
     event_data = params.get("event_data")
-    keyvalue_id = event_data["node_id"] if event_data else "unknown"
+    keyvalue_id = (event_data or {}).get("node_id", "unknown")
     return f"Invalidate webhook headers (KeyValue {keyvalue_id})"
 
 
@@ -47,7 +47,7 @@ async def invalidate_webhook_headers(
     """Resolve webhooks referencing a KeyValue node and invalidate their cache."""
     log = get_run_logger()
 
-    keyvalue_id = event_data["node_id"] if event_data else None
+    keyvalue_id = (event_data or {}).get("node_id")
     if not keyvalue_id:
         log.warning("No KeyValue ID provided, skipping")
         return
