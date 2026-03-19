@@ -9,13 +9,13 @@ This website is built using [Docusaurus](https://docusaurus.io/), a modern stati
 ### Installation
 
 ```shell
-pnpm install
+npm install
 ```
 
 ### Local development
 
 ```shell
-pnpm start
+npm start
 ```
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
@@ -23,7 +23,7 @@ This command starts a local development server and opens up a browser window. Mo
 ### Build
 
 ```shell
-pnpm run build
+npm run build
 ```
 
 This command generates static content into the `build` directory and can be served using any static contents hosting service.
@@ -31,5 +31,5 @@ This command generates static content into the `build` directory and can be serv
 ### Serve
 
 ```shell
-pnpm run serve
+npm run serve
 ```
