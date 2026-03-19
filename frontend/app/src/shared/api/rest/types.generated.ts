@@ -1183,6 +1183,11 @@ export interface components {
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** AttributeSchema */
         "AttributeSchema-Output": {
@@ -1294,6 +1299,11 @@ export interface components {
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
@@ -1712,12 +1722,6 @@ export interface components {
              * @default false
              */
             delete_branch_after_merge: boolean;
-            /**
-             * Delete Git Branch After Merge
-             * @description When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled.
-             * @default false
-             */
-            delete_git_branch_after_merge: boolean;
         };
         /** Menu */
         Menu: {
@@ -2157,6 +2161,11 @@ export interface components {
              * @description Mark relationship as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -2198,6 +2207,11 @@ export interface components {
             /** Token Path */
             readonly token_path: string;
         };
+        /**
+         * SchemaAttributeDisplay
+         * @enum {string}
+         */
+        SchemaAttributeDisplay: "default" | "extra";
         /** SchemaBranchHash */
         SchemaBranchHash: {
             /** Main */

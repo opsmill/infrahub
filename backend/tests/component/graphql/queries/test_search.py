@@ -4,10 +4,12 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
 from tests.helpers.graphql import graphql
 
@@ -16,6 +18,26 @@ query ($search: String!) {
     InfrahubSearchAnywhere(q: $search) {
         count
         edges {
+            node {
+                id
+                kind
+            }
+        }
+    }
+}
+"""
+
+SEARCH_QUERY_WITH_PARENT_PREFIXES = """
+query ($search: String!) {
+    InfrahubSearchAnywhere(q: $search) {
+        count
+        edges {
+            node {
+                id
+                kind
+            }
+        }
+        parent_prefixes {
             node {
                 id
                 kind
@@ -474,3 +496,159 @@ async def test_search_anywhere_case_sensitive_enabled(
     assert result_exact.data
     assert result_exact.data["InfrahubSearchAnywhere"]["count"] == 1
     assert result_exact.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id
+
+
+async def _search_with_parent_prefixes(gql_params: GraphqlParams, query: str) -> dict[str, Any]:
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY_WITH_PARENT_PREFIXES,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": query},
+    )
+    assert result.errors is None
+    assert result.data
+    return result.data["InfrahubSearchAnywhere"]
+
+
+async def test_search_parent_prefix_ipv4(db: InfrahubDatabase, ip_dataset_01: dict[str, Any], branch: Branch) -> None:
+    """IPv4 parent prefix lookup: address ordering, exact match handling, CIDR, non-existent, no-match, multi-namespace."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Address lookup with ordering
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.1.1")
+    parent_prefixes = data["parent_prefixes"]
+    assert parent_prefixes is not None
+    parent_ids = [pp["node"]["id"] for pp in parent_prefixes]
+    expected_ids = {
+        ip_dataset_01["net143"].id,  # 10.10.1.0/27  (NS1)
+        ip_dataset_01["net142"].id,  # 10.10.1.0/24  (NS1)
+        ip_dataset_01["net140"].id,  # 10.10.0.0/16  (NS1)
+        ip_dataset_01["net240"].id,  # 10.10.0.0/15  (NS2)
+        ip_dataset_01["net146"].id,  # 10.0.0.0/8    (NS1)
+    }
+    assert set(parent_ids) == expected_ids
+    # Ordered by specificity: /27 > /24 > /16 > /15 > /8
+    assert parent_ids.index(ip_dataset_01["net143"].id) < parent_ids.index(ip_dataset_01["net142"].id)
+    assert parent_ids.index(ip_dataset_01["net142"].id) < parent_ids.index(ip_dataset_01["net140"].id)
+    assert parent_ids.index(ip_dataset_01["net140"].id) < parent_ids.index(ip_dataset_01["net240"].id)
+    assert parent_ids.index(ip_dataset_01["net240"].id) < parent_ids.index(ip_dataset_01["net146"].id)
+    for pp in parent_prefixes:
+        assert "IPPrefix" in pp["node"]["kind"]
+
+    # Existing IP address in edges, not in parent_prefixes
+    edge_ids = [e["node"]["id"] for e in data["edges"]]
+    assert ip_dataset_01["address11"].id in edge_ids
+    assert ip_dataset_01["address11"].id not in parent_ids
+
+    # Prefix search excludes exact match from parent_prefixes
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.1.0/24")
+    edge_ids = [e["node"]["id"] for e in data["edges"]]
+    assert ip_dataset_01["net142"].id in edge_ids
+    parent_ids = [pp["node"]["id"] for pp in data["parent_prefixes"]]
+    assert ip_dataset_01["net140"].id in parent_ids  # 10.10.0.0/16
+    assert ip_dataset_01["net146"].id in parent_ids  # 10.0.0.0/8
+    assert ip_dataset_01["net142"].id not in parent_ids  # exact match excluded
+
+    # Non-existent prefix still returns parents
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.3.0/24")
+    parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
+    assert ip_dataset_01["net140"].id in parent_ids  # 10.10.0.0/16  (NS1)
+    assert ip_dataset_01["net146"].id in parent_ids  # 10.0.0.0/8    (NS1)
+    assert ip_dataset_01["net240"].id in parent_ids  # 10.10.0.0/15  (NS2)
+
+    # --- Valid IP with no matching prefixes returns empty list ---
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="192.168.1.1")
+    assert data["parent_prefixes"] == []
+
+    # Multi-namespace: results from all namespaces
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.0.1")
+    parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
+    assert ip_dataset_01["net140"].id in parent_ids  # NS1: 10.10.0.0/16
+    assert ip_dataset_01["net146"].id in parent_ids  # NS1: 10.0.0.0/8
+    assert ip_dataset_01["net240"].id in parent_ids  # NS2: 10.10.0.0/15
+    assert ip_dataset_01["net241"].id in parent_ids  # NS2: 10.10.0.0/24
+
+
+async def test_search_parent_prefix_ipv6(db: InfrahubDatabase, ip_dataset_01: dict[str, Any], branch: Branch) -> None:
+    """IPv6 parent prefix lookup: address, non-canonical normalization, CIDR."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Address lookup with ordering
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="2001:db8::1")
+    parent_ids = [pp["node"]["id"] for pp in data["parent_prefixes"]]
+    assert ip_dataset_01["net162"].id in parent_ids  # 2001:db8::/64
+    assert ip_dataset_01["net161"].id in parent_ids  # 2001:db8::/48
+    assert parent_ids.index(ip_dataset_01["net162"].id) < parent_ids.index(ip_dataset_01["net161"].id)
+
+    # Non-canonical format produces same results
+    data_extended = await _search_with_parent_prefixes(
+        gql_params=gql_params, query="2001:0db8:0000:0000:0000:0000:0000:0001"
+    )
+    extended_ids = {pp["node"]["id"] for pp in data_extended["parent_prefixes"]}
+    assert extended_ids == set(parent_ids)
+
+    # CIDR prefix search excludes exact match
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="2001:db8::/64")
+    parent_ids = [pp["node"]["id"] for pp in data["parent_prefixes"]]
+    assert ip_dataset_01["net161"].id in parent_ids  # 2001:db8::/48
+    assert ip_dataset_01["net162"].id not in parent_ids  # exact match excluded
+
+
+async def test_search_parent_prefix_non_ip_fallback(
+    db: InfrahubDatabase, ip_dataset_01: dict[str, Any], branch: Branch
+) -> None:
+    """Non-IP and partial IP queries return parent_prefixes as null, text search unchanged."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Non-IP text returns null parent_prefixes
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="ns1")
+    assert data["parent_prefixes"] is None
+    assert data["count"] >= 1
+
+    # Partial IP falls back to text search (US3)
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10")
+    assert data["parent_prefixes"] is None
+    assert data["count"] > 0
+
+
+async def test_search_parent_prefix_branch_effective_value(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Any]
+) -> None:
+    """A prefix whose value is changed on a branch must not appear as a parent for the old value on that branch."""
+    # ip_dataset_01 has net143 = 10.10.1.0/27 in NS1 on the default branch.
+    # On a new branch, change it to 10.10.2.0/27 (a completely different subnet).
+    # Searching for 10.10.1.1 on that branch should NOT return the changed prefix.
+    branch = await create_branch(db=db, branch_name="search-branch-effective")
+
+    net143_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net143"].id)
+    net143_branch.prefix.value = "10.10.2.0/27"
+    await net143_branch.save(db=db)
+
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    # Search for 10.10.1.1 on the branch — net143 (now 10.10.2.0/27) should NOT be a parent
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.1.1")
+    parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
+    assert ip_dataset_01["net143"].id not in parent_ids  # changed to 10.10.2.0/27 on this branch
+
+    # Other parents that still contain 10.10.1.1 should be present
+    assert ip_dataset_01["net142"].id in parent_ids  # 10.10.1.0/24  (unchanged)
+    assert ip_dataset_01["net140"].id in parent_ids  # 10.10.0.0/16  (unchanged)
+    assert ip_dataset_01["net146"].id in parent_ids  # 10.0.0.0/8    (unchanged)
+
+    # Conversely, searching for 10.10.2.1 on the branch should find net143 (now 10.10.2.0/27)
+    data = await _search_with_parent_prefixes(gql_params=gql_params, query="10.10.2.1")
+    parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
+    assert ip_dataset_01["net143"].id in parent_ids  # 10.10.2.0/27 on this branch
+
+    # On the default branch, 10.10.1.0/27 should still appear as a parent for 10.10.1.1
+    default_branch.update_schema_hash()
+    gql_params_default = await prepare_graphql_params(db=db, branch=default_branch)
+    data = await _search_with_parent_prefixes(gql_params=gql_params_default, query="10.10.1.1")
+    parent_ids = {pp["node"]["id"] for pp in data["parent_prefixes"]}
+    assert ip_dataset_01["net143"].id in parent_ids  # still 10.10.1.0/27 on default branch

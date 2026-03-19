@@ -3736,6 +3736,12 @@
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -3995,6 +4001,12 @@
                         ],
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
+                        "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
                         "update": "allowed"
                     }
                 },
@@ -5017,12 +5029,6 @@
                         "title": "Delete Branch After Merge",
                         "description": "When enabled, the Infrahub branch is automatically deleted after a successful merge.",
                         "default": false
-                    },
-                    "delete_git_branch_after_merge": {
-                        "type": "boolean",
-                        "title": "Delete Git Branch After Merge",
-                        "description": "When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled.",
-                        "default": false
                     }
                 },
                 "additionalProperties": false,
@@ -5934,6 +5940,12 @@
                         "title": "Deprecation",
                         "description": "Mark relationship as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -6056,6 +6068,14 @@
                     "token_path"
                 ],
                 "title": "SSOProviderInfo"
+            },
+            "SchemaAttributeDisplay": {
+                "type": "string",
+                "enum": [
+                    "default",
+                    "extra"
+                ],
+                "title": "SchemaAttributeDisplay"
             },
             "SchemaBranchHash": {
                 "properties": {

@@ -10,17 +10,16 @@
 
 ### User Story 1 - Attach Authentication Headers to a Webhook (Priority: P1)
 
-An infrastructure administrator configures a webhook in Infrahub to notify an external system (e.g., Ansible Automation Platform) about infrastructure changes. The external system requires an authentication header such as `Authorization: Bearer <token>` to accept incoming requests. The administrator creates a key-value pair containing the sensitive header credentials, associates it with the webhook, and when events fire, the custom header is automatically included in the HTTP request.
+An infrastructure administrator configures a webhook in Infrahub to notify an external system (e.g., Ansible Automation Platform) about infrastructure changes. The external system requires an authentication header such as `Authorization: Bearer <token>` to accept incoming requests. The administrator creates a key-value pair containing the header credentials, associates it with the webhook, and when events fire, the custom header is automatically included in the HTTP request.
 
 **Why this priority**: This is the core use case driving the feature. Without it, customers cannot integrate Infrahub webhooks with any system requiring header-based authentication, which is the majority of modern APIs and automation platforms.
 
-**Independent Test**: Can be fully tested by creating a key-value pair with a sensitive header value, linking it to a webhook, triggering an event, and verifying the target system receives the request with the correct authentication header.
+**Independent Test**: Can be fully tested by creating a key-value pair with a header value, linking it to a webhook, triggering an event, and verifying the target system receives the request with the correct authentication header.
 
 **Acceptance Scenarios**:
 
-1. **Given** a webhook configured to notify an external system and a key-value pair containing a sensitive authentication header, **When** the administrator links the key-value pair to the webhook and an event fires, **Then** the HTTP request to the external system includes the custom authentication header with the correct value.
-2. **Given** a key-value pair with a sensitive header value (e.g., API key or bearer token), **When** the administrator views the key-value pair via the UI, **Then** the sensitive value is masked and not displayed in cleartext.
-3. **Given** a webhook with a linked authentication header, **When** the administrator queries the webhook configuration, **Then** the header relationship is visible.
+1. **Given** a webhook configured to notify an external system and a key-value pair containing an authentication header, **When** the administrator links the key-value pair to the webhook and an event fires, **Then** the HTTP request to the external system includes the custom authentication header with the correct value.
+2. **Given** a webhook with a linked authentication header, **When** the administrator queries the webhook configuration, **Then** the header relationship is visible.
 
 ---
 
@@ -56,18 +55,18 @@ An administrator has multiple webhooks that all target systems within the same o
 
 ---
 
-### User Story 4 - Add Non-Sensitive Custom Headers to a Webhook (Priority: P3)
+### User Story 4 - Add Plain-Text Custom Headers to a Webhook (Priority: P3)
 
-An administrator needs to include non-sensitive identification or routing headers (e.g., `X-Source-System: infrahub`, `X-Tenant-Id: acme-corp`) in webhook requests. They create a plain-text key-value pair where the value is stored and displayed without masking, and associate it with their webhook.
+An administrator needs to include identification or routing headers (e.g., `X-Source-System: infrahub`, `X-Tenant-Id: acme-corp`) in webhook requests. They create a plain-text key-value pair and associate it with their webhook.
 
-**Why this priority**: Supports simpler use cases where headers carry non-sensitive metadata, providing flexibility without requiring secret management overhead.
+**Why this priority**: Supports use cases where headers carry metadata like system identifiers or routing information.
 
 **Independent Test**: Can be fully tested by creating a plain-text key-value pair, linking it to a webhook, triggering an event, and verifying the header appears in the request.
 
 **Acceptance Scenarios**:
 
 1. **Given** a plain-text key-value pair linked to a webhook, **When** a webhook event fires, **Then** the HTTP request includes the custom header with the literal value.
-2. **Given** a plain-text key-value pair, **When** the administrator views it via the API or UI, **Then** the value is displayed in cleartext (not masked).
+2. **Given** a plain-text key-value pair, **When** the administrator views it via the API or UI, **Then** the value is displayed as-is.
 
 ---
 
@@ -85,12 +84,11 @@ An administrator needs to include non-sensitive identification or routing header
 ### Functional Requirements
 
 - **FR-001**: System MUST allow users to create key-value pairs representing custom HTTP headers with a human-friendly name (globally unique across all key-value pair types, consistent with standard generic behavior in Infrahub), a header name (the actual HTTP header field name), and a header value.
-- **FR-002**: System MUST support three types of key-value pairs: plain-text (value stored and displayed as-is), password/sensitive (value uses a Password attribute kind and is masked in the UI), and environment-variable-based (value resolved from worker environment at send time).
+- **FR-002**: System MUST support two types of key-value pairs: plain-text (value stored and displayed as-is) and environment-variable-based (value resolved from worker environment at send time).
 - **FR-003**: System MUST allow associating zero or more key-value pairs with any webhook (both Standard and Custom Webhooks).
 - **FR-004**: System MUST support many-to-many relationships between key-value pairs and webhooks, allowing one key-value pair to be referenced by multiple webhooks and one webhook to reference multiple key-value pairs.
 - **FR-005**: System MUST include all associated custom headers in webhook HTTP requests when events fire.
 - **FR-006**: System MUST merge custom headers with default system headers (Content-Type, Accept, HMAC signature headers) when sending webhook requests. In case of name conflicts, the user's custom header value MUST take precedence over the system default.
-- **FR-007**: System MUST mask sensitive header values (password type) in the UI, consistent with how existing Password kind attributes are displayed.
 - **FR-008**: System MUST resolve environment-variable-based header values from the worker process environment at the time the webhook request is sent, not at configuration time.
 - **FR-009**: When an environment-variable-based header references a variable that does not exist in the worker environment, the system MUST skip that header, include all remaining resolvable headers in the request, and log a warning identifying the missing variable name.
 - **FR-010**: System MUST invalidate cached webhook data when associated key-value pairs are created, updated, deleted, or when the relationship between a key-value pair and a webhook changes.
@@ -101,8 +99,7 @@ An administrator needs to include non-sensitive identification or routing header
 ### Key Entities
 
 - **Key-Value Pair (Generic)**: A reusable generic configuration object representing a key-value pair. Has a globally unique human-friendly name for identification (enforced across all key-value pair types, per standard Infrahub generic behavior), a key name (e.g., an HTTP header field name like "Authorization" or "X-Auth-Token"), and a value. Serves as the base generic entity with three specialized node types that inherit from it, differing only in how the value is stored and resolved.
-- **Static Key-Value Pair (Node)**: A node type inheriting from the Key-Value Pair generic. The value is stored as plain text and displayed without masking. Used for non-sensitive data like system identifiers or routing metadata.
-- **Password Key-Value Pair (Node)**: A node type inheriting from the Key-Value Pair generic. The value uses a Password attribute kind and is masked in the UI. Used for sensitive data like API keys and bearer tokens.
+- **Static Key-Value Pair (Node)**: A node type inheriting from the Key-Value Pair generic. The value is stored as plain text and displayed as-is. Used for data like system identifiers, routing metadata, or static authentication tokens.
 - **Environment Variable Key-Value Pair (Node)**: A node type inheriting from the Key-Value Pair generic. The stored value is the name of an environment variable. The actual value is resolved from the worker process environment at the time of use. Used when secrets are managed externally (Kubernetes secrets, vault solutions).
 - **Webhook**: An existing generic entity (CoreWebhook) from which both Standard and Custom Webhook types inherit. A new optional `headers` relationship (cardinality=many) to the Key-Value Pair generic MUST be defined on this webhook generic, so that all webhook types automatically inherit the ability to reference zero or more key-value pairs.
 
@@ -129,7 +126,6 @@ An administrator needs to include non-sensitive identification or routing header
 
 - **SC-001**: Users can successfully send webhook requests to external systems requiring custom authentication headers (e.g., Ansible Automation Platform) without any workarounds or intermediary proxies.
 - **SC-002**: Users can configure a webhook with custom headers and trigger a successful authenticated request to an external endpoint. This should be verified after the configuration has been updated and applied within Prefect.
-- **SC-003**: Sensitive header values (password type) are masked in the UI and never appear in application logs.
 - **SC-004**: A single key-value pair update propagates to all linked webhooks on the next event trigger, with zero manual intervention required per webhook.
 - **SC-005**: Environment-variable-based headers resolve correctly at send time, and missing variables produce actionable error messages that identify the specific variable name.
 - **SC-006**: Custom header functionality works identically for both Standard and Custom Webhook types with no behavioral differences.

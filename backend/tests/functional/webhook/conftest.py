@@ -7,7 +7,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_PROCESS, WORKER_POOLS
+from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS, WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -93,6 +93,7 @@ async def webhook_deployment(db: InfrahubDatabase, prefect_client: PrefectClient
     await setup_worker_pools(client=prefect_client)
     await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
     await WEBHOOK_CONFIGURE.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_INVALIDATE_HEADERS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
 
 @pytest.fixture(scope="class")
@@ -158,6 +159,31 @@ async def webhook4(db: InfrahubDatabase, initial_dataset: None, client: Infrahub
         node_kind="BuiltinTag",
         event_type="infrahub.node.created",
         branch_scope="all_branches",
+    )
+    await webhook.save(db=db)
+    return webhook
+
+
+@pytest.fixture(scope="class")
+async def webhook_with_headers(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    static_header = await Node.init(schema=InfrahubKind.STATICKEYVALUE, db=db)
+    await static_header.new(db=db, name="x-custom-token", key="X-Custom-Token", value="secret123")
+    await static_header.save(db=db)
+
+    env_header = await Node.init(schema=InfrahubKind.ENVKEYVALUE, db=db)
+    await env_header.new(db=db, name="x-env-key", key="X-Env-Key", value="MY_ENV_VAR")
+    await env_header.save(db=db)
+
+    webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="WebhookWithHeaders",
+        url="https://url.mock",
+        shared_key="1234567890",
+        validate_certificates=False,
+        event_type="infrahub.branch.created",
+        branch_scope="all_branches",
+        headers=[static_header, env_header],
     )
     await webhook.save(db=db)
     return webhook

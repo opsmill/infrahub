@@ -8,41 +8,57 @@
 
 ## Goal
 
-Add two global configuration settings to `MainSettings`. Both default to `False` to preserve backward compatibility (FR-011).
+Add `delete_branch_after_merge` to `MainSettings` and `delete_git_branch_after_merge` to `GitSettings`. Both default to `False` to preserve backward compatibility (FR-011). Cross-field validation lives at the top-level `Settings` class since the two fields are in different sub-settings.
 
 ---
 
 ## Checklist
 
 - [x] Add `delete_branch_after_merge` to `MainSettings`
-- [x] Add `delete_git_branch_after_merge` to `MainSettings`
-- [x] Add cross-field validator that rejects `delete_git_branch_after_merge=True` when `delete_branch_after_merge=False`
+- [x] Add `delete_git_branch_after_merge` to `GitSettings`
+- [x] Add cross-field validator on `Settings` that rejects `git.delete_git_branch_after_merge=True` when `main.delete_branch_after_merge=False`
 - [x] Write unit tests
 
 ---
 
 ## Implementation
 
-### 1.1 Add settings and validator to MainSettings
+### 1.1 Add `delete_branch_after_merge` to `MainSettings`
 
 **File:** `backend/infrahub/config.py`
 
-Locate the `MainSettings` class and add two new fields plus a `@model_validator`:
-
 ```python
-from pydantic import model_validator
-from typing import Self
-
 class MainSettings(BaseSettings):
     # ... existing fields ...
-    delete_branch_after_merge: bool = False
-    delete_git_branch_after_merge: bool = False
+    delete_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+    )
+```
+
+### 1.2 Add `delete_git_branch_after_merge` to `GitSettings`
+
+```python
+class GitSettings(BaseSettings):
+    # ... existing fields ...
+    delete_git_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
+        "Requires main.delete_branch_after_merge to be enabled.",
+    )
+```
+
+### 1.3 Add cross-field validator to `Settings`
+
+```python
+class Settings(BaseSettings):
+    # ... existing fields ...
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
-        if self.delete_git_branch_after_merge and not self.delete_branch_after_merge:
+        if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
             raise ValueError(
-                "'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled"
+                "'git.delete_git_branch_after_merge' requires 'main.delete_branch_after_merge' to be enabled"
             )
         return self
 ```
@@ -56,8 +72,8 @@ Pydantic raises `ValidationError` on load, which `load_and_exit()` catches, prin
 **File:** `backend/tests/unit/test_config.py`
 
 - `test_delete_branch_after_merge_defaults_to_false` — assert `MainSettings().delete_branch_after_merge is False`
-- `test_delete_git_branch_after_merge_defaults_to_false` — assert `MainSettings().delete_git_branch_after_merge is False`
-- `test_delete_git_branch_after_merge_without_delete_branch_after_merge_raises` — assert `ValidationError` is raised when `delete_git_branch_after_merge=True, delete_branch_after_merge=False`
+- `test_delete_git_branch_after_merge_defaults_to_false` — assert `GitSettings().delete_git_branch_after_merge is False`
+- `test_delete_git_branch_after_merge_without_delete_branch_after_merge_raises` — assert `ValidationError` is raised when `Settings(git={"delete_git_branch_after_merge": True}, main={"delete_branch_after_merge": False})`
 
 **Verification:**
 

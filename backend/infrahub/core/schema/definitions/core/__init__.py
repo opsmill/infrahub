@@ -45,6 +45,11 @@ from .ipam import (
     internal_ipam_ip_prefix_available,
     internal_ipam_ip_range_available,
 )
+from .key_value import (
+    core_environment_variable_key_value,
+    core_key_value,
+    core_static_key_value,
+)
 from .lineage import lineage_owner, lineage_source
 from .menu import generic_menu_item, menu_item
 from .permission import (
@@ -118,6 +123,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_artifact_target,
         core_file_object,
         core_task_target,
+        core_key_value,
         core_webhook,
         core_generic_repository,
         builtin_ipam,
@@ -179,6 +185,8 @@ core_models_mixed: CoreModelsMixedType = {
         core_artifact_definition,
         core_generator_definition,
         core_generator_instance,
+        core_static_key_value,
+        core_environment_variable_key_value,
         core_standard_webhook,
         core_custom_webhook,
         core_ipam_namespace,

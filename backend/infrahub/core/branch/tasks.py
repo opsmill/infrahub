@@ -356,6 +356,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         # -------------------------------------------------------------
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
+        await diff_repository.freeze_diffs_for_branch(branch_name=obj.name)
 
         # -------------------------------------------------------------
         # Set branch status to MERGED to make it read-only
@@ -373,7 +374,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             parameters={"branch_name": obj.name},
         )
 
-        if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default and proposed_change_id is None:
+        if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default:
             await get_workflow().submit_workflow(
                 workflow=BRANCH_DELETE,
                 context=context,
@@ -417,6 +418,11 @@ async def delete_branch(branch: str, context: InfrahubContext) -> None:
     database = await get_database()
     async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
+
+        component_registry = get_component_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
+        await diff_repository.freeze_diffs_for_branch(branch_name=branch)
+
         await obj.delete(db=db)
 
         event = BranchDeletedEvent(
