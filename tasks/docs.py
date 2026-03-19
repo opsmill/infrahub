@@ -394,8 +394,14 @@ def _process_section_parameters(
     for param_name, param_schema in section_schema["properties"].items():
         param_type = param_schema.get("type")
         if param_type == "array":
-            array_type = param_schema.get("items", {}).get("type")
+            items = param_schema.get("items", {})
+            array_type = items.get("type")
             if array_type:
+                param_type = f"array[{array_type}]"
+            elif "$ref" in items:
+                ref_name = items["$ref"].split("/")[-1]
+                ref_schema = defs.get(ref_name, {})
+                array_type = ref_schema.get("type", "object")
                 param_type = f"array[{array_type}]"
 
         env = f"{env_prefix}{param_name}".upper() if env_prefix else None
@@ -420,6 +426,24 @@ def _process_section_parameters(
                 param_type = definition.get("type")
                 if "enum" in definition:
                     param_type += " (" + ", ".join([str(e) for e in definition["enum"]]) + ")"
+
+        # Handle arrays of objects: resolve $ref in items and extract nested parameters
+        if param_type and param_type.startswith("array[object]") and not nested_parameters:
+            items = param_schema.get("items", {})
+            items_ref = items.get("$ref")
+            if items_ref:
+                items_def = defs.get(items_ref.split("/")[-1], {})
+            else:
+                items_def = items
+            if "properties" in items_def:
+                default = "Check nested parameters"
+                nested_parameters = _process_section_parameters(
+                    section_schema=items_def,
+                    model_fields={},
+                    env_source=env_source,
+                    defs=defs,
+                    env_prefix=None,
+                )
 
         parameters.append(
             ConfigurationSectionParameter(
