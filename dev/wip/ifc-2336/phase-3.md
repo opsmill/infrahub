@@ -129,7 +129,7 @@ Note: `origin_has_branch` is a synchronous method — do not use `await`.
 After the existing `BranchDeletedEvent` submission:
 
 ```python
-should_delete_git = config.SETTINGS.main.delete_git_branch_after_merge and obj.sync_with_git
+should_delete_git = config.SETTINGS.git.delete_git_branch_after_merge and obj.sync_with_git
 if should_delete_git:
     await get_workflow().submit_workflow(
         workflow=GIT_REPOSITORIES_DELETE_BRANCH,

@@ -35,9 +35,9 @@ class TestDeleteBranchGitWorkflow(TestInfrahubApp):
         await load_schema(db, schema=CAR_SCHEMA)
 
     async def test_git_deletion_triggered_when_config_enabled_and_sync_with_git(
-        self, initial_dataset: None, client: InfrahubClient
+        self, initial_dataset: None, client: InfrahubClient, delete_git_branch_after_merge_reset_config: None
     ) -> None:
-        config.SETTINGS.main.delete_git_branch_after_merge = True
+        config.SETTINGS.git.delete_git_branch_after_merge = True
         branch = await client.branch.create(branch_name="git_del_cfg_enabled", sync_with_git=True)
 
         with patch.object(WorkflowLocalExecution, "submit_workflow", new_callable=AsyncMock) as mock_submit:
@@ -55,9 +55,9 @@ class TestDeleteBranchGitWorkflow(TestInfrahubApp):
             )
 
     async def test_git_deletion_not_triggered_when_config_disabled(
-        self, initial_dataset: None, client: InfrahubClient
+        self, initial_dataset: None, client: InfrahubClient, delete_git_branch_after_merge_reset_config: None
     ) -> None:
-        config.SETTINGS.main.delete_git_branch_after_merge = False
+        config.SETTINGS.git.delete_git_branch_after_merge = False
         branch = await client.branch.create(branch_name="git_del_cfg_disabled", sync_with_git=True)
 
         with patch.object(WorkflowLocalExecution, "submit_workflow", new_callable=AsyncMock) as mock_submit:
@@ -74,9 +74,9 @@ class TestDeleteBranchGitWorkflow(TestInfrahubApp):
             assert not git_del_calls
 
     async def test_git_deletion_not_triggered_when_branch_not_sync_with_git(
-        self, initial_dataset: None, client: InfrahubClient
+        self, initial_dataset: None, client: InfrahubClient, delete_git_branch_after_merge_reset_config: None
     ) -> None:
-        config.SETTINGS.main.delete_git_branch_after_merge = True
+        config.SETTINGS.git.delete_git_branch_after_merge = True
         branch = await client.branch.create(branch_name="git_del_no_sync", sync_with_git=False)
 
         with patch.object(WorkflowLocalExecution, "submit_workflow", new_callable=AsyncMock) as mock_submit:

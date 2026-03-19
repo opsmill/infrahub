@@ -197,6 +197,7 @@ GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="delete_git_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 GIT_REPOSITORY_ADD = WorkflowDefinition(
