@@ -1,4 +1,6 @@
 /// <reference types="vite" />
+import path from "node:path";
+
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -10,6 +12,15 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   server: {
     port: 8080,
+    watch: {
+      ignored: [
+        "**/graphql-env.d.ts",
+        "**/graphql-cache.d.ts",
+        "**/graphql/generated/**",
+        "**/rest/types.generated.ts",
+        "**/playwright-report/**",
+      ],
+    },
   },
   preview: {
     port: 3000,
@@ -35,4 +46,11 @@ export default defineConfig({
       publicPath: "assets/monaco-editor",
     }),
   ],
+  resolve: {
+    alias: {
+      // Ensure all packages use the same React instance
+      react: path.resolve("./node_modules/react"),
+      "react-dom": path.resolve("./node_modules/react-dom"),
+    },
+  },
 });

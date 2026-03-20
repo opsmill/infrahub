@@ -63,8 +63,8 @@ async def prefix_pool(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_extended_schema: SchemaBranch,
-    init_nodes_registry,
-    ip_dataset_prefix_v4,
+    init_nodes_registry: None,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> CoreIPPrefixPool:
     """Create an IP prefix pool for testing."""
     ns1 = ip_dataset_prefix_v4["ns1"]
@@ -170,7 +170,7 @@ async def test_create_profile_with_direct_peer_succeeds(
     db: InfrahubDatabase,
     default_branch: Branch,
     site_schema_with_profile: None,
-    ip_dataset_prefix_v4,
+    ip_dataset_prefix_v4: dict[str, Any],
 ) -> None:
     """Test that creating a profile with a direct peer reference (not from_pool) still works."""
     net142 = ip_dataset_prefix_v4["net142"]

@@ -12,6 +12,7 @@ from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -67,6 +68,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
+from tests.conftest import TestHelper
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -78,7 +80,7 @@ def load_component_dependency_registry() -> None:
 
 
 @pytest.fixture(scope="session")
-def neo4j_factory():
+def neo4j_factory() -> _GraphHydrator:
     """Return a Hydration Scope from Neo4j used to generate fake
     Node and Relationship object.
 
@@ -91,8 +93,8 @@ def neo4j_factory():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def prefect_test_fixture():
-    def _run_uvicorn_command(self) -> subprocess.Popen[Any]:
+def prefect_test_fixture() -> Generator[None, None, None]:
+    def _run_uvicorn_command(self: Any) -> subprocess.Popen[Any]:
         """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
         # used to turn off serving the UI
         server_env = {
@@ -132,7 +134,7 @@ def prefect_test_fixture():
 
 
 @pytest.fixture
-def git_sources_dir(default_branch, tmp_path: Path) -> Path:
+def git_sources_dir(default_branch: Branch, tmp_path: Path) -> Path:
     source_dir = tmp_path / "sources"
     source_dir.mkdir()
     return source_dir
@@ -186,7 +188,7 @@ def s3_storage_bucket() -> str:
 
 
 @pytest.fixture
-def file1_in_storage(local_storage_dir: Path, helper) -> str:
+def file1_in_storage(local_storage_dir: Path, helper: TestHelper) -> str:
     file1_identifier = str(UUIDT())
 
     files_dir = helper.get_fixtures_dir() / "schemas"
@@ -198,7 +200,7 @@ def file1_in_storage(local_storage_dir: Path, helper) -> str:
 
 
 @pytest.fixture
-async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
+async def simple_dataset_01(db: InfrahubDatabase, empty_database: None) -> dict:
     await create_default_branch(db=db)
 
     params = {
@@ -234,7 +236,7 @@ async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
 
 
 @pytest.fixture
-async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> dict:
+async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
 
     To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
@@ -436,7 +438,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 
 @pytest.fixture
-async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_person_schema_global) -> dict:
+async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_person_schema_global: None) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
     This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well
 
@@ -638,7 +640,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 
 @pytest.fixture
-async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> dict:
+async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> dict:
     """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
 
     To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
@@ -973,7 +975,10 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
 @pytest.fixture
 async def base_dataset_04(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_organization_schema: SchemaBranch,
 ) -> dict:
     time0 = Timestamp()
     params = {
@@ -1022,7 +1027,7 @@ async def base_dataset_04(
 
 
 @pytest.fixture
-async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema) -> None:
+async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -1076,7 +1081,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
 
 @pytest.fixture
 async def car_person_schema_global(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
@@ -1116,7 +1121,9 @@ async def car_person_schema_global(
 
 
 @pytest.fixture
-async def car_person_data_generic(db: InfrahubDatabase, register_core_models_schema, car_person_schema_generics):
+async def car_person_data_generic(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, car_person_schema_generics: SchemaRoot
+) -> dict[str, Node]:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -1172,7 +1179,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
 
 
 @pytest.fixture
-async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
@@ -1224,7 +1231,9 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-async def car_person_schema_generics_unregistered(register_core_models_schema, data_schema) -> dict[str, Any]:
+async def car_person_schema_generics_unregistered(
+    register_core_models_schema: SchemaBranch, data_schema: None
+) -> dict[str, Any]:
     return {
         "generics": [
             {
@@ -1345,9 +1354,9 @@ async def car_person_schema_generics_unregistered(register_core_models_schema, d
 async def car_person_schema_generics(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
-    data_schema,
-    car_person_schema_generics_unregistered,
+    register_core_models_schema: SchemaBranch,
+    data_schema: None,
+    car_person_schema_generics_unregistered: dict[str, Any],
 ) -> SchemaRoot:
     schema = SchemaRoot(**car_person_schema_generics_unregistered)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
@@ -1355,7 +1364,7 @@ async def car_person_schema_generics(
 
 
 @pytest.fixture
-async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> dict[str, Node]:
+async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics: SchemaRoot) -> dict[str, Node]:
     ecar = registry.schema.get(name="TestElectricCar")
     gcar = registry.schema.get(name="TestGazCar")
     person = registry.schema.get(name="TestPerson")
@@ -1390,7 +1399,7 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 @pytest.fixture
 async def person_tag_schema(
-    db: InfrahubDatabase, default_branch: Branch, data_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, data_schema: None, register_core_models_schema: SchemaBranch
 ) -> None:
     SCHEMA: dict[str, Any] = {
         "nodes": [
@@ -1432,7 +1441,7 @@ async def person_tag_schema(
 
 
 @pytest.fixture
-async def person_john_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_john_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="John", height=180)
     await person.save(db=db)
@@ -1441,7 +1450,7 @@ async def person_john_main(db: InfrahubDatabase, default_branch: Branch, car_per
 
 
 @pytest.fixture
-async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Jane", height=180)
     await person.save(db=db)
@@ -1450,7 +1459,7 @@ async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_per
 
 
 @pytest.fixture
-async def person_luffy_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_luffy_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="lUffy", height=174)
     await person.save(db=db)
@@ -1459,7 +1468,7 @@ async def person_luffy_main(db: InfrahubDatabase, default_branch: Branch, car_pe
 
 
 @pytest.fixture
-async def person_jim_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_jim_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Jim", height=170)
     await person.save(db=db)
@@ -1468,7 +1477,7 @@ async def person_jim_main(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 
 @pytest.fixture
-async def person_albert_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_albert_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Albert", height=160)
     await person.save(db=db)
@@ -1477,7 +1486,7 @@ async def person_albert_main(db: InfrahubDatabase, default_branch: Branch, car_p
 
 
 @pytest.fixture
-async def person_alfred_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_alfred_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Alfred", height=160)
     await person.save(db=db)
@@ -1486,7 +1495,7 @@ async def person_alfred_main(db: InfrahubDatabase, default_branch: Branch, car_p
 
 
 @pytest.fixture
-async def car_profile1_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def car_profile1_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
     await profile.new(db=db, profile_name="car-profile1", nbr_seats=5, is_electric=False)
     await profile.save(db=db)
@@ -1540,7 +1549,7 @@ async def car_yaris_main(db: InfrahubDatabase, default_branch: Branch, person_ja
 
 
 @pytest.fixture
-async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> Node:
     tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Blue", description="The Blue tag")
     await tag.save(db=db)
@@ -1549,7 +1558,7 @@ async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag
 
 
 @pytest.fixture
-async def tag_red_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+async def tag_red_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> Node:
     tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Red", description="The Red tag")
     await tag.save(db=db)
@@ -1558,7 +1567,7 @@ async def tag_red_main(db: InfrahubDatabase, default_branch: Branch, person_tag_
 
 
 @pytest.fixture
-async def tag_black_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+async def tag_black_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> Node:
     tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Black", description="The Black tag")
     await tag.save(db=db)
@@ -1567,7 +1576,7 @@ async def tag_black_main(db: InfrahubDatabase, default_branch: Branch, person_ta
 
 
 @pytest.fixture
-async def person_jack_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+async def person_jack_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> Node:
     obj = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await obj.new(db=db, firstname="Jack", lastname="Russell")
     await obj.save(db=db)
@@ -1576,7 +1585,7 @@ async def person_jack_main(db: InfrahubDatabase, default_branch: Branch, person_
 
 
 @pytest.fixture
-async def person_jack_primary_tag_main(db: InfrahubDatabase, person_tag_schema, tag_blue_main: Node) -> Node:
+async def person_jack_primary_tag_main(db: InfrahubDatabase, person_tag_schema: None, tag_blue_main: Node) -> Node:
     obj = await Node.init(db=db, schema="TestPerson")
     await obj.new(db=db, firstname="Jake", lastname="Russell", primary_tag=tag_blue_main)
     await obj.save(db=db)
@@ -1585,7 +1594,7 @@ async def person_jack_primary_tag_main(db: InfrahubDatabase, person_tag_schema, 
 
 @pytest.fixture
 async def person_jack_tags_main(
-    db: InfrahubDatabase, default_branch: Branch, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node, tag_red_main: Node
 ) -> Node:
     obj = await Node.init(db=db, schema="TestPerson")
     await obj.new(db=db, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
@@ -1597,7 +1606,7 @@ async def person_jack_tags_main(
 async def group_group1_main(
     db: InfrahubDatabase,
     default_branch: Branch,
-    group_schema,
+    group_schema: None,
 ) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
     await obj.new(db=db, name="group1")
@@ -1607,7 +1616,7 @@ async def group_group1_main(
 
 @pytest.fixture
 async def optional_attr_uniqueness_constraint_schema(
-    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, group_schema: None, data_schema: None
 ) -> NodeSchema:
     node_schema = NodeSchema(
         name="AttrOptionalUniquenessSchema",
@@ -1626,7 +1635,7 @@ async def optional_attr_uniqueness_constraint_schema(
 
 @pytest.fixture
 async def all_attribute_types_schema(
-    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, group_schema: None, data_schema: None
 ) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "AllAttributeTypes",
@@ -1653,7 +1662,7 @@ async def all_attribute_types_schema(
 
 @pytest.fixture
 async def all_attribute_default_types_schema(
-    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, group_schema: None, data_schema: None
 ) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "AllAttributeTypes",
@@ -1743,8 +1752,8 @@ def do_criticality_schema_root() -> SchemaRoot:
 async def criticality_schema(
     db: InfrahubDatabase,
     default_branch: Branch,
-    group_schema,
-    data_schema,
+    group_schema: None,
+    data_schema: None,
     criticality_schema_root: SchemaRoot,
 ) -> NodeSchema:
     return do_criticality_schema(branch=default_branch, schema_root=criticality_schema_root)
@@ -1768,7 +1777,7 @@ def do_criticality_schema(branch: Branch, schema_root: SchemaRoot) -> NodeSchema
 
 
 @pytest.fixture
-async def criticality_protocol():
+async def criticality_protocol() -> type[CoreNode]:
     class TestCriticality(CoreNode):
         name: String
         label: StringOptional
@@ -1788,7 +1797,7 @@ async def criticality_protocol():
 
 
 @pytest.fixture
-async def criticality_low(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def criticality_low(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
     await obj.save(db=db)
@@ -1797,7 +1806,7 @@ async def criticality_low(db: InfrahubDatabase, default_branch: Branch, critical
 
 
 @pytest.fixture
-async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="medium", level=3, description="My desc", color="#333333")
     await obj.save(db=db)
@@ -1805,7 +1814,7 @@ async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criti
 
 
 @pytest.fixture
-async def criticality_high(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def criticality_high(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="high", level=2, description="My other desc", color="#333333")
     await obj.save(db=db)
@@ -1832,7 +1841,9 @@ async def generic_vehicule_schema(
 
 
 @pytest.fixture
-async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, data_schema) -> NodeSchema:
+async def car_schema(
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema: GenericSchema, data_schema: None
+) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Car",
         "namespace": "Test",
@@ -1850,7 +1861,9 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
 
 
 @pytest.fixture
-async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
+async def motorcycle_schema(
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema: GenericSchema
+) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Motorcycle",
         "namespace": "Test",
@@ -1868,7 +1881,9 @@ async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generi
 
 
 @pytest.fixture
-async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
+async def truck_schema(
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema: GenericSchema
+) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Truck",
         "namespace": "Test",
@@ -1887,7 +1902,7 @@ async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_veh
 
 @pytest.fixture
 async def boat_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, person_schema
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema: GenericSchema, person_schema: NodeSchema
 ) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Boat",
@@ -1909,7 +1924,9 @@ async def boat_schema(
 
 
 @pytest.fixture
-async def person_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
+async def person_schema(
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema: GenericSchema
+) -> NodeSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Person",
         "namespace": "Test",
@@ -1930,13 +1947,19 @@ async def person_schema(db: InfrahubDatabase, default_branch: Branch, generic_ve
 
 @pytest.fixture
 async def vehicule_person_schema(
-    db: InfrahubDatabase, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
+    db: InfrahubDatabase,
+    generic_vehicule_schema: GenericSchema,
+    car_schema: NodeSchema,
+    boat_schema: NodeSchema,
+    motorcycle_schema: NodeSchema,
 ) -> None:
     return None
 
 
 @pytest.fixture
-async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema, register_core_models_schema) -> SchemaRoot:
+async def fruit_tag_schema(
+    db: InfrahubDatabase, group_schema: None, data_schema: None, register_core_models_schema: SchemaBranch
+) -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
@@ -1970,7 +1993,7 @@ async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema, regi
 
 
 @pytest.fixture
-async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
+async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema: None, data_schema: None) -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
@@ -2095,20 +2118,23 @@ async def hierarchical_location_schema_simple(
 
 @pytest.fixture
 async def hierarchical_location_schema(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_schema_simple: SchemaRoot,
+    register_core_models_schema: SchemaBranch,
 ) -> None: ...
 
 
 @pytest.fixture
 async def hierarchical_location_data_simple(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
 ) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
 
 @pytest.fixture
 async def hierarchical_location_data(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema: None
 ) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db, branch=default_branch)
 
@@ -2173,9 +2199,9 @@ async def hierarchical_location_data_thing(
 
 @pytest.fixture
 async def hierarchical_groups_data(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> dict[str, Node]:
-    def batched(iterable, n):
+    def batched(iterable: Any, n: int):
         """
         Local implementation of the new batched function that was added to itertools in 3.12
         https://docs.python.org/3/library/itertools.html
@@ -2256,7 +2282,7 @@ async def delete_all_nodes_in_db(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db) -> None:
+async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db: None) -> None:
     await create_root_node(db=db)
 
 
@@ -2433,7 +2459,9 @@ async def register_organization_schema(default_branch: Branch, organization_sche
 
 
 @pytest.fixture
-async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+async def register_core_schema_db(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     await registry.schema.load_schema_to_db(
         schema=register_core_models_schema, branch=default_branch, db=db, at=Timestamp()
     )
@@ -2468,7 +2496,7 @@ async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) 
 
 
 @pytest.fixture
-async def register_ipam_extended_schema(default_branch: Branch, register_ipam_schema) -> SchemaBranch:
+async def register_ipam_extended_schema(default_branch: Branch, register_ipam_schema: SchemaBranch) -> SchemaBranch:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
@@ -2516,7 +2544,7 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 
 
 @pytest.fixture
-async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
+async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, data_schema: None) -> Node:
     """Create a test admin account, group and role with all global permissions."""
     permissions: list[Node] = []
     global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -2560,7 +2588,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
 
 
 @pytest.fixture
-async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSession:
+async def session_admin(db: InfrahubDatabase, create_test_admin: Node) -> AccountSession:
     session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
     return session
 
@@ -2569,16 +2597,18 @@ async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSessi
 async def authentication_base(
     db: InfrahubDatabase,
     default_branch: Branch,
-    create_test_admin,
-    register_core_models_schema,
-    register_builtin_models_schema,
-    register_organization_schema,
+    create_test_admin: Node,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    register_organization_schema: SchemaBranch,
 ) -> Node:
     return create_test_admin
 
 
 @pytest.fixture
-async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
+async def first_account(
+    db: InfrahubDatabase, data_schema: None, node_group_schema: None, register_account_schema: None
+) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123")
     await obj.save(db=db)
@@ -2592,7 +2622,9 @@ async def session_first_account(db: InfrahubDatabase, first_account: Node) -> Ac
 
 
 @pytest.fixture
-async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
+async def second_account(
+    db: InfrahubDatabase, data_schema: None, node_group_schema: None, register_account_schema: None
+) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
     await obj.save(db=db)
@@ -2600,13 +2632,13 @@ async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, r
 
 
 @pytest.fixture
-async def session_second_account(db: InfrahubDatabase, second_account) -> AccountSession:
+async def session_second_account(db: InfrahubDatabase, second_account: Node) -> AccountSession:
     session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
     return session
 
 
 @pytest.fixture
-async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+async def repos_in_main(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> dict[str, Node]:
     repo01 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo01.new(
         db=db,
@@ -2631,7 +2663,7 @@ async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
 
 
 @pytest.fixture
-async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> dict[str, Node]:
     repo01 = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
     await repo01.new(
         db=db,
@@ -2658,14 +2690,14 @@ async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_sch
 
 
 @pytest.fixture
-async def mock_core_schema_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_core_schema_01(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = helper.schema_file(file_name="core_schema_01.json")
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=response_text)
     return httpx_mock
 
 
 @pytest.fixture
-def dataset01(init_db) -> None:
+def dataset01(init_db: Any) -> None:
     ds01.load_data()
 
 
@@ -2675,7 +2707,7 @@ async def ip_dataset_01(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Any]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -2772,7 +2804,7 @@ async def ip_dataset_prefix_v4(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Any]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -2841,7 +2873,9 @@ async def ip_dataset_prefix_v4(
 
 
 @pytest.fixture
-async def person_ip_schema_unregistered(db: InfrahubDatabase, data_schema, register_ipam_schema) -> SchemaRoot:
+async def person_ip_schema_unregistered(
+    db: InfrahubDatabase, data_schema: None, register_ipam_schema: SchemaBranch
+) -> SchemaRoot:
     schema: dict[str, Any] = {
         "nodes": [
             {
@@ -2872,7 +2906,9 @@ async def person_ip_schema_unregistered(db: InfrahubDatabase, data_schema, regis
 
 
 @pytest.fixture
-async def person_ip_schema(db: InfrahubDatabase, default_branch: Branch, person_ip_schema_unregistered) -> SchemaBranch:
+async def person_ip_schema(
+    db: InfrahubDatabase, default_branch: Branch, person_ip_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
     return registry.schema.register_schema(schema=person_ip_schema_unregistered, branch=default_branch.name)
 
 
@@ -2881,10 +2917,10 @@ async def prefix_pool_01(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_ipnamespace: Node,
-    init_nodes_registry,
-    person_ip_schema,
-    ip_dataset_prefix_v4,
-):
+    init_nodes_registry: None,
+    person_ip_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> dict[str, Any]:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -2907,7 +2943,7 @@ async def prefix_pool_01(
 
 
 @pytest.fixture
-def workflow_local(dependency_provider: Provider):
+def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExecution, None, None]:
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
@@ -2917,7 +2953,7 @@ def workflow_local(dependency_provider: Provider):
 
 
 @pytest.fixture
-async def generic_car_person_schema(default_branch: Branch, data_schema) -> None:
+async def generic_car_person_schema(default_branch: Branch, data_schema: None) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {

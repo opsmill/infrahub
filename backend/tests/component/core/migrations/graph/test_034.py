@@ -37,7 +37,7 @@ class TestMigration034(TestInfrahubApp):
         # verify that attributes and relationships are still present on all branches for both car and person
         for branch in [branch1, branch2, default_branch]:
             for schema in [car_generic, person_node]:
-                schema_field_ids = [field.get_id() for field in schema.attributes + schema.relationships]
+                schema_field_ids = [field.get_id() for field in schema.attributes + schema.relationships if field.id]
                 schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=branch)
                 assert len(schema_field_nodes) == len(schema_field_ids)
 
@@ -49,31 +49,31 @@ class TestMigration034(TestInfrahubApp):
         assert not validation_result.errors
 
         # verify that car generic fields are deleted on branch 1
-        schema_field_ids = [field.get_id() for field in car_generic.attributes + car_generic.relationships]
+        schema_field_ids = [field.get_id() for field in car_generic.attributes + car_generic.relationships if field.id]
         schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=branch1)
         assert len(schema_field_nodes) == 0
 
         # verify that person schema fields are not deleted on branch 1
-        schema_field_ids = [field.get_id() for field in person_node.attributes + person_node.relationships]
+        schema_field_ids = [field.get_id() for field in person_node.attributes + person_node.relationships if field.id]
         schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=branch1)
         assert len(schema_field_nodes) == len(schema_field_ids)
 
         # verify that person schema fields are deleted on branch 2
-        schema_field_ids = [field.get_id() for field in person_node.attributes + person_node.relationships]
+        schema_field_ids = [field.get_id() for field in person_node.attributes + person_node.relationships if field.id]
         schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=branch2)
         assert len(schema_field_nodes) == 0
 
         # verify that car generic fields are not deleted on branch 2
-        schema_field_ids = [field.get_id() for field in car_generic.attributes + car_generic.relationships]
+        schema_field_ids = [field.get_id() for field in car_generic.attributes + car_generic.relationships if field.id]
         schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=branch2)
         assert len(schema_field_nodes) == len(schema_field_ids)
 
         # verify that person schema fields are deleted on main
-        schema_field_ids = [field.get_id() for field in person_node.attributes + person_node.relationships]
+        schema_field_ids = [field.get_id() for field in person_node.attributes + person_node.relationships if field.id]
         schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=default_branch)
         assert len(schema_field_nodes) == 0
 
         # verify that car generic fields are not deleted on main
-        schema_field_ids = [field.get_id() for field in car_generic.attributes + car_generic.relationships]
+        schema_field_ids = [field.get_id() for field in car_generic.attributes + car_generic.relationships if field.id]
         schema_field_nodes = await NodeManager.get_many(db=db, ids=schema_field_ids, branch=default_branch)
         assert len(schema_field_nodes) == len(schema_field_ids)

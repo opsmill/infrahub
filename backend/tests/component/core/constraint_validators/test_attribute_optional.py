@@ -11,7 +11,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query_optional_true(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(
@@ -40,7 +40,7 @@ async def test_query_optional_true(
 
 
 async def test_query_optional_false(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="ALFRED")
@@ -73,7 +73,7 @@ async def test_query_optional_false(
 
 
 async def test_query_optional_update_on_branch(
-    db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     person_john_main.height.value = None
     await person_john_main.save(db=db)
@@ -113,7 +113,7 @@ async def test_query_optional_update_on_branch(
 
 
 async def test_query_optional_node_deleted_on_branch(
-    db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main
+    db: InfrahubDatabase, branch: Branch, person_john_main: Node, person_jane_main: Node
 ) -> None:
     person_john_main.height.value = None
     await person_john_main.save(db=db)
@@ -151,7 +151,7 @@ async def test_query_optional_node_deleted_on_branch(
     ]
 
 
-async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main) -> None:
+async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main: Node, person_jane_main: Node) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=branch)
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)

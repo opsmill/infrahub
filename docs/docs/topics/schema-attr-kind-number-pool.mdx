@@ -6,7 +6,7 @@ The `NumberPool` attribute kind enables the dynamic creation of a `CoreNumberPoo
 
 :::info Resource pool initial creation
 
-`NumberPool` kind creates the `CoreNumberPool` resource manager during schema initialization.
+`NumberPool` kind creates the `CoreNumberPool` Resource Manager during schema initialization.
 
 :::
 
@@ -91,9 +91,9 @@ We can view the schema in the **Schema Visualizer**.
 
 ## Viewing the resource manager
 
-Once we create an initial `InfraBackBoneService`, we can navigate to the resource manager page and view the details of the created resource manager.
+Once we create an initial `InfraBackBoneService`, we can navigate to the Resource Manager page and view the details of the created Resource Manager.
 
-The naming of the resource manager will be `Kind.attribute_name [uuid]`.
+The naming of the Resource Manager will be `Kind.attribute_name [uuid]`.
 
 ![numberpool-resource-manager](../media/numberpool_attribute_kind_resource_manager.png)
 
@@ -105,7 +105,7 @@ To update the **parameters** of a `NumberPool` attribute requires performing a s
 
 ## Deleting the resource manager
 
-To remove the resource manager, the attribute must be removed by defining `state: absent` on the attribute in the schema. The resource manager will then be removed during the schema loading.
+To remove the Resource Manager, the attribute must be removed by defining `state: absent` on the attribute in the schema. The Resource Manager will then be removed during the schema loading.
 
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json

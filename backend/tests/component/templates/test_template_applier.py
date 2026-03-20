@@ -13,8 +13,8 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
-from infrahub.pools.allocator import PoolAllocator
 from infrahub.pools.default_allocator import DefaultPoolAllocator
+from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.templates.node_applier import NodeTemplateApplier
 from tests.constants import TestKind
 from tests.helpers.schema import TAG, load_schema
@@ -24,16 +24,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-
-class NoOpPoolAllocator(PoolAllocator):
-    """Test pool allocator that skips all allocations (because we don't care here)."""
-
-    async def allocate_for_attribute(self, *args: Any, **kwargs: Any) -> Any | None:
-        return None
-
-    async def allocate_for_relationship(self, *args: Any, **kwargs: Any) -> Node | None:
-        return None
 
 
 @dataclass
@@ -504,19 +494,19 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         device_with_rack_unit_schema: None,
         number_pool: CoreNumberPool,
     ) -> Node:
-        """A device template with from_pool reference for rack_unit."""
+        """A device template with _from_resource_pool relationship for rack_unit."""
         template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
         template = await Node.init(schema=template_schema, db=db, branch=default_branch)
         await template.new(
             db=db,
             template_name="device-with-rack-unit-template",
             manufacturer="Acme",
-            rack_unit={"from_pool": {"id": number_pool.id}},
+            rack_unit_from_resource_pool={"id": number_pool.id},
         )
         await template.save(db=db)
         return template
 
-    async def test_applier_passes_from_pool_to_target(
+    async def test_applier_allocates_number_from_pool(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -524,7 +514,32 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         number_pool: CoreNumberPool,
         device_template_with_pool: Node,
     ) -> None:
-        """Applier should pass from_pool reference to target fields for later allocation."""
+        """Applier should allocate a number from the pool and set it on the attribute."""
+        applier = NodeTemplateApplier(
+            db=db, branch=default_branch, pool_allocator=DefaultPoolAllocator(db=db, branch=default_branch)
+        )
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=device_template_with_pool,
+            target_schema=target_schema,
+            target_id="new-device-id",
+            user_fields=user_fields,
+        )
+
+        _validate_template_fields(fields=fields, user_fields=user_fields)
+        assert fields["rack_unit"] == {"value": 1, "source": number_pool.id}
+
+    async def test_applier_skips_pool_attribute_with_noop_allocator(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_with_rack_unit_schema: None,
+        number_pool: CoreNumberPool,
+        device_template_with_pool: Node,
+    ) -> None:
+        """With NoOpPoolAllocator, pool-backed attributes should not appear in fields."""
         applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
@@ -537,7 +552,7 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         )
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
-        assert fields["rack_unit"] == {"from_pool": {"id": number_pool.id}}
+        assert "rack_unit" not in fields
 
     async def test_applier_preserves_user_value_over_pool_reference(
         self,

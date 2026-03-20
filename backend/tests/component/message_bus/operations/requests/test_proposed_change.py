@@ -2,16 +2,19 @@ from uuid import uuid4
 
 import pytest
 import ujson
+from fast_depends import Provider
 from infrahub_sdk.diff import NodeDiff
 from pytest_httpx import HTTPXMock
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality, RelationshipKind, SchemaPathType
 from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import RelationshipSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -95,13 +98,16 @@ def branch_diff_01_summary() -> list[NodeDiff]:
 
 
 @pytest.fixture
-async def branch2(db: InfrahubDatabase):
+async def branch2(db: InfrahubDatabase) -> Branch:
     return await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
 
 @pytest.fixture
 async def schema_integrity_01(
-    db: InfrahubDatabase, default_branch, register_core_models_schema, branch_diff_01: ProposedChangeBranchDiff
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    branch_diff_01: ProposedChangeBranchDiff,
 ) -> RequestProposedChangeSchemaIntegrity:
     obj = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
     await obj.new(db=db, name="pc1", source_branch=SOURCE_BRANCH_A, destination_branch="main")
@@ -119,8 +125,8 @@ async def schema_integrity_01(
 async def test_get_proposed_change_schema_integrity_constraints(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema,
-    schema_integrity_01,
+    car_person_schema: SchemaBranch,
+    schema_integrity_01: RequestProposedChangeSchemaIntegrity,
     branch_diff_01_summary: list[NodeDiff],
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -129,8 +135,8 @@ async def test_get_proposed_change_schema_integrity_constraints(
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 237
-    assert len(non_generate_profile_constraints) == 144
+    assert len(constraints) == 245
+    assert len(non_generate_profile_constraints) == 149
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -266,12 +272,12 @@ async def test_get_proposed_change_schema_integrity_constraints(
 
 async def test_schema_integrity(
     db: InfrahubDatabase,
-    default_branch,
-    register_core_models_schema,
-    car_person_schema,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
     schema_integrity_01: RequestProposedChangeSchemaIntegrity,
     branch_diff_01_summary: list[NodeDiff],
-    dependency_provider,
+    dependency_provider: Provider,
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main: Node,
@@ -342,3 +348,43 @@ async def test_schema_integrity(
         assert len(checks) == 1
         assert checks[0].conclusion.value.value == "success"
         assert checks[0].conflicts.value == []
+
+
+async def test_schema_integrity_process_validation_error(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    schema_integrity_01: RequestProposedChangeSchemaIntegrity,
+    branch_diff_01_summary: list[NodeDiff],
+    dependency_provider: Provider,
+) -> None:
+    cache = MemoryCache()
+    with dependency_provider.scope(build_cache, lambda: cache):
+        branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
+        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        person_schema = branch2_schema.get(name="TestPerson")
+        person_schema.relationships.append(
+            RelationshipSchema(
+                name="name",
+                peer="TestCar",
+                cardinality=RelationshipCardinality.MANY,
+                kind=RelationshipKind.ATTRIBUTE,
+            )
+        )
+        branch2_schema.set(name="TestPerson", schema=person_schema)
+
+        await set_diff_summary_cache(
+            pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
+        )
+
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
+
+        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        assert len(checks) == 1
+        assert checks[0].conclusion.value.value == "failure"
+        conflicts = checks[0].conflicts.value
+        assert len(conflicts) == 1
+        assert conflicts[0]["type"] == "schema.process.validation"
+        assert conflicts[0]["kind"] == "TestPerson"
+        assert "unique" in conflicts[0]["value"].lower()

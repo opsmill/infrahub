@@ -18,6 +18,38 @@ Note that at some point the current integration tests will be merged with the fu
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 
+## Test Schemas
+
+Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
+
+### Available helpers
+
+The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PERSON`, etc.) as well as pre-composed `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`, `SNOW_TICKET_SCHEMA`, etc.). A `load_schema` helper function handles registering a schema in the branch registry during tests.
+
+### Guidelines
+
+1. **Check existing helpers first.** Before defining a new schema in a test file, look at the schemas already available in `tests/helpers/schema/`. An existing schema may already cover your needs.
+
+2. **Derive from helpers with `deepcopy`.** When you need a schema that is close to an existing helper but requires small additions or modifications, deep-copy the helper and apply your changes instead of writing a new schema from scratch:
+
+   ```python
+   from copy import deepcopy
+
+   from infrahub.core.schema import AttributeSchema
+   from tests.helpers.schema import CAR
+
+   car_with_mileage = deepcopy(CAR)
+   car_with_mileage.attributes.append(
+       AttributeSchema(name="mileage", kind="Number")
+   )
+   ```
+
+   This avoids modifying the shared helper (which would risk breaking other tests) while keeping the test schema close to the canonical definition.
+
+3. **Only create new helpers for broadly useful schemas.** If a schema is only needed by a single test file, keep it local to that file. Promote a local schema to `tests/helpers/schema/` only when multiple test modules would benefit from sharing it.
+
+4. **Never modify an existing helper schema to satisfy a single test.** Changes to shared schemas affect every test that uses them. If an existing helper almost fits but not quite, use `deepcopy` as shown above.
+
 ## Dataclass Test Case Pattern
 
 For parametrized tests with multiple scenarios, use dataclasses to define test cases. This pattern provides type safety, readable test IDs, and clear separation between test data and test logic.
@@ -221,6 +253,28 @@ assert "no more addresses available" in exc_info.value.message
 ```
 
 The `match` parameter accepts a regular expression pattern and is more concise. Use `r"..."` raw strings to avoid escaping issues.
+
+## GraphQL Result Assertions
+
+When testing GraphQL mutations or queries that return errors, always assert on the **specific error message** using an equality check. Vague assertions hide regressions — if the error changes (e.g., a different validation fires first), the test keeps passing silently.
+
+```python
+# Bad - only checks that some error occurred
+assert result.errors
+
+# Bad - a substring check passes for any error that mentions the ID
+assert TEMPLATE_ID in str(result.errors[0])
+
+# Bad - slightly better but still a substring match, any error containing
+# this text passes even if the overall message changed
+assert f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found." in str(result.errors[0])
+
+# Good - exact match on the error message
+assert result.errors
+assert str(result.errors[0].message) == f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found."
+```
+
+Use `==` rather than `in` to compare error messages. An exact match ensures the test fails when the error wording changes, keeping assertions tightly coupled to the expected behavior.
 
 ## See Also
 

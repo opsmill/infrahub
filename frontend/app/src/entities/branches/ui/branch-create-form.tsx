@@ -8,7 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { QSP } from "@/shared/config/qsp";
 
-import { useCreateBranchMutation } from "@/entities/branches/domain/create-branch.mutation";
+import { useCreateBranchMutation } from "@/entities/branches/ui/queries/create-branch.mutation";
 
 type BranchFormData = {
   name: string;

@@ -17,7 +17,6 @@ async def test_node_mutation_to_group_event(
     default_branch: Branch,
     car_person_schema: SchemaBranch,
     standard_group_schema: None,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     root_group = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)

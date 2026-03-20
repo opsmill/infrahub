@@ -434,3 +434,75 @@ async def test_ipprefix_swap_values_on_branch(db: InfrahubDatabase, default_bran
     # check parent is correct
     updated_parent_rel = await updated_prefix.parent.get_relationships(db=db)
     assert len(updated_parent_rel) == 0
+
+
+async def test_ipaddress_mask_less_specific_than_parent_prefix(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
+    """IP addresses with a mask less specific than their parent prefix should remain children of that prefix based on host address containment."""
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    namespace = ip_dataset_01["ns1"]
+    net143 = ip_dataset_01["net143"]
+
+    # Create an IP address 10.10.1.5/32 within net143
+    new_address = await Node.init(db=db, schema=address_schema)
+    await new_address.new(db=db, address="10.10.1.5/32", ip_namespace=namespace)
+    await new_address.save(db=db)
+
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    ip_interface = ipaddress.ip_interface(new_address.address.value)
+    await reconciler.reconcile(ip_value=ip_interface, namespace=namespace)
+
+    updated_address = await NodeManager.get_one(db=db, branch=default_branch, id=new_address.id)
+    prefix_rels = await updated_address.ip_prefix.get_relationships(db=db)
+    assert len(prefix_rels) == 1
+    assert prefix_rels[0].peer_id == net143.id
+
+    # Now change the IP mask to /24 (less specific than the parent prefix /27)
+    # Host 10.10.1.5 is still within 10.10.1.0/27
+    updated_address.address.value = "10.10.1.5/24"
+    await updated_address.save(db=db)
+
+    ip_interface_updated = ipaddress.ip_interface(updated_address.address.value)
+    await reconciler.reconcile(ip_value=ip_interface_updated, namespace=namespace, node_uuid=updated_address.get_id())
+
+    # The host address 10.10.1.5 is still within net143, so the IP should remain a child of net143 regardless of its mask
+    re_updated_address = await NodeManager.get_one(db=db, branch=default_branch, id=new_address.id)
+    prefix_rels = await re_updated_address.ip_prefix.get_relationships(db=db)
+    assert len(prefix_rels) == 1
+    assert prefix_rels[0].peer_id == net143.id
+
+
+async def test_prefix_reconcile_finds_address_with_less_specific_mask(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
+) -> None:
+    """Reconciling a prefix should find child IP addresses even when their mask is less specific than the prefix."""
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    namespace = ip_dataset_01["ns1"]
+    net143 = ip_dataset_01["net143"]
+
+    # Create an IP address 10.10.1.5/24 (mask less specific than the /27 prefix)
+    new_address = await Node.init(db=db, schema=address_schema)
+    await new_address.new(db=db, address="10.10.1.5/24", ip_namespace=namespace)
+    await new_address.save(db=db)
+
+    # Reconcile the prefix, it should find the address as a child
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    ip_network = ipaddress.ip_network(net143.prefix.value)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # Verify the prefix should list the new address as a child
+    updated_prefix = await NodeManager.get_one(db=db, branch=default_branch, id=net143.id)
+    address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    address_peer_ids = {rel.peer_id for rel in address_rels}
+    assert new_address.id in address_peer_ids
+
+    # Verify the address should have net143 as its parent
+    updated_address = await NodeManager.get_one(db=db, branch=default_branch, id=new_address.id)
+    prefix_rels = await updated_address.ip_prefix.get_relationships(db=db)
+    assert len(prefix_rels) == 1
+    assert prefix_rels[0].peer_id == net143.id

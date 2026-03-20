@@ -5,7 +5,6 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config, lock
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
@@ -15,17 +14,21 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.definitions.core.repository import core_read_only_repository, core_repository
-from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
 
 class TestDiffCoordinatorLocks:
+    @pytest.fixture(autouse=True)
+    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
+        return
+
     @pytest.fixture
-    async def branch_with_data(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Branch:
+    async def branch_with_data(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+    ) -> Branch:
         lock.initialize_lock(local_only=True)
         branch_1 = await create_branch(branch_name="branch_1", db=db)
         for _ in range(10):
@@ -43,26 +46,6 @@ class TestDiffCoordinatorLocks:
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
-
-    @pytest.fixture
-    async def dummy_repository_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        dummy_repository = NodeSchema(
-            name=core_repository.name,
-            namespace=core_repository.namespace,
-        )
-        schema = SchemaRoot(nodes=[dummy_repository])
-        registry.schema.register_schema(schema=schema, branch=default_branch.name)
-        default_branch.update_schema_hash()
-        await default_branch.save(db=db)
-
-        dummy_repository = NodeSchema(
-            name=core_read_only_repository.name,
-            namespace=core_read_only_repository.namespace,
-        )
-        schema = SchemaRoot(nodes=[dummy_repository])
-        registry.schema.register_schema(schema=schema, branch=default_branch.name)
-        default_branch.update_schema_hash()
-        await default_branch.save(db=db)
 
     async def get_diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
@@ -195,7 +178,6 @@ class TestDiffCoordinatorLocks:
         default_branch: Branch,
         diff_repository: DiffRepository,
         branch_with_data: Branch,
-        dummy_repository_schema: None,
     ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
@@ -230,7 +212,6 @@ class TestDiffCoordinatorLocks:
         default_branch: Branch,
         diff_repository: DiffRepository,
         branch_with_data: Branch,
-        dummy_repository_schema: None,
     ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)

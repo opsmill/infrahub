@@ -7,11 +7,11 @@ import { Button } from "@/shared/components/ui/button";
 import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
-import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";
+import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
-
-import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchRebaseButtonProps = {
   branch: BranchDetail;
@@ -31,6 +31,13 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
+  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
+  const isDisabled =
+    !isAuthenticated ||
+    loading ||
+    !!branch.is_default ||
+    branch.status === BRANCH_STATUS.MERGED ||
+    hasOngoingTask;
 
   const handleRebase = () => {
     rebaseBranchMutation.mutate(
@@ -48,10 +55,7 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
         onError: (error) => {
           console.error("Error while rebasing branch: ", error);
           toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message={"An error occurred while merging the branch"}
-            />
+            <Alert type={ALERT_TYPES.ERROR} message="An error occurred while rebasing the branch" />
           );
         },
       }
@@ -60,18 +64,13 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
 
   return (
     <Button
-      disabled={
-        !isAuthenticated ||
-        loading ||
-        branch.is_default ||
-        (!!taskData?.count && taskData.count > 0)
-      }
+      disabled={isDisabled}
       onClick={handleRebase}
-      variant={"outline"}
+      variant="outline"
       className="flex items-center gap-2"
     >
       Rebase
-      <Icon icon={"mdi:counterclockwise-arrows"} />
+      <Icon icon="mdi:counterclockwise-arrows" />
     </Button>
   );
 };

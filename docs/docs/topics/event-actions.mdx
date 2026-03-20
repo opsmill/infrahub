@@ -31,7 +31,7 @@ By creating multiple rules and actions, you can build automated workflows.
 
 2. **Group Trigger Rule**
    * Matches `infrahub.group.member_added` events for the "active-devices" group
-   * Runs a generator definition targeting the newly added member
+   * Runs a Generator definition targeting the newly added member
 
 ### Removing devices from active group
 
@@ -100,7 +100,7 @@ Actions are nodes that inherit from the `CoreAction` generic:
 
 | Action Type | Description | Effect |
 |-------------|-------------|--------|
-| `CoreGeneratorAction` | Runs a generator definition | Uses impacted objects as input |
+| `CoreGeneratorAction` | Runs a Generator definition | Uses impacted objects as input |
 | `CoreGroupAction` | Modifies group membership | Adds or removes members from a group |
 
 :::info
@@ -120,8 +120,8 @@ When a node with a specific attribute or relationship is created, automatically 
 
 When an object is added to a group (or when a attribute changes), automatically create related resources:
 
-1. Create a generator action linked to your resource creation generator
+1. Create a Generator action linked to your resource creation Generator
 2. Create a group trigger rule for the group
-3. Configure it to run your generator action when a member is added
+3. Configure it to run your Generator action when a member is added
 
 :::

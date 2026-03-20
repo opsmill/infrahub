@@ -1,4 +1,5 @@
 import time
+from typing import Any
 from urllib.parse import urlparse
 
 from infrahub_sdk import Config, InfrahubClientSync
@@ -11,7 +12,7 @@ class LocustInfrahubClient(InfrahubClientSync):
         super().__init__(address=address, config=config)
         self._request_event = request_event
 
-    def execute_graphql(self, *args, **kwargs):
+    def execute_graphql(self, *args, **kwargs) -> Any:
         request_meta = {
             "request_type": "InfrahubClient",
             "name": kwargs.get("tracker", "graphql_query"),

@@ -1,12 +1,12 @@
 ---
-title: Understanding resource managers (Tutorial)
+title: Understanding Resource Manager (Tutorial)
 ---
 
-Learn how Infrahub's resource managers automate IP address allocation by exploring existing pools and creating your first automated device deployment. You'll discover how branch-agnostic allocation prevents conflicts when multiple teams work on infrastructure changes simultaneously.
+Learn how Infrahub's Resource Manager automates IP address allocation by exploring existing pools and creating your first automated device deployment. You'll discover how branch-agnostic allocation prevents conflicts when multiple teams work on infrastructure changes simultaneously.
 
 By the end of this tutorial, you'll understand:
 
-- How resource managers eliminate manual IP address tracking
+- How Resource Manager eliminates manual IP address tracking
 - Why branch-agnostic allocation prevents conflicts across branches
 - How to automatically allocate IP addresses during device creation
 - How to verify and track resource allocations
@@ -19,7 +19,7 @@ By the end of this tutorial, you'll understand:
 
 ## What you'll learn
 
-Resource managers solve a common infrastructure challenge: keeping track of which IP addresses, VLAN IDs, and other resources are already in use. Instead of maintaining spreadsheets or manual tracking systems, you define pools of available resources and let Infrahub automatically allocate them when creating infrastructure objects.
+Resource Manager solves a common infrastructure challenge: keeping track of which IP addresses, VLAN IDs, and other resources are already in use. Instead of maintaining spreadsheets or manual tracking systems, you define pools of available resources and let Infrahub automatically allocate them when creating infrastructure objects.
 
 The key innovation is branch-agnostic allocation. When you allocate a resource in any branch, it's immediately reserved across all branches. This prevents conflicts when multiple teams work in parallel branches that will eventually be merged.
 
@@ -46,7 +46,7 @@ Click the **View** button next to any resource to see which IP addresses have al
 
 ## Step 2: Experience automatic resource allocation
 
-Now let's see resource managers in action by creating a new device that automatically receives an IP address from the pool.
+Now let's see Resource Manager in action by creating a new device that automatically receives an IP address from the pool.
 
 We'll work in a separate branch to demonstrate the branch-agnostic behavior you learned about earlier.
 
@@ -91,7 +91,7 @@ In the device view, notice the **Primary IP Address** field now contains an IP a
 
 ## Step 4: Verify branch-agnostic allocation
 
-This step demonstrates the most powerful feature of Infrahub's resource managers: allocations are visible and reserved across all branches, even before merging.
+This step demonstrates the most powerful feature of Infrahub's Resource Manager: allocations are visible and reserved across all branches, even before merging.
 
 Switch back to the **main** branch using the branch selector in the UI.
 
@@ -113,7 +113,7 @@ This proves that resource allocation is branch-agnostic. The IP address is reser
 
 Through this hands-on exploration, you've discovered:
 
-- **Automated allocation**: Resource managers eliminate manual IP address tracking by automatically assigning the next available resource
+- **Automated allocation**: Resource Manager eliminates manual IP address tracking by automatically assigning the next available resource
 - **Branch-agnostic reservations**: Resources allocated in any branch are immediately reserved across all branches, preventing conflicts
 - **Atomic operations**: Resources are allocated during object creation, ensuring consistency
 - **Centralized visibility**: All allocations are visible in one place, regardless of which branch created them
@@ -142,4 +142,4 @@ Ready to dive deeper into resource management?
 
 - [Resource Manager Guide](../../guides/resource-manager.mdx) - Learn to create and configure all types of resource pools
 - [Resource Manager Concepts](../../topics/resource-manager.mdx) - Understand advanced features like weighted allocation and pool composition
-- [Generators Concepts](../../topics/generator.mdx) - Combine resource managers with automated configuration generation
+- [Generators Concepts](../../topics/generator.mdx) - Combine Resource Manager with automated configuration generation

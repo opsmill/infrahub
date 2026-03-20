@@ -1,6 +1,7 @@
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
@@ -11,12 +12,22 @@ import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cell
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
-import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
+import {
+  RelationshipNodeDisplay,
+  TableRelationshipCell,
+} from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
+import type {
+  NodeAttribute,
+  NodeObject,
+  NodeRelationship,
+  NodeRelationshipOne,
+} from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
@@ -80,7 +91,9 @@ export function getObjectFieldsColumns(
   headerProps?: PopoverTriggerProps
 ): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
+  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []).filter(
+    (rel) => !isFromResourcePoolRelationship(rel.name)
+  );
   const sortedColumns = sortByOrderWeight([...attributes, ...relationships]);
 
   return sortedColumns.map((columnSchema) => {
@@ -88,18 +101,35 @@ export function getObjectFieldsColumns(
       header: () => {
         return <TableColumnHeader columnSchema={columnSchema} {...headerProps} />;
       },
-      cell: ({ cell }) => {
+      cell: ({ cell, row }) => {
         const value = cell.getValue();
         if ("peer" in columnSchema) {
           return (
             <TableCell>
               <TableRelationshipCell
                 relationshipSchema={columnSchema}
-                relationshipData={value as NodeRelationship}
+                relationshipData={resolveRelationshipData({
+                  objectSchema: schema,
+                  objectData: row.original,
+                  relationshipName: columnSchema.name,
+                })}
               />
             </TableCell>
           );
         }
+        const fromResourcePoolRelationshipName = columnSchema.name + FROM_RESOURCE_POOL_SUFFIX;
+        const fromResourcePoolData = row.original[fromResourcePoolRelationshipName] as
+          | NodeRelationshipOne
+          | undefined;
+
+        if (fromResourcePoolData?.node) {
+          return (
+            <TableCell>
+              <RelationshipNodeDisplay node={fromResourcePoolData.node} />
+            </TableCell>
+          );
+        }
+
         return (
           <TableCell>
             <TableAttributeCell

@@ -670,12 +670,6 @@ export interface components {
              */
             generate_profile: boolean;
             /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -1189,6 +1183,11 @@ export interface components {
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** AttributeSchema */
         "AttributeSchema-Output": {
@@ -1300,6 +1299,11 @@ export interface components {
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
@@ -1541,12 +1545,6 @@ export interface components {
              */
             generate_profile: boolean;
             /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
              * Used By
              * @description List of Nodes that are referencing this Generic
              */
@@ -1712,6 +1710,12 @@ export interface components {
              * @default true
              */
             schema_strict_mode: boolean;
+            /**
+             * Diff Update After Merge
+             * @description When enabled, diff updates are triggered for active branches after a branch merge.
+             * @default true
+             */
+            diff_update_after_merge: boolean;
         };
         /** Menu */
         Menu: {
@@ -1976,7 +1980,7 @@ export interface components {
             start_range: number;
             /**
              * Number Pool Id
-             * @description The ID of the numberpool associated with this attribute
+             * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
              */
             number_pool_id?: string | null;
         };
@@ -2151,6 +2155,11 @@ export interface components {
              * @description Mark relationship as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -2192,6 +2201,11 @@ export interface components {
             /** Token Path */
             readonly token_path: string;
         };
+        /**
+         * SchemaAttributeDisplay
+         * @enum {string}
+         */
+        SchemaAttributeDisplay: "default" | "extra";
         /** SchemaBranchHash */
         SchemaBranchHash: {
             /** Main */

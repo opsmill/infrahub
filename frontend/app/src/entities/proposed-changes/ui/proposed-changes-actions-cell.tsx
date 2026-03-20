@@ -12,8 +12,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import type { Permission } from "@/entities/permission/types";
-
-import { PROPOSED_CHANGE_OBJECT } from "../constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 
 export interface ActionsCellProps {
   permission: Permission;

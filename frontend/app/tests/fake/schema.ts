@@ -49,6 +49,7 @@ export const generateNodeSchema = (
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
         parameters: {
           state: "present",
@@ -78,6 +79,7 @@ export const generateNodeSchema = (
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
         parameters: {
           state: "present",
@@ -109,6 +111,7 @@ export const generateNodeSchema = (
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -132,6 +135,7 @@ export const generateNodeSchema = (
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -155,6 +159,7 @@ export const generateNodeSchema = (
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
     ],
@@ -210,6 +215,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -233,6 +239,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -256,6 +263,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -279,6 +287,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: 1500,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -302,6 +311,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: true,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -358,6 +368,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -462,6 +473,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
     ],
@@ -487,6 +499,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -510,6 +523,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -533,6 +547,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -556,6 +571,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -579,12 +595,12 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
     ],
     hierarchical: false,
     generate_profile: true,
-    generate_template: false,
     used_by: ["InfraInterfaceL2", "InfraInterfaceL3", "InfraLagInterfaceL2", "InfraLagInterfaceL3"],
     kind: "InfraInterface",
     hash: "46e4f878e399f34035224421ab419517",
@@ -632,6 +648,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -655,6 +672,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
         default_value: 1000,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -678,6 +696,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
     ],
@@ -703,6 +722,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -726,6 +746,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -749,6 +770,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
     ],
@@ -799,6 +821,7 @@ export const generateTemplateSchema = (overrides?: Partial<TemplateSchema>): Tem
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
       {
@@ -822,6 +845,7 @@ export const generateTemplateSchema = (overrides?: Partial<TemplateSchema>): Tem
         default_value: null,
         inherited: false,
         allow_override: "any",
+        display: "default",
         deprecation: null,
       },
     ],
@@ -847,6 +871,7 @@ export const generateTemplateSchema = (overrides?: Partial<TemplateSchema>): Tem
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -870,6 +895,7 @@ export const generateTemplateSchema = (overrides?: Partial<TemplateSchema>): Tem
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
       {
@@ -893,6 +919,7 @@ export const generateTemplateSchema = (overrides?: Partial<TemplateSchema>): Tem
         on_delete: "no-action",
         allow_override: "any",
         read_only: false,
+        display: "default",
         deprecation: null,
       },
     ],
@@ -921,6 +948,7 @@ export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): A
     branch: "aware",
     inherited: false,
     read_only: false,
+    display: "default",
     deprecation: null,
     parameters: {
       id: null,
@@ -953,6 +981,7 @@ export const generateRelationshipSchema = (
   on_delete: "no-action",
   allow_override: "any",
   read_only: false,
+  display: "default",
   deprecation: null,
   ...overrides,
 });

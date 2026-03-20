@@ -8,7 +8,7 @@ from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
@@ -45,6 +45,38 @@ if TYPE_CHECKING:
 
 
 log = get_logger()
+
+
+async def emit_node_mutation_events(
+    node: Node,
+    graphql_context: GraphqlContext,
+    action: MutationAction,
+    deleted_nodes: list[Node] | None = None,
+    side_effect_nodes: list[Node] | None = None,
+) -> None:
+    if (
+        not graphql_context.background
+        or not graphql_context.account_session
+        or not graphql_context.service
+        or not node.has_changelog
+        or not node.node_changelog.has_changes
+    ):
+        return
+
+    log_data = get_log_data()
+    request_id = log_data.get("request_id", "")
+    events = await generate_node_mutation_events(
+        node=node,
+        deleted_nodes=deleted_nodes or [],
+        db=graphql_context.db,
+        branch=graphql_context.branch,
+        context=graphql_context.get_context(),
+        request_id=request_id,
+        action=action,
+        side_effect_nodes=side_effect_nodes or [],
+    )
+    for event in events:
+        graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
 
 @dataclass
@@ -137,7 +169,6 @@ class InfrahubMutationMixin:
         action = MutationAction.UNDEFINED
         deleted_nodes: list[Node] = []
         mutation_succeeded = False
-
         try:
             if "Create" in cls.__name__:
                 file_stored = await cls._process_file(file_processor=file_processor, data=data)
@@ -186,22 +217,16 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        if config.SETTINGS.broker.enable and graphql_context.background and obj.node_changelog.has_changes:
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
+        creation_context = obj._creation_context if obj else None
+        side_effect_nodes = creation_context.side_effect_nodes if creation_context else None
 
-            events = await generate_node_mutation_events(
-                node=obj,
-                deleted_nodes=deleted_nodes,
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                context=graphql_context.get_context(),
-                request_id=request_id,
-                action=action,
-            )
-
-            for event in events:
-                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+        await emit_node_mutation_events(
+            node=obj,
+            graphql_context=graphql_context,
+            action=action,
+            deleted_nodes=deleted_nodes,
+            side_effect_nodes=side_effect_nodes,
+        )
 
         return mutation
 

@@ -7,11 +7,10 @@ import {
 import { useAtomValue } from "jotai";
 
 import { CONFIG } from "@/shared/config/config";
+import usePagination from "@/shared/hooks/usePagination";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-
-import usePagination from "../../hooks/usePagination";
 
 interface Options extends OperationVariables {
   branch?: string;

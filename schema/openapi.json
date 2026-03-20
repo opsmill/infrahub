@@ -2465,13 +2465,6 @@
                         "default": true,
                         "update": "validate_constraint"
                     },
-                    "generate_template": {
-                        "type": "boolean",
-                        "title": "Generate Template",
-                        "description": "Indicate if an object template schema should be generated for this schema",
-                        "default": false,
-                        "update": "allowed"
-                    },
                     "used_by": {
                         "items": {
                             "type": "string"
@@ -3743,6 +3736,12 @@
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -4002,6 +4001,12 @@
                         ],
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
+                        "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
                         "update": "allowed"
                     }
                 },
@@ -4671,13 +4676,6 @@
                         "default": true,
                         "update": "validate_constraint"
                     },
-                    "generate_template": {
-                        "type": "boolean",
-                        "title": "Generate Template",
-                        "description": "Indicate if an object template schema should be generated for this schema",
-                        "default": false,
-                        "update": "allowed"
-                    },
                     "used_by": {
                         "items": {
                             "type": "string"
@@ -5018,6 +5016,12 @@
                         "type": "boolean",
                         "title": "Schema Strict Mode",
                         "description": "Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
+                        "default": true
+                    },
+                    "diff_update_after_merge": {
+                        "type": "boolean",
+                        "title": "Diff Update After Merge",
+                        "description": "When enabled, diff updates are triggered for active branches after a branch merge.",
                         "default": true
                     }
                 },
@@ -5601,7 +5605,7 @@
                             }
                         ],
                         "title": "Number Pool Id",
-                        "description": "The ID of the numberpool associated with this attribute",
+                        "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.",
                         "update": "not_supported"
                     }
                 },
@@ -5930,6 +5934,12 @@
                         "title": "Deprecation",
                         "description": "Mark relationship as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -6052,6 +6062,14 @@
                     "token_path"
                 ],
                 "title": "SSOProviderInfo"
+            },
+            "SchemaAttributeDisplay": {
+                "type": "string",
+                "enum": [
+                    "default",
+                    "extra"
+                ],
+                "title": "SchemaAttributeDisplay"
             },
             "SchemaBranchHash": {
                 "properties": {

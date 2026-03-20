@@ -2,12 +2,30 @@
 
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
+## Conversation Style
+
+Responses must be direct and substantive. Do not use filler phrases, compliments, or social pleasantries.
+
+**Prohibited phrases** (including variations):
+
+- "You're right", "You're absolutely right", "Great question", "Good idea"
+- "I apologize", "I'm sorry", "Sorry about that"
+- "Let me explain", "Let me walk you through", "I'd be happy to"
+
+**Required behavior:**
+
+- Do not use introductory or transitional filler of any kind
+- Get to the point immediately — no preamble
+- Challenge ideas and assumptions when warranted
+- Ask clarifying questions rather than guessing intent
+- Offer direct criticism when an approach has flaws
+
 ## Tech Stack
 
 - **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 7.2, Tailwind CSS 4.1
-- **Testing:** pytest 7.4, Vitest 4.0, Playwright 1.56
-- **Linting:** ruff 0.14.5, mypy 1.15, Biome 2.3
+- **Frontend:** TypeScript 5.9, React 19.2, Vite 7.3, Tailwind CSS 4.1
+- **Testing:** pytest 9.0, Vitest 4.0, Playwright 1.56
+- **Linting:** ruff 0.15, mypy 1.15, Biome 2.3
 - **Package Managers:** uv (Python), npm (Frontend)
 - **Task Runner:** Invoke 2.2.0
 
@@ -73,12 +91,17 @@ cd docs && npm run build              # Build documentation
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
 
-Regenerate with: `uv run invoke backend.generate` or `cd frontend/app && npm run codegen`
+Regenerate backend (offline): `uv run invoke backend.generate`
+Export GraphQL/OpenAPI schemas (requires running instance): `infrahub dev export-graphql-schema`
+Regenerate frontend types (offline, reads local schema files): `cd frontend/app && npm run codegen`
+
+See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ## Boundaries
 
 ### Always Do
 
+- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
 - Run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)

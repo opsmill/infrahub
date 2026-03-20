@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
@@ -12,10 +13,10 @@ from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
-from infrahub.exceptions import PoolExhaustedError, ValidationError
+from infrahub.core.schema import AttributeSchema, RelationshipSchema
+from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from tests.constants import TestKind
-from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
+from tests.helpers.schema import DEVICE_SCHEMA
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -29,15 +30,15 @@ async def device_schema(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-    init_nodes_registry,
+    init_nodes_registry: None,
 ) -> None:
-    device = copy.deepcopy(DEVICE)
-    device.relationships = [
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    device = next(n for n in schema.nodes if n.kind == TestKind.DEVICE)
+    device.relationships.append(
         RelationshipSchema(
             name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
         )
-    ]
-    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
+    )
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
@@ -80,7 +81,7 @@ async def ip_address_pool(
 async def test_template_with_pool_relationship_does_not_allocate(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_address_pool: CoreIPAddressPool
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
@@ -101,7 +102,7 @@ async def test_template_with_pool_relationship_does_not_allocate(
 async def test_object_from_template_with_pool_allocates_address(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_address_pool: CoreIPAddressPool
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -135,6 +136,11 @@ async def test_object_from_template_with_pool_allocates_address(
     assert len(primary_ip_rel) == 1
     assert primary_ip_rel[0].source_id == ip_address_pool.id
 
+    assert device._creation_context is not None
+    assert len(device._creation_context.side_effect_nodes) == 1
+    assert device._creation_context.side_effect_nodes[0].get_kind() == "IpamIPAddress"
+    assert device._creation_context.side_effect_nodes[0].id == primary_ip.id
+
 
 async def test_object_from_template_with_explicit_address_uses_explicit(
     db: InfrahubDatabase,
@@ -144,7 +150,7 @@ async def test_object_from_template_with_explicit_address_uses_explicit(
     ip_namespace: Node,
     ip_prefix: Node,
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -185,7 +191,7 @@ async def test_object_from_template_with_explicit_address_uses_explicit(
 async def test_object_from_template_with_direct_address_inherits_address(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, ip_namespace: Node, ip_prefix: Node
 ) -> None:
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -224,7 +230,7 @@ async def test_object_from_template_raises_validation_error_when_pool_exhausted(
     """Creating object from template should raise ValidationError when pool is exhausted."""
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     small_prefix = await Node.init(db=db, schema=prefix_schema)
-    await small_prefix.new(db=db, prefix="10.10.3.8/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=True)
+    await small_prefix.new(db=db, prefix="10.10.3.8/30", ip_namespace=ip_namespace, parent=ip_prefix, is_pool=False)
     await small_prefix.save(db=db)
 
     pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
@@ -238,7 +244,7 @@ async def test_object_from_template_raises_validation_error_when_pool_exhausted(
     )
     await small_pool.save(db=db)
 
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
@@ -282,9 +288,9 @@ async def test_object_from_template_raises_validation_error_when_pool_exhausted(
 async def device_with_rack_unit_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, init_nodes_registry: None
 ) -> None:
-    device = copy.deepcopy(DEVICE)
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    device = next(n for n in schema.nodes if n.kind == TestKind.DEVICE)
     device.attributes.append(AttributeSchema(name="rack_unit", kind="Number", optional=True))
-    schema = SchemaRoot(generics=[INTERFACE_HOLDER, INTERFACE], nodes=[device])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await initialize_registry(db=db)
 
@@ -301,36 +307,76 @@ async def number_pool(
     return pool
 
 
-async def test_template_with_number_pool_attribute_does_not_allocate(
+async def test_template_with_number_pool_relationship_does_not_allocate(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
-    """Template with from_pool attribute should store reference but not allocate."""
+    """Template with _from_resource_pool relationship should store pool reference but not allocate."""
     template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-with-pool-attr", rack_unit={"from_pool": {"id": number_pool.id}}
+        db=db,
+        template_name="device-template-with-pool-attr",
+        rack_unit_from_resource_pool={"id": number_pool.id},
     )
     await template.save(db=db)
 
     assert template.id is not None
     assert template.rack_unit.value is None
 
-    source = await template.rack_unit.get_source(db=db)
-    assert source is not None
-    assert source.id == number_pool.id
+    pool_rel = await template.rack_unit_from_resource_pool.get_peer(db=db)
+    assert pool_rel is not None
+    assert pool_rel.id == number_pool.id
+
+
+async def test_template_from_pool_on_attribute_raises_validation_error(
+    db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
+) -> None:
+    """Using from_pool on a template attribute should raise ValidationError."""
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+
+    with pytest.raises(
+        ValidationError,
+        match=r"'from_pool' is not supported on template attributes\. Set the 'rack_unit_from_resource_pool' relationship on this template instead\.",
+    ):
+        await template.new(
+            db=db, template_name="device-template-from-pool-attr", rack_unit={"from_pool": {"id": number_pool.id}}
+        )
+
+
+async def test_template_from_pool_on_relationship_raises_validation_error(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    ip_address_pool: CoreIPAddressPool,
+) -> None:
+    """Using from_pool on a template relationship should raise ValidationError."""
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+
+    with pytest.raises(
+        ValidationError,
+        match=r"'from_pool' is not supported on template relationships\. "
+        r"Set the 'primary_ip_from_resource_pool' relationship on this template instead\.",
+    ):
+        await template.new(
+            db=db, template_name="device-template-from-pool-rel", primary_ip={"from_pool": {"id": ip_address_pool.id}}
+        )
 
 
 async def test_object_from_template_with_number_pool_allocates_value(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
-    """Object created from template should allocate from the NumberPool."""
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    """Object created from template should allocate from the NumberPool via _from_resource_pool relationship."""
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-for-number-allocation", rack_unit={"from_pool": {"id": number_pool.id}}
+        db=db,
+        template_name="device-template-for-number-allocation",
+        rack_unit_from_resource_pool={"id": number_pool.id},
     )
     await template.save(db=db)
 
@@ -361,12 +407,14 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None, number_pool: CoreNumberPool
 ) -> None:
     """Object created with explicit value should use it instead of pool allocation."""
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-explicit-override", rack_unit={"from_pool": {"id": number_pool.id}}
+        db=db,
+        template_name="device-template-explicit-override",
+        rack_unit_from_resource_pool={"id": number_pool.id},
     )
     await template.save(db=db)
 
@@ -393,19 +441,21 @@ async def test_object_from_template_with_explicit_value_uses_explicit(
 async def test_object_from_template_raises_error_when_number_pool_exhausted(
     db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
 ) -> None:
-    """Creating object from template raises ValidationError when NumberPool is exhausted."""
+    """Creating object from template raises PoolExhaustedError when NumberPool is exhausted."""
     small_pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
     await small_pool.new(
         db=db, name="small-rack-unit-pool", node=TestKind.DEVICE, node_attribute="rack_unit", start_range=1, end_range=2
     )
     await small_pool.save(db=db)
 
-    template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
 
     template = await Node.init(schema=template_schema, db=db, branch=default_branch)
     await template.new(
-        db=db, template_name="device-template-small-number-pool", rack_unit={"from_pool": {"id": small_pool.id}}
+        db=db,
+        template_name="device-template-small-number-pool",
+        rack_unit_from_resource_pool={"id": small_pool.id},
     )
     await template.save(db=db)
 
@@ -425,7 +475,7 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
         )
         assert device.id is not None
 
-    with pytest.raises(ValidationError, match=r"The pool (.*) is exhausted"):
+    with pytest.raises(PoolExhaustedError):
         await create_node(
             data={
                 "name": "device-should-fail-number",
@@ -438,3 +488,76 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
             branch=default_branch,
             schema=node_schema,
         )
+
+
+async def test_template_children_and_pool_recorded_as_side_effects(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    ip_namespace: Node,
+    ip_prefix: Node,
+    ip_address_pool: CoreIPAddressPool,
+) -> None:
+    """Template children and pool allocations are recorded in creation_context for event emission."""
+    device_template_schema = registry.schema.get_template_schema(
+        name=f"Template{TestKind.DEVICE}", branch=default_branch
+    )
+    device_template = await Node.init(schema=device_template_schema, db=db, branch=default_branch)
+    await device_template.new(
+        db=db,
+        template_name="device-template-side-effects",
+        manufacturer="Acme",
+        weight=10,
+        airflow="Front to rear",
+        primary_ip_from_resource_pool={"id": ip_address_pool.id},
+    )
+    await device_template.save(db=db)
+
+    intf_template_schema = registry.schema.get_template_schema(
+        name=f"Template{TestKind.PHYSICAL_INTERFACE}", branch=default_branch
+    )
+    intf_template = await Node.init(schema=intf_template_schema, db=db, branch=default_branch)
+    await intf_template.new(
+        db=db, template_name="intf-tpl", name="eth0", phys_type="SFP+ (10GE)", device=device_template
+    )
+    await intf_template.save(db=db)
+
+    node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    device = await create_node(
+        data={
+            "name": "device-side-effect-test",
+            "manufacturer": "Acme",
+            "weight": 10,
+            "airflow": "Front to rear",
+            "object_template": {"id": device_template.id},
+        },
+        db=db,
+        branch=default_branch,
+        schema=node_schema,
+    )
+
+    assert device._creation_context is not None
+    side_effects = device._creation_context.side_effect_nodes
+
+    intf_side_effects = [n for n in side_effects if n.get_kind() == TestKind.PHYSICAL_INTERFACE]
+    assert len(intf_side_effects) == 1
+
+    ip_side_effects = [n for n in side_effects if n.get_kind() == "IpamIPAddress"]
+    assert len(ip_side_effects) == 1
+
+
+async def test_create_template_with_invalid_number_pool_id(
+    db: InfrahubDatabase, default_branch: Branch, device_with_rack_unit_schema: None
+) -> None:
+    """Saving a template with _from_resource_pool referencing a nonexistent pool should fail."""
+    fake_pool_id = str(uuid4())
+
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+    await template.new(
+        db=db,
+        template_name="device-template-bad-pool",
+        rack_unit_from_resource_pool=fake_pool_id,
+    )
+    with pytest.raises(NodeNotFoundError):
+        await template.save(db=db)

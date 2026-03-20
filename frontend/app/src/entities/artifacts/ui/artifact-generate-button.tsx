@@ -6,7 +6,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
-import { useGenerateArtifactMutation } from "@/entities/artifacts/domain/generate-artifact.mutation";
+import { useGenerateArtifactMutation } from "@/entities/artifacts/ui/queries/generate-artifact.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 type ArtifactGenerateButtonProps = {

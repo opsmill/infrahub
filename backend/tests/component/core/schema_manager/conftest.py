@@ -5,7 +5,7 @@ import pytest
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
-def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
+def _get_schema_by_kind(full_schema: dict[str, Any], kind: str) -> dict[str, Any]:
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
         if schema_kind == kind:
@@ -92,7 +92,7 @@ async def animal_person_schema_dict() -> dict:
 
 
 @pytest.fixture
-def schema_all_in_one():
+def schema_all_in_one() -> dict[str, Any]:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -242,7 +242,7 @@ def schema_all_in_one():
 
 
 @pytest.fixture
-def schema_criticality_tag():
+def schema_criticality_tag() -> dict[str, Any]:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -355,7 +355,7 @@ def schema_parent_component() -> dict:
 
 
 @pytest.fixture
-def schema_diff_attr_inheritance_types():
+def schema_diff_attr_inheritance_types() -> dict[str, Any]:
     """Two generics with the same attribute but different types and a single node implementation."""
     FULL_SCHEMA = {
         "generics": [

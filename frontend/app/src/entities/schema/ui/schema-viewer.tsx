@@ -19,7 +19,6 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
@@ -239,7 +238,7 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
         {!isProfileSchema(schema) && (
           <PropertyRow title="Generate profile" value={schema.generate_profile} />
         )}
-        {!isTemplateSchema(schema) && (
+        {isNodeSchema(schema) && (
           <PropertyRow title="Generate template" value={schema.generate_template} />
         )}
       </div>

@@ -24,7 +24,9 @@ export async function getArtifactsDiff({
   const { data, error } = await getArtifactsDiffFromApi({ branch });
 
   if (error) {
-    throw error;
+    const apiError = error as { errors?: Array<{ message?: string }> };
+    const message = apiError.errors?.[0]?.message;
+    throw new Error(message ?? "An error occurred while fetching artifact diffs.");
   }
 
   const artifacts = Object.values(data ?? {});

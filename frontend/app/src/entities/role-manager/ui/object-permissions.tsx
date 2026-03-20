@@ -1,10 +1,8 @@
-import { NetworkStatus } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { type ReactNode, useState } from "react";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import { Pill } from "@/shared/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -20,15 +18,15 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import usePagination from "@/shared/hooks/usePagination";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
+import { getPermission } from "@/entities/permission/utils";
+import { useGetObjectPermissions } from "@/entities/role-manager/ui/queries/get-object-permissions.query";
+import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-import { getPermission } from "../../permission/utils";
 import { objectDecisionOptions } from "../constants";
 
 const icons: Record<string, ReactNode> = {
@@ -47,20 +45,11 @@ const icons: Record<string, ReactNode> = {
 function Permissions() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
-  const [{ offset, limit }] = usePagination();
 
-  const {
-    loading,
-    networkStatus,
-    data: latestData,
-    previousData,
-    error,
-    refetch,
-  } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS, {
-    variables: { search: searchDebounced, offset, limit },
-    notifyOnNetworkStatusChange: true,
+  const { isLoading, isFetching, data, error, refetch } = useGetObjectPermissions({
+    search: searchDebounced,
   });
-  const data = latestData || previousData;
+
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const [rowToDelete, setRowToDelete] = useState<Record<
@@ -157,8 +146,8 @@ function Permissions() {
     });
 
   if (error) {
-    if (error.networkError?.statusCode === 403) {
-      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+    if ((error as any).networkError?.statusCode === 403) {
+      const { message } = (error as any).networkError?.result?.errors?.[0] ?? {};
 
       return <UnauthorizedScreen message={message} />;
     }
@@ -166,7 +155,7 @@ function Permissions() {
     return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (isLoading) {
     return (
       <LoadingIndicator
         message="Retrieving object permissions..."
@@ -180,7 +169,7 @@ function Permissions() {
   }
 
   const globalRefetch = () => {
-    graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
+    queryClient.invalidateQueries({ queryKey: roleManagerQueryKeys.all });
     refetch();
   };
 
@@ -189,7 +178,7 @@ function Permissions() {
       <div>
         <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
-            loading={loading}
+            loading={isFetching}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search object permissions"

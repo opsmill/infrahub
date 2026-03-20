@@ -2,7 +2,8 @@ import { TagGroup, TagList } from "react-aria-components";
 
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
-import { EVENT_TYPE_CHOICES } from "../../constants";
+import { EVENT_TYPE_CHOICES } from "@/entities/events/constants";
+
 import { GlobalBranchFilter } from "./global-branch-filter";
 import { GlobalFilter } from "./global-filter";
 import { GlobalKindFilter } from "./global-kind-filter";

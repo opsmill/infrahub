@@ -620,10 +620,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
-        elif "from_pool" in data:
+        if "from_pool" in data:
             self.from_pool = data["from_pool"]
             if process_pools:
-                await self.node.handle_pool(db=db, attribute=self, errors=[])
+                await self.node.handle_pool(db=db, attribute=self)
             changed = True
 
         if changed and self.is_from_profile:

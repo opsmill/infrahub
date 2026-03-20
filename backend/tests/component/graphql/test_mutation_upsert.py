@@ -1,3 +1,5 @@
+from graphql import ExecutionResult
+
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -5,6 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -12,7 +15,7 @@ from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import COLOR, TICKET, TSHIRT
+from tests.helpers.schema import COLOR, TICKET, TSHIRT, load_schema
 from tests.node_creation import create_and_save
 
 
@@ -49,7 +52,7 @@ async def test_upsert_existing_simple_object_by_id(
 
 
 async def test_upsert_existing_simple_object_by_default_filter(
-    db: InfrahubDatabase, person_schema_default_filter, default_branch
+    db: InfrahubDatabase, person_schema_default_filter: None, default_branch: Branch
 ) -> None:
     registry.schema.register_schema(schema=person_schema_default_filter)
 
@@ -95,7 +98,6 @@ async def test_upsert_event_on_no_change(
     db: InfrahubDatabase,
     car_person_schema: Node,
     branch: Branch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
 ) -> None:
     query = """
@@ -160,7 +162,7 @@ async def test_upsert_event_on_no_change(
     assert len(memory_event.events) == 0
 
 
-async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main, branch: Branch) -> None:
+async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch) -> None:
     query = """
     mutation {
         TestPersonUpsert(data: {name: { value: "%s"}, height: {value: %s}}) {
@@ -193,7 +195,7 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
 
 
 async def test_id_for_other_schema_raises_error(
-    db: InfrahubDatabase, person_john_main, car_accord_main, branch: Branch
+    db: InfrahubDatabase, person_john_main: Node, car_accord_main: Node, branch: Branch
 ) -> None:
     query = (
         """
@@ -221,7 +223,7 @@ async def test_id_for_other_schema_raises_error(
 
 
 async def test_update_by_id_to_nonunique_value_raises_error(
-    db: InfrahubDatabase, person_john_main, person_jim_main, branch: Branch
+    db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch
 ) -> None:
     query = (
         """
@@ -249,7 +251,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
 
 
 async def test_non_unique_value_raises_error(
-    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid: SchemaBranch, branch: Branch
 ) -> None:
     _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
 
@@ -277,7 +279,7 @@ async def test_non_unique_value_raises_error(
 
 
 async def test_upsert_existing_with_enough_information_for_hfid(
-    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, default_branch: Branch
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid: SchemaBranch, default_branch: Branch
 ) -> None:
     car_name = "Ferramboghinierati"
     car_color_1 = "blue"
@@ -392,7 +394,7 @@ async def test_upsert_existing_with_enough_information_for_hfid(
 
 
 async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
-    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid: SchemaBranch, branch: Branch
 ) -> None:
     _ = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
 
@@ -415,7 +417,9 @@ async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
     assert result.errors is None
 
 
-async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+async def test_with_hfid_existing(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -464,7 +468,7 @@ async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_p
     assert result.data["TestDogUpsert"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
 
-async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+async def test_with_hfid_new(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -526,7 +530,9 @@ async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person
     }
 
 
-async def test_with_constructed_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
+async def test_with_constructed_hfid(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
+) -> None:
     """Validate that we can construct an HFID out of the payload without specifying all parts."""
 
     person_schema = animal_person_schema.get(name="TestPerson")
@@ -663,7 +669,7 @@ async def test_with_constructed_hfid_with_numbers(
 
 
 async def test_upsert_node_on_branch_with_hfid_on_default(
-    db: InfrahubDatabase, default_branch, car_person_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
     # create a node on the default branch after the branch is created
     branch = await create_branch(branch_name="test-branch", db=db)
@@ -710,6 +716,7 @@ async def test_upsert_with_required_relationship_from_template(
       - Upsert a Tshirt specifying the template (should succeed and apply the color from the template).
     """
     registry.schema.register_schema(schema=SchemaRoot(nodes=[TSHIRT, COLOR]), branch=default_branch.name)
+    default_branch.update_schema_hash()
 
     # Create a color node
     color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
@@ -776,3 +783,81 @@ async def test_upsert_with_required_relationship_from_template(
     assert tshirt_obj["name"]["value"] == "My Tshirt"
     assert tshirt_obj["color"]["node"]["id"] == color_node.id
     assert tshirt_obj["color"]["node"]["name"]["value"] == "Red"
+
+
+async def test_upsert_preserves_relationship_display_label_and_hfid(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that display_label and hfid with relationship-based values stay correct after upsert.
+
+    Steps:
+    - Create mutation (through Upsert query), display_label correctly renders relationship values (e.g. "Classic Red")
+    - Update mutation (through a second Upsert query) display_label and hfid should still render correctly
+
+    Uses HFID-based relationship references (passing color by name "Red" instead of UUID) to
+    replicate how object file loading works.
+    """
+    tshirt_with_rel_hfid = TSHIRT.model_copy(update={"human_friendly_id": ["name__value", "color__name__value"]})
+    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, tshirt_with_rel_hfid]), branch_name=default_branch.name)
+
+    # Create a color node
+    color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+    await color_node.new(db=db, name="Red", description="Bright Red")
+    await color_node.save(db=db)
+
+    upsert_mutation = """
+    mutation {
+        TestingTShirtUpsert(data: {
+            name: {value: "Classic"},
+            color: {id: "Red"}
+        }) {
+            ok
+            object {
+                id
+                display_label
+                hfid
+            }
+        }
+    }
+    """
+
+    # First upsert: creates the TShirt
+    # display_label template: "{{ name__value }} {{ color__name__value }}"
+    # human_friendly_id: ["name__value", "color__name__value"]
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result_create = await graphql(
+        schema=gql_params.schema,
+        source=upsert_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    _basic_asserts(result_create)
+    assert result_create.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
+    assert result_create.data["TestingTShirtUpsert"]["object"]["hfid"] == ["Classic", "Red"]
+    tshirt_id = result_create.data["TestingTShirtUpsert"]["object"]["id"]
+
+    # Second upsert: updates the same TShirt (matched by uniqueness_constraints on name)
+    # This is where the bug manifests: display_label becomes "Classic None" and hfid becomes ["Classic", null]
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    # Act
+    result_upsert = await graphql(
+        schema=gql_params.schema,
+        source=upsert_mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    _basic_asserts(result_upsert)
+    assert result_upsert.data["TestingTShirtUpsert"]["object"]["id"] == tshirt_id
+    # display_label should still be "Classic Red"
+    assert result_upsert.data["TestingTShirtUpsert"]["object"]["display_label"] == "Classic Red"
+    # hfid should still be ["Classic", "Red"]
+    assert result_upsert.data["TestingTShirtUpsert"]["object"]["hfid"] == ["Classic", "Red"]
+
+
+def _basic_asserts(result_upsert: ExecutionResult) -> None:
+    assert result_upsert.errors is None
+    assert result_upsert.data
+    assert result_upsert.data["TestingTShirtUpsert"]["ok"] is True

@@ -11,7 +11,7 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { useDeleteBranchesMutation } from "@/entities/branches/domain/delete-branches.mutation";
+import { useDeleteBranchesMutation } from "@/entities/branches/ui/queries/delete-branches.mutation";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 

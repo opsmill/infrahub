@@ -10,6 +10,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
+from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
 
 class TestTemplateAttributeLifecycle(TestInfrahubApp):
@@ -242,3 +243,5 @@ class TestTemplateAttributeLifecycle(TestInfrahubApp):
             _ = retrieved.lifespan
         with pytest.raises(AttributeError):
             _ = retrieved.hobby
+
+        await assert_no_virtual_schema_relationships_in_db(db)

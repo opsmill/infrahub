@@ -1,0 +1,16 @@
+{
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "TestNode",
+            "namespace": "Test",
+            "attributes": [
+                {
+                    "name": "foo_from_resource_pool",
+                    "kind": "Text",
+                    "optional": true
+                }
+            ]
+        }
+    ]
+}

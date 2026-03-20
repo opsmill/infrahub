@@ -68,7 +68,6 @@ async def test_add_context_valid_account(
     default_branch: Branch,
     default_permission_backend: None,
     car_person_schema: None,
-    enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
     second_account: Node,

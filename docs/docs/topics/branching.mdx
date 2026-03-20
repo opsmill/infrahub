@@ -128,6 +128,10 @@ Understanding the branch lifecycle helps teams manage the flow of changes throug
 5. **Merge**: Approved changes integrate into the main branch through a controlled process that preserves the integrity of the production environment.
 6. **Cleanup**: The branch can be deleted after successful merge, maintaining a clean workspace and repository structure.
 
+:::warning
+Once deleted, a branch enters a terminal state and can no longer be updated. Creating a Proposed Change against it, rebasing it, and triggering validation on it are no longer possible.
+:::
+
 This structured approach ensures that changes are thoroughly validated before reaching production while giving teams the flexibility to work independently.
 
 ### Branch operations

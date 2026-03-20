@@ -453,7 +453,7 @@ async def test_double_nested_query(
 
 
 async def test_nested_query_single_relationship(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> None:
     raw_schema = {
         "version": "1.0",

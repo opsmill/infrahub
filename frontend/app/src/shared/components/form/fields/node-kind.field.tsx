@@ -2,21 +2,21 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
-
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-
-import { Badge } from "../../ui/badge";
+import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-} from "../../ui/combobox";
-import { FormField, FormInput, FormMessage } from "../../ui/form";
-import type { FormAttributeValue, FormFieldProps } from "../type";
-import { updateFormFieldValue } from "../utils/updateFormFieldValue";
+} from "@/shared/components/ui/combobox";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
+
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import { LabelFormField, ResetAction } from "./common";
 
 export function NodeKindField({

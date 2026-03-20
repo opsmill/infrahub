@@ -408,7 +408,7 @@ resource "kubernetes_deployment_v1" "redis_sentinel_proxy_deployment" {
             "-listen",
             ":6379",
             "-sentinel",
-            "cache:26379",
+            "redis:26379",
           ]
           port {
             container_port = 6379
@@ -431,7 +431,7 @@ resource "helm_release" "cache_ha" {
 
   values = [
     <<EOT
-nameOverride: cache
+nameOverride: redis
 image:
   repository: bitnamilegacy/redis
   tag: 8.2.1-debian-12-r0
@@ -503,6 +503,8 @@ resource "kubernetes_secret_v1" "db_secret" {
 }
 
 resource "kubernetes_secret_v1" "neo4j_secret" {
+  depends_on = [helm_release.cache_ha] # wait for namespace creation
+
   metadata {
     name      = "neo4j-user"
     namespace = local.target_namespace

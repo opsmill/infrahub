@@ -14,8 +14,8 @@ import {
 } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetFile } from "@/entities/diff/domain/get-file.query";
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
+import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
@@ -31,9 +31,9 @@ import { diffLines, formatLines } from "unidiff";
 import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 
 interface FileContentDiffProps {
   repositoryId: string;

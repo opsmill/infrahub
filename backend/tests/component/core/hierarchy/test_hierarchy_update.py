@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
@@ -11,7 +12,7 @@ RETURN rel
 """
 
 
-async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_location_data) -> None:
+async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_location_data: dict[str, Node]) -> None:
     site_schema = registry.schema.get(name="LocationSite", duplicate=False)
     retrieved_node = await NodeManager.get_one(db=db, id=hierarchical_location_data["seattle"].id)
     new_parent = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id)
@@ -35,7 +36,7 @@ async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_loc
     assert {node.name.value for node in nodes} == {"paris", "london", "seattle"}
 
 
-async def test_update_node_invalid_hierarchy(db: InfrahubDatabase, hierarchical_location_data) -> None:
+async def test_update_node_invalid_hierarchy(db: InfrahubDatabase, hierarchical_location_data: dict[str, Node]) -> None:
     city = await NodeManager.get_one(db=db, id=hierarchical_location_data["seattle"].id, raise_on_error=True)
     region = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id, raise_on_error=True)
     rack = await NodeManager.get_one(db=db, id=hierarchical_location_data["paris-r1"].id, raise_on_error=True)

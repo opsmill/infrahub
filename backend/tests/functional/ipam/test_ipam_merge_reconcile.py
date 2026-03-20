@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -20,10 +19,6 @@ if TYPE_CHECKING:
 
 
 class TestIpamMergeReconcile(TestIpamReconcileBase):
-    @pytest.fixture(scope="class", autouse=True)
-    def enable_broker_settings(self) -> None:
-        config.SETTINGS.broker.enable = True
-
     @pytest.fixture(scope="class")
     async def branch_1(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
         return await create_branch(db=db, branch_name="new_address")

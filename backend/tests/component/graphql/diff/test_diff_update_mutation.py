@@ -1,3 +1,5 @@
+from typing import Generator
+
 import pytest
 
 from infrahub.core.branch import Branch
@@ -6,6 +8,7 @@ from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -53,9 +56,9 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        prefect_test_fixture,
+        prefect_test_fixture: Generator[None, None, None],
         service_testing: InfrahubServices,
-        criticality_schema,
+        criticality_schema: NodeSchema,
         diff_branch: Branch,
     ) -> EnrichedDiffRootMetadata:
         default_branch.update_schema_hash()
@@ -84,9 +87,9 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        prefect_test_fixture,
+        prefect_test_fixture: Generator[None, None, None],
         service_testing: InfrahubServices,
-        criticality_schema,
+        criticality_schema: NodeSchema,
         diff_branch: Branch,
     ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
@@ -111,9 +114,9 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        prefect_test_fixture,
+        prefect_test_fixture: Generator[None, None, None],
         service_testing: InfrahubServices,
-        criticality_schema,
+        criticality_schema: NodeSchema,
         diff_branch: Branch,
     ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
@@ -138,9 +141,9 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        prefect_test_fixture,
+        prefect_test_fixture: Generator[None, None, None],
         service_testing: InfrahubServices,
-        criticality_schema,
+        criticality_schema: NodeSchema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
     ) -> None:
@@ -180,9 +183,9 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        prefect_test_fixture,
+        prefect_test_fixture: Generator[None, None, None],
         service_testing: InfrahubServices,
-        criticality_schema,
+        criticality_schema: NodeSchema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
     ) -> None:
@@ -208,9 +211,9 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        prefect_test_fixture,
+        prefect_test_fixture: Generator[None, None, None],
         service_testing: InfrahubServices,
-        criticality_schema,
+        criticality_schema: NodeSchema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
     ) -> None:

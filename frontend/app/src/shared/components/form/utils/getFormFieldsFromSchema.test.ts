@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  FROM_RESOURCE_POOL_SUFFIX,
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "@/shared/components/form/constants";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { store } from "@/shared/stores";
 
@@ -12,7 +17,6 @@ import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
-import { RELATIONSHIP_BULK_ADD_PREFIX, RELATIONSHIP_BULK_REMOVE_PREFIX } from "../constants";
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
@@ -807,5 +811,28 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[1]?.name).to.equal(`${RELATIONSHIP_BULK_REMOVE_PREFIX}cardinality_many`);
     expect(fields[1]?.type).to.equal("relationship-remove");
     expect(fields[2]?.name).to.equal("cardinality_one");
+  });
+
+  it("should exclude relationships ending with _from_resource_pool", () => {
+    // GIVEN
+    const mainRelationship = generateRelationshipSchema({
+      name: "ip_address",
+      order_weight: 1,
+    });
+    const poolRelationship = generateRelationshipSchema({
+      name: `ip_address${FROM_RESOURCE_POOL_SUFFIX}`,
+      order_weight: 2,
+    });
+
+    const schema = {
+      relationships: [mainRelationship, poolRelationship],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]?.name).to.equal("ip_address");
   });
 });

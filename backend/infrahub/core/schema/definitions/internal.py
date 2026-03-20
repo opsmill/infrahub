@@ -29,6 +29,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaAttributeDisplay,
     UpdateSupport,
 )
 from infrahub.core.schema.attribute_parameters import (
@@ -664,6 +665,19 @@ attribute_schema = SchemaNode(
             max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the attribute is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -883,6 +897,19 @@ relationship_schema = SchemaNode(
             max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the relationship is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -922,14 +949,6 @@ generic_schema = SchemaNode(
             default_value=True,
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
-        ),
-        SchemaAttribute(
-            name="generate_template",
-            kind="Boolean",
-            description="Indicate if an object template schema should be generated for this schema",
-            default_value=False,
-            optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="used_by",

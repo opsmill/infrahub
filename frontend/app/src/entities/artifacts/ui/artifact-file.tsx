@@ -8,7 +8,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { isCopyableContentType } from "@/shared/utils/file";
 
 import { getArtifactFileDownloadUrl } from "@/entities/artifacts/domain/get-artifact-file";
-import { useGetArtifactFile } from "@/entities/artifacts/domain/get-artifact-file.query";
+import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
 
 export interface ArtifactFileProps {
   storageId: string;

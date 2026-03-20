@@ -21,7 +21,7 @@ class RelationshipMetadata:
 
 
 class TestRelationshipMetadata:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.person_id = None
         self.black_tag_id = None
         self.red_tag_id = None

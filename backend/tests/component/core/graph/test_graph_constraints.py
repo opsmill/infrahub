@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+from infrahub.core.branch import Branch
 from infrahub.core.graph.constraints import (
     ConstraintInfo,
     ConstraintManagerMemgraph,
@@ -568,7 +569,7 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase) -> 
     os.getenv("INFRAHUB_DB_TYPE") != "neo4j",
     reason="Must use Neo4j to run this test",
 )
-async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_branch) -> None:
+async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_branch: Branch) -> None:
     gm = ConstraintManagerNeo4j.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     previous_constraints = await gm.list()
@@ -737,7 +738,7 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
     os.getenv("INFRAHUB_DB_TYPE") != "memgraph",
     reason="Must use Memgraph to run this test",
 )
-async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, default_branch) -> None:
+async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, default_branch: Branch) -> None:
     gm = ConstraintManagerMemgraph.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     previous_constraints = await gm.list()

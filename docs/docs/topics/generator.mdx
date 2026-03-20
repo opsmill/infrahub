@@ -14,19 +14,19 @@ A `Generator` is a generic plugin that queries data and creates new nodes and re
 
 ## High level design
 
-Generators are defined as a **generator definition** within an [.infrahub.yml](infrahub-yml) file. A Generator definition consists of a number of related objects.
+Generators are defined as a **Generator definition** within an [.infrahub.yml](infrahub-yml) file. A Generator definition consists of a number of related objects.
 
-- [Group](./groups.mdx) of targets - Objects that the generator will act upon
+- [Group](./groups.mdx) of targets - Objects that the Generator will act upon
 - Generator class - Python code that defines the generation logic
 - GraphQL Query - Data collection specification
 
 ![Generator overview diagram](../media/topics/generator/generator_overview.excalidraw.svg)
 
-Running a generator definition will create new nodes as defined by the generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
+Running a Generator definition will create new nodes as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
 
-The targets point to a [group](./groups.mdx) that will consist of objects that are impacted by the generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger generator execution, while the actual tracking of generated objects is handled by individual generator instances.
+The targets point to a [group](./groups.mdx) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger Generator execution, while the actual tracking of generated objects is handled by individual Generator instances.
 
-The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query [group](./groups.mdx) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
+The [GraphQL query](graphql) defines the data that will be collected when running the Generator. Any object identified in this step is added as a member to a GraphQL query [group](./groups.mdx) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [Transformations](transformation) and [checks](check), the Generators are user defined.
 
@@ -34,20 +34,20 @@ Generators can be executed in several ways, depending on your workflow and where
 
 1. During development with infrahubctl
 
-   Use the `infrahubctl generator` command to iterate locally while building and testing your generator.
+   Use the `infrahubctl generator` command to iterate locally while building and testing your Generator.
 2. Manually from the UI
 
-   From the Infrahub UI, open the Generator Definition detail page (Actions > Generator Definitions) and click Run to trigger the generator on demand.
+   From the Infrahub UI, open the Generator Definition detail page (Actions > Generator Definitions) and click Run to trigger the Generator on demand.
 3. Automatically via Proposed Changes
 
-   When you open a Proposed Change that affects the generator’s targets, the generator runs as part of Infrahub’s CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per generator in the repository configuration file.
+   When you open a Proposed Change that affects the Generator's targets, the Generator runs as part of Infrahub's CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per Generator in the repository configuration file.
 4. Automatically via Events and Actions
 
    You can configure Infrahub Event rules and Actions to trigger Generators automatically based on changes in your data. This enables fully automated execution aligned with your workflows.
 
 ## Video guides
 
-In this video series we're diving into the concept of Generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you’re a developer or just curious about automation in IT, this guide will provide you with a comprehensive understanding of generators and their applications.
+In this video series we're diving into the concept of Generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you're a developer or just curious about automation in IT, this guide will provide you with a comprehensive understanding of Generators and their applications.
 
 The first video will highlight what Generators are and how they can be used to deliver services.
 
@@ -56,14 +56,14 @@ The first video will highlight what Generators are and how they can be used to d
     <br />
 </center>
 
-In the second video we will will look at how to plan a generator from coming up with a use case and then finally what the workflow may look like in pseudocode.
+In the second video we will look at how to plan a Generator from coming up with a use case and then finally what the workflow may look like in pseudocode.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=7oM2W8Kn2-U' light />
   <br />
 </center>
 
-In the third video we will look at how a generator can be created and run in Infrahub. Looking at the `.infrahub.yml` file the GraphQL query the generator will run against and finally the logic that will be run against Infrahub to create objects and bring the service to life.
+In the third video we will look at how a Generator can be created and run in Infrahub. Looking at the `.infrahub.yml` file the GraphQL query the Generator will run against and finally the logic that will be run against Infrahub to create objects and bring the service to life.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=HSUVWm3Se28' light />
@@ -71,4 +71,4 @@ In the third video we will look at how a generator can be created and run in Inf
 
 ## Known limitations
 
-- [3289](https://github.com/opsmill/infrahub/issues/3289) deleting a generator target object should delete the created objects of that target
+- [3289](https://github.com/opsmill/infrahub/issues/3289) deleting a Generator target object should delete the created objects of that target

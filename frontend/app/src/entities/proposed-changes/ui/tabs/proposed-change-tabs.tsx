@@ -24,10 +24,10 @@ export function ProposedChangeTabs({ sourceBranch, proposedChangeId }: ProposedC
     >
       <Row className="items-end gap-4 px-4" aria-label="Tabs">
         <OverviewTab />
-        <DataTab sourceBranch={sourceBranch} />
+        <DataTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
         <FilesTab sourceBranch={sourceBranch} />
         <ArtifactsTab sourceBranch={sourceBranch} />
-        <SchemaTab sourceBranch={sourceBranch} />
+        <SchemaTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
         <ChecksTab proposedChangeId={proposedChangeId} />
         <TasksTab proposedChangeId={proposedChangeId} />
       </Row>

@@ -119,25 +119,3 @@ InfrahubIPPrefixGetNextAvailable = Field(
     resolver=IPPrefixGetNextAvailable.resolve,
     required=True,
 )
-
-# The following two query fields must be removed once we are sure that people are not using the old queries anymore. Those fields only exist to
-# expose a deprecation message.
-
-DeprecatedIPAddressGetNextAvailable = Field(
-    IPAddressGetNextAvailable,
-    prefix_id=String(required=True),
-    prefix_length=Int(required=False),
-    resolver=IPAddressGetNextAvailable.resolve,
-    required=True,
-    deprecation_reason="This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.",
-)
-
-
-DeprecatedIPPrefixGetNextAvailable = Field(
-    IPPrefixGetNextAvailable,
-    prefix_id=String(required=True),
-    prefix_length=Int(required=False),
-    resolver=IPPrefixGetNextAvailable.resolve,
-    required=True,
-    deprecation_reason="This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.",
-)

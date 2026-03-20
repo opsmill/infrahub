@@ -12,6 +12,7 @@ from infrahub.core.diff.query.merge import (
     DiffMergeQuery,
     DiffMergeRollbackQuery,
 )
+from infrahub.database import retry_db_transaction
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -77,26 +78,14 @@ class DiffMerger:
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             if node_diff_dicts:
                 log.info(f"Merging batch of nodes #{batch_num}")
-                merge_query = await DiffMergeQuery.init(
-                    db=self.db,
-                    branch=self.source_branch,
-                    at=at,
-                    target_branch=self.destination_branch,
-                    node_diff_dicts=node_diff_dicts,
-                    migrated_kinds_id_map=migrated_kinds_id_map,
+                await self._merge_nodes(
+                    at=at, node_diff_dicts=node_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
                 )
-                await merge_query.execute(db=self.db)
             if property_diff_dicts:
                 log.info(f"Merging batch of properties #{batch_num}")
-                merge_properties_query = await DiffMergePropertiesQuery.init(
-                    db=self.db,
-                    branch=self.source_branch,
-                    at=at,
-                    target_branch=self.destination_branch,
-                    property_diff_dicts=property_diff_dicts,
-                    migrated_kinds_id_map=migrated_kinds_id_map,
+                await self._merge_properties(
+                    at=at, property_diff_dicts=property_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
                 )
-                await merge_properties_query.execute(db=self.db)
             log.info(f"Batch #{batch_num} merged")
             batch_num += 1
         migrated_kind_uuids = {n.identifier.uuid for n in enriched_diff.nodes if n.is_node_kind_migration}
@@ -133,6 +122,34 @@ class DiffMerger:
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
         return enriched_diff
+
+    @retry_db_transaction(name="diff_merge_nodes")
+    async def _merge_nodes(
+        self, at: Timestamp, node_diff_dicts: list[dict], migrated_kinds_id_map: dict[str, str]
+    ) -> None:
+        merge_query = await DiffMergeQuery.init(
+            db=self.db,
+            branch=self.source_branch,
+            at=at,
+            target_branch=self.destination_branch,
+            node_diff_dicts=node_diff_dicts,
+            migrated_kinds_id_map=migrated_kinds_id_map,
+        )
+        await merge_query.execute(db=self.db)
+
+    @retry_db_transaction(name="diff_merge_properties")
+    async def _merge_properties(
+        self, at: Timestamp, property_diff_dicts: list[dict], migrated_kinds_id_map: dict[str, str]
+    ) -> None:
+        merge_properties_query = await DiffMergePropertiesQuery.init(
+            db=self.db,
+            branch=self.source_branch,
+            at=at,
+            target_branch=self.destination_branch,
+            property_diff_dicts=property_diff_dicts,
+            migrated_kinds_id_map=migrated_kinds_id_map,
+        )
+        await merge_properties_query.execute(db=self.db)
 
     async def rollback(self, at: Timestamp) -> None:
         if not self._affected_node_uuids:

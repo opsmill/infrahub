@@ -10,11 +10,11 @@ import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
 import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
-
-import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchValidateButtonProps = {
   branch: BranchDetail;
@@ -34,6 +34,13 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
+  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
+  const isDisabled =
+    !isAuthenticated ||
+    loading ||
+    !!branch.is_default ||
+    branch.status === BRANCH_STATUS.MERGED ||
+    hasOngoingTask;
 
   const handleSubmit = async () => {
     try {
@@ -48,31 +55,26 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merge requested!"} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch validation requested!" />, {
         toastId: "alert-success",
       });
     } catch (error) {
       console.error(error);
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occurred while merging the branch"} />
+        <Alert type={ALERT_TYPES.ERROR} message="An error occurred while validating the branch" />
       );
     }
   };
 
   return (
     <Button
-      disabled={
-        !isAuthenticated ||
-        loading ||
-        branch.is_default ||
-        (!!taskData?.count && taskData.count > 0)
-      }
+      disabled={isDisabled}
       onClick={handleSubmit}
-      variant={"warning"}
+      variant="warning"
       className="flex items-center gap-2"
     >
       Validate
-      <Icon icon={"mdi:shield-check-outline"} />
+      <Icon icon="mdi:shield-check-outline" />
     </Button>
   );
 };

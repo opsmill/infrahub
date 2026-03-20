@@ -27,6 +27,20 @@ async def add_tags(
     namespace: bool = True,
     db_change: bool = False,
 ) -> None:
+    """Add metadata tags to the current Prefect flow run for observability and filtering.
+
+    Tags are applied via the Prefect API and appear in the Prefect UI, enabling operators
+    to filter flow runs by branch, related node, or custom labels.
+
+    Args:
+        branches: Branch names to tag. Each becomes a WorkflowTag.BRANCH tag.
+            Global branch is excluded.
+        nodes: Node IDs to tag. Each becomes a WorkflowTag.RELATED_NODE tag.
+        others: Arbitrary string tags to add as-is.
+        namespace: Whether to add the TAG_NAMESPACE tag (default True).
+        db_change: Whether to add a WorkflowTag.DATABASE_CHANGE tag, indicating
+            the flow run modifies the database.
+    """
     client = get_client(httpx_settings={"verify": get_http().verify_tls()}, sync_client=False)
     current_flow_run_id = flow_run.id
     current_tags: list[str] = flow_run.tags

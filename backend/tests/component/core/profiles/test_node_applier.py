@@ -12,6 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import CHILD, THING, load_schema
@@ -718,7 +719,7 @@ async def test_template_profile_application(
     criticality_schema: NodeSchema,
     criticality_low: Node,
     branch: Branch,
-):
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
 
@@ -765,7 +766,7 @@ async def test_template_with_multiple_profiles(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
-):
+) -> None:
     """Test that templates can have multiple profiles with correct priority handling."""
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
@@ -822,7 +823,7 @@ async def test_template_profile_manual_values_precedence(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
-):
+) -> None:
     """Test that template's own values take precedence over profile values.
 
     When a template has a manually configured value, profile values should not override it.
@@ -870,7 +871,7 @@ async def test_node_from_template_with_profile_precedence(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
-):
+) -> None:
     """Test that when creating a node from a template with profiles,
     template's manually defined values take precedence over profile values,
     while profile values are used for attributes not set on the template."""
@@ -926,7 +927,7 @@ async def test_node_from_template_with_profile_precedence(
 
 
 async def test_node_with_cardinality_one_relationship_profile_updated_on_profile_update(
-    db: InfrahubDatabase, default_branch, car_person_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
     person_schema = registry.schema.get("TestPerson", branch=default_branch.name)
 

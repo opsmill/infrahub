@@ -49,7 +49,7 @@ export function BranchStatusBadge({
     }
     case BRANCH_STATUS.MERGED: {
       return (
-        <Badge className={classNames(pillStyle, className)} variant="blue" {...props}>
+        <Badge className={classNames(pillStyle, className)} variant="purple" {...props}>
           Merged
         </Badge>
       );

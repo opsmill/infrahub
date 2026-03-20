@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import call, patch
 
 import pytest
@@ -158,7 +158,7 @@ async def test_repository_update(
         ),
     ],
 )
-def test_cleanup_payload(test_input, expected) -> None:
+def test_cleanup_payload(test_input: dict[str, Any], expected: dict[str, Any]) -> None:
     cleanup_payload(data=test_input)
     assert test_input == expected
 

@@ -1,5 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
-
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 
 import { rebaseBranchFromApi } from "@/entities/branches/api/rebase-branch-from-api";
@@ -32,10 +30,4 @@ export const rebaseBranch: RebaseBranch = async ({
     branch: data.BranchRebase.object,
     relatedTaskId: data.BranchRebase.task?.id ?? null,
   };
-};
-
-export const useRebaseBranch = () => {
-  return useMutation({
-    mutationFn: rebaseBranch,
-  });
 };

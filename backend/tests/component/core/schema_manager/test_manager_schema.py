@@ -45,7 +45,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
-from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema import CAR_SCHEMA, CHILD, DEVICE, DEVICE_SCHEMA, THING
 from tests.helpers.schema.device import LAG_INTERFACE
 
 from .conftest import _get_schema_by_kind
@@ -705,13 +705,14 @@ async def test_schema_branch_generate_weight(schema_all_in_one) -> None:
     assert in_second[0].startswith(new_attr2_partial_id)
 
 
-def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema) -> None:
+def test_schema_branch_processes_node_template_schema_weight(register_core_models_schema) -> None:
     schema = {
-        "generics": [
+        "generics": [core_object_template, core_object_component_template],
+        "nodes": [
             {
-                "name": "GenericDevice",
+                "name": "Device",
                 "namespace": "Dcim",
-                "description": "Generic Device object.",
+                "description": "Device object.",
                 "label": "Device",
                 "icon": "mdi:server",
                 "human_friendly_id": ["name__value"],
@@ -734,10 +735,6 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
                     },
                 ],
             },
-            core_object_template,
-            core_object_component_template,
-        ],
-        "nodes": [
             {
                 "name": "Tag",
                 "namespace": "Testing",
@@ -760,28 +757,19 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     schema_branch.load_schema(schema=SchemaRoot(**schema))
     schema_branch.process()
 
-    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
-    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+    template = schema_branch.get(name="TemplateDcimDevice", duplicate=False)
+    dcim_device = schema_branch.get(name="DcimDevice", duplicate=False)
 
     assert template.get_attribute(name="template_name").order_weight == 1000
-    assert (
-        template.get_attribute(name="description").order_weight
-        == dcim_generic_device.get_attribute(name="description").order_weight
-        == 8000
-    )
-    assert (
-        template.get_attribute(name="os_version").order_weight
-        == dcim_generic_device.get_attribute(name="os_version").order_weight
-        == 5200
-    )
-    assert (
-        template.get_relationship(name="tags").order_weight
-        == dcim_generic_device.get_relationship(name="tags").order_weight
-        == 3000
-    )
+    assert dcim_device.get_attribute(name="description").order_weight == 8000
+    assert template.get_attribute(name="description").order_weight == 8000 + 10000
+    assert dcim_device.get_attribute(name="os_version").order_weight == 5200
+    assert template.get_attribute(name="os_version").order_weight == 5200 + 10000
+    assert dcim_device.get_relationship(name="tags").order_weight == 3000
+    assert template.get_relationship(name="tags").order_weight == 3000 + 10000
 
     schema_2 = copy.deepcopy(schema)
-    schema_2["generics"][0]["attributes"] = [
+    schema_2["nodes"][0]["attributes"] = [
         {"name": "name", "kind": "Text", "unique": False},
         {"name": "description", "kind": "Text", "optional": True},
         {"name": "os_version", "kind": "Text", "optional": True},
@@ -789,20 +777,86 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     schema_branch.load_schema(schema=SchemaRoot(**schema_2))
     schema_branch.process()
 
-    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
-    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+    template = schema_branch.get(name="TemplateDcimDevice", duplicate=False)
+    dcim_device = schema_branch.get(name="DcimDevice", duplicate=False)
 
-    assert (
-        template.get_attribute(name="name").order_weight == dcim_generic_device.get_attribute(name="name").order_weight
-    )
-    assert (
-        template.get_attribute(name="description").order_weight
-        == dcim_generic_device.get_attribute(name="description").order_weight
-    )
-    assert (
-        template.get_attribute(name="os_version").order_weight
-        == dcim_generic_device.get_attribute(name="os_version").order_weight
-    )
+    for attr_name in ("name", "description", "os_version"):
+        assert (
+            template.get_attribute(name=attr_name).order_weight
+            == dcim_device.get_attribute(name=attr_name).order_weight + 10000
+        )
+
+
+def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema) -> None:
+    schema = {
+        "generics": [
+            core_object_template,
+            core_object_component_template,
+            {
+                "name": "InterfaceHolder",
+                "namespace": "Dcim",
+                "relationships": [
+                    {
+                        "name": "interfaces",
+                        "peer": "DcimInterface",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Component",
+                        "identifier": "interfaceholder__interfaces",
+                    },
+                ],
+            },
+            {
+                "name": "Interface",
+                "namespace": "Dcim",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "order_weight": 4000},
+                    {"name": "enabled", "kind": "Boolean", "default_value": True, "order_weight": 6000},
+                ],
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "DcimInterfaceHolder",
+                        "kind": "Parent",
+                        "optional": False,
+                        "cardinality": "one",
+                        "identifier": "interfaceholder__interfaces",
+                        "order_weight": 2000,
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Dcim",
+                "inherit_from": ["DcimInterfaceHolder"],
+                "default_filter": "name__value",
+                "generate_template": True,
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            },
+            {
+                "name": "PhysicalInterface",
+                "namespace": "Dcim",
+                "inherit_from": ["DcimInterface"],
+                "attributes": [{"name": "speed", "kind": "Text", "optional": True, "order_weight": 5000}],
+            },
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema))
+    schema_branch.process()
+
+    generic_interface = schema_branch.get(name="DcimInterface", duplicate=False)
+    generic_template = schema_branch.get(name="TemplateDcimInterface", duplicate=False)
+
+    assert generic_interface.get_attribute(name="name").order_weight == 4000
+    assert generic_template.get_attribute(name="name").order_weight == 4000
+    assert generic_interface.get_attribute(name="enabled").order_weight == 6000
+    assert generic_template.get_attribute(name="enabled").order_weight == 6000
+    assert generic_interface.get_relationship(name="device").order_weight == 2000
+    assert generic_template.get_relationship(name="device").order_weight == 2000
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
@@ -4311,13 +4365,16 @@ async def test_hierarchical_validate_parent_children(
 
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
-    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
-        region_schema = schema_branch.get(name="LocationRegion", duplicate=False)
-        region_schema.get_relationship(name="parent")
+    # Nodes at the edges of a hierarchy (parent="" or children="") get a
+    # relationship pointing to the hierarchy generic
+    region_schema = schema_branch.get(name="LocationRegion", duplicate=False)
+    region_parent_rel = region_schema.get_relationship(name="parent")
+    assert region_parent_rel.peer == "LocationGeneric"
+    assert region_parent_rel.optional is True
 
-    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
-        rack_schema = schema_branch.get(name="LocationRack", duplicate=False)
-        rack_schema.get_relationship(name="children")
+    rack_schema = schema_branch.get(name="LocationRack", duplicate=False)
+    rack_children_rel = rack_schema.get_relationship(name="children")
+    assert rack_children_rel.peer == "LocationGeneric"
 
     eu: Node = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
     await eu.new(db=db, name="Europe")
@@ -4567,3 +4624,41 @@ async def test_identify_object_templates_with_generics() -> None:
         TestKind.SFP,
         TestKind.VIRTUAL_INTERFACE,
     }
+
+
+async def test_manage_object_templates_component_relationship_to_excluded_kind() -> None:
+    """Template generation must not create subtemplates for excluded kinds like resource pools."""
+    car_schema = copy.deepcopy(CAR_SCHEMA)
+    car = car_schema.get(name=TestKind.CAR)
+    car.generate_template = True
+    car.relationships.append(
+        RelationshipSchema(
+            name="number_pools",
+            peer=InfrahubKind.NUMBERPOOL,
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+            kind=RelationshipKind.COMPONENT,
+        ),
+    )
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=car_schema))
+    schema_branch.process_inheritance()
+
+    # CoreNumberPool is a core node and should NOT be identified as needing a template, even though it is a COMPONENT peer
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name=TestKind.CAR, duplicate=False), identified=set()
+    )
+    identified_kinds = {n.kind for n in identified}
+    assert InfrahubKind.NUMBERPOOL not in identified_kinds
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    with pytest.raises(SchemaNotFoundError):
+        schema_branch.get(name="TemplateCoreNumberPool", duplicate=False)
+
+    # The template should still have the relationship, pointing to the original core node
+    template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
+    pool_rel = template.get_relationship(name="number_pools")
+    assert pool_rel.peer == InfrahubKind.NUMBERPOOL

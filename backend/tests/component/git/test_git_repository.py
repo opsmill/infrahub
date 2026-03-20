@@ -40,11 +40,7 @@ from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
-
-@pytest.fixture(autouse=True)
-def non_mocked_hosts() -> list:
-    """Workaround to tell HTTPX Mock to not mock the requests to prefect targeting 127.0.0.1."""
-    return ["127.0.0.1"]
+pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host != "127.0.0.1")
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
@@ -481,7 +477,7 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_sync_new_branch(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_03: InfrahubRepository,
     httpx_mock: HTTPXMock,
     mock_add_branch01_query: HTTPXMock,
@@ -520,7 +516,7 @@ async def test_sync_new_branch(
     assert len(worktrees) == 4
 
 
-async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRepository) -> None:
+async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
     repo = git_repo_04
 
     branch = Branch(name="branch01", uuid=uuid4())
@@ -539,7 +535,7 @@ async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRe
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
 
-async def test_render_jinja2_template_success(prefect_test_fixture, git_repo_jinja: InfrahubRepository) -> None:
+async def test_render_jinja2_template_success(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -563,7 +559,7 @@ magnum
     assert rendered_tpl_main != rendered_tpl_branch
 
 
-async def test_render_jinja2_template_error(prefect_test_fixture, git_repo_jinja: InfrahubRepository) -> None:
+async def test_render_jinja2_template_error(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -575,7 +571,7 @@ async def test_render_jinja2_template_error(prefect_test_fixture, git_repo_jinja
 
 
 async def test_render_jinja2_template_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_jinja: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_jinja: InfrahubRepository
 ) -> None:
     repo = git_repo_jinja
 
@@ -588,7 +584,7 @@ async def test_render_jinja2_template_missing(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_execute_python_check_valid(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_checks: InfrahubRepository,
     mock_gql_query_my_query: HTTPXMock,
 ) -> None:
@@ -603,7 +599,7 @@ async def test_execute_python_check_valid(
 
 
 async def test_execute_python_check_file_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_checks: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_checks: InfrahubRepository
 ) -> None:
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -615,7 +611,7 @@ async def test_execute_python_check_file_missing(
 
 
 async def test_execute_python_check_class_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_checks: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_checks: InfrahubRepository
 ) -> None:
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -627,7 +623,7 @@ async def test_execute_python_check_class_missing(
 
 
 async def test_execute_python_transform_w_data(
-    client: InfrahubClient, prefect_test_fixture, git_repo_transforms: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_transforms: InfrahubRepository
 ) -> None:
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -650,7 +646,7 @@ async def test_execute_python_transform_w_data(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_execute_python_transform_w_query(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms: InfrahubRepository,
     mock_gql_query_my_query: HTTPXMock,
 ) -> None:
@@ -673,7 +669,7 @@ async def test_execute_python_transform_w_query(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_new(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -709,7 +705,7 @@ async def test_artifact_generate_python_new(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_existing_same(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -743,7 +739,7 @@ async def test_artifact_generate_python_existing_same(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_existing_different(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -779,7 +775,7 @@ async def test_artifact_generate_python_existing_different(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_jinja2_new(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_jinja_w_client: InfrahubRepository,
     transformation_node_02: InfrahubNode,
     artifact_definition_node_02: InfrahubNode,
@@ -813,7 +809,7 @@ async def test_artifact_generate_jinja2_new(
 
 
 async def test_execute_python_transform_file_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_transforms: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_transforms: InfrahubRepository
 ) -> None:
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -1108,7 +1104,7 @@ async def test_compare_python_check(
 
 
 async def test_get_filtered_remote_branches__all_branches_exists(
-    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01, import_sync_branch_names
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01: None, import_sync_branch_names: None
 ) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
@@ -1116,7 +1112,7 @@ async def test_get_filtered_remote_branches__all_branches_exists(
 
 
 async def test_get_filtered_remote_branches__some_branches_exists(
-    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_03, import_sync_branch_names
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_03: None, import_sync_branch_names: None
 ) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
@@ -1130,8 +1126,11 @@ async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_rep
 
 
 async def test_repo_merge_use_explicit_merge_commit(
-    git_repo_01: InfrahubRepository, branch02: BranchData, git_user_config, git_use_explicit_merge_commit_config
-):
+    git_repo_01: InfrahubRepository,
+    branch02: BranchData,
+    git_user_config: None,
+    git_use_explicit_merge_commit_config: None,
+) -> None:
     repo = git_repo_01
     await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
     response = await repo.merge(source_branch=branch02.name, dest_branch="main")

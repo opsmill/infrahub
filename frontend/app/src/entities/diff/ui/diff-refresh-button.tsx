@@ -8,8 +8,8 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
-import { treeQueryKeys, updateDiffMutationKeys } from "@/entities/diff/domain/diff.query-keys";
-import { useUpdateDiffMutation } from "@/entities/diff/domain/update-diff.mutation";
+import { treeQueryKeys, updateDiffMutationKeys } from "@/entities/diff/ui/queries/diff.query-keys";
+import { useUpdateDiffMutation } from "@/entities/diff/ui/queries/update-diff.mutation";
 
 export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onClick"> {
   branchName: string;

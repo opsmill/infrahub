@@ -36,6 +36,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_PERMISSION_BACKENDS` | List of modules to handle permissions, they will be run in the given order | array[string] | ['infrahub.permissions.LocalPermissionBackend'] |
 | `INFRAHUB_PUBLIC_URL` | Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure. | None | None |
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
+| `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
 
 ## Api
 
@@ -106,7 +107,6 @@ Configuration settings for the message bus.
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_BROKER_ENABLE` | None | boolean | True |
 | `INFRAHUB_BROKER_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_BROKER_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_BROKER_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |
@@ -125,7 +125,6 @@ Configuration settings for the message bus.
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_CACHE_ENABLE` | None | boolean | True |
 | `INFRAHUB_CACHE_ADDRESS` | None | string | localhost |
 | `INFRAHUB_CACHE_PORT` | Specified if running on a non default port (6379) | None | None |
 | `INFRAHUB_CACHE_DATABASE` | Id of the database to use | integer | 0 |
@@ -141,7 +140,6 @@ Configuration settings for the message bus.
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_WORKFLOW_ENABLE` | None | boolean | True |
 | `INFRAHUB_WORKFLOW_ADDRESS` | None | string | localhost |
 | `INFRAHUB_WORKFLOW_PORT` | Specified if running on a non default port. | None | None |
 | `INFRAHUB_WORKFLOW_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |

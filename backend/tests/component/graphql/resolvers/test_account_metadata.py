@@ -20,11 +20,12 @@ from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
-async def tag_node(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> Node:
+async def tag_node(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch) -> Node:
     """Create a test tag node with metadata for resolver tests."""
     obj = await Node.init(db=db, schema=InfrahubKind.TAG)
     await obj.new(db=db, name="Test Tag", description="A test tag")
@@ -180,7 +181,7 @@ async def test_resolver_returns_typename(
 async def test_resolver_on_context_is_instantiated(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_models_schema: SchemaBranch,
 ) -> None:
     """Verify AccountMetadataResolver is instantiated on the context.
 

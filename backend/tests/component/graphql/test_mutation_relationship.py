@@ -32,6 +32,7 @@ from tests.helpers.permissions import define_permissions
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -43,7 +44,6 @@ async def test_relationship_add(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-    enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:
@@ -403,7 +403,6 @@ async def test_relationship_groups_add(
     default_permission_backend: None,
     default_branch: Branch,
     car_person_generics_data: dict[str, Node],
-    enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:
@@ -552,8 +551,7 @@ async def test_relationship_groups_remove(
     db: InfrahubDatabase,
     default_permission_backend: None,
     default_branch: Branch,
-    car_person_generics_data,
-    enable_broker_config: None,
+    car_person_generics_data: dict[str, Node],
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:
@@ -694,7 +692,7 @@ async def test_relationship_groups_remove(
 
 
 async def test_relationship_groups_add_remove(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ) -> None:
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
@@ -843,7 +841,9 @@ async def test_relationship_groups_add_remove(
     assert len(members) == 1
 
 
-async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data) -> None:
+async def test_relationship_add_busy(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
+) -> None:
     c1 = car_person_generics_data["c1"]
     p2 = car_person_generics_data["p2"]
 
@@ -878,7 +878,7 @@ async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branc
 async def test_relationship_add_for_node_with_migrated_kind(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_internal_models_schema,
+    register_internal_models_schema: SchemaBranch,
     car_person_schema: Node,
     person_alfred_main: Node,
 ) -> None:
@@ -1114,7 +1114,7 @@ async def test_relationship_add_from_pool(
 async def test_add_generic_related_node_with_hfid(
     db: InfrahubDatabase,
     default_branch: Branch,
-    generic_car_person_schema,
+    generic_car_person_schema: SchemaRoot,
 ) -> None:
     electric_car = await Node.init(db=db, schema="TestElectricCar", branch=default_branch)
     await electric_car.new(db=db, name="testing-car", color="blue")

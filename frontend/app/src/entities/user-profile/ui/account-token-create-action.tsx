@@ -10,8 +10,8 @@ import SlideOver from "@/shared/components/display/slide-over";
 import { Button } from "@/shared/components/ui/button";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
-import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
+import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/ui/queries/get-infrahub-account-token.query";
 
 export function AccountTokenCreateAction() {
   const [newToken, setNewToken] = useState<string>("");
