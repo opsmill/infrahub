@@ -1473,6 +1473,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         temperature: float,
         max_tokens: int,
         output_format: str,
+        mcp_server_url: str | None = None,
     ) -> dict[str, Any]:
         """Execute an AI Transform using Claude API."""
         from infrahub.transformations.ai_client import AIClient
@@ -1497,7 +1498,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             rendered_prompt = await jinja_template.render(variables={"data": data})
 
             # Initialize AI client
-            ai_client = AIClient(model=model, temperature=temperature, max_tokens=max_tokens)
+            ai_client = AIClient(model=model, temperature=temperature, max_tokens=max_tokens, mcp_server_url=mcp_server_url)
 
             # Generate report using Claude API
             log.info(f"Generating {output_format} report using Claude API")

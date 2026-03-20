@@ -46,3 +46,4 @@ class TransformAIData(BaseModel):
     output_format: str = Field(..., description="Output format: markdown or csv")
     timeout: int = Field(..., description="The timeout value to use when generating the report")
     result_kind: str | None = Field(default=None, description="Schema kind for the result FileObject")
+    mcp_server_url: str | None = Field(default=None, description="URL of the MCP server for tool-use enrichment")

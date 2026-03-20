@@ -4,12 +4,55 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
+import re
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 from anthropic import AsyncAnthropic
+from anthropic.types import ToolParam, ToolResultBlockParam, ToolUseBlock
+from mcp import ClientSession
+from mcp import types as mcp_types
+from mcp.client.streamable_http import streamablehttp_client
 from structlog import get_logger
 
 log = get_logger()
+
+MAX_TOOL_USE_ITERATIONS = 15
+
+
+def _truncate(text: str, max_length: int = 2000) -> str:
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + "\n... (truncated)"
+
+
+def _strip_code_fences(text: str) -> str:
+    """Extract content from the last markdown code fence block in an LLM response.
+
+    LLMs often wrap output in ```lang ... ``` fences and may prepend explanation
+    text.  This function finds the *last* fenced block and returns only its
+    inner content.  If no fences are found the original text is returned
+    stripped.
+    """
+    # Find all fenced code blocks (``` optionally followed by a language tag)
+    pattern = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
+    matches = pattern.findall(text)
+    if matches:
+        # Use the last match — the actual output when the LLM explains first
+        return matches[-1].strip()
+    return text.strip()
+
+
+def _extract_text(response: Any) -> str:
+    """Extract concatenated text from a Claude API response."""
+    parts = []
+    for block in response.content:
+        if hasattr(block, "text"):
+            parts.append(block.text)
+    return "".join(parts)
 
 
 class AIClient:
@@ -49,28 +92,17 @@ class AIClient:
         data: dict[str, Any],
         output_format: str = "markdown",
     ) -> str:
-        """Generate a report using Claude API.
+        """Generate a report using Claude API, optionally with MCP tool access.
 
-        Args:
-            prompt: The prompt template (can include references to data).
-            data: The input data from GraphQL query.
-            output_format: Output format - "markdown" or "csv".
-
-        Returns:
-            Generated report content as string.
-
-        Raises:
-            ValueError: If output_format is not supported.
-            Exception: If Claude API call fails.
+        When mcp_server_url is configured, connects to the MCP server and runs
+        an agentic loop allowing Claude to call tools for additional context.
+        Falls back to single-shot generation if MCP connection fails or is not configured.
         """
         if output_format not in ["markdown", "csv"]:
             raise ValueError(f"Unsupported output format: {output_format}. Must be 'markdown' or 'csv'.")
 
-        # Prepare the system message with format instructions
         system_message = self._build_system_message(output_format)
-
-        # Prepare the user message with prompt and data
-        user_message = self._build_user_message(prompt, data)
+        user_message = self._build_user_message(prompt, data, output_format)
 
         log.info(
             "Calling Claude API",
@@ -78,10 +110,33 @@ class AIClient:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             output_format=output_format,
+            mcp_enabled=bool(self.mcp_server_url),
         )
 
+        if self.mcp_server_url:
+            try:
+                async with self._mcp_session() as (tools, session):
+                    log.info("MCP connected", tool_count=len(tools), url=self.mcp_server_url)
+                    report_content = await self._run_agentic_loop(
+                        system_message=system_message,
+                        user_message=user_message,
+                        tools=tools,
+                        session=session,
+                    )
+            except Exception as e:
+                log.warning("MCP connection failed, falling back to single-shot", error=str(e))
+                report_content = await self._single_shot_generate(system_message, user_message)
+        else:
+            report_content = await self._single_shot_generate(system_message, user_message)
+
+        if output_format == "csv":
+            report_content = _strip_code_fences(report_content)
+
+        return report_content
+
+    async def _single_shot_generate(self, system_message: str, user_message: str) -> str:
+        """Generate a report with a single Claude API call (no tools)."""
         try:
-            # Call Claude API
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
@@ -90,17 +145,13 @@ class AIClient:
                 messages=[{"role": "user", "content": user_message}],
             )
 
-            # Extract text from response
-            report_content = ""
-            for block in response.content:
-                if hasattr(block, "text"):
-                    report_content += block.text
+            report_content = _extract_text(response)
 
             log.info(
                 "Claude API call successful",
                 model=self.model,
-                input_tokens=response.usage.input_tokens if hasattr(response, "usage") else 0,
-                output_tokens=response.usage.output_tokens if hasattr(response, "usage") else 0,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
             )
 
             return report_content
@@ -109,16 +160,219 @@ class AIClient:
             log.error("Claude API call failed", error=str(e), model=self.model)
             raise
 
-    def _build_system_message(self, output_format: str) -> str:
-        """Build the system message with format instructions.
+    @asynccontextmanager
+    async def _mcp_session(self) -> AsyncIterator[tuple[list[ToolParam], ClientSession]]:
+        """Connect to MCP server and yield (anthropic_tools, mcp_session)."""
+        url = self.mcp_server_url
+        if not url:
+            raise ValueError("mcp_server_url is not configured")
+        if not url.rstrip("/").endswith("/mcp"):
+            url = url.rstrip("/") + "/mcp/"
+
+        async with streamablehttp_client(url) as (read_stream, write_stream, _):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                tools_response = await session.list_tools()
+
+                anthropic_tools: list[ToolParam] = []
+                for tool in tools_response.tools:
+                    anthropic_tools.append(
+                        ToolParam(
+                            name=tool.name,
+                            description=tool.description or "",
+                            input_schema=tool.inputSchema,
+                        )
+                    )
+
+                log.info("MCP tools discovered", tools=[t["name"] for t in anthropic_tools])
+                yield anthropic_tools, session
+
+    async def _execute_tool_call(
+        self, tool_use: ToolUseBlock, session: ClientSession
+    ) -> ToolResultBlockParam:
+        """Execute a single tool call against the MCP server."""
+        try:
+            result = await session.call_tool(tool_use.name, arguments=tool_use.input)
+
+            text_parts = []
+            for content_block in result.content:
+                if isinstance(content_block, mcp_types.TextContent):
+                    text_parts.append(content_block.text)
+                else:
+                    text_parts.append(str(content_block))
+
+            return ToolResultBlockParam(
+                type="tool_result",
+                tool_use_id=tool_use.id,
+                content="\n".join(text_parts),
+                is_error=bool(result.isError),
+            )
+        except Exception as exc:
+            log.warning("MCP tool call failed", tool=tool_use.name, error=str(exc))
+            return ToolResultBlockParam(
+                type="tool_result",
+                tool_use_id=tool_use.id,
+                content=f"Tool execution failed: {exc}",
+                is_error=True,
+            )
+
+    async def _run_agentic_loop(
+        self,
+        system_message: str,
+        user_message: str,
+        tools: list[ToolParam],
+        session: ClientSession,
+    ) -> str:
+        """Run the agentic tool-use loop. Returns the final report text."""
+        messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
+        total_input_tokens = 0
+        total_output_tokens = 0
+
+        for iteration in range(MAX_TOOL_USE_ITERATIONS):
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                system=system_message,
+                messages=messages,
+                tools=tools,
+            )
+
+            total_input_tokens += response.usage.input_tokens
+            total_output_tokens += response.usage.output_tokens
+
+            if response.stop_reason != "tool_use":
+                log.info(
+                    "Agentic report generation complete",
+                    iterations=iteration + 1,
+                    input_tokens=total_input_tokens,
+                    output_tokens=total_output_tokens,
+                )
+                return _extract_text(response)
+
+            # Append assistant message with tool_use blocks
+            messages.append({"role": "assistant", "content": response.content})
+
+            # Execute all tool calls
+            tool_results: list[ToolResultBlockParam] = []
+            for block in response.content:
+                if isinstance(block, ToolUseBlock):
+                    log.info("Executing MCP tool", tool=block.name, iteration=iteration + 1)
+                    result = await self._execute_tool_call(block, session)
+                    tool_results.append(result)
+
+            messages.append({"role": "user", "content": tool_results})
+
+        # Max iterations reached — make one final call without tools to force text output
+        log.warning("Agentic loop reached max iterations", max_iterations=MAX_TOOL_USE_ITERATIONS)
+        response = await self.client.messages.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
+            system=system_message,
+            messages=messages,
+        )
+        total_input_tokens += response.usage.input_tokens
+        total_output_tokens += response.usage.output_tokens
+
+        log.info(
+            "Agentic report generation complete (max iterations)",
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+        )
+        return _extract_text(response)
+
+    async def generate_attribute_values(
+        self,
+        attributes: list[dict[str, Any]],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Generate attribute values for a FileObject schema using the LLM.
+
+        The LLM is given the schema attribute definitions and context about the
+        transform (name, report content, input data) so it can produce meaningful
+        values for user-defined attributes.
 
         Args:
-            output_format: Output format - "markdown" or "csv".
+            attributes: List of attribute descriptions (name, kind, description, optional, etc.).
+            context: Dict with transform_name, report_content, data, output_format.
 
         Returns:
-            System message string.
+            Dict mapping attribute names to generated values.
         """
-        base_message = "You are an expert infrastructure analyst generating reports from Infrahub data."
+        attrs_json = json.dumps(attributes, indent=2)
+        context_json = json.dumps(
+            {
+                "transform_name": context.get("transform_name", ""),
+                "output_format": context.get("output_format", ""),
+                "data_summary": _truncate(json.dumps(context.get("data", {}), indent=2), max_length=2000),
+                "report_summary": _truncate(context.get("report_content", ""), max_length=2000),
+            },
+            indent=2,
+        )
+
+        system_message = (
+            "You generate metadata attribute values for file objects that store the output of infrastructure data "
+            "transforms in Infrahub. Respond with ONLY a valid JSON object mapping attribute names to values. "
+            "No markdown fences, no explanation."
+        )
+
+        user_message = f"""Generate values for the following attributes of a FileObject that will store a report.
+
+# Attribute Definitions
+
+```json
+{attrs_json}
+```
+
+# Context
+
+```json
+{context_json}
+```
+
+Return a JSON object mapping each attribute name to an appropriate value.
+For optional attributes, return null if no meaningful value can be determined.
+For the "name" attribute (if present), include the transform name and current date/time to ensure uniqueness.
+Match the expected type for each attribute kind (Text -> string, Number -> integer, Boolean -> boolean).
+"""
+
+        log.info("Calling Claude API for attribute value generation", model=self.model)
+
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=1024,
+                temperature=0.0,
+                system=system_message,
+                messages=[{"role": "user", "content": user_message}],
+            )
+
+            response_text = _extract_text(response)
+
+            cleaned = _strip_code_fences(response_text)
+            if not cleaned:
+                raise json.JSONDecodeError("Empty response from LLM", response_text, 0)
+            result = json.loads(cleaned)
+
+            log.info(
+                "Attribute value generation successful",
+                model=self.model,
+                attributes=list(result.keys()),
+            )
+
+            return result
+
+        except (json.JSONDecodeError, Exception) as e:
+            log.error("Failed to generate attribute values", error=str(e), model=self.model)
+            raise
+
+    def _build_system_message(self, output_format: str) -> str:
+        """Build the system message with format instructions."""
+        base_message = (
+            "You are an expert infrastructure analyst generating reports from Infrahub data. "
+            "Output ONLY the report content. No explanations, no commentary, no markdown code fences."
+        )
 
         if output_format == "markdown":
             format_instructions = """
@@ -131,7 +385,7 @@ Output your report in well-formatted markdown with:
 """
         else:  # csv
             format_instructions = """
-Output your report as a CSV file with:
+Output raw CSV only — no markdown fences, no explanation before or after.
 - First row as headers
 - Subsequent rows as data
 - Proper CSV formatting (quoted fields if needed)
@@ -140,25 +394,24 @@ Output your report as a CSV file with:
 
         mcp_instructions = ""
         if self.mcp_server_url:
-            mcp_instructions = f"""
-You have access to the Infrahub MCP server at {self.mcp_server_url}.
-Use MCP tools to query additional context from Infrahub as needed.
+            mcp_instructions = """
+You have access to tools that can query the Infrahub infrastructure database.
+Use these tools to fetch additional context when the provided input data is insufficient to fully address the prompt.
+Available tool categories: schema discovery, node queries, GraphQL execution, branch management.
+Do not use tools unnecessarily if the input data already contains what you need.
+After gathering any needed context, produce the final report.
 """
 
         return base_message + format_instructions + mcp_instructions
 
-    def _build_user_message(self, prompt: str, data: dict[str, Any]) -> str:
-        """Build the user message with prompt and data.
-
-        Args:
-            prompt: The prompt template.
-            data: The input data from GraphQL query.
-
-        Returns:
-            User message string.
-        """
-        # Include the data as JSON for the model to reference
+    def _build_user_message(self, prompt: str, data: dict[str, Any], output_format: str = "markdown") -> str:
+        """Build the user message with prompt and data."""
         data_json = json.dumps(data, indent=2)
+
+        if output_format == "csv":
+            format_reminder = "Output raw CSV only — no markdown, no explanation, no code fences."
+        else:
+            format_reminder = "Output the report in well-formatted markdown."
 
         message = f"""{prompt}
 
@@ -168,6 +421,6 @@ Use MCP tools to query additional context from Infrahub as needed.
 {data_json}
 ```
 
-Generate the report based on the above prompt and data.
+Generate the report based on the above prompt and data. {format_reminder}
 """
         return message
