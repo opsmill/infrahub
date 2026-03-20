@@ -29,6 +29,7 @@ import { diffLines, formatLines } from "unidiff";
 import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
@@ -111,6 +112,7 @@ export function FileContentDiff({
   commitTo,
 }: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
+  const { isAuthenticated } = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
@@ -297,7 +299,7 @@ export function FileContentDiff({
 
     const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
-    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
+    if (thread || !isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }
