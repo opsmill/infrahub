@@ -513,7 +513,7 @@ class Query:
         return query
 
     def get_params_for_shell(self) -> str:
-        if config.SETTINGS.database.db_type.value == "memgraph":
+        if config.SETTINGS.database.db_type.value in ("memgraph", "neptune"):
             return ujson.dumps(self.params)
 
         return self._get_params_for_neo4j_shell()

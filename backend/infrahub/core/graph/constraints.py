@@ -293,3 +293,32 @@ class ConstraintManagerMemgraph(ConstraintManagerBase):
             results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))
 
         return results
+
+
+# ------------------------------------------------------
+# Neptune
+# ------------------------------------------------------
+
+
+class ConstraintManagerNeptune(ConstraintManagerBase):
+    """Constraint manager for AWS Neptune.
+
+    Neptune's OpenCypher implementation does not support constraints (uniqueness,
+    existence, or type constraints). Constraint enforcement must be handled at the
+    application level. All operations are no-ops.
+    """
+
+    constraint_node_class = None
+    constraint_rel_class = None
+
+    async def add(self) -> None:
+        # Neptune does not support constraints via OpenCypher
+        pass
+
+    async def drop(self) -> None:
+        # Neptune does not support constraints via OpenCypher
+        pass
+
+    async def list(self) -> list[ConstraintInfo]:
+        # Neptune does not expose constraint information
+        return []

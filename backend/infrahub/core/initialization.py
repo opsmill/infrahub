@@ -34,6 +34,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
+from infrahub.database.neptune import IndexManagerNeptune
 from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.log import get_logger
@@ -129,9 +130,13 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
 
 
 async def add_indexes(db: InfrahubDatabase) -> None:
+    index_manager: IndexManagerBase
     if db.db_type is DatabaseType.MEMGRAPH:
-        index_manager: IndexManagerBase = IndexManagerMemgraph(db=db)
-    index_manager = IndexManagerNeo4j(db=db)
+        index_manager = IndexManagerMemgraph(db=db)
+    elif db.db_type is DatabaseType.NEPTUNE:
+        index_manager = IndexManagerNeptune(db=db)
+    else:
+        index_manager = IndexManagerNeo4j(db=db)
 
     index_manager.init(nodes=node_indexes, rels=rel_indexes)
     log.debug("Loading database indexes ..")

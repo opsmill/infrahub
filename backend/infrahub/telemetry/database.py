@@ -65,6 +65,10 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
             else:
                 database_type = f"{database_type}-enterprise"
 
+        elif db.db_type == DatabaseType.NEPTUNE:
+            # Neptune does not expose server/system info via OpenCypher
+            database_type = "neptune"
+
         data = TelemetryDatabaseData(
             database_type=database_type,
             relationship_count={

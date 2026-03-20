@@ -44,6 +44,19 @@ class DeleteAfterTimeQuery(Query):
                 DELETE maybe_orphan
             }
             """
+        elif config.SETTINGS.database.db_type is config.DatabaseType.NEPTUNE:
+            # Neptune OpenCypher does not support exists() pattern function;
+            # orphan cleanup must be done in a separate step
+            query_2 = """
+            // ---------------------
+            // Delete edges with from time after timestamp timestamp
+            // ---------------------
+            CALL () {
+                OPTIONAL MATCH (p)-[r]->(q)
+                WHERE r.from > $timestamp
+                DELETE r
+            }
+            """
         else:
             query_2 = """
             // ---------------------

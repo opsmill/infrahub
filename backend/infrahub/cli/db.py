@@ -25,7 +25,12 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
+from infrahub.core.graph.constraints import (
+    ConstraintManagerBase,
+    ConstraintManagerMemgraph,
+    ConstraintManagerNeo4j,
+    ConstraintManagerNeptune,
+)
 from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import (
     GRAPH_SCHEMA,
@@ -49,6 +54,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
+from infrahub.database.neptune import IndexManagerNeptune
 from infrahub.exceptions import ValidationError
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
@@ -232,6 +238,8 @@ async def constraint(
         manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
     elif dbdriver.db_type == DatabaseType.MEMGRAPH:
         manager = ConstraintManagerMemgraph.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
+    elif dbdriver.db_type == DatabaseType.NEPTUNE:
+        manager = ConstraintManagerNeptune.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
     else:
         print(f"Database type not supported : {dbdriver.db_type}")
         raise typer.Exit(1)
@@ -270,9 +278,13 @@ async def index(
 
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
+    index_manager: IndexManagerBase
     if dbdriver.db_type is DatabaseType.MEMGRAPH:
-        index_manager: IndexManagerBase = IndexManagerMemgraph(db=dbdriver)
-    index_manager = IndexManagerNeo4j(db=dbdriver)
+        index_manager = IndexManagerMemgraph(db=dbdriver)
+    elif dbdriver.db_type is DatabaseType.NEPTUNE:
+        index_manager = IndexManagerNeptune(db=dbdriver)
+    else:
+        index_manager = IndexManagerNeo4j(db=dbdriver)
 
     index_manager.init(nodes=node_indexes, rels=rel_indexes)
 

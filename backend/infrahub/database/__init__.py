@@ -32,6 +32,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
 from infrahub.core.query import QueryType
+from infrahub.database.neptune_auth import get_neptune_auth_token
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
@@ -240,18 +241,25 @@ class InfrahubDatabase:
             **context,
         )
 
+    def _session_kwargs(self, access_mode: int) -> dict[str, Any]:
+        """Build keyword arguments for driver.session().
+
+        Neptune does not support the ``database`` parameter, so it is omitted
+        when running against a Neptune backend.
+        """
+        kwargs: dict[str, Any] = {"default_access_mode": access_mode}
+        if self.db_type != DatabaseType.NEPTUNE:
+            kwargs["database"] = config.SETTINGS.database.database_name
+        return kwargs
+
     async def session(self) -> AsyncSession:
         if self._session:
             return self._session
 
         if self._session_mode == InfrahubDatabaseSessionMode.READ:
-            self._session = self._driver.session(
-                database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
-            )
+            self._session = self._driver.session(**self._session_kwargs(READ_ACCESS))
         else:
-            self._session = self._driver.session(
-                database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
-            )
+            self._session = self._driver.session(**self._session_kwargs(WRITE_ACCESS))
 
         self._is_session_local = True
         return self._session
@@ -261,21 +269,21 @@ class InfrahubDatabase:
             return self._transaction
 
         session = await self.session()
-        self._transaction = await session.begin_transaction(
-            metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"}
-        )
+        # Neptune does not support transaction metadata
+        if self.db_type == DatabaseType.NEPTUNE:
+            self._transaction = await session.begin_transaction()
+        else:
+            self._transaction = await session.begin_transaction(
+                metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"}
+            )
         return self._transaction
 
     async def __aenter__(self) -> Self:
         if self._mode == InfrahubDatabaseMode.SESSION:
             if self._session_mode == InfrahubDatabaseSessionMode.READ:
-                self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
-                )
+                self._session = self._driver.session(**self._session_kwargs(READ_ACCESS))
             else:
-                self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
-                )
+                self._session = self._driver.session(**self._session_kwargs(WRITE_ACCESS))
 
         elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
@@ -396,6 +404,9 @@ class InfrahubDatabase:
         _query: str | Query = query
         if self.is_transaction:
             execution_method = await self.transaction(name=name)
+        elif self.db_type == DatabaseType.NEPTUNE:
+            # Neptune does not support query metadata
+            execution_method = await self.session()
         else:
             _query = Query(
                 text=query,
@@ -414,6 +425,7 @@ class InfrahubDatabase:
     def render_list_comprehension(self, items: str, item_name: str) -> str:
         if self.db_type == DatabaseType.MEMGRAPH:
             return f"extract(i in {items} | i.{item_name})"
+        # Neptune OpenCypher supports standard list comprehension syntax like Neo4j
         return f"[i IN {items} | i.{item_name}]"
 
     def render_list_comprehension_with_list(self, items: str, item_names: list[str]) -> str:
@@ -423,26 +435,36 @@ class InfrahubDatabase:
         return f"[i IN {items} | [{item_names_str}]]"
 
     def render_uuid_generation(self, node_label: str, node_attr: str, index: int = 1) -> str:
-        generate_uuid_query = f"SET {node_label}.{node_attr} = randomUUID()"
         if self.db_type == DatabaseType.MEMGRAPH:
-            generate_uuid_query = f"""
+            return f"""
             CALL uuid_generator.get() YIELD uuid AS uuid{index}
             SET {node_label}.{node_attr} = uuid{index}
             """
-        return generate_uuid_query
+        # Neptune does not support randomUUID(); use a parameter-based approach
+        # where the application provides the UUID value
+        if self.db_type == DatabaseType.NEPTUNE:
+            return f"SET {node_label}.{node_attr} = $generated_uuid_{index}"
+        return f"SET {node_label}.{node_attr} = randomUUID()"
 
     def get_id_function_name(self) -> str:
         if self.db_type == DatabaseType.NEO4J:
             return "elementId"
+        if self.db_type == DatabaseType.NEPTUNE:
+            # Neptune uses id() which returns the Neptune internal ~id
+            return "id"
         return "ID"
 
     def to_database_id(self, db_id: str | int) -> str | int:
-        if self.db_type == DatabaseType.NEO4J:
+        if self.db_type in (DatabaseType.NEO4J, DatabaseType.NEPTUNE):
             return db_id
         try:
             return int(db_id)
         except ValueError:
             return db_id
+
+    @property
+    def is_neptune(self) -> bool:
+        return self.db_type == DatabaseType.NEPTUNE
 
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
@@ -480,17 +502,45 @@ async def validate_database(
     return True
 
 
+async def validate_neptune_connection(
+    driver: AsyncDriver, retry: int = 0, retry_interval: int = 2
+) -> bool:
+    """Validate connectivity to an AWS Neptune cluster via the Bolt endpoint.
+
+    Neptune does not support multiple databases or SHOW TRANSACTIONS, so we
+    use a simple read query to verify the connection is alive.
+    """
+    try:
+        session = driver.session()
+        await session.run("MATCH (n) RETURN n LIMIT 1")
+        validated_database["neptune"] = True
+    except (ServiceUnavailable, ClientError) as exc:
+        if retry == 0:
+            log.error("Unable to connect to Neptune", error=str(exc))
+            raise
+        log.warning(f"Neptune connection failed, retrying ({retry} retries left)", error=str(exc))
+        await asyncio.sleep(retry_interval)
+        await validate_neptune_connection(driver=driver, retry=retry - 1, retry_interval=retry_interval)
+
+    return True
+
+
 async def get_db(retry: int = 0) -> AsyncDriver:
+    db_settings = config.SETTINGS.database
+
+    if db_settings.db_type == DatabaseType.NEPTUNE:
+        return await _get_neptune_driver(retry=retry)
+
     trusted_certificates = TrustSystemCAs()
-    if config.SETTINGS.database.tls_insecure:
+    if db_settings.tls_insecure:
         trusted_certificates = TrustAll()
-    elif config.SETTINGS.database.tls_ca_file:
-        trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
+    elif db_settings.tls_ca_file:
+        trusted_certificates = TrustCustomCAs(db_settings.tls_ca_file)
 
     driver = AsyncGraphDatabase.driver(
-        config.SETTINGS.database.database_uri,
-        auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
-        encrypted=config.SETTINGS.database.tls_enabled,
+        db_settings.database_uri,
+        auth=(db_settings.username, db_settings.password),
+        encrypted=db_settings.tls_enabled,
         trusted_certificates=trusted_certificates,
         notifications_disabled_classifications=[
             NotificationDisabledClassification.UNRECOGNIZED,
@@ -498,10 +548,49 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
 
-    if config.SETTINGS.database.database_name not in validated_database:
+    if db_settings.database_name not in validated_database:
         await validate_database(
-            driver=driver, database_name=config.SETTINGS.database.database_name, retry=retry, create_db=True
+            driver=driver, database_name=db_settings.database_name, retry=retry, create_db=True
         )
+
+    return driver
+
+
+async def _get_neptune_driver(retry: int = 0) -> AsyncDriver:
+    """Create a neo4j AsyncDriver configured for AWS Neptune's Bolt endpoint.
+
+    Neptune supports OpenCypher via the Bolt protocol. The driver connects using
+    TLS (bolt+s://) and optionally uses IAM SigV4 authentication.
+    """
+    db_settings = config.SETTINGS.database
+    neptune_settings = db_settings.neptune
+
+    auth: tuple[str, str] | None = None
+    if neptune_settings.iam_auth_enabled:
+        auth = get_neptune_auth_token(
+            region=neptune_settings.aws_region,
+            endpoint=db_settings.address,
+            iam_enabled=True,
+        )
+    else:
+        # No auth for VPC-only Neptune clusters
+        auth = None
+
+    trusted_certificates = TrustSystemCAs()
+    if db_settings.tls_insecure:
+        trusted_certificates = TrustAll()
+    elif db_settings.tls_ca_file:
+        trusted_certificates = TrustCustomCAs(db_settings.tls_ca_file)
+
+    driver = AsyncGraphDatabase.driver(
+        db_settings.database_uri,
+        auth=auth,
+        encrypted=True,
+        trusted_certificates=trusted_certificates,
+    )
+
+    if "neptune" not in validated_database:
+        await validate_neptune_connection(driver=driver, retry=retry)
 
     return driver
 

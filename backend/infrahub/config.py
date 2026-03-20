@@ -278,6 +278,19 @@ class StorageSettings(BaseSettings):
     max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
 
 
+class NeptuneSettings(BaseSettings):
+    """Settings specific to AWS Neptune database connections."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_NEPTUNE_")
+    iam_auth_enabled: bool = Field(
+        default=True, description="Enable IAM authentication for Neptune connections"
+    )
+    aws_region: str = Field(
+        default="us-east-1", description="AWS region where Neptune cluster is deployed"
+    )
+    port: int = Field(default=8182, description="Neptune cluster port (default: 8182)")
+
+
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
     db_type: DatabaseType = Field(
@@ -312,10 +325,13 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    neptune: NeptuneSettings = Field(default_factory=NeptuneSettings, description="AWS Neptune-specific settings")
 
     @property
     def database_uri(self) -> str:
         """Constructs the database URI based on the configuration settings."""
+        if self.db_type == DatabaseType.NEPTUNE:
+            return f"bolt+s://{self.address}:{self.neptune.port}"
         base_uri = f"{self.protocol}://{self.address}:{self.port}"
         if self.policy is not None:
             return f"{base_uri}?policy={self.policy}"
@@ -323,6 +339,8 @@ class DatabaseSettings(BaseSettings):
 
     @property
     def database_name(self) -> str:
+        if self.db_type == DatabaseType.NEPTUNE:
+            return "neptune"
         return self.database or self.db_type.value
 
 
