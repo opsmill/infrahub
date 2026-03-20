@@ -1,0 +1,88 @@
+---
+title: AWS Neptune support
+---
+
+# AWS Neptune support
+
+Infrahub supports AWS Neptune as an alternative graph database backend alongside Neo4j and Memgraph. Neptune connects via its OpenCypher Bolt endpoint, which allows Infrahub to reuse the same query infrastructure while adapting to Neptune-specific behaviors.
+
+## How it works
+
+Neptune implements the OpenCypher query language over the Bolt protocol, making it wire-compatible with the Neo4j driver. Infrahub detects the `neptune` database type at startup and adjusts its behavior accordingly:
+
+- **Connection**: Uses `bolt+s://` (TLS-encrypted Bolt) to connect to the Neptune cluster endpoint
+- **Authentication**: Supports AWS IAM SigV4 authentication or no-auth for VPC-only clusters
+- **Sessions**: Creates sessions without a named database parameter (Neptune does not support multiple databases)
+- **Transactions**: Omits query metadata from transactions (not supported by Neptune)
+- **Indexes**: No-op operations (Neptune manages indexes automatically via its query optimizer)
+- **Constraints**: No-op operations (Neptune does not support constraints via OpenCypher; enforcement is handled at the application level)
+
+## Configuration
+
+Set the database type and Neptune cluster endpoint:
+
+```shell
+export INFRAHUB_DB_TYPE=neptune
+export INFRAHUB_DB_ADDRESS=my-cluster.cluster-abc123.us-east-1.neptune.amazonaws.com
+```
+
+### IAM authentication
+
+By default, Neptune connections use IAM SigV4 authentication. This requires valid AWS credentials available through standard mechanisms (environment variables, AWS profiles, or IAM roles).
+
+```shell
+export INFRAHUB_DB_NEPTUNE_IAM_AUTH_ENABLED=true   # default
+export INFRAHUB_DB_NEPTUNE_AWS_REGION=us-east-1    # default
+```
+
+For Neptune clusters in a private VPC without IAM enforcement:
+
+```shell
+export INFRAHUB_DB_NEPTUNE_IAM_AUTH_ENABLED=false
+```
+
+### Custom port
+
+Neptune's Bolt endpoint defaults to port 8182:
+
+```shell
+export INFRAHUB_DB_NEPTUNE_PORT=8182  # default
+```
+
+### TLS
+
+TLS is always enabled for Neptune connections (`bolt+s://`). To skip certificate verification (not recommended for production):
+
+```shell
+export INFRAHUB_DB_TLS_INSECURE=true
+```
+
+## Differences from Neo4j
+
+| Feature | Neo4j | Neptune |
+|---------|-------|---------|
+| Named databases | Supported | Not supported (single graph per cluster) |
+| Query metadata | Attached to sessions/transactions | Not supported |
+| Runtime directives | `CYPHER runtime = pipelined` | Not supported |
+| `randomUUID()` | Supported | Not supported (UUIDs generated application-side) |
+| `elementId()` | Returns string element ID | Uses `id()` returning Neptune internal ID |
+| Index management | `CREATE INDEX` via Cypher | Managed automatically by query optimizer |
+| Constraints | `CREATE CONSTRAINT` via Cypher | Not supported; application-level enforcement |
+| `PROFILE` / `EXPLAIN` | Supported | Not supported via Bolt |
+| `SHOW TRANSACTIONS` | Supported | Not supported |
+| `SHOW SERVERS` | Supported (Enterprise) | Not supported |
+| `exists()` pattern | Supported | Limited support |
+
+## Prerequisites
+
+- An AWS Neptune cluster with the OpenCypher Bolt endpoint enabled
+- Network connectivity to the cluster (Neptune clusters are VPC-only by default)
+- For IAM auth: `botocore` Python package and valid AWS credentials
+- Neptune engine version 1.2.0.0 or later (for OpenCypher support)
+
+## Limitations
+
+- **No constraint enforcement**: Neptune does not support uniqueness or existence constraints via OpenCypher. Data integrity rules are enforced at the application level.
+- **No explicit index management**: Neptune's query optimizer handles indexing automatically. You cannot create or drop indexes via the CLI.
+- **Subquery support**: Neptune's OpenCypher implementation has evolving support for `CALL` subqueries. Some complex queries may behave differently than on Neo4j.
+- **No database backup via Infrahub**: Neptune backup and restore should be managed through AWS services (automated snapshots, manual snapshots, or cross-region replication).

@@ -315,6 +315,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/database-backup',
+                'topics/neptune',
                 'topics/hardware-requirements',
               ],
             },

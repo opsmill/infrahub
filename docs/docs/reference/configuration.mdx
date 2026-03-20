@@ -84,15 +84,15 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | None | string (neo4j, memgraph) | neo4j |
-| `INFRAHUB_DB_PROTOCOL` | None | string | bolt |
-| `INFRAHUB_DB_USERNAME` | None | string | neo4j |
-| `INFRAHUB_DB_PASSWORD` | None | string | admin |
-| `INFRAHUB_DB_ADDRESS` | None | string | localhost |
-| `INFRAHUB_DB_PORT` | None | integer | 7687 |
-| `INFRAHUB_DB_DATABASE` | Name of the database | None | None |
+| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | Graph database backend | string (neo4j, memgraph, neptune) | neo4j |
+| `INFRAHUB_DB_PROTOCOL` | Connection protocol (auto-set to `bolt+s` for Neptune) | string | bolt |
+| `INFRAHUB_DB_USERNAME` | Database username (not used for Neptune with IAM auth) | string | neo4j |
+| `INFRAHUB_DB_PASSWORD` | Database password (not used for Neptune with IAM auth) | string | admin |
+| `INFRAHUB_DB_ADDRESS` | Database host address (Neptune cluster endpoint for Neptune) | string | localhost |
+| `INFRAHUB_DB_PORT` | Database port (not used for Neptune; see Neptune-specific settings) | integer | 7687 |
+| `INFRAHUB_DB_DATABASE` | Name of the database (not applicable for Neptune) | None | None |
 | `INFRAHUB_DB_POLICY` | Routing policy for database connections | None | None |
-| `INFRAHUB_DB_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
+| `INFRAHUB_DB_TLS_ENABLED` | Indicates if TLS is enabled for the connection (always enabled for Neptune) | boolean | False |
 | `INFRAHUB_DB_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_DB_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |
 | `INFRAHUB_DB_QUERY_SIZE_LIMIT` | The max number of records to fetch in a single query before performing internal pagination. | integer | 5000 |
@@ -100,6 +100,16 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_RETRY_LIMIT` | Maximum number of times a transient issue in a transaction should be retried. | integer | 3 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | Maximum number of concurrent queries that can run (0 means unlimited). | integer | 0 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
+
+### Neptune-specific settings
+
+These settings only apply when `INFRAHUB_DB_INFRAHUB_DB_TYPE` is set to `neptune`.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_DB_NEPTUNE_IAM_AUTH_ENABLED` | Enable IAM SigV4 authentication for Neptune connections | boolean | True |
+| `INFRAHUB_DB_NEPTUNE_AWS_REGION` | AWS region where the Neptune cluster is deployed | string | us-east-1 |
+| `INFRAHUB_DB_NEPTUNE_PORT` | Neptune cluster Bolt endpoint port | integer | 8182 |
 
 ## Broker
 

@@ -1,8 +1,20 @@
-# Neo4j Database Schema
+# Graph Database Schema
 
 > Part of: `dev/knowledge/backend/` | Related: [Query Pattern](query-pattern.md), [Architecture](architecture.md)
 
 Infrahub uses a temporal graph database with branch support. All queries target a specific branch and point in time.
+
+## Supported Backends
+
+Infrahub supports three graph database backends:
+
+| Backend | Protocol | ID Function | UUID Generation | Index/Constraint Management |
+|---------|----------|-------------|-----------------|----------------------------|
+| **Neo4j** (default) | `bolt://` | `elementId()` | `randomUUID()` | Via Cypher (`CREATE INDEX/CONSTRAINT`) |
+| **Memgraph** | `bolt://` | `ID()` | `uuid_generator.get()` | Via Cypher (limited syntax) |
+| **Neptune** | `bolt+s://` | `id()` | Application-side (`$generated_uuid_N`) | Automatic (no-op via Cypher) |
+
+Database-specific query rendering is handled by methods on `InfrahubDatabase` (`render_uuid_generation()`, `get_id_function_name()`, etc.). Query classes should use these methods rather than hardcoding database-specific syntax.
 
 ## Branches
 

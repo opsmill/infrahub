@@ -4,7 +4,7 @@
 
 ## Overview
 
-FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
+FastAPI backend with GraphQL API, graph database (Neo4j, Memgraph, or AWS Neptune), and async-first architecture.
 
 ## File Structure
 
@@ -38,16 +38,19 @@ See `dev/guidelines/backend/python.md` for detailed coding standards including:
 - Query patterns
 - Type hints
 
-### Neo4j/Cypher Queries
+### Graph Database / Cypher Queries
 
 When writing or modifying Cypher queries, **read `dev/knowledge/backend/database-schema.md`** first. It documents:
 
+- Supported backends (Neo4j, Memgraph, Neptune) and their differences
 - Vertex types (Root, Branch, Node, Relationship, Attribute, AttributeValue)
 - Edge types and properties (branch, from, to, status)
 - Temporal branching rules and valid path patterns
 - Example queries for common operations
 
 Also see `dev/knowledge/backend/query-pattern.md` for the Query class pattern used to execute Cypher queries.
+
+**Multi-database support**: Use `InfrahubDatabase` rendering methods (`render_uuid_generation()`, `get_id_function_name()`, etc.) instead of hardcoding database-specific syntax. Check `db.db_type` when query behavior must differ between backends. Neptune-specific modules live in `database/neptune.py` and `database/neptune_auth.py`.
 
 ## Testing
 
