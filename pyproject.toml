@@ -1854,6 +1854,7 @@ include = ["backend/tests/fixtures/**"]
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-import = "ignore"
+invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/unit/**"]

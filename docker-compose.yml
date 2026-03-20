@@ -63,6 +63,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_TLS_INSECURE: ${INFRAHUB_DB_TLS_INSECURE:-false}
   INFRAHUB_DB_TYPE: ${INFRAHUB_DB_TYPE:-neo4j}
   INFRAHUB_DB_USERNAME: ${INFRAHUB_DB_USERNAME:-neo4j}
+  INFRAHUB_DIFF_UPDATE_AFTER_MERGE: ${INFRAHUB_DIFF_UPDATE_AFTER_MERGE:-true}
   INFRAHUB_DOCS_INDEX_PATH: ${INFRAHUB_DOCS_INDEX_PATH:-/opt/infrahub/docs/build/search-index.json}
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
   INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX: ${INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:-false}
@@ -108,6 +109,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_STORAGE_DRIVER: ${INFRAHUB_STORAGE_DRIVER:-local}
   INFRAHUB_STORAGE_ENDPOINT_URL:
   INFRAHUB_STORAGE_LOCAL_PATH: ${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}
+  INFRAHUB_STORAGE_MAX_FILE_SIZE: ${INFRAHUB_STORAGE_MAX_FILE_SIZE:-50}
   INFRAHUB_STORAGE_QUERYSTRING_AUTH: ${INFRAHUB_STORAGE_QUERYSTRING_AUTH:-false}
   INFRAHUB_STORAGE_USE_SSL: ${INFRAHUB_STORAGE_USE_SSL:-true}
   INFRAHUB_TELEMETRY_ENDPOINT: ${INFRAHUB_TELEMETRY_ENDPOINT:-https://telemetry.opsmill.cloud/infrahub}
@@ -203,7 +205,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.7}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.8.0}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -236,7 +238,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.7}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.8.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -282,7 +284,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.7.7}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.8.0}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

@@ -91,12 +91,17 @@ cd docs && npm run build              # Build documentation
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
 
-Regenerate with: `uv run invoke backend.generate` or `cd frontend/app && npm run codegen`
+Regenerate backend (offline): `uv run invoke backend.generate`
+Export GraphQL/OpenAPI schemas (requires running instance): `infrahub dev export-graphql-schema`
+Regenerate frontend types (offline, reads local schema files): `cd frontend/app && npm run codegen`
+
+See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ## Boundaries
 
 ### Always Do
 
+- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
 - Run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
