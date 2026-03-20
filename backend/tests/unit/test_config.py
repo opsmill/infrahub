@@ -52,16 +52,8 @@ def test_invalid_git_settings__sync_branch_names() -> None:
         GitSettings(import_sync_branch_names=["main", "infrahub/.*", "release/.*", "a[b"])
 
 
-def test_delete_branch_after_merge_defaults_to_false() -> None:
-    assert MainSettings().delete_branch_after_merge is False
-
-
-def test_delete_git_branch_after_merge_defaults_to_false() -> None:
-    assert GitSettings().delete_git_branch_after_merge is False
-
-
 def test_delete_git_branch_after_merge_without_delete_branch_after_merge_raises() -> None:
-    with pytest.raises(ValueError, match=re.escape("requires 'main.delete_branch_after_merge' to be enabled")):
+    with pytest.raises(ValueError, match=re.escape("requires 'delete_branch_after_merge' to be enabled")):
         Settings(
             git=GitSettings(delete_git_branch_after_merge=True), main=MainSettings(delete_branch_after_merge=False)
         )

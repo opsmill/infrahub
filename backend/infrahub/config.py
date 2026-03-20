@@ -1042,9 +1042,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
         if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
-            raise ValueError(
-                "'git.delete_git_branch_after_merge' requires 'main.delete_branch_after_merge' to be enabled"
-            )
+            raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
         return self
 
     @property
