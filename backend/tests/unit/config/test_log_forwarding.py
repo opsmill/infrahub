@@ -10,6 +10,7 @@ from infrahub.config import (
     EnterpriseFeatures,
     ExtraLogLevel,
     LogForwardingDestination,
+    LogForwardingDestinationType,
     LogForwardingSettings,
     SyslogFormat,
     SyslogProtocol,
@@ -20,9 +21,11 @@ TEST_DIR = Path(__file__).parent
 
 
 def test_log_forwarding_destination_valid() -> None:
-    dest = LogForwardingDestination(name="siem-primary", type="syslog", host="syslog.example.com", port=514)
+    dest = LogForwardingDestination(
+        name="siem-primary", type=LogForwardingDestinationType.SYSLOG, host="syslog.example.com", port=514
+    )
     assert dest.name == "siem-primary"
-    assert dest.type == "syslog"
+    assert dest.type is LogForwardingDestinationType.SYSLOG
     assert dest.host == "syslog.example.com"
     assert dest.port == 514
     assert dest.protocol.value == "tcp"
@@ -39,19 +42,31 @@ def test_log_forwarding_destination_valid() -> None:
 @pytest.mark.parametrize("invalid_port", [0, -1, 65536, 70000])
 def test_log_forwarding_destination_rejects_invalid_port(invalid_port: int) -> None:
     with pytest.raises(ValidationError):
-        LogForwardingDestination(name="test", type="syslog", host="localhost", port=invalid_port)
+        LogForwardingDestination(
+            name="test", type=LogForwardingDestinationType.SYSLOG, host="localhost", port=invalid_port
+        )
 
 
 def test_log_forwarding_destination_rejects_tls_with_udp() -> None:
     with pytest.raises(ValueError, match="TLS is only supported with TCP protocol, not UDP"):
         LogForwardingDestination(
-            name="test", type="syslog", host="localhost", port=514, protocol=SyslogProtocol.UDP, tls_enabled=True
+            name="test",
+            type=LogForwardingDestinationType.SYSLOG,
+            host="localhost",
+            port=514,
+            protocol=SyslogProtocol.UDP,
+            tls_enabled=True,
         )
 
 
 def test_log_forwarding_destination_allows_tls_with_tcp() -> None:
     dest = LogForwardingDestination(
-        name="test", type="syslog", host="localhost", port=6514, protocol=SyslogProtocol.TCP, tls_enabled=True
+        name="test",
+        type=LogForwardingDestinationType.SYSLOG,
+        host="localhost",
+        port=6514,
+        protocol=SyslogProtocol.TCP,
+        tls_enabled=True,
     )
     assert dest.tls_enabled is True
 
@@ -59,7 +74,13 @@ def test_log_forwarding_destination_allows_tls_with_tcp() -> None:
 @pytest.mark.parametrize("invalid_queue_size", [0, -5])
 def test_log_forwarding_destination_rejects_invalid_queue_size(invalid_queue_size: int) -> None:
     with pytest.raises(ValidationError, match="greater than or equal to 1"):
-        LogForwardingDestination(name="test", type="syslog", host="localhost", port=514, queue_size=invalid_queue_size)
+        LogForwardingDestination(
+            name="test",
+            type=LogForwardingDestinationType.SYSLOG,
+            host="localhost",
+            port=514,
+            queue_size=invalid_queue_size,
+        )
 
 
 def test_log_forwarding_settings_empty_destinations() -> None:
@@ -72,8 +93,8 @@ def test_log_forwarding_settings_duplicate_names_rejected() -> None:
     with pytest.raises(ValidationError, match="Destination names must be unique"):
         LogForwardingSettings(
             destinations=[
-                LogForwardingDestination(name="dup", type="syslog", host="host1", port=514),
-                LogForwardingDestination(name="dup", type="syslog", host="host2", port=515),
+                LogForwardingDestination(name="dup", type=LogForwardingDestinationType.SYSLOG, host="host1", port=514),
+                LogForwardingDestination(name="dup", type=LogForwardingDestinationType.SYSLOG, host="host2", port=515),
             ]
         )
 
@@ -81,8 +102,10 @@ def test_log_forwarding_settings_duplicate_names_rejected() -> None:
 def test_log_forwarding_settings_unique_names_accepted() -> None:
     settings = LogForwardingSettings(
         destinations=[
-            LogForwardingDestination(name="primary", type="syslog", host="host1", port=514),
-            LogForwardingDestination(name="secondary", type="syslog", host="host2", port=515),
+            LogForwardingDestination(name="primary", type=LogForwardingDestinationType.SYSLOG, host="host1", port=514),
+            LogForwardingDestination(
+                name="secondary", type=LogForwardingDestinationType.SYSLOG, host="host2", port=515
+            ),
         ]
     )
     assert len(settings.destinations) == 2
@@ -96,7 +119,9 @@ def test_log_forwarding_enterprise_feature_not_detected_when_empty() -> None:
 def test_log_forwarding_enterprise_feature_detected() -> None:
     settings = LogForwardingSettings(
         destinations=[
-            LogForwardingDestination(name="siem", type="syslog", host="syslog.example.com", port=514),
+            LogForwardingDestination(
+                name="siem", type=LogForwardingDestinationType.SYSLOG, host="syslog.example.com", port=514
+            ),
         ]
     )
     assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in settings.enterprise_features
