@@ -18,8 +18,8 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
