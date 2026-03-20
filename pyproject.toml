@@ -46,7 +46,7 @@ dependencies = [
     "python-multipart==0.0.22", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
+    "pyjwt==2.12.1", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
