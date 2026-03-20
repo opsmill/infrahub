@@ -88,51 +88,57 @@ specs/infp-389-branch-merge-delete/
 
 ```text
 backend/infrahub/
-├── config.py                                   # [US1] Add 2 new config fields
+├── config.py                                   # [US1 ✅] 2 new config fields added
 ├── api/
-│   └── config.py                               # [US1] Expose new fields in /api/config response
+│   └── config.py                               # [US1 ✅] New fields exposed in /api/config
 ├── core/branch/
-│   └── tasks.py                                # [US2] Post-merge deletion trigger in merge_branch()
+│   └── tasks.py                                # [US2 ✅] merge_branch() trigger; [US3 ✅] delete_branch() git hook
 ├── git/
-│   ├── base.py                                 # [US3] Add delete_branch_in_git() method
-│   ├── models.py                               # [US3] Add GitRepositoryDeleteBranch model
-│   └── tasks.py                                # [US3] Add delete_git_repository_branch() task
+│   ├── base.py                                 # [US3 ✅] origin_has_branch() + delete_remote_branch()
+│   └── tasks.py                                # [US3 ✅] delete_git_branch() flow + git_branch_delete task
 ├── graphql/mutations/
-│   └── branch.py                               # [US4] Add delete_git_branch arg to BranchDelete
+│   └── branch.py                               # [US4 ⬜] BranchDeleteInput + delete_from_git arg
 └── workflows/
-    └── catalogue.py                            # [US3] Add GIT_REPOSITORY_DELETE_BRANCH
+    └── catalogue.py                            # [US3 ✅] GIT_REPOSITORIES_DELETE_BRANCH (plural)
 
 tests/
-├── unit/infrahub/
-│   ├── core/branch/
-│   │   └── test_merge_branch_delete.py         # [US1, US2] Config loading, merge trigger logic
-│   └── git/
-│       └── test_delete_branch_in_git.py        # [US3] Git deletion method unit tests
-└── functional/
-    ├── test_branch_delete_after_merge.py       # [US2] merge → auto-delete functional flow
-    └── test_proposed_change_delete_after_merge.py  # [US2] PC merge → auto-delete
-    # US3 Git deletion functional tests require INFP-407 or a test fixture repo
+├── unit/
+│   └── test_config.py                          # [US1 ✅] Config loading unit tests
+├── component/git/
+│   └── test_delete_git_branch.py               # [US3 ✅] origin_has_branch / delete_remote_branch (4 tests)
+├── functional/branch/
+│   ├── test_branch_delete_after_merge.py       # [US2 ✅] merge → auto-delete functional flow
+│   └── test_delete_git_branch.py               # [US3 ✅] workflow submit/skip assertions (3 tests)
+└── integration/git/
+    ├── conftest.py                             # [US3 ✅] Gogs Docker fixture + helpers
+    └── test_delete_git_branch_gogs.py          # [US3 ✅] Full-chain Gogs integration tests (2 tests)
 
 changelog/
-└── <fragment>.feature.md                       # [ALL] Towncrier changelog fragment
+└── <fragment>.feature.md                       # [ALL ⬜] Towncrier changelog fragment
 
 docs/
-└── docs/reference/configuration.mdx           # [US1] Document new config options
+└── docs/reference/configuration.mdx           # [US1 ⬜] Document new config options
 
 frontend/app/src/
 ├── entities/branches/
 │   ├── domain/
-│   │   └── delete-branch.ts                   # [US4] Add delete_git_branch param
+│   │   └── delete-branch.ts                   # [US4 ⬜] Add delete_from_git param
 │   └── ui/
-│       ├── branch-delete-button.tsx            # [US4] Add Git deletion checkbox
+│       ├── branch-delete-button.tsx            # [US4 ⬜] Add Git deletion checkbox
 │       └── queries/
-│           └── delete-branch.mutation.ts       # [US4] Pass delete_git_branch to mutation
+│           └── delete-branch.mutation.ts       # [US4 ⬜] Pass delete_from_git to mutation
 └── shared/api/rest/
-    └── types.generated.ts                      # [US1] Regenerated (new config fields)
+    └── types.generated.ts                      # [US1 ⬜] Regenerated (new config fields)
 
 frontend/app/tests/e2e/
-└── branch-delete-after-merge.spec.ts           # [US4] Playwright E2E for manual delete UI
+└── branch-delete-after-merge.spec.ts           # [US4 ⬜] Playwright E2E for manual delete UI
 ```
+
+> **Implementation divergences from original plan (US3)**:
+> - No `GitRepositoryDeleteBranch` model in `git/models.py` — parameters passed directly to the workflow
+> - Workflow name is `GIT_REPOSITORIES_DELETE_BRANCH` (plural) — a Prefect flow that fans out to one `git_branch_delete` task per repo
+> - `InfrahubRepositoryBase` gained `origin_has_branch()` + `delete_remote_branch()` instead of a single `delete_branch_in_git()`
+> - `delete_branch()` checks only `git.delete_git_branch_after_merge and obj.sync_with_git` (the `main.delete_branch_after_merge` guard is structural — git deletion only fires inside `delete_branch()` which is already gated by the main flag)
 
 ---
 
@@ -155,11 +161,11 @@ Deliver US1 (config) and US2 (auto-delete after merge) first. These have zero ri
 
 ### Phase ordering
 
-1. **US1**: Config fields + `/api/config` exposure — fully testable with unit tests
-2. **US2**: `merge_branch()` hook + functional tests — fully testable without Git repos
-3. **US3**: Git deletion workflow, method, task — requires test Git repo fixture or INFP-407
-4. **US4**: Frontend delete button + E2E tests — requires US1 config endpoint changes
-5. **Polish**: Changelog fragment, documentation
+1. **US1** ✅: Config fields + `/api/config` exposure — fully testable with unit tests
+2. **US2** ✅: `merge_branch()` hook + functional tests — fully testable without Git repos
+3. **US3** ✅: Git deletion workflow, method, task — tested with component, functional, and Gogs integration tests
+4. **US4** ⬜: Frontend delete button + E2E tests — requires US1 config endpoint changes
+5. **Polish** ⬜: Changelog fragment, documentation
 
 ### Dependency graph
 

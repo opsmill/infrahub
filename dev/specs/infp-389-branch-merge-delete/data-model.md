@@ -70,42 +70,45 @@ Config file key: `[git] delete_git_branch_after_merge = false`
 
 ---
 
-## New Workflow Payload Model
+## New Workflow
 
-### GitRepositoryDeleteBranch (git/models.py)
+### GIT_REPOSITORIES_DELETE_BRANCH (workflows/catalogue.py)
 
-New Pydantic model for the `GIT_REPOSITORY_DELETE_BRANCH` workflow.
+No new Pydantic model. The workflow passes parameters directly as kwargs.
 
 ```python
-class GitRepositoryDeleteBranch(BaseModel):
-    """Delete a branch from a Git repository after Infrahub branch deletion."""
-
-    repository_id: str = Field(..., description="The unique ID of the Repository")
-    repository_name: str = Field(..., description="The name of the repository")
-    repository_kind: str = Field(..., description="The kind of the repository")
-    branch_name: str = Field(..., description="The name of the branch to delete")
-    default_branch: str | None = Field(default=None, description="The default branch in Git")
-    context: InfrahubContext = Field(..., description="The context of the task")
+GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
+    name="git-repositories-delete-branch",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="delete_git_branch",
+)
 ```
+
+The `delete_git_branch(branch: str)` flow fetches all `CoreRepository` nodes and fans out to one `git_branch_delete` task per repo. No typed payload model — repository identity is passed as individual kwargs (`repository_id`, `repository_name`, `repository_location`).
 
 ---
 
-## GraphQL Mutation Change
+## GraphQL Mutation Change (US4 — pending)
 
 ### BranchDelete (graphql/mutations/branch.py)
 
-New optional argument added to the existing mutation:
+A new `BranchDeleteInput` type replaces `BranchNameInput` for the `data` argument (so `BranchNameInput` remains unchanged for other mutations that use it):
 
 ```graphql
+input BranchDeleteInput {
+  name: String
+  delete_from_git: Boolean   # NEW: override global config; null/false = use global config
+}
+
 BranchDelete(
-  data: BranchNameInput!
+  data: BranchDeleteInput!   # was BranchNameInput
   context: ContextInput
   wait_until_completion: Boolean
-  delete_git_branch: Boolean   # NEW: override global config; null = use global config
 ): BranchDeleteResult
 ```
 
-This is backward-compatible (optional argument, defaults to `null`).
+This is backward-compatible: `delete_from_git` defaults to `false`.
 
 ---
 
