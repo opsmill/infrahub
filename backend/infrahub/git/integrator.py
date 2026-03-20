@@ -19,10 +19,12 @@ from infrahub_sdk.protocols import (
     CoreGenericRepository,
     CoreGraphQLQuery,
     CoreTransformation,
+    CoreTransformAI,
     CoreTransformJinja2,
     CoreTransformPython,
 )
 from infrahub_sdk.schema.repository import (
+    InfrahubAITransformConfig,
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
@@ -78,6 +80,10 @@ class ArtifactGenerateResult(BaseModel):
 
 
 class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
+    repository: str
+
+
+class InfrahubRepositoryAI(InfrahubAITransformConfig):
     repository: str
 
 
@@ -329,6 +335,131 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_transform.template_path.value != local_transform.template_path_value:
             existing_transform.template_path.value = local_transform.template_path_value
+
+        await existing_transform.save()
+
+    @task(name="import-ai-transforms", task_run_name="Import AI transform", cache_policy=NONE)
+    async def import_ai_transforms(
+        self,
+        branch_name: str,
+        commit: str,  # noqa: ARG002
+        config_file: InfrahubRepositoryConfig,
+    ) -> None:
+        log = get_run_logger()
+
+        schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMAI, branch=branch_name)
+
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.sdk.filters(
+                kind=CoreTransformAI, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
+
+        local_transforms: dict[str, InfrahubRepositoryAI] = {}
+
+        # Process the list of local AI Transforms to organize them by name
+        log.info(f"Found {len(config_file.ai_transforms)} AI transforms in the repository")
+
+        for config_transform in config_file.ai_transforms:
+            try:
+                self.sdk.schema.validate_data_against_schema(
+                    schema=schema, data=config_transform.model_dump(exclude_none=True)
+                )
+            except PydanticValidationError as exc:
+                for error in exc.errors():
+                    locations = [str(error_location) for error_location in error["loc"]]
+                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
+                continue
+            except ValidationError as exc:
+                log.error(exc.message)
+                continue
+
+            transform = InfrahubRepositoryAI(repository=str(self.id), **config_transform.model_dump())
+
+            # Query the GraphQL query and (eventually) replace the name with the ID
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
+            )
+            transform.query = graphql_query.id
+
+            local_transforms[transform.name] = transform
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
+        )
+
+        for transform_name in only_local:
+            log.info(f"New AI Transform {transform_name!r} found, creating")
+            await self.create_ai_transform(branch_name=branch_name, data=local_transforms[transform_name])
+
+        for transform_name in present_in_both:
+            if not await self.compare_ai_transform(
+                existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
+            ):
+                log.info(f"New version of the AI Transform '{transform_name}' found, updating")
+                await self.update_ai_transform(
+                    existing_transform=transforms_in_graph[transform_name],
+                    local_transform=local_transforms[transform_name],
+                )
+
+        for transform_name in only_graph:
+            log.info(f"AI Transform '{transform_name}' not found locally in branch {branch_name}, deleting")
+            await transforms_in_graph[transform_name].delete()
+
+    async def create_ai_transform(self, branch_name: str, data: InfrahubRepositoryAI) -> CoreTransformAI:
+        schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMAI, branch=branch_name)
+        create_payload = self.sdk.schema.generate_payload_create(
+            schema=schema, data=data.payload, source=self.id, is_protected=True
+        )
+        obj = await self.sdk.create(kind=CoreTransformAI, branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    @classmethod
+    async def compare_ai_transform(
+        cls, existing_transform: CoreTransformAI, local_transform: InfrahubRepositoryAI
+    ) -> bool:
+        if (
+            existing_transform.description.value != local_transform.description
+            or existing_transform.prompt_template_path.value != local_transform.prompt_template_path_value
+            or existing_transform.query.id != local_transform.query
+            or existing_transform.model.value != local_transform.model
+            or existing_transform.temperature.value != local_transform.temperature
+            or existing_transform.max_tokens.value != local_transform.max_tokens
+            or existing_transform.output_format.value != local_transform.output_format
+            or existing_transform.result_kind.value != local_transform.result_kind
+        ):
+            return False
+
+        return True
+
+    async def update_ai_transform(
+        self, existing_transform: CoreTransformAI, local_transform: InfrahubRepositoryAI
+    ) -> None:
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
+
+        if existing_transform.query.id != local_transform.query:
+            existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
+
+        if existing_transform.prompt_template_path.value != local_transform.prompt_template_path_value:
+            existing_transform.prompt_template_path.value = local_transform.prompt_template_path_value
+
+        if existing_transform.model.value != local_transform.model:
+            existing_transform.model.value = local_transform.model
+
+        if existing_transform.temperature.value != local_transform.temperature:
+            existing_transform.temperature.value = local_transform.temperature
+
+        if existing_transform.max_tokens.value != local_transform.max_tokens:
+            existing_transform.max_tokens.value = local_transform.max_tokens
+
+        if existing_transform.output_format.value != local_transform.output_format:
+            existing_transform.output_format.value = local_transform.output_format
+
+        if existing_transform.result_kind.value != local_transform.result_kind:
+            existing_transform.result_kind.value = local_transform.result_kind
 
         await existing_transform.save()
 
@@ -1188,6 +1319,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await self.import_ai_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
         await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
@@ -1328,6 +1460,71 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         except Exception as exc:
             log.critical(str(exc), exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
+
+    @task(name="ai-transform-execute", task_run_name="Execute AI Transform", cache_policy=NONE)
+    async def execute_ai_transform(
+        self,
+        branch_name: str,
+        commit: str,
+        prompt_template_path: str,
+        client: InfrahubClient,
+        data: dict,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        output_format: str,
+    ) -> dict[str, Any]:
+        """Execute an AI Transform using Claude API."""
+        from infrahub.transformations.ai_client import AIClient
+
+        log = get_run_logger()
+
+        commit_worktree = self.get_commit_worktree(commit=commit)
+
+        log.debug(f"Will run AI Transform using template at {prompt_template_path}")
+
+        self.validate_location(
+            commit=commit, worktree_directory=commit_worktree.directory, file_path=prompt_template_path
+        )
+
+        try:
+            # Load the prompt template
+            template_file = commit_worktree.directory / prompt_template_path
+            prompt_template = template_file.read_text(encoding="utf-8")
+
+            # Render the prompt template with Jinja2 (allows data interpolation)
+            jinja_template = Jinja2Template(template=prompt_template)
+            rendered_prompt = await jinja_template.render(variables={"data": data})
+
+            # Initialize AI client
+            ai_client = AIClient(model=model, temperature=temperature, max_tokens=max_tokens)
+
+            # Generate report using Claude API
+            log.info(f"Generating {output_format} report using Claude API")
+            report_content = await ai_client.generate_report(
+                prompt=rendered_prompt, data=data, output_format=output_format
+            )
+
+            # Return structured result
+            return {
+                "content": report_content,
+                "format": output_format,
+                "model": model,
+                "template": prompt_template_path,
+            }
+
+        except FileNotFoundError as exc:
+            error_msg = f"Unable to find the prompt template file {prompt_template_path}"
+            log.error(error_msg)
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=prompt_template_path, message=error_msg
+            ) from exc
+
+        except Exception as exc:
+            log.critical(str(exc), exc_info=True)
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=prompt_template_path, message=str(exc)
+            ) from exc
 
     async def artifact_generate(
         self,

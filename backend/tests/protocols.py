@@ -567,6 +567,15 @@ class CoreThreadComment(CoreComment):
     thread: RelationshipManager
 
 
+class CoreTransformAI(CoreTransformation):
+    prompt_template_path: String
+    model: StringOptional
+    temperature: IntegerOptional
+    max_tokens: IntegerOptional
+    output_format: StringOptional
+    result_kind: StringOptional
+
+
 class CoreTransformJinja2(CoreTransformation):
     template_path: String
 

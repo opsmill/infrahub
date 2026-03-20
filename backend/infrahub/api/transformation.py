@@ -16,6 +16,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import (
     CoreGenericRepository,
     CoreGraphQLQuery,
+    CoreTransformAI,
     CoreTransformJinja2,
     CoreTransformPython,
 )
@@ -24,8 +25,8 @@ from infrahub.exceptions import TransformError
 from infrahub.graphql.execution import execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
-from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
-from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
+from infrahub.transformations.models import TransformAIData, TransformJinjaTemplateData, TransformPythonData
+from infrahub.workflows.catalogue import TRANSFORM_AI_RENDER, TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -161,3 +162,72 @@ async def transform_jinja2(
         workflow=TRANSFORM_JINJA2_RENDER, context=context, expected_return=str, parameters={"message": message}
     )
     return PlainTextResponse(content=response)
+
+
+@router.get("/transform/ai/{transform_id:str}")
+async def transform_ai(
+    request: Request,
+    transform_id: str,
+    db: InfrahubDatabase = Depends(get_db),
+    context: InfrahubContext = Depends(get_context),
+    branch_params: BranchParams = Depends(get_branch_params),
+    _: AccountSession = Depends(get_current_user),
+) -> JSONResponse:
+    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
+
+    transform = await NodeManager.get_one_by_id_or_default_filter(
+        db=db,
+        id=transform_id,
+        kind=CoreTransformAI,
+        branch=branch_params.branch,
+        at=branch_params.at,
+    )
+
+    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+
+    if repository.commit.value is None:  # type: ignore[attr-defined]
+        raise TransformError(
+            repository_name=repository.name.value,
+            location=repository.location.value,
+            commit="n/a",
+            message="Repository doesn't have a commit",
+        )
+
+    async with db.start_session(read_only=True) as dbs:
+        gql_params = await prepare_graphql_params(
+            db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+        )
+
+        result = await execute_graphql_query(
+            schema=gql_params.schema,
+            source=query.query.value,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=params,
+        )
+
+    data = extract_data(query_name=query.name.value, result=result)
+
+    service: InfrahubServices = request.app.state.service
+
+    message = TransformAIData(
+        repository_id=repository.id,
+        repository_name=repository.name.value,
+        repository_kind=repository.get_kind(),
+        commit=repository.commit.value,  # type: ignore[attr-defined]
+        branch=branch_params.branch.name,
+        prompt_template_path=transform.prompt_template_path.value,
+        model=transform.model.value,
+        temperature=transform.temperature.value / 100,
+        max_tokens=int(transform.max_tokens.value),
+        output_format=transform.output_format.value,
+        timeout=transform.timeout.value,
+        result_kind=transform.result_kind.value or None,
+        data=data,
+    )
+
+    response = await service.workflow.execute_workflow(
+        workflow=TRANSFORM_AI_RENDER, context=context, parameters={"message": message}
+    )
+    return JSONResponse(content=response)

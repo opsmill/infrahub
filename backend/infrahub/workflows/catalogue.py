@@ -52,6 +52,13 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
     function="transform_python",
 )
 
+TRANSFORM_AI_RENDER = WorkflowDefinition(
+    name="transform_render_ai",
+    type=WorkflowType.USER,
+    module="infrahub.transformations.tasks",
+    function="transform_ai",
+)
+
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     name="anonymous_telemetry_send",
     type=WorkflowType.INTERNAL,
@@ -733,6 +740,7 @@ WORKFLOWS = [
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_UPDATED,
     SCHEMA_VALIDATE_MIGRATION,
+    TRANSFORM_AI_RENDER,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,

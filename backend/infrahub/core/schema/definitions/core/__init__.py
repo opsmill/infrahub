@@ -91,7 +91,7 @@ from .resource_pool import (
     core_weighted_pool_resource,
 )
 from .template import core_object_component_template, core_object_template
-from .transform import core_transform, core_transform_jinja2, core_transform_python
+from .transform import core_transform, core_transform_ai, core_transform_jinja2, core_transform_python
 from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
 
 
@@ -160,6 +160,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_repository,
         core_read_only_repository,
         core_transform_jinja2,
+        core_transform_ai,
         core_data_check,
         core_standard_check,
         core_schema_check,

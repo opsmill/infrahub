@@ -101,3 +101,59 @@ core_transform_python = NodeSchema(
         ),
     ],
 )
+
+core_transform_ai = NodeSchema(
+    name="TransformAI",
+    namespace="Core",
+    description="An AI-powered transformation that generates reports using Claude API",
+    include_in_menu=False,
+    label="Transform AI",
+    default_filter="name__value",
+    order_by=["name__value"],
+    display_labels=["name__value"],
+    inherit_from=[InfrahubKind.TRANSFORM],
+    generate_profile=False,
+    branch=BranchSupportType.AWARE,
+    documentation="/topics/transformation",
+    attributes=[
+        Attr(
+            name="prompt_template_path",
+            kind="Text",
+            description="Path to the markdown prompt template file in the repository",
+        ),
+        Attr(
+            name="model",
+            kind="Text",
+            description="Claude model to use for generation",
+            optional=True,
+            default_value="claude-sonnet-4-5-20250929",
+        ),
+        Attr(
+            name="temperature",
+            kind="Number",
+            description="Temperature for Claude API (0-100 scale, maps to 0.0-1.0)",
+            optional=True,
+            default_value=100,
+        ),
+        Attr(
+            name="max_tokens",
+            kind="Number",
+            description="Maximum tokens for Claude API response",
+            optional=True,
+            default_value=4096,
+        ),
+        Attr(
+            name="output_format",
+            kind="Text",
+            description="Output format: markdown or csv",
+            optional=True,
+            default_value="markdown",
+        ),
+        Attr(
+            name="result_kind",
+            kind="Text",
+            description="Schema kind for the result FileObject (must inherit from CoreFileObject)",
+            optional=True,
+        ),
+    ],
+)
