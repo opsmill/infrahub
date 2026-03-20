@@ -1074,7 +1074,6 @@ allow-dunder-method-names = [
     "PLR6201",  # Use a `set` literal when testing for membership
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF029",   # Function is declared `async`, but doesn't `await`
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
