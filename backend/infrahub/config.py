@@ -8,7 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -892,9 +892,13 @@ class TcpFraming(StrEnum):
     OCTET_COUNTING = "octet-counting"
 
 
+class LogForwardingDestinationType(StrEnum):
+    SYSLOG = "syslog"
+
+
 class LogForwardingDestination(BaseSettings):
     name: str = Field(description="Unique name for the destination, used in all observability output.")
-    type: Literal["syslog"] = Field(description="Destination type.")
+    type: LogForwardingDestinationType = Field(description="Destination type.")
     host: str = Field(description="Destination host or IP address.")
     port: int = Field(ge=1, le=65535, description="Destination port number.")
     protocol: SyslogProtocol = Field(default=SyslogProtocol.TCP, description="Transport protocol (tcp or udp).")
@@ -946,7 +950,7 @@ class LogForwardingSettings(BaseSettings):
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns enterprise features enabled by log forwarding configuration."""
-        if any(d.type == "syslog" for d in self.destinations):
+        if any(d.type == LogForwardingDestinationType.SYSLOG for d in self.destinations):
             return [EnterpriseFeatures.LOG_FORWARDING_SYSLOG]
         return []
 
