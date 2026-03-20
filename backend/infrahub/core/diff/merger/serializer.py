@@ -225,8 +225,13 @@ class DiffMergeSerializer:
                 property_diff=property_diff, python_value_type=python_type
             )
             for action, value in actions_and_values:
-                # we only delete attributes when the whole attribute is deleted
-                if action is DiffAction.REMOVED and attribute_diff.action is not DiffAction.REMOVED:
+                # we only delete attribute values when the whole attribute is deleted,
+                # but other properties can be removed independently
+                if (
+                    action is DiffAction.REMOVED
+                    and attribute_diff.action is not DiffAction.REMOVED
+                    and property_diff.property_type is DatabaseEdgeType.HAS_VALUE
+                ):
                     continue
                 prop_dicts.append(
                     PropertyMergeDict(

@@ -16,10 +16,10 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 |-------|-----------------------------------------|----------|-------------|----------------------|
 | 1     | Configuration settings                  | P1       | ✅ Done     | 3 unit tests         |
 | 2     | Auto-delete Infrahub branch after merge | P1       | ✅ Done     | 4 functional tests   |
-| 3     | Git branch deletion workflow            | P2       | ✅ Done     | 7 component+functional tests |
-| 4     | Manual delete with Git option           | P3       | ✅ Done     | 2 functional tests   |
+| 3     | Git branch deletion workflow            | P2       | ✅ Done     | 4 component + 3 functional + 2 integration tests |
+| 4     | Manual delete with Git option           | P3       | ✅ Done     | 2 functional tests         |
 
-**Total Tests:** 16 tests (3 unit + 4 functional + 7 component+functional + 2 functional)
+**Total Tests:** 14 tests (3 unit + 4 functional + 4 component + 2 integration + 1 unit)
 
 ---
 
@@ -41,9 +41,11 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 ```bash
 # All new tests
 uv run pytest backend/tests/unit/test_config.py -v -k "delete_branch"
-uv run pytest backend/tests/unit/git/test_delete_git_branch.py -v
+uv run pytest backend/tests/component/git/test_delete_git_branch.py -v
 uv run pytest backend/tests/unit/graphql/mutations/test_branch_delete.py -v
 uv run pytest backend/tests/functional/branch/test_branch_delete_after_merge.py -v
+uv run pytest backend/tests/functional/branch/test_delete_git_branch.py -v
+uv run pytest backend/tests/integration/git/test_delete_git_branch_gogs.py -v  # requires Docker
 
 # Full suite
 uv run invoke backend.test-unit
@@ -52,10 +54,10 @@ uv run invoke format && uv run invoke lint
 
 ### Manual Test Flow
 
-1. Set only `delete_git_branch_after_merge = true` (leave `delete_branch_after_merge = false`), restart — verify startup fails with a clear validation error
-2. Set `delete_branch_after_merge = true` in `infrahub.toml`, restart service
+1. Set only `[git] delete_git_branch_after_merge = true` (leave `[main] delete_branch_after_merge = false`), restart — verify startup fails with a clear validation error
+2. Set `[main] delete_branch_after_merge = true` in `infrahub.toml`, restart service
 2. Create a branch, make a change, merge via `BranchMerge` GraphQL mutation
 3. Verify branch no longer appears in branch list
 4. Repeat via proposed change merge — same result
-5. Set `delete_git_branch_after_merge = true` as well, merge a Git-synced branch
+5. Set `[git] delete_git_branch_after_merge = true` as well, merge a Git-synced branch
 6. Verify branch deleted from Git repositories; per-repo failures appear in repo task logs

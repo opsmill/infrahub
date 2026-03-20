@@ -129,7 +129,7 @@ Note: `origin_has_branch` is a synchronous method — do not use `await`.
 After the existing `BranchDeletedEvent` submission:
 
 ```python
-should_delete_git = config.SETTINGS.main.delete_git_branch_after_merge and obj.sync_with_git
+should_delete_git = config.SETTINGS.git.delete_git_branch_after_merge and obj.sync_with_git
 if should_delete_git:
     await get_workflow().submit_workflow(
         workflow=GIT_REPOSITORIES_DELETE_BRANCH,
@@ -157,9 +157,19 @@ if should_delete_git:
 - `TestDeleteBranchGitWorkflow.test_git_deletion_not_triggered_when_sync_with_git_false`
 - `TestDeleteBranchGitWorkflow.test_git_deletion_not_triggered_when_config_disabled`
 
+**Integration tests (Gogs):** `backend/tests/integration/git/test_delete_git_branch_gogs.py`
+
+Exercises the full chain against a real Gogs HTTP git server (via testcontainers). Requires Docker.
+
+- `TestDeleteGitBranchGogs.test_branch_deletion_propagates_to_gogs` — verifies branch is actually deleted from all Gogs repos via `git push --delete` over HTTP
+- `TestDeleteGitBranchGogs.test_branch_deletion_tolerates_missing_remote_branch` — verifies `BranchDelete` completes successfully (`ok: true`) when the remote branch was already deleted (fault-tolerance path)
+
+Shared Gogs fixtures live in `backend/tests/integration/git/conftest.py`: `gogs_server` (module-scoped Docker container), `create_gogs_repo` helper, and config-reset fixtures.
+
 **Verification:**
 
 ```bash
 uv run pytest backend/tests/component/git/test_delete_git_branch.py -v
 uv run pytest backend/tests/functional/branch/test_delete_git_branch.py -v
+uv run pytest backend/tests/integration/git/test_delete_git_branch_gogs.py -v
 ```

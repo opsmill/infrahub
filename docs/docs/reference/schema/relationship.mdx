@@ -23,6 +23,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**deprecation**](#deprecation) | Attribute | Mark relationship as deprecated and provide a user-friendly message to display | False |
 | [**description**](#description) | Attribute | Short description of the relationship. | False |
 | [**direction**](#direction) | Attribute | Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side. | False |
+| [**display**](#display) | Attribute | Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section. | False |
 | [**hierarchical**](#hierarchical) | Attribute | Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind | False |
 | [**identifier**](#identifier) | Attribute | Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction. | False |
 | [**kind**](#kind) | Attribute | Defines the type of the relationship. | True |
@@ -130,6 +131,18 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** | bidirectional |
 | **Constraints** |  |
 | **Accepted Values** | `bidirectional` `outbound` `inbound`  |
+
+### display
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | display |
+| **Kind** | `Text` |
+| **Description** | Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section. |
+| **Optional** | True |
+| **Default Value** | default |
+| **Constraints** |  |
+| **Accepted Values** | `default` `extra`  |
 
 ### hierarchical
 

@@ -1985,6 +1985,7 @@ type CoreCustomWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   display_label: String
   """The event type that triggers the webhook"""
   event_type: TextAttribute
+  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, value__is_protected: Boolean, value__owner__id: ID, value__source__id: ID, value__value: String, value__values: [String]): NestedPaginatedCoreKeyValue!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -2017,6 +2018,8 @@ input CoreCustomWebhookCreateInput {
   description: TextAttributeCreate
   """The event type that triggers the webhook"""
   event_type: TextAttributeCreate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   id: String
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeCreate
@@ -2051,6 +2054,8 @@ input CoreCustomWebhookUpdateInput {
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
   event_type: TextAttributeUpdate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -2081,6 +2086,8 @@ input CoreCustomWebhookUpsertInput {
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
   event_type: TextAttributeUpdate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -2333,6 +2340,103 @@ input CoreDataValidatorUpsertInput {
   """Current execution state of the validator"""
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type CoreEnvKeyValue implements CoreKeyValue & CoreNode {
+  _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
+  """Optional description of this key-value pair"""
+  description: TextAttribute
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  """The key portion of the key-value pair"""
+  key: TextAttribute
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """Unique name identifying this key-value pair"""
+  name: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """The value portion of the key-value pair"""
+  value: TextAttribute
+}
+
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type CoreEnvKeyValueCreate {
+  object: CoreEnvKeyValue
+  ok: Boolean
+}
+
+input CoreEnvKeyValueCreateInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeCreate
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeCreate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeCreate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeCreate
+}
+
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type CoreEnvKeyValueDelete {
+  ok: Boolean
+}
+
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type CoreEnvKeyValueUpdate {
+  object: CoreEnvKeyValue
+  ok: Boolean
+}
+
+input CoreEnvKeyValueUpdateInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeUpdate
+}
+
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type CoreEnvKeyValueUpsert {
+  object: CoreEnvKeyValue
+  ok: Boolean
+}
+
+input CoreEnvKeyValueUpsertInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeUpdate
 }
 
 """A check related to a file in a Git Repository"""
@@ -4171,6 +4275,50 @@ input CoreIPPrefixPoolUpsertInput {
   name: TextAttributeUpdate
   resources: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""
+A reusable key-value pair for associating named values with other objects
+"""
+interface CoreKeyValue {
+  """Optional description of this key-value pair"""
+  description: TextAttribute
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttribute
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """Unique name identifying this key-value pair"""
+  name: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """The value portion of the key-value pair"""
+  value: TextAttribute
+}
+
+"""
+A reusable key-value pair for associating named values with other objects
+"""
+type CoreKeyValueUpdate {
+  object: CoreKeyValue
+  ok: Boolean
+}
+
+input CoreKeyValueUpdateInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeUpdate
 }
 
 """Element of the Menu"""
@@ -6333,6 +6481,7 @@ type CoreStandardWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   display_label: String
   """The event type that triggers the webhook"""
   event_type: TextAttribute
+  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, value__is_protected: Boolean, value__owner__id: ID, value__source__id: ID, value__value: String, value__values: [String]): NestedPaginatedCoreKeyValue!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -6364,6 +6513,8 @@ input CoreStandardWebhookCreateInput {
   description: TextAttributeCreate
   """The event type that triggers the webhook"""
   event_type: TextAttributeCreate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   id: String
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeCreate
@@ -6397,6 +6548,8 @@ input CoreStandardWebhookUpdateInput {
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
   event_type: TextAttributeUpdate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -6426,6 +6579,8 @@ input CoreStandardWebhookUpsertInput {
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
   event_type: TextAttributeUpdate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -6439,6 +6594,93 @@ input CoreStandardWebhookUpsertInput {
   url: TextAttributeUpdate
   """Whether to validate SSL/TLS certificates"""
   validate_certificates: CheckboxAttributeUpdate
+}
+
+"""A key-value pair with a plain-text value"""
+type CoreStaticKeyValue implements CoreKeyValue & CoreNode {
+  _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
+  """Optional description of this key-value pair"""
+  description: TextAttribute
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  """The key portion of the key-value pair"""
+  key: TextAttribute
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """Unique name identifying this key-value pair"""
+  name: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """The value portion of the key-value pair"""
+  value: TextAttribute
+}
+
+"""A key-value pair with a plain-text value"""
+type CoreStaticKeyValueCreate {
+  object: CoreStaticKeyValue
+  ok: Boolean
+}
+
+input CoreStaticKeyValueCreateInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeCreate
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeCreate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeCreate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeCreate
+}
+
+"""A key-value pair with a plain-text value"""
+type CoreStaticKeyValueDelete {
+  ok: Boolean
+}
+
+"""A key-value pair with a plain-text value"""
+type CoreStaticKeyValueUpdate {
+  object: CoreStaticKeyValue
+  ok: Boolean
+}
+
+input CoreStaticKeyValueUpdateInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeUpdate
+}
+
+"""A key-value pair with a plain-text value"""
+type CoreStaticKeyValueUpsert {
+  object: CoreStaticKeyValue
+  ok: Boolean
+}
+
+input CoreStaticKeyValueUpsertInput {
+  """Optional description of this key-value pair"""
+  description: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  """The key portion of the key-value pair"""
+  key: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  """Unique name identifying this key-value pair"""
+  name: TextAttributeUpdate
+  subscriber_of_groups: [RelatedNodeInput]
+  """The value portion of the key-value pair"""
+  value: TextAttributeUpdate
 }
 
 """Extend a node to be associated with tasks"""
@@ -7048,6 +7290,7 @@ interface CoreWebhook {
   display_label: String
   """The event type that triggers the webhook"""
   event_type: TextAttribute
+  headers(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, key__is_protected: Boolean, key__owner__id: ID, key__source__id: ID, key__value: String, key__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, value__is_protected: Boolean, value__owner__id: ID, value__source__id: ID, value__value: String, value__values: [String]): NestedPaginatedCoreKeyValue!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -7077,6 +7320,8 @@ input CoreWebhookUpdateInput {
   description: TextAttributeUpdate
   """The event type that triggers the webhook"""
   event_type: TextAttributeUpdate
+  """Custom HTTP headers sent with webhook requests"""
+  headers: [RelatedNodeInput]
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -7455,6 +7700,14 @@ type EdgedCoreDataValidator {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type EdgedCoreEnvKeyValue {
+  node: CoreEnvKeyValue
+  node_metadata: InfrahubNodeMetadata
+}
+
 """A check related to a file in a Git Repository"""
 type EdgedCoreFileCheck {
   node: CoreFileCheck
@@ -7578,6 +7831,14 @@ type EdgedCoreIPAddressPool {
 """A pool of IP prefix resources"""
 type EdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
+  node_metadata: InfrahubNodeMetadata
+}
+
+"""
+A reusable key-value pair for associating named values with other objects
+"""
+type EdgedCoreKeyValue {
+  node: CoreKeyValue
   node_metadata: InfrahubNodeMetadata
 }
 
@@ -7736,6 +7997,12 @@ type EdgedCoreStandardGroup {
 """A webhook that connects to an external integration"""
 type EdgedCoreStandardWebhook {
   node: CoreStandardWebhook
+  node_metadata: InfrahubNodeMetadata
+}
+
+"""A key-value pair with a plain-text value"""
+type EdgedCoreStaticKeyValue {
+  node: CoreStaticKeyValue
   node_metadata: InfrahubNodeMetadata
 }
 
@@ -8739,6 +9006,22 @@ type Mutation {
   CoreDataValidatorUpdate(context: ContextInput, data: CoreDataValidatorUpdateInput!): CoreDataValidatorUpdate
   """A check to validate the data integrity between two branches"""
   CoreDataValidatorUpsert(context: ContextInput, data: CoreDataValidatorUpsertInput!): CoreDataValidatorUpsert
+  """
+  A key-value pair whose value is resolved from an environment variable at send time
+  """
+  CoreEnvKeyValueCreate(context: ContextInput, data: CoreEnvKeyValueCreateInput!): CoreEnvKeyValueCreate
+  """
+  A key-value pair whose value is resolved from an environment variable at send time
+  """
+  CoreEnvKeyValueDelete(context: ContextInput, data: DeleteInput!): CoreEnvKeyValueDelete
+  """
+  A key-value pair whose value is resolved from an environment variable at send time
+  """
+  CoreEnvKeyValueUpdate(context: ContextInput, data: CoreEnvKeyValueUpdateInput!): CoreEnvKeyValueUpdate
+  """
+  A key-value pair whose value is resolved from an environment variable at send time
+  """
+  CoreEnvKeyValueUpsert(context: ContextInput, data: CoreEnvKeyValueUpsertInput!): CoreEnvKeyValueUpsert
   """A check related to a file in a Git Repository"""
   CoreFileCheckCreate(context: ContextInput, data: CoreFileCheckCreateInput!): CoreFileCheckCreate
   """A check related to a file in a Git Repository"""
@@ -8900,6 +9183,10 @@ type Mutation {
   CoreIPPrefixPoolUpdate(context: ContextInput, data: CoreIPPrefixPoolUpdateInput!): CoreIPPrefixPoolUpdate
   """A pool of IP prefix resources"""
   CoreIPPrefixPoolUpsert(context: ContextInput, data: CoreIPPrefixPoolUpsertInput!): CoreIPPrefixPoolUpsert
+  """
+  A reusable key-value pair for associating named values with other objects
+  """
+  CoreKeyValueUpdate(context: ContextInput, data: CoreKeyValueUpdateInput!): CoreKeyValueUpdate
   """Menu Item"""
   CoreMenuItemCreate(context: ContextInput, data: CoreMenuItemCreateInput!): CoreMenuItemCreate
   """Menu Item"""
@@ -9082,6 +9369,14 @@ type Mutation {
   CoreStandardWebhookUpdate(context: ContextInput, data: CoreStandardWebhookUpdateInput!): CoreStandardWebhookUpdate
   """A webhook that connects to an external integration"""
   CoreStandardWebhookUpsert(context: ContextInput, data: CoreStandardWebhookUpsertInput!): CoreStandardWebhookUpsert
+  """A key-value pair with a plain-text value"""
+  CoreStaticKeyValueCreate(context: ContextInput, data: CoreStaticKeyValueCreateInput!): CoreStaticKeyValueCreate
+  """A key-value pair with a plain-text value"""
+  CoreStaticKeyValueDelete(context: ContextInput, data: DeleteInput!): CoreStaticKeyValueDelete
+  """A key-value pair with a plain-text value"""
+  CoreStaticKeyValueUpdate(context: ContextInput, data: CoreStaticKeyValueUpdateInput!): CoreStaticKeyValueUpdate
+  """A key-value pair with a plain-text value"""
+  CoreStaticKeyValueUpsert(context: ContextInput, data: CoreStaticKeyValueUpsertInput!): CoreStaticKeyValueUpsert
   """Extend a node to be associated with tasks"""
   CoreTaskTargetUpdate(context: ContextInput, data: CoreTaskTargetUpdateInput!): CoreTaskTargetUpdate
   """A comment on thread within a Proposed Change"""
@@ -9404,6 +9699,16 @@ type NestedEdgedCoreDataValidator {
   relationship_metadata: InfrahubRelationshipMetadata
 }
 
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type NestedEdgedCoreEnvKeyValue {
+  node: CoreEnvKeyValue
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
 """A check related to a file in a Git Repository"""
 type NestedEdgedCoreFileCheck {
   node: CoreFileCheck
@@ -9570,6 +9875,17 @@ type NestedEdgedCoreIPAddressPool {
 type NestedEdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
   node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""
+A reusable key-value pair for associating named values with other objects
+"""
+type NestedEdgedCoreKeyValue {
+  _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
+  node: CoreKeyValue
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
 }
@@ -9784,6 +10100,14 @@ type NestedEdgedCoreStandardGroup {
 """A webhook that connects to an external integration"""
 type NestedEdgedCoreStandardWebhook {
   node: CoreStandardWebhook
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""A key-value pair with a plain-text value"""
+type NestedEdgedCoreStaticKeyValue {
+  node: CoreStaticKeyValue
   node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
@@ -10147,6 +10471,15 @@ type NestedPaginatedCoreDataValidator {
   permissions: PaginatedObjectPermission!
 }
 
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type NestedPaginatedCoreEnvKeyValue {
+  count: Int!
+  edges: [NestedEdgedCoreEnvKeyValue!]!
+  permissions: PaginatedObjectPermission!
+}
+
 """A check related to a file in a Git Repository"""
 type NestedPaginatedCoreFileCheck {
   count: Int!
@@ -10287,6 +10620,14 @@ type NestedPaginatedCoreIPPrefixPool {
   count: Int!
   edges: [NestedEdgedCoreIPPrefixPool!]!
   permissions: PaginatedObjectPermission!
+}
+
+"""
+A reusable key-value pair for associating named values with other objects
+"""
+type NestedPaginatedCoreKeyValue {
+  count: Int!
+  edges: [NestedEdgedCoreKeyValue!]
 }
 
 """Element of the Menu"""
@@ -10465,6 +10806,13 @@ type NestedPaginatedCoreStandardWebhook {
   permissions: PaginatedObjectPermission!
 }
 
+"""A key-value pair with a plain-text value"""
+type NestedPaginatedCoreStaticKeyValue {
+  count: Int!
+  edges: [NestedEdgedCoreStaticKeyValue!]!
+  permissions: PaginatedObjectPermission!
+}
+
 """Extend a node to be associated with tasks"""
 type NestedPaginatedCoreTaskTarget {
   count: Int!
@@ -10629,6 +10977,7 @@ type NodeEdge {
 type NodeEdges {
   count: Int!
   edges: [NodeEdge!]!
+  parent_prefixes: [NodeEdge!]
 }
 
 type NodeMutatedEvent implements EventNodeInterface {
@@ -10911,6 +11260,15 @@ type PaginatedCoreDataValidator {
   permissions: PaginatedObjectPermission!
 }
 
+"""
+A key-value pair whose value is resolved from an environment variable at send time
+"""
+type PaginatedCoreEnvKeyValue {
+  count: Int!
+  edges: [EdgedCoreEnvKeyValue!]!
+  permissions: PaginatedObjectPermission!
+}
+
 """A check related to a file in a Git Repository"""
 type PaginatedCoreFileCheck {
   count: Int!
@@ -11054,6 +11412,15 @@ type PaginatedCoreIPAddressPool {
 type PaginatedCoreIPPrefixPool {
   count: Int!
   edges: [EdgedCoreIPPrefixPool!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""
+A reusable key-value pair for associating named values with other objects
+"""
+type PaginatedCoreKeyValue {
+  count: Int!
+  edges: [EdgedCoreKeyValue!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -11237,6 +11604,13 @@ type PaginatedCoreStandardGroup {
 type PaginatedCoreStandardWebhook {
   count: Int!
   edges: [EdgedCoreStandardWebhook!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A key-value pair with a plain-text value"""
+type PaginatedCoreStaticKeyValue {
+  count: Int!
+  edges: [EdgedCoreStaticKeyValue!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -15113,6 +15487,31 @@ type Query {
     event_type__source__id: ID
     event_type__value: String
     event_type__values: [String]
+    headers__description__is_protected: Boolean
+    headers__description__owner__id: ID
+    headers__description__source__id: ID
+    headers__description__value: String
+    headers__description__values: [String]
+    headers__display_label__isnull: Boolean
+    headers__display_label__value: String
+    headers__display_label__values: [String]
+    headers__ids: [ID]
+    headers__isnull: Boolean
+    headers__key__is_protected: Boolean
+    headers__key__owner__id: ID
+    headers__key__source__id: ID
+    headers__key__value: String
+    headers__key__values: [String]
+    headers__name__is_protected: Boolean
+    headers__name__owner__id: ID
+    headers__name__source__id: ID
+    headers__name__value: String
+    headers__name__values: [String]
+    headers__value__is_protected: Boolean
+    headers__value__owner__id: ID
+    headers__value__source__id: ID
+    headers__value__value: String
+    headers__value__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -15569,6 +15968,92 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreDataValidator!
+  CoreEnvKeyValue(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    description__is_protected: Boolean
+    description__isnull: Boolean
+    description__owner__id: ID
+    description__source__id: ID
+    description__value: String
+    description__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    hfid: [String]
+    ids: [ID]
+    key__is_protected: Boolean
+    key__isnull: Boolean
+    key__owner__id: ID
+    key__source__id: ID
+    key__value: String
+    key__values: [String]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    name__is_protected: Boolean
+    name__isnull: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+    value__is_protected: Boolean
+    value__isnull: Boolean
+    value__owner__id: ID
+    value__source__id: ID
+    value__value: String
+    value__values: [String]
+  ): PaginatedCoreEnvKeyValue!
   CoreFileCheck(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -18636,6 +19121,92 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreIPPrefixPool!
+  CoreKeyValue(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    description__is_protected: Boolean
+    description__isnull: Boolean
+    description__owner__id: ID
+    description__source__id: ID
+    description__value: String
+    description__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    hfid: [String]
+    ids: [ID]
+    key__is_protected: Boolean
+    key__isnull: Boolean
+    key__owner__id: ID
+    key__source__id: ID
+    key__value: String
+    key__values: [String]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    name__is_protected: Boolean
+    name__isnull: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+    value__is_protected: Boolean
+    value__isnull: Boolean
+    value__owner__id: ID
+    value__source__id: ID
+    value__value: String
+    value__values: [String]
+  ): PaginatedCoreKeyValue!
   CoreMenu(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -22293,6 +22864,31 @@ type Query {
     event_type__source__id: ID
     event_type__value: String
     event_type__values: [String]
+    headers__description__is_protected: Boolean
+    headers__description__owner__id: ID
+    headers__description__source__id: ID
+    headers__description__value: String
+    headers__description__values: [String]
+    headers__display_label__isnull: Boolean
+    headers__display_label__value: String
+    headers__display_label__values: [String]
+    headers__ids: [ID]
+    headers__isnull: Boolean
+    headers__key__is_protected: Boolean
+    headers__key__owner__id: ID
+    headers__key__source__id: ID
+    headers__key__value: String
+    headers__key__values: [String]
+    headers__name__is_protected: Boolean
+    headers__name__owner__id: ID
+    headers__name__source__id: ID
+    headers__name__value: String
+    headers__name__values: [String]
+    headers__value__is_protected: Boolean
+    headers__value__owner__id: ID
+    headers__value__source__id: ID
+    headers__value__value: String
+    headers__value__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -22376,6 +22972,92 @@ type Query {
     validate_certificates__value: Boolean
     validate_certificates__values: [Boolean]
   ): PaginatedCoreStandardWebhook!
+  CoreStaticKeyValue(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    description__is_protected: Boolean
+    description__isnull: Boolean
+    description__owner__id: ID
+    description__source__id: ID
+    description__value: String
+    description__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    hfid: [String]
+    ids: [ID]
+    key__is_protected: Boolean
+    key__isnull: Boolean
+    key__owner__id: ID
+    key__source__id: ID
+    key__value: String
+    key__values: [String]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    name__is_protected: Boolean
+    name__isnull: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+    value__is_protected: Boolean
+    value__isnull: Boolean
+    value__owner__id: ID
+    value__source__id: ID
+    value__value: String
+    value__values: [String]
+  ): PaginatedCoreStaticKeyValue!
   CoreTaskTarget(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -23848,6 +24530,31 @@ type Query {
     event_type__source__id: ID
     event_type__value: String
     event_type__values: [String]
+    headers__description__is_protected: Boolean
+    headers__description__owner__id: ID
+    headers__description__source__id: ID
+    headers__description__value: String
+    headers__description__values: [String]
+    headers__display_label__isnull: Boolean
+    headers__display_label__value: String
+    headers__display_label__values: [String]
+    headers__ids: [ID]
+    headers__isnull: Boolean
+    headers__key__is_protected: Boolean
+    headers__key__owner__id: ID
+    headers__key__source__id: ID
+    headers__key__value: String
+    headers__key__values: [String]
+    headers__name__is_protected: Boolean
+    headers__name__owner__id: ID
+    headers__name__source__id: ID
+    headers__name__value: String
+    headers__name__values: [String]
+    headers__value__is_protected: Boolean
+    headers__value__owner__id: ID
+    headers__value__source__id: ID
+    headers__value__value: String
+    headers__value__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int

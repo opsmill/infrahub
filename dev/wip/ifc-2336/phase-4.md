@@ -82,7 +82,7 @@ async def delete_branch(
 Update the `should_delete_git` condition to include the explicit flag:
 
 ```python
-should_delete_git = (config.SETTINGS.main.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
+should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
 ```
 
 ---

@@ -179,7 +179,17 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/schema",
-                lazy: () => import("@/pages/schema"),
+                lazy: () => import("@/pages/schema/layout"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/schema/list"),
+                  },
+                  {
+                    path: "graph",
+                    lazy: () => import("@/pages/schema/graph"),
+                  },
+                ],
               },
               {
                 path: "ipam",

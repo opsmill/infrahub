@@ -344,16 +344,18 @@ async def git_branch_delete(
     repository_location: str,
 ) -> None:
     log = get_run_logger()
+    await add_branch_tag(branch_name=branch)
     repo = await InfrahubRepository.init(
         id=repository_id, name=repository_name, location=repository_location, client=client
     )
-    if not repo.origin_has_branch(branch):
-        return
     async with lock.registry.get(name=repository_name, namespace="repository"):
+        if not repo.origin_has_branch(branch):
+            return
+
         try:
             await repo.delete_remote_branch(branch_name=branch)
-        except Exception:
-            log.exception(f"Failed to delete Git branch '{branch}' from repository '{repository_name}'")
+        except Exception as exc:
+            log.exception(f"Failed to delete Git branch '{branch}' from repository '{repository_name}' - {str(exc)}")
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")

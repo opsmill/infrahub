@@ -37,7 +37,11 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
         await load_schema(db, schema=CAR_SCHEMA)
 
     async def test_branch_auto_deleted_after_standard_merge_when_config_enabled(
-        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
+        self,
+        initial_dataset: None,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        delete_branch_after_merge_reset_config: None,
     ) -> None:
         config.SETTINGS.main.delete_branch_after_merge = True
         branch = await client.branch.create(branch_name="auto_delete_standard_enabled")
@@ -57,7 +61,11 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
             )
 
     async def test_branch_not_deleted_after_standard_merge_when_config_disabled(
-        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
+        self,
+        initial_dataset: None,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        delete_branch_after_merge_reset_config: None,
     ) -> None:
         config.SETTINGS.main.delete_branch_after_merge = False
         branch = await client.branch.create(branch_name="auto_delete_standard_disabled")
@@ -74,7 +82,11 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
             assert not delete_calls
 
     async def test_branch_auto_deleted_after_proposed_change_merge(
-        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
+        self,
+        initial_dataset: None,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        delete_branch_after_merge_reset_config: None,
     ) -> None:
         config.SETTINGS.main.delete_branch_after_merge = True
         branch = await client.branch.create(branch_name="auto_delete_pc_enabled")
@@ -103,43 +115,3 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
                 context=ANY,
                 parameters={"branch": branch.name},
             )
-
-    @pytest.mark.skip("Multiple proposed changes are not allowed for the same branch")
-    async def test_branch_not_deleted_when_other_open_proposed_changes_exist(
-        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase
-    ) -> None:
-        config.SETTINGS.main.delete_branch_after_merge = True
-        branch = await client.branch.create(branch_name="auto_delete_pc_other_open")
-
-        pc1 = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
-            data={
-                "name": {"value": "pc-open-1"},
-                "source_branch": {"value": branch.name},
-                "destination_branch": {"value": registry.default_branch},
-                "is_draft": {"value": False},
-            },
-        )
-        await pc1.save()
-
-        pc2 = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
-            data={
-                "name": {"value": "pc-open-2"},
-                "source_branch": {"value": branch.name},
-                "destination_branch": {"value": "pc-open-1"},
-                "is_draft": {"value": False},
-            },
-        )
-        await pc2.save()
-
-        with patch.object(WorkflowLocalExecution, "submit_workflow", new_callable=AsyncMock) as mock_submit:
-            update_query = Mutation(
-                mutation="CoreProposedChangeUpdate",
-                input_data={"data": {"id": pc1.id, "state": {"value": "merged"}}},
-                query={"ok": None, "object": {"state": {"value": None}}},
-            )
-            await client.execute_graphql(query=update_query.render())
-
-            delete_calls = [c for c in mock_submit.call_args_list if c.kwargs.get("workflow") == BRANCH_DELETE]
-            assert not delete_calls

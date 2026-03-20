@@ -197,6 +197,7 @@ GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="delete_git_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 GIT_REPOSITORY_ADD = WorkflowDefinition(
@@ -532,6 +533,13 @@ WEBHOOK_PROCESS = WorkflowDefinition(
     function="webhook_process",
 )
 
+WEBHOOK_INVALIDATE_HEADERS = WorkflowDefinition(
+    name="webhook-invalidate-headers",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.webhook.tasks.invalidate",
+    function="invalidate_webhook_headers",
+)
+
 WEBHOOK_CONFIGURE = WorkflowDefinition(
     name="webhook-configure",
     type=WorkflowType.INTERNAL,
@@ -740,6 +748,7 @@ WORKFLOWS = [
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     VALIDATE_SCHEMA_NUMBER_POOLS,
     WEBHOOK_CONFIGURE,
+    WEBHOOK_INVALIDATE_HEADERS,
     WEBHOOK_PROCESS,
 ]
 
