@@ -896,7 +896,7 @@ class LogForwardingDestinationType(StrEnum):
     SYSLOG = "syslog"
 
 
-class LogForwardingDestination(BaseSettings):
+class LogForwardingDestination(BaseModel):
     name: str = Field(description="Unique name for the destination, used in all observability output.")
     type: LogForwardingDestinationType = Field(
         default=LogForwardingDestinationType.SYSLOG, description="Destination type."
