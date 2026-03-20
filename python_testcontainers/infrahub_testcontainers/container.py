@@ -7,10 +7,10 @@ import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
+from typing import Self
 
 from testcontainers.compose import DockerCompose
 from testcontainers.core.exceptions import ContainerIsNotRunning
-from typing_extensions import Self
 
 from infrahub_testcontainers import __version__ as infrahub_version
 
