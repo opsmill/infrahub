@@ -898,7 +898,9 @@ class LogForwardingDestinationType(StrEnum):
 
 class LogForwardingDestination(BaseSettings):
     name: str = Field(description="Unique name for the destination, used in all observability output.")
-    type: LogForwardingDestinationType = Field(description="Destination type.")
+    type: LogForwardingDestinationType = Field(
+        default=LogForwardingDestinationType.SYSLOG, description="Destination type."
+    )
     host: str = Field(description="Destination host or IP address.")
     port: int = Field(ge=1, le=65535, description="Destination port number.")
     protocol: SyslogProtocol = Field(default=SyslogProtocol.TCP, description="Transport protocol (tcp or udp).")
