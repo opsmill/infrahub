@@ -11,12 +11,7 @@ type CommentProps = {
   content: string;
   className?: string;
 };
-export const Comment: React.FC<CommentProps> = ({
-  author,
-  createdAt,
-  content,
-  className = "",
-}) => {
+export const Comment: React.FC<CommentProps> = ({ author, createdAt, content, className = "" }) => {
   return (
     <div
       className={classNames("rounded-lg bg-white p-2 text-base", className)}
