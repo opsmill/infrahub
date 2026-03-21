@@ -90,11 +90,23 @@ def test_log_forwarding_settings_empty_destinations() -> None:
 
 
 def test_log_forwarding_settings_duplicate_names_rejected() -> None:
-    with pytest.raises(ValidationError, match="Destination names must be unique"):
+    with pytest.raises(ValidationError, match="duplicates found: dup"):
         LogForwardingSettings(
             destinations=[
                 LogForwardingDestination(name="dup", type=LogForwardingDestinationType.SYSLOG, host="host1", port=514),
                 LogForwardingDestination(name="dup", type=LogForwardingDestinationType.SYSLOG, host="host2", port=515),
+            ]
+        )
+
+
+def test_log_forwarding_settings_multiple_duplicate_names_listed() -> None:
+    with pytest.raises(ValidationError, match="duplicates found: aaa, bbb"):
+        LogForwardingSettings(
+            destinations=[
+                LogForwardingDestination(name="aaa", type=LogForwardingDestinationType.SYSLOG, host="h1", port=514),
+                LogForwardingDestination(name="bbb", type=LogForwardingDestinationType.SYSLOG, host="h2", port=514),
+                LogForwardingDestination(name="aaa", type=LogForwardingDestinationType.SYSLOG, host="h3", port=514),
+                LogForwardingDestination(name="bbb", type=LogForwardingDestinationType.SYSLOG, host="h4", port=514),
             ]
         )
 

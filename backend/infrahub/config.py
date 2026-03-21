@@ -944,10 +944,13 @@ class LogForwardingSettings(BaseSettings):
     @field_validator("destinations")
     @classmethod
     def validate_unique_names(cls, v: list[LogForwardingDestination]) -> list[LogForwardingDestination]:
-        names = [d.name for d in v]
-        if len(names) != len(set(names)):
-            raise ValueError("Destination names must be unique")
-        return v
+        unique_names = {d.name for d in v}
+        if len(unique_names) == len(v):
+            return v
+        all_names = [d.name for d in v]
+        duplicate_names = {name for name in unique_names if all_names.count(name) > 1}
+        sorted_dupes = ", ".join(sorted(duplicate_names))
+        raise ValueError(f"Destination names must be unique; duplicates found: {sorted_dupes}")
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
