@@ -38,21 +38,20 @@ FROM docker.io/node:22-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
-# Create directory structure that matches the relative paths in package.json
-# App is at /frontend/app, packages at /frontend/packages
-RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer
+RUN npm install -g pnpm
 
-# Copy the schema-visualizer package (app imports it directly as TypeScript source)
-COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
-WORKDIR /frontend/packages/schema-visualizer
-RUN npm install
+# Copy workspace root config and lockfile
+COPY frontend/package.json frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml /frontend/
+# Copy package manifests for dependency install layer caching
+COPY frontend/app/package.json /frontend/app/
+COPY frontend/packages/schema-visualizer/package.json /frontend/packages/schema-visualizer/
+WORKDIR /frontend
+RUN pnpm install --frozen-lockfile
 
-# Copy the app package.json and install dependencies
-COPY frontend/app/package.json frontend/app/package-lock.json /frontend/app/
-WORKDIR /frontend/app
-RUN npm install --omit=dev
+# Copy source and build
 COPY frontend/app/ /frontend/app/
-RUN npm run build && npm cache clean --force
+COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
+RUN pnpm --filter frontend run build && pnpm store prune
 
 # ****************************************************************
 # STAGE : Documentation

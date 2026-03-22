@@ -131,14 +131,6 @@
     "vitest": "^4.0.18",
     "vitest-browser-react": "^2.0.5"
   },
-  "pnpm": {
-    "overrides": {
-      "graphiql-explorer>graphql": "^16.11.0",
-      "graphiql-explorer>react": "19.2.4",
-      "graphiql-explorer>react-dom": "19.2.4",
-      "react-syntax-highlighter>prismjs": "^1.30.0"
-    }
-  },
   "browserslist": {
     "production": [
       ">0.2%",

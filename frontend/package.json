@@ -4,5 +4,13 @@
   "scripts": {
     "setup": "git -C .. submodule update --init --recursive && pnpm install",
     "submodule:update": "git -C .. submodule update --remote packages/schema-visualizer && pnpm install"
+  },
+  "pnpm": {
+    "overrides": {
+      "graphiql-explorer>graphql": "^16.11.0",
+      "graphiql-explorer>react": "19.2.4",
+      "graphiql-explorer>react-dom": "19.2.4",
+      "react-syntax-highlighter>prismjs": "^1.30.0"
+    }
   }
 }
