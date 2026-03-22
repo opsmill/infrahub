@@ -13,6 +13,7 @@ ignore: |
   /python_sdk
   /frontend/packages/schema-visualizer
   **/pnpm-lock.yaml
+  **/pnpm-workspace.yaml
 
 rules:
   new-lines: disable
