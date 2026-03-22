@@ -4,11 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "git -C ../.. submodule update --init --recursive && npm install --prefix ../packages/schema-visualizer",
-    "submodule:update": "git -C ../.. submodule update --remote frontend/packages/schema-visualizer && npm install --prefix ../packages/schema-visualizer",
     "start": "vite",
     "dev": "VITE_DEVTOOLS=1 vite",
-    "build": "npm install --prefix ../packages/schema-visualizer && vite build",
+    "build": "vite build",
     "serve": "vite preview",
     "build-serve": "npm run build && npm run serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
@@ -69,7 +67,7 @@
     "graphiql": "^5.2.2",
     "graphql": "^16.13.1",
     "handlebars": "^4.7.8",
-    "infrahub-schema-visualizer": "file:../packages/schema-visualizer",
+    "infrahub-schema-visualizer": "workspace:*",
     "jotai": "^2.18.1",
     "json-to-graphql-query": "^2.2.5",
     "lucide-react": "^0.577.0",
@@ -133,14 +131,12 @@
     "vitest": "^4.0.18",
     "vitest-browser-react": "^2.0.5"
   },
-  "overrides": {
-    "graphiql-explorer": {
-      "graphql": "^16.11.0",
-      "react": "19.2.4",
-      "react-dom": "19.2.4"
-    },
-    "react-syntax-highlighter": {
-      "prismjs": "^1.30.0"
+  "pnpm": {
+    "overrides": {
+      "graphiql-explorer>graphql": "^16.11.0",
+      "graphiql-explorer>react": "19.2.4",
+      "graphiql-explorer>react-dom": "19.2.4",
+      "react-syntax-highlighter>prismjs": "^1.30.0"
     }
   },
   "browserslist": {
