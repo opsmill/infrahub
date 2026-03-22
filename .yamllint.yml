@@ -12,6 +12,7 @@ ignore: |
   /helm/templates
   /python_sdk
   /frontend/packages/schema-visualizer
+  **/pnpm-lock.yaml
 
 rules:
   new-lines: disable
