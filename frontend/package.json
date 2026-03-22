@@ -1,6 +1,7 @@
 {
   "name": "infrahub-frontend",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "setup": "git -C .. submodule update --init --recursive && pnpm install",
     "submodule:update": "git -C .. submodule update --remote packages/schema-visualizer && pnpm install"

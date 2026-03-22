@@ -38,19 +38,21 @@ FROM docker.io/node:22-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 
 # Copy workspace root config and lockfile
 COPY frontend/package.json frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml /frontend/
 # Copy package manifests for dependency install layer caching
 COPY frontend/app/package.json /frontend/app/
 COPY frontend/packages/schema-visualizer/package.json /frontend/packages/schema-visualizer/
+COPY frontend/packages/ui/package.json /frontend/packages/ui/
 WORKDIR /frontend
 RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY frontend/app/ /frontend/app/
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
+COPY frontend/packages/ui/ /frontend/packages/ui/
 RUN pnpm --filter frontend run build && pnpm store prune
 
 # ****************************************************************
