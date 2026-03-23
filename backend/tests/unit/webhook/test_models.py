@@ -143,6 +143,28 @@ def test_assign_headers_skips_missing_environment_variable(caplog: pytest.LogCap
     assert "test" in caplog.text  # webhook name included in warning
 
 
+def test_assign_headers_warns_on_duplicate_keys(caplog: pytest.LogCaptureFixture) -> None:
+    """Duplicate header keys produce a warning and the last value wins."""
+    webhook = CustomWebhook(
+        name="dup-test",
+        url="http://test.com",
+        event_type="test",
+        validate_certificates=True,
+        custom_headers=[
+            WebhookHeader(key="X-Token", value="first", kind=HeaderKind.STATIC),
+            WebhookHeader(key="X-Token", value="second", kind=HeaderKind.STATIC),
+        ],
+    )
+
+    with caplog.at_level(logging.WARNING, logger="infrahub.webhook.models"):
+        webhook._assign_headers()
+
+    assert webhook._headers is not None
+    assert webhook._headers["X-Token"] == "second"
+    assert "duplicate header key 'X-Token'" in caplog.text
+    assert "dup-test" in caplog.text
+
+
 def test_webhook_signature_with_payload() -> None:
     """Signature is computed on compact JSON of the payload, not str(dict) or spaced JSON.
 
