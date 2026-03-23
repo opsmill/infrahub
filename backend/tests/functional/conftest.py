@@ -17,3 +17,10 @@ def delete_branch_after_merge_reset_config() -> Generator[None]:
     original = config.SETTINGS.main.delete_branch_after_merge
     yield
     config.SETTINGS.main.delete_branch_after_merge = original
+
+
+@pytest.fixture
+def delete_git_branch_after_merge_reset_config() -> Generator[None]:
+    original = config.SETTINGS.git.delete_git_branch_after_merge
+    yield
+    config.SETTINGS.git.delete_git_branch_after_merge = original

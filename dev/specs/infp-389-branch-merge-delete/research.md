@@ -41,16 +41,21 @@ All implementation unknowns have been resolved through codebase analysis. No ext
 
 ## Decision 3: Git Branch Deletion Architecture
 
-**Decision**: Add a new `delete_branch_in_git()` method to `InfrahubRepositoryBase` (`backend/infrahub/git/base.py`). This method:
-1. Removes the branch worktree directory (`<repo>/branches/<branch_name>/`)
-2. Deletes the local Git branch reference
-3. Pushes `--delete` to the remote origin
+**Decision** (as implemented): Add two methods to `InfrahubRepositoryBase` (`backend/infrahub/git/base.py`):
+- `origin_has_branch(branch_name: str) -> bool` — synchronous check: returns `True` if the branch exists as a remote ref on `origin`
+- `delete_remote_branch(branch_name: str) -> None` — async: calls `git push origin --delete <branch>` and removes the local tracking ref
 
-Add a new `GitRepositoryDeleteBranch` Pydantic model in `backend/infrahub/git/models.py`, a new `GIT_REPOSITORY_DELETE_BRANCH` `WorkflowDefinition` in `backend/infrahub/workflows/catalogue.py`, and a corresponding `delete_git_repository_branch()` task in `backend/infrahub/git/tasks.py`.
+Add `GIT_REPOSITORIES_DELETE_BRANCH` (plural, `WorkflowType.CORE`) to `backend/infrahub/workflows/catalogue.py`, pointing to `infrahub.git.tasks.delete_git_branch`.
 
-The `delete_branch()` task in `backend/infrahub/core/branch/tasks.py` is extended to: after the graph deletion succeeds and `sync_with_git=True` and `config.SETTINGS.git.delete_branch_after_merge` is enabled, query all `CoreRepository` objects synced to that branch and submit `GIT_REPOSITORY_DELETE_BRANCH` for each.
+Implement as a two-level Prefect fan-out in `backend/infrahub/git/tasks.py`:
+- `delete_git_branch(branch: str)` flow — fetches all `CoreRepository` nodes, creates a batch, submits one `git_branch_delete` task per repo
+- `git_branch_delete(client, branch, repository_id, repository_name, repository_location)` task — calls `origin_has_branch` (early return if absent), then `delete_remote_branch` inside a per-repo try/except
 
-**Rationale**: Follows the existing pattern exactly: `GIT_REPOSITORIES_MERGE` is submitted from `merge_branch()` for each repo. Git operations are always isolated per-repository. `InfrahubRepositoryBase` already has all the worktree introspection needed.
+No `GitRepositoryDeleteBranch` Pydantic model was created — parameters are passed directly as kwargs.
+
+**Rationale**: The fan-out flow pattern (fetch all repos → batch tasks) is cleaner than one `submit_workflow` call per repo from `delete_branch()`. Splitting `origin_has_branch` from `delete_remote_branch` gives a cheap pre-check that avoids a push attempt when the remote branch is already gone.
+
+**Original plan divergence**: The original design called for `delete_branch_in_git()` (single method, worktree removal + local branch removal + push), a typed `GitRepositoryDeleteBranch` model, and per-repo `submit_workflow` calls from `delete_branch()`. The implemented design uses a separate fan-out flow instead, which keeps `delete_branch()` simpler.
 
 **Alternatives considered**:
 - Trigger from `BranchDeletedEvent` with event handler: The event already has `sync_with_git=True`. Could add an event handler. Rejected because the `delete_branch()` task already runs after the graph deletion; adding the Git deletion directly there is simpler and avoids hidden event coupling.
@@ -67,7 +72,9 @@ The `delete_branch()` task in `backend/infrahub/core/branch/tasks.py` is extende
 
 ## Decision 5: Manual Delete UI (US4)
 
-**Decision**: Extend the existing `BranchDelete` GraphQL mutation with an optional `delete_git_branch: Boolean` argument (default: `null`, treated as "use global config"). When a user calls delete with `delete_git_branch=true` while the global config has it disabled, Git deletion is triggered anyway. Update `BranchDeleteButton` to show a checkbox "Also delete from Git repository" when: (a) the branch has `sync_with_git=true`, (b) the global `delete_git_branch_after_merge` config is disabled, and (c) the branch is in MERGED status.
+**Decision**: Add a new `BranchDeleteInput` GraphQL input type with `name` and `delete_from_git: Boolean` fields. Switch `BranchDelete.Arguments.data` from the shared `BranchNameInput` to the new `BranchDeleteInput`. When `delete_from_git=true` while the global config has it disabled, Git deletion is triggered anyway via `should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git`. Update `BranchDeleteButton` to show a checkbox "Also delete from Git repository" when: (a) the branch has `sync_with_git=true`, (b) the global `delete_git_branch_after_merge` config is disabled, and (c) the branch is in MERGED status.
+
+> Note: The original plan used a flat `delete_git_branch: Boolean` argument directly on `BranchDelete.Arguments`. The implemented design uses a separate `BranchDeleteInput` type (so `BranchNameInput` remains unchanged for other mutations), and the parameter is named `delete_from_git`.
 
 **Rationale**: Adding an argument to the existing mutation is non-breaking (it's optional). The `BranchDeleteButton` already exists at `frontend/app/src/entities/branches/ui/branch-delete-button.tsx`. The frontend needs to query the current global config setting to conditionally render the checkbox.
 

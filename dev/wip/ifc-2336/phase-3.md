@@ -1,6 +1,6 @@
 # Phase 3: Git Branch Deletion Workflow
 
-**Status:** ⬜ Todo
+**Status:** ✅ Done
 **Priority:** P2
 **Requirements:** FR-005, FR-007, FR-010, FR-013
 **Depends on:** Phase 1
@@ -9,43 +9,38 @@
 
 ## Goal
 
-When an Infrahub branch with `sync_with_git=True` is deleted and `delete_git_branch_after_merge=True` (or `delete_from_git=True` on manual delete), delete the corresponding branch from all synced Git repositories. Runs asynchronously — per-repo failures are logged but never block the Infrahub branch deletion (FR-013).
+When an Infrahub branch with `sync_with_git=True` is deleted and `delete_git_branch_after_merge=True`, delete the corresponding branch from all synced Git repositories. Runs asynchronously — per-repo failures are logged but never block the Infrahub branch deletion (FR-013).
 
 ---
 
 ## Checklist
 
-- [ ] Add `has_branch(branch_name)` to `InfrahubRepositoryBase`
-- [ ] Add `delete_remote_branch(branch_name)` to `InfrahubRepositoryBase`
-- [ ] Add `GIT_REPOSITORIES_DELETE_BRANCH` workflow definition to catalogue
-- [ ] Implement `delete_git_branch()` flow + `git_branch_delete` task in `git/tasks.py`
-- [ ] Update `delete_branch()` to accept `delete_from_git` param and trigger git deletion
-- [ ] Write unit tests
+- [x] Add `origin_has_branch(branch_name)` to `InfrahubRepositoryBase`
+- [x] Add `delete_remote_branch(branch_name)` to `InfrahubRepositoryBase`
+- [x] Add `GIT_REPOSITORIES_DELETE_BRANCH` workflow definition to catalogue
+- [x] Implement `delete_git_branch()` flow + `git_branch_delete` task in `git/tasks.py`
+- [x] Update `delete_branch()` to trigger git deletion when config enabled
+- [x] Write unit/component/functional tests
 
 ---
 
 ## Implementation
 
-### 3.1 Add `has_branch` to InfrahubRepositoryBase
+### 3.1 Add `origin_has_branch` to InfrahubRepositoryBase
 
 **File:** `backend/infrahub/git/base.py`
 
-No branch-existence check currently exists. Add a method that checks remote refs (the authoritative source for what is pushed):
-
 ```python
-def has_branch(self, branch_name: str) -> bool:
+def origin_has_branch(self, branch_name: str) -> bool:
     """Return True if branch_name exists as a remote branch on origin."""
-    remote_branches = self.get_branches_from_remote()
-    return branch_name in remote_branches
+    return branch_name in self.get_branches_from_remote()
 ```
 
-`get_branches_from_remote()` already strips the `origin/` prefix from keys (base.py:491-509), so a plain equality check is correct.
+`get_branches_from_remote()` already strips the `origin/` prefix from keys, so a plain equality check is correct.
 
 ### 3.2 Add `delete_remote_branch` to InfrahubRepositoryBase
 
 **File:** `backend/infrahub/git/base.py`
-
-No delete method currently exists. Add alongside `push()` / `fetch()`:
 
 ```python
 async def delete_remote_branch(self, branch_name: str) -> None:
@@ -60,13 +55,9 @@ async def delete_remote_branch(self, branch_name: str) -> None:
         repo.delete_head(branch_name, force=True)
 ```
 
-`repo.git.push("origin", "--delete", branch_name)` is the GitPython wrapper for `git push origin --delete <branch>`.
-
 ### 3.3 New workflow definition
 
 **File:** `backend/infrahub/workflows/catalogue.py`
-
-Add alongside the existing `GIT_REPOSITORIES_CREATE_BRANCH` definition:
 
 ```python
 GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
@@ -80,8 +71,6 @@ GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
 ### 3.4 Git deletion flow + task
 
 **File:** `backend/infrahub/git/tasks.py`
-
-Follow the `create_branch` / `git_branch_create` pattern in the same file — a `@flow` that fans out to a per-repo `@task` via a batch:
 
 ```python
 @flow(name="git-repositories-delete-branch", flow_run_name="Delete git branch '{branch}'")
@@ -119,7 +108,7 @@ async def git_branch_delete(
     repo = await InfrahubRepository.init(
         id=repository_id, name=repository_name, location=repository_location, client=client
     )
-    if not repo.has_branch(branch):
+    if not repo.origin_has_branch(branch):
         return
     async with lock.registry.get(name=repository_name, namespace="repository"):
         try:
@@ -131,34 +120,16 @@ async def git_branch_delete(
             )
 ```
 
-Key notes:
-- `log.exception(...)` captures the full traceback (matches `run_user_check` pattern in the same file).
-- The `async with lock.registry.get(...)` prevents concurrent git operations on the same repo, consistent with `git_branch_create`.
-- A missing branch is a silent no-op — the repo may never have had this Infrahub branch synced.
+Note: `origin_has_branch` is a synchronous method — do not use `await`.
 
 ### 3.5 Update `delete_branch()` to trigger git deletion
 
 **File:** `backend/infrahub/core/branch/tasks.py`
 
-Update the flow signature:
+After the existing `BranchDeletedEvent` submission:
 
 ```python
-@flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(
-    branch: str,
-    context: InfrahubContext,
-    delete_from_git: bool = False,
-) -> None:
-```
-
-After the existing `BranchDeletedEvent` submission, add:
-
-```python
-from infrahub.config import get_settings
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_DELETE_BRANCH
-
-settings = get_settings()
-should_delete_git = (settings.main.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
+should_delete_git = config.SETTINGS.git.delete_git_branch_after_merge and obj.sync_with_git
 if should_delete_git:
     await get_workflow().submit_workflow(
         workflow=GIT_REPOSITORIES_DELETE_BRANCH,
@@ -173,14 +144,32 @@ if should_delete_git:
 
 ## Tests
 
-**New file:** `backend/tests/unit/git/test_delete_git_branch.py`
+**Component tests:** `backend/tests/component/git/test_delete_git_branch.py`
 
-- `test_git_branch_deleted_from_all_repos` — mock repos that have the branch, assert `delete_remote_branch` called for each
-- `test_git_branch_deletion_failure_logged_per_repo` — mock one repo to raise, assert `log.exception` called and other repos still processed
-- `test_git_branch_deletion_skips_repos_without_branch` — repos where `has_branch` returns `False` should not call `delete_remote_branch`
+- `test_has_branch_returns_true_for_existing_branch` — `origin_has_branch` returns True for real branch
+- `test_has_branch_returns_false_for_missing_branch` — returns False for absent branch
+- `test_delete_remote_branch_removes_branch_from_origin` — verifies deletion from upstream repo
+- `test_has_branch_true_for_all_remote_branches` — parametrized over branch01/branch02
+
+**Functional tests:** `backend/tests/functional/branch/test_delete_git_branch.py`
+
+- `TestDeleteBranchGitWorkflow.test_git_deletion_triggered_when_config_enabled_and_sync_with_git`
+- `TestDeleteBranchGitWorkflow.test_git_deletion_not_triggered_when_sync_with_git_false`
+- `TestDeleteBranchGitWorkflow.test_git_deletion_not_triggered_when_config_disabled`
+
+**Integration tests (Gogs):** `backend/tests/integration/git/test_delete_git_branch_gogs.py`
+
+Exercises the full chain against a real Gogs HTTP git server (via testcontainers). Requires Docker.
+
+- `TestDeleteGitBranchGogs.test_branch_deletion_propagates_to_gogs` — verifies branch is actually deleted from all Gogs repos via `git push --delete` over HTTP
+- `TestDeleteGitBranchGogs.test_branch_deletion_tolerates_missing_remote_branch` — verifies `BranchDelete` completes successfully (`ok: true`) when the remote branch was already deleted (fault-tolerance path)
+
+Shared Gogs fixtures live in `backend/tests/integration/git/conftest.py`: `gogs_server` (module-scoped Docker container), `create_gogs_repo` helper, and config-reset fixtures.
 
 **Verification:**
 
 ```bash
-uv run pytest backend/tests/unit/git/test_delete_git_branch.py -v
+uv run pytest backend/tests/component/git/test_delete_git_branch.py -v
+uv run pytest backend/tests/functional/branch/test_delete_git_branch.py -v
+uv run pytest backend/tests/integration/git/test_delete_git_branch_gogs.py -v
 ```
