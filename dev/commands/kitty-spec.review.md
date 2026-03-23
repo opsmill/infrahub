@@ -54,7 +54,7 @@ This command performs a structured code review on a completed work package, chec
    | Constitution | Review against project principles | Code follows all applicable principles |
    | Tests | Check for new/updated tests | Tests exist for new functionality |
    | Security | Scan for secrets/credentials | No sensitive data committed |
-   | Linting | Run linters on changed files | `uv run invoke lint` (Python) or `npm run biome:fix` (frontend) passes |
+   | Linting | Run linters on changed files | `uv run invoke lint` (Python) or `pnpm biome:fix` (frontend) passes |
    | Task Completion | Check tasks marked [X] in tasks.md | All WP tasks completed |
 
 6. **Decision**:

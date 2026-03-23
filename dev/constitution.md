@@ -201,7 +201,7 @@ cost and onboarding time.
 - **Audit trail:** Node and edge metadata (`created_by`, `updated_by`,
   `created_at`, `updated_at`) MUST be maintained for all mutations on
   default/global branches.
-- **Dependency management:** `uv` for Python, `npm` for frontend.
+- **Dependency management:** `uv` for Python, `pnpm` for frontend.
   Dependency additions require review. Known vulnerability patches
   MUST be applied promptly.
 
@@ -223,7 +223,7 @@ cost and onboarding time.
 
 All code MUST pass these gates before merge:
 
-1. **Formatting:** `uv run invoke format` (Python), `npm run biome:fix`
+1. **Formatting:** `uv run invoke format` (Python), `pnpm biome:fix`
    (frontend). No unformatted code in PRs.
 2. **Linting:** `uv run invoke lint` (ruff + mypy for Python),
    Biome for TypeScript. Zero lint errors.
@@ -249,7 +249,7 @@ All code MUST pass these gates before merge:
 - Backend architecture changes MUST update `dev/knowledge/backend/`.
 - Frontend architecture changes MUST update `dev/knowledge/frontend/`.
 - API changes MUST regenerate schemas (`uv run invoke backend.generate`,
-  `npm run codegen`).
+  `pnpm codegen`).
 
 ## Governance
 

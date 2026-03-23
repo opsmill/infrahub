@@ -64,7 +64,7 @@ This command merges approved work packages back into the feature branch and clea
       ```
 
 5. **Post-merge validation**:
-   - Run formatting: `uv run invoke format` (Python), `cd frontend/app && npm run biome:fix` (frontend)
+   - Run formatting: `uv run invoke format` (Python), `cd frontend/app && pnpm biome:fix` (frontend)
    - Run linting: `uv run invoke lint` (Python)
    - Run relevant tests if identifiable
    - Report any issues found

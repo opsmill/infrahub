@@ -66,7 +66,7 @@ This command implements a single work package in an isolated git worktree, enabl
    - If you need to modify files not listed in the WP, note this for the review phase
 
 9. **Post-implementation checks**:
-   - Run linting on changed files (`uv run invoke lint` for Python, `cd frontend/app && npm run biome:fix` for frontend)
+   - Run linting on changed files (`uv run invoke lint` for Python, `cd frontend/app && pnpm biome:fix` for frontend)
    - Run relevant unit tests if identifiable
    - Verify no unintended changes outside the WP scope
 
