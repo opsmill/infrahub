@@ -77,6 +77,6 @@ The backend condition: `should_delete_git = (config.SETTINGS.git.delete_git_bran
 
 ## Notes
 
-- Backward-compatible: existing callers omitting `delete_git_branch` continue to work
+- Backward-compatible: existing callers omitting `delete_from_git` continue to work
 - Git deletion failure does not cause mutation to return `ok: false`; it is logged to the task log
 - The mutation passes `delete_from_git` to the `BRANCH_DELETE` workflow parameters
