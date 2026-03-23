@@ -86,7 +86,7 @@ async def delete_remote_branch(self, branch_name: str) -> None:
 `delete_branch()` flow in `backend/infrahub/core/branch/tasks.py`:
 
 ```python
-should_delete_git = config.SETTINGS.git.delete_git_branch_after_merge and obj.sync_with_git
+should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
 if should_delete_git:
     await get_workflow().submit_workflow(
         workflow=GIT_REPOSITORIES_DELETE_BRANCH,
@@ -95,7 +95,9 @@ if should_delete_git:
     )
 ```
 
-**Prerequisite condition**: `config.SETTINGS.git.delete_git_branch_after_merge` must be `True` AND the branch must have `sync_with_git=True`. The structural dependency on `main.delete_branch_after_merge` is implicit — `delete_branch()` is only reached when the main setting triggered it (or via manual deletion in US4).
+**`delete_from_git` flag** (added in US4): passed from the `BranchDelete` GraphQL mutation. When `True`, Git deletion is triggered even if `config.SETTINGS.git.delete_git_branch_after_merge` is `False`. This enables per-branch manual override via the UI.
+
+**Prerequisite condition**: (`config.SETTINGS.git.delete_git_branch_after_merge` OR `delete_from_git`) AND `obj.sync_with_git`. The structural dependency on `main.delete_branch_after_merge` is implicit — `delete_branch()` is only reached when the main setting triggered it (or via manual deletion in US4).
 
 ## Notes
 

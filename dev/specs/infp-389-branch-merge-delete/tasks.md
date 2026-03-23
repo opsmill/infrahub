@@ -91,11 +91,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T011 [US4] Add `BranchDeleteInput(InputObjectType)` with `name` and `delete_from_git: Boolean` to `backend/infrahub/graphql/mutations/branch.py`; switch `BranchDelete.Arguments.data` from `BranchNameInput` to `BranchDeleteInput`; update `mutate()` to pass `parameters={"branch": obj.name, "delete_from_git": bool(data.delete_from_git)}` to both workflow call sites
-- [ ] T012 [US4] Update `delete_branch()` in `backend/infrahub/core/branch/tasks.py` to accept `delete_from_git: bool = False`; update `should_delete_git` condition to `(config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git`
+- [x] T011 [US4] Add `BranchDeleteInput(InputObjectType)` with `name` and `delete_from_git: Boolean` to `backend/infrahub/graphql/mutations/branch.py`; switch `BranchDelete.Arguments.data` from `BranchNameInput` to `BranchDeleteInput`; update `mutate()` to pass `parameters={"branch": obj.name, "delete_from_git": bool(data.delete_from_git)}` to both workflow call sites — **Done**
+- [x] T012 [US4] Update `delete_branch()` in `backend/infrahub/core/branch/tasks.py` to accept `delete_from_git: bool = False`; update `should_delete_git` condition to `(config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git` — **Done**
 - [ ] T013 [US4] Update the `deleteBranch` domain function in `frontend/app/src/entities/branches/domain/delete-branch.ts` to accept an optional `deleteFromGit?: boolean` parameter and include it as `delete_from_git` in the GraphQL mutation variables when provided
 - [ ] T014 [US4] Update `BranchDeleteButton` in `frontend/app/src/entities/branches/ui/branch-delete-button.tsx`: (1) fetch `GET /api/config` to read `git.delete_git_branch_after_merge`; (2) add `deleteFromGit` boolean state; (3) render "Also delete from Git repository" checkbox when `branch.sync_with_git === true` AND `config.git.delete_git_branch_after_merge === false`; (4) pass `deleteFromGit` to `deleteBranch` in the `onDelete` handler
-- [ ] T015 [P] [US4] Regenerate frontend GraphQL and REST types: `cd frontend/app && npm run codegen`; commit updated generated files
+- [x] T015 [P] [US4] Regenerate frontend GraphQL and REST types: `cd frontend/app && npm run codegen`; commit updated generated files — **Done** (types.generated.ts and graphql-env.d.ts updated)
 
 **Checkpoint**: With auto-delete disabled, a user can manually delete a merged branch with or without the Git branch via a checkbox in the UI confirmation dialog. The checkbox is hidden when global Git deletion is already enabled (no need to offer what will happen automatically).
 
@@ -105,7 +105,7 @@
 
 **Purpose**: Documentation, code quality, and final verification across all stories.
 
-- [ ] T016 Add documentation for the two new configuration options in `docs/docs/reference/configuration.mdx` (or the equivalent config reference page): document `[main] delete_branch_after_merge` (env: `INFRAHUB_DELETE_BRANCH_AFTER_MERGE`) and `[git] delete_git_branch_after_merge` (env: `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE`) with their default values and a note that the Git setting has no effect unless the main setting is also enabled
+- [x] T016 Add documentation for the two new configuration options in `docs/docs/reference/configuration.mdx` (or the equivalent config reference page): document `[main] delete_branch_after_merge` (env: `INFRAHUB_DELETE_BRANCH_AFTER_MERGE`) and `[git] delete_git_branch_after_merge` (env: `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE`) with their default values and a note that the Git setting has no effect unless the main setting is also enabled — **Done**
 
 ---
 

@@ -2,7 +2,7 @@
 
 **User Story**: US1 (Global Configuration), US4 (Manual Delete UI)
 **Type**: REST API (read-only, config exposure)
-**Change**: Add two new fields to the config response so the frontend can conditionally render the Git deletion checkbox.
+**Change**: Add new fields to the config response so the frontend can conditionally render the Git deletion checkbox.
 
 ---
 
@@ -14,34 +14,35 @@ GET /api/config
 
 Authentication: Required (existing behavior unchanged)
 
-## Response Schema (new fields only)
+## Response Schema (new fields)
+
+### Implemented ✅
+
+`main.delete_branch_after_merge` is exposed in the config response:
 
 ```json
 {
   "main": {
     "delete_branch_after_merge": false
-  },
-  "git": {
-    "delete_git_branch_after_merge": false
   }
 }
 ```
 
-Both fields are `boolean`. Default is `false`.
+Field is `boolean`, default `false`. Present in `openapi.json` and `types.generated.ts`.
 
-## Frontend Use
+### Not yet exposed ⬜
 
-The `BranchDeleteButton` reads these values via the existing config query mechanism. The Git deletion checkbox is shown when:
+`git.delete_git_branch_after_merge` (defined in `GitSettings` in `config.py`) is **not** included in the `GET /api/config` response. The `git` section is not part of the config API response schema. This field is only available server-side.
 
-```
-branch.sync_with_git === true
-AND branch.status === "MERGED"
-AND config.git.delete_git_branch_after_merge === false
-```
+**Impact on US4 (T014)**: `BranchDeleteButton` cannot read `config.git.delete_git_branch_after_merge` from the REST API as currently designed. Before implementing T014, either:
+- Expose `GitSettings` (or just `delete_git_branch_after_merge`) in the config response, or
+- Use an alternative approach (e.g., always show the checkbox and let the backend deduplicate)
 
-If `config.git.delete_git_branch_after_merge` is already `true`, the checkbox is hidden (deletion will happen automatically; no need to present the option).
+## Frontend Use (intended, pending T014)
+
+The `BranchDeleteButton` will read `main.delete_branch_after_merge` from the config response. The Git deletion checkbox visibility logic depends on `git.delete_git_branch_after_merge` being exposed first (see above).
 
 ## Notes
 
-- No new endpoint; these fields are added to the existing config response
+- No new endpoint; fields are added to the existing config response
 - Regenerate generated types after changing the config response model: `npm run codegen`

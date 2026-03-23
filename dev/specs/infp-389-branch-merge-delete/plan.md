@@ -97,7 +97,7 @@ backend/infrahub/
 │   ├── base.py                                 # [US3 ✅] origin_has_branch() + delete_remote_branch()
 │   └── tasks.py                                # [US3 ✅] delete_git_branch() flow + git_branch_delete task
 ├── graphql/mutations/
-│   └── branch.py                               # [US4 ⬜] BranchDeleteInput + delete_from_git arg
+│   └── branch.py                               # [US4 ✅] BranchDeleteInput + delete_from_git arg
 └── workflows/
     └── catalogue.py                            # [US3 ✅] GIT_REPOSITORIES_DELETE_BRANCH (plural)
 
@@ -114,10 +114,10 @@ tests/
     └── test_delete_git_branch_gogs.py          # [US3 ✅] Full-chain Gogs integration tests (2 tests)
 
 changelog/
-└── <fragment>.feature.md                       # [ALL ⬜] Towncrier changelog fragment
+└── <fragment>.feature.md                       # [ALL ✅] Towncrier changelog fragment
 
 docs/
-└── docs/reference/configuration.mdx           # [US1 ⬜] Document new config options
+└── docs/reference/configuration.mdx           # [US1 ✅] Document new config options
 
 frontend/app/src/
 ├── entities/branches/
@@ -128,7 +128,7 @@ frontend/app/src/
 │       └── queries/
 │           └── delete-branch.mutation.ts       # [US4 ⬜] Pass delete_from_git to mutation
 └── shared/api/rest/
-    └── types.generated.ts                      # [US1 ⬜] Regenerated (new config fields)
+    └── types.generated.ts                      # [US1 ✅] Regenerated (new config fields)
 
 frontend/app/tests/e2e/
 └── branch-delete-after-merge.spec.ts           # [US4 ⬜] Playwright E2E for manual delete UI
@@ -164,8 +164,8 @@ Deliver US1 (config) and US2 (auto-delete after merge) first. These have zero ri
 1. **US1** ✅: Config fields + `/api/config` exposure — fully testable with unit tests
 2. **US2** ✅: `merge_branch()` hook + functional tests — fully testable without Git repos
 3. **US3** ✅: Git deletion workflow, method, task — tested with component, functional, and Gogs integration tests
-4. **US4** ⬜: Frontend delete button + E2E tests — requires US1 config endpoint changes
-5. **Polish** ⬜: Changelog fragment, documentation
+4. **US4** 🔄 (partial): Backend mutation + `delete_branch()` done ✅; frontend UI (T013/T014) ⬜
+5. **Polish** 🔄 (partial): Docs done ✅; changelog fragment ⬜
 
 ### Dependency graph
 

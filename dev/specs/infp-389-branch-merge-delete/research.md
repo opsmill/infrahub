@@ -11,7 +11,7 @@ All implementation unknowns have been resolved through codebase analysis. No ext
 
 ## Decision 1: Configuration Location
 
-**Decision**: Add `delete_branch_after_merge: bool = False` to `MainSettings` and `delete_branch_after_merge: bool = False` to `GitSettings`.
+**Decision**: Add `delete_branch_after_merge: bool = False` to `MainSettings` and `delete_git_branch_after_merge: bool = False` to `GitSettings`.
 
 **Rationale**: The existing `diff_update_after_merge` flag lives in `MainSettings` (env prefix `INFRAHUB_`). Git-specific behavior (e.g., `use_explicit_merge_commit`) lives in `GitSettings` (env prefix `INFRAHUB_GIT_`). Keeping this split mirrors the existing pattern: Infrahub-level behavior in `MainSettings`, Git repository behavior in `GitSettings`.
 

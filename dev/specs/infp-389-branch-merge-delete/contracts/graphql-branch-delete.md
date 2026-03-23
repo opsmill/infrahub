@@ -3,7 +3,7 @@
 **User Story**: US4 (Manual Branch Deletion with Git Option)
 **Type**: GraphQL Mutation
 **Change**: Switch `data` arg from `BranchNameInput` to new `BranchDeleteInput`; add `delete_from_git` field
-**Status**: ⬜ Pending (US4 not yet implemented)
+**Status**: ✅ Implemented
 
 ---
 
