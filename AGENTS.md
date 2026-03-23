@@ -101,6 +101,7 @@ See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ### Always Do
 
+- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
 - Run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "git submodule update --init --recursive && npm install --prefix ../packages/schema-visualizer",
-    "submodule:update": "git submodule update --remote frontend/packages/schema-visualizer && npm install --prefix ../packages/schema-visualizer",
+    "setup": "git -C ../.. submodule update --init --recursive && npm install --prefix ../packages/schema-visualizer",
+    "submodule:update": "git -C ../.. submodule update --remote frontend/packages/schema-visualizer && npm install --prefix ../packages/schema-visualizer",
     "start": "vite",
     "dev": "VITE_DEVTOOLS=1 vite",
     "build": "npm install --prefix ../packages/schema-visualizer && vite build",

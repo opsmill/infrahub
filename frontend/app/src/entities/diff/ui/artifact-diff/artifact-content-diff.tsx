@@ -100,10 +100,9 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
-
   const {
     data: previousFile = "",
-    isPending: isPreviousPending,
+    isLoading: isPreviousLoading,
     error: previousFileError,
   } = useGetArtifactFile(
     { storageId: itemPrevious?.storage_id ?? "" },
@@ -112,7 +111,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
 
   const {
     data: newFile = "",
-    isPending: isNewPending,
+    isLoading: isNewLoading,
     error: newFileError,
   } = useGetArtifactFile(
     { storageId: itemNew?.storage_id ?? "" },
@@ -130,7 +129,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     skip: !schemaData || !proposedChangeId,
   });
 
-  if (loading || isPreviousPending || isNewPending) {
+  if (loading || isPreviousLoading || isNewLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 

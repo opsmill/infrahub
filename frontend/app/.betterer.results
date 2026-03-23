@@ -5,8 +5,8 @@
 //
 exports[`fix ts error`] = {
   value: `{
-    "src/entities/artifacts/types.ts:1344880585": [
-      [0, 34, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
+    "src/entities/artifacts/types.ts:1095909013": [
+      [0, 34, 38, "tsc: Cannot find module \'@/shared/api/graphql/generated/types\' or its corresponding type declarations.", "2563440334"]
     ],
     "src/entities/authentication/ui/login.tsx:817713372": [
       [74, 7, 10, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; autoFocus: true; } | { name: string; label: string; rules: { validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'InputFieldProps\'.", "1610618705"],
@@ -32,7 +32,7 @@ exports[`fix ts error`] = {
       [69, 7, 10, "tsc: Property \'attribute\' is missing in type \'{ name: string; label: string; }\' but required in type \'InputFieldProps\'.", "1610618705"],
       [71, 7, 13, "tsc: Property \'attribute\' is missing in type \'{ name: string; label: string; rules: { required: true; }; }\' but required in type \'FormFieldProps\'.", "3862624788"]
     ],
-    "src/entities/branches/ui/branch-selector.tsx:3817136964": [
+    "src/entities/branches/ui/branch-selector.tsx:2882426840": [
       [5, 28, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
     "src/entities/branches/ui/branches-table/branches-toolbar.tsx:888562084": [
@@ -44,12 +44,12 @@ exports[`fix ts error`] = {
     "src/entities/diff/domain/run-check.ts:9601481": [
       [0, 31, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:2204144527": [
+    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:274276773": [
       [10, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
       [33, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
-      [352, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [354, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [356, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
+      [351, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [353, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [355, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
     "src/entities/diff/ui/checks/check.tsx:108481065": [
       [103, 4, 9, "tsc: Property \'conflicts\' does not exist on type \'null; artifact_id: { value: string | null; commit: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conflicts: { value: unknown; } | null; conflicts: { value: unknown; } | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; files: { value: unknown; } | null; keep_branch: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; storage_id: { value: string | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | { __typename: \\"CoreArtifactCheck\\"; id: string | { __typename: \\"CoreDataCheck\\"; id: string | { __typename: \\"CoreFileCheck\\"; id: string | { __typename: \\"CoreGeneratorCheck\\"; id: string | { __typename: \\"CoreSchemaCheck\\"; id: string | { __typename: \\"CoreStandardCheck\\"; id: string\'.", "1029368512"],
