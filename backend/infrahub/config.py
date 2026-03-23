@@ -503,7 +503,7 @@ class GitSettings(BaseSettings):
     delete_git_branch_after_merge: bool = Field(
         default=False,
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
-        "Requires main.delete_branch_after_merge to be enabled.",
+        "Requires delete_branch_after_merge to be enabled.",
     )
 
     @model_validator(mode="after")
