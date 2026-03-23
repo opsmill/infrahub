@@ -60,7 +60,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
       return (
         <NodeDiff
           filters={{
-            namespace: { excludes: ["Schema", "Profile"] },
+            namespace: { excludes: ["Schema"] },
             status: { excludes: ["UNCHANGED"] },
           }}
         />

@@ -125,7 +125,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
         <NodeDiff
           branch={branchName}
           filters={{
-            namespace: { excludes: ["Schema", "Profile"] },
+            namespace: { excludes: ["Schema"] },
             status: { excludes: ["UNCHANGED"] },
           }}
         />

@@ -13,7 +13,7 @@ export function DataTab({ sourceBranch, proposedChangeId }: DataTabProps) {
     branch: sourceBranch,
     proposedChangeId,
     filters: {
-      namespace: { excludes: ["Schema", "Profile"] },
+      namespace: { excludes: ["Schema"] },
       status: { excludes: ["UNCHANGED"] },
     },
   });
