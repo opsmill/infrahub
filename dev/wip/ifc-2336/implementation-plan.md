@@ -6,7 +6,7 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 
 **Spec**: [dev/specs/infp-389-branch-merge-delete/spec.md](../../specs/infp-389-branch-merge-delete/spec.md)
 **Jira**: INFP-389
-**Scope**: Backend only
+**Scope**: Backend + docs + frontend types (generated)
 
 ---
 
@@ -15,11 +15,11 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 | Phase | Description                             | Priority | Status      | Tests                |
 |-------|-----------------------------------------|----------|-------------|----------------------|
 | 1     | Configuration settings                  | P1       | ✅ Done     | 3 unit tests         |
-| 2     | Auto-delete Infrahub branch after merge | P1       | ⬜ Todo     | 4 functional tests   |
-| 3     | Git branch deletion workflow            | P2       | ⬜ Todo     | 3 unit tests         |
-| 4     | Manual delete with Git option           | P3       | ⬜ Todo     | 2 unit tests         |
+| 2     | Auto-delete Infrahub branch after merge | P1       | ✅ Done     | 4 functional tests   |
+| 3     | Git branch deletion workflow            | P2       | ✅ Done     | 4 component + 3 functional + 2 integration tests |
+| 4     | Manual delete with Git option           | P3       | ✅ Done     | 2 functional tests         |
 
-**Total Tests:** 12 tests (5 unit + 4 functional + 3 unit)
+**Total Tests:** 14 tests (3 unit + 4 functional + 4 component + 2 integration + 1 unit)
 
 ---
 
@@ -41,9 +41,11 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 ```bash
 # All new tests
 uv run pytest backend/tests/unit/test_config.py -v -k "delete_branch"
-uv run pytest backend/tests/unit/git/test_delete_git_branch.py -v
+uv run pytest backend/tests/component/git/test_delete_git_branch.py -v
 uv run pytest backend/tests/unit/graphql/mutations/test_branch_delete.py -v
 uv run pytest backend/tests/functional/branch/test_branch_delete_after_merge.py -v
+uv run pytest backend/tests/functional/branch/test_delete_git_branch.py -v
+uv run pytest backend/tests/integration/git/test_delete_git_branch_gogs.py -v  # requires Docker
 
 # Full suite
 uv run invoke backend.test-unit

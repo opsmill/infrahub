@@ -1,76 +1,104 @@
-# Contract: GIT_REPOSITORY_DELETE_BRANCH Workflow
+# Contract: GIT_REPOSITORIES_DELETE_BRANCH Workflow
 
 **User Story**: US3 (Automatic Git Branch Deletion)
-**Type**: Internal Prefect Workflow
+**Type**: Internal Prefect Workflow (fan-out flow)
 **Change**: New workflow definition
+**Status**: ✅ Implemented
 
 ---
 
 ## Workflow Definition
 
 ```python
-GIT_REPOSITORY_DELETE_BRANCH = WorkflowDefinition(
-    name="git-repository-delete-branch",
-    type=WorkflowType.INTERNAL,
+GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
+    name="git-repositories-delete-branch",
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
-    function="delete_git_repository_branch",
+    function="delete_git_branch",
 )
 ```
 
-## Task Signature
+## Flow Signature
 
 ```python
-@task(name="git-repository-delete-branch")
-async def delete_git_repository_branch(model: GitRepositoryDeleteBranch) -> None:
-    """
-    Delete a branch from a single Git repository.
-    Failures are logged but do not propagate — Infrahub branch deletion has already completed.
-    """
+@flow(name="git-repositories-delete-branch", flow_run_name="Delete git branch '{branch}'")
+async def delete_git_branch(branch: str) -> None:
+    """Fan out branch deletion across all CoreRepository instances."""
 ```
 
-## Input Model: GitRepositoryDeleteBranch
+## Fan-out Task Signature
 
 ```python
-class GitRepositoryDeleteBranch(BaseModel):
-    repository_id: str       # UUID of the CoreRepository node
-    repository_name: str     # Human-readable name (for logging)
-    repository_kind: str     # "CoreRepository" or "CoreReadOnlyRepository"
-    branch_name: str         # Name of the branch to delete
-    default_branch: str | None  # Git default branch (guards against deleting main/master)
-    context: InfrahubContext
+@task(
+    name="git-branch-delete",
+    task_run_name="Delete branch '{branch}' in repository {repository_name}",
+    cache_policy=NONE,
+)
+async def git_branch_delete(
+    client: InfrahubClient,
+    branch: str,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
+) -> None:
 ```
 
 ## Behavior
 
-1. Initialize `InfrahubRepository` for the given `repository_id`
-2. Call `repo.delete_branch_in_git(branch_name=branch_name)`
-   - Remove branch worktree: `<repos_dir>/<repo_name>/branches/<branch_name>/`
-   - Delete local Git branch ref
-   - Push `--delete` to `origin/<branch_name>`
-3. On any exception: `log.error(...)` with repository name and exception message; return without re-raising
-4. On success: log info confirming deletion
+1. `delete_git_branch` fetches all `CoreRepository` nodes via the SDK client
+2. Creates a Prefect batch; adds one `git_branch_delete` task per repository
+3. Each `git_branch_delete` task:
+   a. Initializes `InfrahubRepository` for the given `repository_id`
+   b. Calls `repo.origin_has_branch(branch)` — if `False`, returns early (idempotent)
+   c. Acquires the repository lock (`lock.registry.get(name=repository_name, namespace="repository")`)
+   d. Calls `await repo.delete_remote_branch(branch_name=branch)`
+   e. On any exception: `log.exception(...)` with branch name and repository name; returns without re-raising
+
+## New Repository Methods (InfrahubRepositoryBase)
+
+```python
+def origin_has_branch(self, branch_name: str) -> bool:
+    """Return True if branch_name exists as a remote branch on origin."""
+    return branch_name in self.get_branches_from_remote()
+
+async def delete_remote_branch(self, branch_name: str) -> None:
+    """Delete branch_name from origin and remove the local tracking ref."""
+    if not self.has_origin:
+        return
+    repo = self.get_git_repo_main()
+    repo.git.push("origin", "--delete", branch_name)
+    local_branches = self.get_branches_from_local(include_worktree=False)
+    if branch_name in local_branches:
+        repo.delete_head(branch_name, force=True)
+```
 
 ## Error Handling
 
 | Error | Action |
 |-------|--------|
-| Branch not found locally | Log warning, skip (idempotent) |
-| Remote push failure | Log error with repo name, return |
-| Permission error | Log error with repo name, return |
-| Any other exception | Log error with repo name, return |
-
-## Guard: Default Branch Protection
-
-If `branch_name == default_branch` or `branch_name == "main"` or `branch_name == "master"`, raise `ValidationError` before any deletion attempt. This prevents accidental deletion of the default Git branch.
+| Branch absent on remote | `origin_has_branch` returns `False`; task returns early |
+| Remote push failure | `log.exception(...)` with repo name; task returns |
+| Permission error | `log.exception(...)` with repo name; task returns |
+| Any other exception | `log.exception(...)` with repo name; task returns |
 
 ## Triggered By
 
-`delete_branch()` task in `backend/infrahub/core/branch/tasks.py`, once per `CoreRepository` that has `sync_with_git=true` for the deleted branch.
+`delete_branch()` flow in `backend/infrahub/core/branch/tasks.py`:
 
-**Prerequisite condition** (auto-delete path): both `config.SETTINGS.main.delete_branch_after_merge` and `config.SETTINGS.git.delete_git_branch_after_merge` must be `True`. The `delete_git_branch_after_merge` setting has no effect on its own — it is only evaluated inside the `delete_branch()` flow, which is only reached when `delete_branch_after_merge` triggered the deletion.
+```python
+should_delete_git = config.SETTINGS.git.delete_git_branch_after_merge and obj.sync_with_git
+if should_delete_git:
+    await get_workflow().submit_workflow(
+        workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+        context=context,
+        parameters={"branch": branch},
+    )
+```
+
+**Prerequisite condition**: `config.SETTINGS.git.delete_git_branch_after_merge` must be `True` AND the branch must have `sync_with_git=True`. The structural dependency on `main.delete_branch_after_merge` is implicit — `delete_branch()` is only reached when the main setting triggered it (or via manual deletion in US4).
 
 ## Notes
 
-- `CoreReadOnlyRepository` branches are not deleted (read-only repos track upstream; we don't own the branches)
-- Task is submitted via `submit_workflow` (fire-and-forget) from `delete_branch()`
-- One task submission per repository (not batched across repos, consistent with `GIT_REPOSITORIES_MERGE` pattern)
+- No typed payload model — parameters are passed as direct kwargs to the batch task
+- `CoreReadOnlyRepository` nodes are also queried; `has_origin=False` check in `delete_remote_branch` makes those a no-op
+- Worktree directories are NOT removed — only the remote branch and local tracking ref

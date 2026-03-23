@@ -160,6 +160,25 @@ async def create_branch(branch: str, branch_id: str) -> None:
         pass
 
 
+@flow(name="git-repositories-delete-branch", flow_run_name="Delete git branch '{branch}'")
+async def delete_git_branch(branch: str) -> None:
+    """Fan out branch deletion across all CoreRepository instances."""
+    client = get_client()
+    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    batch = await client.create_batch()
+    for repository in repositories:
+        batch.add(
+            task=git_branch_delete,
+            client=client,
+            branch=branch,
+            repository_name=repository.name.value,
+            repository_id=repository.id,
+            repository_location=repository.location.value,
+        )
+    async for _, _ in batch.execute():
+        pass
+
+
 @flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
 async def sync_git_repo_with_origin_and_tag_on_failure(
     client: InfrahubClient,
@@ -310,6 +329,33 @@ async def git_branch_create(
         )
         await message_bus.send(message=message)
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
+
+
+@task(  # type: ignore[arg-type]
+    name="git-branch-delete",
+    task_run_name="Delete branch '{branch}' in repository {repository_name}",
+    cache_policy=NONE,
+)
+async def git_branch_delete(
+    client: InfrahubClient,
+    branch: str,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
+) -> None:
+    log = get_run_logger()
+    await add_branch_tag(branch_name=branch)
+    repo = await InfrahubRepository.init(
+        id=repository_id, name=repository_name, location=repository_location, client=client
+    )
+    async with lock.registry.get(name=repository_name, namespace="repository"):
+        if not repo.origin_has_branch(branch):
+            return
+
+        try:
+            await repo.delete_remote_branch(branch_name=branch)
+        except Exception as exc:
+            log.exception(f"Failed to delete Git branch '{branch}' from repository '{repository_name}' - {str(exc)}")
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")

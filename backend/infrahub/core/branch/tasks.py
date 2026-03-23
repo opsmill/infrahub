@@ -47,10 +47,12 @@ from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    BRANCH_DELETE,
     BRANCH_MERGE_POST_PROCESS,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
+    GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
@@ -372,6 +374,13 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             parameters={"branch_name": obj.name},
         )
 
+        if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default:
+            await get_workflow().submit_workflow(
+                workflow=BRANCH_DELETE,
+                context=context,
+                parameters={"branch": obj.name},
+            )
+
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
         # NOTE: we still need to convert this event and potentially pull
@@ -403,7 +412,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str, context: InfrahubContext) -> None:
+async def delete_branch(branch: str, context: InfrahubContext, delete_from_git: bool = False) -> None:
     await add_tags(branches=[branch])
 
     database = await get_database()
@@ -429,6 +438,14 @@ async def delete_branch(branch: str, context: InfrahubContext) -> None:
 
         event_service = await get_event_service()
         await event_service.send(event=event)
+
+    should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
+    if should_delete_git:
+        await get_workflow().submit_workflow(
+            workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+            context=context,
+            parameters={"branch": branch},
+        )
 
 
 @flow(

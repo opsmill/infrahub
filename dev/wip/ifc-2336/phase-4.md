@@ -1,6 +1,6 @@
 # Phase 4: Manual Delete with Git Option
 
-**Status:** ⬜ Todo
+**Status:** ✅ Done
 **Priority:** P3
 **Requirements:** FR-008, FR-009
 **Depends on:** Phase 3
@@ -15,10 +15,11 @@ Expose `delete_from_git` as an optional parameter on the `BranchDelete` GraphQL 
 
 ## Checklist
 
-- [ ] Add `BranchDeleteInput` class (new — `BranchNameInput` is unchanged)
-- [ ] Switch `BranchDelete.Arguments` and `mutate()` type hint from `BranchNameInput` to `BranchDeleteInput`
-- [ ] Pass `delete_from_git` through to the `BRANCH_DELETE` workflow parameters
-- [ ] Write unit tests
+- [x] Add `BranchDeleteInput` class (new — `BranchNameInput` is unchanged)
+- [x] Switch `BranchDelete.Arguments` and `mutate()` type hint from `BranchNameInput` to `BranchDeleteInput`
+- [x] Pass `delete_from_git` through to the `BRANCH_DELETE` workflow parameters
+- [x] Update `delete_branch()` to accept `delete_from_git: bool = False` and wire it into `should_delete_git`
+- [x] Write tests
 
 ---
 
@@ -63,6 +64,29 @@ class BranchDelete(Mutation):
     ) -> Self:
 ```
 
+### 4.4 Update `delete_branch()` to accept `delete_from_git`
+
+**File:** `backend/infrahub/core/branch/tasks.py`
+
+Update the flow signature to accept the new parameter:
+
+```python
+@flow(name="branch-delete", flow_run_name="Delete branch {branch}")
+async def delete_branch(
+    branch: str,
+    context: InfrahubContext,
+    delete_from_git: bool = False,
+) -> None:
+```
+
+Update the `should_delete_git` condition to include the explicit flag:
+
+```python
+should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
+```
+
+---
+
 ### 4.3 Pass delete_from_git to the workflow
 
 In the `mutate()` body, extract the flag and include it in both workflow call sites (execute and submit):
@@ -74,7 +98,7 @@ await apply_external_context(graphql_context=graphql_context, context_input=cont
 
 parameters = {
     "branch": obj.name,
-    "delete_from_git": data.get("delete_from_git", False),
+    "delete_from_git": bool(data.delete_from_git),
 }
 
 if wait_until_completion:
@@ -93,13 +117,13 @@ return cls(ok=True, task={"id": str(workflow.id)})
 
 ## Tests
 
-**File:** `backend/tests/unit/graphql/mutations/test_branch_delete.py`
+**File:** `backend/tests/functional/branch/test_delete_git_branch.py`
 
-- `test_branch_delete_with_git_option_triggers_git_deletion` — call mutation with `delete_from_git: true`, assert `GIT_REPOSITORIES_DELETE_BRANCH` workflow is submitted
-- `test_branch_delete_without_git_option_skips_git_deletion` — call mutation with `delete_from_git: false` (and config disabled), assert git workflow not submitted
+- `test_git_deletion_triggered_when_delete_from_git_true_and_config_disabled` — mutation with `delete_from_git: true`, config disabled, assert `GIT_REPOSITORIES_DELETE_BRANCH` is submitted
+- `test_git_deletion_not_triggered_when_delete_from_git_false_and_config_disabled` — mutation with `delete_from_git: false`, config disabled, assert git workflow not submitted
 
 **Verification:**
 
 ```bash
-uv run pytest backend/tests/unit/graphql/mutations/test_branch_delete.py -v
+uv run pytest backend/tests/functional/branch/test_delete_git_branch.py -v
 ```
