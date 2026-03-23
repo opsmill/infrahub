@@ -730,8 +730,8 @@ class NodeListGetAttributeQuery(Query):
             return
         source_query = """
 CALL (a) {
-    OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
-    WHERE all(r IN [rel_source] WHERE ( %(branch_filter)s ))
+    OPTIONAL MATCH (a)-[rel_source]-(source)
+    WHERE type(rel_source) = $rel_type_src AND all(r IN [rel_source] WHERE ( %(branch_filter)s ))
     RETURN source, rel_source
     ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
     LIMIT 1
@@ -740,6 +740,7 @@ WITH *,
     CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
     CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
         """ % {"branch_filter": branch_filter_str}
+        self.params["rel_type_src"] = "HAS_SOURCE"
         self.add_to_query(source_query)
         self.return_labels.extend(["source", "rel_source"])
 
@@ -748,8 +749,8 @@ WITH *,
             return
         owner_query = """
 CALL (a) {
-    OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
-    WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
+    OPTIONAL MATCH (a)-[rel_owner]-(owner)
+    WHERE type(rel_owner) = $rel_type_own AND all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
     RETURN owner, rel_owner
     ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC
     LIMIT 1
@@ -758,6 +759,7 @@ WITH *,
     CASE WHEN rel_owner.status = "active" THEN owner ELSE NULL END AS owner,
     CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
         """ % {"branch_filter": branch_filter_str}
+        self.params["rel_type_own"] = "HAS_OWNER"
         self.add_to_query(owner_query)
         self.return_labels.extend(["owner", "rel_owner"])
 
@@ -829,6 +831,7 @@ CALL (a) {
         self.params["profile_node_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
         self.params["profile_template_relationship_name"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
         self.params["field_names"] = list(self.fields.keys()) if self.fields else []
+        self.params["rel_type_src"] = "HAS_SOURCE"
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -859,8 +862,8 @@ WITH n, r1, a, might_use_profile
 WHERE r1.status = "active"
 WITH n, r1, a, might_use_profile
 CALL (a, might_use_profile) {
-    OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
-    WHERE might_use_profile = TRUE AND %(branch_filter)s
+    OPTIONAL MATCH (a)-[r]->(profile:CoreProfile)
+    WHERE type(r) = $rel_type_src AND might_use_profile = TRUE AND %(branch_filter)s
     RETURN r.status = "active" AS has_active_profile
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1

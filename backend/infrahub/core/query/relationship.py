@@ -642,8 +642,8 @@ class RelationshipDeleteQuery(RelationshipQuery):
         }
         WITH rl
 
-        OPTIONAL MATCH (rl)-[edge:IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(peer)
-        WHERE %(rel_filter)s
+        OPTIONAL MATCH (rl)-[edge]->(peer)
+        WHERE type(edge) IN $rel_prop_types AND %(rel_filter)s
         ORDER BY type(edge), edge.branch_level DESC, edge.from DESC, edge.status ASC
         WITH rl, type(edge) AS edge_type, head(collect(edge)) AS edge, head(collect(peer)) AS peer
 
@@ -667,6 +667,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         }
 
         self.params["at"] = self.at.to_string()
+        self.params["rel_prop_types"] = ["IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"]
         self.return_labels = ["rl"]
 
         self.add_to_query(query)
@@ -740,10 +741,12 @@ CALL (rl) {
         self.update_return_labels(["rel_is_protected", "is_protected"])
 
     def _add_node_property_query(self, node_prop: str, branch_filter: str) -> None:
+        prop_abbrev = {"owner": "own", "source": "src"}
+        param_name = f"rel_type_{prop_abbrev[node_prop]}"
         query = """
 CALL (rl) {
-    OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
-    WHERE %(branch_filter)s
+    OPTIONAL MATCH (rl)-[r]-(%(node_prop)s)
+    WHERE type(r) = $%(param_name)s AND %(branch_filter)s
     WITH r, %(node_prop)s
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
@@ -758,9 +761,10 @@ CALL (rl) {
 }
         """ % {
             "node_prop": node_prop,
-            "node_prop_type": node_prop.upper(),
+            "param_name": param_name,
             "branch_filter": branch_filter,
         }
+        self.params[param_name] = f"HAS_{node_prop.upper()}"
         self.add_to_query(query)
         self.update_return_labels([f"rel_{node_prop}", node_prop])
 
