@@ -118,7 +118,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
-        run: pnpm ci
+        run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
         run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
