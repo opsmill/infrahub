@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from enum import IntEnum, StrEnum
-
-from pydantic import BaseModel, computed_field
 
 LOG_AUTH = 4
 LOG_LOCAL0 = 16
@@ -27,15 +26,15 @@ class SyslogSeverity(IntEnum):
     DEBUG = 7
 
 
-class SyslogMessage(BaseModel):
+@dataclass(slots=True)
+class SyslogMessage:
     message_type: MessageType
     timestamp: datetime
     payload: str  # JSON for audit events, text for app logs
-    event_type: str | None = None  # e.g. "infrahub.node.created" (audit only)
     severity: int  # RFC 5424 severity code
     process_id: str  # worker identity
+    event_type: str | None = None  # e.g. "infrahub.node.created" (audit only)
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def facility(self) -> int:
         """RFC 5424 facility: LOG_AUTH (4) for audit events, LOG_LOCAL0 (16) for app logs."""

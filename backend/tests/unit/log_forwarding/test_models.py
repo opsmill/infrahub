@@ -1,9 +1,7 @@
+from dataclasses import asdict
 from datetime import UTC, datetime
 
-import pytest
-from pydantic import ValidationError
-
-from infrahub.log_forwarding.models import LOG_AUTH, LOG_LOCAL0, MessageType, SyslogMessage
+from infrahub.log_forwarding.models import LOG_AUTH, LOG_LOCAL0, MessageType, SyslogMessage, SyslogSeverity
 
 
 def test_syslog_message_audit_event() -> None:
@@ -18,7 +16,7 @@ def test_syslog_message_audit_event() -> None:
     assert msg.message_type == MessageType.AUDIT_EVENT
     assert msg.event_type == "infrahub.node.created"
     assert msg.facility == LOG_AUTH
-    assert msg.severity == 6  # Informational
+    assert msg.severity == SyslogSeverity.INFORMATIONAL
 
 
 def test_syslog_message_application_log() -> None:
@@ -47,15 +45,6 @@ def test_syslog_message_event_type_defaults_to_none() -> None:
     assert msg.event_type is None
 
 
-def test_syslog_message_rejects_missing_required_fields() -> None:
-    with pytest.raises(ValidationError):
-        SyslogMessage(  # type: ignore[call-arg]
-            message_type=MessageType.AUDIT_EVENT,
-            timestamp=datetime(2026, 3, 19, 12, 0, 0, tzinfo=UTC),
-            # missing payload, severity, process_id
-        )
-
-
 def test_syslog_message_serialization_roundtrip() -> None:
     msg = SyslogMessage(
         message_type=MessageType.AUDIT_EVENT,
@@ -65,7 +54,6 @@ def test_syslog_message_serialization_roundtrip() -> None:
         severity=6,
         process_id="worker-1",
     )
-    data = msg.model_dump()
-    assert data["facility"] == LOG_AUTH  # computed field appears in dump
-    restored = SyslogMessage.model_validate(data)
+    data = asdict(msg)
+    restored = SyslogMessage(**data)
     assert restored == msg
