@@ -91,3 +91,42 @@ class TestDeleteBranchGitWorkflow(TestInfrahubApp):
                 c for c in mock_submit.call_args_list if c.kwargs.get("workflow") == GIT_REPOSITORIES_DELETE_BRANCH
             ]
             assert not git_del_calls
+
+    async def test_git_deletion_triggered_when_delete_from_git_true_and_config_disabled(
+        self, initial_dataset: None, client: InfrahubClient, delete_git_branch_after_merge_reset_config: None
+    ) -> None:
+        config.SETTINGS.git.delete_git_branch_after_merge = False
+        branch = await client.branch.create(branch_name="git_del_explicit_true", sync_with_git=True)
+
+        with patch.object(WorkflowLocalExecution, "submit_workflow", new_callable=AsyncMock) as mock_submit:
+            query = Mutation(
+                mutation="BranchDelete",
+                input_data={"data": {"name": branch.name, "delete_from_git": True}},
+                query={"ok": None},
+            )
+            await client.execute_graphql(query=query.render())
+
+            mock_submit.assert_any_call(
+                workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+                context=ANY,
+                parameters={"branch": branch.name},
+            )
+
+    async def test_git_deletion_not_triggered_when_delete_from_git_false_and_config_disabled(
+        self, initial_dataset: None, client: InfrahubClient, delete_git_branch_after_merge_reset_config: None
+    ) -> None:
+        config.SETTINGS.git.delete_git_branch_after_merge = False
+        branch = await client.branch.create(branch_name="git_del_explicit_false", sync_with_git=True)
+
+        with patch.object(WorkflowLocalExecution, "submit_workflow", new_callable=AsyncMock) as mock_submit:
+            query = Mutation(
+                mutation="BranchDelete",
+                input_data={"data": {"name": branch.name, "delete_from_git": False}},
+                query={"ok": None},
+            )
+            await client.execute_graphql(query=query.render())
+
+            git_del_calls = [
+                c for c in mock_submit.call_args_list if c.kwargs.get("workflow") == GIT_REPOSITORIES_DELETE_BRANCH
+            ]
+            assert not git_del_calls
