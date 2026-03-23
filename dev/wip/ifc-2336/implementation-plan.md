@@ -14,7 +14,7 @@ Add optional automatic branch deletion after merge. Both Infrahub branch deletio
 
 | Phase | Description                             | Priority | Status      | Tests                |
 |-------|-----------------------------------------|----------|-------------|----------------------|
-| 1     | Configuration settings                  | P1       | ⬜ Todo     | 3 unit tests         |
+| 1     | Configuration settings                  | P1       | ✅ Done     | 3 unit tests         |
 | 2     | Auto-delete Infrahub branch after merge | P1       | ⬜ Todo     | 4 functional tests   |
 | 3     | Git branch deletion workflow            | P2       | ⬜ Todo     | 3 unit tests         |
 | 4     | Manual delete with Git option           | P3       | ⬜ Todo     | 2 unit tests         |
@@ -52,10 +52,10 @@ uv run invoke format && uv run invoke lint
 
 ### Manual Test Flow
 
-1. Set only `delete_git_branch_after_merge = true` (leave `delete_branch_after_merge = false`), restart — verify startup fails with a clear validation error
-2. Set `delete_branch_after_merge = true` in `infrahub.toml`, restart service
+1. Set only `[git] delete_git_branch_after_merge = true` (leave `[main] delete_branch_after_merge = false`), restart — verify startup fails with a clear validation error
+2. Set `[main] delete_branch_after_merge = true` in `infrahub.toml`, restart service
 2. Create a branch, make a change, merge via `BranchMerge` GraphQL mutation
 3. Verify branch no longer appears in branch list
 4. Repeat via proposed change merge — same result
-5. Set `delete_git_branch_after_merge = true` as well, merge a Git-synced branch
+5. Set `[git] delete_git_branch_after_merge = true` as well, merge a Git-synced branch
 6. Verify branch deleted from Git repositories; per-repo failures appear in repo task logs
