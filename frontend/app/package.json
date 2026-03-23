@@ -8,7 +8,7 @@
     "submodule:update": "git submodule update --remote frontend/packages/schema-visualizer && pnpm install",
     "start": "vite",
     "dev": "VITE_DEVTOOLS=1 vite",
-    "build": "pnpm run setup && vite build",
+    "build": "pnpm setup && vite build",
     "serve": "vite preview",
     "build-serve": "pnpm build && pnpm serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
