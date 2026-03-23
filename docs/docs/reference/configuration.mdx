@@ -326,8 +326,8 @@ Configuration settings for the message bus.
 | `NAME` | Unique name for the destination, used in all observability output. | string | None |
 | `TYPE` | Destination type. | string (syslog) | syslog |
 | `HOST` | Destination host or IP address. | string | None |
-| `PORT` | Destination port number. | integer | None |
-| `PROTOCOL` | Transport protocol (tcp or udp). | string (tcp, udp) | tcp |
+| `PORT` | Destination port number. Defaults to 6514 for TLS, 514 otherwise. | None | None |
+| `PROTOCOL` | Transport protocol (tcp or udp). | string (tcp, udp) | udp |
 | `FORMAT` | Syslog format standard. | string (rfc5424, rfc3164) | rfc5424 |
 | `TCP_FRAMING` | TCP framing method (newline or octet-counting). | string (newline, octet-counting) | newline |
 | `TLS_ENABLED` | Enable TLS encryption for TCP connections. | boolean | False |
