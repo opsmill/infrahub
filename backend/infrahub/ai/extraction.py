@@ -24,7 +24,7 @@ _KIND_FORMAT_HINTS: dict[str, str] = {
     "IPHost": "IP address with optional prefix length (e.g. 192.168.1.1/24)",
     "IPNetwork": "IP network in CIDR notation (e.g. 192.168.1.0/24)",
     "Color": "hex color code (e.g. #FF5733)",
-    "Number": "numeric value (integer or float)",
+    "Number": "numeric value (integer)",
     "Bandwidth": "numeric value in bits per second",
     "Boolean": "true or false",
     "Checkbox": "true or false",
@@ -117,6 +117,7 @@ def build_extraction_prompt(
         "Rules:",
         "- Use null for any field you cannot determine from the document.",
         "- Do NOT invent or guess values; only extract what is clearly stated.",
+        "- Numerical values for Number values should be converted to integers, if required (1.0 > 1)"
         "- Return ONLY the JSON object, no explanation or markdown.",
         "",
         "Fields to extract:",
