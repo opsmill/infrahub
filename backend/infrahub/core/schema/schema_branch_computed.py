@@ -164,15 +164,14 @@ class ComputedAttributes:
     ) -> None:
         """Register a Jinja2 computed attribute and its dependency graph.
 
-        Populates the ``_computed_jinja2_attribute_map`` so the system knows which nodes/fields
-        trigger recomputation of which computed attributes. The map is keyed by the kind of node
-        whose mutation should trigger recomputation.
-
         Args:
             node: The schema owning the computed attribute (e.g. InfraDevice).
             attribute: The computed attribute definition (e.g. ``computed_name``).
             schema_path: Parsed Jinja2 template token identifying the dependency — either a
                          local attribute or a relationship + peer attribute.
+
+        Returns:
+            None
         """
         # Determine the trigger key: for local attributes it's the node itself,
         # for relationship attributes it's the peer kind.

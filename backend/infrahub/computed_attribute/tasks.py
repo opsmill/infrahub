@@ -230,8 +230,10 @@ async def process_jinja2(
         computed_attribute_kind: Schema kind that owns the computed attribute (may differ from
                                 node_kind when the dependency crosses a relationship).
         context: Infrahub execution context.
-        updated_fields: Field names that changed on the trigger node. Passed through to
-                        get_impacted_jinja2_targets to narrow the lookup.
+        updated_fields: Field names that changed on the trigger node.
+
+    Returns:
+        None
     """
     log = get_run_logger()
     client = get_client()
