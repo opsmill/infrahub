@@ -205,6 +205,10 @@ class MainSettings(BaseSettings):
         default=True,
         description="When enabled, diff updates are triggered for active branches after a branch merge.",
     )
+    delete_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -495,6 +499,11 @@ class GitSettings(BaseSettings):
     )
     use_explicit_merge_commit: bool = Field(
         default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
+    )
+    delete_git_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
+        "Requires delete_branch_after_merge to be enabled.",
     )
 
     @model_validator(mode="after")
@@ -1029,6 +1038,12 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+
+    @model_validator(mode="after")
+    def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
+        if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
+            raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
