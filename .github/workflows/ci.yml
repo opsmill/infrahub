@@ -118,13 +118,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm ci
       - name: Check formatting and linting (Biome)
-        run: pnpm biome ci .
+        run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
         run: pnpm knip
       - name: Check TypeScript regressions (Betterer)
-        run: npx betterer ci
+        run: pnpm exec betterer ci
 
   frontend-validate-openapi-types:
     if: |
