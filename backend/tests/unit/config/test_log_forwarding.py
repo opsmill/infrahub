@@ -22,12 +22,13 @@ TEST_DIR = Path(__file__).parent
 
 def test_log_forwarding_destination_valid() -> None:
     dest = LogForwardingDestination(
-        name="siem-primary", type=LogForwardingDestinationType.SYSLOG, host="syslog.example.com", port=514
+        name="siem-primary", type=LogForwardingDestinationType.SYSLOG, host="syslog.example.com"
     )
     assert dest.name == "siem-primary"
     assert dest.type is LogForwardingDestinationType.SYSLOG
     assert dest.host == "syslog.example.com"
-    assert dest.port == 514
+    assert dest.port is None
+    assert dest.service_port == 514
     assert dest.protocol.value == "tcp"
     assert dest.format.value == "rfc5424"
     assert dest.tcp_framing.value == "newline"
@@ -53,7 +54,6 @@ def test_log_forwarding_destination_rejects_tls_with_udp() -> None:
             name="test",
             type=LogForwardingDestinationType.SYSLOG,
             host="localhost",
-            port=514,
             protocol=SyslogProtocol.UDP,
             tls_enabled=True,
         )
@@ -69,6 +69,22 @@ def test_log_forwarding_destination_allows_tls_with_tcp() -> None:
         tls_enabled=True,
     )
     assert dest.tls_enabled is True
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_port"),
+    [
+        ({}, 514),
+        ({"protocol": SyslogProtocol.UDP}, 514),
+        ({"tls_enabled": True}, 6514),
+        ({"port": 1514}, 1514),
+        ({"port": 1514, "tls_enabled": True}, 1514),
+    ],
+    ids=["tcp-default", "udp-default", "tls-default", "explicit-port", "explicit-overrides-tls"],
+)
+def test_service_port(kwargs: dict, expected_port: int) -> None:
+    dest = LogForwardingDestination(name="test", host="localhost", **kwargs)
+    assert dest.service_port == expected_port
 
 
 @pytest.mark.parametrize("invalid_queue_size", [0, -5])

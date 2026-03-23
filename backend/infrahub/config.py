@@ -902,7 +902,9 @@ class LogForwardingDestination(BaseModel):
         default=LogForwardingDestinationType.SYSLOG, description="Destination type."
     )
     host: str = Field(description="Destination host or IP address.")
-    port: int = Field(ge=1, le=65535, description="Destination port number.")
+    port: int | None = Field(
+        default=None, ge=1, le=65535, description="Destination port number. Defaults to 6514 for TLS, 514 otherwise."
+    )
     protocol: SyslogProtocol = Field(default=SyslogProtocol.TCP, description="Transport protocol (tcp or udp).")
     format: SyslogFormat = Field(default=SyslogFormat.RFC5424, description="Syslog format standard.")
     tcp_framing: TcpFraming = Field(
@@ -926,6 +928,14 @@ class LogForwardingDestination(BaseModel):
         default=ExtraLogLevel.WARNING,
         description="Minimum Python log severity to forward when application log forwarding is enabled.",
     )
+
+    @property
+    def service_port(self) -> int:
+        if self.port:
+            return self.port
+        if self.tls_enabled:
+            return 6514
+        return 514
 
     @model_validator(mode="after")
     def validate_tls_protocol(self) -> Self:
