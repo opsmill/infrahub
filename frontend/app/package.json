@@ -112,7 +112,7 @@
   "devDependencies": {
     "@betterer/cli": "^6.0.0-alpha.1",
     "@betterer/typescript": "^6.0.0-alpha.1",
-    "@biomejs/biome": "^2.4.6",
+    "@biomejs/biome": "^2.4.8",
     "@graphql-codegen/cli": "^6.1.3",
     "@graphql-codegen/typescript": "^5.0.9",
     "@graphql-codegen/typescript-operations": "^5.0.9",
@@ -129,7 +129,7 @@
     "knip": "^5.86.0",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3",
-    "ultracite": "^7.2.5",
+    "ultracite": "^7.3.2",
     "vitest": "^4.0.18",
     "vitest-browser-react": "^2.0.5"
   },
