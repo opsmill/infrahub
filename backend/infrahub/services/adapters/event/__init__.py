@@ -48,11 +48,7 @@ class InfrahubEventService:
         )
 
     def _send_log_forwarding(self, event: InfrahubEvent) -> None:
-        """Forward an event to the log forwarding service."""
         if self.log_forwarding is None:
             return
 
-        try:
-            self.log_forwarding.forward_event(event)
-        except Exception:
-            logger.warning("Failed to forward event for log forwarding", exc_info=True)
+        self.log_forwarding.forward_event(event)
