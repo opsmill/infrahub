@@ -1077,10 +1077,11 @@ jobs:
 
       - name: Install Playwright Browsers
         run: pnpm exec playwright install chromium --no-shell
-
+      - name: test
+        run: ls /root/.cache/ms-playwright/chromium-1208
       # Make chromium ignore netlink messages by returning ReadMessages early
       - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --dry-run --no-shell | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --no-shell --dry-run | grep Install | grep chromium- | awk '{print $3}')/chrome-linux64/chrome" >> $GITHUB_ENV
       - name: Chrome func offset
         run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
       - name: Patch chromium
