@@ -53,7 +53,7 @@ def default_append_git_suffix_domains() -> list[str]:
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
-    LOG_FORWARDING_SYSLOG = "log_forwarding_syslog"
+    LOG_FORWARDING = "log_forwarding"
 
 
 class UserInfoMethod(StrEnum):
@@ -956,7 +956,7 @@ class LogForwardingSettings(BaseSettings):
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns enterprise features enabled by log forwarding configuration."""
         if any(d.type == LogForwardingDestinationType.SYSLOG for d in self.destinations):
-            return [EnterpriseFeatures.LOG_FORWARDING_SYSLOG]
+            return [EnterpriseFeatures.LOG_FORWARDING]
         return []
 
 

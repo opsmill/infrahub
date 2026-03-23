@@ -125,7 +125,7 @@ def test_log_forwarding_settings_unique_names_accepted() -> None:
 
 def test_log_forwarding_enterprise_feature_not_detected_when_empty() -> None:
     config = load(config_data={})
-    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG not in config.enterprise_features
+    assert EnterpriseFeatures.LOG_FORWARDING not in config.enterprise_features
 
 
 def test_log_forwarding_enterprise_feature_detected() -> None:
@@ -136,7 +136,7 @@ def test_log_forwarding_enterprise_feature_detected() -> None:
             ),
         ]
     )
-    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in settings.enterprise_features
+    assert EnterpriseFeatures.LOG_FORWARDING in settings.enterprise_features
 
 
 def test_log_forwarding_toml_parsing_multiple_destinations() -> None:
@@ -174,7 +174,7 @@ def test_log_forwarding_toml_parsing_multiple_destinations() -> None:
     assert dest2.host == "syslog2.example.com"
     assert dest2.protocol is SyslogProtocol.UDP
     assert dest2.format is SyslogFormat.RFC3164
-    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in config.enterprise_features
+    assert EnterpriseFeatures.LOG_FORWARDING in config.enterprise_features
 
 
 def test_log_forwarding_destinations_from_environment_variable() -> None:
@@ -198,7 +198,7 @@ def test_log_forwarding_from_toml_file() -> None:
     config = load(config_file_name=config_file)
 
     assert len(config.log_forwarding.destinations) == 2
-    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in config.enterprise_features
+    assert EnterpriseFeatures.LOG_FORWARDING in config.enterprise_features
 
     primary = config.log_forwarding.destinations[0]
     assert primary.name == "siem-primary"
@@ -232,5 +232,5 @@ def test_settings_enterprise_features_aggregates_log_forwarding() -> None:
     }
     config = load(config_data=config_data)
     features = config.enterprise_features
-    assert EnterpriseFeatures.LOG_FORWARDING_SYSLOG in features
+    assert EnterpriseFeatures.LOG_FORWARDING in features
     assert EnterpriseFeatures.PROPOSED_CHANGE_REQUIRE_APPROVAL in features
