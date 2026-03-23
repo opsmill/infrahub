@@ -42,7 +42,56 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py310"
+
+[tool.ruff.lint]
+preview = true
+
+
+select = ["ALL"]
+
+ignore = [
+    "D",        # pydocstyle
+    "DOC",      # pydoclint
+    "CPY",      # flake8-copyright
+    "T201",     # use of `print`
+    "ISC",      # flake8-implicit-str-concat
+    "COM812",   # missing-trailing-comma
+    "S101",     # Use of assert allowed as the producation code is used within tests
+    ##################################################################################################
+    # Rules below needs to be Investigated                                                           #
+    ##################################################################################################
+    "A001",     # Variable `format` is shadowing a Python builtin
+    "BLE001",   # Do not catch blind exception: `Exception`
+    "C901",     # `database_restore_backup` is too complex (22 > 10)
+    "E501",     # Line too long
+    "EM101",    # Exception must not use a string literal, assign to variable first
+    "EM102",    # Exception must not use an f-string literal, assign to variable first
+    "FBT001",   # Boolean-typed positional argument in function definition
+    "FBT002",   # Boolean default positional argument in function definition
+    "FIX002",   # Line contains TODO, consider resolving the issue
+    "I001",     # [*] Import block is un-sorted or un-formatted
+    "PERF203",  # `try`-`except` within a loop incurs performance overhead
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "PLR0912",  # Too many branches
+    "PLR0914",  # Too many local variables
+    "PLR6301",  # Method `infrahub_app` could be a function, class method, or static method
+    "PT021",    # Use `yield` instead of `request.addfinalizer`
+    "RET504",   # Unnecessary assignment to `result` before `return` statement
+    "RUF010",   # Use explicit conversion flag
+    "RUF067",   # `__init__` module should only contain docstrings and re-exports
+    "RUF100",   # [*] Unused `noqa` directive (non-enabled: `E501`)
+    "UP035",    # [*] Import from `collections.abc` instead: `Callable`
+    "SLF001",   # Private member accessed: `_session`
+    "TC001",    # Move application import `.helpers.InfrahubDockerCompose` into a type-checking block
+    "TC002",    # Move third-party import `pytest` into a type-checking block
+    "TC003",    # Move standard library import `types.TracebackType` into a type-checking block
+    "TD002",    # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
+    "TD003",    # Missing issue link for this TODO
+    "TD004",    # Missing colon in TODO
+    "TRY002",   # Create your own exception
+    "TRY003",   # Avoid specifying long messages outside the exception class
+]
 
 [tool.hatch.build.targets.sdist]
 include = [
