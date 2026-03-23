@@ -24,16 +24,26 @@ This command displays the current status of all work packages for the feature, b
 1. **Determine feature**:
    - Parse `$ARGUMENTS` for an optional feature/branch name
    - If not provided, use the current git branch name
-   - Verify `dev/spec-kitty/work-packages/<branch-name>/` exists
 
-2. **Read all WP files** from `dev/spec-kitty/work-packages/<branch-name>/`:
-   - Parse YAML frontmatter from each WP (id, lane, assigned_to, agent)
-   - Extract title from heading
-   - Count acceptance criteria per WP
+2. **Kill any existing dashboard and launch the browser dashboard**:
 
-3. **Display terminal summary**:
+   Always launch the dashboard immediately — it handles empty/missing work packages gracefully.
 
-   First, run the status script:
+   ```bash
+   python dev/spec-kitty/kittify/scripts/dashboard.py --kill 2>/dev/null
+   nohup python dev/spec-kitty/kittify/scripts/dashboard/server.py --feature <branch-name> > /dev/null 2>&1 &
+   ```
+
+   Report:
+   - Dashboard URL: `http://localhost:5050`
+   - How to stop: `/kitty-spec.dashboard stop`
+   - Auto-refreshes every 5 seconds
+
+3. **Display terminal summary** (only if work packages exist):
+
+   If `dev/spec-kitty/work-packages/<branch-name>/` exists and contains WP files:
+
+   Run the status script:
    ```bash
    dev/spec-kitty/kittify/scripts/manage-workpackages.sh status <branch-name>
    ```
@@ -56,20 +66,10 @@ This command displays the current status of all work packages for the feature, b
    dev/spec-kitty/kittify/scripts/manage-workpackages.sh list <branch-name>
    ```
 
-4. **Launch browser dashboard** (optional):
+   If no work packages exist, simply note that no work packages have been generated yet.
 
-   If the user requests it or the environment supports it:
-
-   ```bash
-   python dev/spec-kitty/kittify/scripts/dashboard.py --feature <branch-name> &
-   ```
-
-   Report:
-   - Dashboard URL: `http://localhost:5050`
-   - How to stop: `/kitty-spec.dashboard stop`
-   - Auto-refreshes every 5 seconds
-
-5. **Suggest next actions** based on current state:
+4. **Suggest next actions** based on current state:
+   - No WPs exist -> "Generate work packages with `/kitty-spec.tasks`"
    - WPs in `planned` with met dependencies -> "Ready to start: `/kitty-spec.implement <WP_ID>`"
    - WPs in `for_review` -> "Ready for review: `/kitty-spec.review <WP_ID>`"
    - WPs in `done` -> "Ready to merge: `/kitty-spec.merge <WP_ID>`"
