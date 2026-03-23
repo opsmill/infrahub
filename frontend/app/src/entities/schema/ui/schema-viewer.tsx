@@ -100,7 +100,7 @@ export const SchemaViewer = ({
           {schema.kind && (
             <Tooltip content="View in graph" enabled>
               <LinkButton
-                to={`/schema/graph?${QSP.HIGHLIGHT}=${schema.kind}`}
+                to={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
                 size="icon"
                 variant="ghost"
                 aria-label="View in graph"
