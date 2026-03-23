@@ -29,7 +29,7 @@ def test_log_forwarding_destination_valid() -> None:
     assert dest.host == "syslog.example.com"
     assert dest.port is None
     assert dest.service_port == 514
-    assert dest.protocol.value == "tcp"
+    assert dest.protocol.value == "udp"
     assert dest.format.value == "rfc5424"
     assert dest.tcp_framing.value == "newline"
     assert dest.tls_enabled is False
@@ -75,12 +75,13 @@ def test_log_forwarding_destination_allows_tls_with_tcp() -> None:
     ("kwargs", "expected_port"),
     [
         ({}, 514),
+        ({"protocol": SyslogProtocol.TCP}, 514),
         ({"protocol": SyslogProtocol.UDP}, 514),
-        ({"tls_enabled": True}, 6514),
+        ({"protocol": SyslogProtocol.TCP, "tls_enabled": True}, 6514),
         ({"port": 1514}, 1514),
-        ({"port": 1514, "tls_enabled": True}, 1514),
+        ({"port": 1514, "protocol": SyslogProtocol.TCP, "tls_enabled": True}, 1514),
     ],
-    ids=["tcp-default", "udp-default", "tls-default", "explicit-port", "explicit-overrides-tls"],
+    ids=["udp-default", "tcp", "udp-explicit", "tls-default", "explicit-port", "explicit-overrides-tls"],
 )
 def test_service_port(kwargs: dict, expected_port: int) -> None:
     dest = LogForwardingDestination(name="test", host="localhost", **kwargs)

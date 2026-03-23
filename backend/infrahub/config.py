@@ -905,7 +905,7 @@ class LogForwardingDestination(BaseModel):
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Destination port number. Defaults to 6514 for TLS, 514 otherwise."
     )
-    protocol: SyslogProtocol = Field(default=SyslogProtocol.TCP, description="Transport protocol (tcp or udp).")
+    protocol: SyslogProtocol = Field(default=SyslogProtocol.UDP, description="Transport protocol (tcp or udp).")
     format: SyslogFormat = Field(default=SyslogFormat.RFC5424, description="Syslog format standard.")
     tcp_framing: TcpFraming = Field(
         default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
