@@ -106,9 +106,13 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
       </Card>
 
       {error?.stack && (
-        <Accordion className="text-gray-600 text-sm" title="View error stack">
+        <>
+          <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.message}</pre>
           <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.stack}</pre>
-        </Accordion>
+          <Accordion className="text-gray-600 text-sm" title="View error stack">
+            <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.stack}</pre>
+          </Accordion>
+        </>
       )}
     </div>
   );
