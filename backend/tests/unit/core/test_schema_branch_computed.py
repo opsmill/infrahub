@@ -1,11 +1,8 @@
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.basenode_schema import SchemaAttributePath
-from infrahub.core.schema.schema_branch_computed import (
-    ComputedAttributes,
-    ComputedAttributeTarget,
-    RegisteredNodeComputedAttribute,
-)
+from infrahub.core.schema.schema_branch_computed import ComputedAttributes, ComputedAttributeTarget
+from infrahub.core.schema.schema_branch_computed_jinja2 import RegisteredNodeComputedAttribute
 
 
 def _node(name: str, namespace: str = "Infra") -> NodeSchema:
@@ -164,7 +161,7 @@ class TestRegisterComputedJinja2:
 
         computed.register_computed_jinja2(node=node, attribute=attr, schema_path=path)
 
-        registry = computed._computed_jinja2_attribute_map
+        registry = computed._jinja2._map
         assert set(registry.keys()) == {"InfraDevice"}
         assert list(registry["InfraDevice"].local_fields.keys()) == ["name"]
         assert registry["InfraDevice"].relationships == {}
@@ -187,7 +184,7 @@ class TestRegisterComputedJinja2:
 
         computed.register_computed_jinja2(node=node, attribute=attr, schema_path=path)
 
-        registry = computed._computed_jinja2_attribute_map
+        registry = computed._jinja2._map
 
         # Peer entry (InfraSite): local_fields has the peer attribute, relationships has the relationship name
         assert "InfraSite" in registry
@@ -227,7 +224,7 @@ class TestRegisterComputedJinja2:
             ),
         )
 
-        registry = computed._computed_jinja2_attribute_map
+        registry = computed._jinja2._map
 
         # Owner entry should have both "name" (local attr) and "site" (relationship re-assignment)
         owner = registry["InfraDevice"]
