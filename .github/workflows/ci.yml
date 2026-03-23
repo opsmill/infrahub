@@ -740,7 +740,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Playwright Browsers
         working-directory: ./frontend/app
-        run: node node_modules/playwright/cli.js install chromium --with-deps
+        run: pnpm exec playwright install chromium
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "pnpm test:coverage"
