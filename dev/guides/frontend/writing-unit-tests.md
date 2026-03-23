@@ -360,7 +360,7 @@ Follow this process when writing unit tests:
 2. **Identify test cases** - Determine happy path and edge cases to test
 3. **Use factories** - Never hardcode test data; use factories from `tests/fake/`
 4. **Follow BDD** - Structure tests with GIVEN/WHEN/THEN comments
-5. **Verify tests pass** - Run `pnpm test` to ensure tests pass
+5. **Verify tests pass** - Run `npm run test` to ensure tests pass
 
 ## Quality Checklist
 

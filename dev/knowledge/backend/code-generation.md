@@ -27,7 +27,7 @@ Schema definitions (Python)
 
        │
        ▼
-  cd frontend/app && pnpm codegen         ← offline, reads local files
+  cd frontend/app && npm run codegen      ← offline, reads local files
        │
        ├──► frontend/app/src/shared/api/graphql/generated/types.ts
        └──► frontend/app/src/shared/api/rest/types.generated.ts
@@ -38,8 +38,8 @@ Schema definitions (Python)
 | Change | Command |
 |--------|---------|
 | Added/modified schema definitions (attributes, relationships) | `uv run invoke backend.generate` |
-| Changed GraphQL schema structure | `uv run invoke schema.generate-graphqlschema` + `pnpm codegen` |
-| New GraphQL queries/mutations in frontend | `pnpm codegen` |
+| Changed GraphQL schema structure | `uv run invoke schema.generate-graphqlschema` + `npm run codegen` |
+| New GraphQL queries/mutations in frontend | `npm run codegen` |
 
 Changes that do **not** require regeneration:
 - Modifying Python business logic

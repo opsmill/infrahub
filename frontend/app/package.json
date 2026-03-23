@@ -59,7 +59,6 @@
     "@uiw/react-color": "^2.9.6",
     "@vitejs/plugin-react": "^6.0.1",
     "apollo-upload-client": "18.0.1",
-    "babel-plugin-react-compiler": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cm6-graphql": "^0.2.1",

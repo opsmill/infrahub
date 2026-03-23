@@ -99,9 +99,6 @@ importers:
       apollo-upload-client:
         specifier: 18.0.1
         version: 18.0.1(@apollo/client@3.13.8(@types/react@19.2.14)(graphql-ws@6.0.7(graphql@16.13.1)(ws@8.20.0))(graphql@16.13.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(graphql@16.13.1)
-      babel-plugin-react-compiler:
-        specifier: ^1.0.0
-        version: 1.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -10088,6 +10085,7 @@ snapshots:
   babel-plugin-react-compiler@1.0.0:
     dependencies:
       '@babel/types': 7.29.0
+    optional: true
 
   bail@2.0.2: {}
 

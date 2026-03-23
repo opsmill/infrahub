@@ -372,7 +372,7 @@ test.beforeEach(async function ({ page }) {
 cd frontend/app
 
 # Run all E2E tests
-pnpm test:e2e
+npm run test:e2e
 
 # Run a specific test file
 npx playwright test tests/e2e/objects/object-update.spec.ts
