@@ -134,6 +134,10 @@
     "vitest-browser-react": "^2.0.5"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js",
+      "esbuild"
+    ],
     "peerDependencyRules": {
       "allowedVersions": {
         "graphiql-explorer>graphql": "^16.0.0",
