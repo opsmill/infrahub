@@ -46,6 +46,33 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
+def _extract_csv(text: str) -> str:
+    """Extract CSV data from an LLM response that may contain preamble text.
+
+    First tries _strip_code_fences.  If no fences were found, looks for the
+    first line containing a comma that doesn't look like prose (i.e. a short
+    comma-separated header row) and returns everything from that line onward.
+    """
+    fenced = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
+    if fenced.search(text):
+        return _strip_code_fences(text)
+
+    lines = text.strip().splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # CSV header: contains commas, no markdown prefixes, and every
+        # comma-separated field is short (< 60 chars) — distinguishes
+        # from prose sentences that happen to contain commas.
+        if "," in stripped and not stripped.startswith(("#", "-", "*", ">", "`", "|")):
+            fields = stripped.split(",")
+            if all(len(f.strip()) < 60 for f in fields) and len(fields) >= 2:
+                return "\n".join(lines[i:]).strip()
+
+    return text.strip()
+
+
 def _extract_text(response: Any) -> str:
     """Extract concatenated text from a Claude API response."""
     parts = []
@@ -122,6 +149,7 @@ class AIClient:
                         user_message=user_message,
                         tools=tools,
                         session=session,
+                        output_format=output_format,
                     )
             except Exception as e:
                 log.warning("MCP connection failed, falling back to single-shot", error=str(e))
@@ -130,7 +158,7 @@ class AIClient:
             report_content = await self._single_shot_generate(system_message, user_message)
 
         if output_format == "csv":
-            report_content = _strip_code_fences(report_content)
+            report_content = _extract_csv(report_content)
 
         return report_content
 
@@ -222,11 +250,22 @@ class AIClient:
         user_message: str,
         tools: list[ToolParam],
         session: ClientSession,
+        output_format: str = "markdown",
     ) -> str:
         """Run the agentic tool-use loop. Returns the final report text."""
         messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
         total_input_tokens = 0
         total_output_tokens = 0
+
+        # Build a short format reminder to inject alongside tool results so the
+        # model doesn't lose sight of the output format after many rounds.
+        if output_format == "csv":
+            _format_reminder = {
+                "type": "text",
+                "text": "Reminder: when you produce the final output, emit raw CSV only — no explanation, no markdown, no code fences.",
+            }
+        else:
+            _format_reminder = None
 
         for iteration in range(MAX_TOOL_USE_ITERATIONS):
             response = await self.client.messages.create(
@@ -261,7 +300,11 @@ class AIClient:
                     result = await self._execute_tool_call(block, session)
                     tool_results.append(result)
 
-            messages.append({"role": "user", "content": tool_results})
+            # Include format reminder alongside tool results to keep it fresh
+            user_content: list[Any] = list(tool_results)
+            if _format_reminder:
+                user_content.append(_format_reminder)
+            messages.append({"role": "user", "content": user_content})
 
         # Max iterations reached — make one final call without tools to force text output
         log.warning("Agentic loop reached max iterations", max_iterations=MAX_TOOL_USE_ITERATIONS)

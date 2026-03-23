@@ -731,6 +731,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
+            is_ai_transform = model.artifact_definition.transform_kind == InfrahubKind.TRANSFORMAI
             check_model = CheckArtifactCreate(
                 context=context,
                 artifact_name=model.artifact_definition.artifact_name,
@@ -754,6 +755,10 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 target_name=member.display_label,
                 timeout=model.artifact_definition.timeout,
                 validator_id=validator.id,
+                ai_model=model.artifact_definition.ai_model if is_ai_transform else None,
+                ai_temperature=model.artifact_definition.ai_temperature / 100 if is_ai_transform else None,
+                ai_max_tokens=model.artifact_definition.ai_max_tokens if is_ai_transform else None,
+                ai_output_format=model.artifact_definition.ai_output_format if is_ai_transform else None,
             )
 
             checks.append(
@@ -1340,6 +1345,23 @@ query GatherArtifactDefinitions {
                 value
               }
             }
+            ... on CoreTransformAI {
+              prompt_template_path {
+                value
+              }
+              model {
+                value
+              }
+              temperature {
+                value
+              }
+              max_tokens {
+                value
+              }
+              output_format {
+                value
+              }
+            }
             repository {
               node {
                 id
@@ -1551,6 +1573,13 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
             artifact_definition.convert_query_response = definition["node"]["transformation"]["node"][
                 "convert_query_response"
             ]["value"]
+        elif artifact_definition.transform_kind == InfrahubKind.TRANSFORMAI:
+            node = definition["node"]["transformation"]["node"]
+            artifact_definition.prompt_template_path = node["prompt_template_path"]["value"]
+            artifact_definition.ai_model = node["model"]["value"]
+            artifact_definition.ai_temperature = node["temperature"]["value"]
+            artifact_definition.ai_max_tokens = node["max_tokens"]["value"]
+            artifact_definition.ai_output_format = node["output_format"]["value"]
 
         parsed.append(artifact_definition)
 

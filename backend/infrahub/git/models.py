@@ -44,6 +44,10 @@ class RequestArtifactGenerate(BaseModel):
     query_id: str = Field(..., description="The id of the query to use when collecting data")
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
+    ai_model: str | None = Field(default=None, description="Claude model for AI transforms")
+    ai_temperature: float | None = Field(default=None, description="Temperature for AI transforms (0.0-1.0)")
+    ai_max_tokens: int | None = Field(default=None, description="Max tokens for AI transforms")
+    ai_output_format: str | None = Field(default=None, description="Output format for AI transforms (markdown or csv)")
     context: InfrahubContext = Field(..., description="The context of the task")
 
 

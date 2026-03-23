@@ -403,6 +403,10 @@ async def generate_request_artifact_definition(
             kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=model.branch, fragment=True
         )
     transform_location = ""
+    ai_model = None
+    ai_temperature = None
+    ai_max_tokens = None
+    ai_output_format = None
 
     convert_query_response = False
     if transform.typename == InfrahubKind.TRANSFORMJINJA2:
@@ -410,6 +414,12 @@ async def generate_request_artifact_definition(
     elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
+    elif transform.typename == InfrahubKind.TRANSFORMAI:
+        transform_location = transform.prompt_template_path.value
+        ai_model = transform.model.value
+        ai_temperature = transform.temperature.value / 100
+        ai_max_tokens = transform.max_tokens.value
+        ai_output_format = transform.output_format.value
 
     batch = await client.create_batch()
     for relationship in group.members.peers:
@@ -439,6 +449,10 @@ async def generate_request_artifact_definition(
             target_kind=member.get_kind(),
             timeout=transform.timeout.value,
             convert_query_response=convert_query_response,
+            ai_model=ai_model,
+            ai_temperature=ai_temperature,
+            ai_max_tokens=ai_max_tokens,
+            ai_output_format=ai_output_format,
             context=context,
         )
 

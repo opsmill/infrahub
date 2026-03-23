@@ -1625,6 +1625,21 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 data=response,
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
+        elif message.transform_type == InfrahubKind.TRANSFORMAI:
+            result = await self.execute_ai_transform.with_options(timeout_seconds=message.timeout)(
+                branch_name=message.branch_name,
+                commit=message.commit,
+                prompt_template_path=message.transform_location,
+                client=self.sdk,
+                data=response,
+                model=message.ai_model or "claude-sonnet-4-5-20250929",
+                temperature=message.ai_temperature if message.ai_temperature is not None else 1.0,
+                max_tokens=message.ai_max_tokens or 4096,
+                output_format=message.ai_output_format or "markdown",
+            )
+            artifact_content = result["content"]
+        else:
+            raise ValueError(f"Unsupported transform type: {message.transform_type}")
 
         if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)

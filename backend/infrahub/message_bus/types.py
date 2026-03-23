@@ -103,6 +103,11 @@ class ProposedChangeArtifactDefinition(BaseModel):
         default=False, description="Convert query response to InfrahubNode objects for Python based transforms"
     )
     timeout: int
+    prompt_template_path: str = Field(default="")
+    ai_model: str = Field(default="")
+    ai_temperature: int = Field(default=100)
+    ai_max_tokens: int = Field(default=4096)
+    ai_output_format: str = Field(default="markdown")
 
     @property
     def transform_location(self) -> str:
@@ -110,6 +115,8 @@ class ProposedChangeArtifactDefinition(BaseModel):
             return self.template_path
         if self.transform_kind == InfrahubKind.TRANSFORMPYTHON:
             return f"{self.file_path}::{self.class_name}"
+        if self.transform_kind == InfrahubKind.TRANSFORMAI:
+            return self.prompt_template_path
 
         raise ValueError("Invalid kind for Transform")
 
