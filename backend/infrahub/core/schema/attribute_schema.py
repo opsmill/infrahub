@@ -82,7 +82,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @property
     def support_profiles(self) -> bool:
-        return self.read_only is False and self.unique is False and not (self.optional and self.unique)
+        return self.read_only is False and self.unique is False
 
     @property
     def support_templates(self) -> bool:
