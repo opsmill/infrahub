@@ -646,16 +646,47 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return errors
 
-    async def _process_macros(self, db: InfrahubDatabase) -> None:
-        schema_branch = db.schema.get_schema_branch(self._branch.name)
+    async def _resolve_jinja2_variables(
+        self,
+        db: InfrahubDatabase,
+        schema_branch: SchemaBranch,
+        jinja_template: InfrahubJinja2Template,
+    ) -> dict[str, Any]:
+        """Resolve Jinja2 template variables from local attributes and relationship peers."""
         allowed_path_types = (
             SchemaElementPathType.ATTR_WITH_PROP
             | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
             | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
         )
+        variables: dict[str, Any] = {}
+
+        for variable in jinja_template.get_variables():
+            attribute_path = schema_branch.validate_schema_path(
+                node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
+            )
+            if attribute_path.is_type_relationship:
+                relationship_attribute: RelationshipManager = getattr(
+                    self, attribute_path.active_relationship_schema.name
+                )
+                if peer := await relationship_attribute.get_peer(db=db, raise_on_error=False):
+                    variables[variable] = getattr(
+                        getattr(peer, attribute_path.active_attribute_schema.name),
+                        attribute_path.active_attribute_property_name,
+                    )
+                else:
+                    variables[variable] = None
+            elif attribute_path.is_type_attribute:
+                variables[variable] = getattr(
+                    getattr(self, attribute_path.active_attribute_schema.name),
+                    attribute_path.active_attribute_property_name,
+                )
+
+        return variables
+
+    async def _process_macros(self, db: InfrahubDatabase) -> None:
+        schema_branch = db.schema.get_schema_branch(self._branch.name)
         errors = []
         for macro in self._computed_jinja2_attributes:
-            variables = {}
             attr_schema = self._schema.get_attribute(name=macro)
             if not attr_schema.computed_attribute:
                 errors.append(
@@ -669,36 +700,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
-            for variable in jinja_template.get_variables():
-                attribute_path = schema_branch.validate_schema_path(
-                    node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
-                )
-                if attribute_path.is_type_relationship:
-                    relationship_attribute: RelationshipManager = getattr(
-                        self, attribute_path.active_relationship_schema.name
-                    )
-                    if peer := await relationship_attribute.get_peer(db=db, raise_on_error=False):
-                        related_node = await registry.manager.get_one_by_id_or_default_filter(
-                            db=db,
-                            id=peer.id,
-                            kind=attribute_path.active_relationship_schema.peer,
-                            branch=self._branch.name,
-                        )
-
-                        attribute: BaseAttribute = getattr(
-                            getattr(related_node, attribute_path.active_attribute_schema.name),
-                            attribute_path.active_attribute_property_name,
-                        )
-                        variables[variable] = attribute
-                    else:
-                        variables[variable] = None
-
-                elif attribute_path.is_type_attribute:
-                    attribute = getattr(
-                        getattr(self, attribute_path.active_attribute_schema.name),
-                        attribute_path.active_attribute_property_name,
-                    )
-                    variables[variable] = attribute
+            variables = await self._resolve_jinja2_variables(
+                db=db, schema_branch=schema_branch, jinja_template=jinja_template
+            )
 
             content = await jinja_template.render(variables=variables)
 
@@ -721,6 +725,50 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         if errors:
             raise ValidationError(errors)
+
+    async def _recompute_local_jinja2(
+        self,
+        db: InfrahubDatabase,
+        fields: list[str] | None,
+        node_changelog: NodeChangelog,
+        update_at: Timestamp,
+        user_id: str,
+    ) -> None:
+        """Recompute Jinja2 computed attributes whose dependencies were modified."""
+        schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
+
+        targets = schema_branch.computed_attributes.get_local_jinja2_targets(
+            kind=self._schema.kind, updates=fields
+        )
+        if not targets:
+            return
+
+        for target in targets:
+            try:
+                attr_schema = self._schema.get_attribute(name=target.attribute.name)
+                if not attr_schema.computed_attribute or not attr_schema.computed_attribute.jinja2_template:
+                    continue
+
+                jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+                variables = await self._resolve_jinja2_variables(
+                    db=db, schema_branch=schema_branch, jinja_template=jinja_template
+                )
+
+                new_value = await jinja_template.render(variables=variables)
+
+                attr: BaseAttribute = self.get_attribute(name=target.attribute.name)
+                if attr.value != new_value:
+                    attr.value = new_value
+                    updated_attribute = await attr.save(db=db, user_id=user_id, at=update_at)
+                    if updated_attribute:
+                        node_changelog.add_attribute(attribute=updated_attribute)
+            except Exception:
+                log.warning(
+                    "Failed to recompute Jinja2 attribute",
+                    node_kind=self._schema.kind,
+                    attribute_name=target.attribute.name,
+                    exc_info=True,
+                )
 
     async def _generate_relationship_default(
         self,
@@ -939,6 +987,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     rel = self.get_relationship(name=parent_relationship)
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
+
+        # Recompute Jinja2 computed attributes affected by the updated fields
+        await self._recompute_local_jinja2(
+            db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
+        )
 
         # Update the HFID if one of its variables is being updated
         if self._human_friendly_id and (
