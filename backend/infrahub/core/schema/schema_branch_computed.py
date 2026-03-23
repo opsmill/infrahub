@@ -23,6 +23,14 @@ class PythonDefinition:
 
 
 class ComputedAttributeTarget(BaseModel):
+    """Identifies a computed attribute that needs recomputation.
+
+    Points to a specific (kind, attribute) pair — e.g. InfraDevice.computed_name — that should
+    be re-evaluated when a dependency changes. The ``filter_keys`` field carries relationship-based
+    query filters (e.g. ``site__ids``) used to locate affected nodes when the trigger comes from
+    a peer node rather than the owner itself.
+    """
+
     kind: str
     attribute: AttributeSchema
     filter_keys: list[str] = Field(default_factory=list)
@@ -54,6 +62,22 @@ class ComputedAttributeTriggerNode(BaseModel):
 
 
 class RegisteredNodeComputedAttribute(BaseModel):
+    """Dependency record for a single trigger node kind in the Jinja2 computed attribute registry.
+    Each instance describes what should happen when a node of a particular kind is mutated.
+
+    Example: InfraDevice has ``computed_name = "{{ name__value }}-{{ site__name__value }}"``.
+    This produces two entries in the map:
+
+    - **"InfraDevice"** (the owner): ``local_fields = {"name": [target], "site": [target]}``
+      A change to the device's own ``name`` or ``site`` relationship triggers recomputation.
+
+    - **"InfraSite"** (the peer): ``local_fields = {"name": [target]}``,
+      ``relationships = {"site": [target]}``
+      A change to the site's ``name`` triggers recomputation of devices linked via ``site``.
+      The ``relationships`` dict provides ``filter_keys`` (e.g. ``site__ids``) so the system
+      can locate which devices are affected.
+    """
+
     local_fields: dict[str, list[ComputedAttributeTarget]] = Field(
         default_factory=dict,
         description="These are fields local to the modified node, which can include the names of attributes and relationships",
@@ -64,6 +88,16 @@ class RegisteredNodeComputedAttribute(BaseModel):
     )
 
     def get_targets(self, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+        """Resolve which ComputedAttributeTargets are affected by changes to this node.
+
+        Args:
+            updates: Field names (attributes or relationships) that changed. When None, all
+                     registered local_fields are included.
+
+        Returns:
+            Deduplicated list of ComputedAttributeTarget, each enriched with any applicable
+            relationship-based filter_keys.
+        """
         targets: dict[str, ComputedAttributeTarget] = {}
         for attribute, entries in self.local_fields.items():
             if updates and attribute not in updates:
@@ -128,44 +162,43 @@ class ComputedAttributes:
     def register_computed_jinja2(
         self, node: NodeSchema, attribute: AttributeSchema, schema_path: SchemaAttributePath
     ) -> None:
-        key = node.kind
-        if schema_path.is_type_relationship:
-            key = schema_path.active_relationship_schema.peer
+        """Register a Jinja2 computed attribute and its dependency graph.
 
-        if key not in self._computed_jinja2_attribute_map:
-            self._computed_jinja2_attribute_map[key] = RegisteredNodeComputedAttribute()
+        Populates the ``_computed_jinja2_attribute_map`` so the system knows which nodes/fields
+        trigger recomputation of which computed attributes. The map is keyed by the kind of node
+        whose mutation should trigger recomputation.
 
+        Args:
+            node: The schema owning the computed attribute (e.g. InfraDevice).
+            attribute: The computed attribute definition (e.g. ``computed_name``).
+            schema_path: Parsed Jinja2 template token identifying the dependency — either a
+                         local attribute or a relationship + peer attribute.
+        """
+        # Determine the trigger key: for local attributes it's the node itself,
+        # for relationship attributes it's the peer kind.
+        key = node.kind if not schema_path.is_type_relationship else schema_path.active_relationship_schema.peer
+
+        trigger_node = self._computed_jinja2_attribute_map.setdefault(key, RegisteredNodeComputedAttribute())
         source_attribute = ComputedAttributeTarget(kind=node.kind, attribute=attribute)
-        trigger_node = self._computed_jinja2_attribute_map[key]
-        if schema_path.is_type_attribute:
-            if schema_path.active_attribute_schema.name not in trigger_node.local_fields:
-                trigger_node.local_fields[schema_path.active_attribute_schema.name] = []
+        attr_name = schema_path.active_attribute_schema.name
 
-            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(deepcopy(source_attribute))
-        elif schema_path.is_type_relationship:
-            if schema_path.active_attribute_schema.name not in trigger_node.local_fields:
-                trigger_node.local_fields[schema_path.active_attribute_schema.name] = []
+        # Both cases: register the attribute as a local_field on the trigger node,
+        # so a change to this field triggers recomputation.
+        trigger_node.local_fields.setdefault(attr_name, []).append(deepcopy(source_attribute))
 
-            trigger_node.local_fields[schema_path.active_attribute_schema.name].append(deepcopy(source_attribute))
+        if schema_path.is_type_relationship:
+            rel_name = schema_path.active_relationship_schema.name
 
-            if schema_path.active_relationship_schema.name not in trigger_node.relationships:
-                trigger_node.relationships[schema_path.active_relationship_schema.name] = []
+            # Record the relationship on the *peer* entry so get_targets() can
+            # build filter_keys (e.g. "site__ids") to locate affected owner nodes.
+            trigger_node.relationships.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
-            trigger_node.relationships[schema_path.active_relationship_schema.name].append(deepcopy(source_attribute))
-
-            if source_attribute.kind not in self._computed_jinja2_attribute_map:
-                self._computed_jinja2_attribute_map[source_attribute.kind] = RegisteredNodeComputedAttribute()
-
-            if (
-                schema_path.active_relationship_schema.name
-                not in self._computed_jinja2_attribute_map[source_attribute.kind].local_fields
-            ):
-                self._computed_jinja2_attribute_map[source_attribute.kind].local_fields[
-                    schema_path.active_relationship_schema.name
-                ] = []
-            self._computed_jinja2_attribute_map[source_attribute.kind].local_fields[
-                schema_path.active_relationship_schema.name
-            ].append(deepcopy(source_attribute))
+            # Register on the *owner* entry so that a relationship re-assignment
+            # (e.g. changing which site a device points to) also triggers recomputation.
+            owner_entry = self._computed_jinja2_attribute_map.setdefault(
+                source_attribute.kind, RegisteredNodeComputedAttribute()
+            )
+            owner_entry.local_fields.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
     def validate_generic_inheritance(
         self, node: NodeSchema, attribute: AttributeSchema, generic: GenericSchema
@@ -178,6 +211,19 @@ class ComputedAttributes:
         self._defined_from_generic[attribute_key] = generic.kind
 
     def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+        """Return computed Jinja2 attribute targets that need re-evaluation when a node of the given kind is modified.
+
+        Args:
+            kind: The schema kind of the node that was modified (e.g. "InfraInterface").
+            updates: Optional list of field names (attributes or relationships) that changed on the node.
+                     When provided, only targets whose Jinja2 templates reference these fields are returned.
+                     When None, all registered targets for this kind are returned.
+
+        Returns:
+            List of ComputedAttributeTarget entries, each identifying a (kind, attribute) pair whose
+            computed value depends on the modified node and may need recomputation. The target kind
+            can differ from the input kind when the dependency crosses a relationship.
+        """
         if mapping := self._computed_jinja2_attribute_map.get(kind):
             return mapping.get_targets(updates=updates)
 
