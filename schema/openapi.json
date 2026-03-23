@@ -2418,7 +2418,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -2704,7 +2704,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3029,7 +3029,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3300,7 +3300,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -4617,7 +4617,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -5386,7 +5386,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
