@@ -487,33 +487,34 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
 
     database = await get_database()
     async with database.start_session() as db:
-        try:
-            await Branch.get_by_name(db=db, name=model.name)
-            raise ValidationError(f"The branch {model.name} already exists")
-        except BranchNotFoundError:
-            pass
+        async with lock.registry.get(name=model.name, namespace="branch"):
+            try:
+                await Branch.get_by_name(db=db, name=model.name)
+                raise ValidationError(f"The branch {model.name} already exists")
+            except BranchNotFoundError:
+                pass
 
-        data_dict: dict[str, Any] = dict(model)
-        data_dict.pop("is_isolated", None)
+            data_dict: dict[str, Any] = dict(model)
+            data_dict.pop("is_isolated", None)
 
-        try:
-            obj = Branch(**data_dict)
-        except pydantic.ValidationError as exc:
-            error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-            raise ValidationError("\n".join(error_msgs)) from exc
+            try:
+                obj = Branch(**data_dict)
+            except pydantic.ValidationError as exc:
+                error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
+                raise ValidationError("\n".join(error_msgs)) from exc
 
-        async with lock.registry.local_schema_lock():
-            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-            new_schema = origin_schema.duplicate(name=obj.name)
-            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-            obj.update_schema_hash()
-            await obj.save(db=db, user_id=context.account.account_id)
+            async with lock.registry.local_schema_lock():
+                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+                origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+                new_schema = origin_schema.duplicate(name=obj.name)
+                registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+                obj.update_schema_hash()
+                await obj.save(db=db, user_id=context.account.account_id)
 
-            # Add Branch to registry
-            registry.branch[obj.name] = obj
-            component = await get_component()
-            await component.refresh_schema_hash(branches=[obj.name])
+                # Add Branch to registry
+                registry.branch[obj.name] = obj
+                component = await get_component()
+                await component.refresh_schema_hash(branches=[obj.name])
 
         event = BranchCreatedEvent(
             branch_name=obj.name,
