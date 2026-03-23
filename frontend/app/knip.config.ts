@@ -11,7 +11,6 @@ const config: KnipConfig = {
 
   ignoreDependencies: [
     "@betterer/typescript", // for betterer typescript regressions
-    "infrahub-schema-visualizer", // local file dependency, knip cannot detect usage
     "monaco-graphql", // for graphiql,
     "ts-node", // for graphql autocompletion in Jetbrains IDE
     "vitest-browser-react", // for vitest browser mode
