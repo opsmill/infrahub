@@ -22,9 +22,7 @@ describe("ModalDeleteBranch", () => {
     const branches = [{ name: "feature-1", sync_with_git: true }];
 
     // WHEN
-    const component = await render(
-      <ModalDeleteBranch {...defaultProps} branches={branches} />
-    );
+    const component = await render(<ModalDeleteBranch {...defaultProps} branches={branches} />);
 
     // THEN
     await expect
@@ -38,14 +36,10 @@ describe("ModalDeleteBranch", () => {
     const branches = [{ name: "feature-1", sync_with_git: false }];
 
     // WHEN
-    const component = await render(
-      <ModalDeleteBranch {...defaultProps} branches={branches} />
-    );
+    const component = await render(<ModalDeleteBranch {...defaultProps} branches={branches} />);
 
     // THEN
-    expect(
-      component.getByRole("radiogroup", { name: "Deletion scope" }).query()
-    ).toBeNull();
+    expect(component.getByRole("radiogroup", { name: "Deletion scope" }).query()).toBeNull();
   });
 
   test("defaults to LOCAL scope when modal opens", async () => {
@@ -54,9 +48,7 @@ describe("ModalDeleteBranch", () => {
     const branches = [{ name: "feature-1", sync_with_git: true }];
 
     // WHEN
-    const component = await render(
-      <ModalDeleteBranch {...defaultProps} branches={branches} />
-    );
+    const component = await render(<ModalDeleteBranch {...defaultProps} branches={branches} />);
 
     // THEN
     const localRadio = component.getByRole("radio", { name: /Local only/i });
@@ -93,6 +85,37 @@ describe("ModalDeleteBranch", () => {
     await component.getByTestId("modal-delete-confirm").click();
 
     // THEN
+    expect(onDelete).toHaveBeenCalledWith(DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE);
+  });
+
+  test("shows scope choice for mixed branches and handles both scope selections", async () => {
+    // GIVEN
+    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as any);
+    const onDelete = vi.fn();
+    const branches = [
+      { name: "feature-1", sync_with_git: true },
+      { name: "feature-2", sync_with_git: false },
+    ];
+
+    // WHEN
+    const component = await render(
+      <ModalDeleteBranch {...defaultProps} branches={branches} onDelete={onDelete} />
+    );
+
+    // THEN - radiogroup is visible and default is LOCAL
+    await expect
+      .element(component.getByRole("radiogroup", { name: "Deletion scope" }))
+      .toBeVisible();
+    await expect.element(component.getByRole("radio", { name: /Local only/i })).toBeChecked();
+
+    // Confirm with default LOCAL selection
+    await component.getByTestId("modal-delete-confirm").click();
+    expect(onDelete).toHaveBeenCalledWith(DELETE_BRANCH_SCOPE.LOCAL);
+
+    // Select "Local and remote" and confirm
+    onDelete.mockClear();
+    await component.getByText("Local and remote").click();
+    await component.getByTestId("modal-delete-confirm").click();
     expect(onDelete).toHaveBeenCalledWith(DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE);
   });
 
