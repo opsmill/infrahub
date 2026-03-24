@@ -428,6 +428,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             or existing_transform.temperature.value != local_transform.temperature
             or existing_transform.max_tokens.value != local_transform.max_tokens
             or existing_transform.output_format.value != local_transform.output_format
+            or existing_transform.timeout.value != local_transform.timeout
             or existing_transform.result_kind.value != local_transform.result_kind
         ):
             return False
@@ -457,6 +458,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_transform.output_format.value != local_transform.output_format:
             existing_transform.output_format.value = local_transform.output_format
+
+        if existing_transform.timeout.value != local_transform.timeout:
+            existing_transform.timeout.value = local_transform.timeout
 
         if existing_transform.result_kind.value != local_transform.result_kind:
             existing_transform.result_kind.value = local_transform.result_kind
