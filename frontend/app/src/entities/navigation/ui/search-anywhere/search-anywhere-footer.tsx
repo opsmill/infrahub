@@ -5,22 +5,16 @@ import { Link } from "react-router";
 
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
-import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
+import { searchResultCountAtom } from "@/entities/navigation/stores/search-result-count.atom";
 import { useSearchAnywhereContext } from "@/entities/navigation/ui/search-anywhere/search-anywhere-context";
 
 export function SearchAnywhereFooter() {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
-  const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
+  const count = useAtomValue(searchResultCountAtom);
   const { closeDialog } = useSearchAnywhereContext();
 
-  const { data } = useGetSearchAnywhere(
-    { search: queryDebounced, caseSensitive },
-    { enabled: !!queryDebounced }
-  );
-
-  if (!queryDebounced || !data || data.count <= 0) {
+  if (!queryDebounced || count <= 0) {
     return null;
   }
 
@@ -32,7 +26,7 @@ export function SearchAnywhereFooter() {
         className="flex items-center justify-center gap-1 rounded px-2 py-1 text-custom-blue-700 text-xs hover:bg-gray-100"
       >
         <span>
-          View all {data.count} {data.count === 1 ? "result" : "results"}
+          View all {count} {count === 1 ? "result" : "results"}
         </span>
         <Icon icon="mdi:arrow-right" className="text-sm" />
       </Link>

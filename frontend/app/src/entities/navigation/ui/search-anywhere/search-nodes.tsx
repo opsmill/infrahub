@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
-import { useAtomValue } from "jotai";
-import type { ReactElement } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { type ReactElement, useEffect } from "react";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
@@ -11,6 +11,7 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
+import { searchResultCountAtom } from "@/entities/navigation/stores/search-result-count.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
@@ -34,6 +35,11 @@ export const SearchNodes = () => {
       enabled: !!queryDebounced,
     }
   );
+
+  const setResultCount = useSetAtom(searchResultCountAtom);
+  useEffect(() => {
+    setResultCount(data?.count ?? 0);
+  }, [data?.count, setResultCount]);
 
   if (query === "") {
     return null;
