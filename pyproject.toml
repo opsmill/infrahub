@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.8.0rc0"
+version = "1.8.1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -35,7 +35,7 @@ dependencies = [
     "gitpython>=3,<4",
     "pyyaml>=6,<7",
     "tomli>=1.1.0; python_version<='3.11'",
-    "deepdiff==8.6.1",
+    "deepdiff==8.6.2",
     # Dependencies specific to the API Server
     "fastapi==0.121.1",
     "fastapi-storages>=0.3,<0.4",
@@ -46,7 +46,7 @@ dependencies = [
     "python-multipart==0.0.22", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
+    "pyjwt==2.12.1", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
@@ -54,7 +54,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.6",
+    "authlib==1.6.9",
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
@@ -1074,7 +1074,6 @@ allow-dunder-method-names = [
     "PLR6201",  # Use a `set` literal when testing for membership
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF029",   # Function is declared `async`, but doesn't `await`
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -1854,6 +1853,7 @@ include = ["backend/tests/fixtures/**"]
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-import = "ignore"
+invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/unit/**"]

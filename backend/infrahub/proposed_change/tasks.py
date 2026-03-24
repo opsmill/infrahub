@@ -54,7 +54,7 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
-from infrahub.exceptions import MergeFailedError
+from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
@@ -93,6 +93,7 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.validators.tasks import start_validator
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
+    BRANCH_DELETE,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
@@ -244,6 +245,13 @@ async def merge_proposed_change(
             database=db,
             user_id=context.account.account_id,
         )
+
+        if config.SETTINGS.main.delete_branch_after_merge and not source_branch.is_default:
+            await get_workflow().submit_workflow(
+                workflow=BRANCH_DELETE,
+                context=context,
+                parameters={"branch": source_branch.name},
+            )
 
         current_user = await NodeManager.get_one_by_id_or_default_filter(
             id=context.account.account_id, kind=InfrahubKind.GENERICACCOUNT, db=db
@@ -430,6 +438,38 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
     candidate_schema = dest_schema.duplicate()
     candidate_schema.update(schema=source_schema)
+
+    try:
+        candidate_schema.duplicate().process()
+    except (ValueError, ValidationError, SchemaNotFoundError) as exc:
+        error_msg = str(exc)
+        parts = error_msg.split(":", 1)
+        kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
+        schema_path = f"schema/{kind}"
+        database = await get_database()
+        async with database.start_transaction() as db:
+            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+                db=db,
+                validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+                validator_label="Schema Integrity",
+                check_schema_kind=InfrahubKind.SCHEMACHECK,
+            )
+            await object_conflict_validator_recorder.record_conflicts(
+                proposed_change_id=model.proposed_change,
+                conflicts=[
+                    SchemaConflict(
+                        name=schema_path,
+                        type="schema.process.validation",
+                        kind=kind,
+                        id=schema_path,
+                        path=schema_path,
+                        value=error_msg,
+                        branch=model.source_branch,
+                    )
+                ],
+            )
+        return
+
     schema_diff = dest_schema.diff(other=candidate_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 

@@ -140,6 +140,7 @@
         "useImportType": "error",
         "useNamingConvention": "off",
         "useNumberNamespace": "off",
+        "noSubstr": "off",
         "useSelfClosingElements": "off",
         "noMagicNumbers": "off",
         "useTemplate": "off"

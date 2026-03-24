@@ -68,7 +68,6 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 - `infrahub.artifact.deleted`
 - `infrahub.group.member_added`
 - `infrahub.group.member_removed`
-- `infrahub.validator.member_removed`
 
 :::
 
@@ -235,6 +234,43 @@ Here are some example payloads of some events that may be sent.
   </TabItem>
 </Tabs>
 <!-- vale on -->
+
+## Custom headers
+
+Webhooks can include custom HTTP headers in every request they send. This is useful for authentication tokens, routing metadata, or any other headers the receiving system requires.
+
+### Key-value pair types
+
+Custom headers are defined as reusable **key-value pair** entities that can be shared across multiple webhooks:
+
+- **Static Key-Value** (`CoreStaticKeyValue`): The header value is stored as plain text and sent as-is. Use this for non-sensitive metadata like `X-Source-System: infrahub` or for authentication tokens like `Authorization: Bearer <token>`.
+- **Environment Variable Key-Value** (`CoreEnvKeyValue`): The stored value is the *name* of an environment variable. The actual value is resolved from the Prefect worker's environment at the time the webhook request is sent. Use this when secrets are managed externally (for example, Kubernetes secrets or HashiCorp Vault).
+
+### Creating and associating headers
+
+1. Create a key-value pair via the UI or GraphQL API, specifying a **name** (human-friendly identifier), a **key** (the HTTP header field name), and a **value**.
+2. Associate the key-value pair with one or more webhooks using the **headers** relationship on the webhook.
+
+A single key-value pair can be linked to multiple webhooks (many-to-many relationship). When the key-value pair is updated, all linked webhooks automatically pick up the new value on their next trigger.
+
+### Header merge behavior
+
+When a webhook fires, headers are merged in this order:
+
+1. **System defaults**: `Accept: application/json` and `Content-Type: application/json`
+2. **Custom headers**: Applied on top of defaults — a custom header with the same key as a system default will override it
+3. **HMAC signature headers** (if a shared key is configured): `webhook-id`, `webhook-timestamp`, and `webhook-signature` are added last and cannot be overridden by custom headers
+
+### Environment variable resolution
+
+For environment-variable-based headers, the value is resolved from `os.environ` on the Prefect worker at send time:
+
+- If the environment variable exists, its value is used as the header value.
+- If the environment variable is **not found**, the header is skipped, a warning is logged, and all remaining headers are still sent.
+
+:::note
+Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not just the token).
+:::
 
 ## Custom webhook transformation
 

@@ -38,15 +38,21 @@ FROM docker.io/node:22-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
-RUN mkdir /source
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
-COPY frontend/app/package.json  frontend/app/package-lock.json /source/
+# Create directory structure that matches the relative paths in package.json
+# App is at /frontend/app, packages at /frontend/packages
+RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer
 
-WORKDIR /source
+# Copy the schema-visualizer package (app imports it via file: protocol)
+COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 
-RUN npm install --omit=dev
-COPY frontend/app/ /source/
-RUN npm run build && npm cache clean --force
+# Copy the app package.json and install dependencies (pnpm file: protocol handles schema-visualizer deps)
+COPY frontend/app/package.json frontend/app/pnpm-lock.yaml /frontend/app/
+WORKDIR /frontend/app
+RUN pnpm install --frozen-lockfile --prod
+COPY frontend/app/ /frontend/app/
+RUN pnpm build && pnpm store prune
 
 # ****************************************************************
 # STAGE : Documentation
@@ -92,7 +98,7 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
 # --------------------------------------------
 # Import Frontend Build
 # --------------------------------------------
-COPY --from=frontend /source/dist/ /opt/infrahub/frontend/app/dist
+COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
 
 # --------------------------------------------
 # Import Documentation Build
