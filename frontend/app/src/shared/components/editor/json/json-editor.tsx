@@ -1,10 +1,13 @@
+import "./prism-setup";
+
 import Prism from "prismjs";
+import "prismjs/components/prism-json";
+
 import { type ElementRef, forwardRef } from "react";
 import Editor from "react-simple-code-editor";
 
 import { focusWithinStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import "prismjs/components/prism-json";
 
 type JsonEditorProps = {
   onChange: (value: string) => void;
