@@ -1716,6 +1716,12 @@ export interface components {
              * @default true
              */
             diff_update_after_merge: boolean;
+            /**
+             * Delete Branch After Merge
+             * @description When enabled, the Infrahub branch is automatically deleted after a successful merge.
+             * @default false
+             */
+            delete_branch_after_merge: boolean;
         };
         /** Menu */
         Menu: {

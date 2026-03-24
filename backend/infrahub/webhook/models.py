@@ -169,7 +169,15 @@ class Webhook(BaseModel):
             "Content-Type": "application/json",
         }
 
+        seen_keys: set[str] = set()
         for header in self.custom_headers:
+            if header.key in seen_keys:
+                logger.warning(
+                    "Webhook '%s': duplicate header key '%s', later value will overwrite earlier one",
+                    self.name,
+                    header.key,
+                )
+            seen_keys.add(header.key)
             try:
                 self._headers[header.key] = header.resolve()
             except WebhookHeaderResolutionError as exc:
