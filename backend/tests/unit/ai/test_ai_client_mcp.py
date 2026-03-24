@@ -440,19 +440,16 @@ class TestGenerateReport:
         ai_client_no_mcp.client.messages.create.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_mcp_fallback_on_connection_error(self, ai_client: AIClient) -> None:
-        """Falls back to single-shot when MCP connection fails."""
-        ai_client.client.messages.create = AsyncMock(return_value=_make_text_response("fallback report"))
-
+    async def test_mcp_connection_error_raises(self, ai_client: AIClient) -> None:
+        """Raises when MCP connection fails instead of silently falling back."""
         with patch("infrahub.transformations.ai_client.streamablehttp_client") as mock_transport:
             mock_transport.return_value.__aenter__ = AsyncMock(side_effect=ConnectionError("refused"))
             mock_transport.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await ai_client.generate_report(
-                prompt="Generate a report", data={"key": "value"}
-            )
-
-        assert result == "fallback report"
+            with pytest.raises(ConnectionError, match="refused"):
+                await ai_client.generate_report(
+                    prompt="Generate a report", data={"key": "value"}
+                )
 
     @pytest.mark.asyncio
     async def test_csv_output_strips_fences(self, ai_client_no_mcp: AIClient) -> None:

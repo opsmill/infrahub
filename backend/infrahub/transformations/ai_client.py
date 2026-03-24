@@ -131,6 +131,7 @@ class AIClient:
         prompt: str,
         data: dict[str, Any],
         output_format: str = "markdown",
+        branch: str | None = None,
     ) -> str:
         """Generate a report using Claude API, optionally with MCP tool access.
 
@@ -141,7 +142,7 @@ class AIClient:
         if output_format not in ["markdown", "csv", "svg"]:
             raise ValueError(f"Unsupported output format: {output_format}. Must be 'markdown', 'csv', or 'svg'.")
 
-        system_message = self._build_system_message(output_format)
+        system_message = self._build_system_message(output_format, branch=branch)
         user_message = self._build_user_message(prompt, data, output_format)
 
         log.info(
@@ -152,21 +153,19 @@ class AIClient:
             output_format=output_format,
             mcp_enabled=bool(self.mcp_server_url),
         )
+        log.debug("System message", system_message=system_message)
+        log.debug("User message", user_message=user_message)
 
         if self.mcp_server_url:
-            try:
-                async with self._mcp_session() as (tools, session):
-                    log.info("MCP connected", tool_count=len(tools), url=self.mcp_server_url)
-                    report_content = await self._run_agentic_loop(
-                        system_message=system_message,
-                        user_message=user_message,
-                        tools=tools,
-                        session=session,
-                        output_format=output_format,
-                    )
-            except Exception as e:
-                log.warning("MCP connection failed, falling back to single-shot", error=str(e))
-                report_content = await self._single_shot_generate(system_message, user_message)
+            async with self._mcp_session() as (tools, session):
+                log.info("MCP connected", tool_count=len(tools), url=self.mcp_server_url)
+                report_content = await self._run_agentic_loop(
+                    system_message=system_message,
+                    user_message=user_message,
+                    tools=tools,
+                    session=session,
+                    output_format=output_format,
+                )
         else:
             report_content = await self._single_shot_generate(system_message, user_message)
 
@@ -434,7 +433,7 @@ Match the expected type for each attribute kind (Text -> string, Number -> integ
             log.error("Failed to generate attribute values", error=str(e), model=self.model)
             raise
 
-    def _build_system_message(self, output_format: str) -> str:
+    def _build_system_message(self, output_format: str, branch: str | None = None) -> str:
         """Build the system message with format instructions."""
         base_message = (
             "You are an expert infrastructure analyst generating reports from Infrahub data. "
@@ -476,13 +475,16 @@ Output a single valid SVG document only — no markdown fences, no explanation b
 
         mcp_instructions = ""
         if self.mcp_server_url:
-            mcp_instructions = """
+            branch_instruction = ""
+            if branch:
+                branch_instruction = f'\nIMPORTANT: This transform is running on branch "{branch}". You MUST pass branch="{branch}" to every tool call to ensure you query the correct branch data.\n'
+            mcp_instructions = f"""
 You have access to tools that can query the Infrahub infrastructure database.
 Use these tools to retrieve and verify all data before generating output.
 Do not rely on assumptions — query the database for actual values when the input data is incomplete.
 Available tool categories: schema discovery, node queries, GraphQL execution, branch management.
 After gathering the needed context, produce the final report using only verified data.
-"""
+{branch_instruction}"""
 
         return base_message + format_instructions + mcp_instructions
 

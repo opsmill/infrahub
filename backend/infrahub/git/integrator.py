@@ -1507,7 +1507,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             # Generate report using Claude API
             log.info(f"Generating {output_format} report using Claude API")
             report_content = await ai_client.generate_report(
-                prompt=rendered_prompt, data=data, output_format=output_format
+                prompt=rendered_prompt, data=data, output_format=output_format, branch=branch_name
             )
 
             # Return structured result
