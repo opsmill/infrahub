@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from pydantic import Field
 
@@ -36,7 +36,7 @@ class AccountLoggedInEvent(InfrahubEvent):
 
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
-    account_type: Literal["User", "Script"] = Field(..., description="USER or SCRIPT")
+    account_type: str = Field(..., description="USER or SCRIPT")
     auth_method: AuthMethod = Field(..., description="How they authenticated")
     session_id: str = Field(..., description="UUID of the session")
     groups: list[str] = Field(default_factory=list, description="List of group names/IDs")
