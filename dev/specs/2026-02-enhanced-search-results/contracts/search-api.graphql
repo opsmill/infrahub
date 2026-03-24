@@ -37,8 +37,8 @@ type Query {
 #   - Results are ordered by node UUID for deterministic pagination
 #
 # Case sensitivity:
-#   - case_sensitive=false (default): toLower(toString()) matching in Cypher
-#   - case_sensitive=true: 4-variation matching (original, lower, upper, title)
+#   - case_sensitive=false (default): matches against pre-computed value_lower property (TEXT indexed)
+#   - case_sensitive=true: exact case match on the original value only
 #
 # Permissions:
 #   - Results are filtered by the requesting user's model-level read permissions

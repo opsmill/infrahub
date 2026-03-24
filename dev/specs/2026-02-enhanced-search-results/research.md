@@ -85,8 +85,8 @@ SearchAnywhere → SearchAnywhereDialog → Command → Command.List
 
 **Approach**:
 - Added `case_insensitive: bool = False` to `NodeGetListByAttributeValueQuery.__init__`
-- When `case_insensitive=True`: uses `toLower(toString(av.value)) CONTAINS toLower(toString($search_value))` for true case-insensitive matching
-- When `case_insensitive=False`: keeps existing 4-variation approach (original, lower, upper, title case) for TEXT index usage
+- When `case_insensitive=True`: matches against pre-computed `value_lower` property on `AttributeValueIndexed` nodes, which is TEXT indexed for efficient lookups
+- When `case_insensitive=False`: exact case match on the original `value` property only
 - Added `WITH DISTINCT n` after main query body to ensure `get_count_query()` counts distinct nodes
 - Removed `DISTINCT` from `return_labels` (now redundant)
 - Both paths use the same single Cypher query with native SKIP/LIMIT
