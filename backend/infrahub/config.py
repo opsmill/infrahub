@@ -946,6 +946,10 @@ class LogForwardingDestination(BaseModel):
 
 class LogForwardingSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOG_FORWARDING_")
+    hostname: str | None = Field(
+        default=None,
+        description="Hostname to use in syslog message headers. If not set, defaults to the system FQDN.",
+    )
     destinations: list[LogForwardingDestination] = Field(
         default_factory=list,
         description="List of log forwarding destinations. (Enterprise only: not available in the community version.)",
