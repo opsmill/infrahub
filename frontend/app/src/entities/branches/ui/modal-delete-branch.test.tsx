@@ -1,5 +1,4 @@
 import { describe, expect, test, vi } from "vitest";
-import { userEvent } from "vitest/browser";
 
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 
@@ -90,8 +89,7 @@ describe("ModalDeleteBranch", () => {
     const component = await render(
       <ModalDeleteBranch {...defaultProps} branches={branches} onDelete={onDelete} />
     );
-    const remoteRadio = component.getByRole("radio", { name: /Local and remote/i });
-    await remoteRadio.click();
+    await component.getByText("Local and remote").click();
     await component.getByTestId("modal-delete-confirm").click();
 
     // THEN
