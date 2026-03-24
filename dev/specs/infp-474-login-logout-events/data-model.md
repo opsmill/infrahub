@@ -24,16 +24,6 @@ class AuthResult:
     roles: list[str]             # Role names (empty if fetch fails)
 ```
 
-### `AuthenticationError` (exception)
-
-Subclass of `AuthorizationError`. Carries account context for audit event emission.
-
-```python
-class AuthenticationError(AuthorizationError):
-    account_id: str | None      # Present if account exists, None if not found
-    account_name: str | None    # Present if account exists, None if not found
-```
-
 ## Event Schemas
 
 ### `AccountLoggedInEvent`
@@ -61,32 +51,6 @@ class AuthenticationError(AuthorizationError):
     "infrahub.account.name": account_name,
     "infrahub.account.auth_method": auth_method,
     "infrahub.account.session_id": session_id,
-}
-```
-
----
-
-### `AccountLoginFailedEvent`
-
-**Event name**: `infrahub.account.login_failed`
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `attempted_identifier` | `str` | ✓ | Username or identifier attempted (untrusted input) |
-| `auth_method` | `str` | ✓ | How they authenticated |
-| `failure_reason` | `str` | ✓ | Human-readable failure reason |
-| `account_id` | `str \| None` | — | UUID of the account |
-| `client_ip` | `str \| None` | — | Source IP address |
-| `user_agent` | `str \| None` | — | Browser/client info |
-| `timestamp` | `datetime` | ✓ | When the login attempt occurred |
-
-**Prefect resource**:
-```python
-{
-    "prefect.resource.id": f"infrahub.account.failed.{attempted_identifier}",
-    "infrahub.account.auth_method": auth_method,
-    "infrahub.account.failure_reason": failure_reason,
-    # + "infrahub.account.id": account_id  (only if account_id is not None)
 }
 ```
 
@@ -121,7 +85,6 @@ Added to `backend/infrahub/core/constants/__init__.py`:
 
 ```python
 ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
-ACCOUNT_LOGIN_FAILED = f"{EVENT_NAMESPACE}.account.login_failed"
 ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
 ```
 

@@ -36,32 +36,6 @@ type AccountLoggedInEvent implements EventNodeInterface {
 }
 ```
 
-### `AccountLoginFailedEventType`
-
-```graphql
-type AccountLoginFailedEvent implements EventNodeInterface {
-  # --- EventNodeInterface fields (inherited) ---
-  id: String!
-  event: String!
-  branch: String
-  account_id: String
-  level: Int!
-  primary_node: RelatedNode
-  related_nodes: [RelatedNode!]!
-  has_children: Boolean!
-  parent_id: String
-
-  # --- AccountLoginFailedEvent-specific fields ---
-  attempted_identifier: String!
-  auth_method: String!
-  failure_reason: String!
-  client_ip: String
-  user_agent: String
-  timestamp: DateTime!
-  payload: GenericScalar!
-}
-```
-
 ### `AccountLoggedOutEventType`
 
 ```graphql
@@ -92,7 +66,6 @@ type AccountLoggedOutEvent implements EventNodeInterface {
 
 ```python
 events.AccountLoggedInEvent.event_name: AccountLoggedInEventType,    # "infrahub.account.logged_in"
-events.AccountLoginFailedEvent.event_name: AccountLoginFailedEventType,  # "infrahub.account.login_failed"
 events.AccountLoggedOutEvent.event_name: AccountLoggedOutEventType,  # "infrahub.account.logged_out"
 ```
 
@@ -102,7 +75,7 @@ events.AccountLoggedOutEvent.event_name: AccountLoggedOutEventType,  # "infrahub
 query GetAuthEvents {
   InfrahubEvent(
     filters: {
-      event_type: { in: ["infrahub.account.logged_in", "infrahub.account.login_failed", "infrahub.account.logged_out"] }
+      event_type: { in: ["infrahub.account.logged_in", "infrahub.account.logged_out"] }
     }
     limit: 100
   ) {
@@ -116,13 +89,6 @@ query GetAuthEvents {
           auth_method
           session_id
           groups
-          client_ip
-          timestamp
-        }
-        ... on AccountLoginFailedEvent {
-          attempted_identifier
-          auth_method
-          failure_reason
           client_ip
           timestamp
         }
