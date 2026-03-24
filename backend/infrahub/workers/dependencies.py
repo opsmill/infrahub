@@ -9,6 +9,7 @@ from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.services.adapters.http import InfrahubHTTP
@@ -156,3 +157,16 @@ async def build_component() -> InfrahubComponent:
 @inject
 async def get_component(component: InfrahubComponent = Depends(build_component)) -> InfrahubComponent:  # noqa: B008
     return component
+
+
+def build_log_forwarding_service() -> LogForwardingService:
+    if "log_forwarding_service" not in _singletons:
+        _singletons["log_forwarding_service"] = LogForwardingServiceCommunity()
+    return _singletons["log_forwarding_service"]
+
+
+@inject
+def get_log_forwarding_service(
+    log_forwarding_service: LogForwardingService = Depends(build_log_forwarding_service),  # noqa: B008
+) -> LogForwardingService:
+    return log_forwarding_service
