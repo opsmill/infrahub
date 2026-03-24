@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Heading } from "react-aria-components";
 
 import { Modal } from "@/shared/components/aria/modal";
@@ -59,11 +59,12 @@ export function ModalDeleteBranch({
 }: ModalDeleteBranchProps) {
   const [scope, setScope] = useState<DeleteBranchScope>(DELETE_BRANCH_SCOPE.LOCAL);
 
-  useEffect(() => {
-    if (isOpen) {
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
       setScope(DELETE_BRANCH_SCOPE.LOCAL);
     }
-  }, [isOpen]);
+    onOpenChange(open);
+  };
 
   const { data: repositoryCount, isLoading: isLoadingRepoCount } = useObjectsCount({
     objectKind: REPOSITORY_KIND,
@@ -81,7 +82,7 @@ export function ModalDeleteBranch({
         description={description}
         onDelete={() => onDelete(DELETE_BRANCH_SCOPE.LOCAL)}
         isOpen={isOpen}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleOpenChange}
         isLoading={isLoading}
       />
     );
@@ -131,7 +132,7 @@ export function ModalDeleteBranch({
       </Col>
 
       <Row className="justify-end bg-gray-50 p-3">
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+        <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
           Cancel
         </Button>
         <Button
