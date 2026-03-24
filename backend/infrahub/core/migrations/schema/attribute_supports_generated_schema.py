@@ -124,7 +124,7 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
         all_queries: list[type[AttributeMigrationQuery]] = []
 
         # Check profile support changes
-        previous_profile_support_condition = self.new_schema.check_if_attr_supports_profiles(
+        previous_profile_support_condition = self.previous_schema.check_if_attr_supports_profiles(
             attribute_schema=self.previous_attribute_schema
         )
         new_profile_support_condition = self.new_schema.check_if_attr_supports_profiles(
