@@ -272,7 +272,7 @@ Without single-target queries, Infrahub cannot determine which specific actions 
 For a query to be recognized as single-target, it must meet **all** of these criteria:
 
 1. **Filter on a unique identifier**: Use either `id` or a unique attribute like `name__value`
-2. **Use a required variable**: The filter must use a required variable, for example, `$name: String!`. A hard-coded value is also valid but limits the query to a single fixed object
+2. **Use a required variable**: The filter must use a required variable, for example, `$name: String!`. A literal value is also valid but limits the query to a single fixed object
 3. **Use exact match filters**: Use singular filters, for example, `name__value: $name`, **not** list filters, for example, `name__values: $name`
 
 ### Valid single-target query examples
