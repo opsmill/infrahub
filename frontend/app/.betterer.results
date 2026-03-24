@@ -491,8 +491,8 @@ exports[`fix ts error`] = {
     "src/shared/components/display/pill.tsx:2158550065": [
       [14, 12, 10, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2879755880"]
     ],
-    "src/shared/components/editor/json/json-editor.tsx:3539922679": [
-      [39, 51, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
+    "src/shared/components/editor/json/json-editor.tsx:1870997317": [
+      [42, 51, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
     ],
     "src/shared/components/errors/error-boundary-app.tsx:3236611445": [
       [5, 24, 5, "tsc: Type \'unknown\' is not assignable to type \'Error\'.", "165548477"]
