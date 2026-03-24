@@ -39,6 +39,7 @@ from infrahub.workers.dependencies import (
     get_component,
     get_database,
     get_installation_type,
+    get_log_forwarding_service,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -73,6 +74,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     message_bus = await get_message_bus()
     cache = await get_cache()
     component = await get_component()
+    log_forwarding = get_log_forwarding_service()
     service = await InfrahubServices.new(
         cache=cache,
         database=database,
@@ -80,7 +82,9 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         workflow=workflow,
         component=component,
         component_type=component_type,
+        log_forwarding=log_forwarding,
     )
+    await log_forwarding.start()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
