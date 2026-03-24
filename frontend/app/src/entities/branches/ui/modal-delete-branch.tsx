@@ -11,7 +11,12 @@ import { REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 
-export type DeleteBranchScope = "local" | "local-and-remote";
+export const DELETE_BRANCH_SCOPE = {
+  LOCAL: "local",
+  LOCAL_AND_REMOTE: "local-and-remote",
+} as const;
+
+export type DeleteBranchScope = (typeof DELETE_BRANCH_SCOPE)[keyof typeof DELETE_BRANCH_SCOPE];
 
 interface BranchRef {
   name: string;
