@@ -71,8 +71,7 @@ export function ModalDeleteBranch({
   });
 
   const hasSyncedBranches = branches.some((b) => b.sync_with_git);
-  const showScopeChoice =
-    hasSyncedBranches && repositoryCount !== undefined && repositoryCount > 0;
+  const showScopeChoice = hasSyncedBranches && repositoryCount !== undefined && repositoryCount > 0;
   const description = buildDescription(branches);
 
   if (!showScopeChoice && !(hasSyncedBranches && isLoadingRepoCount)) {
