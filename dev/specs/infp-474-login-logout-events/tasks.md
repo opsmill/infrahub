@@ -52,23 +52,23 @@
 
 ### Implementation — US1 (Password auth + user logout)
 
-- [ ] T013 [US1] Emit `AccountLoggedInEvent` on successful password login in `backend/infrahub/api/auth.py`
-- [ ] T014 [US1] Emit `AccountLoggedOutEvent` with `logout_type="user_initiated"` in `backend/infrahub/api/auth.py`
-- [ ] T015 [P] [US1] Emit `AccountLoggedInEvent` on successful OAuth2 SSO callback in `backend/infrahub/api/oauth2.py`
-- [ ] T016 [P] [US1] Emit `AccountLoggedInEvent` on successful OIDC SSO callback in `backend/infrahub/api/oidc.py`
+- [x] T013 [US1] Emit `AccountLoggedInEvent` on successful password login in `backend/infrahub/api/auth.py`
+- [x] T014 [US1] Emit `AccountLoggedOutEvent` with `logout_type="user_initiated"` in `backend/infrahub/api/auth.py`
+- [x] T015 [P] [US1] Emit `AccountLoggedInEvent` on successful OAuth2 SSO callback in `backend/infrahub/api/oauth2.py`
+- [x] T016 [P] [US1] Emit `AccountLoggedInEvent` on successful OIDC SSO callback in `backend/infrahub/api/oidc.py`
 
 ### Implementation — US1 (Admin-forced logout, FR-008)
 
-- [ ] T017 [US1] Add `POST /api/auth/sessions/{session_id}/invalidate` endpoint (or GraphQL mutation `InfrahubAccountSessionInvalidate`) that calls `invalidate_refresh_token()` and emits `AccountLoggedOutEvent` with `logout_type="admin_forced"` — requires admin role check — implement in `backend/infrahub/api/auth.py` or `backend/infrahub/graphql/mutations/account.py`
-- [ ] T018 [US1] Write component test for admin-forced logout event emission in `backend/tests/component/api/test_auth_events.py`
+- [x] T017 [US1] Add `POST /api/auth/sessions/{session_id}/invalidate` endpoint (or GraphQL mutation `InfrahubAccountSessionInvalidate`) that calls `invalidate_refresh_token()` and emits `AccountLoggedOutEvent` with `logout_type="admin_forced"` — requires admin role check — implement in `backend/infrahub/api/auth.py` or `backend/infrahub/graphql/mutations/account.py`
+- [x] T018 [US1] Write component test for admin-forced logout event emission in `backend/tests/component/api/test_auth_events.py`
 
 ### Tests — US1
 
-- [ ] T019 [P] [US1] Unit tests for `AccountLoggedInEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
-- [ ] T020 [P] [US1] Unit tests for `AccountLoggedOutEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
-- [ ] T021 [US1] Component test: successful password login emits `AccountLoggedInEvent` in `backend/tests/component/api/test_auth_events.py`
-- [ ] T022 [US1] Component test: user-initiated logout emits `AccountLoggedOutEvent` in `backend/tests/component/api/test_auth_events.py`
-- [ ] T023 [P] [US1] Add `timestamp` field assertion to existing unit tests for both event classes in `backend/tests/unit/event/test_auth_action.py`
+- [x] T019 [P] [US1] Unit tests for `AccountLoggedInEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_account_action.py`
+- [x] T020 [P] [US1] Unit tests for `AccountLoggedOutEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_account_action.py`
+- [x] T021 [US1] Component test: successful password login emits `AccountLoggedInEvent` in `backend/tests/component/api/test_auth_events.py`
+- [x] T022 [US1] Component test: user-initiated logout emits `AccountLoggedOutEvent` in `backend/tests/component/api/test_auth_events.py`
+- [x] T023 [P] [US1] Add `timestamp` field assertion to existing unit tests for both event classes in `backend/tests/unit/event/test_account_action.py`
 
 **Checkpoint**: US1 fully functional — password login, user logout, and admin-forced logout all emit queryable events (admin-only via GraphQL).
 
