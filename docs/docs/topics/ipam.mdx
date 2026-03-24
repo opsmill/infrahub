@@ -28,6 +28,65 @@ To keep things extensible, Infrahub provides generics that users can inherit the
 
 By default, Infrahub comes with a node inheriting from the `BuiltinIPNamespace` generic. This node is called `IpamNamespace`. A object of this kind of node, called "default", is also automatically created when starting Infrahub for the first time.
 
+## IP Namespaces
+
+IP Namespaces are logical containers that segment and isolate IPAM resources. They allow you to manage separate pools of IP prefixes and addresses within the same Infrahub instance, preventing conflicts and enabling organizational separation of IP resources.
+
+### Understanding IP Namespaces
+
+If you are familiar with networking concepts, an IP Namespace is analogous to:
+
+- A VRF (Virtual Routing and Forwarding) instance
+- A routing table or routing instance
+- A separate IP address space in a multi-tenant environment
+
+Just as a VRF allows a single router to maintain multiple independent routing tables, IP Namespaces allow Infrahub to manage multiple independent sets of IP resources. Each namespace acts as a boundary: IP prefixes and addresses within one namespace are completely separate from those in another.
+
+### The default namespace
+
+When Infrahub starts for the first time, it automatically creates a namespace called "default". This namespace serves as the home for all IP resources when no specific namespace is designated.
+
+For many deployments, particularly those managing a single network or organization, the default namespace is sufficient. You can begin creating IP prefixes and addresses immediately without worrying about namespace configuration.
+
+### When to use multiple namespaces
+
+Multiple namespaces become valuable when you need to manage IP resources that would otherwise conflict or need logical separation:
+
+- **Multi-tenant environments**: Service providers managing IP addresses for multiple customers can create a namespace per customer. Each customer might use the same RFC1918 ranges (like 10.0.0.0/8) without conflict.
+- **Overlapping IP ranges**: Organizations with multiple isolated networks that use the same IP ranges can track each network in its own namespace.
+- **Organizational boundaries**: Large enterprises might create namespaces per business unit, region, or data center to maintain clear ownership and separation.
+- **Network segmentation**: Networks with separate routing domains, such as production versus lab environments, can be modeled as distinct namespaces.
+
+### How namespaces work
+
+Every IP prefix and IP address in Infrahub belongs to exactly one namespace. When you create an IP resource without specifying a namespace, it is assigned to the default namespace.
+
+Within a namespace:
+
+- IP prefixes form hierarchical trees based on their network containment
+- IP addresses are automatically associated with their most specific containing prefix
+- Parent-child relationships between prefixes are managed automatically
+
+Namespaces provide isolation: a prefix like 10.0.0.0/24 can exist in multiple namespaces simultaneously without conflict. The same is true for IP addresses.
+
+:::warning
+
+Deleting a namespace removes all IP prefixes and IP addresses contained within it. This cascade delete behavior ensures referential integrity but means you should exercise caution when removing namespaces.
+
+:::
+
+### Practical example
+
+Consider an Internet Service Provider (ISP) that provides managed network services to three customers. Each customer uses the 10.0.0.0/8 private address range internally.
+
+Without namespaces, the ISP could not track these overlapping ranges in a single IPAM system. With namespaces, the ISP creates three namespaces (one per customer) and manages each customer's IP space independently:
+
+- **customer-a** namespace: Contains Customer A's 10.0.0.0/8 and its subnets
+- **customer-b** namespace: Contains Customer B's 10.0.0.0/8 and its subnets
+- **customer-c** namespace: Contains Customer C's 10.0.0.0/8 and its subnets
+
+Each namespace maintains its own hierarchy, utilization calculations, and address assignments. The ISP can query, report on, and manage each customer's IP space without any overlap or confusion.
+
 ## Building an IPAM
 
 As mentioned in the previous section, an IPAM namespace is already provided with Infrahub, so there is no need to redefine this unless more attributes are required. The default implementation is very minimal and attributes only include a name and a description.

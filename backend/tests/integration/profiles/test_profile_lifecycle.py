@@ -3,7 +3,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import HashableModelState, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -15,6 +15,8 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
+
+from .validation import assert_no_virtual_schema_relationships_in_db
 
 PERSON_VALUES = """
         object {
@@ -98,8 +100,23 @@ mutation ($update_data: PretendPersonUpdateInput!) {
 }
 """ % {"person_values": PERSON_VALUES}
 
+REFRESH_PROFILES_MUTATION = """
+mutation RefreshProfiles($id: String!) {
+  InfrahubProfilesRefresh(data: {id: $id}) {
+    ok
+  }
+}
+"""
+
 
 class TestProfileLifecycle(TestInfrahubApp):
+    async def refresh_profiles(self, client: InfrahubClient, branch_name: str, node_id: str) -> None:
+        # This should be done using a trigger but for test purpose we do it manually
+        response = await client.execute_graphql(
+            query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name
+        )
+        assert response["InfrahubProfilesRefresh"]["ok"]
+
     @pytest.fixture(scope="class")
     def generic_schema_base(self) -> GenericSchema:
         return GenericSchema(
@@ -257,7 +274,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert not response.errors
 
     @pytest.fixture(scope="class")
-    async def person_1(self, db: InfrahubDatabase, schema_root_01) -> Node:
+    async def person_1(self, db: InfrahubDatabase, schema_root_01: None) -> Node:
         schema = registry.schema.get_node_schema(name="PretendPerson", duplicate=False)
         person_1 = await Node.init(db=db, schema=schema)
         await person_1.new(
@@ -270,7 +287,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         return person_1
 
     @pytest.fixture(scope="class")
-    async def lifeform_profile_1(self, db: InfrahubDatabase, schema_root_01) -> Node:
+    async def lifeform_profile_1(self, db: InfrahubDatabase, schema_root_01: None) -> Node:
         lifeform_profile_1 = await Node.init(db=db, schema="ProfilePretendLifeform")
         await lifeform_profile_1.new(
             db=db,
@@ -283,7 +300,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         return lifeform_profile_1
 
     @pytest.fixture(scope="class")
-    async def person_profile_1(self, db: InfrahubDatabase, schema_root_01) -> Node:
+    async def person_profile_1(self, db: InfrahubDatabase, schema_root_01: None) -> Node:
         person_profile_1 = await Node.init(db=db, schema="ProfilePretendPerson")
         await person_profile_1.new(
             db=db,
@@ -299,7 +316,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         return person_profile_1
 
     async def test_step_01_one_person_no_profile(
-        self, db: InfrahubDatabase, schema_root_01, person_1, person_profile_1, client: InfrahubClient
+        self, db: InfrahubDatabase, schema_root_01: None, person_1: Node, person_profile_1: Node, client: InfrahubClient
     ) -> None:
         retrieved_person = await client.get(kind="PretendPerson", id=person_1.id, property=True)
 
@@ -325,8 +342,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_1,
-        person_profile_1,
+        person_1: Node,
+        person_profile_1: Node,
     ) -> None:
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
@@ -412,7 +429,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": False,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Starbuck"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -462,7 +479,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_profile_1,
+        person_profile_1: Node,
     ) -> None:
         mutation = """
             mutation {
@@ -559,7 +576,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": False,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -609,8 +626,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_1,
-        person_profile_1,
+        person_1: Node,
+        person_profile_1: Node,
     ) -> None:
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
@@ -649,7 +666,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "source": {"id": person_profile_1.id},
             "is_default": False,
         }
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Kara Thrace"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -666,8 +683,8 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_05_add_profile_with_person(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        person_1,
+        default_branch: Branch,
+        person_1: Node,
         client: InfrahubClient,
     ) -> None:
         profile = await client.create(
@@ -682,7 +699,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         await profile.save()
 
     async def test_step_06_get_person_multiple_profiles(
-        self, person_1, person_profile_1, client: InfrahubClient
+        self, person_1: Node, person_profile_1: Node, client: InfrahubClient
     ) -> None:
         person_profile_2 = await client.get(kind="ProfilePretendPerson", profile_name__value="profile-two")
         retrieved_person = await client.get(kind="PretendPerson", id=person_1.id, property=True)
@@ -726,7 +743,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        client,
+        client: InfrahubClient,
     ) -> None:
         person_2 = await client.get(kind="PretendPerson", name__value="Apollo", property=True)
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -784,7 +801,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": True,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -821,14 +838,19 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_08_delete_profile(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
         person_profile_2 = await client.get(kind="ProfilePretendPerson", profile_name__value="profile-two")
         await person_profile_2.delete()
 
     async def test_step_09_check_persons(
-        self, db: InfrahubDatabase, person_1, person_profile_1, client: InfrahubClient, default_branch: Branch
+        self,
+        db: InfrahubDatabase,
+        person_1: Node,
+        person_profile_1: Node,
+        client: InfrahubClient,
+        default_branch: Branch,
     ) -> None:
         retrieved_person_1 = await client.get(kind="PretendPerson", id=person_1.id, property=True)
         await retrieved_person_1.profiles.fetch()
@@ -906,8 +928,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_1,
-        person_profile_1,
+        person_1: Node,
+        person_profile_1: Node,
     ) -> None:
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
@@ -962,17 +984,17 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_11_update_existing_profile(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        person_profile_1,
-        person_1,
+        default_branch: Branch,
+        person_profile_1: Node,
+        person_1: Node,
         client: InfrahubClient,
     ) -> None:
-        person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
-        person_profile_1.profile_priority.value = 11
-        person_profile_1.height.value = 134
-        person_profile_1.nothing.value = "profile-one nothing updated"
-        person_profile_1.generic_nothing.value = "profile-one generic nothing updated"
-        await person_profile_1.save()
+        person_profile_1_client = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
+        person_profile_1_client.profile_priority.value = 11
+        person_profile_1_client.height.value = 134
+        person_profile_1_client.nothing.value = "profile-one nothing updated"
+        person_profile_1_client.generic_nothing.value = "profile-one generic nothing updated"
+        await person_profile_1_client.save()
 
         updated_person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
         assert updated_person_profile_1.profile_name.value == "profile-one"
@@ -985,8 +1007,15 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_1.id
 
+        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_1.id)
+
     async def test_step_12_check_persons_again(
-        self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_1: Node,
+        person_profile_1: Node,
+        client: InfrahubClient,
     ) -> None:
         retrieved_person_1 = await client.get(kind="PretendPerson", id=person_1.id, property=True)
         await retrieved_person_1.profiles.fetch()
@@ -1031,17 +1060,17 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_13_update_existing_profile_related_nodes(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        person_profile_1,
-        person_1,
+        default_branch: Branch,
+        person_profile_1: Node,
+        person_1: Node,
         client: InfrahubClient,
     ) -> None:
         person_2 = await client.get(kind="PretendPerson", name__value="Apollo", property=True)
-        person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
-        await person_profile_1.related_nodes.fetch()
-        person_profile_1.related_nodes.remove(person_1.id)
-        person_profile_1.related_nodes.add(person_2)
-        await person_profile_1.save()
+        person_profile_1_client = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
+        await person_profile_1_client.related_nodes.fetch()
+        person_profile_1_client.related_nodes.remove(person_1.id)
+        person_profile_1_client.related_nodes.add(person_2)
+        await person_profile_1_client.save()
 
         updated_person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
         assert updated_person_profile_1.profile_name.value == "profile-one"
@@ -1049,8 +1078,10 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_2.id
 
+        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_2.id)
+
     async def test_step_14_check_persons_again(
-        self, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
+        self, default_branch: Branch, person_1: Node, person_profile_1: Node, client: InfrahubClient
     ) -> None:
         retrieved_person_1 = await client.get(kind="PretendPerson", id=person_1.id, property=True)
         retrieved_person_2 = await client.get(kind="PretendPerson", name__value="Apollo", property=True)
@@ -1151,10 +1182,10 @@ class TestProfileLifecycle(TestInfrahubApp):
 
     async def test_step_15_schema_update_add_attributes(
         self,
-        default_branch,
+        default_branch: Branch,
         person_profile_1: Node,
         lifeform_profile_1: Node,
-        schema_root_02,
+        schema_root_02: None,
         client: InfrahubClient,
     ) -> None:
         updated_person_profile_schema = await client.schema.get(
@@ -1167,6 +1198,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "generic_nothing",
             "height",
             "is_alive",
+            "name",
             "lifespan",
             "nothing",
             "profile_name",
@@ -1217,7 +1249,7 @@ class TestProfileLifecycle(TestInfrahubApp):
 
     async def test_step_16_update_profile_with_new_attribute(
         self,
-        default_branch,
+        default_branch: Branch,
         person_profile_1: Node,
         lifeform_profile_1: Node,
         client: InfrahubClient,
@@ -1246,7 +1278,12 @@ class TestProfileLifecycle(TestInfrahubApp):
         await person_two.save()
 
     async def test_step_17_check_persons_again(
-        self, default_branch: Branch, person_1, person_profile_1: Node, lifeform_profile_1: Node, client: InfrahubClient
+        self,
+        default_branch: Branch,
+        person_1: Node,
+        person_profile_1: Node,
+        lifeform_profile_1: Node,
+        client: InfrahubClient,
     ) -> None:
         retrieved_person_1 = await client.get(kind="PretendPerson", id=person_1.id, property=True)
         retrieved_person_2 = await client.get(kind="PretendPerson", name__value="Apollo", property=True)
@@ -1364,19 +1401,22 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_18_check_profile_for_removed_attribute(
         self,
         db: InfrahubDatabase,
-        schema_root_03,
-        default_branch,
-        person_profile_1,
-        lifeform_profile_1,
+        schema_root_03: None,
+        default_branch: Branch,
+        person_profile_1: Node,
+        lifeform_profile_1: Node,
         client: InfrahubClient,
     ) -> None:
         updated_schema = await client.schema.get(kind="ProfilePretendPerson", branch=default_branch.name, refresh=True)
         assert set(updated_schema.attribute_names) == {
             "age",
             "eye_color",
+            "height",
             "is_alive",
+            "name",
             "profile_name",
             "profile_priority",
+            "shape",
             "size",
             "value",
             "weight",
@@ -1385,6 +1425,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             kind="ProfilePretendLifeform", branch=default_branch.name, refresh=True
         )
         assert set(updated_lifeform_profile_schema.attribute_names) == {
+            "shape",
             "size",
             "is_alive",
             "profile_name",
@@ -1401,13 +1442,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert person_profile_1.weight.value is None
 
         with pytest.raises(AttributeError):
-            _ = person_profile_1.height
-        with pytest.raises(AttributeError):
             _ = person_profile_1.description
         with pytest.raises(AttributeError):
             _ = person_profile_1.nothing
-        with pytest.raises(AttributeError):
-            _ = person_profile_1.shape
         with pytest.raises(AttributeError):
             _ = person_profile_1.lifespan
         with pytest.raises(AttributeError):
@@ -1419,8 +1456,6 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert lifeform_profile_1.value.value == 84
 
         with pytest.raises(AttributeError):
-            _ = lifeform_profile_1.shape
-        with pytest.raises(AttributeError):
             _ = lifeform_profile_1.lifespan
         with pytest.raises(AttributeError):
             _ = lifeform_profile_1.generic_nothing
@@ -1429,9 +1464,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_1,
-        person_profile_1,
-        lifeform_profile_1,
+        person_1: Node,
+        person_profile_1: Node,
+        lifeform_profile_1: Node,
         client: InfrahubClient,
     ) -> None:
         await client.schema.get(kind="PretendPerson", branch=default_branch.name, refresh=True)
@@ -1539,3 +1574,9 @@ class TestProfileLifecycle(TestInfrahubApp):
             _ = retrieved_person_2.nothing
         with pytest.raises(AttributeError):
             _ = retrieved_person_2.generic_nothing
+
+    async def test_step_20_no_profiles_schema_relationships_in_db(
+        self,
+        db: InfrahubDatabase,
+    ) -> None:
+        await assert_no_virtual_schema_relationships_in_db(db)

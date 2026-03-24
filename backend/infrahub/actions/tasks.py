@@ -211,8 +211,10 @@ async def configure_action_rules(
     service: InfrahubServices,
 ) -> None:
     await setup_triggers_specific(
-        gatherer=gather_trigger_action_rules, trigger_type=TriggerType.ACTION_TRIGGER_RULE, db=service.database
-    )  # type: ignore[misc]
+        gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
+        trigger_type=TriggerType.ACTION_TRIGGER_RULE,
+        db=service.database,
+    )
 
 
 async def _get_targets(

@@ -1,4 +1,5 @@
 import {
+  FROM_RESOURCE_POOL_SUFFIX,
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
@@ -11,15 +12,15 @@ import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelat
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;
   profiles?: Array<ProfileData>;
-  initialObject?: Record<string, AttributeType | RelationshipType>;
+  initialObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   auth?: AuthContextType;
   isFilterForm?: boolean;
@@ -41,10 +42,16 @@ export const getFormFieldsFromSchema = ({
   parentSchema,
   parentData,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
+  const attributes = (schema.attributes ?? []).filter(
+    (attribute) => !isBulkUpdate || !attribute.unique
+  );
+  const relationships = getRelationshipsForForm(schema, isUpdate || isBulkUpdate).filter(
+    (relationship) => !relationship.name.endsWith(FROM_RESOURCE_POOL_SUFFIX) // required in data but field is not visible
+  );
   const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
-    ...(schema.attributes ?? []).filter((attribute) => !isBulkUpdate || !attribute.unique),
-    ...getRelationshipsForForm(schema.relationships ?? [], isUpdate || isBulkUpdate, schema),
-  ].filter((attribute) => !attribute.read_only);
+    ...attributes,
+    ...relationships,
+  ].filter((field) => !field.read_only);
   const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
@@ -57,10 +64,11 @@ export const getFormFieldsFromSchema = ({
             name: `${RELATIONSHIP_BULK_ADD_PREFIX}${field.name}`,
             auth,
             relationshipSchema: field,
-            relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+            objectData: initialObject,
             objectTemplate,
+            profiles,
             isFilterForm: !!isFilterForm,
-            isBulkUpdate: !!isBulkUpdate,
+            isBulkUpdate,
             schema,
             parentSchema,
             parentData,
@@ -70,10 +78,11 @@ export const getFormFieldsFromSchema = ({
             name: `${RELATIONSHIP_BULK_REMOVE_PREFIX}${field.name}`,
             auth,
             relationshipSchema: field,
-            relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+            objectData: initialObject,
             objectTemplate,
+            profiles,
             isFilterForm: !!isFilterForm,
-            isBulkUpdate: !!isBulkUpdate,
+            isBulkUpdate,
             schema,
             parentSchema,
             parentData,
@@ -86,8 +95,9 @@ export const getFormFieldsFromSchema = ({
         getFormFieldFromRelationship({
           auth,
           relationshipSchema: field,
-          relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+          objectData: initialObject,
           objectTemplate,
+          profiles,
           isFilterForm: !!isFilterForm,
           isBulkUpdate: !!isBulkUpdate,
           schema,

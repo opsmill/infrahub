@@ -10,7 +10,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.migrations.shared import MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
@@ -233,7 +233,8 @@ class Migration039(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         console = get_migration_console()
         result = MigrationResult()
         # load schemas from database into registry

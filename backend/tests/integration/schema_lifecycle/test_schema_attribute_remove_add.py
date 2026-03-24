@@ -48,7 +48,9 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         return state.branch
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         # Load data in the MAIN branch first
@@ -95,7 +97,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step01(
-        self, schema_car_base, schema_person_02_first_last, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_02_first_last: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -104,7 +110,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step02(
-        self, schema_car_base, schema_person_03_no_height, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_03_no_height: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -113,7 +123,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step03(
-        self, schema_car_base, schema_person_02_first_last, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_02_first_last: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -125,12 +139,16 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
             ],
         }
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 1
 
     async def test_step02_check_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step02])
         assert success
@@ -162,7 +180,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         }
 
     async def test_step02_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         response = await client.schema.load(schemas=[schema_step02])
         assert not response.errors
@@ -179,7 +201,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert not hasattr(john, "height")
 
     async def test_step03_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step03])
         assert response == {
@@ -207,7 +233,11 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         response = await client.schema.load(schemas=[schema_step03])
         assert not response.errors

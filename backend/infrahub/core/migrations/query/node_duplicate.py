@@ -40,7 +40,6 @@ class NodeDuplicateQuery(Query):
     ) -> None:
         self.previous_node = previous_node
         self.new_node = new_node
-
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
@@ -140,15 +139,22 @@ class NodeDuplicateQuery(Query):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["branch_support"] = self.new_node.branch_support
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props_new"] = {
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         self.params["rel_props_prev"] = {
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
+
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         sub_query_out, sub_query_out_args = self._render_sub_query_out()
         sub_query_in, sub_query_in_args = self._render_sub_query_in()
@@ -168,6 +174,16 @@ class NodeDuplicateQuery(Query):
         WHERE rb.status = "active"
         CREATE (new_node:Node:%(labels)s { uuid: active_node.uuid, kind: $new_node.kind, namespace: $new_node.namespace, branch_support: $new_node.branch_support })
         WITH active_node, new_node
+        // Set metadata on new Node vertex
+        CALL (active_node, new_node) {
+            // always pass created_by/at from active node
+            SET new_node.created_at = active_node.created_at, new_node.created_by = active_node.created_by
+            WITH new_node
+            // set updated_by/at if we're on the default/global branch
+            WHERE $set_metadata
+            SET new_node.updated_at = $current_time, new_node.updated_by = $user_id
+        }
+
         // Process Outbound Relationship
         MATCH (active_node)-[]->(peer)
         WITH DISTINCT active_node, new_node, peer
@@ -185,7 +201,7 @@ class NodeDuplicateQuery(Query):
         }
         WITH p2 as peer_node, rel_outband, active_node, new_node
         FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_outband.to = $current_time
+            SET rel_outband.to = $current_time, rel_outband.to_user_id = $user_id
         )
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
@@ -205,9 +221,8 @@ class NodeDuplicateQuery(Query):
         }
         WITH p2 as peer_node, rel_inband, active_node, new_node
         FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_inband.to = $current_time
+            SET rel_inband.to = $current_time, rel_inband.to_user_id = $user_id
         )
-
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,

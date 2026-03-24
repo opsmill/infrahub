@@ -27,7 +27,8 @@ test.describe("Object details - delete", () => {
     });
 
     await test.step("delete blue tag", async () => {
-      await page.getByTestId("delete-button").click();
+      await page.getByTestId("object-details-menu").click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(
         'Are you sure you want to remove the Tag"blue"?'
       );

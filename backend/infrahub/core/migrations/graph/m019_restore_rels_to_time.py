@@ -170,11 +170,6 @@ class DeleteNodesRelsQuery(Query):
         }
 
         CALL (rel, peer_2, branch, branch_level, deleted_time) {
-            MATCH (rel)-[:IS_VISIBLE]->(peer_2)
-            MERGE (rel)-[:IS_VISIBLE {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
-        }
-
-        CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)-[:HAS_OWNER]->(peer_2)
             MERGE (rel)-[:HAS_OWNER {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]->(peer_2)
         }
@@ -192,11 +187,6 @@ class DeleteNodesRelsQuery(Query):
         CALL (rel, peer_2, branch, branch_level, deleted_time) {
             MATCH (rel)<-[:IS_PROTECTED]-(peer_2)
             MERGE (rel)<-[:IS_PROTECTED {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
-        }
-
-        CALL (rel, peer_2, branch, branch_level, deleted_time) {
-            MATCH (rel)<-[:IS_VISIBLE]-(peer_2)
-            MERGE (rel)<-[:IS_VISIBLE {status: "deleted", branch: branch, branch_level: branch_level, from: deleted_time}]-(peer_2)
         }
 
         CALL (rel, peer_2, branch, branch_level, deleted_time) {

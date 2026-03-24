@@ -14,12 +14,15 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_account, create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
@@ -28,8 +31,11 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -46,7 +52,7 @@ class ErroringBranchMerger(BranchMerger):
 
 class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def car_dealership_copy(self):
+    def car_dealership_copy(self) -> Generator[tuple[Path, str]]:
         """
         Copies car-dealership local repository to a temporary folder, with a new name.
         This is needed for this test as using car-dealership folder leads to issues most probably
@@ -141,7 +147,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         await john_branch.save(db=db)
 
     async def test_conflict_pipeline(
-        self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
+        self, db: InfrahubDatabase, default_branch: Branch, conflict_dataset: None, client: InfrahubClient
     ) -> None:
         proposed_change_create = await client.create(
             kind=CoreProposedChange,
@@ -160,15 +166,26 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
         assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
 
-        proposed_change_create.state.value = ProposedChangeState.MERGED.value
-
         data_checks = await client.filters(kind=CoreDataCheck, validator__ids=data_integrity.id)
         assert len(data_checks) == 1
         data_check = data_checks[0]
 
+        # Verify that expected diffs are linked to the proposed change
+        component_registry = get_component_registry()
+        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        linked_diffs = await diff_repo.get_roots_metadata(
+            proposed_change_id=proposed_change.id,
+        )
+        # Should have both base and diff branch roots linked
+        assert len(linked_diffs) == 2
+        for diff_metadata in linked_diffs:
+            assert diff_metadata.tracking_id == BranchTrackingId(name="conflict_data")
+            assert diff_metadata.proposed_change_id == proposed_change.id
+
         # -------------------------------------------------
         # Try to merge and ensure the proposed change is back to open state
         # -------------------------------------------------
+        proposed_change_create.state.value = ProposedChangeState.MERGED.value
         with pytest.raises(
             GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
         ):
@@ -201,7 +218,9 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         # as the branch to keep in the data conflict
         assert john.description.value == "Oh boy"  # type: ignore[attr-defined, union-attr]
 
-    async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
+    async def test_happy_pipeline(
+        self, db: InfrahubDatabase, default_branch: Branch, happy_data_branch: str, client: InfrahubClient
+    ) -> None:
         proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")
         # The state=open part here is to validate that the state check during creation of a
         # proposed change still works if the default "open" state is manually specified
@@ -249,7 +268,20 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
-        tags = await client.all(kind="BuiltinTag", branch=happy_data_branch)
+        # -------------------------------------------------
+        # Verify that diffs are correctly linked to the proposed change
+        # -------------------------------------------------
+        component_registry = get_component_registry()
+        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        # Get diffs linked to this proposed change
+        linked_diffs = await diff_repo.get_roots_metadata(proposed_change_id=proposed_change_create.id)
+        # Should have both base and diff branch roots linked
+        assert len(linked_diffs) == 2
+        for diff_metadata in linked_diffs:
+            assert diff_metadata.proposed_change_id == proposed_change_create.id
+            assert diff_metadata.tracking_id == BranchTrackingId(name=happy_data_branch)
+
+        tags = await client.all(kind="TestingTag", branch=happy_data_branch)
         # The Generator defined in the repository is expected to have created this tag during the pipeline
         assert "johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
         assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
@@ -260,8 +292,12 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         proposed_change_create.state.value = ProposedChangeState.MERGED.value
         await proposed_change_create.save()
 
-        proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_create.id)
+        proposed_change_after = await client.get(
+            kind=CoreProposedChange, id=proposed_change_create.id, include_metadata=True
+        )
         assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
+        assert proposed_change_after.state.updated_by.id == proposed_change_user.id
+        assert proposed_change_after.state.updated_by.display_label == "Jimmy-Change-User"
 
         for _ in range(10):
             merge_event = await client.execute_graphql(
@@ -377,7 +413,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         pr_account_events = await client.execute_graphql(
             query=QUERY_EVENT,
-            variables={"account__ids": [proposed_change_user.id]},
+            variables={"account__ids": [proposed_change_user.id], "limit": 50},
         )
         pr_account_events_types = {event["node"]["event"] for event in pr_account_events["InfrahubEvent"]["edges"]}
         assert "infrahub.validator.passed" in pr_account_events_types
@@ -427,6 +463,7 @@ query(
     $account__ids: [String!],
     $related_node__ids: [String!],
     $event_type_filter: EventTypeFilter
+    $limit: Int
 ) {
   InfrahubEvent(
     branches: $branch,
@@ -435,6 +472,7 @@ query(
     event_type_filter: $event_type_filter
     account__ids: $account__ids
     related_node__ids: $related_node__ids
+    limit: $limit
   ) {
     count
     edges {

@@ -98,7 +98,11 @@ class BranchCreate(Mutation):
         # Retrieve created branch
         obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
         fields = extract_graphql_fields(info=info)
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
+        return cls(
+            object=await obj.to_graphql_flat(fields=fields.get("object", {})),
+            ok=True,
+            task=task,
+        )
 
 
 class BranchNameInput(InputObjectType):
@@ -172,7 +176,7 @@ class BranchUpdate(Mutation):
                 setattr(obj, field_name, data[field_name])
 
         async with graphql_context.db.start_transaction() as db:
-            await obj.save(db=db)
+            await obj.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
         return cls(ok=True)
 
@@ -199,6 +203,8 @@ class BranchRebase(Mutation):
         graphql_context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        if obj.status == BranchStatus.MERGED:
+            raise ValidationError(f"Branch '{obj.name}' has been merged and is read-only. Rebase is not allowed.")
         await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
 
@@ -218,7 +224,7 @@ class BranchRebase(Mutation):
         fields = extract_graphql_fields(info=info)
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchValidate(Mutation):
@@ -260,7 +266,7 @@ class BranchValidate(Mutation):
 
         fields = extract_graphql_fields(info=info)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchMerge(Mutation):
@@ -294,6 +300,8 @@ class BranchMerge(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
         if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
             raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
+        if obj.status == BranchStatus.MERGED:
+            raise ValidationError(f"Branch '{branch_name}' has already been merged")
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
@@ -315,4 +323,4 @@ class BranchMerge(Mutation):
         fields = extract_graphql_fields(info=info)
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)

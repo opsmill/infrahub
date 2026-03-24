@@ -30,6 +30,7 @@ from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRo
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
@@ -527,7 +528,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()
-    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db)
+    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db, at=Timestamp())
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)

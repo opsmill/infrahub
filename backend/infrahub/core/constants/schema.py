@@ -1,10 +1,10 @@
 from enum import Enum, Flag, auto
 
 PARENT_CHILD_IDENTIFIER = "parent__child"
+RESOURCE_POOL_REL_SUFFIX = "_from_resource_pool"
 
 
 class FlagProperty(Enum):
-    IS_VISIBLE = "is_visible"
     IS_PROTECTED = "is_protected"
 
 

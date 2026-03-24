@@ -6,7 +6,7 @@ from .models import MenuDict, MenuItemDefinition, MenuItemDict
 
 
 class MenuRepository:
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
     async def get_menu(self, nodes: dict[str, CoreMenuItem] | None = None) -> MenuDict:

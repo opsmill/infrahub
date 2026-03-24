@@ -34,7 +34,7 @@ class TestMutationGenerator(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
@@ -83,7 +83,7 @@ class TestMutationGenerator(TestInfrahubApp):
         response = await client.execute_graphql(query=mutation.render(), branch_name="branch1")
         assert response["CoreGeneratorDefinitionRun"]["ok"]
 
-        tags = await client.all(kind="BuiltinTag", branch="branch1")
+        tags = await client.all(kind="TestingTag", branch="branch1")
         assert "john-jesko" in [tag.name.value for tag in tags]
 
         groups = await client.filters(kind=InfrahubKind.GENERATORGROUP, branch="branch1")
@@ -99,7 +99,7 @@ class TestMutationGenerator(TestInfrahubApp):
         response = await client.execute_graphql(query=mutation.render(), branch_name="branch1")
         assert response["CoreGeneratorDefinitionRun"]["ok"]
 
-        tags = await client.all(kind="BuiltinTag", branch="branch1")
+        tags = await client.all(kind="TestingTag", branch="branch1")
         assert "JOHN__JESKO" in [tag.name.value for tag in tags]
 
         groups = await client.filters(kind=InfrahubKind.GENERATORAWAREGROUP, branch="branch1")
@@ -136,5 +136,5 @@ class TestMutationGenerator(TestInfrahubApp):
                 context=None,
             )
 
-        tags = await client.all(kind="BuiltinTag", branch="branch1")
+        tags = await client.all(kind="TestingTag", branch="branch1")
         assert "bill-jesko" in [tag.name.value for tag in tags]

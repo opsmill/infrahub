@@ -7,9 +7,11 @@ from starlette.background import BackgroundTasks
 
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
 from infrahub.graphql.registry import registry as graphql_registry
+from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.permissions import PermissionManager
@@ -37,6 +39,7 @@ class GraphqlContext:
     types: dict
     single_relationship_resolver: SingleRelationshipResolver
     many_relationship_resolver: ManyRelationshipResolver
+    account_metadata_resolver: AccountMetadataResolver
     service: InfrahubServices | None = None
     at: Timestamp | None = None
     related_node_ids: set | None = None
@@ -74,6 +77,13 @@ class GraphqlContext:
 
     def get_context(self) -> InfrahubContext:
         return InfrahubContext.init(branch=self.branch, account=self.active_account_session)
+
+    @property
+    def assigned_user_id(self) -> str:
+        """Return the user ID to be used for assignments in this context."""
+        if self.account_session and self.account_session.account_id:
+            return self.account_session.account_id
+        return SYSTEM_USER_ID
 
 
 async def prepare_graphql_params(
@@ -113,6 +123,7 @@ async def prepare_graphql_params(
             branch=branch,
             single_relationship_resolver=SingleRelationshipResolver(),
             many_relationship_resolver=ManyRelationshipResolver(),
+            account_metadata_resolver=AccountMetadataResolver(),
             at=Timestamp(at),
             types=gqlm.get_graphql_types(),
             related_node_ids=set(),

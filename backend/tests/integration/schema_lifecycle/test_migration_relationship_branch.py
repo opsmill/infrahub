@@ -41,7 +41,9 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         return state.branch
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         # Load data in the MAIN branch first
@@ -149,7 +151,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_person_tag(self, schema_person_base) -> dict[str, Any]:
+    def schema_person_tag(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         schema_person_base["relationships"] = [
             {
                 "name": "tags",
@@ -162,20 +164,24 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_car_main_driver(self, schema_car_base) -> dict[str, Any]:
+    def schema_car_main_driver(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         assert schema_car_base["relationships"][0]["name"] == "owner"
         schema_car_base["relationships"][0]["name"] = "main_driver"
         return schema_car_base
 
     @pytest.fixture(scope="class")
-    def schema_tag_no_persons(self, schema_tag_base) -> dict[str, Any]:
+    def schema_tag_no_persons(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
         assert schema_tag_base["relationships"][1]["name"] == "persons"
         schema_tag_base["relationships"][1]["state"] = "absent"
         return schema_tag_base
 
     @pytest.fixture(scope="class")
     def schema_step02(
-        self, schema_car_main_driver, schema_person_tag, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_main_driver: dict[str, Any],
+        schema_person_tag: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -184,19 +190,27 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_step03(
-        self, schema_car_main_driver, schema_person_tag, schema_manufacturer_base, schema_tag_no_persons
+        self,
+        schema_car_main_driver: dict[str, Any],
+        schema_person_tag: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_no_persons: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_tag, schema_car_main_driver, schema_manufacturer_base, schema_tag_no_persons],
         }
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
         assert len(persons) == 2
 
     async def test_step02_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         car_schema = registry.schema.get_node_schema(name=CAR_KIND)
         rel = car_schema.get_relationship(name="owner")
@@ -254,7 +268,11 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step02_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
     ) -> None:
         car_schema = registry.schema.get_node_schema(name=CAR_KIND)
         rel = car_schema.get_relationship(name="owner")
@@ -289,7 +307,11 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert len(john_cars_main) == 2
 
     async def test_step03_check(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step03], branch=self.branch1.name)
         assert response == {
@@ -321,7 +343,11 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step03: dict[str, Any],
     ) -> None:
         response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
         assert not response.errors
@@ -339,7 +365,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         persons = await red_main.persons.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(persons) == 1
 
-    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset) -> None:
+    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset: dict[str, str]) -> None:
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
 
@@ -353,7 +379,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         tags = await jane.tags.get_peers(db=db)
         assert len(tags) == 1
 
-    async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset) -> None:
+    async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset: dict[str, str]) -> None:
         branch = await client.branch.merge(branch_name=self.branch1.name)
         assert branch
 

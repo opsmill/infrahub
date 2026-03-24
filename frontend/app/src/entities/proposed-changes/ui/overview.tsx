@@ -3,7 +3,6 @@ import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Card } from "@/shared/components/ui/card";
 import type { FormRef } from "@/shared/components/ui/form";
 import {
@@ -16,6 +15,7 @@ import { classNames } from "@/shared/utils/common";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 
 import { ProposedChangeEvents } from "./proposed-change-events";
 

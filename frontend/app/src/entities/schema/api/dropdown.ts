@@ -1,6 +1,6 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-export const DROPDOWN_ADD_MUTATION = gql`
+export const DROPDOWN_ADD_MUTATION = graphql(`
   mutation DropdownAdd(
     $kind: String!
     $attribute: String!
@@ -28,12 +28,12 @@ export const DROPDOWN_ADD_MUTATION = gql`
       }
     }
   }
-`;
+`);
 
-export const DROPDOWN_REMOVE_MUTATION = gql`
+export const DROPDOWN_REMOVE_MUTATION = graphql(`
   mutation DropdownDelete($kind: String!, $attribute: String!, $dropdown: String!) {
     SchemaDropdownRemove(data: { kind: $kind, attribute: $attribute, dropdown: $dropdown }) {
       ok
     }
   }
-`;
+`);

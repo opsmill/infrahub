@@ -26,7 +26,9 @@ VELOCIPEDE_KIND = "TestingVelocipede"
 
 class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         john = await Node.init(schema=PERSON_KIND, db=db)
@@ -91,7 +93,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_01_person_name_regex_failure(self, schema_person_base) -> dict[str, Any]:
+    def schema_01_person_name_regex_failure(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         """Add regex to TestPerson.name that does not fit existing data"""
         schema = copy.deepcopy(schema_person_base)
         schema["attributes"][0]["regex"] = "^Q[0-9]+$"
@@ -99,7 +101,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_01_attr_regex_failure(
-        self, schema_car_base, schema_01_person_name_regex_failure, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_01_person_name_regex_failure: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -107,7 +113,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_person_name_regex_success(self, schema_person_base) -> dict[str, Any]:
+    def schema_02_person_name_regex_success(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         """Add regex to TestPerson.name that fits existing data"""
         schema = copy.deepcopy(schema_person_base)
         schema["attributes"][0]["regex"] = "^J[a-z]+$"
@@ -115,7 +121,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_02_attr_regex(
-        self, schema_car_base, schema_02_person_name_regex_success, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_car_base: dict[str, Any],
+        schema_02_person_name_regex_success: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -123,7 +133,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_tag_car_cardinality_failure(self, schema_tag_base) -> dict[str, Any]:
+    def schema_03_tag_car_cardinality_failure(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
         """Update TestingTag.cars.cardinality to one, invalid"""
         schema = copy.deepcopy(schema_tag_base)
         schema["relationships"][0]["cardinality"] = "one"
@@ -131,7 +141,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_03_relationship_cardinality_failure(
-        self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_03_tag_car_cardinality_failure
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_03_tag_car_cardinality_failure: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -144,7 +158,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_04_tag_person_cardinality_success(self, schema_tag_base) -> dict[str, Any]:
+    def schema_04_tag_person_cardinality_success(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
         """Update TestingTag.persons.cardinality to one, fits existing data"""
         schema = copy.deepcopy(schema_tag_base)
         schema["relationships"][0]["cardinality"] = "many"
@@ -153,7 +167,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_04_relationship_cardinality(
-        self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_04_tag_person_cardinality_success
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_04_tag_person_cardinality_success: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -166,7 +184,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_05_car_color_unique(self, schema_car_base) -> dict[str, Any]:
+    def schema_05_car_color_unique(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         """Update TestingCar.color to unique, invalid"""
         schema = copy.deepcopy(schema_car_base)
         schema["attributes"][2]["unique"] = "true"
@@ -174,7 +192,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_05_attribute_unique(
-        self, schema_05_car_color_unique, schema_person_base, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_05_car_color_unique: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -187,7 +209,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_07_car_generate_profile_false(self, schema_car_base) -> dict[str, Any]:
+    def schema_07_car_generate_profile_false(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         """Update TestingCar.generate_profile to false"""
         schema = copy.deepcopy(schema_car_base)
         schema["generate_profile"] = "false"
@@ -195,7 +217,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_07_generate_profile_false(
-        self, schema_07_car_generate_profile_false, schema_person_base, schema_manufacturer_base, schema_tag_base
+        self,
+        schema_07_car_generate_profile_false: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -230,11 +256,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_09_add_generic(
         self,
-        schema_07_car_generate_profile_false,
-        schema_person_base,
-        schema_manufacturer_base,
-        schema_tag_base,
-        schema_velocipede_generic,
+        schema_07_car_generate_profile_false: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+        schema_tag_base: dict[str, Any],
+        schema_velocipede_generic: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -247,7 +273,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             ],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
         tags = await registry.manager.query(db=db, schema=TAG_KIND)
@@ -256,7 +282,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(tags) == 2
 
     async def test_step_01_check_attr_regex_add_failure(
-        self, client: InfrahubClient, initial_dataset, schema_01_attr_regex_failure
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_01_attr_regex_failure: dict[str, Any]
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_01_attr_regex_failure])
 
@@ -269,7 +295,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Attribute-level 'regex' constraint violation" in err_msg
 
     async def test_step_02_check_attr_regex_add_success(
-        self, client: InfrahubClient, initial_dataset, schema_02_attr_regex
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_02_attr_regex: dict[str, Any]
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_02_attr_regex])
         assert success
@@ -310,7 +336,10 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     async def test_step_03_check_relationship_cardinality_change_failure(
-        self, client: InfrahubClient, initial_dataset, schema_03_relationship_cardinality_failure
+        self,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_03_relationship_cardinality_failure: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_03_relationship_cardinality_failure])
         assert success is False
@@ -321,7 +350,10 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Relationship-level 'count' constraint violation" in err_msg
 
     async def test_step_04_check_relationship_cardinality_change_success(
-        self, client: InfrahubClient, initial_dataset, schema_04_relationship_cardinality
+        self,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_04_relationship_cardinality: dict[str, Any],
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_04_relationship_cardinality])
 
@@ -351,7 +383,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     async def test_step_05_check_attribute_unique_change_failure(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_05_attribute_unique
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_05_attribute_unique: dict[str, Any],
     ) -> None:
         pinto = await Node.init(schema=CAR_KIND, db=db)
         await pinto.new(
@@ -374,7 +410,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Attribute-level 'unique' constraint violation" in err_msg
 
     async def test_step_06_check_attribute_unique_change_success(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_05_attribute_unique
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_05_attribute_unique: dict[str, Any],
     ) -> None:
         pinto = await NodeManager.get_one_by_default_filter(db=db, id="pinto", kind="TestingCar", raise_on_error=True)
         await pinto.delete(db=db)
@@ -408,7 +448,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     async def test_step_07_check_generate_profile_failure(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_07_generate_profile_false: dict[str, Any],
     ) -> None:
         car_profile_schema = registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
         assert isinstance(car_profile_schema, ProfileSchema)
@@ -427,7 +471,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Node-level 'generate_profile' constraint violation" in err_msg
 
     async def test_step_08_check_generate_profile_failure(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_07_generate_profile_false: dict[str, Any],
     ) -> None:
         car_profile_schema = registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
         car_profile_nodes = await NodeManager.query(
@@ -453,7 +501,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     async def test_step_09_add_generic_and_profile(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_09_add_generic
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_09_add_generic: dict[str, Any],
     ) -> None:
         await load_schema(db=db, schema=schema_09_add_generic)
         schema_09_add_generic["generics"][0]["generate_profile"] = False

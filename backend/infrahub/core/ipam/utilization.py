@@ -40,25 +40,18 @@ class PrefixUtilizationGetter:
         )
         await query.execute(db=self.db)
 
-        for result in query.get_results():
-            prefix_node = result.get_node("pfx")
-            prefix_id = str(prefix_node.get("uuid"))
-            branch_name = str(result.get("branch"))
-            child_node = result.get_node("child")
-            if InfrahubKind.IPADDRESS in child_node.labels:
+        for item in query.get_data():
+            if InfrahubKind.IPADDRESS in item.child_labels:
                 child_type = PrefixMemberType.ADDRESS
             else:
                 child_type = PrefixMemberType.PREFIX
-            child_value_node = result.get_node("av")
-            child_prefixlen = child_value_node.get("prefixlen")
-            child_ip_value = child_value_node.get("value")
 
-            if prefix_id not in self._results_by_prefix_id:
-                self._results_by_prefix_id[prefix_id] = {}
-            if branch_name not in self._results_by_prefix_id[prefix_id]:
-                self._results_by_prefix_id[prefix_id][branch_name] = []
-            self._results_by_prefix_id[prefix_id][branch_name].append(
-                PrefixChildDetails(child_type=child_type, prefixlen=child_prefixlen, ip_value=child_ip_value)
+            if item.prefix_uuid not in self._results_by_prefix_id:
+                self._results_by_prefix_id[item.prefix_uuid] = {}
+            if item.branch not in self._results_by_prefix_id[item.prefix_uuid]:
+                self._results_by_prefix_id[item.prefix_uuid][item.branch] = []
+            self._results_by_prefix_id[item.prefix_uuid][item.branch].append(
+                PrefixChildDetails(child_type=child_type, prefixlen=item.prefixlen, ip_value=item.ip_value)
             )
 
     async def get_children(

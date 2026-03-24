@@ -52,7 +52,7 @@ const config: Config = {
           routeBasePath: "/",
           sidebarCollapsed: true,
           sidebarPath: "./sidebars.ts",
-          exclude: ["**/AGENTS.md"],
+          exclude: ["**/AGENTS.md", "tutorials/getting-started/**"],
         },
         blog: false,
         theme: {

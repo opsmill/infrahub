@@ -40,6 +40,12 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByText("Description-")).toBeVisible();
     expect(page.url()).toContain("/resource-manager/");
 
+    await page.getByRole("button", { name: "View node metadata" }).click();
+    await expect(page.getByText("Created at")).toBeVisible();
+    await expect(page.getByText("Created by")).toBeVisible();
+    await expect(page.getByText("Updated at")).toBeVisible();
+    await expect(page.getByText("Updated by")).toBeVisible();
+
     await page.getByTestId("edit-button").click();
     await expect(page.getByLabel("Default Prefix Type")).toContainText("IP PrefixIpam");
     await page.getByLabel("Description").fill("a test pool for e2e");

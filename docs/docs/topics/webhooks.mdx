@@ -6,24 +6,33 @@ import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiver.txt';
 
-# Webhooks
+# What are webhooks?
 
-The **Webhook System** enables external notifications based on the [Events](./events.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
+Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](./events.mdx) occurs within Infrahub. They allow you to:
+
+- Notify external systems about changes in your infrastructure (for example new configuration generated)
+- Trigger automated workflows in CI/CD pipelines
+- Keep other tools and services synchronized with your infrastructure data
+- Build custom integrations with your existing toolchain
+
+:::info
+The **Webhook System** also powers the [Activity Log](./activity-log.mdx).
+:::
 
 ## Configuring webhooks
 
 Infrahub supports two different types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint.
-- `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
+- `Custom Webhook` allows the ability to tie events to a [Transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
 
 :::note
 
 Custom webhooks might be useful in situations where the endpoint needs a specific payload to be successful. A use-case that might need this would be triggering external actions in platforms like GitHub and GitLab.
 
-The data passed into a normal Python transformation will typically be the result of the GraphQL query, but webhooks execute the transform by passing in the webhook data instead.
+The data passed into a normal Python Transformation will typically be the result of the GraphQL query, but webhooks execute the Transformation by passing in the webhook data instead.
 
-Currently, it is **required** to define a GraphQL query to be defined on a transform regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
+Currently, it is **required** to define a GraphQL query to be defined on a Transformation regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
 
 :::
 
@@ -67,6 +76,7 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 
 - **Description**: A description can be set to identify the webhooks purpose.
 - **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
+- **Transformation** (Custom Webhook only): The Python Transformation used to customize the webhook payload before being sent to the webhook receiver.
 
 ### Shared key for security
 
@@ -75,7 +85,9 @@ A **shared key** can be configured to sign webhook requests. This key ensures th
 When a webhook is sent:
 
 1. The sender generates a signature using the shared key.
-2. The signature is included in the request headers.
+2. The signature is included in the request headers (`webhook-signature`).
+3. The message ID is included in the request headers (`webhook-id`).
+4. The timestamp is included in the request headers (`webhook-timestamp`).
 
 The receiver then uses the same shared key to verify the signature, confirming that the message has not been tampered with and that it is from a trusted source.
 
@@ -94,8 +106,9 @@ When using webhooks over HTTPS, you can configure your system to validate certif
 
 Here are some example payloads of some events that may be sent.
 <!-- vale off -->
-<Tabs>
+<Tabs groupId="event-type" queryString>
   <TabItem value="infrahub.branch.created" label="infrahub.branch.created" default>
+
 ```json
 {
   "data": {
@@ -110,8 +123,10 @@ Here are some example payloads of some events that may be sent.
   "event": "infrahub.branch.created"
 }
 ```
+
   </TabItem>
   <TabItem value="infrahub.node.created" label="infrahub.node.created">
+
 ```json
 {
   "data": {
@@ -130,13 +145,6 @@ Here are some example payloads of some events that may be sent.
           "name": "name",
           "value": "Google Fibre",
           "properties": {
-            "is_visible": {
-              "name": "is_visible",
-              "value": true,
-              "value_type": "Boolean",
-              "value_previous": null,
-              "value_update_status": "added"
-            },
             "is_protected": {
               "name": "is_protected",
               "value": false,
@@ -153,13 +161,6 @@ Here are some example payloads of some events that may be sent.
           "name": "description",
           "value": "Google Fibre",
           "properties": {
-            "is_visible": {
-              "name": "is_visible",
-              "value": true,
-              "value_type": "Boolean",
-              "value_previous": null,
-              "value_update_status": "added"
-            },
             "is_protected": {
               "name": "is_protected",
               "value": false,
@@ -183,9 +184,11 @@ Here are some example payloads of some events that may be sent.
   "event": "infrahub.node.created"
 }
 ```
+
   </TabItem>
 
   <TabItem value="infrahub.node.updated" label="infrahub.node.updated">
+
 ```json
 {
   "data": {
@@ -228,6 +231,11 @@ Here are some example payloads of some events that may be sent.
   "event": "infrahub.node.updated"
 }
 ```
+
   </TabItem>
 </Tabs>
 <!-- vale on -->
+
+## Custom webhook transformation
+
+The `data` object from the payloads above is passed to the `transform` method of your [Python transform](../guides/python-transform.mdx).

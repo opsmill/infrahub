@@ -3,18 +3,16 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Any
 
-from netaddr import IPSet
-
 from infrahub import lock
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.query.ipam import get_subnets
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
 from infrahub.exceptions import ValidationError
-from infrahub.pools.prefix import get_next_available_prefix
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
@@ -37,6 +35,7 @@ class CoreIPPrefixPool(Node):
         member_type: str | None = None,
         prefix_type: str | None = None,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> Node:
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
@@ -81,7 +80,7 @@ class CoreIPPrefixPool(Node):
                 await node.new(db=db, prefix=str(next_prefix), ip_namespace=ip_namespace, **data)
             except ValidationError as exc:
                 raise ValueError(f"IPPrefixPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
-            await node.save(db=db, at=at)
+            await node.save(db=db, at=at, user_id=user_id)
             reconciler = IpamReconciler(db=db, branch=branch)
             await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())
 
@@ -96,6 +95,7 @@ class CoreIPPrefixPool(Node):
     async def get_next(self, db: InfrahubDatabase, prefixlen: int) -> IPNetworkType:
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
+        allocator = IPAMResourceAllocator(db=db, namespace=ip_namespace, branch=self._branch, branch_agnostic=True)
 
         try:
             weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
@@ -103,23 +103,9 @@ class CoreIPPrefixPool(Node):
             weighted_resources = list(resources.values())
 
         for resource in weighted_resources:
-            subnets = await get_subnets(
-                db=db,
-                ip_prefix=ipaddress.ip_network(resource.prefix.value),  # type: ignore[attr-defined]
-                namespace=ip_namespace,
-                branch=self._branch,
-                branch_agnostic=True,
-            )
-
-            pool = IPSet([resource.prefix.value])
-            for subnet in subnets:
-                pool.remove(addr=str(subnet.prefix))
-
-            try:
-                prefix_ver = ipaddress.ip_network(resource.prefix.value).version
-                next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_ver=prefix_ver)
+            resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
+            next_available = await allocator.get_next_prefix(ip_prefix=resource_prefix, target_prefix_length=prefixlen)
+            if next_available:
                 return next_available
-            except ValueError:
-                continue
 
         raise IndexError("No more resources available")

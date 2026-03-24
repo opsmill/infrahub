@@ -1,8 +1,8 @@
 import { lazy, Suspense } from "react";
 
-import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import { FileWithProfileForm } from "@/shared/components/form/file-with-profile-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
@@ -11,6 +11,7 @@ import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
+  FILE_OBJECT_KIND,
   GLOBAL_PERMISSION_OBJECT,
   NUMBER_POOL_OBJECT,
   OBJECT_PERMISSION_OBJECT,
@@ -18,8 +19,8 @@ import {
   REPOSITORY_KIND,
 } from "@/shared/config/constants";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
@@ -32,6 +33,7 @@ import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissi
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import {
   NODE_TRIGGER_ATTRIBUTE_MATCH,
   NODE_TRIGGER_RELATIONSHIP_MATCH,
@@ -39,13 +41,7 @@ import {
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
 
-export type ProfileData = {
-  [key: string]: string | Pick<AttributeType, "value" | "__typename">;
-  display_label: string;
-  id: string;
-  __typename: string;
-  profile_priority: NumberAttribute;
-};
+export type { ProfileData };
 
 const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));
 const RepositoryForm = lazy(() => import("@/entities/repository/ui/repository-form"));
@@ -57,7 +53,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   kind: string;
   onSubmit?: NodeFormProps["onSubmit"];
   onSuccess?: NodeFormProps["onSuccess"];
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   currentProfiles?: ProfileData[];
   isUpdate?: boolean;
@@ -135,6 +131,10 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (kind === NODE_TRIGGER_RELATIONSHIP_MATCH) {
     return <NodeRelationshipMatchForm schema={schema} {...props} />;
+  }
+
+  if (isNode && schema.generate_profile && isOfKind(FILE_OBJECT_KIND, schema)) {
+    return <FileWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
   if (isGeneric) {

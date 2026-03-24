@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
+import { LinkButton, type LinkButtonProps } from "@/shared/components/ui/button";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";

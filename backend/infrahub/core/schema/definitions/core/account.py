@@ -43,8 +43,8 @@ core_account_token = NodeSchema(
     documentation="/topics/auth",
     attributes=[
         Attr(name="name", kind="Text", optional=True),
-        Attr(name="token", kind="Text", unique=True),
-        Attr(name="expiration", kind="DateTime", optional=True),
+        Attr(name="token", kind="Text", description="The authentication token value", unique=True),
+        Attr(name="expiration", kind="DateTime", description="Date and time when the token expires", optional=True),
     ],
     relationships=[
         Rel(
@@ -68,13 +68,7 @@ core_password_credential = NodeSchema(
     inherit_from=[InfrahubKind.CREDENTIAL],
     attributes=[
         Attr(name="username", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=6000),
-        Attr(
-            name="password",
-            kind="Password",
-            optional=True,
-            branch=BranchSupportType.AGNOSTIC,
-            order_weight=7000,
-        ),
+        Attr(name="password", kind="Password", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=7000),
     ],
 )
 
@@ -88,7 +82,12 @@ core_refresh_token = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="expiration", kind="DateTime", optional=False),
+        Attr(
+            name="expiration",
+            kind="DateTime",
+            description="Date and time when the refresh token expires",
+            optional=False,
+        ),
     ],
     relationships=[
         Rel(
@@ -144,6 +143,7 @@ core_generic_account = GenericSchema(
         Attr(
             name="account_type",
             kind="Text",
+            description="Type of account (user, script, etc.)",
             default_value=AccountType.USER.value,
             enum=AccountType.available_types(),
         ),

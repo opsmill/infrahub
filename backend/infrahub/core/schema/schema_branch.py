@@ -6,24 +6,25 @@ import hashlib
 import keyword
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import Any
-from uuid import uuid4
+from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
+    PROFILES_RELATIONSHIP_NAME,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
+    SUBTEMPLATE_EXCLUDED_KINDS,
     BranchSupportType,
     ComputedAttributeKind,
     HashableModelState,
@@ -54,10 +55,16 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import (
+    ListAttributeParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
+    HierarchicalNodesRestrictedWords,
+)
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
 from infrahub.types import ATTRIBUTE_TYPES
@@ -65,22 +72,27 @@ from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 from ... import config
-from ..constants.schema import PARENT_CHILD_IDENTIFIER
+from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .node_inheritance_handler import NodeInheritanceHandler
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
+
+if TYPE_CHECKING:
+    from infrahub.core.validators.schema_branch.interface import SchemaBranchValidator
 
 log = get_logger()
 
 
 profiles_rel_settings: dict[str, Any] = {
-    "name": "profiles",
+    "name": PROFILES_RELATIONSHIP_NAME,
     "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     "peer": InfrahubKind.PROFILE,
     "kind": RelationshipKind.PROFILE,
     "cardinality": RelationshipCardinality.MANY,
     "branch": BranchSupportType.AWARE,
+    "order_weight": 99_000,
 }
 
 
@@ -93,7 +105,7 @@ class SchemaBranch:
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
-    ):
+    ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
@@ -109,6 +121,8 @@ class SchemaBranch:
             self.generics = data.get("generics", {})
             self.profiles = data.get("profiles", {})
             self.templates = data.get("templates", {})
+
+        self.validators: list[SchemaBranchValidator] = [HierarchicalNodesRestrictedWords()]
 
     @classmethod
     def validate(cls, data: Any) -> Self:
@@ -236,8 +250,8 @@ class SchemaBranch:
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
-        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
-        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+        reversed_map_local: dict[str | None, str] = {v: k for k, v in local_kind_id_map.items()}
+        reversed_map_other: dict[str | None, str] = {v: k for k, v in other_kind_id_map.items()}
 
         for shared_id in shared_ids:
             local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
@@ -501,11 +515,85 @@ class SchemaBranch:
 
         return fields or None
 
+    def _attr_needs_legacy_param_reconciliation(self, attr: AttributeSchema) -> bool:
+        """Check if an attribute needs reconciliation between deprecated fields and parameters.
+
+        Supports Text/TextArea attributes (regex, min_length, max_length) and List attributes (regex).
+        """
+        if isinstance(attr.parameters, TextAttributeParameters):
+            return (
+                attr.regex != attr.parameters.regex
+                or attr.min_length != attr.parameters.min_length
+                or attr.max_length != attr.parameters.max_length
+            )
+        if isinstance(attr.parameters, ListAttributeParameters):
+            return attr.regex != attr.parameters.regex
+        return False
+
+    def _reconcile_legacy_attr_params(self, attr: AttributeSchema) -> None:
+        """Reconcile an attribute's deprecated fields with parameters.
+
+        Parameters take precedence over deprecated top-level fields when both are set.
+        Supports Text/TextArea attributes (regex, min_length, max_length) and List attributes (regex).
+        """
+        if isinstance(attr.parameters, (TextAttributeParameters, ListAttributeParameters)):
+            # Sync regex: parameters takes precedence
+            if attr.parameters.regex is not None:
+                attr.regex = attr.parameters.regex
+            elif attr.regex is not None:
+                attr.parameters.regex = attr.regex
+
+        if isinstance(attr.parameters, TextAttributeParameters):
+            # Sync min_length: parameters takes precedence
+            if attr.parameters.min_length is not None:
+                attr.min_length = attr.parameters.min_length
+            elif attr.min_length is not None:
+                attr.parameters.min_length = attr.min_length
+
+            # Sync max_length: parameters takes precedence
+            if attr.parameters.max_length is not None:
+                attr.max_length = attr.parameters.max_length
+            elif attr.max_length is not None:
+                attr.parameters.max_length = attr.max_length
+
+    def _reconcile_legacy_attribute_parameters(self, schema: SchemaRoot | None = None) -> None:
+        """Reconcile deprecated fields and parameters for attributes with legacy parameter support.
+
+        This handles the transition of validation parameters (regex, min_length, max_length)
+        from top-level attribute fields to the nested parameters object. Supports Text/TextArea
+        and List attributes.
+
+        Args:
+            schema: If provided, reconcile incoming schema data before merging.
+                   If None, reconcile already-loaded schemas (e.g., from database).
+        """
+        if schema:
+            # Incoming schema: modify in place
+            for item in schema.nodes + schema.generics:
+                for attr in item.attributes:
+                    self._reconcile_legacy_attr_params(attr)
+            return
+
+        # Loaded schemas: need to duplicate before modifying
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if not any(self._attr_needs_legacy_param_reconciliation(attr) for attr in node.attributes):
+                continue
+
+            node = node.duplicate()
+            for attr in node.attributes:
+                self._reconcile_legacy_attr_params(attr)
+            self.set(name=name, schema=node)
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
+        # Reconcile deprecated attribute parameters before merging
+        self._reconcile_legacy_attribute_parameters(schema)
+
         for item in schema.nodes + schema.generics:
             try:
                 if item.id:
@@ -545,6 +633,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
+        self._reconcile_legacy_attribute_parameters()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -557,6 +646,9 @@ class SchemaBranch:
         self.add_hierarchy_node()
 
     def process_validate(self) -> None:
+        for validator in self.validators:
+            validator.check(schema_branch=self)
+
         self.validate_names()
         self.validate_python_keywords()
         self.validate_kinds()
@@ -1144,27 +1236,13 @@ class SchemaBranch:
                             ) from None
 
     def validate_attribute_parameters(self) -> None:
-        for name in self.generics.keys():
-            generic_schema = self.get_generic(name=name, duplicate=False)
-            for attribute in generic_schema.attributes:
-                if (
-                    attribute.kind == "NumberPool"
-                    and isinstance(attribute.parameters, NumberPoolParameters)
-                    and not attribute.parameters.number_pool_id
-                ):
-                    attribute.parameters.number_pool_id = str(uuid4())
-
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
-                if attribute.kind == "NumberPool" and isinstance(attribute.parameters, NumberPoolParameters):
-                    self._validate_number_pool_parameters(
-                        node_schema=node_schema, attribute=attribute, number_pool_parameters=attribute.parameters
-                    )
+                if attribute.kind == "NumberPool":
+                    self._validate_number_pool_parameters(node_schema=node_schema, attribute=attribute)
 
-    def _validate_number_pool_parameters(
-        self, node_schema: NodeSchema, attribute: AttributeSchema, number_pool_parameters: NumberPoolParameters
-    ) -> None:
+    def _validate_number_pool_parameters(self, node_schema: NodeSchema, attribute: AttributeSchema) -> None:
         if attribute.optional:
             raise ValidationError(f"{node_schema.kind}.{attribute.name} is a NumberPool it can't be optional")
 
@@ -1173,30 +1251,26 @@ class SchemaBranch:
                 f"{node_schema.kind}.{attribute.name} is a NumberPool it has to be a read_only attribute"
             )
 
-        if attribute.inherited and not number_pool_parameters.number_pool_id:
+        if attribute.inherited:
+            # Validate that the attribute isn't inherited from multiple generics
             generics_with_attribute = []
             for generic_name in node_schema.inherit_from:
                 generic_schema = self.get_generic(name=generic_name, duplicate=False)
                 if attribute.name in generic_schema.attribute_names:
-                    generic_attribute = generic_schema.get_attribute(name=attribute.name)
                     generics_with_attribute.append(generic_schema)
-                    if isinstance(generic_attribute.parameters, NumberPoolParameters):
-                        number_pool_parameters.number_pool_id = generic_attribute.parameters.number_pool_id
 
             if len(generics_with_attribute) > 1:
+                generic_kinds = [g.kind for g in generics_with_attribute]
                 raise ValidationError(
-                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic"
+                    f"{node_schema.kind}.{attribute.name} is a NumberPool inherited from more than one generic: {generic_kinds}"
                 )
-        elif not attribute.inherited:
+        else:
             for generic_name in node_schema.inherit_from:
                 generic_schema = self.get_generic(name=generic_name, duplicate=False)
                 if attribute.name in generic_schema.attribute_names:
                     raise ValidationError(
                         f"Overriding '{node_schema.kind}.{attribute.name}' NumberPool attribute from generic '{generic_name}' is not supported"
                     )
-
-            if not number_pool_parameters.number_pool_id:
-                number_pool_parameters.number_pool_id = str(uuid4())
 
     def validate_computed_attributes(self) -> None:
         self.computed_attributes = ComputedAttributes()
@@ -1232,7 +1306,7 @@ class SchemaBranch:
                 )
             return
 
-        jinja_template = Jinja2Template(template=node.display_label)
+        jinja_template = InfrahubJinja2Template(template=node.display_label)
         try:
             variables = jinja_template.get_variables()
             jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
@@ -1289,7 +1363,7 @@ class SchemaBranch:
                 | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
             )
 
-            jinja_template = Jinja2Template(template=attribute.computed_attribute.jinja2_template)
+            jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
             try:
                 variables = jinja_template.get_variables()
                 jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
@@ -1641,12 +1715,13 @@ class SchemaBranch:
         """
 
         generics_used_by = defaultdict(list)
+        node_inheritance_handler = NodeInheritanceHandler()
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
             node = self.get_node(name=name, duplicate=False)
 
-            if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
+            if node.inherit_from or node.namespace == "Builtin" or node.namespace not in RESTRICTED_NAMESPACES:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
@@ -1675,7 +1750,7 @@ class SchemaBranch:
                 # Store the list of node referencing a specific generics
                 if node.namespace != "Internal":
                     generics_used_by[generic_kind].append(node.kind)
-                node.inherit_from_interface(interface=generic_kind_schema)
+                node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
@@ -1963,7 +2038,7 @@ class SchemaBranch:
             for item in template.attributes + template.relationships:
                 if item.order_weight:
                     continue
-                item.order_weight = generic_node_weights[item.name] if item.name in generic_node_weights else None
+                item.order_weight = generic_node_weights.get(item.name)
 
             self.set(name=template.kind, schema=template)
 
@@ -2130,34 +2205,72 @@ class SchemaBranch:
             node = node.duplicate()
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
-            if node.parent:
-                if "parent" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_parent_rel(
-                            peer=node.parent,
-                            hierarchical=node.hierarchy,
-                            read_only=read_only,
-                            optional=node.parent in [node_name] + self.generic_names,
-                        )
+            parent_peer = node.parent or node.hierarchy
+            if "parent" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_parent_rel(
+                        peer=parent_peer,
+                        hierarchical=node.hierarchy,
+                        read_only=read_only,
+                        optional=parent_peer in [node_name] + self.generic_names,
                     )
-                else:
-                    parent_rel = node.get_relationship(name="parent")
-                    if parent_rel.peer != node.parent:
-                        parent_rel.peer = node.parent
+                )
+            else:
+                parent_rel = node.get_relationship(name="parent")
+                if parent_rel.peer != parent_peer:
+                    parent_rel.peer = parent_peer
 
-            if node.children:
-                if "children" not in node.relationship_names:
-                    node.relationships.append(
-                        self._get_hierarchy_child_rel(
-                            peer=node.children, hierarchical=node.hierarchy, read_only=read_only
-                        )
-                    )
-                else:
-                    children_rel = node.get_relationship(name="children")
-                    if children_rel.peer != node.children:
-                        children_rel.peer = node.children
+            children_peer = node.children or node.hierarchy
+            if "children" not in node.relationship_names:
+                node.relationships.append(
+                    self._get_hierarchy_child_rel(peer=children_peer, hierarchical=node.hierarchy, read_only=read_only)
+                )
+            else:
+                children_rel = node.get_relationship(name="children")
+                if children_rel.peer != children_peer:
+                    children_rel.peer = children_peer
 
             self.set(name=node_name, schema=node)
+
+    def add_relationships_to_profile(self, profile: ProfileSchema, node: NodeSchema | GenericSchema) -> None:
+        # Remove previous relationships to account for new ones
+        profile.relationships = [r for r in profile.relationships if r.kind == RelationshipKind.PROFILE]
+
+        for relationship in node.relationships:
+            if not relationship.support_profiles:
+                continue
+
+            # Ignore relationship if it is part of a uniqueness constraint
+            ignore_relationship = False
+            for constraint in node.uniqueness_constraints or []:
+                if relationship.name in constraint:
+                    ignore_relationship = True
+                    break
+            if ignore_relationship:
+                continue
+
+            identifier = (
+                f"profile_{relationship.identifier}"
+                if relationship.identifier
+                else self._generate_identifier_string(profile.kind, relationship.peer)
+            )
+
+            profile.relationships.append(
+                RelationshipSchema(
+                    name=relationship.name,
+                    peer=relationship.peer,
+                    kind=relationship.kind,
+                    cardinality=relationship.cardinality,
+                    direction=relationship.direction,
+                    branch=relationship.branch,
+                    identifier=identifier,
+                    min_count=relationship.min_count,
+                    max_count=relationship.max_count,
+                    label=relationship.label,
+                    order_weight=relationship.order_weight,
+                    inherited=False,
+                )
+            )
 
     def manage_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
@@ -2169,7 +2282,7 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             if (
-                node.namespace in RESTRICTED_NAMESPACES
+                (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
                 or node.state == HashableModelState.ABSENT
             ):
@@ -2178,6 +2291,7 @@ class SchemaBranch:
                 continue
 
             profile = self.generate_profile_from_node(node=node)
+            self.add_relationships_to_profile(profile=profile, node=node)
             self.set(name=profile.kind, schema=profile)
             profile_schema_kinds.add(profile.kind)
 
@@ -2214,21 +2328,26 @@ class SchemaBranch:
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
-            if node.namespace in RESTRICTED_NAMESPACES and node.kind not in (
-                InfrahubKind.IPRANGEAVAILABLE,
-                InfrahubKind.IPPREFIXAVAILABLE,
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                and node.namespace != "Builtin"
+                and node.kind
+                not in (
+                    InfrahubKind.IPRANGEAVAILABLE,
+                    InfrahubKind.IPPREFIXAVAILABLE,
+                )
             ):
                 continue
 
             # Add relationship between node and profile
-            if "profiles" not in node.relationship_names:
+            if PROFILES_RELATIONSHIP_NAME not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
                 node_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
-                rel_profiles = node.get_relationship(name="profiles")
+                rel_profiles = node.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         has_changes = True
@@ -2237,7 +2356,7 @@ class SchemaBranch:
                     continue
 
                 node_schema = self.get(name=node_name, duplicate=True)
-                rel_profiles = node_schema.get_relationship(name="profiles")
+                rel_profiles = node_schema.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         setattr(rel_profiles, name, value)
@@ -2252,13 +2371,13 @@ class SchemaBranch:
         core_name_attr = core_profile_schema.get_attribute(name="profile_name")
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
         profile_name_attr = name_attr_schema_class(
-            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+            **core_name_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_name_attr.branch = node.branch
         core_priority_attr = core_profile_schema.get_attribute(name="profile_priority")
         priority_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_priority_attr.kind)
         profile_priority_attr = priority_attr_schema_class(
-            **core_priority_attr.model_dump(exclude=["id", "inherited"]),
+            **core_priority_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_priority_attr.branch = node.branch
         profile = ProfileSchema(
@@ -2303,7 +2422,7 @@ class SchemaBranch:
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "default_value", "inherited"]),
+                **node_attr.model_dump(exclude={"id", "unique", "optional", "read_only", "default_value", "inherited"}),
             )
             profile.attributes.append(attr)
 
@@ -2317,7 +2436,7 @@ class SchemaBranch:
 
         This relationship allows to record from which template an object has been created.
         """
-        for node_name in self.node_names + self.generic_names:
+        for node_name in self.node_names:
             node = self.get(name=node_name, duplicate=False)
 
             if (
@@ -2335,6 +2454,8 @@ class SchemaBranch:
                 "cardinality": RelationshipCardinality.ONE,
                 "branch": BranchSupportType.AWARE,
                 "order_weight": 1,
+                "max_count": 1,
+                "min_count": 0,
             }
 
             # Add relationship between node and template
@@ -2361,15 +2482,98 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
+    def _create_attribute_resource_pool_relationship(self, attr: AttributeSchema) -> RelationshipSchema | None:
+        """Create a resource pool relationship for a Number attribute on a template.
+
+        When a Number attribute supports templates, this creates a corresponding relationship
+        to CoreNumberPool so the template can reference a pool for allocation.
+
+        Args:
+            attr: The attribute schema from the original node
+
+        Returns:
+            A RelationshipSchema for the resource pool relationship, or None if not applicable
+        """
+        if attr.kind != "Number" or not attr.support_templates:
+            return None
+
+        pool_rel_name = f"{attr.name}{RESOURCE_POOL_REL_SUFFIX}"
+        pool_identifier = f"{attr.name}{RESOURCE_POOL_REL_SUFFIX}".lower()
+        pool_label = attr.name.replace("_", " ").title() + " from Resource Pool"
+
+        return RelationshipSchema(
+            name=pool_rel_name,
+            peer=InfrahubKind.NUMBERPOOL,
+            description=f"Generated relationship for using a resource pool on the '{attr.name}' attribute",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.OUTBOUND,
+            branch=attr.branch,
+            identifier=pool_identifier,
+            label=pool_label,
+            inherited=attr.inherited,
+        )
+
+    def _create_resource_pool_relationship(self, relationship: RelationshipSchema) -> RelationshipSchema | None:
+        """Create a resource pool relationship for IP address or prefix relationships.
+
+        When a relationship points to a schema that inherits from BuiltinIPAddress or BuiltinIPPrefix,
+        this method creates a corresponding relationship to the appropriate resource pool
+        (CoreIPAddressPool or CoreIPPrefixPool).
+
+        Args:
+            relationship: The original relationship schema
+
+        Returns:
+            A RelationshipSchema for the resource pool relationship, or None if not applicable
+        """
+        peer_schema = self.get(name=relationship.peer, duplicate=False)
+        if not isinstance(peer_schema, NodeSchema | GenericSchema):
+            return None
+
+        pool_peer = None
+        if isinstance(peer_schema, GenericSchema):
+            if peer_schema.kind == InfrahubKind.IPADDRESS:
+                pool_peer = InfrahubKind.IPADDRESSPOOL
+            elif peer_schema.kind == InfrahubKind.IPPREFIX:
+                pool_peer = InfrahubKind.IPPREFIXPOOL
+        elif isinstance(peer_schema, NodeSchema):
+            if peer_schema.is_ip_address:
+                pool_peer = InfrahubKind.IPADDRESSPOOL
+            elif peer_schema.is_ip_prefix:
+                pool_peer = InfrahubKind.IPPREFIXPOOL
+
+        if not pool_peer:
+            return None
+
+        pool_rel_name = f"{relationship.name}{RESOURCE_POOL_REL_SUFFIX}"
+        pool_identifier = f"{relationship.get_identifier()}{RESOURCE_POOL_REL_SUFFIX}".lower()
+        pool_label = relationship.name.title().replace("_", " ") + " from Resource Pool"
+
+        return RelationshipSchema(
+            name=pool_rel_name,
+            peer=pool_peer,
+            description=f"Generated relationship for using a resource pool on the '{relationship.name}' relationship",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+            direction=relationship.direction,
+            branch=relationship.branch,
+            identifier=pool_identifier,
+            label=pool_label,
+            inherited=relationship.inherited,
+        )
+
     def add_relationships_to_template(self, node: NodeSchema | GenericSchema) -> None:
-        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=True)
 
         # Remove previous relationships to account for new ones
         template_schema.relationships = [
             r for r in template_schema.relationships if r.kind == RelationshipKind.TEMPLATE
         ]
         # Tell if the user explicitely requested this template
-        is_autogenerated_subtemplate = node.generate_template is False
+        is_autogenerated_subtemplate = isinstance(node, GenericSchema) or not node.generate_template
 
         for relationship in node.relationships:
             if relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE] or relationship.kind not in [
@@ -2381,9 +2585,10 @@ class SchemaBranch:
                 continue
 
             rel_template_peer = (
-                self._get_object_template_kind(node_kind=relationship.peer)
-                if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
-                else relationship.peer
+                relationship.peer
+                if relationship.kind in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship.peer in SUBTEMPLATE_EXCLUDED_KINDS
+                else self._get_object_template_kind(node_kind=relationship.peer)
             )
 
             is_optional = (
@@ -2417,6 +2622,11 @@ class SchemaBranch:
                 )
             )
 
+            # Add resource pool relationship if the peer schema is eligible
+            pool_relationship = self._create_resource_pool_relationship(relationship)
+            if pool_relationship:
+                template_schema.relationships.append(pool_relationship)
+
             parent_hfid = f"{relationship.name}__template_name__value"
             if (
                 not isinstance(template_schema, GenericSchema)
@@ -2426,8 +2636,14 @@ class SchemaBranch:
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
+        # Add resource pool relationships for eligible attributes (e.g., Number → CoreNumberPool)
+        for node_attr in node.attributes:
+            attr_pool_relationship = self._create_attribute_resource_pool_relationship(attr=node_attr)
+            if attr_pool_relationship:
+                template_schema.relationships.append(attr_pool_relationship)
+
         if getattr(node, "generate_profile", False):
-            if "profiles" not in [r.name for r in template_schema.relationships]:
+            if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
                 settings = dict(profiles_rel_settings)
                 settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
                 template_schema.relationships.append(RelationshipSchema(**settings))
@@ -2438,7 +2654,7 @@ class SchemaBranch:
         self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]
     ) -> TemplateSchema | GenericSchema:
         # Tell if the user explicitely requested this template
-        is_autogenerated_subtemplate = node.generate_template is False
+        is_autogenerated_subtemplate = isinstance(node, GenericSchema) or not node.generate_template
 
         core_template_schema = (
             self.get(name=InfrahubKind.OBJECTCOMPONENTTEMPLATE, duplicate=False)
@@ -2447,9 +2663,7 @@ class SchemaBranch:
         )
         core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
-        template_name_attr = name_attr_schema_class(
-            **core_name_attr.model_dump(exclude=["id", "inherited"]),
-        )
+        template_name_attr = name_attr_schema_class(**core_name_attr.model_dump(exclude={"id", "inherited"}))
         template_name_attr.branch = node.branch
 
         template: TemplateSchema | GenericSchema
@@ -2502,13 +2716,13 @@ class SchemaBranch:
                     template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
 
         for node_attr in node.attributes:
-            if node_attr.unique or node_attr.read_only:
+            if not node_attr.support_templates:
                 continue
 
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
                 optional=node_attr.optional if is_autogenerated_subtemplate else True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "order_weight"]),
+                **node_attr.model_dump(exclude={"id", "unique", "optional", "read_only", "order_weight"}),
             )
             template.attributes.append(attr)
 
@@ -2518,18 +2732,32 @@ class SchemaBranch:
         self, node_schema: NodeSchema | GenericSchema, identified: set[NodeSchema | GenericSchema]
     ) -> set[NodeSchema]:
         """Identify all templates required to turn a given node into a template."""
-        if node_schema in identified or node_schema.state == HashableModelState.ABSENT:
+        if (
+            node_schema in identified
+            or node_schema.state == HashableModelState.ABSENT
+            or node_schema.kind in SUBTEMPLATE_EXCLUDED_KINDS
+        ):
             return identified
 
         identified.add(node_schema)
 
-        if node_schema.is_node_schema:
-            identified.update([self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from])
+        if isinstance(node_schema, NodeSchema):
+            identified.update(
+                [
+                    schema
+                    for schema in (self.get(name=kind, duplicate=False) for kind in node_schema.inherit_from)
+                    if isinstance(schema, NodeSchema | GenericSchema) and schema.kind not in SUBTEMPLATE_EXCLUDED_KINDS
+                ]
+            )
 
         for relationship in node_schema.relationships:
             if (
                 relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE]
-                or (relationship.kind == RelationshipKind.PARENT and node_schema.generate_template)
+                or (
+                    isinstance(node_schema, NodeSchema)
+                    and relationship.kind == RelationshipKind.PARENT
+                    and node_schema.generate_template
+                )
                 or relationship.kind not in [RelationshipKind.PARENT, RelationshipKind.COMPONENT]
             ):
                 continue
@@ -2556,7 +2784,7 @@ class SchemaBranch:
         need_templates: set[NodeSchema | GenericSchema] = set()
         template_schema_kinds: set[str] = set()
 
-        for node_name in self.node_names + self.generic_names_without_templates:
+        for node_name in self.node_names:
             node = self.get(name=node_name, duplicate=False)
 
             # Delete old object templates if schemas were removed
@@ -2566,7 +2794,12 @@ class SchemaBranch:
                 or node.state == HashableModelState.ABSENT
             ):
                 try:
-                    node.relationships = [r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME]
+                    if any(r.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME for r in node.relationships):
+                        node = self.get(name=node_name, duplicate=True)
+                        node.relationships = [
+                            r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME
+                        ]
+                        self.set(name=node_name, schema=node)
                     self.delete(name=self._get_object_template_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
                     ...

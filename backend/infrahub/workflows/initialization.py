@@ -50,7 +50,7 @@ async def setup_blocks() -> None:
     log = get_run_logger()
 
     try:
-        await RedisStorageContainer.register_type_and_schema()
+        await RedisStorageContainer.aregister_type_and_schema()
     except ObjectAlreadyExists:
         log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already registered ")
 
@@ -62,7 +62,7 @@ async def setup_blocks() -> None:
         password=config.SETTINGS.cache.password or None,
     )
     try:
-        await redis_block.save(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
+        await redis_block.asave(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
     except ObjectAlreadyExists:
         log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already present ")
 

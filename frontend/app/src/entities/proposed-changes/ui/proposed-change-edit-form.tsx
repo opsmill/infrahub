@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -80,7 +80,6 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
       label: "Reviewers",
       type: "relationship",
       relationship: { cardinality: "many", peer: ACCOUNT_GENERIC_OBJECT } as any,
-      schema: {} as any,
       defaultValue: {
         source: { type: "user" },
         value:

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 
 export interface ProposedChangesTableSkeletonProps {
   headerCount: number;

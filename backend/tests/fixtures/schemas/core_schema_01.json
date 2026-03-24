@@ -107,7 +107,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "label": null,
                     "description": null,
                     "identifier": "graphqlquery__tag",
@@ -197,7 +197,7 @@
             "relationships": [
                 {
                     "name": "tags",
-                    "peer": "BuiltinTag",
+                    "peer": "TestingTag",
                     "label": null,
                     "description": null,
                     "identifier": "repository__tag",
@@ -267,7 +267,7 @@
         },
         {
             "name": "Tag",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "description": null,
             "attributes": [
                 {
@@ -301,7 +301,7 @@
         },
         {
             "name": "Location",
-            "namespace": "Builtin",
+            "namespace": "Testing",
             "default_filter": "name__value",
             "attributes": [
                 {"name": "name", "kind": "String", "unique": true},
@@ -309,8 +309,8 @@
                 {"name": "type", "kind": "String"}
             ],
             "relationships": [
-                {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many"},
-                {"name": "primary_tag", "peer": "BuiltinTag", "optional": true, "cardinality": "one"}
+                {"name": "tags", "peer": "TestingTag", "optional": true, "cardinality": "many"},
+                {"name": "primary_tag", "peer": "TestingTag", "optional": true, "cardinality": "one"}
             ]
         }
     ]

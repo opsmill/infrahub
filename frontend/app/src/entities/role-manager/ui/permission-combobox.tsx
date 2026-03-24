@@ -2,9 +2,9 @@ import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { forwardRef } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,

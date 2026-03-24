@@ -201,11 +201,23 @@ class MainSettings(BaseSettings):
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
     )
+    diff_update_after_merge: bool = Field(
+        default=True,
+        description="When enabled, diff updates are triggered for active branches after a branch merge.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
     def convert_to_path(cls, value: Path | str) -> Path:
         return Path(value) if isinstance(value, str) else value
+
+    @property
+    def infrahub_address(self) -> str:
+        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        if self.internal_address:
+            return self.internal_address
+
+        raise InitializationError()
 
 
 class FileSystemStorageSettings(BaseSettings):
@@ -263,6 +275,7 @@ class StorageSettings(BaseSettings):
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
+    max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
 
 
 class DatabaseSettings(BaseSettings):
@@ -336,7 +349,6 @@ class BrokerSettings(BaseSettings):
     """Configuration settings for the message bus."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
-    enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -365,7 +377,6 @@ class BrokerSettings(BaseSettings):
 
 class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
-    enable: bool = True
     address: str = "localhost"
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
@@ -393,7 +404,6 @@ class CacheSettings(BaseSettings):
 
 class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
-    enable: bool = True
     address: str = "localhost"
     port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -524,8 +534,8 @@ class HTTPSettings(BaseSettings):
 
         return self
 
-    def get_tls_context(self) -> ssl.SSLContext:
-        if self.tls_insecure:
+    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
+        if self.tls_insecure and not force_verify:
             return ssl._create_unverified_context()
 
         if not self.tls_ca_bundle:

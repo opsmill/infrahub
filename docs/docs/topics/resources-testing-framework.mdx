@@ -6,7 +6,7 @@ title: Resources testing framework
 
 ## Summary
 
-Infrahub allows users to define tests to ensure that [transformations](../topics/transformation.mdx) and [checks](../topics/check.mdx) are working as intended. This can be an important step while writing Infrahub related resources as it makes sure that they keep returning the same expected values over time and version bumps.
+Infrahub allows users to define tests to ensure that [Transformations](../topics/transformation.mdx) and [checks](../topics/check.mdx) are working as intended. This can be an important step while writing Infrahub related resources as it makes sure that they keep returning the same expected values over time and version bumps.
 
 These tests are based on [pytest](https://docs.pytest.org/) but do not require users to write any Python code. Tests can be run via a command line and the `pytest` executable but they are also integrated within the CI pipelines of [proposed changes](../topics/proposed-change.mdx).
 
@@ -31,7 +31,7 @@ infrahub_tests:
 
 The `version: "1.0"` line defines the version of the test declaration file. The syntax of this file is subject to changes in the future as the testing framework gets improved.
 
-All Jinja2 transforms, Python transforms, checks and GraphQL queries declared in a repository [configuration file](../reference/dotinfrahub.mdx) can be tested.
+All Jinja2 Transformations, Python Transformations, checks and GraphQL queries declared in a repository [configuration file](../reference/dotinfrahub.mdx) can be tested.
 
 Tests are declared using a two level hierarchy, they are grouped by resources like:
 
@@ -51,7 +51,7 @@ All available keys and their values are listed in the tests configuration file [
 
 In this section, we will take a look at what test definitions look like for a given Infrahub repository configuration.
 
-In the following Infrahub repository configuration example, we declare a schema, a Jinja2 Transform to render the base configuration of devices, a check to verify that a MPLS RSVP configuration is complete and a Python Transform giving details about layer 2 circuit services. These are resources that we defined to run our network operations, though they are not tested, and we cannot know for sure that they work like we would expect them to.
+In the following Infrahub repository configuration example, we declare a schema, a Jinja2 Transformation to render the base configuration of devices, a check to verify that a MPLS RSVP configuration is complete and a Python Transformation giving details about layer 2 circuit services. These are resources that we defined to run our network operations, though they are not tested, and we cannot know for sure that they work like we would expect them to.
 
 ```yaml
 ---

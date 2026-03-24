@@ -7,5 +7,5 @@ export const getValidators = async ({ proposedChangeId }: GetValidatorsParams) =
 
   if (error) throw error;
 
-  return data?.CoreValidator?.edges?.map((edge) => edge.node)?.filter((node) => !!node) ?? [];
+  return data.CoreValidator.edges.map((edge) => edge.node).filter((node) => !!node);
 };

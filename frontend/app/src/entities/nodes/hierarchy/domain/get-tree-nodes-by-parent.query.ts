@@ -11,11 +11,8 @@ import {
 } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const OBJECTS_PER_PAGE = 80;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
+/** Page size for tree node queries - larger than default to reduce requests for hierarchical data */
+export const TREE_NODES_PAGE_SIZE = 80;
 
 export type GetTreeNodesByParentQueryOptionsParams = Omit<
   GetTreeNodesByParentParams,
@@ -35,10 +32,10 @@ export function getTreeNodesByParentInfiniteQueryOptions(
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < OBJECTS_PER_PAGE) {
+      if (lastPage.length < TREE_NODES_PAGE_SIZE) {
         return;
       }
-      return lastPageParam + OBJECTS_PER_PAGE;
+      return lastPageParam + TREE_NODES_PAGE_SIZE;
     },
   });
 }

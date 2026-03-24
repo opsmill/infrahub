@@ -1,4 +1,4 @@
-import { Col } from "@/shared/components/container";
+import { Row } from "@/shared/components/container";
 
 interface BranchMetadataProps {
   label: React.ReactNode;
@@ -7,9 +7,9 @@ interface BranchMetadataProps {
 
 export function BranchMetadata({ label, value }: BranchMetadataProps) {
   return (
-    <Col className="shrink-0 gap-0 text-xs">
-      <span className="font-medium">{label}</span>
-      <span>{value ?? "-"}</span>
-    </Col>
+    <Row className="min-w-0 whitespace-nowrap text-xs">
+      <span className="shrink-0 text-gray-500">{label}:</span>
+      <span className="min-w-0 truncate">{value ?? "-"}</span>
+    </Row>
   );
 }

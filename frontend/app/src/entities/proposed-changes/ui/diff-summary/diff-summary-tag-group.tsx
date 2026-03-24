@@ -10,7 +10,7 @@ import {
   type TagProps,
 } from "react-aria-components";
 
-import { disabledStyle, focusVisibleStyle } from "@/shared/components/style-rac";
+import { disabledStyle, focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 export interface DiffSummaryProps<T>
@@ -103,7 +103,7 @@ export function DiffSummaryIcon({
 }
 
 const diffSummaryCloseStyles = cva(
-  "-top-2 -right-2 absolute flex items-center justify-center rounded-full border-2 border-white",
+  "absolute -top-2 -right-2 flex items-center justify-center rounded-full border-2 border-white",
   {
     variants: {
       variant: {

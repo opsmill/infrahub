@@ -29,6 +29,7 @@ from .relationship import RelationshipNode
 from .standard_node import InfrahubObjectType
 from .task import TaskNodes
 from .task_log import TaskLog, TaskLogEdge, TaskLogNodes
+from .upload import Upload
 
 __all__ = [
     "AnyAttributeType",
@@ -62,11 +63,11 @@ __all__ = [
     "TaskLogNodes",
     "TaskNodes",
     "TextAttributeType",
+    "Upload",
 ]
 
 
 RELATIONS_PROPERTY_MAP: dict[str, str] = {
-    "is_visible": "_relation__is_visible",
     "is_protected": "_relation__is_protected",
     "owner": "_relation__owner",
     "source": "_relation__source",

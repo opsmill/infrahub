@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub import config
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -18,21 +19,37 @@ class DeleteBranchRelationshipsQuery(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, branch_name: str, **kwargs: Any):
+    def __init__(self, branch_name: str, **kwargs: Any) -> None:
         self.branch_name = branch_name
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // --------------
-// for every Node created on this branch (it's about to be deleted), find any agnostic relationships
-// connected to the Node and delete them
+// for every Node that only exists on this branch (it's about to be deleted),
+// find any agnostic relationships or attributes connected to the Node and delete them
 // --------------
 OPTIONAL MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
 WHERE e.branch = $branch_name
+// does the node only exist on this branch?
 CALL (n) {
+    OPTIONAL MATCH (n)-[ipo:IS_PART_OF {status: "active"}]->(:Root)
+    WHERE ipo.branch <> $branch_name
+    LIMIT 1
+    RETURN ipo IS NOT NULL AS node_exists_on_other_branch
+}
+// if so, delete any linked agnostic relationships or attributes
+CALL (n, node_exists_on_other_branch) {
+    WITH n, node_exists_on_other_branch
+    WHERE node_exists_on_other_branch = FALSE
     OPTIONAL MATCH (n)-[:IS_RELATED {branch: $global_branch_name}]-(rel:Relationship)
     DETACH DELETE rel
+} IN TRANSACTIONS OF 500 ROWS
+CALL (n, node_exists_on_other_branch) {
+    WITH n, node_exists_on_other_branch
+    WHERE node_exists_on_other_branch = FALSE
+    OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE {branch: $global_branch_name}]-(attr:Attribute)
+    DETACH DELETE attr
 } IN TRANSACTIONS OF 500 ROWS
 
 // reduce the results to a single row
@@ -70,90 +87,162 @@ CALL (vertex_id) {
         self.add_to_query(query)
 
 
-class GetAllBranchInternalRelationshipQuery(Query):
-    name: str = "get_internal_relationship"
+class RebaseBranchQuery(Query):
+    """Rebase a branch onto the default branch by updating edge timestamps
 
-    type: QueryType = QueryType.READ
+    For every edge on this branch
+        if it has a from time before $at and no to time, update it to $at
+        if it has a to time before $at, delete the edge
+        if it has a to time after $at, update the from time to $at
+    Then delete any orphaned vertices
+    """
+
+    name: str = "rebase_branch"
+    type: QueryType = QueryType.WRITE
     insert_return: bool = False
+    raise_error_if_empty: bool = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["branch_name"] = self.branch.name
+        self.params["at"] = self.at.to_string()
+
         query = """
-        MATCH p = ()-[r]-()
-        WHERE r.branch = $branch_name
-        RETURN DISTINCT r
+// --------------
+// Get all edges on this branch with their source and destination vertices
+// --------------
+MATCH (s)-[r]-(d)
+WHERE r.branch = $branch_name
+WITH DISTINCT r, s, d
+WITH r, s, d,
+    CASE
+        // No `to` and `from` <= at: update
+        WHEN r.to IS NULL AND r.from <= $at THEN TRUE
+        // Has `to` and `to` < at: delete
+        WHEN r.to IS NOT NULL AND r.to < $at THEN FALSE
+        // Has `to` and `to` >= at: update
+        ELSE TRUE
+    END AS do_update
+
+// --------------
+// Process updates: set from = at for relationships we're keeping
+// --------------
+CALL (r, do_update) {
+    WITH r, do_update
+    WHERE do_update = TRUE
+    SET r.from = $at
+}
+
+// --------------
+// Delete the edges
+// --------------
+WITH r, s, d, do_update
+WHERE do_update = FALSE
+CALL (r, s, d) {
+    DELETE r
+}
+// --------------
+// Clean up any orpahned nodes edges
+// --------------
+WITH DISTINCT s, d
+UNWIND [s, d] AS n
+WITH DISTINCT n
+CALL (n) {
+    MATCH (n)
+    WHERE NOT exists((n)--())
+    DELETE n
+}
         """
         self.add_to_query(query=query)
-        self.params["branch_name"] = self.branch.name
-        self.return_labels = ["r"]
-
-
-class RebaseBranchUpdateRelationshipQuery(Query):
-    name: str = "rebase_branch_update"
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, ids: list[str], **kwargs: Any) -> None:
-        self.ids = ids
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = """
-        MATCH ()-[r]->()
-        WHERE %(id_func)s(r) IN $ids
-        SET r.from = $at
-        SET r.conflict = NULL
-        """ % {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.add_to_query(query=query)
-
-        self.params["at"] = self.at.to_string()
-        self.params["ids"] = [db.to_database_id(id) for id in self.ids]
-        self.return_labels = [f"{db.get_id_function_name()}(r)"]
-
-
-class RebaseBranchDeleteRelationshipQuery(Query):
-    name: str = "rebase_branch_delete"
-
-    type: QueryType = QueryType.WRITE
-    insert_return: bool = False
-
-    def __init__(self, ids: list[str], **kwargs: Any) -> None:
-        self.ids = ids
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE %(id_func)s(r) IN $ids
-            DELETE r
-            """
-        else:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE %(id_func)s(r) IN $ids
-            DELETE r
-            WITH *
-            UNWIND nodes(p) AS n
-            MATCH (n)
-            WHERE NOT exists((n)--())
-            DELETE n
-            """
-        query %= {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.add_to_query(query=query)
-
-        self.params["ids"] = [db.to_database_id(id) for id in self.ids]
 
 
 class BranchNodeGetListQuery(StandardNodeGetListQuery):
-    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
-        self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
-        if exclude_global:
-            self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
+    def __init__(
+        self,
+        exclude_global: bool = False,
+        branch_filters: BranchListFilters | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.branch_filters = branch_filters or BranchListFilters()
+        self.exclude_global = exclude_global
 
-        super().__init__(**kwargs)
+        # Temporary storage for filter params (will be merged after super().__init__)
+        self._branch_filter_params: dict[str, Any] = {}
+
+        # Build raw_filter from branch_filters
+        self.raw_filter = self._build_raw_filter()
+
+        # Pass name/ids/partial_match to parent for existing handling
+        super().__init__(
+            ids=self.branch_filters.ids,
+            node_name=self.branch_filters.name,
+            partial_match=self.branch_filters.partial_match,
+            **kwargs,
+        )
+
+        # Merge our filter params into the query params
+        self.params.update(self._branch_filter_params)
+
+    def _build_raw_filter(self) -> str:
+        """Build Cypher WHERE clause conditions from branch_filters."""
+        conditions: list[str] = []
+
+        # Always exclude DELETING branches
+        conditions.append(f"n.status <> '{BranchStatus.DELETING.value}'")
+
+        if self.exclude_global:
+            conditions.append(f"n.name <> '{GLOBAL_BRANCH_NAME}'")
+
+        if self.branch_filters.status:
+            param_name = "filter_status"
+            self._branch_filter_params[param_name] = self.branch_filters.status.value
+            conditions.append(f"n.status = ${param_name}")
+
+        if self.branch_filters.created_by_id:
+            param_name = "filter_created_by"
+            self._branch_filter_params[param_name] = self.branch_filters.created_by_id
+            conditions.append(f"n.created_by = ${param_name}")
+
+        # Branched from (rebase timestamp) filters (with NULL check)
+        if self.branch_filters.branched_from_after:
+            param_name = "filter_branched_from_after"
+            self._branch_filter_params[param_name] = Timestamp(
+                self.branch_filters.branched_from_after.isoformat()
+            ).to_string()
+            conditions.append(f"(n.branched_from IS NOT NULL AND n.branched_from > ${param_name})")
+
+        if self.branch_filters.branched_from_before:
+            param_name = "filter_branched_from_before"
+            self._branch_filter_params[param_name] = Timestamp(
+                self.branch_filters.branched_from_before.isoformat()
+            ).to_string()
+            conditions.append(f"(n.branched_from IS NOT NULL AND n.branched_from < ${param_name})")
+
+        if self.branch_filters.created_at_after:
+            param_name = "filter_created_at_after"
+            self._branch_filter_params[param_name] = Timestamp(
+                self.branch_filters.created_at_after.isoformat()
+            ).to_string()
+            conditions.append(f"(n.created_at IS NOT NULL AND n.created_at > ${param_name})")
+
+        if self.branch_filters.created_at_before:
+            param_name = "filter_created_at_before"
+            self._branch_filter_params[param_name] = Timestamp(
+                self.branch_filters.created_at_before.isoformat()
+            ).to_string()
+            conditions.append(f"(n.created_at IS NOT NULL AND n.created_at < ${param_name})")
+
+        if self.branch_filters.updated_at_after:
+            param_name = "filter_updated_at_after"
+            self._branch_filter_params[param_name] = Timestamp(
+                self.branch_filters.updated_at_after.isoformat()
+            ).to_string()
+            conditions.append(f"(n.updated_at IS NOT NULL AND n.updated_at > ${param_name})")
+
+        if self.branch_filters.updated_at_before:
+            param_name = "filter_updated_at_before"
+            self._branch_filter_params[param_name] = Timestamp(
+                self.branch_filters.updated_at_before.isoformat()
+            ).to_string()
+            conditions.append(f"(n.updated_at IS NOT NULL AND n.updated_at < ${param_name})")
+
+        return " AND ".join(conditions) if conditions else ""

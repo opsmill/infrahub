@@ -21,7 +21,7 @@ type tCheckProps = {
   id: string;
 };
 
-const getCheckIcon = (conclusion?: string) => {
+const getCheckIcon = (conclusion?: string | null) => {
   switch (conclusion) {
     case "success": {
       return (
@@ -47,7 +47,7 @@ const getCheckIcon = (conclusion?: string) => {
   }
 };
 
-const getCheckBorderColor = (severity?: string) => {
+const getCheckBorderColor = (severity?: string | null) => {
   switch (severity) {
     case "success": {
       return "border-green-400";

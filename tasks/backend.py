@@ -10,7 +10,7 @@ from .shared import (
     PYTHON_PRIMITIVE_MAP,
     execute_command,
 )
-from .utils import ESCAPED_REPO_PATH, REPO_BASE
+from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
@@ -25,8 +25,8 @@ def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
-    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} &&"
+    exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY}"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -45,10 +45,25 @@ def format_all(context: Context) -> None:
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context) -> None:
-    """Run ruff to check that Python files adherence to black standards."""
+    """Run ruff to check that Python files adherence to ruff standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY}"
+
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+    exec_cmd = f"uv run ruff format --check --diff {MAIN_DIRECTORY}"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def ty(context: Context) -> None:
+    """Run ty type checker against project files."""
+
+    print(f" - [{NAMESPACE}] Check code with ty")
+    exec_cmd = "uv run ty check ."
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -69,17 +84,26 @@ def mypy(context: Context) -> None:
 def lint(context: Context) -> None:
     """This will run all linters."""
     ruff(context)
+    ty(context)
     mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
 @task(optional=["database"])
-def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
             exec_cmd += " --neo4j"
+        print(f"{exec_cmd}")
+        return execute_command(context=context, command=f"{exec_cmd}")
+
+
+@task
+def test_unit(context: Context) -> Result | None:
+    with context.cd(ESCAPED_REPO_PATH):
+        exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
 
@@ -87,7 +111,7 @@ def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")

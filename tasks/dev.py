@@ -29,7 +29,7 @@ from .shared import (
     get_compose_cmd,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 if TYPE_CHECKING:
     from invoke.context import Context
@@ -65,6 +65,18 @@ def debug(context: Context, database: str = INFRAHUB_DATABASE) -> None:
         compose_cmd = get_compose_cmd(namespace=NAMESPACE)
         command = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME} up"
         execute_command(context=context, command=command)
+
+
+@task()
+def check_links(
+    context: Context,
+) -> None:
+    """Check internal links in the dev folder."""
+    with context.cd(ESCAPED_REPO_PATH):
+        if not check_if_command_available(context=context, command_name="lychee"):
+            print("lychee is not installed or not available in PATH. Please install it to use this task.")
+            return
+        execute_command(context=context, command="lychee -c dev/lychee.toml --files-from dev/lychee-files.txt")
 
 
 @task(optional=["database"])

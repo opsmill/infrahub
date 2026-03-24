@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Field, List, NonNull, ObjectType, String
+from graphene import DateTime, Field, List, NonNull, ObjectType, String
 
 
 class RelationshipPeer(ObjectType):
@@ -8,7 +8,15 @@ class RelationshipPeer(ObjectType):
     kind = String(required=False)
 
 
-class Relationship(ObjectType):
+class InfrahubRelationshipMetaObject(ObjectType):
+    updated_by = String(required=False, description="User that last modified the relationship")
+    updated_at = DateTime(
+        required=False,
+        description="Date/Time when the relationship was last modified by a user or a system task",
+    )
+
+
+class Relationship(InfrahubRelationshipMetaObject):
     id = String(required=False)
     identifier = String(required=False)
     peers = List(NonNull(RelationshipPeer))

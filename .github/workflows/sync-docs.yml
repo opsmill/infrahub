@@ -9,6 +9,7 @@ on:
     paths:
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
+  workflow_dispatch:
 
 jobs:
   sync:

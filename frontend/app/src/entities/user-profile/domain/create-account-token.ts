@@ -14,7 +14,10 @@ export const createAccountToken: CreateAccountToken = async (params) => {
     throw new Error(errors[0].message);
   }
 
-  return {
-    token: data.InfrahubAccountTokenCreate.object.token.value,
-  };
+  const token = data?.InfrahubAccountTokenCreate?.object?.token?.value;
+  if (!token) {
+    throw new Error("Failed to create account token");
+  }
+
+  return { token };
 };

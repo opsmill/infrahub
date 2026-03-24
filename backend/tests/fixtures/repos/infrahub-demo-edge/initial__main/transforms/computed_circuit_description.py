@@ -6,7 +6,7 @@ class ComputedCircuitDescription(InfrahubTransform):
     url = "computed_circuit_description"
     timeout: int = 60
 
-    async def transform(self, data):
+    async def transform(self, data: dict) -> str:
         circuit_dict: dict = data["InfraCircuit"]["edges"][0]["node"]
 
         # If it's a backbone we compute a nice view

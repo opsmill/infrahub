@@ -12,7 +12,7 @@ from graphql import (
 class GraphQLFieldExtractor:
     """Class to extract fields from a GraphQL selection set."""
 
-    def __init__(self, info: GraphQLResolveInfo):
+    def __init__(self, info: GraphQLResolveInfo) -> None:
         self.info = info
         self.fragments = info.fragments
 

@@ -36,7 +36,7 @@ export function ProposedChangesTableHomepage({
     return <ErrorScreen message={error.message} />;
   }
 
-  const flatData = data?.pages?.flat() ?? [];
+  const flatData = data?.pages?.flatMap((page) => page.items) ?? [];
 
   if (flatData.length === 0) {
     return (
@@ -56,7 +56,9 @@ export function ProposedChangesTableHomepage({
         items={flatData}
         className={classNames("flex flex-col divide-y divide-gray-200", className)}
       >
-        {(node) => <ProposedChangesItemLight node={node} />}
+        {(proposedChange) => (
+          <ProposedChangesItemLight key={proposedChange.id} proposedChange={proposedChange} />
+        )}
       </ListBox>
 
       {isFetchingNextPage && <ProposedChangesTableSkeleton headerCount={flatData.length} />}

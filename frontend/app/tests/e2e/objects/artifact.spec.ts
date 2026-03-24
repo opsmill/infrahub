@@ -2,10 +2,9 @@ import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe.fixme("/objects/CoreArtifact - Artifact page", () => {
+test.describe("/objects/CoreArtifact - Artifact page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-  test.slow();
 
   test("should generate artifacts successfully", async ({ page }) => {
     await page.goto(
@@ -21,6 +20,13 @@ test.describe.fixme("/objects/CoreArtifact - Artifact page", () => {
 
     await page.getByRole("link", { name: "startup-config" }).first().click();
     await expect(page.getByText("no aaa root").first()).toBeVisible();
+
+    await page.getByRole("button", { name: "View node metadata" }).click();
+
+    await expect(page.getByText("Created at")).toBeVisible();
+    await expect(page.getByText("Created by")).toBeVisible();
+    await expect(page.getByText("Updated at")).toBeVisible();
+    await expect(page.getByText("Updated by")).toBeVisible();
   });
 
   test.describe("when logged in", async () => {

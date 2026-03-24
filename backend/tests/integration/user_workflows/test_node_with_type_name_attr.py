@@ -10,7 +10,11 @@ from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
+
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 class TestNodeWithTypeNameAttr(TestInfrahubApp):
@@ -18,9 +22,9 @@ class TestNodeWithTypeNameAttr(TestInfrahubApp):
     async def test_node_with_type_name_attr(
         self,
         db: InfrahubDatabase,
-        default_branch,
-        client,
-        service,
+        default_branch: Branch,
+        client: InfrahubClient,
+        service: InfrahubServices,
     ) -> None:
         schema = {
             "version": "1.0",

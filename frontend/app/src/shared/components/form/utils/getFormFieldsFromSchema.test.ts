@@ -12,7 +12,11 @@ import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
-import { RELATIONSHIP_BULK_ADD_PREFIX, RELATIONSHIP_BULK_REMOVE_PREFIX } from "../constants";
+import {
+  FROM_RESOURCE_POOL_SUFFIX,
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "../constants";
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
@@ -305,7 +309,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -323,8 +326,6 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      login: async () => {},
-      signOut: () => {},
       setToken: () => {},
       user: {
         id: "1",
@@ -365,7 +366,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "1",
           display_label: "Architecture Team",
@@ -383,8 +383,6 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      login: async () => {},
-      signOut: () => {},
       setToken: () => {},
       user: {
         id: "1",
@@ -425,7 +423,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -474,7 +471,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -523,7 +519,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -542,7 +537,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "mainnn",
       description: "Default Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -585,7 +580,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -604,7 +598,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "other",
       description: "other Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -647,7 +641,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -666,7 +659,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "main",
       description: "Default Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -709,7 +702,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -728,7 +720,7 @@ describe("getFormFieldsFromSchema", () => {
       id: "18007869-b812-f080-2d60-c51d9e906226",
       name: "other",
       description: "other Branch",
-      origin_branch: "main",
+      status: "OPEN",
       branched_from: "2024-10-21T12:44:12.365354Z",
       created_at: "2024-10-21T12:44:12.365371Z",
       sync_with_git: true,
@@ -819,5 +811,28 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[1]?.name).to.equal(`${RELATIONSHIP_BULK_REMOVE_PREFIX}cardinality_many`);
     expect(fields[1]?.type).to.equal("relationship-remove");
     expect(fields[2]?.name).to.equal("cardinality_one");
+  });
+
+  it("should exclude relationships ending with _from_resource_pool", () => {
+    // GIVEN
+    const mainRelationship = generateRelationshipSchema({
+      name: "ip_address",
+      order_weight: 1,
+    });
+    const poolRelationship = generateRelationshipSchema({
+      name: `ip_address${FROM_RESOURCE_POOL_SUFFIX}`,
+      order_weight: 2,
+    });
+
+    const schema = {
+      relationships: [mainRelationship, poolRelationship],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]?.name).to.equal("ip_address");
   });
 });

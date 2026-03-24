@@ -6,11 +6,11 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { HomeCard } from "@/shared/components/ui/home-card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
+import { HomeCard } from "@/entities/homepage/ui/home-card";
 
 import { EmptyHomeCard } from "./empty-home-card";
 

@@ -260,6 +260,9 @@ class SchemaUpdateValidationResult(BaseModel):
         for field_name, sub_field_diff in node_field_diff.changed.items():
             field = schema.get_field(name=field_name)
 
+            if schema.is_node_schema and field.inherited:
+                continue
+
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
@@ -267,7 +270,7 @@ class SchemaUpdateValidationResult(BaseModel):
                 if prop_name in PROPERTY_NAMES_TO_IGNORE:
                     continue
 
-                field_info = field.model_fields[prop_name]
+                field_info = field.__class__.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
                 if isinstance(prop_diff, HashableModelDiff):
@@ -275,7 +278,7 @@ class SchemaUpdateValidationResult(BaseModel):
                         # override field_update if this field has its own json_schema_extra.update
                         try:
                             prop_field = getattr(field, prop_name)
-                            param_field_info = prop_field.model_fields[param_field_name]
+                            param_field_info = prop_field.__class__.model_fields[param_field_name]
                             param_field_update = str(param_field_info.json_schema_extra.get("update"))
                         except (AttributeError, KeyError):
                             param_field_update = None
@@ -306,7 +309,7 @@ class SchemaUpdateValidationResult(BaseModel):
                 )
 
     def _process_node_attributes(self, schema: MainSchemaTypes, node_field_name: str) -> None:
-        field_info = schema.model_fields[node_field_name]
+        field_info = schema.__class__.model_fields[node_field_name]
         field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
         # No need to execute a migration for generic nodes attributes because they are not stored in the database
@@ -424,7 +427,7 @@ class HashableModel(BaseModel):
 
         values = []
         md5hash = hashlib.md5(usedforsecurity=False)
-        for field_name in sorted(self.model_fields.keys()):
+        for field_name in sorted(self.__class__.model_fields.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
 
@@ -577,7 +580,7 @@ class HashableModel(BaseModel):
         TODO Implement other fields type like dict
         """
 
-        for field_name in other.model_fields.keys():
+        for field_name in other.__class__.model_fields.keys():
             if not hasattr(self, field_name):
                 with contextlib.suppress(ValueError):
                     # handles the case where self and other are different types and other has fields that self does not
@@ -613,7 +616,7 @@ class HashableModel(BaseModel):
         return attr_other
 
     def _get_field_names_for_diff(self) -> list[str]:
-        return list(self.model_fields.keys())
+        return list(self.__class__.model_fields.keys())
 
     def diff(self, other: Self) -> HashableModelDiff:
         in_both, local_only, other_only = compare_lists(

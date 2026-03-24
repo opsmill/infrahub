@@ -27,7 +27,7 @@ class GeneratedBaseNodeSchema(HashableModel):
         description="Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
         pattern="^[A-Z][a-z0-9]+$",
         min_length=3,
-        max_length=32,
+        max_length=64,
         json_schema_extra={"update": "migration_required"},
     )
     description: str | None = Field(

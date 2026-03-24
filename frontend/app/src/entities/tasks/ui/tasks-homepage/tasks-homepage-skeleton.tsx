@@ -1,4 +1,4 @@
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 
 export const TaskHomepageCardSkeleton = () => {
   return (

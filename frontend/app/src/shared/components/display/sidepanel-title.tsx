@@ -1,9 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 
-import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
-
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 
 type tSidePanelTitle = {
   title: string;
@@ -14,7 +11,7 @@ type tSidePanelTitle = {
 export const SidePanelTitle = (props: tSidePanelTitle) => {
   const { title, children, hideBranch } = props;
 
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
 
   return (
     <div className="space-y-2">
@@ -24,7 +21,7 @@ export const SidePanelTitle = (props: tSidePanelTitle) => {
         {!hideBranch && (
           <div className="flex items-center">
             <Icon icon={"mdi:layers-triple"} />
-            <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+            <div className="ml-1.5 pb-1">{currentBranch.name}</div>
           </div>
         )}
       </div>

@@ -18,7 +18,7 @@ def test_data_path() -> None:
 
 
 @pytest.mark.parametrize(
-    "path_type,kind,field_name,prop_name,expected",
+    ("path_type", "kind", "field_name", "prop_name", "expected"),
     [
         (SchemaPathType.ATTRIBUTE, "TestPerson", "height", None, "schema/TestPerson/height"),
         (SchemaPathType.ATTRIBUTE, "TestPerson", "height", "description", "schema/TestPerson/height/description"),
@@ -26,7 +26,9 @@ def test_data_path() -> None:
         (SchemaPathType.NODE, "TestPerson", "height", "height", "schema/TestPerson/height"),
     ],
 )
-def test_schema_path(path_type, kind, field_name, prop_name, expected) -> None:
+def test_schema_path(
+    path_type: SchemaPathType, kind: str, field_name: str, prop_name: str | None, expected: str
+) -> None:
     path = SchemaPath(
         path_type=path_type,
         schema_kind=kind,

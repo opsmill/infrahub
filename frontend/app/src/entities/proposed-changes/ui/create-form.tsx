@@ -7,10 +7,10 @@ import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { LinkButton } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import {
   Combobox,
@@ -26,6 +26,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -39,7 +40,9 @@ export const ProposedChangeCreateForm = () => {
   const [sourceBranch] = useQueryState(QSP.SOURCE_BRANCH);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
-  const sourceBranches = branches.filter((branch) => !branch.is_default);
+  const sourceBranches = branches.filter(
+    (branch) => !branch.is_default && branch.status !== BRANCH_STATUS.MERGED
+  );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
 
@@ -47,8 +50,9 @@ export const ProposedChangeCreateForm = () => {
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
-  if (branches.length === 0 || !proposedChangeSchema)
+  if (branches.length === 0 || !proposedChangeSchema) {
     return <Spinner className="flex justify-center" />;
+  }
 
   return (
     <Form
@@ -80,8 +84,15 @@ export const ProposedChangeCreateForm = () => {
             required: "Required",
             validate: {
               branchExists: (value: string) => {
-                const branchesName = sourceBranches.map(({ name }) => name);
-                return branchesName.includes(value) || "Branch does not exist";
+                if (sourceBranches.some((b) => b.name === value)) {
+                  return true;
+                }
+
+                if (branches.some((b) => b.name === value)) {
+                  return "Branch is not available (merged or default)";
+                }
+
+                return "Branch does not exist";
               },
             },
           }}
@@ -121,7 +132,7 @@ export const ProposedChangeCreateForm = () => {
 
         <Icon
           icon="mdi:arrow-bottom"
-          className="md:-rotate-90 shrink-0 text-gray-500 text-xl md:mt-8"
+          className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
         />
 
         <FormField

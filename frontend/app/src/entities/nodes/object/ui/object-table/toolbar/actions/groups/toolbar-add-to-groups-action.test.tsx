@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
+import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import type { NodeObject } from "@/entities/nodes/types";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../../../../tests/components/render";
@@ -12,6 +14,8 @@ import { generateNodeSchema } from "../../../../../../../../../tests/fake/schema
 import { ToolbarAddToGroupsAction } from "./toolbar-add-to-groups-action";
 
 vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+
+const schema = generateNodeSchema();
 
 describe("ToolbarAddToGroupsAction Component", () => {
   const mockSelectedRows = [
@@ -34,7 +38,19 @@ describe("ToolbarAddToGroupsAction Component", () => {
 
   test("opens the popover when clicking the button", async () => {
     // GIVEN
-    const component = await render(<ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />);
+    const component = await render(
+      <ObjectTableContext
+        value={{
+          filters: [],
+          setFilters: vi.fn(),
+          baseSchema: schema,
+          selectedSchema: schema,
+          permission: PERMISSION_ALLOW_ALL,
+        }}
+      >
+        <ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />
+      </ObjectTableContext>
+    );
 
     // WHEN
     await component.getByRole("button", { name: "Add to groups" }).click();

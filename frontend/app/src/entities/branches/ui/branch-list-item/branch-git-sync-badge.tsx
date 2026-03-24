@@ -1,13 +1,13 @@
-import { RefreshCwIcon } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
+
+import { Tooltip } from "@/shared/components/ui/tooltip";
 
 export function BranchGitSyncBadge() {
   return (
-    <span
-      className={
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-transparent bg-custom-blue-700/10 px-2 py-1.25 text-custom-blue-700 text-xs"
-      }
-    >
-      <RefreshCwIcon className="size-3" /> Synced with Git
-    </span>
+    <Tooltip enabled content="Synced with Git">
+      <span className="inline-flex shrink-0 items-center justify-center rounded-full bg-custom-blue-700/10 p-1.5 text-custom-blue-700">
+        <Icon icon={"mdi:source-branch"} className="size-4" />
+      </span>
+    </Tooltip>
   );
 }

@@ -59,7 +59,7 @@ export const getIpAddressTableColumns = (
                 />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
+              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
                 {ipAdressNode.display_label}
               </TableCell>
             </>
@@ -80,9 +80,7 @@ export const getIpAddressTableColumns = (
     ...getObjectGenericColumns(schema),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
-        header: () => (
-          <TableColumnHeader columnSchema={attribute} schema={schema} {...headerProps} />
-        ),
+        header: () => <TableColumnHeader columnSchema={attribute} {...headerProps} />,
         cell: ({ cell, row }) => {
           const attributeData = cell.getValue() as NodeAttribute | undefined;
           if (!attributeData) return null;
@@ -98,9 +96,7 @@ export const getIpAddressTableColumns = (
     }),
     ...relationships.map((relationship) => {
       return columnHelper.accessor(relationship.name, {
-        header: () => (
-          <TableColumnHeader columnSchema={relationship} schema={schema} {...headerProps} />
-        ),
+        header: () => <TableColumnHeader columnSchema={relationship} {...headerProps} />,
         cell: ({ cell, row }) => {
           const relationshipData = cell.getValue() as NodeRelationship | undefined;
           if (!relationshipData) return null;

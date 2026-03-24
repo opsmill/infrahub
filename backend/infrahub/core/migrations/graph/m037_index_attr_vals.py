@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.constants.database import IndexType
 from infrahub.core.attribute import MAX_STRING_LENGTH
-from infrahub.core.migrations.shared import MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 from infrahub.database.index import IndexItem
 from infrahub.database.neo4j import IndexManagerNeo4j
@@ -463,8 +463,9 @@ class Migration037(ArbitraryMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: PLR0915
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:  # noqa: PLR0915
         console = get_migration_console()
+        db = migration_input.db
         result = MigrationResult()
 
         # find the active schema attributes that have a LARGE_ATTRIBUTE_TYPE kind on all branches

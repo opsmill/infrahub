@@ -1,31 +1,29 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export interface GetProposedChangeActionFromApiParams {
-  proposedChangeId: string;
-}
-
-const query = gql`
-query actions($proposedChangeId: String!) {
-  CoreProposedChangeAvailableActions(proposed_change_id: $proposedChangeId) {
-    count
-    edges {
-      node {
-        action
-        available
-        unavailability_reason
+const QUERY = graphql(`
+  query actions($proposedChangeId: String!) {
+    CoreProposedChangeAvailableActions(proposed_change_id: $proposedChangeId) {
+      count
+      edges {
+        node {
+          action
+          available
+          unavailability_reason
+        }
       }
     }
   }
-}
-`;
+`);
+
+export interface GetProposedChangeActionFromApiParams extends VariablesOf<typeof QUERY> {}
 
 export const getProposedChangeAvailableActionFromApi = async ({
   proposedChangeId,
 }: GetProposedChangeActionFromApiParams) => {
   return graphqlClient.query({
-    query,
+    query: QUERY,
     variables: {
       proposedChangeId,
     },

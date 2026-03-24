@@ -14,7 +14,8 @@ import {
 } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle } from "@/shared/components/style-rac";
+import { disabledStyle } from "@/shared/components/aria/style-rac";
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -83,6 +84,35 @@ export const MenuSection = <T extends object>({
     </AriaMenuSection>
   );
 };
+
+export interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
+  tooltipContent?: TooltipProps["content"];
+  tooltipEnabled?: TooltipProps["enabled"];
+  side?: TooltipProps["side"];
+  children?: React.ReactNode;
+}
+
+export function MenuItemWithTooltip({
+  tooltipContent,
+  tooltipEnabled,
+  side = "left",
+  isDisabled,
+  children,
+  ...props
+}: MenuItemWithTooltipProps) {
+  return (
+    <MenuItem isDisabled={isDisabled} className="data-disabled:pointer-events-auto" {...props}>
+      <Tooltip
+        enabled={tooltipEnabled && isDisabled}
+        content={tooltipContent}
+        side={side}
+        className="z-100001"
+      >
+        <span className="flex w-full items-center gap-[inherit]">{children}</span>
+      </Tooltip>
+    </MenuItem>
+  );
+}
 
 export interface CopyToClipboardMenuItemProps extends Omit<MenuItemProps, "onAction" | "children"> {
   textToCopy: string;

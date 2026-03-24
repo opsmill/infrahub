@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core import registry
 from infrahub.core.diff.payload_builder import get_display_labels_per_kind
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
@@ -95,5 +95,5 @@ class Migration018(InternalSchemaMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        return await validate_nulls_in_uniqueness_constraints(db=db)
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        return await validate_nulls_in_uniqueness_constraints(db=migration_input.db)

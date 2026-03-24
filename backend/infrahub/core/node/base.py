@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from ..utils import SubclassWithMeta, SubclassWithMeta_Meta
 
 
@@ -9,19 +11,19 @@ class BaseOptions:
 
     _frozen: bool = False
 
-    def __init__(self, class_type):
+    def __init__(self, class_type: type) -> None:
         self.class_type = class_type
 
     def freeze(self) -> None:
         self._frozen = True
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         if not self._frozen:
             super().__setattr__(name, value)
         else:
             raise Exception(f"Can't modify frozen Options {self}")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={repr(self.name)}>"
 
 
@@ -34,7 +36,9 @@ class BaseNode(SubclassWithMeta):
     #     return type(class_name, (cls,), {"Meta": options})
 
     @classmethod
-    def __init_subclass_with_meta__(cls, name=None, description=None, _meta=None, **_kwargs) -> None:
+    def __init_subclass_with_meta__(
+        cls, name: str | None = None, description: str | None = None, _meta: BaseOptions | None = None, **_kwargs: Any
+    ) -> None:
         assert "_meta" not in cls.__dict__, "Can't assign meta directly"
         if not _meta:
             return
@@ -52,7 +56,7 @@ class BaseNodeOptions(BaseOptions):
 
 
 class ObjectNodeMeta(BaseNodeMeta):
-    def __new__(mcs, name_, bases, namespace, **options):
+    def __new__(mcs, name_: str, bases: tuple[type, ...], namespace: dict[str, Any], **options: Any) -> type:
         # Note: it's safe to pass options as keyword arguments as they are still type-checked by NodeOptions.
 
         # We create this type, to then overload it with the dataclass attrs

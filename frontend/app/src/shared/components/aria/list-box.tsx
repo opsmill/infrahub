@@ -9,7 +9,7 @@ import {
   composeRenderProps,
 } from "react-aria-components";
 
-import { disabledStyle } from "@/shared/components/style-rac";
+import { disabledStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 export interface ListBoxProps<T> extends AriaListBoxProps<T> {

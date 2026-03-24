@@ -9,7 +9,12 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, SchemaPathType
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import MigrationRequiringRebase, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import (
+    MigrationInput,
+    MigrationRequiringRebase,
+    MigrationResult,
+    get_migration_console,
+)
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 
@@ -48,7 +53,8 @@ class Migration043(MigrationRequiringRebase):
     name: str = "043_create_hfid_display_label_in_db"
     minimum_version: int = 42
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         result = MigrationResult()
 
         root_node = await get_root_node(db=db, initialize=False)
@@ -104,7 +110,7 @@ class Migration043(MigrationRequiringRebase):
 
             for migration in migrations:
                 try:
-                    execution_result = await migration.execute(db=db, branch=default_branch)
+                    execution_result = await migration.execute(migration_input=migration_input, branch=default_branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:
@@ -113,7 +119,8 @@ class Migration043(MigrationRequiringRebase):
 
         return result
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        db = migration_input.db
         result = MigrationResult()
 
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
@@ -155,7 +162,7 @@ class Migration043(MigrationRequiringRebase):
 
             for migration in migrations:
                 try:
-                    execution_result = await migration.execute(db=db, branch=branch)
+                    execution_result = await migration.execute(migration_input=migration_input, branch=branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:

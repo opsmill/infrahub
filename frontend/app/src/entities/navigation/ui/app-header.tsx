@@ -1,8 +1,8 @@
-import BranchSelector from "@/shared/components/branch-selector";
-import { TimeFrameSelector } from "@/shared/components/time-selector";
 import { Card } from "@/shared/components/ui/card";
 
+import BranchSelector from "@/entities/branches/ui/branch-selector";
 import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";
+import { TimeFrameSelector } from "@/entities/navigation/ui/time-selector";
 import { TaskStatus } from "@/entities/tasks/ui/task-status";
 
 export function AppHeader() {

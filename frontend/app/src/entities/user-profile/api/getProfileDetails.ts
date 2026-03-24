@@ -10,7 +10,6 @@ query GET_PROFILE_DETAILS {
           value
           updated_at
           is_protected
-          is_visible
           source {
             id
             display_label

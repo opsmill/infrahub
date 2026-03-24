@@ -61,7 +61,7 @@ export const PopoverTabsTrigger = React.forwardRef<
       "inline-flex items-center justify-center whitespace-nowrap rounded-t-md bg-white px-3 py-1.5 font-medium text-sm transition-all",
       "outline-hidden",
       "disabled:pointer-events-none disabled:opacity-50",
-      "data-[state=active]:-mb-px border-gray-200 data-[state=active]:border-x data-[state=active]:border-t",
+      "border-gray-200 data-[state=active]:-mb-px data-[state=active]:border-x data-[state=active]:border-t",
       className
     )}
     {...props}

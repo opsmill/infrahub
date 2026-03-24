@@ -4,20 +4,20 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { findSelectedBranch } from "@/entities/branches/utils";
 
 type BranchContext = {
-  currentBranch: Branch;
-  setCurrentBranch: (branch: Branch) => void;
+  currentBranch: BranchListItem;
+  setCurrentBranch: (branch: BranchListItem) => void;
 };
 
 export const BranchContext = React.createContext<BranchContext | null>(null);
@@ -63,7 +63,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }, [branches, branchInQueryString]);
 
   if (isPending) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   if (error) {
@@ -71,7 +71,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }
 
   if (currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;

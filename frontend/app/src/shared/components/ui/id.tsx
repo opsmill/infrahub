@@ -1,9 +1,10 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Clipboard } from "@/shared/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { CONFIG } from "@/shared/config/config";
 import { NODE_OBJECT } from "@/shared/config/constants";
 
 import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabel";
@@ -12,19 +13,16 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 type tId = {
   id: string;
   kind?: string;
+  branch?: string | null;
+  date?: Date | null;
   preventCopy?: boolean;
 };
 
-export const Id = (props: tId) => {
-  const { id, kind = NODE_OBJECT, preventCopy } = props;
-
-  const queryString = getObjectDisplayLabel({ kind });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data } = useQuery(query, { variables: { ids: [id] } });
+export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch, date }: tId) => {
+  const { loading, error, data } = useQuery(graphql(getObjectDisplayLabel({ kind })), {
+    variables: { ids: [id] },
+    context: { uri: CONFIG.GRAPHQL_URL(branch, date) },
+  });
 
   const object = data?.[kind]?.edges?.[0]?.node ?? {};
 

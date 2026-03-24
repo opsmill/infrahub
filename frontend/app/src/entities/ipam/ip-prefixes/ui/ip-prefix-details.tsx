@@ -66,7 +66,7 @@ export function IpPrefixDetails({ prefixSchema, prefixId }: IpPrefixDetailsProps
       return {
         name: schemaAttribute.label || schemaAttribute.name,
         value: (
-          <ObjectAttributeValue attributeSchema={schemaAttribute} attributeValue={attributeData} />
+          <ObjectAttributeValue attributeSchema={schemaAttribute} attributeData={attributeData} />
         ),
       };
     }),

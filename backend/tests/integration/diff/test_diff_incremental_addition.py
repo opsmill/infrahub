@@ -38,7 +38,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> dict[str, Node]:
@@ -77,7 +77,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    async def diff_branch(self, db: InfrahubDatabase, initial_dataset) -> Branch:
+    async def diff_branch(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> Branch:
         return await create_branch(db=db, branch_name=BRANCH_NAME)
 
     @pytest.fixture(scope="class")
@@ -94,7 +94,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_01_remove_on_main(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
     ) -> None:
@@ -108,10 +108,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_02_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_01_remove_on_main,
+        data_01_remove_on_main: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
@@ -126,10 +126,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_03_new_peer_on_main(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_02_previous_owner_on_branch,
+        data_02_previous_owner_on_branch: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
         biff = initial_dataset["biff"]
@@ -142,10 +142,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_04_update_previous_owner_protected_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_03_new_peer_on_main,
+        data_03_new_peer_on_main: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
@@ -160,10 +160,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_05_remove_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_04_update_previous_owner_protected_on_branch,
+        data_04_update_previous_owner_protected_on_branch: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
 
@@ -175,10 +175,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def data_06_remove_previous_owner_on_main_again(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
-        data_05_remove_previous_owner_on_branch,
+        data_05_remove_previous_owner_on_branch: None,
     ) -> None:
         delorean = initial_dataset["delorean"]
 
@@ -193,7 +193,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_01_remove_on_main,
+        data_01_remove_on_main: None,
     ) -> None:
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -241,18 +241,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert visible_prop.new_value == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert visible_prop.conflict is None
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert protected_prop.new_value == "False"
@@ -270,8 +264,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        initial_dataset,
-        data_02_previous_owner_on_branch,
+        initial_dataset: dict[str, Node],
+        data_02_previous_owner_on_branch: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -329,22 +323,15 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_action is DiffAction.UPDATED
         assert rel_element.conflict.diff_branch_value == marty.get_id()
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert str(visible_prop.new_value) == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert not visible_prop.conflict
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert str(protected_prop.new_value) == "False"
@@ -354,12 +341,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_add_new_peer_on_main(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_03_new_peer_on_main,
+        data_03_new_peer_on_main: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -422,18 +409,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert visible_prop.new_value == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert visible_prop.conflict is None
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert protected_prop.new_value == "True"
@@ -443,12 +424,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_update_previous_owner_protected_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_04_update_previous_owner_protected_on_branch,
+        data_04_update_previous_owner_protected_on_branch: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -504,15 +485,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_action is DiffAction.REMOVED
         assert rel_element.conflict.diff_branch_value is None
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_type, previous_value in (
             (DatabaseEdgeType.IS_RELATED, doc_brown.get_id()),
-            (DatabaseEdgeType.IS_VISIBLE, "True"),
             (DatabaseEdgeType.IS_PROTECTED, "True"),
         ):
             diff_prop = properties_by_type[prop_type]
@@ -524,12 +502,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_remove_previous_owner_on_branch(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_05_remove_previous_owner_on_branch,
+        data_05_remove_previous_owner_on_branch: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch
@@ -580,33 +558,31 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.action is DiffAction.REMOVED
         assert rel_element.conflict is None
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value is None
         assert related_prop.action is DiffAction.REMOVED
         assert related_prop.conflict is None
-        for prop_type in (DatabaseEdgeType.IS_PROTECTED, DatabaseEdgeType.IS_VISIBLE):
-            protected_prop = properties_by_type[prop_type]
-            assert protected_prop.previous_value == "True"
-            assert protected_prop.new_value is None
-            assert protected_prop.action is DiffAction.REMOVED
-            assert protected_prop.conflict is None
+        prop_type = DatabaseEdgeType.IS_PROTECTED
+        protected_prop = properties_by_type[prop_type]
+        assert protected_prop.previous_value == "True"
+        assert protected_prop.new_value is None
+        assert protected_prop.action is DiffAction.REMOVED
+        assert protected_prop.conflict is None
 
     async def test_remove_previous_owner_on_main_again(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-        data_06_remove_previous_owner_on_main_again,
+        data_06_remove_previous_owner_on_main_again: None,
     ) -> None:
         incremental_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=diff_branch

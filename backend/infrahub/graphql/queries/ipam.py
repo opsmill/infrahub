@@ -7,11 +7,10 @@ from graphene import Field, Int, ObjectType, String
 from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import BuiltinIPPrefix
-from infrahub.core.query.ipam import get_ip_addresses, get_subnets
 from infrahub.exceptions import NodeNotFoundError, ValidationError
-from infrahub.pools.address import get_available
 from infrahub.pools.prefix import get_next_available_prefix
 
 if TYPE_CHECKING:
@@ -48,23 +47,14 @@ class IPAddressGetNextAvailable(ObjectType):
             raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
         namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
-        addresses = await get_ip_addresses(
-            db=graphql_context.db,
+        allocator = IPAMResourceAllocator(db=graphql_context.db, namespace=namespace, branch=graphql_context.branch)
+        next_address = await allocator.get_next_address(
             ip_prefix=ip_prefix,
-            namespace=namespace,
-            branch=graphql_context.branch,
-        )
-
-        available = get_available(
-            network=ip_prefix,
-            addresses=[ip.address for ip in addresses],
             is_pool=prefix.is_pool.value,  # type: ignore[attr-defined]
         )
 
-        if not available:
+        if not next_address:
             raise IndexError("No addresses available in prefix")
-
-        next_address = available.iter_cidrs()[0]
 
         return {"address": f"{next_address.ip}/{prefix_length}"}
 
@@ -90,22 +80,27 @@ class IPPrefixGetNextAvailable(ObjectType):
                 branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
             )
 
+        ip_prefix = prefix.prefix.obj
         namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)
-        subnets = await get_subnets(
-            db=graphql_context.db,
-            ip_prefix=ipaddress.ip_network(prefix.prefix.value),
-            namespace=namespace,
-            branch=graphql_context.branch,
-        )
+        allocator = IPAMResourceAllocator(db=graphql_context.db, namespace=namespace, branch=graphql_context.branch)
 
-        pool = IPSet([prefix.prefix.value])
+        # Build available pool by removing existing subnets from parent prefix
+        subnets = await allocator.get_subnets(ip_prefix=ip_prefix)
+        available_pool = IPSet([str(ip_prefix)])
         for subnet in subnets:
-            pool.remove(addr=str(subnet.prefix))
+            available_pool.remove(str(subnet.prefix))
 
-        prefix_ver = ipaddress.ip_network(prefix.prefix.value).version
-        next_available = get_next_available_prefix(pool=pool, prefix_length=prefix_length, prefix_ver=prefix_ver)
+        if prefix_length is not None and not ip_prefix.prefixlen < prefix_length <= ip_prefix.max_prefixlen:
+            raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
-        return {"prefix": str(next_available)}
+        try:
+            next_prefix = get_next_available_prefix(
+                pool=available_pool, prefix_length=prefix_length, prefix_ver=ip_prefix.version
+            )
+        except ValueError as exc:
+            raise IndexError("No prefixes available in prefix") from exc
+
+        return {"prefix": str(next_prefix)}
 
 
 InfrahubIPAddressGetNextAvailable = Field(

@@ -117,7 +117,7 @@ class NodeDeleteIndex:
 
 
 class NodeDeleteValidator:
-    def __init__(self, db: InfrahubDatabase, branch: Branch):
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
         schema_branch = registry.schema.get_schema_branch(name=self.branch.name)

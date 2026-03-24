@@ -49,12 +49,14 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         branch = await client.branch.create(branch_name="test", sync_with_git=False)
         assert branch
 
-    async def test_step_02_load_schema(self, client: InfrahubClient, schema_network) -> None:
+    async def test_step_02_load_schema(self, client: InfrahubClient, schema_network: dict[str, Any]) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_network], branch="test")
         assert not response.errors
 
-    async def test_step_03_load_data(self, db: InfrahubDatabase, client: InfrahubClient, schema_network) -> None:
+    async def test_step_03_load_data(
+        self, db: InfrahubDatabase, client: InfrahubClient, schema_network: dict[str, Any]
+    ) -> None:
         dev1 = await client.create(kind="NetworkDevice", hostname="device", model="switch", branch="test")
         await dev1.save()
         assert dev1.id

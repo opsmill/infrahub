@@ -4,8 +4,6 @@ import { useAtom } from "jotai";
 import { use } from "react";
 import { useParams } from "react-router";
 
-import { AddComment } from "@/shared/components/conversations/add-comment";
-import { Thread } from "@/shared/components/conversations/thread";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -16,6 +14,8 @@ import { getThreadLabel } from "@/entities/diff/utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
+import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
+import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { DiffContext } from ".";

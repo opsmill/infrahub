@@ -1,6 +1,7 @@
 import { useParams } from "react-router";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { ChecksSummary } from "@/entities/diff/checks/checks-summary";
@@ -24,6 +25,15 @@ export const Checks = () => {
 
   if (isPending) {
     return <LoadingIndicator />;
+  }
+
+  if (!validators.length) {
+    return (
+      <div className="grow bg-stone-100 text-sm">
+        <ChecksSummary isLoading={isPending} validators={validators} />
+        <NoDataFound message="No checks for this proposed change." />
+      </div>
+    );
   }
 
   return (

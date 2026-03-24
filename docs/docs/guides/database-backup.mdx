@@ -6,13 +6,13 @@ import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-This guide shows you how to create comprehensive backups of your Infrahub deployment and restore them when needed. You'll learn to backup the Neo4j graph database, artifact storage, and task management data to ensure complete data recovery capabilities.
+This guide shows you how to create comprehensive backups of your Infrahub deployment and restore them when needed. You'll learn to backup the Neo4j graph database, object storage, and task management data to ensure complete data recovery capabilities.
 
 ## Prerequisites
 
 - Running Infrahub deployment (Docker Compose or Kubernetes)
 - Administrative access to the Neo4j database
-- Access to the artifact storage location (S3 or local filesystem)
+- Access to the object storage location (S3 or local filesystem)
 - Sufficient storage space for backup files
 - For cluster deployments: Understanding of your cluster topology
 
@@ -20,7 +20,7 @@ This guide shows you how to create comprehensive backups of your Infrahub deploy
 
 ### Step 1: Install the backup tool
 
-<Tabs groupId="backup-method">
+<Tabs groupId="backup-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI (Recommended)" default>
 
 Install the infrahub-backup CLI tool:
@@ -29,6 +29,13 @@ Install the infrahub-backup CLI tool:
 curl https://infrahub.opsmill.io/ops/$(uname -s)/$(uname -m)/infrahub-backup -o infrahub-backup
 chmod +x infrahub-backup
 ```
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated backup guide:
+
+[Kubernetes Backup Guide](https://docs.infrahub.app/backup/guides/kubernetes-backup)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -45,7 +52,7 @@ Alternatively, you can use the [legacy tool](#using-the-python-based-backup-util
 
 ### Step 2: Backup the databases
 
-<Tabs groupId="backup-method">
+<Tabs groupId="backup-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 Create a backup of your running Infrahub instance:
@@ -63,8 +70,15 @@ The tool automatically:
 - Calculates SHA256 checksums for integrity verification
 
 :::note
-Artifact storage backup is planned for future versions and must currently be handled separately.
+We plan to add object storage backup in a future release. Handle object storage backups separately for now.
 :::
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated backup guide:
+
+[Kubernetes Backup Guide](https://docs.infrahub.app/backup/guides/kubernetes-backup)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -113,26 +127,28 @@ python -m utilities.db_backup neo4j backup \
 </TabItem>
 </Tabs>
 
-### Step 3: Backup the artifact store
+### Step 3: Backup the object storage
 
-<Tabs groupId="storage-type">
+The [object storage](../topics/object-storage.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
+
+<Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 
-If using S3 for artifact storage, use AWS CLI or your preferred S3 backup tool:
+If using S3 for object storage, use AWS CLI or your preferred S3 backup tool:
 
 ```bash
 # Sync S3 bucket to local backup directory
-aws s3 sync s3://your-infrahub-bucket /backup/artifacts/
+aws s3 sync s3://your-infrahub-bucket /backup/object_store/
 ```
 
 </TabItem>
 <TabItem value="local" label="Local Filesystem">
 
-For local filesystem storage, copy the artifact directory:
+For local filesystem storage, copy the object storage directory:
 
 ```bash
-# Copy artifacts directory to backup location
-docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/artifacts/
+# Copy object storage directory to backup location
+docker compose cp infrahub-server:/opt/infrahub/storage/. /backup/object_store/
 ```
 
 </TabItem>
@@ -144,7 +160,7 @@ docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/artifacts/
 
 Ensure Infrahub services are running before starting the restore process. You can start from a scratch/blank deployment.
 
-<Tabs groupId="restore-method">
+<Tabs groupId="restore-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 Restore from a backup archive:
@@ -163,6 +179,13 @@ The tool automatically:
 - Restarts all services in correct order
 
 </TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
+
+</TabItem>
 <TabItem value="manual" label="Manual Process">
 
 If restoring manually, follow the steps below for each component.
@@ -172,10 +195,17 @@ If restoring manually, follow the steps below for each component.
 
 ### Step 2: Restore the databases
 
-<Tabs groupId="restore-method">
+<Tabs groupId="restore-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 This is automatically handled by infrahub-backup.
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -234,22 +264,22 @@ python -m utilities.db_backup neo4j restore \
 </TabItem>
 </Tabs>
 
-### Step 3: Restore the artifact store
+### Step 3: Restore the object storage
 
-<Tabs groupId="storage-type">
+<Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
 
 ```bash
 # Restore S3 bucket from backup
-aws s3 sync /backup/artifacts/ s3://your-infrahub-bucket
+aws s3 sync /backup/object_store/ s3://your-infrahub-bucket
 ```
 
 </TabItem>
 <TabItem value="local" label="Local Filesystem">
 
 ```bash
-# Restore artifacts directory
-cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
+# Restore object storage directory into the container
+docker compose cp /backup/object_store/. infrahub-server:/opt/infrahub/storage/
 ```
 
 </TabItem>
@@ -257,10 +287,17 @@ cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
 
 ### Step 4: Restart Infrahub services
 
-<Tabs groupId="restore-restart-services">
+<Tabs groupId="restore-method" queryString>
 <TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 This is automatically handled by infrahub-backup.
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -307,7 +344,7 @@ Verify your restoration was successful:
    Logs should show normal operation without errors.
 
 4. **Test artifact retrieval:**
-   Access the Infrahub UI and verify that stored artifacts (transforms, queries) are accessible.
+   Access the Infrahub UI and verify that stored artifacts (Transformations, queries) are accessible.
 
 ## Backup and restore Neo4j clusters <EnterpriseBadge />
 

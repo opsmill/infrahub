@@ -36,11 +36,38 @@ class HttpxAdapter(InfrahubHTTP):
 
     @cached_property
     def tls_context(self) -> ssl.SSLContext:
+        """TLS context based on global HTTPSettings.
+
+        May be an unverified context if tls_insecure=True in settings.
+        """
         return self.settings.get_tls_context()
 
+    @cached_property
+    def tls_context_verified(self) -> ssl.SSLContext:
+        """TLS context that always performs certificate validation.
+
+        Uses tls_ca_bundle from settings if configured, but ignores tls_insecure.
+        This allows callers to explicitly request certificate validation even when
+        the global setting disables it.
+        """
+        return self.settings.get_tls_context(force_verify=True)
+
     def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
+        """Determine the TLS verification behavior for a request.
+
+        Args:
+            verify: Override for TLS verification behavior.
+                - None: Use global settings (may skip verification if tls_insecure=True)
+                - False: Explicitly disable certificate validation
+                - True: Force certificate validation, ignoring global tls_insecure setting
+
+        Returns:
+            False to disable verification, or an SSLContext for verification.
+        """
         if verify is False:
             return False
+        if verify is True:
+            return self.tls_context_verified
 
         return self.tls_context
 

@@ -47,7 +47,12 @@ from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
-from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
+from infrahub.exceptions import (
+    CheckError,
+    RepositoryConfigurationError,
+    RepositoryInvalidFileSystemError,
+    TransformError,
+)
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_event_service
@@ -180,31 +185,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self.create_commit_worktree(commit)
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
 
-        config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
-        sync_status = RepositorySyncStatus.IN_SYNC if config_file else RepositorySyncStatus.ERROR_IMPORT
-
+        sync_status = RepositorySyncStatus.IN_SYNC
         error: Exception | None = None
 
         try:
-            if config_file:
-                await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-                await self.import_all_graphql_query(
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
-                await self.import_objects(
-                    branch_name=infrahub_branch_name,
-                    commit=commit,
-                    config_file=config_file,
-                )  # type: ignore[misc]
-                await self.import_all_python_files(  # type: ignore[call-overload]
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
-                await self.import_jinja2_transforms(
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
-                await self.import_artifact_definitions(
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
+            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
+            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+            await self.import_all_graphql_query(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
+            await self.import_objects(
+                branch_name=infrahub_branch_name,
+                commit=commit,
+                config_file=config_file,
+            )  # type: ignore[call-overload]
+            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+            await self.import_jinja2_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
+            await self.import_artifact_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
@@ -433,7 +434,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await existing_artifact_definition.save()
 
     @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)
-    async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig | None:
+    async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig:
+        """Load and parse the repository configuration file.
+
+        Args:
+            branch_name: The name of the branch to load the config from.
+            commit: The commit hash to load the config from.
+
+        Returns:
+            The parsed repository configuration.
+
+        Raises:
+            RepositoryConfigurationError: If the configuration file is missing,
+                cannot be parsed as YAML, or has an invalid format.
+        """
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
 
@@ -448,15 +462,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             config_file = config_file_yaml
             config_file_name = ".infrahub.yaml"
         else:
-            log.debug("Unable to find the configuration file (.infrahub.yml or .infrahub.yaml), skipping")
-            return None
+            log.error(
+                f"Repository '{self.name}' is missing a configuration file. "
+                "Expected '.infrahub.yml' or '.infrahub.yaml' in the repository root."
+            )
+            raise RepositoryConfigurationError(
+                identifier=self.name,
+                message=f"Repository '{self.name}' is missing a configuration file. "
+                f"Please add a '.infrahub.yml' or '.infrahub.yaml' file to the repository root. "
+                f"See https://docs.infrahub.app/topics/repository for more information.",
+            )
 
         config_file_content = config_file.read_text(encoding="utf-8")
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            log.error(f"Unable to load the configuration file in YAML format {config_file_name} : {exc}")
-            return None
+            log.error(f"Unable to load the configuration file in YAML format {config_file_name}: {exc}")
+            raise RepositoryConfigurationError(
+                identifier=self.name,
+                message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
+                f"The file could not be parsed as valid YAML: {exc}",
+            ) from exc
 
         # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
         data = data or {}
@@ -466,8 +492,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"Successfully parsed {config_file_name}")
             return configuration
         except PydanticValidationError as exc:
-            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}")
-            return None
+            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid: {exc}")
+            raise RepositoryConfigurationError(
+                identifier=self.name,
+                message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
+                f"The file format is not valid: {exc}",
+            ) from exc
 
     @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
@@ -634,7 +664,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     module=module,
                     file_path=file_info.relative_path_file,
                     check_definition=check,
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
             )
 
         local_check_definitions = {check.name: check for check in checks}
@@ -797,7 +827,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     module=module,
                     file_path=file_info.relative_path_file,
                     transform=transform,
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
             )
 
         local_transform_definitions = {transform.name: transform for transform in transforms}
@@ -1156,9 +1186,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> None:
         await add_tags(branches=[branch_name], nodes=[str(self.id)])
 
-        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
+        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
@@ -1324,7 +1354,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation.template_path.value, data=response)  # type: ignore[misc]
+            )(commit=commit, location=transformation.template_path.value, data=response)  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -1336,7 +1366,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 location=transformation_location,
                 data=response,
                 convert_query_response=transformation.convert_query_response.value,
-            )  # type: ignore[misc]
+            )  # type: ignore[call-overload]
 
         if definition.content_type.value == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
@@ -1387,7 +1417,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
                 commit=message.commit, location=message.transform_location, data=response
-            )  # type: ignore[misc]
+            )  # type: ignore[call-overload]
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
                 client=self.sdk,
@@ -1396,7 +1426,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 location=message.transform_location,
                 data=response,
                 convert_query_response=message.convert_query_response,
-            )  # type: ignore[misc]
+            )  # type: ignore[call-overload]
 
         if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
@@ -1421,7 +1451,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         artifact.status.value = ArtifactStatus.READY.value
         if artifact.name.value != message.artifact_name:
             artifact.name.value = message.artifact_name
-        await artifact.save()
+        await artifact.save(request_context=message.context.to_request_context())
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
 

@@ -41,13 +41,13 @@ services:
       - task-manager-db
   task-manager-db:
     profiles: [demo, dev]
-    image: postgres:16-alpine
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=prefect
     volumes:
-      - workflow_db:/var/lib/postgresql/data
+      - "workflow_db:${POSTGRES_DATADIR:-/var/lib/postgresql/18/docker}"
     healthcheck:
       test:
         - "CMD-SHELL"

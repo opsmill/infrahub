@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from infrahub.services import InfrahubServices
 from infrahub.services.scheduler import Schedule
-
-if TYPE_CHECKING:
-    from tests.adapters.log import FakeLogger
+from tests.adapters.log import FakeLogger
 
 
 async def nothing_to_see(service: InfrahubServices) -> None:
@@ -16,6 +12,7 @@ async def nothing_to_see(service: InfrahubServices) -> None:
 
 async def log_once_and_stop(service: InfrahubServices) -> None:
     service.log.info("Writing entry to the log")
+    assert isinstance(service.log, FakeLogger)
     if len(service.log.info_logs) == 3:
         service.scheduler.running = False
 

@@ -1,17 +1,12 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-export const BRANCH_VALIDATE = gql`
-mutation BRANCH_VALIDATE($name: String) {
-  BranchValidate (
-    wait_until_completion: false
-    data: {
-      name: $name
-    }
-  ) {
+export const BRANCH_VALIDATE = graphql(`
+  mutation BRANCH_VALIDATE($name: String) {
+    BranchValidate(wait_until_completion: false, data: { name: $name }) {
       ok
       task {
         id
       }
+    }
   }
-}
-`;
+`);

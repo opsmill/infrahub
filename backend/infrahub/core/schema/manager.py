@@ -6,6 +6,12 @@ from cachetools import LRUCache
 from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
 
 from infrahub import lock
+from infrahub.core.constants import (
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    PROFILES_RELATIONSHIP_NAME,
+    SYSTEM_USER_ID,
+    MetadataOptions,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -24,6 +30,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
@@ -35,16 +42,22 @@ log = get_logger()
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
 class SchemaManager(NodeManager):
+    _virtual_relationship_names: set[str] = {OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME}
+
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
         self._branches: dict[str, SchemaBranch] = {}
         self._branch_hash_by_name: dict[str, str] = {}
         self._sdk_branches: LRUCache[str, SDKBranchSchema] = LRUCache(maxsize=10)
+
+    @classmethod
+    def _is_virtual_relationship(cls, name: str) -> bool:
+        """Virtual relationships exist only in-memory (added by SchemaBranch.process) and are never persisted."""
+        return name in cls._virtual_relationship_names
 
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
@@ -178,15 +191,20 @@ class SchemaManager(NodeManager):
         diff: SchemaDiff | None = None,
         limit: list[str] | None = None,
         update_db: bool = True,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> None:
         branch = await registry.get_branch(branch=branch, db=db)
+        at = Timestamp(at)
 
         updated_schema = None
         if update_db:
             if diff:
-                schema_diff = await self.update_schema_to_db(schema=schema, db=db, branch=branch, diff=diff)
+                schema_diff = await self.update_schema_to_db(
+                    schema=schema, db=db, branch=branch, diff=diff, at=at, user_id=user_id
+                )
             else:
-                await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
+                await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit, at=at, user_id=user_id)
                 # After updating the schema into the db
                 # we need to pull a fresh version because some default value are managed/generated within the node object
                 schema_diff = None
@@ -197,7 +215,7 @@ class SchemaManager(NodeManager):
                     )
 
             updated_schema = await self.load_schema_from_db(
-                db=db, branch=branch, schema=schema, schema_diff=schema_diff
+                db=db, branch=branch, schema=schema, schema_diff=schema_diff, at=at
             )
 
         self.set_schema_branch(name=branch.name, schema=updated_schema or schema)
@@ -216,6 +234,8 @@ class SchemaManager(NodeManager):
         schema: SchemaBranch,
         db: InfrahubDatabase,
         diff: SchemaDiff,
+        user_id: str,
+        at: Timestamp,
         branch: Branch | str | None = None,
     ) -> SchemaBranchDiff:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
@@ -226,7 +246,7 @@ class SchemaManager(NodeManager):
         added_generics = []
         for item_kind in diff.added.keys():
             item = schema.get(name=item_kind, duplicate=False)
-            node = await self.load_node_to_db(node=item, branch=branch, db=db)
+            node = await self.load_node_to_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
             schema.set(name=item_kind, schema=node)
             if item.is_node_schema:
                 added_nodes.append(item_kind)
@@ -238,9 +258,11 @@ class SchemaManager(NodeManager):
         for item_kind, item_diff in diff.changed.items():
             item = schema.get(name=item_kind, duplicate=False)
             if item_diff:
-                node = await self.update_node_in_db_based_on_diff(node=item, branch=branch, db=db, diff=item_diff)
+                node = await self.update_node_in_db_based_on_diff(
+                    node=item, branch=branch, db=db, diff=item_diff, at=at, user_id=user_id
+                )
             else:
-                node = await self.update_node_in_db(node=item, branch=branch, db=db)
+                node = await self.update_node_in_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
             schema.set(name=item_kind, schema=node)
             if item.is_node_schema:
                 changed_nodes.append(item_kind)
@@ -251,7 +273,7 @@ class SchemaManager(NodeManager):
         removed_generics = []
         for item_kind in diff.removed.keys():
             item = schema.get(name=item_kind, duplicate=False)
-            node = await self.delete_node_in_db(node=item, branch=branch, db=db)
+            node = await self.delete_node_in_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
             schema.delete(name=item_kind)
             if item.is_node_schema:
                 removed_nodes.append(item_kind)
@@ -273,9 +295,11 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         branch: Branch | str | None = None,
         limit: list[str] | None = None,
+        user_id: str = SYSTEM_USER_ID,
+        at: Timestamp | None = None,
     ) -> None:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
-
+        at = Timestamp(at)
         branch = await registry.get_branch(branch=branch, db=db)
 
         for item_kind in schema.node_names + schema.generic_names_without_templates:
@@ -283,16 +307,18 @@ class SchemaManager(NodeManager):
                 continue
             item = schema.get(name=item_kind, duplicate=False)
             if not item.id:
-                node = await self.load_node_to_db(node=item, branch=branch, db=db)
+                node = await self.load_node_to_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
                 schema.set(name=item_kind, schema=node)
             else:
-                node = await self.update_node_in_db(node=item, branch=branch, db=db)
+                node = await self.update_node_in_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
                 schema.set(name=item_kind, schema=node)
 
     async def load_node_to_db(
         self,
         node: NodeSchema | GenericSchema,
         db: InfrahubDatabase,
+        user_id: str,
+        at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
         """Load a Node with its attributes and its relationships to the database."""
@@ -313,7 +339,7 @@ class SchemaManager(NodeManager):
         schema_dict = node.model_dump(exclude={"id", "state", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, db=db)
         await obj.new(**schema_dict, db=db)
-        await obj.save(db=db)
+        await obj.save(db=db, at=at, user_id=user_id)
         new_node.id = obj.id
 
         # Then create the Attributes and the relationships
@@ -324,16 +350,19 @@ class SchemaManager(NodeManager):
             for item in node.attributes:
                 if item.inherited is False:
                     new_attr = await self.create_attribute_in_db(
-                        schema=attribute_schema, item=item, parent=obj, branch=branch, db=db
+                        schema=attribute_schema, item=item, parent=obj, branch=branch, db=db, at=at, user_id=user_id
                     )
                 else:
                     new_attr = item.duplicate()
                 new_node.attributes.append(new_attr)
 
             for item in node.relationships:
+                if self._is_virtual_relationship(item.name):
+                    new_node.relationships.append(item.duplicate())
+                    continue
                 if item.inherited is False:
                     new_rel = await self.create_relationship_in_db(
-                        schema=relationship_schema, item=item, parent=obj, branch=branch, db=db
+                        schema=relationship_schema, item=item, parent=obj, branch=branch, db=db, at=at, user_id=user_id
                     )
                 else:
                     new_rel = item.duplicate()
@@ -347,6 +376,8 @@ class SchemaManager(NodeManager):
         self,
         db: InfrahubDatabase,
         node: NodeSchema | GenericSchema,
+        user_id: str,
+        at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
         """Update a Node with its attributes and its relationships in the database."""
@@ -362,7 +393,8 @@ class SchemaManager(NodeManager):
 
         schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
-            getattr(obj, key).value = value
+            if obj_attr := getattr(obj, key, None):
+                obj_attr.value = value
 
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
@@ -370,11 +402,15 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
-        await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
+        await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
         await obj.relationships.update(
-            db=db, data=[item.id for item in node.local_relationships if item.id and item.name != "profiles"]
+            db=db,
+            data=[
+                item.id for item in node.local_relationships if item.id and not self._is_virtual_relationship(item.name)
+            ],
+            at=at,
         )
-        await obj.save(db=db)
+        await obj.save(db=db, at=at, user_id=user_id)
 
         # Then Update the Attributes and the relationships
 
@@ -382,25 +418,26 @@ class SchemaManager(NodeManager):
             ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
             db=db,
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
 
         for item in node.local_attributes:
             if item.id and item.id in items:
-                await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
+                await self.update_attribute_in_db(item=item, attr=items[item.id], db=db, at=at, user_id=user_id)
             elif not item.id:
                 new_attr = await self.create_attribute_in_db(
-                    schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
+                    schema=attribute_schema, item=item, branch=branch, db=db, parent=obj, at=at, user_id=user_id
                 )
                 new_node.attributes.append(new_attr)
 
         for item in node.local_relationships:
+            if self._is_virtual_relationship(item.name):
+                continue
             if item.id and item.id in items:
-                await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
+                await self.update_relationship_in_db(item=item, rel=items[item.id], db=db, at=at, user_id=user_id)
             elif not item.id:
                 new_rel = await self.create_relationship_in_db(
-                    schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
+                    schema=relationship_schema, item=item, branch=branch, db=db, parent=obj, at=at, user_id=user_id
                 )
                 new_node.relationships.append(new_rel)
 
@@ -413,6 +450,8 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         diff: HashableModelDiff,
         node: NodeSchema | GenericSchema,
+        user_id: str,
+        at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
         """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
@@ -433,13 +472,56 @@ class SchemaManager(NodeManager):
             for key, value in schema_dict.items():
                 getattr(obj, key).value = value
 
-        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
-        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
-
         new_node = node.duplicate()
-
         diff_attributes = diff.changed.get("attributes")
         diff_relationships = diff.changed.get("relationships")
+
+        items = await self._resolve_diff_fields(
+            db=db, branch=branch, node=node, diff_attributes=diff_attributes, diff_relationships=diff_relationships
+        )
+
+        if diff_attributes:
+            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
+
+        if diff_relationships:
+            await obj.relationships.update(
+                db=db,
+                data=[
+                    item.id
+                    for item in node.local_relationships
+                    if item.id and not self._is_virtual_relationship(item.name)
+                ],
+                at=at,
+            )
+
+        await obj.save(db=db, at=at, user_id=user_id)
+
+        await self._apply_diff_field_changes(
+            db=db,
+            branch=branch,
+            node=node,
+            new_node=new_node,
+            obj=obj,
+            items=items,
+            diff_attributes=diff_attributes,
+            diff_relationships=diff_relationships,
+            at=at,
+            user_id=user_id,
+        )
+
+        # Save back the node with the (potentially) newly created IDs in the SchemaManager
+        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+        return new_node
+
+    async def _resolve_diff_fields(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        node: NodeSchema | GenericSchema,
+        diff_attributes: HashableModelDiff | None,
+        diff_relationships: HashableModelDiff | None,
+    ) -> dict[str, Node]:
+        """Fetch DB nodes for attributes and relationships referenced in the schema diff."""
         attrs_rels_to_update: set[str] = set()
         if diff_attributes:
             attrs_rels_to_update.update(set(diff_attributes.added.keys()))
@@ -460,14 +542,16 @@ class SchemaManager(NodeManager):
                 item_names.add(field.name)
         missing_field_names = list(attrs_rels_to_update - item_names)
 
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
+
         items: dict[str, Node] = {}
         if item_ids:
             items = await self.get_many(
                 ids=list(item_ids),
                 db=db,
                 branch=branch,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
         if missing_field_names:
             missing_attrs = await self.query(
@@ -475,40 +559,49 @@ class SchemaManager(NodeManager):
                 branch=branch,
                 schema=attribute_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             missing_rels = await self.query(
                 db=db,
                 branch=branch,
                 schema=relationship_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             items.update({field.id: field for field in missing_attrs + missing_rels})
 
-        if diff_attributes:
-            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
+        return items
 
-        if diff_relationships:
-            await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
-
-        await obj.save(db=db)
+    async def _apply_diff_field_changes(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        node: NodeSchema | GenericSchema,
+        new_node: NodeSchema | GenericSchema,
+        obj: Node,
+        items: dict[str, Node],
+        diff_attributes: HashableModelDiff | None,
+        diff_relationships: HashableModelDiff | None,
+        at: Timestamp,
+        user_id: str,
+    ) -> None:
+        """Create, update, or delete attribute and relationship DB nodes based on the schema diff."""
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
         if diff_attributes:
             for item in node.local_attributes:
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
                 if item.name in diff_attributes.added or (item.name in diff_attributes.changed and item.id is None):
                     created_item = await self.create_attribute_in_db(
-                        schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
+                        schema=attribute_schema, item=item, branch=branch, db=db, parent=obj, at=at, user_id=user_id
                     )
                     new_attr = new_node.get_attribute(name=item.name)
                     new_attr.id = created_item.id
                 elif item.name in diff_attributes.changed and item.id and item.id in items:
-                    await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
+                    await self.update_attribute_in_db(item=item, attr=items[item.id], db=db, at=at, user_id=user_id)
                 elif item.name in diff_attributes.removed and item.id and item.id in items:
-                    await items[item.id].delete(db=db)
+                    await items[item.id].delete(db=db, user_id=user_id)
                 elif (
                     (item.name in diff_attributes.removed or item.name in diff_attributes.changed)
                     and item.id
@@ -518,19 +611,21 @@ class SchemaManager(NodeManager):
 
         if diff_relationships:
             for item in node.local_relationships:
+                if self._is_virtual_relationship(item.name):
+                    continue
                 # if item is in changed and has no ID, then it is being overridden from a generic and must be added
                 if item.name in diff_relationships.added or (
                     item.name in diff_relationships.changed and item.id is None
                 ):
                     created_rel = await self.create_relationship_in_db(
-                        schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
+                        schema=relationship_schema, item=item, branch=branch, db=db, parent=obj, at=at, user_id=user_id
                     )
                     new_rel = new_node.get_relationship(name=item.name)
                     new_rel.id = created_rel.id
                 elif item.name in diff_relationships.changed and item.id and item.id in items:
-                    await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
+                    await self.update_relationship_in_db(item=item, rel=items[item.id], db=db, at=at, user_id=user_id)
                 elif item.name in diff_relationships.removed and item.id and item.id in items:
-                    await items[item.id].delete(db=db)
+                    await items[item.id].delete(db=db, user_id=user_id)
                 elif (
                     (item.name in diff_relationships.removed or item.name in diff_relationships.changed)
                     and item.id
@@ -544,20 +639,19 @@ class SchemaManager(NodeManager):
             field_names_to_remove.extend(list(attr_names_to_remove))
         if diff_relationships and diff_relationships.removed:
             rel_names_to_remove = set(diff_relationships.removed.keys()) - set(node.local_relationship_names)
+            rel_names_to_remove -= self._virtual_relationship_names
             field_names_to_remove.extend(list(rel_names_to_remove))
         if field_names_to_remove:
             for field_schema in items.values():
                 if field_schema.name.value in field_names_to_remove:
-                    await field_schema.delete(db=db)
-
-        # Save back the node with the (potentially) newly created IDs in the SchemaManager
-        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
-        return new_node
+                    await field_schema.delete(db=db, at=at, user_id=user_id)
 
     async def delete_node_in_db(
         self,
         db: InfrahubDatabase,
         node: NodeSchema | GenericSchema,
+        user_id: str,
+        at: Timestamp,
         branch: Branch | str | None = None,
     ) -> None:
         """Delete the node with its attributes and relationships."""
@@ -573,47 +667,63 @@ class SchemaManager(NodeManager):
 
         # First delete the attributes and the relationships
         for attr_schema_node in (await obj.attributes.get_peers(db=db)).values():
-            await attr_schema_node.delete(db=db)
+            await attr_schema_node.delete(db=db, at=at, user_id=user_id)
         for rel_schema_node in (await obj.relationships.get_peers(db=db)).values():
-            await rel_schema_node.delete(db=db)
+            await rel_schema_node.delete(db=db, at=at, user_id=user_id)
 
-        await obj.delete(db=db)
+        await obj.delete(db=db, at=at, user_id=user_id)
 
     @staticmethod
     async def create_attribute_in_db(
-        schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
+        schema: NodeSchema,
+        item: AttributeSchema,
+        branch: Branch,
+        parent: Node,
+        db: InfrahubDatabase,
+        user_id: str,
+        at: Timestamp,
     ) -> AttributeSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
         await obj.new(**item.to_node(), node=parent, db=db)
-        await obj.save(db=db)
+        await obj.save(db=db, at=at, user_id=user_id)
         new_item = item.duplicate()
         new_item.id = obj.id
         return new_item
 
     @staticmethod
-    async def update_attribute_in_db(item: AttributeSchema, attr: Node, db: InfrahubDatabase) -> None:
+    async def update_attribute_in_db(
+        item: AttributeSchema, attr: Node, db: InfrahubDatabase, at: Timestamp, user_id: str
+    ) -> None:
         item_dict = item.model_dump(exclude={"id", "state", "filters"})
         for key, value in item_dict.items():
             getattr(attr, key).value = value
-        await attr.save(db=db)
+        await attr.save(db=db, at=at, user_id=user_id)
 
     @staticmethod
     async def create_relationship_in_db(
-        schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
+        schema: NodeSchema,
+        item: RelationshipSchema,
+        branch: Branch,
+        parent: Node,
+        db: InfrahubDatabase,
+        user_id: str,
+        at: Timestamp,
     ) -> RelationshipSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
         await obj.new(**item.model_dump(exclude={"id", "state", "filters"}), node=parent, db=db)
-        await obj.save(db=db)
+        await obj.save(db=db, at=at, user_id=user_id)
         new_item = item.duplicate()
         new_item.id = obj.id
         return new_item
 
     @staticmethod
-    async def update_relationship_in_db(item: RelationshipSchema, rel: Node, db: InfrahubDatabase) -> None:
+    async def update_relationship_in_db(
+        item: RelationshipSchema, rel: Node, db: InfrahubDatabase, at: Timestamp, user_id: str
+    ) -> None:
         item_dict = item.model_dump(exclude={"id", "state", "filters"})
         for key, value in item_dict.items():
             getattr(rel, key).value = value
-        await rel.save(db=db)
+        await rel.save(db=db, at=at, user_id=user_id)
 
     async def load_schema(
         self,
@@ -740,7 +850,7 @@ class SchemaManager(NodeManager):
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
-                if rel_name == "profiles":
+                if cls._is_virtual_relationship(rel_name):
                     continue
                 node_data[rel_name] = []
 

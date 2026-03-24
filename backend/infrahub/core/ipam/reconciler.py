@@ -101,16 +101,18 @@ class IpamReconciler:
         )
         await query.execute(db=self.db)
 
-        ip_node_uuid = query.get_ip_node_uuid()
-        if not ip_node_uuid:
+        data = query.get_data()
+        if not data or not data.ip_node_uuid:
             node_type = InfrahubKind.IPPREFIX
             if isinstance(ip_value, ipaddress.IPv6Interface | ipaddress.IPv4Interface):
                 node_type = InfrahubKind.IPADDRESS
             raise NodeNotFoundError(node_type=node_type, identifier=str(ip_value))
-        current_parent_uuid = query.get_current_parent_uuid()
-        calculated_parent_uuid = query.get_calculated_parent_uuid()
-        current_children_uuids = set(query.get_current_children_uuids())
-        calculated_children_uuids = set(query.get_calculated_children_uuids())
+
+        ip_node_uuid = data.ip_node_uuid
+        current_parent_uuid = data.current_parent_uuid
+        calculated_parent_uuid = data.calculated_parent_uuid
+        current_children_uuids = set(data.current_children_uuids)
+        calculated_children_uuids = set(data.calculated_children_uuids)
 
         all_uuids: set[str] = set()
         all_uuids = (all_uuids | {ip_node_uuid}) if ip_node_uuid else all_uuids

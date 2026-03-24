@@ -99,14 +99,21 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step01(self, schema_car_base, schema_person_base, schema_manufacturer_base) -> dict[str, Any]:
+    def schema_step01(
+        self,
+        schema_car_base: dict[str, Any],
+        schema_person_base: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_manufacturer_base],
         }
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step01: dict[str, Any]
+    ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_step01)
 
         john = await Node.init(schema=PERSON_KIND, db=db)
@@ -170,13 +177,16 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_02_car_uniqueness_constraint(self, schema_car_base) -> dict[str, Any]:
+    def schema_02_car_uniqueness_constraint(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         schema_car_base["uniqueness_constraints"] = [["owner", "color__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
     def schema_02_uniqueness_constraint(
-        self, schema_person_base, schema_02_car_uniqueness_constraint, schema_manufacturer_base
+        self,
+        schema_person_base: dict[str, Any],
+        schema_02_car_uniqueness_constraint: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
@@ -184,27 +194,30 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_car_uniqueness_constraint(self, schema_car_base) -> dict[str, Any]:
+    def schema_03_car_uniqueness_constraint(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         schema_car_base["uniqueness_constraints"] = [["owner", "nbr_seats__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
     def schema_03_uniqueness_constraint(
-        self, schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base
+        self,
+        schema_person_base: dict[str, Any],
+        schema_03_car_uniqueness_constraint: dict[str, Any],
+        schema_manufacturer_base: dict[str, Any],
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
         assert len(persons) == 2
         assert len(cars) == 3
 
     async def test_step_02_add_node_success(
-        self, client: InfrahubClient, initial_dataset, schema_02_uniqueness_constraint
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_02_uniqueness_constraint: dict[str, Any]
     ) -> None:
         response = await client.schema.load(schemas=[schema_02_uniqueness_constraint])
         assert not response.errors
@@ -227,7 +240,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         assert retrieved_car.manufacturer.id == initial_dataset["honda"]
 
     async def test_step_02_add_node_failure(
-        self, client: InfrahubClient, initial_dataset, schema_02_uniqueness_constraint
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_02_uniqueness_constraint: dict[str, Any]
     ) -> None:
         john_person = await client.get(kind=PERSON_KIND, id=initial_dataset["john"])
         renault_manufacturer = await client.get(kind=MANUFACTURER_KIND, id=initial_dataset["renault"])
@@ -246,7 +259,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         assert "owner-color" in exc.value.message
 
     async def test_step_03_add_node_success(
-        self, client: InfrahubClient, initial_dataset, schema_03_uniqueness_constraint
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_03_uniqueness_constraint: dict[str, Any]
     ) -> None:
         response = await client.schema.load(schemas=[schema_03_uniqueness_constraint])
         assert not response.errors
@@ -271,7 +284,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         assert retrieved_car.manufacturer.id == initial_dataset["honda"]
 
     async def test_step_03_add_node_failure(
-        self, client: InfrahubClient, initial_dataset, schema_03_uniqueness_constraint
+        self, client: InfrahubClient, initial_dataset: dict[str, str], schema_03_uniqueness_constraint: dict[str, Any]
     ) -> None:
         john_person = await client.get(kind=PERSON_KIND, id=initial_dataset["john"])
         renault_manufacturer = await client.get(kind=MANUFACTURER_KIND, id=initial_dataset["renault"])
@@ -289,7 +302,9 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
         assert "owner-nbr_seats" in exc.value.message
 
-    async def test_create_repository_with_slash_failure(self, db: InfrahubDatabase, initial_dataset) -> None:
+    async def test_create_repository_with_slash_failure(
+        self, db: InfrahubDatabase, initial_dataset: dict[str, str]
+    ) -> None:
         repo = await Node.init(schema="CoreRepository", db=db)
         with pytest.raises(
             ValidationError, match=re.escape("repo/name must conform with the regex: '^[^/]*$' at name")

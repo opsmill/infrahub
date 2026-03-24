@@ -4,6 +4,7 @@ title: Configure selective branch synchronization
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
 
 # Configure selective branch synchronization
 
@@ -41,84 +42,33 @@ See the [Regular expression patterns](../topics/branch-synchronization.mdx#regul
 
 You can configure selective branch synchronization using either a configuration file or environment variables.
 
-<Tabs>
-<TabItem value="config-file" label="Configuration file" default>
+:::important
 
-Add the `sync_branch_names` setting to your `infrahub.toml` configuration file:
+The configuration process will require a restart of the Infrahub server and depends on your deployment method.
 
-```toml
-[git]
-repositories_directory = "/opt/infrahub/git"
-sync_branch_names = [
-  "^infra/.*$",
-  "^feature/infrahub-.*$"
-]
-```
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](./configuration-changes.mdx).
 
-Where to find the configuration file:
-
-- Default location: `/opt/infrahub/infrahub.toml`
-- Development installations may use a different path
-- Check your deployment documentation for the correct location
-
-</TabItem>
-<TabItem value="env-var" label="Environment variable">
-
-Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable:
+Essentially you will need to set the following variable to the desired value:
 
 ```shell
-export INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES='["^infra/.*$","^feature/infrahub-.*$"]'
+INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["<regex-pattern-1>","<regex-pattern-2>",...]
 ```
 
-For Docker deployments, add to your `docker-compose.yml` file:
+So in our case, we will set:
 
-```yaml
-services:
-  infrahub-server:
-    environment:
-      - INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["^infra/.*$","^feature/infrahub-.*$"]
+```shell
+INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["^infra/.*$","^feature/infrahub-.*$"]
 ```
-
-For Kubernetes deployments, add to your deployment configuration:
-
-```yaml
-env:
-  - name: INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES
-    value: '["^infra/.*$","^feature/infrahub-.*$"]'
-```
-
-</TabItem>
-</Tabs>
-
-:::warning Environment variable precedence
-
-Environment variables take precedence over configuration file settings. If both are defined, the environment variable value will be used.
 
 :::
 
-## Step 3: Start or restart Infrahub
+<ReferenceLink title="How to configure Infrahub" url="./configuration-changes" openInNewTab />
 
-If Infrahub is already running, restart the services to apply the configuration changes. If this is your first time starting Infrahub, the configuration will be applied automatically.
+:::success Validation
+After setting up those variables, branch synchronization should now follow the defined rules.
+:::
 
-**For Docker deployments:**
-
-```shell
-docker-compose restart infrahub-server
-```
-
-**For Kubernetes deployments:**
-
-```shell
-kubectl rollout restart deployment/infrahub-server
-```
-
-**For systemd-managed installations:**
-
-```shell
-sudo systemctl restart infrahub
-```
-
-## Step 4: Verify the configuration
+## Step 3: Verify the configuration
 
 To verify that the selective synchronization rules are working correctly, you'll need a Git repository connected to Infrahub. If you haven't connected a repository yet, see [How to connect external Git repositories](./repository.mdx).
 

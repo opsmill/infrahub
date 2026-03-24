@@ -3,9 +3,9 @@ import { useState } from "react";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 
+import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
 
 export interface AccountTokenDeleteActionProps extends Omit<ButtonProps, "onClick"> {
@@ -36,10 +36,10 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
 
       {tokenToDelete && (
         <ModalDeleteObject
-          open
+          isOpen
           label={token.name}
           rowToDelete={tokenToDelete}
-          close={handleClose}
+          onOpenChange={handleClose}
           onDelete={handleDelete}
         />
       )}

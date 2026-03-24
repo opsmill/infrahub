@@ -25,14 +25,19 @@ Proposed changes address several crucial needs in infrastructure management:
 - **Knowledge sharing**: Create opportunities for team members to learn from each other's changes.
 - **Continuous integration**: Ensure that changes meet quality standards through automated validation checks.
 
+![Proposed change overview showing state, branches, reviewers, and action buttons](../media/topics/proposed_change/pc_tab_overview.png)
+
 ## Multi-dimensional diffing
 
 A proposed change in Infrahub offers a more sophisticated approach by integrating both data-level and code-level differences in a unified interface:
 
 - **Data differences**: See precisely what objects were added, modified, or deleted, along with the specific attribute changes.
 - **Schema differences**: Identify changes to the underlying data models that define your infrastructure.
-- **File differences**: Track modifications to implementation files like transforms, generators, and templates.
+- **File differences**: Track modifications to implementation files like Transformations, generators, and templates.
+- **File differences**: Track modifications to implementation files like transforms, Generators, and templates.
 - **Artifact differences**: Compare the [artifacts](artifact) generated to understand output changes.
+
+![Data tab showing differences between branches](../media/topics/proposed_change/pc_tab_data.png)
 
 This multi-dimensional diffing provides a "single pane of glass" view, enabling reviewers to fully understand the scope and impact of changes before approval. This comprehensive visibility is especially valuable for complex infrastructure changes.
 
@@ -53,6 +58,8 @@ Infrahub runs several types of automated validations during the review process:
 - **Git repository integration**: Displays merge conflicts for connected Git repositories, ensuring alignment between infrastructure code and configuration.
 - **Schema validation**: Verifies potential changes made to the schema.
 
+![Checks tab showing all validation check types](../media/topics/proposed_change/pc_tab_checks.png)
+
 ### Custom checks
 
 Organizations can extend the validation framework with custom checks to enforce specific business rules and operational constraints.
@@ -61,15 +68,15 @@ Learn more about [checks](check) and how to implement custom validation logic.
 
 ### Artifact generation
 
-Infrahub will automatically run transformations and generate artifacts as part of the proposed change workflow.
+Infrahub will automatically run Transformations and generate artifacts as part of the proposed change workflow.
 
-Learn more about [transformations](transformation) and [artifacts](artifact).
+Learn more about [Transformations](transformation) and [artifacts](artifact).
 
 ### Generator integration
 
-Infrahub will automatically run generators as part of the proposed change workflow.
+Infrahub will automatically run Generators as part of the proposed change workflow.
 
-Learn more about [generators](generator).
+Learn more about [Generators](generator).
 
 ## Conflict management and resolution
 
@@ -98,6 +105,8 @@ To resolve conflicts:
 2. For each conflict, choose which branch's version to keep
 3. Apply the resolution in the change checks section
 4. Re-run validation to confirm all conflicts have been addressed
+
+![Conflict resolution interface showing branch selection](../media/topics/proposed_change/pc_conflict_resolution.png)
 
 This structured conflict management ensures that merges maintain data integrity and prevent unintended overwrites of important changes, while providing a clear audit trail of resolution decisions.
 
@@ -135,6 +144,8 @@ Multiple reviewers can be assigned to a given proposed change. During the review
 - **Inline comments**: Reviewers can comment directly on specific elements of the changes, creating focused discussions about particular modifications.
 - **General feedback**: Team members can provide overall commentary on the proposed change.
 - **Threaded discussions**: Comments support threaded replies, enabling detailed conversations about implementation choices.
+
+![Comments and discussion on proposed changes](../media/topics/proposed_change/pc_comments.png)
 
 This collaborative environment promotes knowledge sharing and improves the overall quality of infrastructure changes through peer review.
 
@@ -184,7 +195,7 @@ The proposed change functionality interconnects with several other key concepts 
 - [Schema](schema): Learn about the data models that define your infrastructure objects and are subject to review in proposed changes
 - [Artifacts](artifact): Explore how proposed changes affect the generated outputs from your infrastructure data
 - [Checks](check): Discover how validation checks ensure the quality and compliance of proposed changes
-- [Transformations](transformation): Understand how data transformations are managed and reviewed within proposed changes
+- [Transformations](transformation): Understand how Transformations are managed and reviewed within proposed changes
 - [Generators](generator): Learn about the code generation process that can be triggered by changes in proposed changes
 - [Permissions and roles](permissions-roles): Understand the access controls that govern who can create, review, and merge proposed changes
 - [Change Management Workflow Blog Post](https://opsmill.com/blog/infrastructure-change-management-workflow/)

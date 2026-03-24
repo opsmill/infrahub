@@ -10,10 +10,11 @@ description: Configuration options for Infrahub
 
 The Infrahub containers have a number of environmental variables available at runtime to affect their behavior.
 
-Here are a few common methods of setting environmental variables:
+Here are a few common methods of setting configuration:
 
 - Exporting in a shell, example: `export INFRAHUB_ADDRESS="http://localhost:8000"`
 - Using a [`.env` file](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/#env-file)
+- Using a `.toml` configuration file (setting names use lowercase with underscores, e.g., `address = "http://localhost:8000"`)
 - Using [direnv](https://direnv.net/)
 
 :::note

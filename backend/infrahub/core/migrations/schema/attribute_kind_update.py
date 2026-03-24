@@ -5,11 +5,10 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
-from ..shared import AttributeSchemaMigration, MigrationResult
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -26,6 +25,11 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
         self.params["attr_name"] = self.migration.previous_attribute_schema.name
+        self.params["user_id"] = self.user_id
+
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+
         new_attr_value_labels = "AttributeValue"
         if needs_index:
             new_attr_value_labels += ":AttributeValueIndexed"
@@ -34,7 +38,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
 // ------------
 // start with all the Attribute vertices we might care about
 // ------------
-MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -70,7 +74,7 @@ CALL (av_is_default, av_value) {
 // ------------
 WITH 1 AS one
 LIMIT 1
-MATCH (n:%(schema_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -87,7 +91,6 @@ CALL (n, attr) {
     WHERE is_active AND is_indexed <> $needs_index
     RETURN has_value_e, av
 }
-
 
 // ------------
 // create and update the HAS_VALUE edges
@@ -109,6 +112,7 @@ CALL (attr, has_value_e, av) {
     SET new_has_value_e.branch = $branch
     SET new_has_value_e.branch_level = $branch_level
     SET new_has_value_e.from = $at
+    SET new_has_value_e.from_user_id = $user_id
     SET new_has_value_e.to = NULL
 
     // ------------
@@ -123,6 +127,7 @@ CALL (attr, has_value_e, av) {
     SET deleted_has_value_e.branch = $branch
     SET deleted_has_value_e.branch_level = $branch_level
     SET deleted_has_value_e.from = $at
+    SET deleted_has_value_e.from_user_id = $user_id
     SET deleted_has_value_e.to = NULL
 }
 
@@ -133,10 +138,22 @@ CALL (attr, has_value_e, av) {
 CALL (has_value_e) {
     WITH has_value_e
     WHERE has_value_e.branch = $branch
-    SET has_value_e.to = $at
+    SET has_value_e.to = $at, has_value_e.to_user_id = $user_id
+}
+
+// ------------
+// Set metadata on Attribute and Node vertices if on default/global branch
+// ------------
+CALL (attr, n) {
+    WITH attr, n
+    WHERE $set_metadata
+    SET attr.updated_at = $at, attr.updated_by = $user_id
+    SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
-            "schema_kind": self.migration.previous_schema.kind,
+            "schema_kinds": (
+                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
+            ),
             "branch_filter": branch_filter,
             "new_attr_value_labels": new_attr_value_labels,
         }
@@ -149,9 +166,8 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
 
     async def execute(
         self,
-        db: InfrahubDatabase,
+        migration_input: MigrationInput,
         branch: Branch,
-        at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
         is_indexed_previous = is_large_attribute_type(self.previous_attribute_schema.kind)
@@ -159,4 +175,4 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
         if is_indexed_previous is is_indexed_new:
             return MigrationResult()
 
-        return await super().execute(db=db, branch=branch, at=at, queries=queries)
+        return await super().execute(migration_input=migration_input, branch=branch, queries=queries)

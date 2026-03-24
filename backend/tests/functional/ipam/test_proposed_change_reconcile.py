@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -22,23 +21,21 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 class TestProposedChangeReconcile(TestIpamReconcileBase):
     @pytest.fixture(scope="class", autouse=True)
-    def enable_broker_settings(self) -> None:
-        config.SETTINGS.broker.enable = True
-
-    @pytest.fixture(scope="class", autouse=True)
     def git_repos_dir(self, git_repos_source_dir_module_scope: Path) -> None: ...
 
     @pytest.fixture(scope="class")
-    async def branch_1(self, db: InfrahubDatabase):
+    async def branch_1(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="new_address")
 
     @pytest.fixture(scope="class")
-    async def new_address_1(self, branch_1, initial_dataset, db: InfrahubDatabase):
+    async def new_address_1(self, branch_1: Branch, initial_dataset: dict[str, Node], db: InfrahubDatabase) -> Node:
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch_1)
         new_address = await Node.init(schema=address_schema, db=db, branch=branch_1)
         await new_address.new(db=db, address="10.10.0.2", ip_namespace=initial_dataset["ns1"].id)
@@ -46,17 +43,17 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         return new_address
 
     @pytest.fixture(scope="class")
-    async def branch_2(self, db: InfrahubDatabase):
+    async def branch_2(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="delete_prefix")
 
     async def test_step01_add_address(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
-        branch_1,
-        new_address_1,
-        service,
+        branch_1: Branch,
+        new_address_1: Node,
+        service: InfrahubServices,
     ) -> None:
         await service.component.refresh_heartbeat()
         proposed_change_create = await client.create(
@@ -81,10 +78,10 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
     async def test_step02_add_delete_prefix(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
-        branch_2,
-        new_address_1,
+        branch_2: Branch,
+        new_address_1: Node,
     ) -> None:
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,

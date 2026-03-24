@@ -3,6 +3,7 @@ title: How to implement a change approval workflow
 ---
 
 import EnterpriseBadge from '../../src/components/EnterpriseBadge';
+import ReferenceLink from "../../src/components/Card";
 
 This guide walks you through implementing a change approval workflow in Infrahub. By the end, you'll have a structured process ensuring all infrastructure changes are properly reviewed and approved before being merged into production, enhancing your governance and safety practices.
 
@@ -136,44 +137,28 @@ Now we'll configure Infrahub's change policy to enforce our approval workflow in
 2. Automatically revoke approvals if changes are made after approval
 
 :::important
+
 The configuration process will require a restart of the Infrahub server and depends on your deployment method.
 
-Essentially you will need to set the following environment variables to the desired values:
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](./configuration-changes.mdx).
+
+Essentially you will need to set the following variables to the desired values:
 
 ```shell
 INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS=<number-of-approvals>
 INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS=<true|false>
 ```
 
-Then restart the Infrahub stack to apply the changes.
-
-:::
-
-<details>
-   <summary><b>Using Docker Compose</b></summary>
-1. Set the environment variables:
+So in our case, we will set:
 
 ```shell
-export INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS=1
-export INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS=true
-```
-
-2. Rebuild your Docker containers:
-
-```shell
-docker compose up -d --force-recreate
-```
-
-:::success Validation
-You should see the following in Infrahub environment variables:
-
-```shell title="❯ docker exec infrahub-server-1 env | grep INFRAHUB_POLICY"
-INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS=true
 INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS=1
+INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS=true
 ```
 
 :::
-</details>
+
+<ReferenceLink title="How to configure Infrahub" url="./configuration-changes" openInNewTab />
 
 :::success Validation
 After setting up those environment variables, proposed changes should now follow the defined approval logic.

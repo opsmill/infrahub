@@ -4,7 +4,6 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
@@ -14,12 +13,13 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
@@ -32,13 +32,13 @@ interface AccountFormProps {
 }
 
 export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_OBJECT);
   const createObject = useCreateObjectMutation();
 
   const memberDefaultValue = getRelationshipDefaultValue({
-    relationshipData: currentObject?.member_of_groups?.value,
+    objectData: { member_of_groups: currentObject?.member_of_groups?.value },
     relationshipName: "member_of_groups",
   });
 
@@ -74,7 +74,7 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
             })
           ),
           context: {
-            branch: branch?.name,
+            branch: currentBranch.name,
             date,
           },
         });

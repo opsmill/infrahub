@@ -12,7 +12,21 @@ core_profile_schema_definition = GenericSchema(
     default_filter="profile_name__value",
     uniqueness_constraints=[["profile_name__value"]],
     attributes=[
-        Attr(name="profile_name", kind="Text", min_length=3, max_length=32, unique=True, optional=False),
-        Attr(name="profile_priority", kind="Number", default_value=1000, optional=True),
+        Attr(
+            name="profile_name",
+            kind="Text",
+            description="Unique name identifier for the profile",
+            min_length=3,
+            max_length=32,
+            unique=True,
+            optional=False,
+        ),
+        Attr(
+            name="profile_priority",
+            kind="Number",
+            description="Priority level for profile application (lower numbers have higher priority)",
+            default_value=1000,
+            optional=True,
+        ),
     ],
 )

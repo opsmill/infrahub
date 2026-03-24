@@ -16,9 +16,9 @@ from infrahub_sdk.types import Order
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.order import OrderModel
 from infrahub.database import InfrahubDatabase
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
-from infrahub.graphql.models import OrderModel
 
 from .. import config
 from .models import RepositoryBranchInfo, RepositoryData

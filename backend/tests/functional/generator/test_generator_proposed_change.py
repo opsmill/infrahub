@@ -55,7 +55,7 @@ class TestMutationGenerator(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture,
+        prefect_test_fixture: None,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
@@ -111,7 +111,7 @@ class TestMutationGenerator(TestInfrahubApp):
             client=client, branch=branch.name, proposed_change_id=proposed_change.id
         )
 
-        tags = await client.all(kind="BuiltinTag", branch=branch.name)
+        tags = await client.all(kind="TestingTag", branch=branch.name)
         assert "JOHN__JESKO" not in [tag.name.value for tag in tags]
         assert "John..Jesko" in [tag.name.value for tag in tags]
         assert "john-jesko" in [tag.name.value for tag in tags]

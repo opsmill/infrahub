@@ -1,12 +1,11 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-import type { SearchQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-export const SEARCH = gql`
-  query Search($search: String!) {
-    InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true) {
+const SEARCH = graphql(`
+  query Search($search: String!, $caseSensitive: Boolean) {
+    InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true, case_sensitive: $caseSensitive) {
       count
       edges {
         node {
@@ -16,16 +15,22 @@ export const SEARCH = gql`
       }
     }
   }
-`;
+`);
 
 export interface SearchAnywhereFromApiParams extends ContextParams {
   search: string;
+  caseSensitive?: boolean;
 }
 
-export function searchAnywhereFromApi({ search, branchName, atDate }: SearchAnywhereFromApiParams) {
-  return graphqlClient.query<SearchQuery>({
+export function searchAnywhereFromApi({
+  search,
+  branchName,
+  atDate,
+  caseSensitive,
+}: SearchAnywhereFromApiParams) {
+  return graphqlClient.query({
     query: SEARCH,
-    variables: { search },
+    variables: { search, caseSensitive },
     context: {
       branch: branchName,
       date: atDate,

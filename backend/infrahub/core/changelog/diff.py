@@ -116,13 +116,6 @@ class DiffChangelogCollector:
                             value_current=self._convert_string_boolean_value(value=attr_property.new_value),
                             value_previous=self._convert_string_boolean_value(value=attr_property.previous_value),
                         )
-                case DatabaseEdgeType.IS_VISIBLE:
-                    if _keep_branch_update(diff_property=attr_property):
-                        changelog_attribute.add_property(
-                            name="is_visible",
-                            value_current=self._convert_string_boolean_value(value=attr_property.new_value),
-                            value_previous=self._convert_string_boolean_value(value=attr_property.previous_value),
-                        )
                 case DatabaseEdgeType.HAS_SOURCE:
                     if _keep_branch_update(diff_property=attr_property):
                         changelog_attribute.add_property(
@@ -176,12 +169,6 @@ class DiffChangelogCollector:
                             value_current=self._convert_string_boolean_value(value=rel_prop.new_value),
                             value_previous=self._convert_string_boolean_value(value=rel_prop.previous_value),
                         )
-                    case DatabaseEdgeType.IS_VISIBLE:
-                        changelog_rel.add_property(
-                            name="is_visible",
-                            value_current=self._convert_string_boolean_value(value=rel_prop.new_value),
-                            value_previous=self._convert_string_boolean_value(value=rel_prop.previous_value),
-                        )
                     case DatabaseEdgeType.HAS_OWNER:
                         changelog_rel.add_property(
                             name="owner",
@@ -198,7 +185,7 @@ class DiffChangelogCollector:
         node.add_relationship(relationship_changelog=changelog_rel)
 
     def _convert_string_boolean_value(self, value: str | None) -> bool | None:
-        """Convert string based boolean for is_protected and is_visible."""
+        """Convert string based boolean for is_protected."""
         if value is not None:
             return str_to_bool(value)
 
@@ -218,12 +205,6 @@ class DiffChangelogCollector:
             )
             for peer_prop in peer.properties:
                 match peer_prop.property_type:
-                    case DatabaseEdgeType.IS_VISIBLE:
-                        peer_log.add_property(
-                            name="is_visible",
-                            value_current=self._convert_string_boolean_value(value=peer_prop.new_value),
-                            value_previous=self._convert_string_boolean_value(value=peer_prop.previous_value),
-                        )
                     case DatabaseEdgeType.IS_PROTECTED:
                         peer_log.add_property(
                             name="is_protected",

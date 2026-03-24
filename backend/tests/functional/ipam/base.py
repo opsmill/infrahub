@@ -14,6 +14,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.core.schema import SchemaRoot
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 class TestIpam(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def register_ipam_schema(
-        self, initialize_registry, ipam_schema: SchemaRoot, client: InfrahubClient
+        self, initialize_registry: None, ipam_schema: SchemaRoot, client: InfrahubClient
     ) -> SchemaBranch:
         # During registry initialization, default_branch might have already been loaded in db, and thus a new python
         # object corresponding to default branch would be created. Then, we can't rely on default_branch fixture here,
@@ -40,8 +41,8 @@ class TestIpamReconcileBase(TestIpam):
         self,
         db: InfrahubDatabase,
         initialize_registry: None,
-        register_ipam_schema,
-        default_branch,
+        register_ipam_schema: SchemaBranch,
+        default_branch: Branch,
     ) -> dict[str, Node]:
         # Update database state as later merging operations may trigger a refresh registry from database.
         schema_branch_main = registry.schema.get_schema_branch(name=default_branch.name)

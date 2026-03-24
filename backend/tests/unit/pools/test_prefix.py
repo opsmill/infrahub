@@ -36,12 +36,12 @@ def test_get_next_available_prefix_mixed() -> None:
 def test_get_next_available_prefix_exhausted_v4_pool() -> None:
     """Tests getting the next available prefix from an exhausted IPv4 pool."""
     pool = IPSet(["192.0.2.0/24"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="No available subnets in pool"):
         get_next_available_prefix(pool, 23, 4)
 
 
 def test_get_next_available_prefix_exhausted_v6_pool() -> None:
     """Tests getting the next available prefix from an exhausted IPv6 pool."""
     pool = IPSet(["2001:db8::/32"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="No available subnets in pool"):
         get_next_available_prefix(pool, 30, 6)

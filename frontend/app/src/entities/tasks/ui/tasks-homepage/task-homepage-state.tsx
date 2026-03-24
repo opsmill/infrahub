@@ -1,7 +1,7 @@
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
-import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
+import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage.query";
 import { TaskHomepageItem } from "@/entities/tasks/ui/tasks-homepage/task-homepage-item";
 import { TaskHomepageCardSkeleton } from "@/entities/tasks/ui/tasks-homepage/tasks-homepage-skeleton";
 

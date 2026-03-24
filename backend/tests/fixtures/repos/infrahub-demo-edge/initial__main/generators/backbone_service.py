@@ -1,9 +1,11 @@
 import logging
 
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.generator import InfrahubGenerator
+from infrahub_sdk.node import InfrahubNode
 
 
-async def find_interface(client, site_id):
+async def find_interface(client: InfrahubClient, site_id: str) -> InfrahubNode:
     # Retrieve all 'edge' router from the site
     devices = await client.filters(kind="InfraDevice", role__value="edge", site__ids=[site_id])
 

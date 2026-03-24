@@ -5,7 +5,13 @@ from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
-from infrahub.events.node_action import NodeDeletedEvent, NodeMutatedEvent, NodeUpdatedEvent, get_node_event
+from infrahub.events.node_action import (
+    NodeCreatedEvent,
+    NodeDeletedEvent,
+    NodeMutatedEvent,
+    NodeUpdatedEvent,
+    get_node_event,
+)
 from infrahub.groups.parsers import GroupNodeMutationParser
 from infrahub.worker import WORKER_IDENTITY
 
@@ -21,6 +27,7 @@ async def generate_node_mutation_events(
     context: InfrahubContext,
     request_id: str,
     action: MutationAction,
+    side_effect_nodes: list[Node] | None = None,
 ) -> list[InfrahubEvent]:
     meta = EventMeta(
         account_id=context.account.account_id,
@@ -68,6 +75,20 @@ async def generate_node_mutation_events(
             )
             events.append(update_event)
 
+    side_effect_events: list[NodeMutatedEvent] = []
+    for side_effect_node in side_effect_nodes or []:
+        if not side_effect_node.has_changelog or not side_effect_node.node_changelog.has_changes:
+            continue
+        side_effect_events.append(
+            NodeCreatedEvent(
+                kind=side_effect_node.get_kind(),
+                node_id=side_effect_node.id,
+                changelog=side_effect_node.node_changelog,
+                fields=side_effect_node.node_changelog.updated_fields,
+                meta=EventMeta.from_parent(parent=main_event),
+            )
+        )
+
     group_parser = GroupNodeMutationParser(db=db, branch=branch)
     group_events = await group_parser.group_events_from_node_actions(events=events)
 
@@ -95,4 +116,4 @@ async def generate_node_mutation_events(
                 )
             )
 
-    return events + group_events + specific_events
+    return events + side_effect_events + group_events + specific_events

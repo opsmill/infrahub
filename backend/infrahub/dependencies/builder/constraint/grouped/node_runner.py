@@ -7,6 +7,8 @@ from ..relationship_manager.peer_kind import RelationshipPeerKindConstraintDepen
 from ..relationship_manager.peer_parent import RelationshipPeerParentConstraintDependency
 from ..relationship_manager.peer_relatives import RelationshipPeerRelativesConstraintDependency
 from ..relationship_manager.profiles_kind import RelationshipProfilesKindConstraintDependency
+from ..relationship_manager.profiles_removal import RelationshipProfileRemovalConstraintDependency
+from ..relationship_manager.template_resource_pool_exclusive import TemplateResourcePoolExclusiveConstraintDependency
 
 
 class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
@@ -20,7 +22,9 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
                 RelationshipPeerKindConstraintDependency.build(context=context),
                 RelationshipCountConstraintDependency.build(context=context),
                 RelationshipProfilesKindConstraintDependency.build(context=context),
+                RelationshipProfileRemovalConstraintDependency.build(context=context),
                 RelationshipPeerParentConstraintDependency.build(context=context),
                 RelationshipPeerRelativesConstraintDependency.build(context=context),
+                TemplateResourcePoolExclusiveConstraintDependency.build(context=context),
             ],
         )

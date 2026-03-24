@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Checkbox } from "@/shared/components/aria/checkbox";
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 

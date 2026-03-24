@@ -43,7 +43,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
     name = "migration_012_rename_attr_type"
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         new_attr = AttributeInfo(
             name="account_type",
             node_kind=InfrahubKind.ACCOUNT,
@@ -83,7 +83,7 @@ class Migration012AddLabelData(NodeDuplicateQuery):
     name = "migration_012_add_labels"
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         new_node = SchemaNodeInfo(
             name="Account",
             namespace="Core",
@@ -132,7 +132,7 @@ class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(
             attribute_name="name",
             node_name="Account",
@@ -150,7 +150,7 @@ class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery)
     name = "migration_012_rename_rel_account_token_data"
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         new_rel = SchemaRelationshipInfo(
             name="account__token",
             branch_support=BranchSupportType.AGNOSTIC.value,
@@ -173,7 +173,7 @@ class Migration012RenameRelationshipRefreshTokenData(RelationshipDuplicateQuery)
     name = "migration_012_rename_rel_refresh_token_data"
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         new_rel = SchemaRelationshipInfo(
             name="account__refreshtoken",
             branch_support=BranchSupportType.AGNOSTIC.value,
@@ -196,7 +196,7 @@ class Migration012RenameRelationshipThreadData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_thread_data"
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         new_rel = SchemaRelationshipInfo(
             name="thread__account",
             branch_support=BranchSupportType.AGNOSTIC.value,
@@ -219,7 +219,7 @@ class Migration012RenameRelationshipCommentData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_comment_data"
     type = QueryType.WRITE
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         new_rel = SchemaRelationshipInfo(
             name="comment__account",
             branch_support=BranchSupportType.AGNOSTIC.value,
@@ -243,7 +243,7 @@ class Migration012DeleteOldElementsSchema(DeleteElementInSchemaQuery):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -260,7 +260,7 @@ class Migration012UpdateDisplayLabels(SchemaAttributeUpdateQuery):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -277,7 +277,7 @@ class Migration012UpdateOrderBy(SchemaAttributeUpdateQuery):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -294,7 +294,7 @@ class Migration012UpdateDefaultFilter(SchemaAttributeUpdateQuery):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(
@@ -311,7 +311,7 @@ class Migration012UpdateHFID(SchemaAttributeUpdateQuery):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.pop("branch", None)
 
         super().__init__(

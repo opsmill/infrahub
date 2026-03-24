@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class AggregatedConstraintChecker:
     def __init__(
         self, constraints: list[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Branch | None = None
-    ):
+    ) -> None:
         self.constraints = constraints
         self.db = db
         self.branch = branch

@@ -13,10 +13,13 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.git
-            pkgs.gh
-            pkgs.vale
+          buildInputs = with pkgs; [
+            git
+            gh
+            lychee
+            vale
+            stdenv.cc.cc.lib
+            nodejs_24
           ];
 
           shellHook = ''
@@ -24,8 +27,12 @@
             echo "Available tools:"
             echo "  - git: $(git --version)"
             echo "  - gh (GitHub CLI): $(gh --version | head -n1)"
+            echo "  - lychee (link checker): $(lychee --version)"
             echo "  - vale (prose linter): $(vale --version)"
           '';
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+            pkgs.stdenv.cc.cc.lib
+          ];
         };
       }
     );

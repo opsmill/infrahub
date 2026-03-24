@@ -20,7 +20,7 @@ class MigrationQuery(MigrationBaseQuery):
         self,
         migration: SchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.migration = migration
         super().__init__(**kwargs)
 
@@ -32,6 +32,6 @@ class AttributeMigrationQuery(MigrationBaseQuery):
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.migration = migration
         super().__init__(**kwargs)

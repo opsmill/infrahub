@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 from jwcrypto import jwk, jwt
-from pydantic_core import Url
+from pydantic import HttpUrl
 
 from infrahub.api.oidc import OIDCDiscoveryConfig, _get_id_token_groups
 from infrahub.services import InfrahubServices
@@ -59,7 +59,7 @@ async def test_get_id_token_groups_for_oidc_invalid_issuer() -> None:
         response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
     )
     config = deepcopy(OIDC_CONFIG)
-    config.issuer = Url("https://something-incorrect.example.com")
+    config.issuer = HttpUrl("https://something-incorrect.example.com")
 
     groups = await _get_id_token_groups(
         oidc_config=config,
@@ -144,17 +144,17 @@ class OIDCTestHelper:
 
 
 OIDC_CONFIG = OIDCDiscoveryConfig(
-    issuer=Url("https://oidc.example.com/realms/infrahub-oidc"),
-    authorization_endpoint=Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/auth"),
-    token_endpoint=Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/token"),
-    userinfo_endpoint=Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/userinfo"),
-    jwks_uri=Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/certs"),
-    revocation_endpoint=Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/revoke"),
-    registration_endpoint=Url("https://oidc.example.com/realms/infrahub-oidc/clients-registrations/openid-connect"),
-    introspection_endpoint=Url(
+    issuer=HttpUrl("https://oidc.example.com/realms/infrahub-oidc"),
+    authorization_endpoint=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/auth"),
+    token_endpoint=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/token"),
+    userinfo_endpoint=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/userinfo"),
+    jwks_uri=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/certs"),
+    revocation_endpoint=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/revoke"),
+    registration_endpoint=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/clients-registrations/openid-connect"),
+    introspection_endpoint=HttpUrl(
         "https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/token/introspect"
     ),
-    end_session_endpoint=Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/logout"),
+    end_session_endpoint=HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/logout"),
     frontchannel_logout_supported=True,
     frontchannel_logout_session_supported=True,
     grant_types_supported=["authorization_code", "implicit"],
@@ -171,9 +171,9 @@ OIDC_CONFIG = OIDCDiscoveryConfig(
     code_challenge_methods_supported=["S256"],
     tls_client_certificate_bound_access_tokens=True,
     mtls_endpoint_aliases={
-        "token_endpoint": Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/token"),
-        "revocation_endpoint": Url("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/revoke"),
-        "introspection_endpoint": Url(
+        "token_endpoint": HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/token"),
+        "revocation_endpoint": HttpUrl("https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/revoke"),
+        "introspection_endpoint": HttpUrl(
             "https://oidc.example.com/realms/infrahub-oidc/protocol/openid-connect/token/introspect"
         ),
     },

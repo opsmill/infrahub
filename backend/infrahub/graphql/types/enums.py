@@ -1,5 +1,6 @@
 from graphene import Enum
 
+from infrahub.constants.enums import OrderDirection
 from infrahub.core import constants
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.permissions import constants as permission_constants
@@ -13,3 +14,5 @@ Severity = Enum.from_enum(constants.Severity)
 BranchRelativePermissionDecision = Enum.from_enum(permission_constants.BranchRelativePermissionDecision)
 
 InfrahubBranchStatus = Enum.from_enum(BranchStatus)
+
+InfrahubOrderDirection = Enum.from_enum(OrderDirection)

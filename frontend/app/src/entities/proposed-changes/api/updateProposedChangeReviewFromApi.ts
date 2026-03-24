@@ -1,22 +1,16 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-const MUTATION = gql`
-  mutation ProposedChangeReview($id: String!, $decision: ProposedChangeApprovalDecision!) {
-    CoreProposedChangeReview(data: {
-      id: $id,
-      decision: $decision
-    }) {
+const MUTATION = graphql(`
+  mutation ProposedChangeReview($proposedChangeId: String!, $decision: ProposedChangeApprovalDecision!) {
+    CoreProposedChangeReview(data: { id: $proposedChangeId, decision: $decision }) {
       ok
     }
   }
-`;
+`);
 
-export interface UpdateProposedChangeReviewFromApiParams {
-  proposedChangeId: string;
-  decision: string;
-}
+export interface UpdateProposedChangeReviewFromApiParams extends VariablesOf<typeof MUTATION> {}
 
 export function updateProposedChangeReviewFromApi({
   proposedChangeId,
@@ -25,7 +19,7 @@ export function updateProposedChangeReviewFromApi({
   return graphqlClient.mutate({
     mutation: MUTATION,
     variables: {
-      id: proposedChangeId,
+      proposedChangeId,
       decision,
     },
   });

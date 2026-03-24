@@ -23,17 +23,17 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
-  infrahub_version = "1.4.10"
+  infrahub_version = "1.7.6"
 }
 
 ### Infrahub
 
 resource "helm_release" "infrahub_ha" {
-  depends_on = [helm_release.taskmanager_ha, helm_release.cache_ha, helm_release.messagequeue_ha, helm_release.database_ha, helm_release.objectstore_ha]
+  depends_on = [helm_release.cache_ha, helm_release.messagequeue_ha, helm_release.database_ha, helm_release.objectstore_ha, kubectl_manifest.taskmanagerdb_ha]
 
   name    = "infrahub"
   chart   = "oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise"
-  version = "3.9.4"
+  version = "4.2.4-small"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -44,12 +44,14 @@ infrahub:
   global:
     infrahubTag: ${local.infrahub_version}
   infrahubServer:
+    podLabels:
+      infrahub/service: server
     replicas: 3
     persistence:
       enabled: false
     infrahubServer:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -80,10 +82,12 @@ infrahub:
                 service: infrahub-server
             topologyKey: kubernetes.io/hostname
   infrahubTaskWorker:
+    podLabels:
+      infrahub/service: task-worker
     replicas: 3
     infrahubTaskWorker:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.${local.target_namespace}.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -121,7 +125,38 @@ infrahub:
   rabbitmq:
     enabled: false
   prefect-server:
-    enabled: false
+    server:
+      replicaCount: 3
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  infrahub/service: task-manager
+              topologyKey: kubernetes.io/hostname
+    backgroundServices:
+      messaging:
+        redis:
+          host: "redis-sentinel-proxy"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  infrahub/service: task-manager-background-svc
+              topologyKey: kubernetes.io/hostname
+    secret:
+      create: true
+      name: ""
+      username: "prefect"
+      password: "prefect"
+      host: "taskmanagerdb-rw"
+      port: "5432"
+      database: "prefect"
+    serviceAccount:
+      create: false
+    postgresql:
+      enabled: false
 EOT
   ]
 }
@@ -134,7 +169,7 @@ resource "helm_release" "database_ha_service" {
   name       = "database-service"
   chart      = "neo4j-headless-service"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.3.0"
+  version    = "2025.10.1-4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -155,7 +190,7 @@ resource "helm_release" "database_ha" {
   name       = "database-${count.index}"
   chart      = "neo4j"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.3.0"
+  version    = "2025.10.1-4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -164,6 +199,8 @@ resource "helm_release" "database_ha" {
     <<EOT
 neo4j:
   name: "infrahub"
+  labels:
+    infrahub/service: database
   minimumClusterSize: 3
   resources:
     cpu: "4"
@@ -201,8 +238,11 @@ resource "helm_release" "messagequeue_ha" {
   values = [
     <<EOT
 replicaCount: 3
+podLabels:
+  infrahub/service: message-queue
 image:
   repository: bitnamilegacy/rabbitmq
+  tag: 4.1.3-debian-12-r1
 auth:
   username: infrahub
   password: infrahub
@@ -249,83 +289,7 @@ EOT
   ]
 }
 
-#### Task manager
-
-resource "helm_release" "taskmanager_ha" {
-  depends_on = [helm_release.cache_ha, kubectl_manifest.taskmanagerdb_ha]
-
-  name       = "taskmanager"
-  chart      = "prefect-server"
-  repository = "https://prefecthq.github.io/prefect-helm"
-  version    = "2025.7.31204438"
-
-  create_namespace = true
-  namespace        = local.target_namespace
-
-  values = [
-    <<EOT
-global:
-  prefect:
-    image:
-      repository: registry.opsmill.io/opsmill/infrahub-enterprise
-      prefectTag: ${local.infrahub_version}
-server:
-  replicaCount: 3
-  command:
-    - /usr/bin/tini
-    - -g
-    - --
-  args:
-    - gunicorn
-    - -k
-    - uvicorn.workers.UvicornWorker
-    - -b
-    - 0.0.0.0:4200
-    - 'infrahub.prefect_server.app:create_infrahub_prefect()'
-  env:
-    - name: INFRAHUB_CACHE_ADDRESS
-      value: redis-sentinel-proxy
-    - name: PREFECT_UI_SERVE_BASE
-      value: /
-    - name: PREFECT__SERVER_WEBSERVER_ONLY
-      value: "true"
-    - name: PREFECT_MESSAGING_BROKER
-      value: prefect_redis.messaging
-    - name: PREFECT_MESSAGING_CACHE
-      value: prefect_redis.messaging
-    - name: PREFECT_SERVER_EVENTS_CAUSAL_ORDERING
-      value: prefect_redis.ordering
-    - name: PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE
-      value: prefect_redis.lease_storage
-    - name: PREFECT_REDIS_MESSAGING_HOST
-      value: redis-sentinel-proxy
-    - name: PREFECT_REDIS_MESSAGING_DB
-      value: "1"
-    - name: PREFECT_API_DATABASE_MIGRATE_ON_START
-      value: "false"
-    - name: PREFECT_API_BLOCKS_REGISTER_ON_START
-      value: "false"
-  podSecurityContext:
-    runAsUser: 1000
-    fsGroup: 1000
-  containerSecurityContext:
-    runAsUser: 1000
-    readOnlyRootFilesystem: false
-secret:
-  create: true
-  name: ""
-  username: "prefect"
-  password: "prefect"
-  host: "taskmanagerdb-rw"
-  port: "5432"
-  database: "prefect"
-serviceAccount:
-  create: false
-postgresql:
-  enabled: false
-EOT
-  ]
-}
+#### Task manager database
 
 resource "kubernetes_service_v1" "redis_sentinel_proxy_svc" {
   depends_on = [helm_release.cache_ha]
@@ -397,7 +361,7 @@ resource "kubernetes_deployment_v1" "redis_sentinel_proxy_deployment" {
             "-listen",
             ":6379",
             "-sentinel",
-            "cache:26379",
+            "cache-redis:26379",
           ]
           port {
             container_port = 6379
@@ -420,19 +384,22 @@ resource "helm_release" "cache_ha" {
 
   values = [
     <<EOT
-nameOverride: cache
+nameOverride: redis
 image:
   repository: bitnamilegacy/redis
+  tag: 8.2.1-debian-12-r0
 architecture: replication
 auth:
   enabled: false
 master:
+  podLabels:
+    infrahub/service: cache
   podAntiAffinityPreset: hard
   persistence:
     enabled: true
   service:
     ports:
-      redis: 6379
+      redis: 26379
 replicas:
   replicaCount: 3
   podAntiAffinityPreset: hard
@@ -440,6 +407,7 @@ sentinel:
   enabled: true
   image:
     repository: bitnamilegacy/redis-sentinel
+    tag: 8.2.1-debian-12-r0
 EOT
   ]
 }
@@ -453,8 +421,13 @@ kind: Cluster
 metadata:
   name: taskmanagerdb
   namespace: ${local.target_namespace}
+  labels:
+    infrahub/service: task-manager-db
 spec:
   instances: 3
+  inheritedMetadata:
+    labels:
+      infrahub/service: task-manager-db
   storage:
     size: 10Gi
   postgresql:
@@ -483,6 +456,8 @@ resource "kubernetes_secret_v1" "db_secret" {
 }
 
 resource "kubernetes_secret_v1" "neo4j_secret" {
+  depends_on = [helm_release.cache_ha] # wait for namespace creation
+
   metadata {
     name      = "neo4j-user"
     namespace = local.target_namespace

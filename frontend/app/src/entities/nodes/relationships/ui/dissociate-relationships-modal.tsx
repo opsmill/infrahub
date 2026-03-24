@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
@@ -10,8 +10,8 @@ export interface DissociateRelationshipModalProps {
   relationshipIds: string[];
   relationshipLabel: string;
   relationshipName: string;
-  open: boolean;
-  setOpen: (b: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function DissociateRelationshipsModal({
@@ -19,8 +19,8 @@ export function DissociateRelationshipsModal({
   relationshipLabel,
   relationshipName,
   relationshipIds,
-  open,
-  setOpen,
+  isOpen,
+  onOpenChange,
 }: DissociateRelationshipModalProps) {
   const { mutate, isPending } = useRemoveRelationships();
 
@@ -39,7 +39,7 @@ export function DissociateRelationshipsModal({
               message={`Association with ${relationshipLabel} removed`}
             />
           );
-          setOpen(false);
+          onOpenChange(false);
         },
       }
     );
@@ -60,9 +60,8 @@ export function DissociateRelationshipsModal({
           </ul>
         </>
       }
-      open={open}
-      setOpen={setOpen}
-      onCancel={() => setOpen(false)}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       onDelete={handleRemoveRelationships}
       isLoading={isPending}
     />

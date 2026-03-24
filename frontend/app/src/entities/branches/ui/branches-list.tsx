@@ -1,45 +1,66 @@
-import { ListBox } from "react-aria-components";
-
-import ErrorScreen from "@/shared/components/errors/error-screen";
+import { queryClient } from "@/shared/api/rest/client";
+import { Col, Row } from "@/shared/components/container";
+import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
 import Content from "@/shared/components/layout/content";
-import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import useFilters from "@/shared/hooks/useFilters";
 import { useTitle } from "@/shared/hooks/useTitle";
-import { sortByName } from "@/shared/utils/common";
 
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
-import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
+import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import { useGetBranchesCount } from "@/entities/branches/domain/get-branches-count.query";
+import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
+import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
+import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
+
+function BranchesListHeader() {
+  const [filters] = useFilters();
+  const { data: count, isPending, isRefetching, isError } = useGetBranchesCount(filters);
+
+  const refetchBranches = async () => {
+    await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+  };
+
+  return (
+    <Content.CardTitle
+      title="Branches"
+      badgeContent={isPending ? "..." : isError ? "-" : count}
+      isReloadLoading={isRefetching}
+      reload={refetchBranches}
+    />
+  );
+}
+
+function BranchesListToolbar() {
+  const [filters, setFilters] = useFilters();
+
+  return (
+    <Col className="gap-0">
+      <BranchesListHeader />
+
+      <Row className="items-center gap-2 px-3">
+        <div className="max-w-56 py-3">
+          <FilterSearchInput placeholder="Search branches" />
+        </div>
+        <ActiveFilterTags
+          filters={filters}
+          setFilters={setFilters}
+          fieldSchemas={BRANCH_FIELD_SCHEMAS}
+        />
+      </Row>
+    </Col>
+  );
+}
+
+function BranchesListContent() {
+  return <BranchesTable />;
+}
 
 export default function BranchesList() {
   useTitle("Branches list");
-  const { data: storedBranches, refetch, isPending, error, isRefetching } = useGetBranches();
-
-  if (isPending) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
-  }
-
-  if (error) {
-    return <ErrorScreen message={error.message} />;
-  }
-
-  const sortedBranches = sortByName(storedBranches.filter((b) => b.name !== "main"));
-  const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   return (
     <Content.Card>
-      <Content.CardTitle
-        title="Branches"
-        badgeContent={branches.length}
-        isReloadLoading={isRefetching}
-        reload={() => refetch()}
-      />
-
-      <ListBox
-        aria-label="Branches list"
-        items={branches}
-        className="m-2 flex flex-col divide-y rounded-lg border border-gray-200"
-      >
-        {(branch) => <BranchListItem branch={branch} />}
-      </ListBox>
+      <BranchesListToolbar />
+      <BranchesListContent />
     </Content.Card>
   );
 }

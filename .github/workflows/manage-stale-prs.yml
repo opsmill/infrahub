@@ -1,0 +1,40 @@
+---
+# yamllint disable rule:truthy
+name: "Manage Stale Pull Requests"
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    if: github.repository == 'opsmill/infrahub'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          # Only manage PRs, not issues
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+
+          # PR configuration
+          days-before-pr-stale: 14
+          days-before-pr-close: -1  # Never close
+
+          stale-pr-label: "stale"
+          stale-pr-message: |
+            This PR has been inactive for 2 weeks and has been marked as stale.
+
+            If you're still working on this, please:
+            - Push new commits, or
+            - Leave a comment to indicate this PR is still active
+
+            The stale label will be removed automatically when there's new activity.
+
+          # Remove stale label on activity
+          remove-stale-when-updated: true

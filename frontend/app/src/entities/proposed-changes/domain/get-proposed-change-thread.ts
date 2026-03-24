@@ -7,20 +7,18 @@ import {
 
 export type GetProposedChangeThreadParams = ProposedChangeThreadFromApiParams;
 
-export type GetProposedChangeThread = (params: GetProposedChangeThreadParams) => Promise<any>;
-
-export const getProposedChangeThread: GetProposedChangeThread = async (params) => {
+export const getProposedChangeThread = async (params: GetProposedChangeThreadParams) => {
   const { data, errors } = await getProposedChangeThreadFromApi(params);
 
   if (errors) {
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const edges = data?.[PROPOSED_CHANGES_THREAD_OBJECT]?.edges;
+  const node = data?.[PROPOSED_CHANGES_THREAD_OBJECT]?.edges?.[0]?.node;
 
-  if (!edges?.length) {
+  if (!node) {
     throw new Error("No thread data found");
   }
 
-  return edges[0].node;
+  return node;
 };

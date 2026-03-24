@@ -40,11 +40,18 @@ RESERVED_ATTR_REL_NAMES = [
     "process_pools",
 ]
 
+RESERVED_ATTR_REL_HIERARCHICAL_NAMES = [
+    "ancestors",
+    "descendants",
+]
+
 RESERVED_ATTR_GEN_NAMES = ["type"]
 
 NULL_VALUE = "NULL"
 
 EVENT_NAMESPACE = "infrahub"
+
+SYSTEM_USER_ID = "__system__"
 
 
 class EventType(InfrahubStringEnum):
@@ -359,10 +366,25 @@ class AttributeDBNodeType(Flag):
     IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
+class MetadataOptions(Flag):
+    NONE = 0
+    SOURCE = auto()
+    OWNER = auto()
+    LINKED_NODES = SOURCE | OWNER
+    IS_PROTECTED = auto()
+    CREATED_BY = auto()
+    CREATED_AT = auto()
+    UPDATED_BY = auto()
+    UPDATED_AT = auto()
+    TIMESTAMPS = CREATED_AT | UPDATED_AT
+    USERS = CREATED_BY | UPDATED_BY
+    USER_TIMESTAMPS = TIMESTAMPS | USERS
+
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
-    # "Builtin",
+    "Builtin",
     "Core",
     "Deprecated",
     "Diff",
@@ -383,12 +405,21 @@ DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_NAME_MAX_LENGTH = 32
 DEFAULT_LABEL_MAX_LENGTH = 64
 DEFAULT_KIND_MIN_LENGTH = 3
-DEFAULT_KIND_MAX_LENGTH = 32
+DEFAULT_KIND_MAX_LENGTH = 64
 NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
 OBJECT_TEMPLATE_NAME_ATTR = "template_name"
+# Kinds that cannot be auto-generated as subtemplates. When used as COMPONENT/PARENT peers,
+# the template relationship points to the original node instead of a template version.
+SUBTEMPLATE_EXCLUDED_KINDS = [
+    InfrahubKind.NUMBERPOOL,
+    InfrahubKind.IPADDRESSPOOL,
+    InfrahubKind.IPPREFIXPOOL,
+    InfrahubKind.RESOURCEPOOL,
+]
 PROFILE_NODE_RELATIONSHIP_IDENTIFIER = "node__profile"
 PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER = "template__profile"
+PROFILES_RELATIONSHIP_NAME = "profiles"

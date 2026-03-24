@@ -1,3 +1,5 @@
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
+import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -9,8 +11,9 @@ import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled"
 import { isRequired } from "@/shared/components/form/utils/validation";
 
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { NodeFieldsWithMetadata, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
 
@@ -40,10 +43,11 @@ interface GetFormFieldFromRelationshipParams {
   isFilterForm: boolean;
   isBulkUpdate?: boolean;
   relationshipSchema: RelationshipSchema;
-  relationshipData?: RelationshipType;
+  objectData?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
+  profiles?: Array<ProfileData>;
   schema: ModelSchema;
-  parentSchema: ModelSchema | null;
+  parentSchema?: ModelSchema | null;
   parentData?: NodeObject | null;
 }
 
@@ -51,8 +55,9 @@ export const getFormFieldFromRelationship = ({
   type,
   name,
   relationshipSchema,
-  relationshipData,
+  objectData,
   objectTemplate,
+  profiles,
   isFilterForm = false,
   isBulkUpdate,
   schema,
@@ -62,17 +67,34 @@ export const getFormFieldFromRelationship = ({
 }: GetFormFieldFromRelationshipParams): DynamicRelationshipFieldProps => {
   const label = getFieldLabel({ type, relationshipSchema });
 
+  const relationshipData = objectData?.[relationshipSchema.name] as NodeRelationship | undefined;
+
   const relationshipTemplate = objectTemplate?.[relationshipSchema.name] as
     | NodeRelationship
     | undefined;
+
+  const { schema: peerSchema } = getSchema(relationshipSchema.peer);
+  const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
+
+  const fromPoolName = `${relationshipSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
+  const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
 
   return {
     type: type ?? "relationship",
     name: name ?? relationshipSchema.name,
     label,
+    pool:
+      poolKind && peerSchema
+        ? {
+            kind: poolKind,
+            defaultAllocatedObjectKind: peerSchema.kind as string,
+            fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
+          }
+        : undefined,
     defaultValue: getRelationshipDefaultValue({
-      relationshipData,
+      objectData,
       objectTemplate,
+      profiles,
       isFilterForm,
       relationshipName: relationshipSchema.name,
       schema,
@@ -111,6 +133,5 @@ export const getFormFieldFromRelationship = ({
         return isRequired(formFieldValue) || "Required";
       },
     },
-    schema,
   };
 };

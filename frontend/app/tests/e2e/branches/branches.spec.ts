@@ -4,32 +4,8 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { createBranch, generateRandomBranchName } from "../../utils";
 
 test.describe("Branches creation and deletion", () => {
-  test.describe("when not logged in", () => {
-    test("should not be able to create a branch if not logged in", async ({ page }) => {
-      await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("create-branch-button")).toBeDisabled();
-    });
-
-    test("should not show quick-create option when searching for non-existent branch", async ({
-      page,
-    }) => {
-      await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
-
-      const nonExistentBranchName = "non-existent-branch-123";
-      await page.getByTestId("branch-search-input").fill(nonExistentBranchName);
-
-      await expect(page.getByText("No branch found")).toBeVisible();
-      await expect(
-        page.getByRole("option", { name: `Create branch ${nonExistentBranchName}` })
-      ).not.toBeVisible();
-    });
-  });
-
   test.describe("when logged in as Admin", () => {
     test.describe.configure({ mode: "serial" });
-    test.slow();
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     const BRANCH_NAME_1 = generateRandomBranchName();
@@ -59,8 +35,15 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
-      await page.getByLabel("Branches list").getByText(BRANCH_NAME_1).click();
+      await page.getByRole("link", { name: BRANCH_NAME_1 }).click();
       await expect(page.getByText(`Name${BRANCH_NAME_1}`)).toBeVisible();
+
+      await page.getByRole("button", { name: "View node metadata" }).click();
+      await expect(page.getByText("Created at")).toBeVisible();
+      await expect(page.getByText("Created by")).toBeVisible();
+      await expect(page.getByText("Updated at")).toBeVisible();
+      await expect(page.getByText("Updated by")).toBeVisible();
+
       expect(page.url()).toContain(`/branches/${BRANCH_NAME_1}`);
     });
 
@@ -104,24 +87,18 @@ test.describe("Branches creation and deletion", () => {
       await expect(page.getByTestId("branch-list")).not.toContainText(BRANCH_NAME_1);
     });
 
-    test("allow to create a branch with a name that does not exists", async ({ page }) => {
-      await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
-      await page.getByTestId("branch-search-input").fill("quick-branch-form");
-      await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
-      await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
-    });
+    test("should search for a branch", async ({ page }) => {
+      await page.goto("/branches");
+      await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
+      await page.getByRole("searchbox", { name: "Search" }).fill("main");
+      await expect(page.getByRole("link", { name: "main", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-maintenance-conflict" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).not.toBeVisible();
 
-    test("verify if the current branch exists correctly and redirects to home on main branch", async ({
-      page,
-    }) => {
-      await page.goto("/");
-      await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
-      await page.goto("/?branch=unknown-branch-for-testing");
-      expect(page.url()).toContain("/?branch=unknown-branch-for-testing");
-      await expect(page.getByText("you have been redirected to the main branch")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
-      expect(page.url()).not.toContain("/?branch=unknown-branch-for-testing");
+      await page.getByRole("searchbox", { name: "Search" }).fill("");
+      await expect(page.getByRole("link", { name: "atl1-delete-upstream" })).toBeVisible();
     });
   });
 });

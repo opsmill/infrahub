@@ -1,6 +1,6 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
-export const GET_ROLE_MANAGEMENT_COUNTS = gql`
+export const GET_ROLE_MANAGEMENT_COUNTS = graphql(`
   query GET_ROLE_MANAGEMENT_COUNTS {
     CoreAccountRole {
       count
@@ -18,4 +18,4 @@ export const GET_ROLE_MANAGEMENT_COUNTS = gql`
       count
     }
   }
-`;
+`);

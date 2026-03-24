@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericAccount, CoreProposedChange
 from infrahub.proposed_change.action_checker import ACTION_RULES, ActionRulesEvaluator
@@ -37,17 +38,27 @@ class AvailableActions(ObjectType):
     ) -> dict:
         graphql_context: GraphqlContext = info.context
         proposed_change = await NodeManager.get_one(
-            kind=CoreProposedChange,
+            kind=InfrahubKind.PROPOSEDCHANGE,
             id=proposed_change_id,
             db=graphql_context.db,
             branch=graphql_context.branch,
             raise_on_error=True,
+            include_metadata=MetadataOptions.CREATED_BY,
         )
-        proposed_change_author = await proposed_change.created_by.get_peer(
-            db=graphql_context.db, peer_type=CoreGenericAccount, raise_on_error=True
+
+        author_id = proposed_change._get_created_by()
+        if not author_id:
+            raise ValueError("Proposed change author not found")
+
+        proposed_change_author = await NodeManager.get_one(
+            db=graphql_context.db,
+            id=author_id,
+            kind=CoreGenericAccount,
+            raise_on_error=True,
+            branch=graphql_context.branch,
         )
         actions = await ActionRulesEvaluator(rules=ACTION_RULES).evaluate(
-            proposed_change=proposed_change,
+            proposed_change=cast("CoreProposedChange", proposed_change),
             graphql_context=graphql_context,
             proposed_change_author=proposed_change_author,
         )

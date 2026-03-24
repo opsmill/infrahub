@@ -34,7 +34,6 @@ class ClearValue(Enum):
 class FlagPropertyMixin:
     _flag_properties: list[str] = [v.value for v in FlagProperty]
 
-    is_visible = True
     is_protected = False
 
     def _init_flag_property_mixin(self, kwargs: dict | None = None) -> None:

@@ -2,7 +2,7 @@ import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { isInPreviousYear } from "@/shared/utils/date";
+import { formatFullDateWithTz, isInPreviousYear } from "@/shared/utils/date";
 
 type DateDisplayProps = {
   date?: number | string | Date | null;
@@ -13,7 +13,7 @@ type DateDisplayProps = {
 };
 
 export const getDateDisplay = (date?: number | string | Date | null) =>
-  format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
+  formatFullDateWithTz(date ? new Date(date) : new Date());
 
 export const DateDisplay = ({
   date,
@@ -36,7 +36,7 @@ export const DateDisplay = ({
     return (
       <span className={classNames("flex flex-wrap items-center", containerClassName)}>
         <Tooltip enabled content={getDateDisplay(dateData)}>
-          <span className={classNames("font-normal text-xs", className)}>
+          <span className={classNames("truncate font-normal text-xs", className)}>
             {format(dateData, newDateFormat)}
           </span>
         </Tooltip>
@@ -47,7 +47,7 @@ export const DateDisplay = ({
   return (
     <span className={classNames("flex flex-wrap items-center", containerClassName)}>
       <Tooltip enabled content={getDateDisplay(date)}>
-        <span className={classNames("font-normal text-xs", className)}>
+        <span className={classNames("truncate font-normal text-xs", className)}>
           {formatDistanceToNow(dateData, { addSuffix: true })}
         </span>
       </Tooltip>

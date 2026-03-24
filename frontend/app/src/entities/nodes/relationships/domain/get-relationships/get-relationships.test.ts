@@ -58,7 +58,7 @@ describe("getRelationships", () => {
       peer,
       branchName,
       atDate,
-      limit: 20,
+      limit: 40,
       offset,
       search,
       filterQuery: {
@@ -100,7 +100,7 @@ describe("getRelationships", () => {
       peer,
       branchName,
       atDate,
-      limit: 20,
+      limit: 40,
       offset: undefined,
       search: undefined,
       filterQuery: undefined,

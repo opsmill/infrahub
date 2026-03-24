@@ -1,0 +1,158 @@
+---
+title: Schema extensions
+---
+
+# Schema extensions
+
+Schema extensions provide a mechanism to add attributes and relationships to existing nodes without redefining them. This enables modular schema composition where features can be developed, reviewed, and managed as self-contained files.
+
+## Why schema extensions matter
+
+As infrastructure schemas grow, managing changes across multiple files becomes increasingly complex. Consider a scenario where you want to add Link Aggregation Group (LAG) support to an existing network schema. Without extensions, you would need to:
+
+1. Edit the original interface schema file to add a relationship to your new LAG node
+2. Potentially edit other schema files that reference interfaces
+3. Track all these scattered changes during code review
+4. Remember to revert changes across multiple files if the feature is removed
+
+This distributed approach makes it difficult to understand the full scope of a feature and complicates schema lifecycle management.
+
+Schema extensions solve this by allowing all changes related to a feature to live in a single file. The LAG feature file defines the new LAG node and extends the existing interface node with the necessary relationship, keeping everything in one place.
+
+## Concepts and definitions
+
+A **schema extension** is a declaration that adds attributes or relationships to an existing node kind. Extensions do not create new nodes; they augment nodes/generics that already exist in the schema.
+
+Extensions are defined in the `extensions` section of a schema file:
+
+```yaml
+extensions:
+  nodes:
+    - kind: ExistingNodeKind
+      attributes:
+        - name: new_attribute
+          kind: Text
+      relationships:
+        - name: new_relationship
+          peer: SomeOtherNode
+          cardinality: one
+```
+
+The `kind` field specifies which existing node/generic to extend. The attributes and relationships follow the same format as when defining them directly on a node.
+
+## How schema extensions work
+
+When Infrahub processes schema files, it merges extensions into their target nodes. This happens at schema load time, not at runtime, so extended nodes behave identically to nodes with attributes defined directly.
+
+### Extension merging
+
+When an extension is processed, Infrahub:
+
+1. Locates the target node by its `kind`
+2. Validates that the target node exists in the schema
+3. Adds the new attributes and relationships to the node's definition
+4. Applies standard schema validation to the merged result
+
+If multiple extensions target the same node, all extensions are merged. Conflicts (such as two extensions adding an attribute with the same name) result in schema validation errors.
+
+## Context and background
+
+### Design rationale
+
+The extension mechanism was designed to support modular schema composition. In large organizations, different teams often own different parts of the infrastructure model. Extensions allow teams to add their specific requirements to shared base schemas without coordinating changes to common files.
+
+This pattern is used extensively in the [OpsMill Schema Library](https://github.com/opsmill/schema-library), where the `extensions/` directory contains feature modules that augment base schemas:
+
+- `extensions/lag/` adds LAG support to interface models
+- `extensions/contracts/` adds procurement tracking to organization models
+- `extensions/peering/` adds BGP peering capabilities
+
+Each extension module is self-contained, making it straightforward to adopt or remove specific capabilities.
+
+### Comparison to inheritance
+
+Schema extensions differ from generics (inheritance) in important ways:
+
+| Aspect | Extensions | Generics |
+|--------|-----------|----------|
+| Purpose | Add to existing nodes | Share structure across new nodes |
+| Target | Existing node kinds | New nodes that inherit from the generic |
+| Scope | Adds attributes/relationships | Defines common base structure |
+| Removal | Remove extension file | Cannot remove without affecting inheriting nodes |
+
+Extensions are additive modifications to existing nodes, while generics define reusable templates for creating new nodes. Both mechanisms can be used together; you can extend a node that inherits from a generic.
+
+## Mental models
+
+### Extensions as patches
+
+Think of schema extensions like patches in software development. A patch modifies existing code without replacing the original file. Similarly, an extension modifies an existing node definition without replacing or duplicating it.
+
+Just as patches can be applied or reverted independently, extension files can be added or removed from your schema configuration without affecting other parts of the schema.
+
+### Feature flags for schemas
+
+Extensions function similarly to feature flags in application development. By including or excluding an extension file, you enable or disable a feature. This makes it practical to:
+
+- Test new schema capabilities in development branches
+- Gradually roll out schema changes across environments
+- Maintain different schema configurations for different use cases
+
+## Common patterns
+
+### Bidirectional relationships
+
+When creating a relationship from a new node to an existing node, you often want to navigate the relationship from both directions. Extensions enable this without modifying the original schema:
+
+```yaml
+nodes:
+  - name: Contract
+    namespace: Procurement
+    relationships:
+      - name: organization
+        peer: OrganizationGeneric
+        cardinality: one
+
+extensions:
+  nodes:
+    - kind: OrganizationGeneric
+      relationships:
+        - name: contracts
+          peer: ProcurementContract
+          cardinality: many
+          kind: Component
+```
+
+The `Contract` node defines its relationship to `OrganizationGeneric`, and the extension adds the reverse relationship so organizations can list their contracts.
+
+### Adding optional capabilities
+
+Extensions work well for adding optional attributes to existing nodes:
+
+```yaml
+extensions:
+  nodes:
+    - kind: InfraDevice
+      attributes:
+        - name: asset_tag
+          kind: Text
+          optional: true
+        - name: warranty_expiry
+          kind: DateTime
+          optional: true
+```
+
+This adds asset tracking fields to devices. Organizations that do not need asset tracking can omit this extension file.
+
+## Connection to other concepts
+
+Schema extensions interact with several other Infrahub concepts:
+
+- **[Schema overview](./schema.mdx)**: Extensions are part of the broader schema system and follow the same attribute and relationship definitions
+- **[Branches](./branching.mdx)**: Schema changes, including extensions, can be tested in branches before merging to main
+
+## Further reading
+
+- [Reference: Node extension](../reference/schema/node-extension.mdx) - Complete reference for extension properties
+- [Guide: Import schema file](../guides/import-schema.mdx) - How to load schema files including extensions
+- [OpsMill Schema Library](https://github.com/opsmill/schema-library/tree/main/extensions) - Production examples of schema extensions

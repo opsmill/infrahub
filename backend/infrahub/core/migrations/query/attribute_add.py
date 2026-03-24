@@ -47,15 +47,20 @@ class AttributeAddQuery(Query):
         else:
             self.params["attr_value"] = NULL_VALUE
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         self.params["is_protected_default"] = False
-        self.params["is_visible_default"] = True
+
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         attr_value_label = GraphAttributeValueNode.get_default_label()
         if not is_large_attribute_type(self.attribute_kind):
@@ -84,8 +89,7 @@ class AttributeAddQuery(Query):
         query = """
         %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
-        MERGE (is_visible_value:Boolean { value: $is_visible_default })
-        WITH av, is_protected_value, is_visible_value
+        WITH av, is_protected_value
         MATCH (n:%(node_kinds_str)s)
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
@@ -98,16 +102,23 @@ class AttributeAddQuery(Query):
             ORDER BY has_attr_e.branch_level DESC, has_attr_e.from ASC, is_part_of_e.branch_level DESC, is_part_of_e.from ASC
             LIMIT 1
         }
-        WITH n, is_part_of_e, has_attr_e, av, is_protected_value, is_visible_value
+        WITH n, is_part_of_e, has_attr_e, av, is_protected_value
         WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
         CREATE (a:Attribute { name: $attr_name, branch_support: $branch_support })
         CREATE (n)-[:HAS_ATTRIBUTE $rel_props ]->(a)
         CREATE (a)-[:HAS_VALUE $rel_props ]->(av)
         CREATE (a)-[:IS_PROTECTED $rel_props]->(is_protected_value)
-        CREATE (a)-[:IS_VISIBLE $rel_props]->(is_visible_value)
         %(uuid_generation)s
+        // Set metadata on Attribute and Node vertices if on default/global branch
+        WITH a, n, has_attr_e
+        CALL (a, n) {
+            WITH a, n
+            WHERE $set_metadata
+            SET a.created_at = $current_time, a.created_by = $user_id, a.updated_at = $current_time, a.updated_by = $user_id
+            SET n.updated_at = $current_time, n.updated_by = $user_id
+        }
         FOREACH (i in CASE WHEN has_attr_e.status = "deleted" THEN [1] ELSE [] END |
-            SET has_attr_e.to = $current_time
+            SET has_attr_e.to = $current_time, has_attr_e.to_user_id = $user_id
         )
         """ % {
             "match_query": match_query,

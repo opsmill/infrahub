@@ -39,7 +39,6 @@ describe("RelationshipMany - Field", () => {
     name: "testField",
     label: "Test Field",
     peer: "TestNode",
-    schema: objectSchema,
     relationship: relationshipSchema,
   };
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
 
 import ujson
@@ -13,7 +13,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
 
 from infrahub import config
-from infrahub.core.constants import PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -160,7 +160,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]):
+    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]) -> None:
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -336,7 +336,7 @@ class QueryStat:
         return cls(**data)
 
 
-class Query(ABC):
+class Query:
     name: str = "base-query"
     type: QueryType
 
@@ -352,7 +352,8 @@ class Query(ABC):
         offset: int | None = None,
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
-    ):
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
         if branch:
             self.branch = branch
 
@@ -367,6 +368,7 @@ class Query(ABC):
         self.limit = limit
         self.offset = offset
         self.order_by = order_by
+        self.user_id = user_id
 
         # Initialize internal variables
         self.params: dict = {}
@@ -403,14 +405,23 @@ class Query(ABC):
 
         return query
 
-    @abstractmethod
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        # Avoid using this method for new queries and look at migrating older queries. The
+        # problem here is that we loose so much information with the `**kwargs` we should instead
+        # populate this information via the constructor and anything done within the existing query_init methods
+        # could either be handled within __init__ or via dedicated methods within each Query class where appropriate,
+        # i.e. things might need to happend in a certain order or we just want to separate the logic better.
         raise NotImplementedError
 
     def get_context(self) -> dict[str, str]:
         """Provide additional context for this query, beyond the name.
         Right now it's mainly used to add more labels to the metrics."""
         return {}
+
+    @staticmethod
+    @lru_cache(maxsize=1024)
+    def _split_query_lines(query: str) -> list[str]:
+        return [line.strip() for line in query.split("\n") if line.strip()]
 
     def add_to_query(self, query: str | list[str]) -> None:
         """Add a new section at the end of the query.
@@ -422,7 +433,7 @@ class Query(ABC):
             for item in query:
                 self.add_to_query(query=item)
         else:
-            self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
+            self.query_lines.extend(self._split_query_lines(query=query))
 
     def add_subquery(self, subquery: str, node_alias: str, with_clause: str | None = None) -> None:
         self.add_to_query(f"CALL ({node_alias}) {{")

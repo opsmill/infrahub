@@ -100,7 +100,7 @@ class UpdateHFID(Mutation):
             await target_node.set_human_friendly_id(value=updated_hfid)
 
             async with graphql_context.db.start_transaction() as dbt:
-                await target_node.save(db=dbt, fields=["human_friendly_id"])
+                await target_node.save(db=dbt, fields=["human_friendly_id"], user_id=graphql_context.assigned_user_id)
 
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")

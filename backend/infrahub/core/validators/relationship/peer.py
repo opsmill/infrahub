@@ -136,7 +136,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         parent_relationship: RelationshipSchema,
         peer_parent_relationship: RelationshipSchema,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
 
         self.relationship = relationship

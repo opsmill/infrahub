@@ -7,6 +7,7 @@ from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
@@ -15,6 +16,7 @@ from tests.helpers.query_benchmark.car_person_generators import (
     CarWithDiffInSecondBranchGenerator,
 )
 from tests.helpers.query_benchmark.data_generator import load_data_and_profile
+from tests.helpers.query_benchmark.db_query_profiler import GraphProfileGenerator
 from tests.query_benchmark.conftest import RESULTS_FOLDER
 from tests.query_benchmark.utils import start_db_and_create_default_branch
 
@@ -33,7 +35,12 @@ log = get_logger()
         BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=True),
     ],
 )
-async def test_diff(benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit) -> None:
+async def test_diff(
+    benchmark_config: BenchmarkConfig,
+    car_person_schema_root: SchemaRoot,
+    graph_generator: GraphProfileGenerator,
+    increase_query_size_limit: None,
+) -> None:
     # Initialization
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
         neo4j_image=benchmark_config.neo4j_image,

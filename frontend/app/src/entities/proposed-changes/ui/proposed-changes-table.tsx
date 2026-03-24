@@ -34,7 +34,7 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
 
   const isLoading = isPending || isFetchingNextPage;
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flatMap((page) => page.items) ?? [], [data]);
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
@@ -48,7 +48,9 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
           className
         )}
       >
-        {(node) => <ProposedChangesItem key={node.id} node={node} />}
+        {(proposedChange) => (
+          <ProposedChangesItem key={proposedChange.id} proposedChange={proposedChange} />
+        )}
       </ListBox>
 
       {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}

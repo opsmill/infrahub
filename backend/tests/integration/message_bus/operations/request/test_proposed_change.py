@@ -10,7 +10,6 @@ from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -35,7 +34,7 @@ from infrahub.workflows.catalogue import (
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.file_repo import FileRepo
-from tests.helpers.graphql import graphql_mutation
+from tests.helpers.graphql import graphql_mutation, graphql_query
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -75,14 +74,23 @@ mutation ProposedChange(
   ) {
     object {
       id
-      created_by {
-        node {
-          id
-        }
-      }
     }
   }
 }
+"""
+
+PROPOSED_CHANGE_QUERY = """
+    query ($ids: [ID]!){
+        CoreProposedChange(ids: $ids) {
+            edges {
+                node_metadata {
+                    created_by {
+                        id
+                    }
+                }
+            }
+        }
+    }
 """
 
 
@@ -106,11 +114,11 @@ class TestProposedChange(TestInfrahubApp):
     async def prepare_proposed_change(
         self,
         db: InfrahubDatabase,
-        tmp_path_module_scope,
+        tmp_path_module_scope: Path,
         git_repos_dir_module_scope: Path,
-        init_db_base,
+        init_db_base: None,
         client: InfrahubClient,
-        redis,
+        redis: None,
         user_account: Node,
         context: InfrahubContext,
     ) -> str:
@@ -146,12 +154,20 @@ class TestProposedChange(TestInfrahubApp):
         )
         assert not result.errors
         assert result.data
-        assert result.data["CoreProposedChangeCreate"]["object"]["created_by"]["node"]["id"] == user_account.get_id()
         proposed_change_id = result.data["CoreProposedChangeCreate"]["object"]["id"]
 
-        pc = await NodeManager.get_one(db=db, id=proposed_change_id)
-        created_by = await pc.created_by.get_peer(db=db)
-        assert created_by.get_id() == user_account.get_id()
+        result = await graphql_query(
+            query=PROPOSED_CHANGE_QUERY,
+            variables={"ids": [proposed_change_id]},
+            db=db,
+            service=service,
+            account_session=context.account,
+        )
+        assert not result.errors
+        assert result.data
+        assert (
+            result.data["CoreProposedChange"]["edges"][0]["node_metadata"]["created_by"]["id"] == user_account.get_id()
+        )
 
         return proposed_change_id
 

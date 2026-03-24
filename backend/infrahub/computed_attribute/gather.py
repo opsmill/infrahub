@@ -7,13 +7,14 @@ from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
+from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
 
 from .models import (
@@ -24,7 +25,6 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
     from infrahub.git.models import RepositoryData
 
 
@@ -48,9 +48,9 @@ async def gather_python_transform_attributes(
     if not transform_names:
         return []
 
-    transforms: list[CoreTransformPythonNode] = await NodeManager.query(
+    transforms = await NodeManager.query(
         db=db,
-        schema=InfrahubKind.TRANSFORMPYTHON,
+        schema=CoreTransformPythonNode,
         branch=branch_name,
         fields={"id": None, "name": None, "repository": None, "query": None},
         filters={"name__values": transform_names},
@@ -75,6 +75,7 @@ async def gather_python_transform_attributes(
             branch=branch,
             schema_branch=schema_branch,
             schema=graphql_params.schema,
+            document=cached_parse(query.query.value),
         )
         for attribute in transform_attributes[transform.name.value]:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
@@ -165,7 +166,9 @@ async def gather_trigger_computed_attribute_python(
             branches_with_diff_from_main = list(branches.keys())
 
         branches_to_process: list[tuple[str, list[str]]] = [(branch, []) for branch in branches_with_diff_from_main]
-        branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
+
+        if registry.default_branch in branches.keys():
+            branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
 
         for branch_scope, branches_out_of_scope in branches_to_process:
             trigger_python = ComputedAttrPythonTriggerDefinition.from_object(

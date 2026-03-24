@@ -54,13 +54,14 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
-from infrahub.exceptions import MergeFailedError
+from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
@@ -122,6 +123,7 @@ if TYPE_CHECKING:
 async def _proposed_change_transition_state(
     state: ProposedChangeState,
     database: InfrahubDatabase,
+    user_id: str,
     proposed_change: InternalCoreProposedChange | None = None,
     proposed_change_id: str | None = None,
 ) -> None:
@@ -132,7 +134,7 @@ async def _proposed_change_transition_state(
             )
         if proposed_change:
             proposed_change.state.value = state.value  # type: ignore[misc]
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=user_id)
 
 
 # async def proposed_change_transition_merged(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -185,7 +187,10 @@ async def merge_proposed_change(
             )
         except ValueError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
             )
             return Failed(message=str(exc))
 
@@ -199,7 +204,10 @@ async def merge_proposed_change(
             ):
                 # Ignoring Data integrity checks as they are handled again later
                 await _proposed_change_transition_state(
-                    proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                    proposed_change=proposed_change,
+                    state=ProposedChangeState.OPEN,
+                    database=db,
+                    user_id=context.account.account_id,
                 )
                 return Failed(message="Unable to merge proposed change containing failing checks")
             if validator_kind == InfrahubKind.DATAVALIDATOR:
@@ -207,7 +215,10 @@ async def merge_proposed_change(
                 for check in data_checks.values():
                     if check.conflicts.value and not check.keep_branch.value:
                         await _proposed_change_transition_state(
-                            proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                            proposed_change=proposed_change,
+                            state=ProposedChangeState.OPEN,
+                            database=db,
+                            user_id=context.account.account_id,
                         )
                         return Failed(
                             message="Data conflicts found on branch and missing decisions about what branch to keep"
@@ -218,14 +229,20 @@ async def merge_proposed_change(
             await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
-                proposed_change=proposed_change, state=ProposedChangeState.OPEN, database=db
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
             )
             return Failed(message=f"Merge failure when trying to merge {exc.message}")
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
         await _proposed_change_transition_state(
-            proposed_change=proposed_change, state=ProposedChangeState.MERGED, database=db
+            proposed_change=proposed_change,
+            state=ProposedChangeState.MERGED,
+            database=db,
+            user_id=context.account.account_id,
         )
 
         current_user = await NodeManager.get_one_by_id_or_default_filter(
@@ -296,7 +313,10 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
         component_registry = get_component_registry()
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
-        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
+        await diff_coordinator.update_branch_diff(
+            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+        )
 
 
 @flow(name="proposed-changed-run-generator", flow_run_name="Run generators")
@@ -410,6 +430,38 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
     candidate_schema = dest_schema.duplicate()
     candidate_schema.update(schema=source_schema)
+
+    try:
+        candidate_schema.duplicate().process()
+    except (ValueError, ValidationError, SchemaNotFoundError) as exc:
+        error_msg = str(exc)
+        parts = error_msg.split(":", 1)
+        kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
+        schema_path = f"schema/{kind}"
+        database = await get_database()
+        async with database.start_transaction() as db:
+            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+                db=db,
+                validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+                validator_label="Schema Integrity",
+                check_schema_kind=InfrahubKind.SCHEMACHECK,
+            )
+            await object_conflict_validator_recorder.record_conflicts(
+                proposed_change_id=model.proposed_change,
+                conflicts=[
+                    SchemaConflict(
+                        name=schema_path,
+                        type="schema.process.validation",
+                        kind=kind,
+                        id=schema_path,
+                        path=schema_path,
+                        value=error_msg,
+                        branch=model.source_branch,
+                    )
+                ],
+            )
+        return
+
     schema_diff = dest_schema.diff(other=candidate_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
@@ -622,6 +674,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     artifact_definition = await client.get(
         kind=CoreArtifactDefinition,
@@ -673,7 +726,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         artifacts_by_member[artifact.object.peer.id] = artifact.id
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
-    impacted_artifacts = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.ARTIFACT)
 
     source_schema_branch = registry.schema.get_schema_branch(name=model.source_branch)
     source_branch = registry.get_branch_from_registry(branch=model.source_branch)
@@ -684,12 +736,55 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch=source_branch,
         schema_branch=source_schema_branch,
         schema=graphql_params.schema,
+        document=cached_parse(model.artifact_definition.query_payload),
     )
 
+    # only_has_unique_targets is True when the query is guaranteed to return results
+    # for a specific set of nodes — e.g. it uses an `ids` argument or a uniqueness
+    # constraint. When False, the query may return any number of nodes and we cannot
+    # map a changed node back to a specific artifact without re-running every target.
     only_has_unique_targets = query_analyzer.query_report.only_has_unique_targets
-    if not only_has_unique_targets:
+
+    # Collect the IDs of nodes whose changes are actually relevant to this query.
+    # A change is relevant only when at least one field that was modified is also
+    # read by the query. This lets us skip regeneration when, for example, only a
+    # `description` field changed but the query only reads `name` and `color`.
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    relevant_node_changes = []
+    for node_diff in diff_summary:
+        if (
+            node_diff["branch"] == model.source_branch
+            and node_diff["kind"] in query_analyzer.query_report.requested_read
+        ):
+            updated_fields = {element["name"] for element in node_diff["elements"]}
+            relevant_fields = set(query_analyzer.query_report.fields_by_kind(node_diff["kind"]))
+            if updated_fields & relevant_fields:
+                relevant_node_changes.append(node_diff["id"])
+
+    if only_has_unique_targets:
+        # The query targets specific nodes by ID or unique constraint, so we can
+        # look up exactly which artifacts are linked to the changed nodes and limit
+        # regeneration to only those artifacts.
+        subscribers = await _get_subscribers_for_nodes(
+            node_ids=relevant_node_changes, branch=model.source_branch, client=client
+        )
+        impacted_artifacts = [
+            subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == InfrahubKind.ARTIFACT
+        ]
+    elif relevant_node_changes:
+        # The query does not guarantee unique targets, so we cannot determine which
+        # specific artifacts are affected. At least one relevant field changed, so we
+        # must fall back to regenerating all artifacts for this definition to be safe.
+        impacted_artifacts = list(artifacts_by_member.values())
         log.warning(
             f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
+        )
+    else:
+        # No node of a queried kind had any of its queried fields modified, so no
+        # artifact can be stale regardless of query targeting capability.
+        impacted_artifacts = []
+        log.info(
+            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
         )
 
     managed_branch = model.source_branch_sync_with_git and model.branch_diff.has_file_modifications
@@ -705,7 +800,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             artifact_id=artifact_id,
             managed_branch=managed_branch,
             impacted_artifacts=impacted_artifacts,
-            only_has_unique_targets=only_has_unique_targets,
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
@@ -755,19 +849,17 @@ def _should_render_artifact(
     artifact_id: str | None,
     managed_branch: bool,
     impacted_artifacts: list[str],
-    only_has_unique_targets: bool,
 ) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
-        * The source branch is not data only which would indicate that it could contain updates in git to the transform
+        * The source branch is synced with git and has file modifications (managed_branch)
         * The artifact_id exists in the impacted_artifacts list
-        * The query failes the only_has_unique_targets check
     Will return false if:
-        * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
+        * The artifact_id exists and is not in the impacted list
     """
 
-    if not only_has_unique_targets or not artifact_id or managed_branch:
+    if not artifact_id or managed_branch:
         return True
 
     return artifact_id in impacted_artifacts
@@ -781,6 +873,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
 
     client = get_client()
+    client.request_context = context.to_request_context()
     log = get_run_logger()
 
     repository = await get_initialized_repo(
@@ -859,7 +952,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     if check:
         check.created_at.value = Timestamp().to_string()
         check.conclusion.value = conclusion.value
-        await check.save()
+        await check.save(request_context=context.to_request_context())
     else:
         check = await client.create(
             kind=InfrahubKind.GENERATORCHECK,
@@ -925,6 +1018,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
@@ -1092,15 +1186,18 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
-        await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
+        await diff_coordinator.update_branch_diff(
+            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+        )
 
     client = get_client()
 
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
-    await _populate_subscribers(
-        branch_diff=branch_diff, diff_summary=diff_summary, branch=model.source_branch, client=client
+    branch_diff.subscribers.extend(
+        await _get_subscribers_from_diff(diff_summary=diff_summary, branch=model.source_branch, client=client)
     )
 
     if model.check_type is CheckType.ARTIFACT:
@@ -1604,17 +1701,28 @@ async def _gather_repository_repository_diffs(
             repo.files_changed = files_changed
 
 
-async def _populate_subscribers(
-    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], branch: str, client: InfrahubClient
-) -> None:
+async def _get_subscribers_for_nodes(
+    node_ids: list[str], branch: str, client: InfrahubClient
+) -> list[ProposedChangeSubscriber]:
     result = await client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,
-        variables={"members": get_modified_node_ids(diff_summary=diff_summary, branch=branch)},
+        variables={"members": node_ids},
     )
-
+    subscribers = []
     for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
         for subscriber in group["node"]["subscribers"]["edges"]:
-            branch_diff.subscribers.append(
+            subscribers.append(
                 ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
             )
+    return subscribers
+
+
+async def _get_subscribers_from_diff(
+    diff_summary: list[NodeDiff], branch: str, client: InfrahubClient
+) -> list[ProposedChangeSubscriber]:
+    return await _get_subscribers_for_nodes(
+        node_ids=get_modified_node_ids(diff_summary=diff_summary, branch=branch),
+        branch=branch,
+        client=client,
+    )

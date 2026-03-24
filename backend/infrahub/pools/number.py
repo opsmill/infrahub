@@ -37,14 +37,7 @@ class NumberUtilizationGetter:
         query = await NumberPoolGetAllocated.init(db=self.db, pool=self.pool, branch=self.branch, branch_agnostic=True)
         await query.execute(db=self.db)
 
-        self.used = [
-            UsedNumber(
-                number=result.get_as_type(label="value", return_type=int),
-                branch=result.get_as_type(label="branch", return_type=str),
-            )
-            for result in query.results
-            if result.get_as_optional_type(label="value", return_type=int) is not None
-        ]
+        self.used = [UsedNumber(number=item.value, branch=item.branch) for item in query.get_data()]
 
         self.used_default_branch = {entry.number for entry in self.used if entry.branch == registry.default_branch}
         used_branches = {entry.number for entry in self.used if entry.branch != registry.default_branch}

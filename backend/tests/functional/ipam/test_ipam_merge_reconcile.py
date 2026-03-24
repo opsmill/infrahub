@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -15,20 +14,17 @@ from .base import TestIpamReconcileBase
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
 class TestIpamMergeReconcile(TestIpamReconcileBase):
-    @pytest.fixture(scope="class", autouse=True)
-    def enable_broker_settings(self) -> None:
-        config.SETTINGS.broker.enable = True
-
     @pytest.fixture(scope="class")
-    async def branch_1(self, db: InfrahubDatabase, default_branch):
+    async def branch_1(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
         return await create_branch(db=db, branch_name="new_address")
 
     @pytest.fixture(scope="class")
-    async def new_address_1(self, branch_1, initial_dataset, db: InfrahubDatabase):
+    async def new_address_1(self, branch_1: Branch, initial_dataset: dict[str, Node], db: InfrahubDatabase) -> Node:
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch_1)
         new_address = await Node.init(schema=address_schema, db=db, branch=branch_1)
         await new_address.new(db=db, address="10.10.0.2", ip_namespace=initial_dataset["ns1"].id)
@@ -36,17 +32,17 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         return new_address
 
     @pytest.fixture(scope="class")
-    async def branch_2(self, db: InfrahubDatabase):
+    async def branch_2(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="delete_prefix")
 
     async def test_step01_add_address(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
-        branch_1,
-        new_address_1,
-        default_branch,
+        branch_1: Branch,
+        new_address_1: Node,
+        default_branch: Branch,
     ) -> None:
         success = await client.branch.merge(branch_name=branch_1.name)
         assert success is True
@@ -59,10 +55,10 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
     async def test_step02_add_delete_prefix(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         client: InfrahubClient,
-        branch_2,
-        new_address_1,
+        branch_2: Branch,
+        new_address_1: Node,
     ) -> None:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch_2)
         new_prefix = await Node.init(schema=prefix_schema, db=db, branch=registry.default_branch)

@@ -24,7 +24,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
     return <ErrorScreen message="Something went wrong when fetching relationship properties" />;
   }
 
-  const { source, owner, updated_at, is_protected, is_visible } = data;
+  const { source, owner, updated_at, is_protected } = data;
 
   const items = [
     {
@@ -50,10 +50,6 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
       ) : (
         "-"
       ),
-    },
-    {
-      name: "Is visible",
-      value: is_visible ? "True" : "False",
     },
     {
       name: "Is protected",

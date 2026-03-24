@@ -44,7 +44,7 @@ export function IpAddressDetails({ ipAddressSchema, ipAddressId }: IpAddressDeta
         value: (
           <ObjectAttributeValue
             attributeSchema={schemaAttribute}
-            attributeValue={data[schemaAttribute.name]}
+            attributeData={data[schemaAttribute.name]}
           />
         ),
       };

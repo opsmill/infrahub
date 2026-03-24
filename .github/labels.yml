@@ -82,6 +82,10 @@
   description: "Topic for brainstorming, discussions"
   color: "e19e0f"
 
+- name: "type/spec"
+  description: "A specification for an upcoming change to the project"
+  color: "8b5cf6"
+
 - name: "type/user-centric"
   description: "Issue that would improve the overall experience of our users"
   color: "ff8c00"
@@ -182,3 +186,7 @@
 - name: "cd/preview"
   description: "Deploy preview branch"
   color: "d77e96"
+
+- name: "stale"
+  description: "Marks stale issues and pull requests"
+  color: "ffffff"

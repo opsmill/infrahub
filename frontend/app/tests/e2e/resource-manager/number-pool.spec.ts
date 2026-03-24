@@ -119,7 +119,11 @@ test.describe("/resource-manager - Number Pool Tests", () => {
       await page.getByRole("searchbox", { name: "Search" }).fill("interface with pool");
       await page.getByRole("link", { name: "test interface with pool" }).click();
       await page.getByText("Speed1").getByTestId("view-metadata-button").click();
-      await expect(page.getByRole("link", { name: "number pool test for generic" })).toBeVisible();
+      await expect(
+        page
+          .getByTestId("metadata-tooltip")
+          .getByRole("link", { name: "number pool test for generic" })
+      ).toBeVisible();
     });
   });
 });

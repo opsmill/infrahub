@@ -24,6 +24,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import initialization
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
+from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
@@ -182,9 +183,17 @@ class InfrahubWorkerAsync(BaseWorker):
     async def _init_infrahub_client(self, client: InfrahubClient | None = None) -> InfrahubClient:
         if not client:
             self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-            client = InfrahubClient(
-                config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=self._logger)
-            )
+            try:
+                client = InfrahubClient(
+                    config=Config(
+                        address=config.SETTINGS.main.infrahub_address, retry_on_failure=True, log=self._logger
+                    )
+                )
+            except InitializationError as err:
+                self._logger.error(
+                    "Infrahub client initialization failed due to missing configuration for internal_address."
+                )
+                raise typer.Exit(1) from err
 
         try:
             await client.branch.all()
@@ -194,7 +203,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         return client
 
-    async def _init_services(self, client: InfrahubClient) -> None:
+    async def _init_services(self, client: InfrahubClient | None) -> None:
         client = await self._init_infrahub_client(client=client)
 
         service = await InfrahubServices.new(

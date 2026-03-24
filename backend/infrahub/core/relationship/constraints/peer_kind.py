@@ -23,7 +23,7 @@ class NodeToValidate:
 
 
 class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
+    def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch
 

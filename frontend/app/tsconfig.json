@@ -35,7 +35,16 @@
     "noUnusedParameters": true,
 
     /* Type Definitions */
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client"],
+
+    "plugins": [
+      {
+        "name": "gql.tada/ts-plugin",
+        "schema": "../../schema/schema.graphql",
+        "tadaOutputLocation": "./src/shared/api/graphql/graphql-env.d.ts",
+        "tadaTurboLocation": "./src/shared/api/graphql/graphql-cache.d.ts"
+      }
+    ]
   },
   "include": [
     "src",

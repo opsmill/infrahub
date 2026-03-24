@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 
-export const branchesState = atom<Branch[]>([]);
+export const branchesState = atom<BranchListItem[]>([]);
 
-export const currentBranchAtom = atom<Branch | null>(null);
+export const currentBranchAtom = atom<BranchListItem | null>(null);

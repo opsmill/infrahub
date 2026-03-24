@@ -29,7 +29,7 @@ class TestDiffMerge(TestInfrahubApp):
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> dict[str, Node]:
@@ -66,7 +66,7 @@ class TestDiffMerge(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    async def diff_branch(self, db: InfrahubDatabase, initial_dataset) -> Branch:
+    async def diff_branch(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> Branch:
         return await create_branch(db=db, branch_name=BRANCH_NAME)
 
     @pytest.fixture(scope="class")
@@ -87,7 +87,7 @@ class TestDiffMerge(TestInfrahubApp):
     async def data_01_update_owner_conflict_select_base(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_branch: Branch,
     ) -> None:
@@ -120,8 +120,8 @@ class TestDiffMerge(TestInfrahubApp):
     async def test_select_cardinality_one_resolution_and_merge(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
-        data_01_update_owner_conflict_select_base,
+        initial_dataset: dict[str, Node],
+        data_01_update_owner_conflict_select_base: None,
         default_branch: Branch,
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
@@ -154,7 +154,7 @@ class TestDiffMerge(TestInfrahubApp):
     async def test_node_delete_conflict(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         default_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,

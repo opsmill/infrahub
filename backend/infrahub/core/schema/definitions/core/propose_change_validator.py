@@ -22,7 +22,7 @@ from ...relationship_schema import (
 core_propose_change_validator = GenericSchema(
     name="Validator",
     namespace="Core",
-    description="",
+    description="A validator that runs checks against a proposed change",
     include_in_menu=False,
     label="Validator",
     order_by=["started_at__value"],
@@ -31,16 +31,21 @@ core_propose_change_validator = GenericSchema(
     attributes=[
         Attr(name="label", kind="Text", optional=True),
         Attr(
-            name="state", kind="Text", enum=ValidatorState.available_types(), default_value=ValidatorState.QUEUED.value
+            name="state",
+            kind="Text",
+            description="Current execution state of the validator",
+            enum=ValidatorState.available_types(),
+            default_value=ValidatorState.QUEUED.value,
         ),
         Attr(
             name="conclusion",
             kind="Text",
+            description="Final outcome of the validation",
             enum=ValidatorConclusion.available_types(),
             default_value=ValidatorConclusion.UNKNOWN.value,
         ),
-        Attr(name="completed_at", kind="DateTime", optional=True),
-        Attr(name="started_at", kind="DateTime", optional=True),
+        Attr(name="completed_at", kind="DateTime", description="Timestamp when the validator finished", optional=True),
+        Attr(name="started_at", kind="DateTime", description="Timestamp when the validator started", optional=True),
     ],
     relationships=[
         Rel(
@@ -186,7 +191,7 @@ core_generator_validator = NodeSchema(
 core_check = GenericSchema(
     name="Check",
     namespace="Core",
-    description="",
+    description="A check result within a validator that reports on specific validation outcomes",
     display_labels=["label__value"],
     include_in_menu=False,
     label="Check",
@@ -194,19 +199,21 @@ core_check = GenericSchema(
     attributes=[
         Attr(name="name", kind="Text", optional=True),
         Attr(name="label", kind="Text", optional=True),
-        Attr(name="origin", kind="Text", optional=False),
+        Attr(name="origin", kind="Text", description="Source that created this check", optional=False),
         Attr(
             name="kind",
             kind="Text",
+            description="Type of check being performed",
             regex=r"^[A-Z][a-zA-Z0-9]+$",
             optional=False,
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
         ),
-        Attr(name="message", kind="TextArea", optional=True),
+        Attr(name="message", kind="TextArea", description="Detailed message about the check result", optional=True),
         Attr(
             name="conclusion",
             kind="Text",
+            description="Outcome of the check",
             enum=ValidatorConclusion.available_types(),
             default_value=ValidatorConclusion.UNKNOWN.value,
             optional=True,
@@ -214,11 +221,12 @@ core_check = GenericSchema(
         Attr(
             name="severity",
             kind="Text",
+            description="Severity level of any issues found",
             enum=Severity.available_types(),
             default_value=Severity.INFO.value,
             optional=True,
         ),
-        Attr(name="created_at", kind="DateTime", optional=True),
+        Attr(name="created_at", kind="DateTime", description="Timestamp when the check was created", optional=True),
     ],
     relationships=[
         Rel(
@@ -243,9 +251,20 @@ core_data_check = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="conflicts", kind="JSON"),
-        Attr(name="keep_branch", kind="Text", enum=BranchConflictKeep.available_types(), optional=True),
-        Attr(name="enriched_conflict_id", kind="Text", optional=True),
+        Attr(name="conflicts", kind="JSON", description="Details of detected data conflicts between branches"),
+        Attr(
+            name="keep_branch",
+            kind="Text",
+            description="Which branch data to keep when resolving conflicts",
+            enum=BranchConflictKeep.available_types(),
+            optional=True,
+        ),
+        Attr(
+            name="enriched_conflict_id",
+            kind="Text",
+            description="Unique identifier for the enriched conflict",
+            optional=True,
+        ),
     ],
 )
 
@@ -272,8 +291,13 @@ core_schema_check = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="conflicts", kind="JSON"),
-        Attr(name="enriched_conflict_id", kind="Text", optional=True),
+        Attr(name="conflicts", kind="JSON", description="Details of detected schema conflicts"),
+        Attr(
+            name="enriched_conflict_id",
+            kind="Text",
+            description="Unique identifier for the enriched conflict",
+            optional=True,
+        ),
     ],
 )
 
@@ -288,8 +312,8 @@ core_file_check = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="files", kind="List", optional=True),
-        Attr(name="commit", kind="Text", optional=True),
+        Attr(name="files", kind="List", description="List of files involved in this check", optional=True),
+        Attr(name="commit", kind="Text", description="Git commit hash associated with this check", optional=True),
     ],
 )
 
@@ -304,11 +328,11 @@ core_artifact_check = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="changed", kind="Boolean", optional=True),
-        Attr(name="checksum", kind="Text", optional=True),
-        Attr(name="artifact_id", kind="Text", optional=True),
-        Attr(name="storage_id", kind="Text", optional=True),
-        Attr(name="line_number", kind="Number", optional=True),
+        Attr(name="changed", kind="Boolean", description="Whether the artifact content has changed", optional=True),
+        Attr(name="checksum", kind="Text", description="Hash checksum of the artifact content", optional=True),
+        Attr(name="artifact_id", kind="Text", description="Unique identifier of the artifact", optional=True),
+        Attr(name="storage_id", kind="Text", description="ID of the artifact in the object store", optional=True),
+        Attr(name="line_number", kind="Number", description="Line number reference for artifact issues", optional=True),
     ],
 )
 
@@ -323,6 +347,11 @@ core_generator_check = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="instance", kind="Text", optional=False),
+        Attr(
+            name="instance",
+            kind="Text",
+            description="Identifier of the generator instance being checked",
+            optional=False,
+        ),
     ],
 )

@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import { PopoverTrigger } from "@/shared/components/ui/popover";

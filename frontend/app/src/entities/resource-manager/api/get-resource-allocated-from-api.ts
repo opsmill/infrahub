@@ -1,18 +1,13 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type {
-  Get_Resource_Pool_AllocatedQuery,
-  Get_Resource_Pool_AllocatedQueryVariables,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import type { PaginationParams } from "@/shared/api/types";
 
-export const GET_RESOURCE_ALLOCATED = gql`
+const GET_RESOURCE_ALLOCATED = graphql(`
   query GET_RESOURCE_POOL_ALLOCATED(
     $poolId: String!
     $resourceId: String!
-    $limit: Int
-    $offset: Int
+    $limit: Int!
+    $offset: Int!
   ) {
     InfrahubResourcePoolAllocated(
       pool_id: $poolId
@@ -32,12 +27,10 @@ export const GET_RESOURCE_ALLOCATED = gql`
       }
     }
   }
-`;
+`);
 
-export interface GetResourceAllocatedFromApiParams extends PaginationParams {
-  poolId: string;
-  resourceId: string;
-}
+export interface GetResourceAllocatedFromApiParams
+  extends VariablesOf<typeof GET_RESOURCE_ALLOCATED> {}
 
 export function getResourceAllocatedFromApi({
   poolId,
@@ -45,10 +38,7 @@ export function getResourceAllocatedFromApi({
   limit,
   offset,
 }: GetResourceAllocatedFromApiParams) {
-  return graphqlClient.query<
-    Get_Resource_Pool_AllocatedQuery,
-    Get_Resource_Pool_AllocatedQueryVariables
-  >({
+  return graphqlClient.query({
     query: GET_RESOURCE_ALLOCATED,
     variables: {
       poolId,

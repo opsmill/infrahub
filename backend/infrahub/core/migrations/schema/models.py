@@ -3,9 +3,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 
 
 class SchemaApplyMigrationData(BaseModel):
@@ -15,6 +17,8 @@ class SchemaApplyMigrationData(BaseModel):
     new_schema: SchemaBranch
     previous_schema: SchemaBranch
     migrations: list[SchemaUpdateMigrationInfo]
+    at: Timestamp
+    user_id: str = SYSTEM_USER_ID
 
     @model_serializer()
     def serialize_model(self) -> dict[str, Any]:
@@ -23,12 +27,19 @@ class SchemaApplyMigrationData(BaseModel):
             "previous_schema": self.previous_schema.to_dict_schema_object(),
             "new_schema": self.new_schema.to_dict_schema_object(),
             "migrations": [migration.model_dump() for migration in self.migrations],
+            "user_id": self.user_id,
+            "at": self.at.to_string(),
         }
 
     @field_validator("new_schema", "previous_schema", mode="before")
     @classmethod
     def validate_schema_branch(cls, value: Any) -> SchemaBranch:
         return SchemaBranch.validate(data=value)
+
+    @field_validator("at", mode="before")
+    @classmethod
+    def validate_at(cls, value: Any) -> Timestamp:
+        return Timestamp(value)
 
 
 class SchemaMigrationPathResponseData(BaseModel):

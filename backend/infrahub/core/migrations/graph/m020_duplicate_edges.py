@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.migrations.shared import GraphMigration, MigrationResult
+from infrahub.core.migrations.shared import GraphMigration, MigrationInput, MigrationResult
 from infrahub.log import get_logger
 
 from ...query import Query, QueryType
@@ -108,13 +108,6 @@ CALL (a, branch, status, from, to, b, e_id_to_keep) {
         self.add_to_query(query)
 
 
-class DeleteDuplicateIsVisibleEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
-    name = "delete_duplicate_is_visible_edges"
-    type = QueryType.WRITE
-    insert_return = False
-    edge_type = DatabaseEdgeType.IS_VISIBLE
-
-
 class DeleteDuplicateIsProtectedEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
     name = "delete_duplicate_is_protected_edges"
     type = QueryType.WRITE
@@ -144,13 +137,12 @@ class Migration020(GraphMigration):
     minimum_version: int = 19
     queries: Sequence[type[Query]] = [
         DeleteDuplicateHasValueEdgesQuery,
-        DeleteDuplicateIsVisibleEdgesQuery,
         DeleteDuplicateIsProtectedEdgesQuery,
     ]
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         # skip the transaction b/c it will run out of memory on a large database
-        return await self.do_execute(db=db)
+        return await self.do_execute(migration_input=migration_input)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()

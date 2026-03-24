@@ -15,6 +15,7 @@ from ...relationship_schema import (
 core_generator_definition = NodeSchema(
     name="GeneratorDefinition",
     namespace="Core",
+    description="Defines a generator that creates or updates objects based on a GraphQL query",
     include_in_menu=False,
     icon="mdi:state-machine",
     label="Generator Definition",
@@ -29,12 +30,30 @@ core_generator_definition = NodeSchema(
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="description", kind="Text", optional=True),
-        Attr(name="parameters", kind="JSON"),
-        Attr(name="file_path", kind="Text"),
-        Attr(name="class_name", kind="Text"),
-        Attr(name="convert_query_response", kind="Boolean", optional=True, default_value=False),
-        Attr(name="execute_in_proposed_change", kind="Boolean", optional=True, default_value=True),
-        Attr(name="execute_after_merge", kind="Boolean", optional=True, default_value=True),
+        Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the generator"),
+        Attr(name="file_path", kind="Text", description="Path to the Python file containing the generator class"),
+        Attr(name="class_name", kind="Text", description="Name of the Python class implementing the generator"),
+        Attr(
+            name="convert_query_response",
+            kind="Boolean",
+            description="Whether to convert the GraphQL response to SDK objects",
+            optional=True,
+            default_value=False,
+        ),
+        Attr(
+            name="execute_in_proposed_change",
+            kind="Boolean",
+            description="Whether to run this generator in proposed changes",
+            optional=True,
+            default_value=True,
+        ),
+        Attr(
+            name="execute_after_merge",
+            kind="Boolean",
+            description="Whether to run this generator after a merge",
+            optional=True,
+            default_value=True,
+        ),
     ],
     relationships=[
         Rel(
@@ -67,6 +86,7 @@ core_generator_definition = NodeSchema(
 core_generator_instance = NodeSchema(
     name="GeneratorInstance",
     namespace="Core",
+    description="An instance of a generator execution for a specific object",
     label="Generator Instance",
     include_in_menu=False,
     icon="mdi:file-document-outline",

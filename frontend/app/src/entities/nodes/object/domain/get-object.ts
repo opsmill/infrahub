@@ -7,7 +7,7 @@ import type { ContextParams } from "@/shared/api/types";
 
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface GetObjectParams extends ContextParams {
@@ -18,7 +18,7 @@ export interface GetObjectParams extends ContextParams {
   relationshipFragment?: Record<string, string>;
 }
 
-export type GetObject = (params: GetObjectParams) => Promise<NodeObject>;
+export type GetObject = (params: GetObjectParams) => Promise<NodeObjectWithMetadata>;
 
 export const getObject: GetObject = async ({
   branchName,
@@ -66,7 +66,8 @@ export const getObject: GetObject = async ({
     },
   });
 
-  const result = data[schemaKind]?.edges?.map((edge: { node: NodeObject }) => edge.node) ?? [];
+  const result =
+    data[schemaKind]?.edges?.map((edge: { node: NodeObjectWithMetadata }) => edge.node) ?? [];
 
   if (!result || result.length === 0) {
     throw new Error(`Cannot find ${objectSchema.label} with id ${objectId}`);

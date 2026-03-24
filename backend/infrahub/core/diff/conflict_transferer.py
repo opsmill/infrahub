@@ -9,7 +9,7 @@ from .model.path import (
 
 
 class DiffConflictTransferer:
-    def __init__(self, diff_combiner: DiffCombiner):
+    def __init__(self, diff_combiner: DiffCombiner) -> None:
         self.diff_combiner = diff_combiner
 
     async def transfer(self, earlier: EnrichedDiffRoot, later: EnrichedDiffRoot) -> None:

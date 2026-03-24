@@ -3,13 +3,15 @@ import clsx from 'clsx';
 import Heading from '@theme/Heading'
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './styles.module.css';
 import { translate } from '@docusaurus/Translate';
-import ArrowRightIcon from "/img/arrow-right.svg";
-import EducationIcon from "/img/education.svg";
+import ArrowRightIcon from "@site/static/img/arrow-right.svg";
+import EducationIcon from "@site/static/img/education.svg";
 
 export default function HomepageHeader() {
     const { siteConfig } = useDocusaurusContext();
+    const videoUrl = useBaseUrl('/medias/demo.mp4');
 
     return (
         <header className={clsx('container', styles.heroBanner)}>
@@ -25,7 +27,7 @@ export default function HomepageHeader() {
                 <div className={styles.containerFlexWrap}>
                     <Link
                         className={clsx(styles.heroButton, "button button--primary button--lg")}
-                        to="getting-started/overview"
+                        to="overview"
                     >
                         {translate({
                             id: 'home.header.docs',
@@ -74,7 +76,7 @@ export default function HomepageHeader() {
                         maxHeight: "540px"
                     }}
                     className="rounded-2xl" height="100%" loop autoPlay muted>
-                    <source src="/medias/demo.mp4" type="video/mp4" />
+                    <source src={videoUrl} type="video/mp4" />
                 </video>
             </div>
         </header>

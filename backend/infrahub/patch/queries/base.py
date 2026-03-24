@@ -6,7 +6,7 @@ from ..models import PatchPlan
 
 
 class PatchQuery(ABC):
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
     @abstractmethod

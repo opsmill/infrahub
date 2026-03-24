@@ -5,8 +5,9 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -17,6 +18,8 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
+
+from .validation import assert_no_virtual_schema_relationships_in_db
 
 
 class TestTemplateProfileIntegration(TestInfrahubApp):
@@ -55,7 +58,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         await load_schema(db=db, schema=schema_root, branch_name=default_branch.name, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def device_profile(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch) -> Node:
+    async def device_profile(self, db: InfrahubDatabase, schema_root_01: None, default_branch: Branch) -> Node:
         """Create a device profile."""
         profile_schema = registry.schema.get_profile_schema(
             name="ProfileTestingDevice", branch=default_branch, duplicate=False
@@ -72,7 +75,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         return device_profile
 
     @pytest.fixture(scope="class")
-    async def device_template(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch) -> Node:
+    async def device_template(self, db: InfrahubDatabase, schema_root_01: None, default_branch: Branch) -> Node:
         """Create a device template."""
         template_schema = registry.schema.get_template_schema(
             name="TemplateTestingDevice", branch=default_branch, duplicate=False
@@ -90,7 +93,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def device_template_with_profile(
-        self, db: InfrahubDatabase, schema_root_01, default_branch: Branch, device_profile: Node
+        self, db: InfrahubDatabase, schema_root_01: None, default_branch: Branch, device_profile: Node
     ) -> Node:
         """Create a device template with an assigned profile."""
         template_schema = registry.schema.get_template_schema(
@@ -390,7 +393,11 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert obj["height"]["source"]["id"] == device_profile.id
 
         # Verify via direct database query
-        retrieved_template = await NodeManager.get_one(db=db, id=template_with_value.id, include_source=True)
+        retrieved_template = await NodeManager.get_one(
+            db=db,
+            id=template_with_value.id,
+            include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE),
+        )
         assert retrieved_template.airflow.value == "Rear to front"
         assert retrieved_template.airflow.is_from_profile is False
         assert retrieved_template.airflow.is_default is False
@@ -640,7 +647,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert obj["height"]["source"]["id"] == test_profile.id
 
         # Verify via database
-        retrieved = await NodeManager.get_one(db=db, id=test_template.id, include_source=True)
+        retrieved = await NodeManager.get_one(
+            db=db, id=test_template.id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert retrieved.airflow.value == "Explicitly set airflow"
         assert retrieved.airflow.is_from_profile is False
         assert retrieved.airflow.source_id is None
@@ -706,6 +715,12 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert retrieved_device.height.is_from_profile is True
         assert retrieved_device.manufacturer.value == "Dell"
         assert retrieved_device.manufacturer.source.id == retrieved_template.id  # Explicitly set on template
+
+    async def test_step_06_no_profiles_schema_relationships_in_db(
+        self,
+        db: InfrahubDatabase,
+    ) -> None:
+        await assert_no_virtual_schema_relationships_in_db(db)
 
 
 class TestTemplateProfileWithComponents(TestInfrahubApp):
@@ -777,7 +792,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         await load_schema(db=db, schema=schema_root, branch_name=default_branch.name, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def interface_profile(self, db: InfrahubDatabase, component_schema_root, default_branch: Branch) -> Node:
+    async def interface_profile(
+        self, db: InfrahubDatabase, component_schema_root: None, default_branch: Branch
+    ) -> Node:
         """Create an interface profile."""
         profile_schema = registry.schema.get_profile_schema(
             name="ProfileTestingInterface", branch=default_branch, duplicate=False
@@ -796,7 +813,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def device_component_profile(
-        self, db: InfrahubDatabase, component_schema_root, default_branch: Branch
+        self, db: InfrahubDatabase, component_schema_root: None, default_branch: Branch
     ) -> Node:
         """Create a device profile."""
         profile_schema = registry.schema.get_profile_schema(
@@ -877,7 +894,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via database retrieval
         template_id = obj["id"]
-        retrieved = await NodeManager.get_one(db=db, id=template_id, include_source=True)
+        retrieved = await NodeManager.get_one(
+            db=db, id=template_id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert retrieved.mtu.value == 9000
         assert retrieved.mtu.is_from_profile is True
         assert retrieved.mtu.source_id == interface_profile.id
@@ -982,7 +1001,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         assert result.errors is None
 
         # Verify device template has profile applied
-        retrieved_device_template = await NodeManager.get_one(db=db, id=device_template.id, include_source=True)
+        retrieved_device_template = await NodeManager.get_one(
+            db=db, id=device_template.id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert retrieved_device_template.role.value == "spine"
         assert retrieved_device_template.role.is_from_profile is True
         assert retrieved_device_template.role.source_id == device_component_profile.id
@@ -1193,14 +1214,18 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via direct database query
         device_id = obj["id"]
-        retrieved_device = await NodeManager.get_one(db=db, id=device_id, include_source=True)
+        retrieved_device = await NodeManager.get_one(
+            db=db, id=device_id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
 
         assert retrieved_device.role.value == "spine"
         assert retrieved_device.role.is_from_profile is True
         assert retrieved_device.role.source_id == device_component_profile.id
 
         # Get and verify interfaces
-        interfaces_rel = await retrieved_device.interfaces.get_peers(db=db, include_source=True)
+        interfaces_rel = await retrieved_device.interfaces.get_peers(
+            db=db, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+        )
         assert len(interfaces_rel) == 2
 
         for interface in interfaces_rel.values():
@@ -1216,3 +1241,9 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             assert interface.enabled.value is True
             assert interface.enabled.is_from_profile is True
             assert interface.enabled.source_id == interface_profile.id
+
+    async def test_step_04_no_profiles_schema_relationships_in_db(
+        self,
+        db: InfrahubDatabase,
+    ) -> None:
+        await assert_no_virtual_schema_relationships_in_db(db)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core.migrations.shared import GraphMigration, MigrationResult
+from infrahub.core.migrations.shared import GraphMigration, MigrationInput, MigrationResult
 
 from ...query import Query, QueryType
 
@@ -38,6 +38,6 @@ class Migration035(GraphMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         # overrides parent class to skip transaction in case there are a lot of relationships to delete
-        return await self.do_execute(db=db)
+        return await self.do_execute(migration_input=migration_input)

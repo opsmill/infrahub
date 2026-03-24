@@ -1,15 +1,10 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-object-relationships-from-api";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const OBJECT_RELATIONSHIPS_PER_PAGE = 40;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export interface GetObjectRelationshipsParams extends ContextParams, PaginationParams {
   parentKind: string;
@@ -21,12 +16,12 @@ export interface GetObjectRelationshipsParams extends ContextParams, PaginationP
 
 export type GetObjectRelationships = (
   params: GetObjectRelationshipsParams
-) => Promise<Array<NodeObject>>;
+) => Promise<NodeObject[]>;
 
 export const getObjectRelationships: GetObjectRelationships = async ({
   parentKind,
   relationshipName,
-  limit = OBJECT_RELATIONSHIPS_PER_PAGE,
+  limit = DEFAULT_PAGE_SIZE,
   ...params
 }) => {
   const { data } = await getObjectRelationshipsFromApi({
@@ -36,9 +31,7 @@ export const getObjectRelationships: GetObjectRelationships = async ({
     ...params,
   });
 
-  return (
-    data[parentKind]?.edges?.[0]?.node?.[relationshipName]?.edges?.map(
-      ({ node }: { node: NodeObject }) => node
-    ) ?? []
-  );
+  const relationshipData = data[parentKind]?.edges?.[0]?.node?.[relationshipName];
+
+  return relationshipData?.edges?.map(({ node }: { node: NodeObject }) => node) ?? [];
 };

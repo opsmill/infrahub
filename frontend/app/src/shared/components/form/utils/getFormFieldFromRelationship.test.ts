@@ -16,10 +16,12 @@ describe("getFormFieldFromRelationship", () => {
     const fields = getFormFieldFromRelationship({
       auth: undefined,
       relationshipSchema,
-      relationshipData: undefined,
+      objectData: undefined,
       objectTemplate: undefined,
       isFilterForm: false,
       schema,
+      parentSchema: null,
+      parentData: undefined,
       isBulkUpdate: false,
     });
 
@@ -36,7 +38,6 @@ describe("getFormFieldFromRelationship", () => {
         required: false,
         validate: expect.any(Function),
       },
-      schema,
     });
   });
 });

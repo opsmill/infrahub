@@ -5,9 +5,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.computed_attribute.tasks import gather_trigger_computed_attribute_python, query_transform_targets
+from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_python
+from infrahub.computed_attribute.tasks import query_transform_targets
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from tests.helpers.file_repo import FileRepo
@@ -35,10 +37,13 @@ mutation Recompute($kind: String!, $attribute: String!, $node_ids: [String!]) {
 
 class TestComputedAttribute(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def context(self, client: InfrahubClient, default_branch: Branch) -> InfrahubContext:
-        """Placeholder context for now, would be good to implement some auth and permissions here"""
+    async def context(self, db: InfrahubDatabase, initialize_registry: None, default_branch: Branch) -> InfrahubContext:
+        """Context with a real account from the database for computed attribute workflows"""
+        admin_account = await NodeManager.get_one_by_hfid(
+            db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
+        )
         return InfrahubContext(
-            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            account=AccountSession(authenticated=True, account_id=admin_account.id, auth_type=AuthType.API),
             branch=BranchContext(name=default_branch.name, id=str(default_branch.uuid)),
         )
 

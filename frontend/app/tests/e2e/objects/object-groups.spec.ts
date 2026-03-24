@@ -30,7 +30,8 @@ test.describe("Object groups update", () => {
 
     await test.step("go to the new tag", async () => {
       await page.getByRole("link", { name: "group-tag" }).click();
-      await page.getByTestId("manage-groups").click();
+      await page.getByTestId("object-details-menu").click();
+      await page.getByRole("menuitem", { name: "Groups" }).click();
       await expect(page.getByRole("heading", { name: "Manage groups", exact: true })).toBeVisible();
       await expect(page.getByText("There are no groups to display")).toBeVisible();
     });

@@ -4,7 +4,7 @@ from asyncio import gather, sleep
 from infrahub import lock
 
 
-async def do_nothing(id: str, wait_sec: int, lock_name: str = "test1") -> int:
+async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tuple[str, int, int]:
     """Function for testing a simple lock."""
     async with lock.registry.get(name=lock_name):
         start_time = time.time_ns()
@@ -14,7 +14,7 @@ async def do_nothing(id: str, wait_sec: int, lock_name: str = "test1") -> int:
     return id, start_time, end_time
 
 
-async def do_nothing_global_graph(id=str, wait_sec=int) -> int:
+async def do_nothing_global_graph(id: str, wait_sec: float) -> tuple[str, int, int]:
     """Function for testing the global_graph_lock.
     After acquiring the locks, wait for the indicated amount and return the start time and the end time of the lock."""
     async with lock.registry.global_graph_lock():
@@ -28,9 +28,11 @@ async def do_nothing_global_graph(id=str, wait_sec=int) -> int:
 async def test_simple_infrahub_lock() -> None:
     lock.initialize_lock(local_only=True)
 
-    results = await gather(
-        do_nothing(id="one", wait_sec=0.5),
-        do_nothing(id="two", wait_sec=1),
+    results = list(
+        await gather(
+            do_nothing(id="one", wait_sec=0.5),
+            do_nothing(id="two", wait_sec=1),
+        )
     )
 
     results.sort(key=lambda x: x[1])

@@ -30,7 +30,7 @@ from .mutations.proposed_change import (
     ProposedChangeReview,
 )
 from .mutations.relationship import RelationshipAdd, RelationshipRemove
-from .mutations.repository import ProcessRepository, ValidateRepositoryConnectivity
+from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .queries import (
@@ -115,6 +115,7 @@ class InfrahubBaseMutation(ObjectType):
 
     DiffUpdate = DiffUpdateMutation.Field()
 
+    InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()

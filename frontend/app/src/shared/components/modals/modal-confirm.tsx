@@ -1,107 +1,54 @@
-import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import type React from "react";
-import { Fragment, type ReactNode, useRef } from "react";
+import type { ReactNode } from "react";
+import { Heading } from "react-aria-components";
 
-import { Button } from "../buttons/button-primitive";
+import { Modal } from "@/shared/components/aria/modal";
+import { Col, Row } from "@/shared/components/container";
+import { Button } from "@/shared/components/ui/button";
 
-interface iProps {
-  open: boolean;
-  hideCancel?: boolean;
-  isLoading?: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+interface ModalConfirmProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
   title: string;
-  description?: string | React.ReactNode;
-  children?: ReactNode;
-  icon?: string;
-  onCancel: () => void;
-  onConfirm: () => void;
+  description?: ReactNode;
+  onConfirm: () => void | Promise<void>;
+  isLoading?: boolean;
 }
 
-export default function ModalConfirm({
+export function ModalConfirm({
+  isOpen,
+  onOpenChange,
   title,
   description,
-  onCancel,
   onConfirm,
-  open,
-  setOpen,
   isLoading,
-  children,
-  hideCancel,
-  icon = "mdi:warning-outline",
-}: iProps) {
-  const cancelButtonRef = useRef(null);
-
+}: ModalConfirmProps) {
   return (
-    <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" initialFocus={cancelButtonRef} onClose={setOpen}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/40 transition-opacity" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-0 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 translate-y-0 scale-95"
-              enterTo="opacity-100 translate-y-0 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 scale-100"
-              leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
-            >
-              <Dialog.Panel className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all">
-                <div className="bg-white p-6 px-4 pt-5 pb-4">
-                  <div className="">
-                    <div className="mt-0 ml-4 text-left">
-                      <Dialog.Title
-                        as="h3"
-                        className="flex items-center font-semibold text-gray-900 leading-6"
-                      >
-                        <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
-                          <Icon icon={icon} className="text-red-600" aria-hidden="true" />
-                        </div>
-                        {title}
-                      </Dialog.Title>
-                      <div className="mt-2">
-                        <p className="text-gray-500 text-sm">{description}</p>
-                        {children}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  className="flex flex-row-reverse bg-gray-50 px-4 py-3"
-                  data-cy="modal-confirm-buttons"
-                >
-                  <Button
-                    onClick={onConfirm}
-                    variant={"active"}
-                    className="ml-2"
-                    isLoading={isLoading}
-                    disabled={isLoading}
-                  >
-                    Confirm
-                  </Button>
-                  {!hideCancel && (
-                    <Button onClick={onCancel} ref={cancelButtonRef} variant={"outline"}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
+    <Modal
+      isDismissable={!isLoading}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      className="w-full max-w-lg p-0"
+    >
+      <Col className="p-3">
+        <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-100">
+            <Icon icon="mdi:alert-circle-outline" className="text-yellow-600" />
           </div>
-        </div>
-      </Dialog>
-    </Transition.Root>
+          {title}
+        </Heading>
+
+        {description && <p className="px-8 text-gray-500 text-sm">{description}</p>}
+      </Col>
+
+      <Row className="justify-end bg-gray-50 p-3">
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={onConfirm} isLoading={isLoading} disabled={isLoading}>
+          Confirm
+        </Button>
+      </Row>
+    </Modal>
   );
 }

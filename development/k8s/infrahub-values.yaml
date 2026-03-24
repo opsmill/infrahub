@@ -1,14 +1,17 @@
 ---
+# yamllint disable rule:line-length
 infrahub:
   global:
-    infrahubTag: 1.4.10
+    infrahubTag: 1.7.6
   infrahubServer:
+    podLabels:
+      infrahub/service: server
     replicas: 3
     persistence:
       enabled: false
     infrahubServer:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.infrahub.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -37,10 +40,12 @@ infrahub:
                 service: infrahub-server
             topologyKey: kubernetes.io/hostname
   infrahubTaskWorker:
+    podLabels:
+      infrahub/service: task-worker
     replicas: 3
     infrahubTaskWorker:
       env:
-        INFRAHUB_DB_ADDRESS: infrahub-headless
+        INFRAHUB_DB_ADDRESS: infrahub-headless.infrahub.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
         INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
@@ -76,4 +81,35 @@ infrahub:
   rabbitmq:
     enabled: false
   prefect-server:
-    enabled: false
+    server:
+      replicaCount: 3
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  infrahub/service: task-manager
+              topologyKey: kubernetes.io/hostname
+    backgroundServices:
+      messaging:
+        redis:
+          host: "redis-sentinel-proxy"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  infrahub/service: task-manager-background-svc
+              topologyKey: kubernetes.io/hostname
+    secret:
+      create: true
+      name: ""
+      username: "prefect"
+      password: "prefect"
+      host: "taskmanagerdb-rw"
+      port: "5432"
+      database: "prefect"
+    serviceAccount:
+      create: false
+    postgresql:
+      enabled: false

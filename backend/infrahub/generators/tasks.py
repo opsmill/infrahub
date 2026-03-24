@@ -90,7 +90,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         )
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value
-    except (ModuleImportError, Exception):  # pylint: disable=broad-exception-caught
+    except (ModuleImportError, Exception):
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         await generator_instance.update(do_full_update=True)
         raise

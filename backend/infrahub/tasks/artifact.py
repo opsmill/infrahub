@@ -13,6 +13,7 @@ from infrahub.workers.dependencies import get_client
 async def define_artifact(model: CheckArtifactCreate | RequestArtifactGenerate) -> tuple[InfrahubNode, bool]:
     """Return an artifact together with a flag to indicate if the artifact is created now or already existed."""
     client = get_client()
+    client.request_context = model.context.to_request_context()
     created = False
     if model.artifact_id:
         artifact = await client.get(kind=InfrahubKind.ARTIFACT, id=model.artifact_id, branch=model.branch_name)

@@ -1,8 +1,8 @@
-import { gql } from "@apollo/client";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-const query = gql`
+const query = graphql(`
   query InfrahubAccountToken {
     InfrahubAccountToken {
       count
@@ -15,7 +15,7 @@ const query = gql`
       }
     }
   }
-`;
+`);
 
 export const getAccountTokenFromApi = async () => {
   return graphqlClient.query({ query });

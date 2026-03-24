@@ -8,6 +8,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
 from graphql import (
+    DocumentNode,
     FieldNode,
     FragmentDefinitionNode,
     FragmentSpreadNode,
@@ -130,6 +131,10 @@ class GraphQLArgument:
 class ObjectAccess:
     attributes: set[str] = field(default_factory=set)
     relationships: set[str] = field(default_factory=set)
+
+    @property
+    def fields(self) -> set[str]:
+        return self.attributes.union(self.relationships)
 
 
 @dataclass
@@ -389,6 +394,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         schema: GraphQLSchema | None = None,
         query_variables: dict[str, Any] | None = None,
         operation_name: str | None = None,
+        document: DocumentNode | None = None,
     ) -> None:
         self.branch = branch
         self.schema_branch = schema_branch
@@ -396,7 +402,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self.query_variables: dict[str, Any] = query_variables or {}
         self._named_fragments: dict[str, GraphQLQueryNode] = {}
         self._fragment_dependencies: dict[str, set[str]] = {}
-        super().__init__(query=query, schema=schema)
+        super().__init__(query=query, schema=schema, document=document)
 
     @property
     def operation_names(self) -> list[str]:

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.branch.models import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class TestDeleteAgnosticRel(TestInfrahubApp):
@@ -20,31 +21,31 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         await client.schema.load([car_person_branch_agnostic_schema])
 
     @pytest.fixture(scope="class")
-    async def owner_1(self, client: InfrahubClient, load_schema) -> InfrahubNode:
+    async def owner_1(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
         owner_1 = await client.create(kind="TestPerson", name="owner_1")
         await owner_1.save()
         return owner_1
 
     @pytest.fixture(scope="class")
-    async def owner_2(self, client: InfrahubClient, load_schema) -> InfrahubNode:
+    async def owner_2(self, client: InfrahubClient, load_schema: None) -> InfrahubNode:
         owner_2 = await client.create(kind="TestPerson", name="owner_2")
         await owner_2.save()
         return owner_2
 
     @pytest.fixture(scope="class")
-    async def car(self, client: InfrahubClient, load_schema, owner_1: InfrahubNode) -> InfrahubNode:
+    async def car(self, client: InfrahubClient, load_schema: None, owner_1: InfrahubNode) -> InfrahubNode:
         car = await client.create(kind="TestCar", name="car_name", agnostic_owner=owner_1)
         await car.save()
         return car
 
     @pytest.fixture(scope="class")
-    async def car_2(self, client: InfrahubClient, load_schema, owner_2: InfrahubNode) -> InfrahubNode:
+    async def car_2(self, client: InfrahubClient, load_schema: None, owner_2: InfrahubNode) -> InfrahubNode:
         car = await client.create(kind="TestCar", name="car_name_2", agnostic_owner=owner_2)
         await car.save()
         return car
 
     @pytest.fixture(scope="class")
-    async def roofrack_2(self, client: InfrahubClient, load_schema, car_2: InfrahubNode) -> InfrahubNode:
+    async def roofrack_2(self, client: InfrahubClient, load_schema: None, car_2: InfrahubNode) -> InfrahubNode:
         roofrack = await client.create(kind="TestRoofrack", size="big", car=car_2)
         await roofrack.save()
         return roofrack
@@ -52,7 +53,7 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
     async def test_delete_agnostic_rel(
         self,
         client: InfrahubClient,
-        load_schema,
+        load_schema: None,
         owner_1: InfrahubNode,
         owner_2: InfrahubNode,
         car: InfrahubNode,
@@ -106,7 +107,7 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         )
 
     async def test_delete_branch(
-        self, client: InfrahubClient, car_2: InfrahubNode, roofrack_2: InfrahubNode, db
+        self, client: InfrahubClient, car_2: InfrahubNode, roofrack_2: InfrahubNode, db: InfrahubDatabase
     ) -> None:
         branch2 = await client.branch.create(branch_name="branch2")
 
@@ -141,7 +142,12 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         assert len(results) == 0
 
     async def test_delete_branch_with_aware_owner_relationship(
-        self, client: InfrahubClient, default_branch: Branch, car_2: InfrahubNode, roofrack_2: InfrahubNode, db
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        car_2: InfrahubNode,
+        roofrack_2: InfrahubNode,
+        db: InfrahubDatabase,
     ) -> None:
         aware_owner = await client.create(kind="TestPerson", name="aware_owner", branch=default_branch.name)
         await aware_owner.save()
