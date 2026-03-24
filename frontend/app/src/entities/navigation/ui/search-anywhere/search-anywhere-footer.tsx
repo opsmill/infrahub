@@ -5,8 +5,8 @@ import { Link } from "react-router";
 
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { useGetSearchAnywhere } from "@/entities/navigation/domain/search-anywhere.query";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
+import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { useSearchAnywhereContext } from "@/entities/navigation/ui/search-anywhere/search-anywhere-context";
 
 export function SearchAnywhereFooter() {
