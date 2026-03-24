@@ -71,7 +71,7 @@
     "graphql": "^16.13.1",
     "handlebars": "^4.7.8",
     "infrahub-schema-visualizer": "file:../packages/schema-visualizer",
-    "jotai": "^2.18.1",
+    "jotai": "^2.19.0",
     "json-to-graphql-query": "^2.3.0",
     "lucide-react": "^1.0.1",
     "monaco-editor": "0.52.2",
@@ -110,8 +110,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@betterer/cli": "^6.0.0-alpha.1",
-    "@betterer/typescript": "^6.0.0-alpha.1",
+    "@betterer/cli": "6.0.0-alpha.1",
+    "@betterer/typescript": "6.0.0-alpha.1",
     "@biomejs/biome": "^2.4.8",
     "@graphql-codegen/cli": "^6.2.1",
     "@graphql-codegen/typescript": "^5.0.9",
@@ -126,7 +126,7 @@
     "@types/sha1": "^1.1.5",
     "@vitest/browser-playwright": "^4.1.1",
     "@vitest/coverage-v8": "^4.1.1",
-    "knip": "^6.0.3",
+    "knip": "^6.0.4",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3",
     "ultracite": "^7.3.2",
