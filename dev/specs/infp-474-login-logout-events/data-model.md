@@ -42,17 +42,17 @@ class AuthenticationError(AuthorizationError):
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `account_id` | `str` | ✓ | Neo4j node ID of the authenticated account |
-| `account_name` | `str` | ✓ | Display name / username |
-| `account_type` | `str` | ✓ | "User" or "Service" |
-| `auth_method` | `str` | ✓ | "password", "oauth2", or "oidc" |
-| `session_id` | `str` | ✓ | RefreshToken UUID — links login to logout |
-| `groups` | `list[str]` | ✓ | Group names (may be empty) |
-| `roles` | `list[str]` | ✓ | Role names (may be empty) |
-| `sso_provider` | `str \| None` | — | Provider name for oauth2/oidc; None for password |
-| `client_ip` | `str \| None` | — | Client IP address |
-| `user_agent` | `str \| None` | — | HTTP User-Agent header |
-| `timestamp` | `datetime` | ✓ | When the login occurred (UTC) |
+| `account_id` | `str` | ✓ | UUID of the account |
+| `account_name` | `str` | ✓ | Username |
+| `account_type` | `str` | ✓ | USER or SCRIPT |
+| `auth_method` | `str` | ✓ | How they authenticated |
+| `session_id` | `str` | ✓ | UUID of the session |
+| `groups` | `tuple[str]` | ✓ | List of group names/IDs |
+| `roles` | `tuple[str]` | ✓ | 	List of role names/IDs |
+| `sso_provider` | `str \| None` | — | SSO provider name (if applicable) |
+| `client_ip` | `str \| None` | — | Source IP address |
+| `user_agent` | `str \| None` | — | Browser/client info |
+| `timestamp` | `datetime` | ✓ | When login occurred |
 
 **Prefect resource**:
 ```python
@@ -73,12 +73,12 @@ class AuthenticationError(AuthorizationError):
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `attempted_identifier` | `str` | ✓ | Username or identifier attempted (untrusted input) |
-| `auth_method` | `str` | ✓ | "password", "oauth2", or "oidc" |
+| `auth_method` | `str` | ✓ | How they authenticated |
 | `failure_reason` | `str` | ✓ | Human-readable failure reason |
-| `account_id` | `str \| None` | — | Account ID if account exists; None for unknown users |
-| `client_ip` | `str \| None` | — | Client IP address |
-| `user_agent` | `str \| None` | — | HTTP User-Agent header |
-| `timestamp` | `datetime` | ✓ | When the login attempt occurred (UTC) |
+| `account_id` | `str \| None` | — | UUID of the account |
+| `client_ip` | `str \| None` | — | Source IP address |
+| `user_agent` | `str \| None` | — | Browser/client info |
+| `timestamp` | `datetime` | ✓ | When the login attempt occurred |
 
 **Prefect resource**:
 ```python
@@ -98,13 +98,12 @@ class AuthenticationError(AuthorizationError):
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `account_id` | `str` | ✓ | Neo4j node ID of the account |
-| `account_name` | `str` | ✓ | Display name / username |
-| `session_id` | `str` | ✓ | RefreshToken UUID — links to the corresponding login event |
-| `logout_type` | `str` | ✓ | "user_initiated" or "admin_forced" |
-| `client_ip` | `str \| None` | — | Client IP address |
-| `user_agent` | `str \| None` | — | HTTP User-Agent header |
-| `timestamp` | `datetime` | ✓ | When the logout occurred (UTC) |
+| `account_id` | `str` | ✓ | UUID of the account |
+| `account_name` | `str` | ✓ | Username |
+| `session_id` | `str` | ✓ | UUID of the session being terminated |
+| `logout_type` | `str` | ✓ | How logout occurred |
+| `client_ip` | `str \| None` | — | Source IP address |
+| `timestamp` | `datetime` | ✓ | When logout occurred |
 
 **Prefect resource**:
 ```python

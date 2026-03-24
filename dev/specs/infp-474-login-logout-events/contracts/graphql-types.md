@@ -15,7 +15,6 @@ type AccountLoggedInEvent implements EventNodeInterface {
   event: String!
   branch: String
   account_id: String
-  occurred_at: DateTime!
   level: Int!
   primary_node: RelatedNode
   related_nodes: [RelatedNode!]!
@@ -46,7 +45,6 @@ type AccountLoginFailedEvent implements EventNodeInterface {
   event: String!
   branch: String
   account_id: String
-  occurred_at: DateTime!
   level: Int!
   primary_node: RelatedNode
   related_nodes: [RelatedNode!]!
@@ -73,7 +71,6 @@ type AccountLoggedOutEvent implements EventNodeInterface {
   event: String!
   branch: String
   account_id: String
-  occurred_at: DateTime!
   level: Int!
   primary_node: RelatedNode
   related_nodes: [RelatedNode!]!
@@ -113,7 +110,6 @@ query GetAuthEvents {
       node {
         id
         event
-        occurred_at
         account_id
         ... on AccountLoggedInEvent {
           account_name
@@ -121,17 +117,20 @@ query GetAuthEvents {
           session_id
           groups
           client_ip
+          timestamp
         }
         ... on AccountLoginFailedEvent {
           attempted_identifier
           auth_method
           failure_reason
           client_ip
+          timestamp
         }
         ... on AccountLoggedOutEvent {
           account_name
           session_id
           logout_type
+          timestamp
         }
       }
     }

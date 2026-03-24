@@ -172,10 +172,10 @@ US2 (Phase 4) is independent of US1 admin-forced logout work (T016–T017) and c
 
 | Phase | Story | Tasks | Done | Remaining |
 |-------|-------|-------|------|-----------|
-| 1 — Setup | — | 8 | 8 | 0 |
-| 2 — GraphQL | — | 3 | 2 | 1 (T011) |
-| 3 — US1 Audit Trail | P1 | 10 | 7 | 3 (T016, T017, T022) |
-| 4 — US2 Failed Logins | P2 | 10 | 5 | 5 (T025–T027, T031–T032) |
-| 5 — US3 Webhooks | P3 | 1 | 1 | 0 |
-| 6 — Polish | — | 4 | 2 | 2 (T036, T037) |
-| **Total** | | **36** | **25** | **11** |
+| 1 — Setup | — | 8 | 0 | 8 |
+| 2 — GraphQL | — | 3 | 0 | 3 |
+| 3 — US1 Audit Trail | P1 | 11 | 0 | 11 |
+| 4 — US2 Failed Logins | P2 | 10 | 0 | 10 |
+| 5 — US3 Webhooks | P3 | 1 | 0 | 1 |
+| 6 — Polish | — | 4 | 0 | 4 |
+| **Total** | | **37** | **0** | **37** |

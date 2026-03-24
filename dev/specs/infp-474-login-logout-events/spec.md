@@ -75,12 +75,13 @@ An operator has configured webhook integrations to react to Infrahub activity ev
 - **FR-003**: System MUST emit a login event for every failed interactive authentication attempt via password, OAuth2, or OIDC. This includes failures during the OAuth2/OIDC callback phase (e.g., invalid code, provider error, state mismatch).
 - **FR-004**: Failed login events MUST include: attempted username or identifier, authentication method, failure reason, and timestamp. When the user account does not exist, no account identifier is included.
 - **FR-005**: System MUST emit a logout event when a user explicitly initiates a logout.
-- **FR-006**: Logout events MUST include: account identifier, session identifier, and timestamp.
+- **FR-006**: Logout events MUST include: account identifier, session identifier, logout type (`user_initiated` or `admin_forced`), and timestamp.
 - **FR-007**: Authentication events MUST be queryable via the existing activity event interface, filterable by account identifier, event type, and time range.
 - **FR-008**: API key authentication (per-request, non-interactive) MUST NOT generate login or logout events.
 - **FR-009**: Automatic session expiry (session times out without explicit user action) MUST NOT generate a logout event.
 - **FR-010**: Authentication events MUST be usable as triggers for existing webhook and automation integrations without additional configuration to the integration layer.
 - **FR-011**: System MUST emit a logout event with `logout_type="admin_forced"` when an administrator invalidates a user's session via the API or GraphQL interface.
+- **FR-012**: Attempted username identifiers from failed login events MUST be validated for maximum length (e.g., 256 characters) and properly sanitized/escaped before storage, logging, or display to prevent injection attacks and DoS.
 
 ### Key Entities *(include if feature involves data)*
 
