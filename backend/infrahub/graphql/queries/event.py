@@ -4,10 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
-from infrahub.events.constants import EventSortOrder
+from infrahub.core.constants import GlobalPermissions
+from infrahub.events.constants import EVENT_NAMESPACE, EventSortOrder
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
+from infrahub.permissions import define_global_permission_from_branch
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
 
@@ -15,6 +17,10 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from graphql import GraphQLResolveInfo
+
+    from infrahub.graphql.initialization import GraphqlContext
+
+_ACCOUNT_EVENT_PREFIX = f"{EVENT_NAMESPACE}.account."
 
 InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 
@@ -47,6 +53,15 @@ class Events(ObjectType):
         if limit > 50:
             # Prefect restricts this to 50
             raise ValidationError(input_value="The parameter 'limit' can't be above 50")
+
+        if event_type and any(et.startswith(_ACCOUNT_EVENT_PREFIX) for et in event_type):
+            graphql_context: GraphqlContext = info.context
+            graphql_context.active_permissions.raise_for_permission(
+                permission=define_global_permission_from_branch(
+                    permission=GlobalPermissions.MANAGE_ACCOUNTS,
+                    branch_name=graphql_context.branch.name,
+                )
+            )
 
         event_filter = InfrahubEventFilter.from_filters(
             ids=ids,

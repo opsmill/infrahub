@@ -35,10 +35,10 @@
 
 **Purpose**: Register event types in GraphQL so all stories are queryable via the existing interface.
 
-- [ ] T009 Add `AccountLoggedInEventType`, `AccountLoggedOutEventType` ObjectTypes to `backend/infrahub/graphql/types/event.py`
-- [ ] T010 Register both types in `EVENT_TYPES` dict in `backend/infrahub/graphql/types/event.py`
-- [ ] T011 Add `timestamp = DateTime(required=True)` field to `AccountLoggedInEventType` and `AccountLoggedOutEventType` in `backend/infrahub/graphql/types/event.py`
-- [ ] T012 [P] Add admin role check to `infrahub.account.*` event queries in `backend/infrahub/graphql/types/event.py` — non-admin requests must receive an authorization error
+- [x] T009 Add `AccountLoggedInEventType`, `AccountLoggedOutEventType` ObjectTypes to `backend/infrahub/graphql/types/event.py`
+- [x] T010 Register both types in `EVENT_TYPES` dict in `backend/infrahub/graphql/types/event.py`
+- [x] T011 Add `timestamp = DateTime(required=True)` field to `AccountLoggedInEventType` and `AccountLoggedOutEventType` in `backend/infrahub/graphql/types/event.py`
+- [x] T012 [P] Add admin role check to `infrahub.account.*` event queries in `backend/infrahub/graphql/queries/event.py` — non-admin requests must receive an authorization error
 
 **Checkpoint**: Both auth event types are queryable via GraphQL (with full field coverage including timestamp) by admin users only.
 
