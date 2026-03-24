@@ -23,14 +23,20 @@ router = APIRouter(prefix="/auth")
 async def login_user(
     credentials: models.PasswordCredential, response: Response, db: InfrahubDatabase = Depends(get_db)
 ) -> models.UserToken:
-    token = await authenticate_with_password(db=db, credentials=credentials)
+    auth_result = await authenticate_with_password(db=db, credentials=credentials)
     response.set_cookie(
-        "access_token", token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
+        "access_token",
+        auth_result.token.access_token,
+        httponly=True,
+        max_age=config.SETTINGS.security.access_token_lifetime,
     )
     response.set_cookie(
-        "refresh_token", token.refresh_token, httponly=True, max_age=config.SETTINGS.security.refresh_token_lifetime
+        "refresh_token",
+        auth_result.token.refresh_token,
+        httponly=True,
+        max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
-    return token
+    return auth_result.token
 
 
 @router.post("/refresh")

@@ -18,13 +18,13 @@
 
 **Purpose**: Core infrastructure required before any story work.
 
-- [ ] T001 Add `ACCOUNT_LOGGED_IN`, `ACCOUNT_LOGGED_OUT` to `EventType` enum in `backend/infrahub/core/constants/__init__.py`
-- [ ] T002 [P] Create `backend/infrahub/events/auth_action.py` with `AccountLoggedInEvent`, `AccountLoggedOutEvent` (including `timestamp` field on both)
-- [ ] T003 [P] Export the two new event classes in `backend/infrahub/events/__init__.py`
-- [ ] T004 Add `AuthResult` frozen dataclass to `backend/infrahub/auth.py`
-- [ ] T005 Add `_fetch_account_groups_and_roles()` helper to `backend/infrahub/auth.py`
-- [ ] T006 Refactor `authenticate_with_password()` in `backend/infrahub/auth.py` to return `AuthResult`
-- [ ] T007 Refactor `signin_sso_account()` in `backend/infrahub/auth.py` to return `AuthResult`
+- [x] T001 Add `ACCOUNT_LOGGED_IN`, `ACCOUNT_LOGGED_OUT` to `EventType` enum in `backend/infrahub/core/constants/__init__.py`
+- [x] T002 [P] Create `backend/infrahub/events/account_action.py` with `AccountLoggedInEvent`, `AccountLoggedOutEvent` (including `timestamp` field on both)
+- [x] T003 [P] Export the two new event classes in `backend/infrahub/events/__init__.py`
+- [x] T004 Add `AuthResult` frozen dataclass to `backend/infrahub/auth.py`
+- [x] T005 Add `_fetch_account_groups_and_roles()` helper to `backend/infrahub/auth.py`
+- [x] T006 Refactor `authenticate_with_password()` in `backend/infrahub/auth.py` to return `AuthResult`
+- [x] T007 Refactor `signin_sso_account()` in `backend/infrahub/auth.py` to return `AuthResult`
 - [x] T008 [P] Add changelog fragment `changelog/+infp-474.added.md`
 
 **Checkpoint**: Foundation ready — event classes exist, auth functions return rich metadata.

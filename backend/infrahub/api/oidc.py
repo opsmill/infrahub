@@ -200,20 +200,25 @@ async def token(
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
         span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
         span.set_attribute("sso_groups", sso_groups)
-        user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
+        auth_result = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
 
     response.set_cookie(
-        "access_token", user_token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
+        "access_token",
+        auth_result.token.access_token,
+        httponly=True,
+        max_age=config.SETTINGS.security.access_token_lifetime,
     )
     response.set_cookie(
         "refresh_token",
-        user_token.refresh_token,
+        auth_result.token.refresh_token,
         httponly=True,
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
 
     return models.UserTokenWithUrl(
-        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=sso_state.final_url
+        access_token=auth_result.token.access_token,
+        refresh_token=auth_result.token.refresh_token,
+        final_url=sso_state.final_url,
     )
 
 
