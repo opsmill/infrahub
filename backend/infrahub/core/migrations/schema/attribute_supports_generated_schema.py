@@ -124,13 +124,11 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
         all_queries: list[type[AttributeMigrationQuery]] = []
 
         # Check profile support changes
-        previous_profile_support_condition = self.previous_attribute_schema.support_profiles and not (
-            self.previous_attribute_schema.optional
-            and self.new_schema.check_attr_in_uniqueness_constraint(attr=self.previous_attribute_schema.name)
+        previous_profile_support_condition = self.new_schema.check_if_attr_supports_profiles(
+            attribute_schema=self.previous_attribute_schema
         )
-        new_profile_support_condition = self.new_attribute_schema.support_profiles and not (
-            self.new_attribute_schema.optional
-            and self.new_schema.check_attr_in_uniqueness_constraint(attr=self.new_attribute_schema.name)
+        new_profile_support_condition = self.new_schema.check_if_attr_supports_profiles(
+            attribute_schema=self.new_attribute_schema
         )
         if (
             isinstance(self.new_schema, (NodeSchema, GenericSchema))
