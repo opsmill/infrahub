@@ -36,7 +36,7 @@ A security administrator wants to detect suspicious authentication patterns, suc
 
 1. **Given** a login attempt with an incorrect password for an existing account, **When** the activity event feed is queried, **Then** a failed login event appears with the account identifier, failure reason, and timestamp.
 2. **Given** a login attempt with a username that does not exist, **When** the activity event feed is queried, **Then** a failed login event appears with the attempted username as identifier, failure reason, and timestamp — no account identifier is included.
-3. **Given** multiple failed login attempts in a short window, **When** the event feed is queried for failed login events, **Then** each attempt appears as a separate event with its own timestamp.
+3. **Given** multiple failed login attempts in a short window (including brute-force scenarios), **When** the event feed is queried for failed login events, **Then** each attempt appears as a separate event with its own timestamp — no deduplication or rate limiting is applied to event emission.
 
 ---
 
@@ -72,7 +72,7 @@ An operator has configured webhook integrations to react to Infrahub activity ev
 
 - **FR-001**: System MUST emit a login event for every successful interactive authentication via password, OAuth2, or OIDC.
 - **FR-002**: Successful login events MUST include: account identifier, authentication method (password/OAuth2/OIDC), session identifier, and timestamp.
-- **FR-003**: System MUST emit a login event for every failed interactive authentication attempt via password, OAuth2, or OIDC.
+- **FR-003**: System MUST emit a login event for every failed interactive authentication attempt via password, OAuth2, or OIDC. This includes failures during the OAuth2/OIDC callback phase (e.g., invalid code, provider error, state mismatch).
 - **FR-004**: Failed login events MUST include: attempted username or identifier, authentication method, failure reason, and timestamp. When the user account does not exist, no account identifier is included.
 - **FR-005**: System MUST emit a logout event when a user explicitly initiates a logout.
 - **FR-006**: Logout events MUST include: account identifier, session identifier, and timestamp.
@@ -80,11 +80,12 @@ An operator has configured webhook integrations to react to Infrahub activity ev
 - **FR-008**: API key authentication (per-request, non-interactive) MUST NOT generate login or logout events.
 - **FR-009**: Automatic session expiry (session times out without explicit user action) MUST NOT generate a logout event.
 - **FR-010**: Authentication events MUST be usable as triggers for existing webhook and automation integrations without additional configuration to the integration layer.
+- **FR-011**: System MUST emit a logout event with `logout_type="admin_forced"` when an administrator invalidates a user's session via the API or GraphQL interface.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Login Event**: Records a single authentication attempt — outcome (success/failure), account identifier (if known), authentication method, session identifier (if authenticated), failure reason (if failed), timestamp.
-- **Logout Event**: Records an explicit session termination — account identifier, session identifier, timestamp.
+- **Logout Event**: Records a session termination — account identifier, session identifier, timestamp, and logout type (`user_initiated` or `admin_forced`).
 - **Session Reference**: A unique identifier that links a login event to its corresponding logout event, enabling session duration analysis.
 
 ## Success Criteria *(mandatory)*
@@ -98,11 +99,23 @@ An operator has configured webhook integrations to react to Infrahub activity ev
 - **SC-005**: Every failed login attempt is captured with sufficient detail (attempted identifier and failure reason) to support a security investigation.
 - **SC-006**: Zero successful authentication events are silently dropped under normal operating conditions.
 
+## Clarifications
+
+### Session 2026-03-24
+
+- Q: Should the system emit a logout event when an administrator invalidates a user's session? → A: Yes — emit `AccountLoggedOutEvent` with `logout_type="admin_forced"` when an admin invalidates a session.
+- Q: Should failed OAuth2/OIDC callbacks emit `AccountLoginFailedEvent`? → A: Yes — implement emission in OAuth2/OIDC error paths; FR-003 applies to all interactive auth methods.
+- Q: Should `client_ip` and `user_agent` be stored as-is or anonymized? → A: Store as-is; no anonymization required for this internal tool.
+- Q: Should failed login attempts be deduplicated or rate-limited at the event emission layer? → A: No — every attempt produces a separate event; deduplication is not applied.
+- Q: Does the existing Prefect event retention policy meet the 30-day requirement of SC-002? → A: Yes — confirmed ≥30 days; no additional retention configuration required.
+
 ## Dependencies & Assumptions
 
 - The existing activity event system and its query interface are in place and functioning.
 - The existing webhook integration mechanism supports filtering by event type without modification.
 - "Interactive authentication" is defined as password login, OAuth2 callback, and OIDC callback — not API key per-request verification.
-- "Explicit logout" is defined as a user-initiated logout action — not automatic session expiry.
+- "Explicit logout" is defined as either a user-initiated logout action or an administrator-forced session invalidation — not automatic session expiry.
 - Event storage retention follows the same policy as all other activity events in the system.
 - Failed logins for non-existent usernames capture the attempted string as an identifier; this string is treated as untrusted user input in all downstream contexts.
+- `client_ip` and `user_agent` are stored as-is in event payloads. No anonymization is required; Infrahub is an internal infrastructure tool where audit completeness takes precedence.
+- The existing Prefect event retention policy is confirmed ≥30 days, satisfying SC-002.
