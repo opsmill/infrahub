@@ -710,8 +710,9 @@ async def test_search_anywhere_offset_skips_results(
 
     assert result_with_offset.errors is None
     assert result_with_offset.data
-    # Count reflects results fetched (capped by db_limit = offset + limit)
+    # count reflects the true total number of matching results, not the page size
     assert result_with_offset.data["InfrahubSearchAnywhere"]["count"] == 2
+    # edges length reflects the paginated page returned by InfrahubSearchAnywhere (offset=1, limit=10)
     assert len(result_with_offset.data["InfrahubSearchAnywhere"]["edges"]) == 1
 
 
