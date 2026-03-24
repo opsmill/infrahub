@@ -91,7 +91,7 @@ export function ModalDeleteBranch({
     <Modal
       isDismissable={!isLoading}
       isOpen={isOpen}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       className="w-full max-w-lg p-0"
       data-testid="modal-delete-branch"
     >
