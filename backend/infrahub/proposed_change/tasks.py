@@ -726,7 +726,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         artifacts_by_member[artifact.object.peer.id] = artifact.id
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
-    impacted_artifacts = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.ARTIFACT)
 
     source_schema_branch = registry.schema.get_schema_branch(name=model.source_branch)
     source_branch = registry.get_branch_from_registry(branch=model.source_branch)
@@ -740,10 +739,52 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         document=cached_parse(model.artifact_definition.query_payload),
     )
 
+    # only_has_unique_targets is True when the query is guaranteed to return results
+    # for a specific set of nodes — e.g. it uses an `ids` argument or a uniqueness
+    # constraint. When False, the query may return any number of nodes and we cannot
+    # map a changed node back to a specific artifact without re-running every target.
     only_has_unique_targets = query_analyzer.query_report.only_has_unique_targets
-    if not only_has_unique_targets:
+
+    # Collect the IDs of nodes whose changes are actually relevant to this query.
+    # A change is relevant only when at least one field that was modified is also
+    # read by the query. This lets us skip regeneration when, for example, only a
+    # `description` field changed but the query only reads `name` and `color`.
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    relevant_node_changes = []
+    for node_diff in diff_summary:
+        if (
+            node_diff["branch"] == model.source_branch
+            and node_diff["kind"] in query_analyzer.query_report.requested_read
+        ):
+            updated_fields = {element["name"] for element in node_diff["elements"]}
+            relevant_fields = set(query_analyzer.query_report.fields_by_kind(node_diff["kind"]))
+            if updated_fields & relevant_fields:
+                relevant_node_changes.append(node_diff["id"])
+
+    if only_has_unique_targets:
+        # The query targets specific nodes by ID or unique constraint, so we can
+        # look up exactly which artifacts are linked to the changed nodes and limit
+        # regeneration to only those artifacts.
+        subscribers = await _get_subscribers_for_nodes(
+            node_ids=relevant_node_changes, branch=model.source_branch, client=client
+        )
+        impacted_artifacts = [
+            subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == InfrahubKind.ARTIFACT
+        ]
+    elif relevant_node_changes:
+        # The query does not guarantee unique targets, so we cannot determine which
+        # specific artifacts are affected. At least one relevant field changed, so we
+        # must fall back to regenerating all artifacts for this definition to be safe.
+        impacted_artifacts = list(artifacts_by_member.values())
         log.warning(
             f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
+        )
+    else:
+        # No node of a queried kind had any of its queried fields modified, so no
+        # artifact can be stale regardless of query targeting capability.
+        impacted_artifacts = []
+        log.info(
+            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
         )
 
     managed_branch = model.source_branch_sync_with_git and model.branch_diff.has_file_modifications
@@ -759,7 +800,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             artifact_id=artifact_id,
             managed_branch=managed_branch,
             impacted_artifacts=impacted_artifacts,
-            only_has_unique_targets=only_has_unique_targets,
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
@@ -809,19 +849,17 @@ def _should_render_artifact(
     artifact_id: str | None,
     managed_branch: bool,
     impacted_artifacts: list[str],
-    only_has_unique_targets: bool,
 ) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
-        * The source branch is not data only which would indicate that it could contain updates in git to the transform
+        * The source branch is synced with git and has file modifications (managed_branch)
         * The artifact_id exists in the impacted_artifacts list
-        * The query failes the only_has_unique_targets check
     Will return false if:
-        * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
+        * The artifact_id exists and is not in the impacted list
     """
 
-    if not only_has_unique_targets or not artifact_id or managed_branch:
+    if not artifact_id or managed_branch:
         return True
 
     return artifact_id in impacted_artifacts
@@ -1158,8 +1196,8 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
-    await _populate_subscribers(
-        branch_diff=branch_diff, diff_summary=diff_summary, branch=model.source_branch, client=client
+    branch_diff.subscribers.extend(
+        await _get_subscribers_from_diff(diff_summary=diff_summary, branch=model.source_branch, client=client)
     )
 
     if model.check_type is CheckType.ARTIFACT:
@@ -1663,17 +1701,28 @@ async def _gather_repository_repository_diffs(
             repo.files_changed = files_changed
 
 
-async def _populate_subscribers(
-    branch_diff: ProposedChangeBranchDiff, diff_summary: list[NodeDiff], branch: str, client: InfrahubClient
-) -> None:
+async def _get_subscribers_for_nodes(
+    node_ids: list[str], branch: str, client: InfrahubClient
+) -> list[ProposedChangeSubscriber]:
     result = await client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
         branch_name=branch,
-        variables={"members": get_modified_node_ids(diff_summary=diff_summary, branch=branch)},
+        variables={"members": node_ids},
     )
-
+    subscribers = []
     for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
         for subscriber in group["node"]["subscribers"]["edges"]:
-            branch_diff.subscribers.append(
+            subscribers.append(
                 ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
             )
+    return subscribers
+
+
+async def _get_subscribers_from_diff(
+    diff_summary: list[NodeDiff], branch: str, client: InfrahubClient
+) -> list[ProposedChangeSubscriber]:
+    return await _get_subscribers_for_nodes(
+        node_ids=get_modified_node_ids(diff_summary=diff_summary, branch=branch),
+        branch=branch,
+        client=client,
+    )
