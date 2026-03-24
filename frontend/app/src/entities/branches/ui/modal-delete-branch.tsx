@@ -65,15 +65,16 @@ export function ModalDeleteBranch({
     }
   }, [isOpen]);
 
-  const { data: repositoryCount } = useObjectsCount({
+  const { data: repositoryCount, isLoading: isLoadingRepoCount } = useObjectsCount({
     objectKind: REPOSITORY_KIND,
   });
 
   const hasSyncedBranches = branches.some((b) => b.sync_with_git);
-  const showScopeChoice = hasSyncedBranches && (repositoryCount ?? 0) > 0;
+  const showScopeChoice =
+    hasSyncedBranches && repositoryCount !== undefined && repositoryCount > 0;
   const description = buildDescription(branches);
 
-  if (!showScopeChoice) {
+  if (!showScopeChoice && !(hasSyncedBranches && isLoadingRepoCount)) {
     return (
       <ModalDelete
         title="Delete"
@@ -136,8 +137,8 @@ export function ModalDeleteBranch({
         <Button
           variant="danger"
           onClick={() => onDelete(scope)}
-          isLoading={isLoading}
-          disabled={isLoading}
+          isLoading={isLoading || isLoadingRepoCount}
+          disabled={isLoading || isLoadingRepoCount}
           data-testid="modal-delete-confirm"
         >
           Delete
