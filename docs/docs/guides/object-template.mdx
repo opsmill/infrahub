@@ -333,3 +333,258 @@ For more information about Profiles and templates, see:
 
 - [Creating and assigning Profiles](../guides/profiles.mdx) - Guide for working with Profiles
 - [Understanding Profiles in Infrahub](../topics/profiles.mdx) - Deep dive into Profile concepts
+
+## Allocating resources from pools via templates
+
+Object templates support automatic resource allocation. This section extends the device and interface schema from above by adding IP address support to `InfraInterface`, then shows how to wire a `CoreIPAddressPool` to the interface template.
+
+### Update the schema
+
+Add the two IPAM nodes and an `ip_address` relationship to `InfraInterface`, if you don't already have them:
+
+```yaml
+---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+version: "1.0"
+
+nodes:
+  - name: IPAddress
+    namespace: Ipam
+    label: "IP Address"
+    display_label: "{{ address__value }}"
+    inherit_from:
+      - BuiltinIPAddress
+
+  - name: IPPrefix
+    namespace: Ipam
+    label: "IP Prefix"
+    display_label: "{{ prefix__value }}"
+    inherit_from:
+      - BuiltinIPPrefix
+
+  - name: Interface
+    namespace: Infra
+    label: "Interface"
+    include_in_menu: true
+    icon: "mdi:ethernet"
+    display_label: "{{ name__value }}"
+    order_by:
+      - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    human_friendly_id: ["device__name__value", "name__value"]
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: enable
+        kind: Boolean
+        optional: false
+        default_value: false
+    relationships:
+      - name: device
+        peer: InfraDevice
+        optional: false
+        cardinality: one
+        kind: Parent
+      - name: ip_address
+        peer: IpamIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+```
+
+:::info
+
+When a schema node has a relationship or attribute that supports resource pool allocation, Infrahub automatically generates a corresponding `<attribute_or_relationship_name>_from_resource_pool` field on the template node. In this example, because `IpamIPAddress` can be allocated from a `CoreIPAddressPool`, an `ip_address_from_resource_pool` field is generated on `TemplateInfraInterface`. This is what connects the template to the pool.
+
+:::
+
+Load this updated schema into your Infrahub instance before proceeding.
+
+### Create the resource pool
+
+First create a prefix to draw addresses from, then create the pool backed by that prefix.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+  **Create the IP prefix:**
+
+  1. Navigate to `IPAM` > `Prefixes`
+  2. Click `+ Add IP Prefix`
+  3. Fill in:
+      - **Prefix**: `192.168.0.0/16`
+      - **Member Type**: `address`
+      - **Is Pool**: `true`
+  4. Save
+
+  **Create the IP address pool:**
+
+  1. Navigate to `Resource Manager` > `IP Address Pool`
+  2. Click `+ Add IP Address Pool`
+  3. Fill in:
+      - **Name**: `Interface IP Pool`
+      - **Default Address Type**: `IpamIPAddress`
+      - **IP Namespace**: `default`
+      - **Resources**: select `192.168.0.0/16`
+  4. Save
+
+  </TabItem>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+  mutation CreatePrefix {
+    IpamIPPrefixCreate(
+      data: {prefix: {value: "192.168.0.0/16"}, member_type: {value: "address"}, is_pool: {value: true}}
+    ) {
+      ok
+      object { id }
+    }
+  }
+  ```
+
+  Then use the returned prefix ID to create the pool:
+
+  ```graphql
+  mutation CreatePool($prefixId: String!) {
+    CoreIPAddressPoolCreate(
+      data: {
+        name: {value: "Interface IP Pool"}
+        default_address_type: {value: "IpamIPAddress"}
+        ip_namespace: {hfid: ["default"]}
+        resources: [{id: $prefixId}]
+      }
+    ) {
+      ok
+    }
+  }
+  ```
+
+  </TabItem>
+  <TabItem value="object-file" label="Via an Object File">
+
+  ```yaml
+  ---
+  apiVersion: infrahub.app/v1
+  kind: Object
+  spec:
+    kind: CoreIPAddressPool
+    data:
+      - name: "Interface IP Pool"
+        default_address_type: IpamIPAddress
+        ip_namespace: default
+        resources:
+          kind: IpamIPPrefix
+          data:
+            - prefix: 192.168.0.0/16
+              member_type: address
+              is_pool: true
+  ```
+
+  Load with: `infrahubctl object load pools.yml`
+
+  </TabItem>
+  <TabItem value="python-sdk" label="Via the Python SDK">
+
+  ```python
+  async def run(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
+      prefix = await client.create(
+          kind="IpamIPPrefix",
+          data={"prefix": "192.168.0.0/16", "member_type": "address", "is_pool": True},
+      )
+      await prefix.save(allow_upsert=True)
+
+      pool = await client.create(
+          kind="CoreIPAddressPool",
+          data={
+              "name": "Interface IP Pool",
+              "default_address_type": "IpamIPAddress",
+              "ip_namespace": {"hfid": ["default"]},
+              "resources": [{"id": prefix.id}],
+          },
+      )
+      await pool.save(allow_upsert=True)
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Assign the pool to the interface template
+
+With the pool created, update the interface template from the previous section to allocate an IP address from it whenever a new interface is created.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+  1. Navigate to `Object Management` > `Templates`
+  2. Open `Template-SwitchModel123-Ethernet1` (or any interface template)
+  3. On the `IP Address` field, click the pool selector button and choose `Interface IP Pool`
+  4. The field will show an `Allocated by pool` badge
+  5. Save
+
+  </TabItem>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+  mutation {
+    TemplateInfraInterfaceUpdate(
+      data: {
+        hfid: ["Template-SwitchModel123", "Template-SwitchModel123-Ethernet1"]
+        ip_address_from_resource_pool: {hfid: ["Interface IP Pool"]}
+      }
+    ) {
+      ok
+    }
+  }
+  ```
+
+  </TabItem>
+  <TabItem value="object-file" label="Via an Object File">
+
+  ```yaml
+  ---
+  apiVersion: infrahub.app/v1
+  kind: Object
+  spec:
+    kind: TemplateInfraInterface
+    data:
+      - template_name: "Template-SwitchModel123-Ethernet1"
+        device: "Template-SwitchModel123"
+        ip_address_from_resource_pool: "Interface IP Pool"
+  ```
+
+  </TabItem>
+  <TabItem value="python-sdk" label="Via the Python SDK">
+
+  ```python
+  async def run(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
+      pool = await client.get(kind="CoreIPAddressPool", hfid=["Interface IP Pool"])
+
+      iface_template = await client.get(
+          kind="TemplateInfraInterface",
+          hfid=["Template-SwitchModel123", "Template-SwitchModel123-Ethernet1"],
+      )
+      iface_template.ip_address_from_resource_pool = {"id": pool.id}
+      await iface_template.save(allow_upsert=True)
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Create objects — IP addresses are allocated automatically
+
+Creating a device from the template works exactly as described in the [Create object instances](#create-object-instances-using-the-predefined-template) section above. No additional steps are required — when the device is saved, Infrahub allocates an available IP address from `Interface IP Pool` and assigns it to each interface's `ip_address` field.
+
+:::info
+
+Resource allocation happens at object creation time, not at template creation time. Each new device gets its own unique address drawn from the pool.
+
+:::
+
+For more information about resource pools, see:
+
+- [Managing resource pools](../guides/resource-manager.mdx) - Guide for creating and using pools
+- [Resource Manager concepts](../topics/resource-manager.mdx) - Deep dive into allocation behaviour

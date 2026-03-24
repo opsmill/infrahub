@@ -417,6 +417,7 @@ async def _do_merge_branch(
         parameters={"branch_name": obj.name},
     )
 
+<<<<<<< HEAD
     if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default:
         await get_workflow().submit_workflow(
             workflow=BRANCH_DELETE,
@@ -424,6 +425,8 @@ async def _do_merge_branch(
             parameters={"branch": obj.name},
         )
 
+=======
+>>>>>>> stable
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been merged
     # NOTE: we still need to convert this event and potentially pull
