@@ -17,6 +17,90 @@ type AccountGlobalPermissionNode {
   name: String!
 }
 
+type AccountLoggedInEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """Username of the account"""
+  account_name: String!
+  """USER or SCRIPT"""
+  account_type: String!
+  """How they authenticated"""
+  auth_method: String!
+  """The branch where the event occurred."""
+  branch: String
+  """Source IP address"""
+  client_ip: String
+  """The name of the event."""
+  event: String!
+  """List of group names/IDs"""
+  groups: [String!]!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """List of role names/IDs"""
+  roles: [String!]!
+  """UUID of the session"""
+  session_id: String!
+  """SSO provider name (if applicable)"""
+  sso_provider: String
+  """When the login occurred (UTC)"""
+  timestamp: DateTime!
+  """Browser/client info"""
+  user_agent: String
+}
+
+type AccountLoggedOutEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """Username of the account"""
+  account_name: String!
+  """The branch where the event occurred."""
+  branch: String
+  """Source IP address"""
+  client_ip: String
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """How logout occurred"""
+  logout_type: String!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the session being terminated"""
+  session_id: String!
+  """When the logout occurred (UTC)"""
+  timestamp: DateTime!
+  """Browser/client info"""
+  user_agent: String
+}
+
 type AccountObjectPermissionEdge {
   node: AccountObjectPermissionNode!
 }
