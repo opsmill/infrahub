@@ -1,4 +1,5 @@
 import os
+import re
 import ssl
 from pathlib import Path
 from unittest.mock import patch
@@ -6,10 +7,19 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from infrahub.config import SETTINGS, GitSettings, HTTPSettings, StorageSettings, UserInfoMethod, load
+from infrahub.config import (
+    SETTINGS,
+    GitSettings,
+    HTTPSettings,
+    MainSettings,
+    Settings,
+    StorageSettings,
+    UserInfoMethod,
+    load,
+)
 from tests.conftest import TestHelper
 
-TEST_DATA_DIR = Path(__file__).parent / "test_data"
+TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 
 
 def test_load_sso_config(helper: TestHelper) -> None:
@@ -40,6 +50,13 @@ def test_valid_git_settings__sync_branch_names() -> None:
 def test_invalid_git_settings__sync_branch_names() -> None:
     with pytest.raises(ValueError, match="Invalid regex pattern for import_sync_branch_names"):
         GitSettings(import_sync_branch_names=["main", "infrahub/.*", "release/.*", "a[b"])
+
+
+def test_delete_git_branch_after_merge_without_delete_branch_after_merge_raises() -> None:
+    with pytest.raises(ValueError, match=re.escape("requires 'delete_branch_after_merge' to be enabled")):
+        Settings(
+            git=GitSettings(delete_git_branch_after_merge=True), main=MainSettings(delete_branch_after_merge=False)
+        )
 
 
 def test_storage_max_file_size() -> None:

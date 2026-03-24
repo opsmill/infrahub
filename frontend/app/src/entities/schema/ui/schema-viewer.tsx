@@ -5,7 +5,8 @@ import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
+import { Button, LinkButton } from "@/shared/components/ui/button";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -96,6 +97,19 @@ export const SchemaViewer = ({
         </div>
 
         <div className="flex items-center gap-2 text-gray-600">
+          {schema.kind && (
+            <Tooltip content="View in graph" enabled>
+              <LinkButton
+                to={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
+                size="icon"
+                variant="ghost"
+                aria-label="View in graph"
+              >
+                <Icon icon="mdi:graph-outline" className="text-xl" />
+              </LinkButton>
+            </Tooltip>
+          )}
+
           <SchemaHelpMenu schema={schema} />
 
           <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>

@@ -5023,6 +5023,12 @@
                         "title": "Diff Update After Merge",
                         "description": "When enabled, diff updates are triggered for active branches after a branch merge.",
                         "default": true
+                    },
+                    "delete_branch_after_merge": {
+                        "type": "boolean",
+                        "title": "Delete Branch After Merge",
+                        "description": "When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+                        "default": false
                     }
                 },
                 "additionalProperties": false,

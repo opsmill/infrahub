@@ -109,6 +109,11 @@ class BranchNameInput(InputObjectType):
     name = String(required=False)
 
 
+class BranchDeleteInput(InputObjectType):
+    name = String(required=False)
+    delete_from_git = Boolean(required=False, default_value=False)
+
+
 class BranchUpdateInput(InputObjectType):
     name = String(required=True)
     description = String(required=False)
@@ -117,7 +122,7 @@ class BranchUpdateInput(InputObjectType):
 
 class BranchDelete(Mutation):
     class Arguments:
-        data = BranchNameInput(required=True)
+        data = BranchDeleteInput(required=True)
         context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
@@ -129,7 +134,7 @@ class BranchDelete(Mutation):
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
-        data: BranchNameInput,
+        data: BranchDeleteInput,
         context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> Self:
@@ -137,14 +142,19 @@ class BranchDelete(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
+        parameters = {
+            "branch": obj.name,
+            "delete_from_git": bool(data.delete_from_git),
+        }
+
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
             )
             return cls(ok=True)
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
         )
         return cls(ok=True, task={"id": str(workflow.id)})
 
