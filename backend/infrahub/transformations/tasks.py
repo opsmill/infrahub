@@ -114,7 +114,8 @@ async def transform_ai(message: TransformAIData) -> dict[str, Any]:
     if message.result_kind:
         from infrahub.transformations.ai_client import AIClient
 
-        ext = "csv" if message.output_format == "csv" else "md"
+        ext_map = {"csv": "csv", "svg": "svg", "markdown": "md"}
+        ext = ext_map.get(message.output_format, "md")
         transform_name = report_data.get("template", "ai-report").replace("/", "_").removesuffix(".md.j2")
         filename = f"{transform_name}.{ext}"
 

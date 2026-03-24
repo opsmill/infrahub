@@ -43,7 +43,7 @@ class TransformAIData(BaseModel):
     model: str = Field(..., description="Claude model to use for generation")
     temperature: float = Field(..., description="Temperature for Claude API (0.0-1.0)")
     max_tokens: int = Field(..., description="Maximum tokens for Claude API response")
-    output_format: str = Field(..., description="Output format: markdown or csv")
+    output_format: str = Field(..., description="Output format: markdown, csv, or svg")
     timeout: int = Field(..., description="The timeout value to use when generating the report")
     result_kind: str | None = Field(default=None, description="Schema kind for the result FileObject")
     mcp_server_url: str | None = Field(default=None, description="URL of the MCP server for tool-use enrichment")

@@ -12,6 +12,7 @@ from infrahub.transformations.ai_client import (
     MAX_TOOL_USE_ITERATIONS,
     AIClient,
     _extract_csv,
+    _extract_svg,
     _extract_text,
     _strip_code_fences,
 )
@@ -133,6 +134,39 @@ class TestExtractCsv:
     def test_no_csv_returns_stripped(self) -> None:
         text = "  just some text  "
         assert _extract_csv(text) == "just some text"
+
+
+class TestExtractSvg:
+    def test_pure_svg(self) -> None:
+        text = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>'
+        assert _extract_svg(text) == text
+
+    def test_svg_with_preamble(self) -> None:
+        text = (
+            "Here is the visualization:\n\n"
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+            '<circle cx="50" cy="50" r="40"/>'
+            "</svg>\n\nHope this helps!"
+        )
+        result = _extract_svg(text)
+        assert result.startswith("<svg")
+        assert result.endswith("</svg>")
+        assert "Here is" not in result
+        assert "Hope this" not in result
+
+    def test_svg_in_code_fence(self) -> None:
+        text = '```svg\n<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>\n```'
+        result = _extract_svg(text)
+        assert result.startswith("<svg")
+        assert result.endswith("</svg>")
+
+    def test_no_svg_falls_back_to_strip_fences(self) -> None:
+        text = "```xml\n<not-svg>content</not-svg>\n```"
+        assert _extract_svg(text) == "<not-svg>content</not-svg>"
+
+    def test_no_fences_no_svg_returns_stripped(self) -> None:
+        text = "  just some text  "
+        assert _extract_svg(text) == "just some text"
 
 
 class TestMcpSession:
@@ -334,6 +368,34 @@ class TestRunAgenticLoop:
         assert "text" in content_types
 
     @pytest.mark.asyncio
+    async def test_svg_format_reminder_injected(self, ai_client: AIClient) -> None:
+        """SVG output_format injects a format reminder alongside tool results."""
+        tool_response = _make_tool_use_response("get_schemas", {})
+        text_response = _make_text_response('<svg xmlns="http://www.w3.org/2000/svg"></svg>')
+
+        ai_client.client.messages.create = AsyncMock(side_effect=[tool_response, text_response])
+
+        mock_session = AsyncMock()
+        mock_tool_result = MagicMock()
+        mock_tool_result.content = [mcp_types.TextContent(type="text", text="data")]
+        mock_tool_result.isError = False
+        mock_session.call_tool = AsyncMock(return_value=mock_tool_result)
+
+        await ai_client._run_agentic_loop(
+            system_message="system",
+            user_message="prompt",
+            tools=[{"name": "get_schemas", "description": "Get schemas", "input_schema": {}}],
+            session=mock_session,
+            output_format="svg",
+        )
+
+        second_call_messages = ai_client.client.messages.create.call_args_list[1][1]["messages"]
+        last_user_msg = second_call_messages[-1]
+        assert last_user_msg["role"] == "user"
+        content_types = [block.get("type") if isinstance(block, dict) else block["type"] for block in last_user_msg["content"]]
+        assert "text" in content_types
+
+    @pytest.mark.asyncio
     async def test_markdown_no_format_reminder(self, ai_client: AIClient) -> None:
         """Markdown output_format does not inject a format reminder."""
         tool_response = _make_tool_use_response("get_schemas", {})
@@ -404,6 +466,39 @@ class TestGenerateReport:
         )
 
         assert result == "name\nfoo"
+
+    @pytest.mark.asyncio
+    async def test_svg_output_extracts_svg(self, ai_client_no_mcp: AIClient) -> None:
+        """SVG output extracts the <svg> element from response."""
+        ai_client_no_mcp.client.messages.create = AsyncMock(
+            return_value=_make_text_response(
+                'Here is the chart:\n\n<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'
+            )
+        )
+
+        result = await ai_client_no_mcp.generate_report(
+            prompt="Generate SVG", data={}, output_format="svg"
+        )
+
+        assert result.startswith("<svg")
+        assert result.endswith("</svg>")
+        assert "Here is" not in result
+
+    @pytest.mark.asyncio
+    async def test_svg_output_strips_fences(self, ai_client_no_mcp: AIClient) -> None:
+        """SVG output in code fences gets extracted."""
+        ai_client_no_mcp.client.messages.create = AsyncMock(
+            return_value=_make_text_response(
+                '```svg\n<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>\n```'
+            )
+        )
+
+        result = await ai_client_no_mcp.generate_report(
+            prompt="Generate SVG", data={}, output_format="svg"
+        )
+
+        assert result.startswith("<svg")
+        assert "```" not in result
 
     @pytest.mark.asyncio
     async def test_csv_output_strips_preamble(self, ai_client_no_mcp: AIClient) -> None:

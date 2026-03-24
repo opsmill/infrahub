@@ -46,6 +46,19 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
+def _extract_svg(text: str) -> str:
+    """Extract SVG content from an LLM response.
+
+    LLMs often wrap SVG in markdown code fences or add preamble/postamble
+    text.  This extracts the outermost <svg>...</svg> element.  Falls back
+    to _strip_code_fences if no <svg> tag is found.
+    """
+    match = re.search(r"(<svg\b[^>]*>.*?</svg>)", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return _strip_code_fences(text)
+
+
 def _extract_csv(text: str) -> str:
     """Extract CSV data from an LLM response that may contain preamble text.
 
@@ -125,8 +138,8 @@ class AIClient:
         an agentic loop allowing Claude to call tools for additional context.
         Falls back to single-shot generation if MCP connection fails or is not configured.
         """
-        if output_format not in ["markdown", "csv"]:
-            raise ValueError(f"Unsupported output format: {output_format}. Must be 'markdown' or 'csv'.")
+        if output_format not in ["markdown", "csv", "svg"]:
+            raise ValueError(f"Unsupported output format: {output_format}. Must be 'markdown', 'csv', or 'svg'.")
 
         system_message = self._build_system_message(output_format)
         user_message = self._build_user_message(prompt, data, output_format)
@@ -159,6 +172,8 @@ class AIClient:
 
         if output_format == "csv":
             report_content = _extract_csv(report_content)
+        elif output_format == "svg":
+            report_content = _extract_svg(report_content)
 
         return report_content
 
@@ -263,6 +278,15 @@ class AIClient:
             _format_reminder = {
                 "type": "text",
                 "text": "Reminder: when you produce the final output, emit raw CSV only — no explanation, no markdown, no code fences.",
+            }
+        elif output_format == "svg":
+            _format_reminder = {
+                "type": "text",
+                "text": (
+                    "Reminder: when you produce the final output, emit a single valid SVG document only"
+                    " — no explanation, no markdown, no code fences. Start with <svg and end with </svg>."
+                    " Use only data retrieved from tools or provided in the Input Data."
+                ),
             }
         else:
             _format_reminder = None
@@ -414,7 +438,11 @@ Match the expected type for each attribute kind (Text -> string, Number -> integ
         """Build the system message with format instructions."""
         base_message = (
             "You are an expert infrastructure analyst generating reports from Infrahub data. "
-            "Output ONLY the report content. No explanations, no commentary, no markdown code fences."
+            "Output ONLY the report content. No explanations, no commentary, no markdown code fences.\n\n"
+            "CRITICAL DATA RULE: You MUST use ONLY the data provided in the Input Data section. "
+            "Do not fabricate, invent, or hallucinate any names, values, IP addresses, connections, "
+            "or relationships that are not explicitly present in the input data. "
+            "If the input data is insufficient, state what is missing rather than inventing values."
         )
 
         if output_format == "markdown":
@@ -426,7 +454,7 @@ Output your report in well-formatted markdown with:
 - Code blocks for technical content
 - Professional tone
 """
-        else:  # csv
+        elif output_format == "csv":
             format_instructions = """
 Output raw CSV only — no markdown fences, no explanation before or after.
 - First row as headers
@@ -434,15 +462,26 @@ Output raw CSV only — no markdown fences, no explanation before or after.
 - Proper CSV formatting (quoted fields if needed)
 - Consistent column structure
 """
+        else:  # svg
+            format_instructions = """
+Output a single valid SVG document only — no markdown fences, no explanation before or after.
+- Start with <svg and end with </svg>
+- Include xmlns="http://www.w3.org/2000/svg" on the root element
+- Include a viewBox attribute for proper scaling
+- Use clean, readable SVG markup
+- Use appropriate colors, fonts, and layout for the visualization
+- Ensure text elements use legible font sizes
+- Every data point in the SVG (names, labels, values, connections) MUST come from the Input Data — do not add fictional elements
+"""
 
         mcp_instructions = ""
         if self.mcp_server_url:
             mcp_instructions = """
 You have access to tools that can query the Infrahub infrastructure database.
-Use these tools to fetch additional context when the provided input data is insufficient to fully address the prompt.
+Use these tools to retrieve and verify all data before generating output.
+Do not rely on assumptions — query the database for actual values when the input data is incomplete.
 Available tool categories: schema discovery, node queries, GraphQL execution, branch management.
-Do not use tools unnecessarily if the input data already contains what you need.
-After gathering any needed context, produce the final report.
+After gathering the needed context, produce the final report using only verified data.
 """
 
         return base_message + format_instructions + mcp_instructions
@@ -453,6 +492,11 @@ After gathering any needed context, produce the final report.
 
         if output_format == "csv":
             format_reminder = "Output raw CSV only — no markdown, no explanation, no code fences."
+        elif output_format == "svg":
+            format_reminder = (
+                "Output a single valid SVG document only — no markdown, no explanation, no code fences. "
+                "Every element in the SVG must correspond to actual data from the Input Data above."
+            )
         else:
             format_reminder = "Output the report in well-formatted markdown."
 

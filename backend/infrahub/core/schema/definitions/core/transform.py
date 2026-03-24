@@ -145,7 +145,7 @@ core_transform_ai = NodeSchema(
         Attr(
             name="output_format",
             kind="Text",
-            description="Output format: markdown or csv",
+            description="Output format: markdown, csv, or svg",
             optional=True,
             default_value="markdown",
         ),
