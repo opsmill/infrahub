@@ -10,7 +10,7 @@ import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
+import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchesMutation } from "@/entities/branches/ui/queries/delete-branches.mutation";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
@@ -27,12 +27,11 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
 
   const deletableBranches = selectedBranches.filter((branch) => !branch.is_default);
 
-  const handleDelete = async () => {
+  const handleDelete = async (deleteFromGit: boolean) => {
     const branchNames = deletableBranches.map((branch) => branch.name);
 
     try {
-      // TODO: pass scope to mutation once backend supports deleteRemote parameter
-      const result = await deleteBranches({ names: branchNames });
+      const result = await deleteBranches({ names: branchNames, deleteFromGit });
 
       if (result.failed.length > 0) {
         toast(
@@ -97,9 +96,8 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
 
       <ModalDeleteBranch
         branches={deletableBranches}
-        onDelete={async (_scope) => {
-          // TODO: pass _scope to mutation once backend supports deleteRemote parameter
-          await handleDelete();
+        onDelete={async (scope) => {
+          await handleDelete(scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE);
         }}
         isOpen={showDeleteModal}
         onOpenChange={setShowDeleteModal}

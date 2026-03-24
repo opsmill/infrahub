@@ -57,7 +57,7 @@ export function ModalDeleteBranch({
   onDelete,
   isLoading,
 }: ModalDeleteBranchProps) {
-  const [scope, setScope] = useState<DeleteBranchScope>("local");
+  const [scope, setScope] = useState<DeleteBranchScope>(DELETE_BRANCH_SCOPE.LOCAL);
   const { data: repositoryCount } = useObjectsCount({
     objectKind: REPOSITORY_KIND,
   });
@@ -71,7 +71,7 @@ export function ModalDeleteBranch({
       <ModalDelete
         title="Delete"
         description={description}
-        onDelete={() => onDelete("local")}
+        onDelete={() => onDelete(DELETE_BRANCH_SCOPE.LOCAL)}
         isOpen={isOpen}
         onOpenChange={onOpenChange}
         isLoading={isLoading}
@@ -103,7 +103,7 @@ export function ModalDeleteBranch({
           className="px-8"
           aria-label="Deletion scope"
         >
-          <Radio value="local">
+          <Radio value={DELETE_BRANCH_SCOPE.LOCAL}>
             <div>
               <div className="font-medium text-sm">Local only</div>
               <div className="text-gray-500 text-xs">
@@ -111,7 +111,7 @@ export function ModalDeleteBranch({
               </div>
             </div>
           </Radio>
-          <Radio value="local-and-remote">
+          <Radio value={DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE}>
             <div>
               <div className="font-medium text-sm">Local and remote</div>
               <div className="text-gray-500 text-xs">
