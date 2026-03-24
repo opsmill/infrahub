@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heading } from "react-aria-components";
 
 import { Modal } from "@/shared/components/aria/modal";
@@ -58,6 +58,13 @@ export function ModalDeleteBranch({
   isLoading,
 }: ModalDeleteBranchProps) {
   const [scope, setScope] = useState<DeleteBranchScope>(DELETE_BRANCH_SCOPE.LOCAL);
+
+  useEffect(() => {
+    if (isOpen) {
+      setScope(DELETE_BRANCH_SCOPE.LOCAL);
+    }
+  }, [isOpen]);
+
   const { data: repositoryCount } = useObjectsCount({
     objectKind: REPOSITORY_KIND,
   });
