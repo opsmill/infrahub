@@ -18,7 +18,7 @@ describe("ModalDeleteBranch", () => {
 
   test("shows scope choice when branch has sync_with_git and repositories exist", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const branches = [{ name: "feature-1", sync_with_git: true }];
 
     // WHEN
@@ -32,7 +32,7 @@ describe("ModalDeleteBranch", () => {
 
   test("does not show scope choice when branch has no sync_with_git", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 0, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 0, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const branches = [{ name: "feature-1", sync_with_git: false }];
 
     // WHEN
@@ -44,7 +44,7 @@ describe("ModalDeleteBranch", () => {
 
   test("defaults to LOCAL scope when modal opens", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const branches = [{ name: "feature-1", sync_with_git: true }];
 
     // WHEN
@@ -57,7 +57,7 @@ describe("ModalDeleteBranch", () => {
 
   test("calls onDelete with LOCAL scope when clicking Delete with default selection", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const onDelete = vi.fn();
     const branches = [{ name: "feature-1", sync_with_git: true }];
 
@@ -73,7 +73,7 @@ describe("ModalDeleteBranch", () => {
 
   test("calls onDelete with LOCAL_AND_REMOTE scope after selecting that option", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const onDelete = vi.fn();
     const branches = [{ name: "feature-1", sync_with_git: true }];
 
@@ -90,7 +90,7 @@ describe("ModalDeleteBranch", () => {
 
   test("shows scope choice for mixed branches and handles both scope selections", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 1, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const onDelete = vi.fn();
     const branches = [
       { name: "feature-1", sync_with_git: true },
@@ -121,7 +121,7 @@ describe("ModalDeleteBranch", () => {
 
   test("calls onDelete with LOCAL scope directly when showScopeChoice is false", async () => {
     // GIVEN
-    useObjectsCountMock.mockReturnValue({ data: 0, isLoading: false } as any);
+    useObjectsCountMock.mockReturnValue({ data: 0, isLoading: false } as ReturnType<typeof useObjectsCount>);
     const onDelete = vi.fn();
     const branches = [{ name: "feature-1", sync_with_git: false }];
 
