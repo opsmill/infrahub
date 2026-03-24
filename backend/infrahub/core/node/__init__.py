@@ -734,7 +734,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         update_at: Timestamp,
         user_id: str,
     ) -> None:
-        """Recompute Jinja2 computed attributes whose dependencies were modified."""
+        """Recompute local Jinja2 computed attributes whose dependencies were modified.
+
+        Only targets computed attributes that live on this node
+        though their Jinja2 templates may reference relationship peers for input values.
+        """
         schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
 
         targets = schema_branch.computed_attributes.get_local_jinja2_targets(
@@ -769,6 +773,47 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     attribute_name=target.attribute.name,
                     exc_info=True,
                 )
+
+    async def _recompute_hfid(
+        self,
+        db: InfrahubDatabase,
+        fields: list[str] | None,
+        node_changelog: NodeChangelog,
+        update_at: Timestamp,
+    ) -> None:
+        """Recompute the human-friendly ID if one of its variables was updated."""
+        if not self._human_friendly_id:
+            return
+        if not ((fields and "human_friendly_id" in fields) or self._human_friendly_id.needs_update(fields=fields)):
+            return
+
+        await self._human_friendly_id.compute(db=db, node=self)
+        updated_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=update_at).save(
+            at=update_at, db=db
+        )
+        if updated_attribute:
+            node_changelog.add_attribute(attribute=updated_attribute)
+
+    async def _recompute_display_label(
+        self,
+        db: InfrahubDatabase,
+        fields: list[str] | None,
+        node_changelog: NodeChangelog,
+        update_at: Timestamp,
+    ) -> None:
+        """Recompute the display label if one of its variables was updated."""
+        if not self._display_label:
+            return
+        if not ((fields and "display_label" in fields) or self._display_label.needs_update(fields=fields)):
+            return
+
+        await self._display_label.compute(db=db, node=self)
+        self._display_label.get_node_attribute(node=self, at=update_at).get_create_data(node_schema=self._schema)
+        updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
+            at=update_at, db=db
+        )
+        if updated_attribute:
+            node_changelog.add_attribute(attribute=updated_attribute)
 
     async def _generate_relationship_default(
         self,
@@ -992,29 +1037,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._recompute_local_jinja2(
             db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
         )
-
-        # Update the HFID if one of its variables is being updated
-        if self._human_friendly_id and (
-            (fields and "human_friendly_id" in fields) or self._human_friendly_id.needs_update(fields=fields)
-        ):
-            await self._human_friendly_id.compute(db=db, node=self)
-            updated_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=update_at).save(
-                at=update_at, db=db
-            )
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
-
-        # Update the display label if one of its variables is being updated
-        if self._display_label and (
-            (fields and "display_label" in fields) or self._display_label.needs_update(fields=fields)
-        ):
-            await self._display_label.compute(db=db, node=self)
-            self._display_label.get_node_attribute(node=self, at=update_at).get_create_data(node_schema=self._schema)
-            updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
-                at=update_at, db=db
-            )
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
+        # Recompute the human-friendly ID if one of its variables was updated
+        await self._recompute_hfid(db=db, fields=fields, node_changelog=node_changelog, update_at=update_at)
+        # Recompute the display label if one of its variables was updated
+        await self._recompute_display_label(
+            db=db, fields=fields, node_changelog=node_changelog, update_at=update_at
+        )
 
         node_changelog.display_label = await self.get_display_label(db=db)
 
