@@ -16,7 +16,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema.definitions.core.permission import core_global_permission, core_object_permission
@@ -24,11 +23,10 @@ from infrahub.core.schema.definitions.core.permission import core_global_permiss
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
+    from rich.console import Console
+
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
-
-
-console = get_migration_console()
 
 
 @dataclass
@@ -303,6 +301,7 @@ class Migration062(MigrationRequiringRebase):
         db: InfrahubDatabase,
         branch: Branch,
         attribute_schema: AttributeSchema,
+        console: Console,
         progress: Progress | None = None,
         update_task: TaskID | None = None,
     ) -> None:
@@ -360,6 +359,7 @@ class Migration062(MigrationRequiringRebase):
         self,
         db: InfrahubDatabase,
         attribute_schema: AttributeSchema,
+        console: Console,
         progress: Progress | None = None,
         update_task: TaskID | None = None,
     ) -> None:
@@ -406,6 +406,7 @@ class Migration062(MigrationRequiringRebase):
                     progress.update(update_task, advance=len(batch_ids))
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
 
         root_node = await get_root_node(db=db, initialize=False)
@@ -427,7 +428,7 @@ class Migration062(MigrationRequiringRebase):
         total_count = obj_permission_count + global_permission_count
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 if total_count > 0:
                     update_task = progress.add_task(
                         f"Recomputing display_label for {total_count} permissions", total=total_count
@@ -437,12 +438,14 @@ class Migration062(MigrationRequiringRebase):
                         db=db,
                         branch=default_branch,
                         attribute_schema=display_label_attribute_schema,
+                        console=console,
                         progress=progress,
                         update_task=update_task,
                     )
                     await self._compute_global_permission_display_labels(
                         db=db,
                         attribute_schema=display_label_attribute_schema,
+                        console=console,
                         progress=progress,
                         update_task=update_task,
                     )
@@ -455,6 +458,7 @@ class Migration062(MigrationRequiringRebase):
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
         """Execute migration on non-default branches (only ObjectPermission, GlobalPermission is branch-agnostic)."""
+        console = migration_input.console
         db = migration_input.db
 
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
@@ -463,7 +467,7 @@ class Migration062(MigrationRequiringRebase):
 
         try:
             await self._compute_object_permission_display_labels(
-                db=db, branch=branch, attribute_schema=display_label_attribute_schema
+                db=db, branch=branch, attribute_schema=display_label_attribute_schema, console=console
             )
         except Exception as exc:
             error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
