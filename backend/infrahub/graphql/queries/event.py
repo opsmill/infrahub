@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.constants import GlobalPermissions
-from infrahub.events.constants import EVENT_NAMESPACE, EventSortOrder
-from infrahub.exceptions import ValidationError
+from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
+from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.permissions import define_global_permission_from_branch
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
 
     from infrahub.graphql.initialization import GraphqlContext
 
-_ACCOUNT_EVENT_PREFIX = f"{EVENT_NAMESPACE}.account."
 
 InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 
@@ -54,14 +53,26 @@ class Events(ObjectType):
             # Prefect restricts this to 50
             raise ValidationError(input_value="The parameter 'limit' can't be above 50")
 
-        if event_type and any(et.startswith(_ACCOUNT_EVENT_PREFIX) for et in event_type):
-            graphql_context: GraphqlContext = info.context
+        exclude_prefixes = None
+        graphql_context: GraphqlContext = info.context
+
+        if event_type and any(et.startswith(ACCOUNT_EVENT_PREFIX) for et in event_type):
             graphql_context.active_permissions.raise_for_permission(
                 permission=define_global_permission_from_branch(
                     permission=GlobalPermissions.MANAGE_ACCOUNTS,
                     branch_name=graphql_context.branch.name,
                 )
             )
+        elif not event_type:
+            try:
+                graphql_context.active_permissions.raise_for_permission(
+                    permission=define_global_permission_from_branch(
+                        permission=GlobalPermissions.MANAGE_ACCOUNTS,
+                        branch_name=graphql_context.branch.name,
+                    )
+                )
+            except PermissionDeniedError:
+                exclude_prefixes = [ACCOUNT_EVENT_PREFIX]
 
         event_filter = InfrahubEventFilter.from_filters(
             ids=ids,
@@ -77,6 +88,7 @@ class Events(ObjectType):
             until=until,
             level=level,
             order=order,
+            exclude_prefixes=exclude_prefixes,
         )
 
         return await Events.query(
