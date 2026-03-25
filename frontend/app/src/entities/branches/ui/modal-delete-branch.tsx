@@ -8,6 +8,7 @@ import { Col, Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Button } from "@/shared/components/ui/button";
 import { REPOSITORY_KIND } from "@/shared/config/constants";
+import { classNames } from "@/shared/utils/common";
 
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 
@@ -111,7 +112,13 @@ export function ModalDeleteBranch({
           className="px-8"
           aria-label="Deletion scope"
         >
-          <Radio value={DELETE_BRANCH_SCOPE.LOCAL}>
+          <Radio
+            value={DELETE_BRANCH_SCOPE.LOCAL}
+            className={classNames(
+              "rounded-lg border p-3",
+              scope === DELETE_BRANCH_SCOPE.LOCAL ? "border-custom-blue-600" : "border-gray-200"
+            )}
+          >
             <div>
               <div className="font-medium text-sm">Local only</div>
               <div className="text-gray-500 text-xs">
@@ -119,7 +126,15 @@ export function ModalDeleteBranch({
               </div>
             </div>
           </Radio>
-          <Radio value={DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE}>
+          <Radio
+            value={DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE}
+            className={classNames(
+              "rounded-lg border p-3",
+              scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE
+                ? "border-custom-blue-600"
+                : "border-gray-200"
+            )}
+          >
             <div>
               <div className="font-medium text-sm">Local and remote</div>
               <div className="text-gray-500 text-xs">
