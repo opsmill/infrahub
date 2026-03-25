@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 import typer
 from deepdiff import DeepDiff
@@ -18,7 +17,7 @@ from infrahub.core.initialization import (
     initialize_registry,
 )
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.shared import get_migration_console
+from infrahub.core.migrations.shared import get_migration_console, suppress_internal_logs
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.lock import initialize_lock
@@ -52,25 +51,6 @@ if TYPE_CHECKING:
 
 app = AsyncTyper()
 console = get_migration_console()
-
-
-@contextmanager
-def _suppress_internal_logs() -> Iterator[None]:
-    """Temporarily suppress noisy internal logs during migrations and rebase.
-
-    Some operations (schema loading, validator determiner) emit error/warning
-    messages that are harmless during upgrade but confuse operators. This context
-    manager raises the infrahub logger threshold to CRITICAL for the duration.
-    """
-    loggers = [logging.getLogger(name) for name in ("infrahub", "prefect")]
-    previous_levels = [logger.level for logger in loggers]
-    for logger in loggers:
-        logger.setLevel(logging.CRITICAL)
-    try:
-        yield
-    finally:
-        for logger, level in zip(loggers, previous_levels, strict=True):
-            logger.setLevel(level)
 
 
 async def validate_prerequisites(db: InfrahubDatabase) -> bool:
@@ -152,7 +132,7 @@ async def _upgrade_execute(
             console.log(f"Upgrade cancelled due to migration failure. {FAILED_BADGE}")
             return
     else:
-        with _suppress_internal_logs():
+        with suppress_internal_logs():
             if not await migrate_database(db=db, initialize=False, migrations=migrations, verbose=verbose):
                 console.log(f"Upgrade cancelled due to migration failure. {FAILED_BADGE}")
                 return
@@ -165,7 +145,7 @@ async def _upgrade_execute(
     if verbose:
         await update_core_schema(db=db, initialize=False)
     else:
-        with _suppress_internal_logs():
+        with suppress_internal_logs():
             await update_core_schema(db=db, initialize=False)
 
     console.log("[bold]Step 4/6: Internal objects[/bold]")
@@ -199,7 +179,7 @@ async def _upgrade_execute(
         if verbose:
             await trigger_rebase_branches(db=db, branches=branches_to_rebase)
         else:
-            with _suppress_internal_logs():
+            with suppress_internal_logs():
                 await trigger_rebase_branches(db=db, branches=branches_to_rebase)
 
     console.log(f"\n[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
