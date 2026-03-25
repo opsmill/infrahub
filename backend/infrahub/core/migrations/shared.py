@@ -170,6 +170,7 @@ class RelationshipSchemaMigration(SchemaMigration):
 class GraphMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
+    description: str = Field(default="", description="Human-readable description of what this migration does")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
@@ -201,6 +202,7 @@ class GraphMigration(BaseModel):
 class InternalSchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
+    description: str = Field(default="", description="Human-readable description of what this migration does")
     migrations: Sequence[SchemaMigration] = Field(..., description="")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
@@ -241,6 +243,7 @@ class InternalSchemaMigration(BaseModel):
 
 class ArbitraryMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
+    description: str = Field(default="", description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @classmethod
@@ -257,6 +260,7 @@ class ArbitraryMigration(BaseModel):
 class MigrationRequiringRebase(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
+    description: str = Field(default="", description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @classmethod
