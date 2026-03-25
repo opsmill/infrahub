@@ -39,7 +39,6 @@ query {
             }
             node {
               id
-
               text {
                 value
               }
