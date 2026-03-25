@@ -4,12 +4,11 @@
 
 ## What Was Built
 
-Three new activity events are emitted whenever users authenticate or log out:
+Two new activity events are emitted whenever users authenticate or log out:
 
 | Event | Trigger |
 |-------|---------|
 | `infrahub.account.logged_in` | Successful login via password, OAuth2, or OIDC |
-| `infrahub.account.login_failed` | Failed login attempt (wrong password or unknown user) |
 | `infrahub.account.logged_out` | Explicit user-initiated logout |
 
 ## How to Verify
@@ -52,23 +51,7 @@ query {
 }
 ```
 
-### 3. Trigger a failed login
-
-```bash
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "wrongpassword"}'
-# → HTTP 401
-
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "no-such-user", "password": "anything"}'
-# → HTTP 404
-```
-
-Both produce `infrahub.account.login_failed` events. The unknown-user case has `account_id: null`.
-
-### 4. Trigger a logout
+### 3. Trigger a logout
 
 ```bash
 # First login to get a token
@@ -85,7 +68,6 @@ curl -X POST http://localhost:8000/api/auth/logout \
 
 No additional configuration is required. Existing webhook triggers can be configured to fire on these event types:
 - `infrahub.account.logged_in`
-- `infrahub.account.login_failed`
 - `infrahub.account.logged_out`
 
 ## Key Design Notes

@@ -10,7 +10,7 @@ Adds two new Prefect-backed activity events (`infrahub.account.logged_in`, `infr
 ## Technical Context
 
 **Language/Version**: Python 3.12, FastAPI 0.121.1
-**Primary Dependencies**: Prefect Events (existing), RabbitMQ via `InfrahubEventService` (existing), Pydantic 2.10
+**Primary Dependencies**: Prefect Events (existing), Pydantic 2.10
 **Storage**: Prefect event store (existing — no Neo4j schema changes)
 **Testing**: pytest 9.0 — unit tests (`tests/unit/event/`) and component tests (`tests/component/api/`)
 **Target Platform**: Linux server (Infrahub backend)
@@ -55,9 +55,9 @@ backend/
 │   ├── auth.py                          # + AuthResult, AuthenticationError, _fetch_account_groups_and_roles
 │   ├── events/
 │   │   ├── __init__.py                  # + export 2 new event classes
-│   │   └── auth_action.py               # NEW: AccountLoggedInEvent, AccountLoggedOutEvent
+│   │   └── account_action.py               # NEW: AccountLoggedInEvent, AccountLoggedOutEvent
 │   ├── api/
-│   │   ├── auth.py                      # + event emission (login success, login failure, logout)
+│   │   ├── auth.py                      # + event emission (login success and logout)
 │   │   ├── oauth2.py                    # + event emission (SSO login)
 │   │   └── oidc.py                      # + event emission (SSO login)
 │   ├── core/

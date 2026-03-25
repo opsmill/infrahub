@@ -69,24 +69,16 @@ class AuthResult:
 
 ### Q5: What `EventMeta` context to use for auth events?
 
-**Decision**: Construct a minimal `InfrahubContext` with default branch + `AccountSession(auth_type=AuthType.NONE, authenticated=False)`.
+**Decision**: Construct a minimal `InfrahubContext` with default branch + `AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)`.
 
-**Rationale**: Auth events are not branch-scoped operations. They always occur against the default branch. The account may not yet be authenticated at the point of context construction (especially for failed logins). This matches the pattern used in the OAuth2 callback.
+**Rationale**: Auth events are not branch-scoped operations. They always occur against the default branch. The account may not yet be authenticated at the point of context construction. This matches the pattern used in the OAuth2 callback.
 
 **Alternatives considered**:
 - `EventMeta.with_dummy_context(branch)`: available but requires a full `Branch` object; the inline construction is equally clear and avoids importing extra symbols
 
 ---
 
-### Q6: How does `NodeNotFoundError` interact with the new `AuthenticationError`?
-
-**Decision**: Preserve `NodeNotFoundError` for "user not found" case; `AuthenticationError` is only for credential failures on existing accounts.
-
-**Rationale**: `NodeNotFoundError` produces a 404 HTTP response in the existing exception handler. If we converted it to `AuthenticationError`, the HTTP status would change to 401 — a behavioral regression. The `AccountLoginFailedEvent` is emitted for both cases with `account_id=None` for the not-found case.
-
----
-
-### Q7: Which existing event patterns to follow?
+### Q6: Which existing event patterns to follow?
 
 **Decision**: Follow `BranchCreatedEvent` / `NodeCreatedEvent` pattern in `backend/infrahub/events/`.
 

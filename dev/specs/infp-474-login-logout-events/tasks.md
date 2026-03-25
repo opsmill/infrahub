@@ -4,7 +4,7 @@
 **Branch**: `infp-474-login-logout-events`
 **Generated**: 2026-03-24
 
-> **Scope**: Only US1 (Authentication Audit Trail) is in scope. US2 (Failed Login Detection) and US3 (Automation Triggers) have been removed. `infrahub.account.*` events are admin-only (FR-005).
+> **Scope**: Only US1 (Authentication Audit Trail) is in scope. `infrahub.account.*` events are admin-only (FR-005).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -59,16 +59,15 @@
 
 ### Implementation — US1 (Admin-forced logout, FR-008)
 
-- [ ] T017 [US1] Add `POST /api/auth/sessions/{session_id}/invalidate` endpoint (or GraphQL mutation `InfrahubAccountSessionInvalidate`) that calls `invalidate_refresh_token()` and emits `AccountLoggedOutEvent` with `logout_type="admin_forced"` — requires admin role check — implement in `backend/infrahub/api/auth.py` or `backend/infrahub/graphql/mutations/account.py`
-- [ ] T018 [US1] Write component test for admin-forced logout event emission in `backend/tests/component/api/test_auth_events.py`
+- [ ] T017 [US1] Write component test for admin-forced logout event emission in `backend/tests/component/api/test_auth_events.py`
 
 ### Tests — US1
 
-- [ ] T019 [P] [US1] Unit tests for `AccountLoggedInEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
-- [ ] T020 [P] [US1] Unit tests for `AccountLoggedOutEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
-- [ ] T021 [US1] Component test: successful password login emits `AccountLoggedInEvent` in `backend/tests/component/api/test_auth_events.py`
-- [ ] T022 [US1] Component test: user-initiated logout emits `AccountLoggedOutEvent` in `backend/tests/component/api/test_auth_events.py`
-- [ ] T023 [P] [US1] Add `timestamp` field assertion to existing unit tests for both event classes in `backend/tests/unit/event/test_auth_action.py`
+- [ ] T018 [P] [US1] Unit tests for `AccountLoggedInEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
+- [ ] T019 [P] [US1] Unit tests for `AccountLoggedOutEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
+- [ ] T020 [US1] Component test: successful password login emits `AccountLoggedInEvent` in `backend/tests/component/api/test_auth_events.py`
+- [ ] T021 [US1] Component test: user-initiated logout emits `AccountLoggedOutEvent` in `backend/tests/component/api/test_auth_events.py`
+- [ ] T022 [P] [US1] Add `timestamp` field assertion to existing unit tests for both event classes in `backend/tests/unit/event/test_auth_action.py`
 
 **Checkpoint**: US1 fully functional — password login, user logout, and admin-forced logout all emit queryable events (admin-only via GraphQL).
 
@@ -76,10 +75,10 @@
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
-- [ ] T024 [P] Run `uv run ruff format` on all modified Python files
-- [ ] T025 [P] Run `uv run ruff check --fix` on all modified Python files
-- [ ] T026 Run `uv run pytest backend/tests/unit/event/test_auth_action.py backend/tests/component/api/test_auth_events.py -v` and confirm all pass
-- [ ] T027 Update `dev/specs/infp-474-login-logout-events/plan.md` to reflect admin-forced logout gap as completed once T017 is done
+- [ ] T023 [P] Run `uv run ruff format` on all modified Python files
+- [ ] T024 [P] Run `uv run ruff check --fix` on all modified Python files
+- [ ] T025 Run `uv run pytest backend/tests/unit/event/test_auth_action.py backend/tests/component/api/test_auth_events.py -v` and confirm all pass
+- [ ] T026 Update `dev/specs/infp-474-login-logout-events/plan.md` to reflect admin-forced logout gap as completed once T017 is done
 
 ---
 
@@ -89,7 +88,7 @@
 Phase 1 (T001–T008) → Phase 2 (T009–T012)
                      ↓
               Phase 3 (T013–T023)    ← can start after T004–T007
-              Phase 4 (T024–T027)    ← final pass
+              Phase 4 (T024–T026)    ← final pass
 ```
 
 ---
@@ -101,17 +100,11 @@ Phase 1 (T001–T008) → Phase 2 (T009–T012)
 - T012 — admin role check on account event queries
 - T023 — add timestamp assertions to unit tests
 
-**Independently:**
-- T017 — admin-forced logout endpoint/mutation
-- T018 — admin-forced logout component test
-
 ---
 
 ## Implementation Strategy
 
 **MVP (US1 core)**: T001–T016, T019–T023 — login/logout audit trail complete for password + SSO, admin-only access enforced.
-
-**Final increment**: T017 → T018 — admin-forced logout (requires design decision on endpoint vs mutation).
 
 **Design decision needed for T017**: REST (`DELETE /api/auth/sessions/{session_id}`) is simpler and consistent with the existing `/api/auth/logout` pattern. GraphQL mutation is more consistent with other account management mutations. Recommend REST unless the caller (admin UI) already uses GraphQL for account operations.
 
@@ -123,6 +116,6 @@ Phase 1 (T001–T008) → Phase 2 (T009–T012)
 |-------|-------|-------|------|-----------|
 | 1 — Setup | — | 8 | 1 | 7 |
 | 2 — GraphQL | — | 4 | 0 | 4 |
-| 3 — US1 Audit Trail | P1 | 11 | 0 | 11 |
+| 3 — US1 Audit Trail | P1 | 10 | 0 | 10 |
 | 4 — Polish | — | 4 | 0 | 4 |
-| **Total** | | **27** | **1** | **26** |
+| **Total** | | **26** | **1** | **25** |
