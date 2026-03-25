@@ -4,6 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -15,7 +16,12 @@ from infrahub.database import InfrahubDatabase
 
 @pytest.mark.parametrize("min_value,max_value", [(None, None), (None, 300), (1, None), (10, 300)])
 async def test_query_number_constraints_success(
-    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, min_value, max_value
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    person_jane_main: Node,
+    min_value: int | None,
+    max_value: int | None,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
@@ -39,8 +45,8 @@ async def test_query_number_constraints_success(
 async def test_query_number_constraints_too_small(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
@@ -86,8 +92,8 @@ async def test_query_number_constraints_too_small(
 async def test_query_number_too_large(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
@@ -134,8 +140,8 @@ async def test_query_update_on_branch(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     person_john_main.height.value = 400
     await person_john_main.save(db=db)
@@ -168,8 +174,8 @@ async def test_query_delete_on_branch(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     person_john_main.height.value = 200
     await person_john_main.save(db=db)
@@ -212,8 +218,8 @@ async def test_validator_min_max(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     await branch.rebase(db=db)
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
@@ -272,8 +278,8 @@ async def test_validator_excluded_values(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_jane_main: Node,
     excluded_values: str,
 ) -> None:
     await branch.rebase(db=db)
