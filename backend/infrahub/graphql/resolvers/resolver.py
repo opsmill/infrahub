@@ -9,6 +9,7 @@ from opentelemetry import trace
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.order import OrderModel
+from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 
 
 @trace.get_tracer(__name__).start_as_current_span("account_resolver")
+@retry_db_transaction(name="account_resolver")
 async def account_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
@@ -50,6 +52,7 @@ async def account_resolver(
 
 
 @trace.get_tracer(__name__).start_as_current_span("default_resolver")
+@retry_db_transaction(name="default_resolver")
 async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
@@ -182,6 +185,7 @@ def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
 
 
 @trace.get_tracer(__name__).start_as_current_span("default_paginated_list_resolver")
+@retry_db_transaction(name="default_paginated_list_resolver")
 async def default_paginated_list_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
@@ -282,6 +286,7 @@ async def default_paginated_list_resolver(
 
 
 @trace.get_tracer(__name__).start_as_current_span("single_relationship_resolver")
+@retry_db_transaction(name="single_relationship_resolver")
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     graphql_context: GraphqlContext = info.context
     resolver = graphql_context.single_relationship_resolver
@@ -289,6 +294,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
 
 @trace.get_tracer(__name__).start_as_current_span("many_relationship_resolver")
+@retry_db_transaction(name="many_relationship_resolver")
 async def many_relationship_resolver(
     parent: dict, info: GraphQLResolveInfo, include_descendants: bool | None = False, **kwargs: Any
 ) -> dict[str, Any]:
@@ -310,6 +316,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 
 
 @trace.get_tracer(__name__).start_as_current_span("hierarchy_resolver")
+@retry_db_transaction(name="hierarchy_resolver")
 async def hierarchy_resolver(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> dict[str, Any]:
