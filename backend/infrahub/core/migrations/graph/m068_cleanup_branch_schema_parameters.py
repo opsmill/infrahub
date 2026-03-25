@@ -35,7 +35,6 @@ class FixBranchParametersQuery(Query):
 
     name = "fix_branch_parameters"
     type: QueryType = QueryType.WRITE
-    insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["default_branch"] = registry.default_branch
@@ -106,6 +105,7 @@ SET new_has_value = properties(branch_e)
 SET new_has_value.from = $at, new_has_value.to = NULL
         """
         self.add_to_query(query)
+        self.return_labels = ["param_attr"]
 
 
 class Migration068(ArbitraryMigration):
