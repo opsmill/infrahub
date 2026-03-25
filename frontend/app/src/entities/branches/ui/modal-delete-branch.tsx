@@ -19,7 +19,7 @@ export const DELETE_BRANCH_SCOPE = {
 
 export type DeleteBranchScope = (typeof DELETE_BRANCH_SCOPE)[keyof typeof DELETE_BRANCH_SCOPE];
 
-interface BranchRef {
+interface BranchSummary {
   name: string;
   sync_with_git?: boolean | null;
 }
@@ -27,12 +27,12 @@ interface BranchRef {
 interface ModalDeleteBranchProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  branches: BranchRef[];
+  branches: BranchSummary[];
   onDelete: (scope: DeleteBranchScope) => void | Promise<void>;
   isLoading?: boolean;
 }
 
-function buildDescription(branches: BranchRef[]) {
+function buildDescription(branches: BranchSummary[]) {
   if (branches.length === 1) {
     return (
       <>
