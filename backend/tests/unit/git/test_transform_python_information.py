@@ -2,26 +2,37 @@ from unittest.mock import MagicMock
 
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.schema import AttributeSchemaAPI, NodeSchemaAPI, RelationshipSchemaAPI
+from infrahub_sdk.schema.main import AttributeKind, RelationshipCardinality, RelationshipKind
 
 from infrahub.git.integrator import InfrahubRepositoryIntegrator, TransformPythonInformation
 
 TRANSFORM_PYTHON_SCHEMA = NodeSchemaAPI(
     name="TransformPython",
     namespace="Core",
-    kind="CoreTransformPython",
     attributes=[
-        AttributeSchemaAPI(name="name", kind="Text"),
-        AttributeSchemaAPI(name="label", kind="Text", optional=True),
-        AttributeSchemaAPI(name="description", kind="Text", optional=True),
-        AttributeSchemaAPI(name="file_path", kind="Text"),
-        AttributeSchemaAPI(name="class_name", kind="Text"),
-        AttributeSchemaAPI(name="timeout", kind="Number"),
-        AttributeSchemaAPI(name="convert_query_response", kind="Boolean", optional=True),
+        AttributeSchemaAPI(name="name", kind=AttributeKind.TEXT),
+        AttributeSchemaAPI(name="label", kind=AttributeKind.TEXT, optional=True),
+        AttributeSchemaAPI(name="description", kind=AttributeKind.TEXT, optional=True),
+        AttributeSchemaAPI(name="file_path", kind=AttributeKind.TEXT),
+        AttributeSchemaAPI(name="class_name", kind=AttributeKind.TEXT),
+        AttributeSchemaAPI(name="timeout", kind=AttributeKind.NUMBER),
+        AttributeSchemaAPI(name="convert_query_response", kind=AttributeKind.BOOLEAN, optional=True),
     ],
     relationships=[
-        RelationshipSchemaAPI(name="query", peer="CoreGraphQLQuery", kind="Attribute", cardinality="one"),
-        RelationshipSchemaAPI(name="repository", peer="CoreRepository", kind="Attribute", cardinality="one"),
+        RelationshipSchemaAPI(
+            name="query",
+            peer="CoreGraphQLQuery",
+            kind=RelationshipKind.ATTRIBUTE,
+            cardinality=RelationshipCardinality.ONE,
+        ),
+        RelationshipSchemaAPI(
+            name="repository",
+            peer="CoreRepository",
+            kind=RelationshipKind.ATTRIBUTE,
+            cardinality=RelationshipCardinality.ONE,
+        ),
     ],
 )
 
@@ -32,7 +43,7 @@ def _make_existing_transform(
     timeout: int = 10,
     convert_query_response: bool = False,
     description: str | None = None,
-) -> InfrahubNode:
+) -> CoreTransformPython:
     client = InfrahubClient(config=Config(address="http://mock"))
     data = {
         "id": "a0d4c22a-5f60-4bf9-a53f-f9a335420492",
@@ -54,7 +65,7 @@ def _make_existing_transform(
             "__typename": "NestedEdgedCoreRepository",
         },
     }
-    return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)
+    return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)  # type: ignore[return-value]
 
 
 def _make_local_transform(**kwargs: object) -> TransformPythonInformation:
