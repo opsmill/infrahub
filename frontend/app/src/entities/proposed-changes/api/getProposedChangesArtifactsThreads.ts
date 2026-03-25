@@ -43,7 +43,6 @@ query {
               text {
                 value
               }
-
             }
           }
         }
