@@ -48,6 +48,7 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     get_migration_console,
+    suppress_internal_logs,
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
@@ -150,18 +151,12 @@ async def do_migrate(
             db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None),
             verbose=verbose,
         )
-        return
-
-    infrahub_logger = logging.getLogger("infrahub")
-    previous_level = infrahub_logger.level
-    infrahub_logger.setLevel(logging.CRITICAL)
-    try:
-        await migrate_database(
-            db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None),
-            verbose=verbose,
-        )
-    finally:
-        infrahub_logger.setLevel(previous_level)
+    else:
+        with suppress_internal_logs():
+            await migrate_database(
+                db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None),
+                verbose=verbose,
+            )
 
 
 @app.command(name="migrate")
@@ -301,7 +296,7 @@ async def showmigration_cmd(
                 if cypher:
                     for line in cypher.strip().splitlines():
                         console.print(f"       {line}")
-    else:
+    elif not migration.description:
         docstring = inspect.getdoc(migration)
         if docstring:
             console.print(f"  Description:     {docstring}")

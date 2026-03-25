@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
@@ -16,6 +18,11 @@ from infrahub.core.timestamp import Timestamp
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
+
 MIGRATION_LOG_TIME_FORMAT = "[%Y-%m-%d %H:%M:%S]"
 _migration_console: Console | None = None
 
@@ -29,10 +36,22 @@ def get_migration_console() -> Console:
     return _migration_console
 
 
-if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
-    from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.database import InfrahubDatabase
+@contextmanager
+def suppress_internal_logs() -> Iterator[None]:
+    """Temporarily suppress noisy internal logs during migrations and rebase.
+
+    Some operations (schema loading, validator determiner) emit error/warning messages that are harmless during upgrade but confuse operators. This
+    context manager raises the logger thresholds to CRITICAL for the duration.
+    """
+    loggers = [logging.getLogger(name) for name in ("infrahub", "prefect")]
+    previous_levels = [logger.level for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(logging.CRITICAL)
+    try:
+        yield
+    finally:
+        for logger, level in zip(loggers, previous_levels, strict=True):
+            logger.setLevel(level)
 
 
 class MigrationResult(BaseModel):
@@ -115,7 +134,10 @@ class SchemaMigration(BaseModel):
         async with migration_input.db.start_transaction() as ts:
             result = MigrationResult()
             txn_migration_input = MigrationInput(
-                db=ts, at=migration_input.at, user_id=migration_input.user_id, console=migration_input.console,
+                db=ts,
+                at=migration_input.at,
+                user_id=migration_input.user_id,
+                console=migration_input.console,
             )
 
             await self.execute_pre_queries(migration_input=txn_migration_input, result=result, branch=branch)
