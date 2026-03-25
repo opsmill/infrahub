@@ -169,6 +169,16 @@ async def fetch_check_definition_targets(
     )
 
 
+async def fetch_ai_check_definition_targets(
+    client: InfrahubClient,
+    branch: str,
+    definition: Any,
+) -> CoreGroup:
+    return await _fetch_definition_targets(
+        client=client, branch=branch, group_id=definition.targets.id, parameters=definition.parameters.value
+    )
+
+
 async def fetch_proposed_change_generator_definition_targets(
     client: InfrahubClient,
     branch: str,

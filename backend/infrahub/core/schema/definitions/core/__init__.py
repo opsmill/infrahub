@@ -24,7 +24,7 @@ from .account import (
 )
 from .artifact import core_artifact, core_artifact_definition, core_artifact_target
 from .builtin import builtin_tag
-from .check import core_check_definition
+from .check import core_check_definition, core_check_definition_ai
 from .core import core_node, core_task_target
 from .file_object import core_file_object
 from .generator import core_generator_definition, core_generator_instance
@@ -67,6 +67,7 @@ from .propose_change_comment import (
     core_thread_comment,
 )
 from .propose_change_validator import (
+    core_ai_check_validator,
     core_artifact_check,
     core_artifact_validator,
     core_check,
@@ -170,10 +171,12 @@ core_models_mixed: CoreModelsMixedType = {
         core_data_validator,
         core_repository_validator,
         core_user_validator,
+        core_ai_check_validator,
         core_schema_validator,
         core_artifact_validator,
         core_generator_validator,
         core_check_definition,
+        core_check_definition_ai,
         core_transform_python,
         core_graphql_query,
         core_artifact,

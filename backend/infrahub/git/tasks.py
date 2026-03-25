@@ -36,6 +36,8 @@ from ..core.validators.checks_runner import run_checks_and_update_validator
 from ..log import get_log_data, get_logger
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import (
+    GIT_REPOSITORY_AI_CHECK_RUN,
+    GIT_REPOSITORY_AI_CHECKS_DEFINITIONS_TRIGGER,
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
     GIT_REPOSITORY_USER_CHECK_RUN,
     GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
@@ -44,6 +46,8 @@ from ..workflows.catalogue import (
 )
 from ..workflows.utils import add_branch_tag, add_tags
 from .models import (
+    AICheckData,
+    AICheckDefinitionData,
     CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
@@ -55,13 +59,19 @@ from .models import (
     GitRepositoryPullReadOnly,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
+    TriggerRepositoryAIChecks,
     TriggerRepositoryInternalChecks,
     TriggerRepositoryUserChecks,
     UserCheckData,
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
-from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+from .utils import (
+    fetch_ai_check_definition_targets,
+    fetch_artifact_definition_targets,
+    fetch_check_definition_targets,
+    get_repositories_commit_per_branch,
+)
 
 
 @flow(
@@ -1025,6 +1035,236 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
                 "name": model.name,
                 "origin": model.repository_id,
                 "kind": "CheckDefinition",
+                "validator": model.validator_id,
+                "created_at": Timestamp().to_string(),
+                "message": log_entries,
+                "conclusion": conclusion.value,
+                "severity": severity,
+            },
+        )
+        await check.save()
+
+    return conclusion
+
+
+@flow(
+    name="git-repository-trigger-ai-checks",
+    flow_run_name="Evaluating AI-powered checks on repository {model.repository_name}",
+)
+async def trigger_ai_checks(model: TriggerRepositoryAIChecks, context: InfrahubContext) -> None:
+    """Request to start validation checks on a specific repository for AI-powered checks."""
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+
+    log = get_run_logger()
+    client = get_client()
+
+    repository = await client.get(
+        kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch, fragment=True
+    )
+    await repository.ai_checks.fetch()
+
+    workflow = get_workflow()
+    for relationship in repository.ai_checks.peers:
+        log.info("Adding check for AI-powered check")
+        check_definition = relationship.peer
+        ai_check_definition_model = AICheckDefinitionData(
+            check_definition_id=check_definition.id,
+            repository_id=repository.id,
+            repository_name=repository.name.value,
+            branch_name=model.source_branch,
+            prompt_template_path=check_definition.prompt_template_path.value,
+            model=check_definition.model.value,
+            temperature=check_definition.temperature.value,
+            max_tokens=check_definition.max_tokens.value,
+            proposed_change=model.proposed_change,
+            branch_diff=model.branch_diff,
+        )
+        await workflow.submit_workflow(
+            workflow=GIT_REPOSITORY_AI_CHECKS_DEFINITIONS_TRIGGER,
+            context=context,
+            parameters={"model": ai_check_definition_model},
+        )
+
+
+@flow(
+    name="git-repository-ai-checks-definition-trigger",
+    flow_run_name="Trigger AI checks for repository {model.repository_name}",
+)
+async def trigger_repository_ai_check_definitions(model: AICheckDefinitionData, context: InfrahubContext) -> None:
+    await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
+
+    log = get_run_logger()
+    client = get_client()
+
+    definition = await client.get(kind=InfrahubKind.CHECKDEFINITIONAI, id=model.check_definition_id, branch=model.branch_name)
+    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    validator_execution_id = str(UUIDT())
+    check_execution_ids: list[str] = []
+    await proposed_change.validations.fetch()
+
+    previous_validator = None
+    for relationship in proposed_change.validations.peers:
+        existing_validator = relationship.peer
+
+        if (
+            existing_validator.typename == InfrahubKind.AICHECKVALIDATOR
+            and existing_validator.repository.id == model.repository_id
+            and existing_validator.check_definition.id == model.check_definition_id
+        ):
+            previous_validator = existing_validator
+            get_logger().info("Found the same AI check validator", validator=previous_validator)
+
+    validator = await start_validator(
+        client=client,
+        validator=previous_validator,
+        validator_type=InfrahubKind.AICHECKVALIDATOR,
+        proposed_change=model.proposed_change,
+        data={
+            "label": f"AI Check: {definition.name.value}",
+            "repository": model.repository_id,
+            "check_definition": model.check_definition_id,
+        },
+        context=context,
+    )
+
+    if definition.targets.id:
+        group = await fetch_ai_check_definition_targets(client=client, branch=model.branch_name, definition=definition)
+        check_models = []
+        for relationship in group.members.peers:
+            member = relationship.peer
+
+            check_execution_id = str(UUIDT())
+            check_execution_ids.append(check_execution_id)
+            check_model = AICheckData(
+                name=member.display_label,
+                validator_id=validator.id,
+                validator_execution_id=validator_execution_id,
+                check_execution_id=check_execution_id,
+                repository_id=model.repository_id,
+                repository_name=model.repository_name,
+                branch_name=model.branch_name,
+                prompt_template_path=model.prompt_template_path,
+                model=model.model,
+                temperature=model.temperature,
+                max_tokens=model.max_tokens,
+                check_definition_id=model.check_definition_id,
+                proposed_change=model.proposed_change,
+                variables=await member.extract(params=definition.parameters.value),
+                branch_diff=model.branch_diff,
+                timeout=definition.timeout.value,
+            )
+            check_models.append(check_model)
+    else:
+        check_execution_id = str(UUIDT())
+        check_execution_ids.append(check_execution_id)
+        check_models = [
+            AICheckData(
+                name=definition.name.value,
+                validator_id=validator.id,
+                validator_execution_id=validator_execution_id,
+                check_execution_id=check_execution_id,
+                repository_id=model.repository_id,
+                repository_name=model.repository_name,
+                branch_name=model.branch_name,
+                prompt_template_path=model.prompt_template_path,
+                model=model.model,
+                temperature=model.temperature,
+                max_tokens=model.max_tokens,
+                check_definition_id=model.check_definition_id,
+                proposed_change=model.proposed_change,
+                branch_diff=model.branch_diff,
+                timeout=definition.timeout.value,
+            )
+        ]
+
+    checks_in_execution = ",".join(check_execution_ids)
+    log.info(f"AI Checks in execution {checks_in_execution}")
+
+    workflow = get_workflow()
+    checks_coroutines = [
+        workflow.execute_workflow(
+            workflow=GIT_REPOSITORY_AI_CHECK_RUN, parameters={"model": model}, expected_return=ValidatorConclusion
+        )
+        for model in check_models
+    ]
+
+    event_service = await get_event_service()
+    await run_checks_and_update_validator(
+        event_service=event_service,
+        checks=checks_coroutines,
+        validator=validator,
+        context=context,
+        proposed_change_id=model.proposed_change,
+    )
+
+
+@flow(name="git-repository-run-ai-check", flow_run_name="Execute AI Check '{model.name}'")
+async def run_ai_check(model: AICheckData) -> ValidatorConclusion:
+    await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
+
+    log = get_run_logger()
+    client = get_client()
+
+    validator = await client.get(kind=InfrahubKind.AICHECKVALIDATOR, id=model.validator_id)
+    await validator.checks.fetch()
+
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        commit=None,
+    )
+    conclusion = ValidatorConclusion.FAILURE
+    severity = "critical"
+    log_entries = ""
+    try:
+        check_result = await repo.execute_ai_check.with_options(timeout_seconds=model.timeout)(
+            branch_name=model.branch_name,
+            commit="main",
+            prompt_template_path=model.prompt_template_path,
+            client=client,
+            data=model.variables,
+            model=model.model,
+            temperature=model.temperature / 100.0,
+            max_tokens=model.max_tokens,
+        )  # type: ignore[call-overload]
+        if check_result["conclusion"] == "success":
+            conclusion = ValidatorConclusion.SUCCESS
+            severity = check_result.get("severity", "info")
+            log.info("The AI check passed")
+        else:
+            severity = check_result.get("severity", "critical")
+            log.warning("The AI check reported failures")
+        log_entries = check_result.get("message", "")
+    except Exception as exc:
+        log.warning("The AI check failed to run")
+        log.error(str(exc))
+        log_entries = f"FATAL Error\n:{exc}"
+
+    check = None
+    for relationship in validator.checks.peers:
+        existing_check = relationship.peer
+        if (
+            existing_check.typename == InfrahubKind.STANDARDCHECK
+            and existing_check.kind.value == "AICheckDefinition"
+            and existing_check.name.value == model.name
+        ):
+            check = existing_check
+
+    if check:
+        check.created_at.value = Timestamp().to_string()
+        check.message.value = log_entries
+        check.conclusion.value = conclusion.value
+        check.severity.value = severity
+        await check.save()
+    else:
+        check = await client.create(
+            kind=InfrahubKind.STANDARDCHECK,
+            data={
+                "name": model.name,
+                "origin": model.repository_id,
+                "kind": "AICheckDefinition",
                 "validator": model.validator_id,
                 "created_at": Timestamp().to_string(),
                 "message": log_entries,

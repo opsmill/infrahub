@@ -18,12 +18,13 @@ from infrahub_sdk.protocols import (
     CoreGeneratorDefinition,
     CoreGenericRepository,
     CoreGraphQLQuery,
-    CoreTransformation,
     CoreTransformAI,
+    CoreTransformation,
     CoreTransformJinja2,
     CoreTransformPython,
 )
 from infrahub_sdk.schema.repository import (
+    InfrahubAICheckDefinitionConfig,
     InfrahubAITransformConfig,
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
@@ -84,6 +85,10 @@ class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
 
 
 class InfrahubRepositoryAI(InfrahubAITransformConfig):
+    repository: str
+
+
+class InfrahubRepositoryAICheck(InfrahubAICheckDefinitionConfig):
     repository: str
 
 
@@ -466,6 +471,131 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             existing_transform.result_kind.value = local_transform.result_kind
 
         await existing_transform.save()
+
+    @task(name="import-ai-check-definitions", task_run_name="Import AI Check Definitions", cache_policy=NONE)
+    async def import_ai_check_definitions(
+        self,
+        branch_name: str,
+        commit: str,  # noqa: ARG002
+        config_file: InfrahubRepositoryConfig,
+    ) -> None:
+        log = get_run_logger()
+
+        schema = await self.sdk.schema.get(kind=InfrahubKind.CHECKDEFINITIONAI, branch=branch_name)
+
+        checks_in_graph: dict[str, InfrahubNode] = {
+            check.name.value: check
+            for check in await self.sdk.filters(
+                kind=InfrahubKind.CHECKDEFINITIONAI, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
+
+        local_checks: dict[str, InfrahubRepositoryAICheck] = {}
+
+        log.info(f"Found {len(config_file.ai_checks)} AI check definitions in the repository")
+
+        for config_check in config_file.ai_checks:
+            try:
+                self.sdk.schema.validate_data_against_schema(
+                    schema=schema, data=config_check.model_dump(exclude_none=True)
+                )
+            except PydanticValidationError as exc:
+                for error in exc.errors():
+                    locations = [str(error_location) for error_location in error["loc"]]
+                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
+                continue
+            except ValidationError as exc:
+                log.error(exc.message)
+                continue
+
+            check = InfrahubRepositoryAICheck(repository=str(self.id), **config_check.model_dump())
+
+            if check.query:
+                graphql_query = await self.sdk.get(
+                    kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check.query), populate_store=True
+                )
+                check.query = graphql_query.id
+
+            local_checks[check.name] = check
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(checks_in_graph.keys()), list2=list(local_checks.keys())
+        )
+
+        for check_name in only_local:
+            log.info(f"New AI Check Definition {check_name!r} found, creating")
+            await self.create_ai_check_definition(branch_name=branch_name, data=local_checks[check_name])
+
+        for check_name in present_in_both:
+            if not await self.compare_ai_check_definition(
+                existing_check=checks_in_graph[check_name], local_check=local_checks[check_name]
+            ):
+                log.info(f"New version of the AI Check Definition '{check_name}' found, updating")
+                await self.update_ai_check_definition(
+                    existing_check=checks_in_graph[check_name],
+                    local_check=local_checks[check_name],
+                )
+
+        for check_name in only_graph:
+            log.info(f"AI Check Definition '{check_name}' not found locally in branch {branch_name}, deleting")
+            await checks_in_graph[check_name].delete()
+
+    async def create_ai_check_definition(
+        self, branch_name: str, data: InfrahubRepositoryAICheck
+    ) -> InfrahubNode:
+        schema = await self.sdk.schema.get(kind=InfrahubKind.CHECKDEFINITIONAI, branch=branch_name)
+        create_payload = self.sdk.schema.generate_payload_create(
+            schema=schema, data=data.payload, source=self.id, is_protected=True
+        )
+        obj = await self.sdk.create(kind=InfrahubKind.CHECKDEFINITIONAI, branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    @classmethod
+    async def compare_ai_check_definition(
+        cls, existing_check: InfrahubNode, local_check: InfrahubRepositoryAICheck
+    ) -> bool:
+        if (
+            existing_check.description.value != local_check.description
+            or existing_check.prompt_template_path.value != local_check.prompt_template_path_value
+            or existing_check.model.value != local_check.model
+            or existing_check.temperature.value != local_check.temperature
+            or existing_check.max_tokens.value != local_check.max_tokens
+            or existing_check.timeout.value != local_check.timeout
+        ):
+            return False
+
+        if local_check.query:
+            if existing_check.query.id != local_check.query:
+                return False
+
+        return True
+
+    async def update_ai_check_definition(
+        self, existing_check: InfrahubNode, local_check: InfrahubRepositoryAICheck
+    ) -> None:
+        if existing_check.description.value != local_check.description:
+            existing_check.description.value = local_check.description
+
+        if local_check.query and existing_check.query.id != local_check.query:
+            existing_check.query = {"id": local_check.query, "source": str(self.id), "is_protected": True}
+
+        if existing_check.prompt_template_path.value != local_check.prompt_template_path_value:
+            existing_check.prompt_template_path.value = local_check.prompt_template_path_value
+
+        if existing_check.model.value != local_check.model:
+            existing_check.model.value = local_check.model
+
+        if existing_check.temperature.value != local_check.temperature:
+            existing_check.temperature.value = local_check.temperature
+
+        if existing_check.max_tokens.value != local_check.max_tokens:
+            existing_check.max_tokens.value = local_check.max_tokens
+
+        if existing_check.timeout.value != local_check.timeout:
+            existing_check.timeout.value = local_check.timeout
+
+        await existing_check.save()
 
     @task(name="import-artifact-definitions", task_run_name="Import Artifact Definitions", cache_policy=NONE)
     async def import_artifact_definitions(
@@ -1324,6 +1454,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
         await self.import_ai_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await self.import_ai_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
         await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
@@ -1517,6 +1648,61 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 "model": model,
                 "template": prompt_template_path,
             }
+
+        except FileNotFoundError as exc:
+            error_msg = f"Unable to find the prompt template file {prompt_template_path}"
+            log.error(error_msg)
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=prompt_template_path, message=error_msg
+            ) from exc
+
+        except Exception as exc:
+            log.critical(str(exc), exc_info=True)
+            raise TransformError(
+                repository_name=self.name, commit=commit, location=prompt_template_path, message=str(exc)
+            ) from exc
+
+    @task(name="ai-check-execute", task_run_name="Execute AI Check", cache_policy=NONE)
+    async def execute_ai_check(
+        self,
+        branch_name: str,
+        commit: str,
+        prompt_template_path: str,
+        client: InfrahubClient,  # noqa: ARG002
+        data: dict,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        mcp_server_url: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute an AI Check using Claude API."""
+        from infrahub.transformations.ai_client import AIClient
+
+        log = get_run_logger()
+
+        commit_worktree = self.get_commit_worktree(commit=commit)
+
+        log.debug(f"Will run AI Check using template at {prompt_template_path}")
+
+        self.validate_location(
+            commit=commit, worktree_directory=commit_worktree.directory, file_path=prompt_template_path
+        )
+
+        try:
+            template_file = commit_worktree.directory / prompt_template_path
+            prompt_template = template_file.read_text(encoding="utf-8")
+
+            jinja_template = Jinja2Template(template=prompt_template)
+            rendered_prompt = await jinja_template.render(variables={"data": data})
+
+            ai_client = AIClient(model=model, temperature=temperature, max_tokens=max_tokens, mcp_server_url=mcp_server_url)
+
+            log.info("Running AI check using Claude API")
+            result = await ai_client.generate_check_result(
+                prompt=rendered_prompt, data=data, branch=branch_name
+            )
+
+            return result
 
         except FileNotFoundError as exc:
             error_msg = f"Unable to find the prompt template file {prompt_template_path}"

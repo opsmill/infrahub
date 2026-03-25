@@ -57,7 +57,7 @@ from infrahub.events import EventMeta, ProposedChangeMergedEvent
 from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
-from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
+from infrahub.git.models import TriggerRepositoryAIChecks, TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -94,6 +94,7 @@ from infrahub.validators.tasks import start_validator
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+    GIT_REPOSITORY_AI_CHECKS_TRIGGER,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
@@ -542,6 +543,21 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
             workflow=GIT_REPOSITORY_USER_CHECKS_TRIGGER,
             context=context,
             parameters={"model": trigger_user_checks_model},
+        )
+
+        trigger_ai_checks_model = TriggerRepositoryAIChecks(
+            proposed_change=model.proposed_change,
+            repository_id=repository.repository_id,
+            repository_name=repository.repository_name,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            target_branch=model.destination_branch,
+            branch_diff=model.branch_diff,
+        )
+        await get_workflow().submit_workflow(
+            workflow=GIT_REPOSITORY_AI_CHECKS_TRIGGER,
+            context=context,
+            parameters={"model": trigger_ai_checks_model},
         )
 
 

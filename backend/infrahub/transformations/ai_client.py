@@ -46,6 +46,59 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
+def _extract_json_object(text: str) -> str:
+    """Extract a JSON object from an LLM response that may contain preamble text.
+
+    LLMs sometimes output reasoning or explanation before the JSON object.
+    This function first tries code fences, then looks for the last top-level
+    ``{...}`` block in the text using brace-depth counting so nested objects
+    are handled correctly.  Returns the raw text unchanged (stripped) if no
+    JSON object can be located.
+    """
+    # Try code fences first
+    fenced = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
+    matches = fenced.findall(text)
+    if matches:
+        return matches[-1].strip()
+
+    # Walk the string and find the last balanced { ... } block
+    last_obj: str | None = None
+    i = 0
+    while i < len(text):
+        if text[i] == "{":
+            depth = 1
+            start = i
+            j = i + 1
+            in_string = False
+            escape = False
+            while j < len(text) and depth > 0:
+                ch = text[j]
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = not in_string
+                elif not in_string:
+                    if ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                j += 1
+            if depth == 0:
+                last_obj = text[start:j]
+                i = j  # advance past the matched block
+            else:
+                i = start + 1  # unbalanced — skip this '{' and keep scanning
+        else:
+            i += 1
+
+    if last_obj is not None:
+        return last_obj.strip()
+
+    return text.strip()
+
+
 def _extract_svg(text: str) -> str:
     """Extract SVG content from an LLM response.
 
@@ -287,6 +340,14 @@ class AIClient:
                     " Use only data retrieved from tools or provided in the Input Data."
                 ),
             }
+        elif output_format == "json":
+            _format_reminder = {
+                "type": "text",
+                "text": (
+                    "Reminder: when you produce the final output, emit ONLY a valid JSON object"
+                    " — no explanation, no markdown, no code fences. Start with { and end with }."
+                ),
+            }
         else:
             _format_reminder = None
 
@@ -487,6 +548,114 @@ After gathering the needed context, produce the final report using only verified
 {branch_instruction}"""
 
         return base_message + format_instructions + mcp_instructions
+
+    async def generate_check_result(
+        self,
+        prompt: str,
+        data: dict[str, Any],
+        branch: str | None = None,
+    ) -> dict[str, Any]:
+        """Generate a check result using Claude API, optionally with MCP tool access.
+
+        Instructs Claude to analyze data and return a structured JSON result with
+        conclusion (success/failure), severity (info/warning/critical), and message.
+        """
+        system_message = self._build_check_system_message(branch=branch)
+        user_message = self._build_check_user_message(prompt, data)
+
+        log.info(
+            "Calling Claude API for check",
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            mcp_enabled=bool(self.mcp_server_url),
+        )
+
+        if self.mcp_server_url:
+            async with self._mcp_session() as (tools, session):
+                log.info("MCP connected for check", tool_count=len(tools), url=self.mcp_server_url)
+                response_text = await self._run_agentic_loop(
+                    system_message=system_message,
+                    user_message=user_message,
+                    tools=tools,
+                    session=session,
+                    output_format="json",
+                )
+        else:
+            response_text = await self._single_shot_generate(system_message, user_message)
+
+        # Parse the JSON response
+        cleaned = _extract_json_object(response_text)
+        if not cleaned:
+            raise ValueError("Empty response from LLM for check result")
+
+        try:
+            result = json.loads(cleaned)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse check result as JSON: {e}\nResponse: {cleaned}") from e
+
+        # Validate required keys
+        if "conclusion" not in result:
+            raise ValueError(f"Check result missing 'conclusion' key: {result}")
+        if result["conclusion"] not in ("success", "failure"):
+            raise ValueError(f"Invalid conclusion value: {result['conclusion']}. Must be 'success' or 'failure'.")
+
+        # Normalize optional fields
+        result.setdefault("severity", "info" if result["conclusion"] == "success" else "critical")
+        result.setdefault("message", "")
+
+        log.info(
+            "Check result generated",
+            conclusion=result["conclusion"],
+            severity=result["severity"],
+        )
+
+        return result
+
+    def _build_check_system_message(self, branch: str | None = None) -> str:
+        """Build the system message for check result generation."""
+        base_message = (
+            "You are an expert infrastructure data validator analyzing data from Infrahub. "
+            "You MUST respond with ONLY a valid JSON object — no markdown fences, no explanation.\n\n"
+            "The JSON object MUST have these keys:\n"
+            '- "conclusion": either "success" or "failure"\n'
+            '- "severity": one of "info", "warning", or "critical"\n'
+            '- "message": a human-readable explanation of the check result\n\n'
+            "CRITICAL DATA RULE: Base your analysis ONLY on the data provided. "
+            "Do not fabricate or invent any values. If data is insufficient to make a determination, "
+            'return conclusion "failure" with a message explaining what is missing.'
+        )
+
+        mcp_instructions = ""
+        if self.mcp_server_url:
+            branch_instruction = ""
+            if branch:
+                branch_instruction = (
+                    f'\nIMPORTANT: This check is running on branch "{branch}". '
+                    f'You MUST pass branch="{branch}" to every tool call '
+                    "to ensure you query the correct branch data.\n"
+                )
+            mcp_instructions = f"""
+You have access to tools that can query the Infrahub infrastructure database.
+Use these tools to retrieve and verify data before making your determination.
+After gathering context, respond with ONLY the JSON result object.
+{branch_instruction}"""
+
+        return base_message + mcp_instructions
+
+    def _build_check_user_message(self, prompt: str, data: dict[str, Any]) -> str:
+        """Build the user message for check result generation."""
+        data_json = json.dumps(data, indent=2)
+
+        return f"""{prompt}
+
+# Input Data
+
+```json
+{data_json}
+```
+
+Analyze the data according to the check instructions above and return ONLY a JSON object with "conclusion", "severity", and "message" keys."""
 
     def _build_user_message(self, prompt: str, data: dict[str, Any], output_format: str = "markdown") -> str:
         """Build the user message with prompt and data."""

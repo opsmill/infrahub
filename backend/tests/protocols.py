@@ -132,6 +132,7 @@ class CoreGenericRepository(CoreNode):
     transformations: RelationshipManager
     queries: RelationshipManager
     checks: RelationshipManager
+    ai_checks: RelationshipManager
     generators: RelationshipManager
     groups_objects: RelationshipManager
 
@@ -284,6 +285,11 @@ class CoreAccountRole(CoreNode):
     permissions: RelationshipManager
 
 
+class CoreAICheckValidator(CoreValidator):
+    check_definition: RelationshipManager
+    repository: RelationshipManager
+
+
 class CoreArtifact(CoreTaskTarget):
     name: String
     status: Enum
@@ -336,6 +342,21 @@ class CoreCheckDefinition(CoreTaskTarget):
     description: StringOptional
     file_path: String
     class_name: String
+    timeout: Integer
+    parameters: JSONAttributeOptional
+    repository: RelationshipManager
+    query: RelationshipManager
+    targets: RelationshipManager
+    tags: RelationshipManager
+
+
+class CoreCheckDefinitionAI(CoreTaskTarget):
+    name: String
+    description: StringOptional
+    prompt_template_path: String
+    model: StringOptional
+    temperature: IntegerOptional
+    max_tokens: IntegerOptional
     timeout: Integer
     parameters: JSONAttributeOptional
     repository: RelationshipManager

@@ -11,6 +11,92 @@ from ...relationship_schema import (
     RelationshipSchema as Rel,
 )
 
+core_check_definition_ai = NodeSchema(
+    name="CheckDefinitionAI",
+    namespace="Core",
+    description="Defines an AI-powered check that validates data in a proposed change using Claude API",
+    include_in_menu=False,
+    icon="mdi:check-all",
+    label="AI Check Definition",
+    default_filter="name__value",
+    order_by=["name__value"],
+    display_labels=["name__value"],
+    branch=BranchSupportType.AWARE,
+    uniqueness_constraints=[["name__value"]],
+    generate_profile=False,
+    inherit_from=[InfrahubKind.TASKTARGET],
+    attributes=[
+        Attr(name="name", kind="Text", unique=True),
+        Attr(name="description", kind="Text", optional=True),
+        Attr(
+            name="prompt_template_path",
+            kind="Text",
+            description="Path to the markdown prompt template file in the repository",
+        ),
+        Attr(
+            name="model",
+            kind="Text",
+            description="Claude model to use for generation",
+            optional=True,
+            default_value="claude-sonnet-4-5-20250929",
+        ),
+        Attr(
+            name="temperature",
+            kind="Number",
+            description="Temperature for Claude API (0-100 scale, maps to 0.0-1.0)",
+            optional=True,
+            default_value=0,
+        ),
+        Attr(
+            name="max_tokens",
+            kind="Number",
+            description="Maximum tokens for Claude API response",
+            optional=True,
+            default_value=4096,
+        ),
+        Attr(
+            name="timeout",
+            kind="Number",
+            description="Maximum execution time in seconds before the check times out",
+            default_value=60,
+        ),
+        Attr(name="parameters", kind="JSON", description="Additional parameters to pass to the check", optional=True),
+    ],
+    relationships=[
+        Rel(
+            name="repository",
+            peer=InfrahubKind.GENERICREPOSITORY,
+            kind=RelKind.ATTRIBUTE,
+            cardinality=Cardinality.ONE,
+            identifier="ai_check_definition__repository",
+            optional=False,
+        ),
+        Rel(
+            name="query",
+            peer=InfrahubKind.GRAPHQLQUERY,
+            kind=RelKind.ATTRIBUTE,
+            identifier="ai_check_definition__graphql_query",
+            cardinality=Cardinality.ONE,
+            optional=True,
+        ),
+        Rel(
+            name="targets",
+            peer=InfrahubKind.GENERICGROUP,
+            kind=RelKind.ATTRIBUTE,
+            identifier="ai_check_definition___group",
+            cardinality=Cardinality.ONE,
+            optional=True,
+        ),
+        Rel(
+            name="tags",
+            peer=InfrahubKind.TAG,
+            kind=RelKind.ATTRIBUTE,
+            optional=True,
+            cardinality=Cardinality.MANY,
+        ),
+    ],
+)
+
 core_check_definition = NodeSchema(
     name="CheckDefinition",
     namespace="Core",

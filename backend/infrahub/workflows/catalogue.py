@@ -215,6 +215,27 @@ GIT_REPOSITORY_ADD_READ_ONLY = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORY_AI_CHECK_RUN = WorkflowDefinition(
+    name="git-repository-run-ai-check",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_ai_check",
+)
+
+GIT_REPOSITORY_AI_CHECKS_DEFINITIONS_TRIGGER = WorkflowDefinition(
+    name="git-repository-ai-checks-definition-trigger",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_repository_ai_check_definitions",
+)
+
+GIT_REPOSITORY_AI_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-ai-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_ai_checks",
+)
+
 GIT_REPOSITORIES_PULL_READ_ONLY = WorkflowDefinition(
     name="git-repository-pull-read-only",
     type=WorkflowType.CORE,
@@ -706,6 +727,9 @@ WORKFLOWS = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_AI_CHECKS_DEFINITIONS_TRIGGER,
+    GIT_REPOSITORY_AI_CHECKS_TRIGGER,
+    GIT_REPOSITORY_AI_CHECK_RUN,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
     GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,

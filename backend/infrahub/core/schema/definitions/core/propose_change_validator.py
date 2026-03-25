@@ -132,6 +132,36 @@ core_user_validator = NodeSchema(
     ],
 )
 
+core_ai_check_validator = NodeSchema(
+    name="AICheckValidator",
+    namespace="Core",
+    description="A Validator related to AI-powered checks in a repository",
+    include_in_menu=False,
+    label="AI Check Validator",
+    display_labels=["label__value"],
+    inherit_from=[InfrahubKind.VALIDATOR],
+    generate_profile=False,
+    branch=BranchSupportType.AGNOSTIC,
+    relationships=[
+        Rel(
+            name="check_definition",
+            peer=InfrahubKind.CHECKDEFINITIONAI,
+            kind=RelKind.ATTRIBUTE,
+            optional=False,
+            cardinality=Cardinality.ONE,
+            branch=BranchSupportType.AGNOSTIC,
+        ),
+        Rel(
+            name="repository",
+            peer=InfrahubKind.GENERICREPOSITORY,
+            kind=RelKind.ATTRIBUTE,
+            optional=False,
+            cardinality=Cardinality.ONE,
+            branch=BranchSupportType.AGNOSTIC,
+        ),
+    ],
+)
+
 core_schema_validator = NodeSchema(
     name="SchemaValidator",
     namespace="Core",

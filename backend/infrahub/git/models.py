@@ -190,6 +190,60 @@ class TriggerRepositoryUserChecks(BaseModel):
     branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")
 
 
+class AICheckDefinitionData(BaseModel):
+    """Triggers AI-powered checks to run based on an AI Check Definition."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    check_definition_id: str = Field(..., description="The unique ID of the AI check definition")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the Repository")
+    branch_name: str = Field(..., description="The branch where the check is run")
+    prompt_template_path: str = Field(..., description="The path to the prompt template file")
+    model: str = Field(..., description="Claude model to use for generation")
+    temperature: int = Field(..., description="Temperature for Claude API (0-100 scale)")
+    max_tokens: int = Field(..., description="Maximum tokens for Claude API response")
+    proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
+    branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")
+
+
+class AICheckData(BaseModel):
+    """Runs an AI-powered check as defined within a CoreCheckDefinitionAI."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    validator_id: str = Field(..., description="The id of the validator associated with this check")
+    validator_execution_id: str = Field(..., description="The id of current execution of the associated validator")
+    check_execution_id: str = Field(..., description="The unique ID for the current execution of this check")
+    check_definition_id: str = Field(..., description="The unique ID of the AI check definition")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the Repository")
+    branch_name: str = Field(..., description="The branch where the check is run")
+    prompt_template_path: str = Field(..., description="The path to the prompt template file")
+    model: str = Field(..., description="Claude model to use for generation")
+    temperature: int = Field(..., description="Temperature for Claude API (0-100 scale)")
+    max_tokens: int = Field(..., description="Maximum tokens for Claude API response")
+    proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
+    variables: dict = Field(default_factory=dict, description="Input variables when running the check")
+    name: str = Field(..., description="The name of the check")
+    branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")
+    timeout: int = Field(..., description="The timeout for the check")
+
+
+class TriggerRepositoryAIChecks(BaseModel):
+    """Sent to trigger the AI-powered checks on a repository."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the Repository")
+    source_branch: str = Field(..., description="The source branch")
+    source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
+    target_branch: str = Field(..., description="The target branch")
+    branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")
+
+
 class TriggerRepositoryInternalChecks(BaseModel):
     """Sent to trigger the checks for a repository to be executed."""
 

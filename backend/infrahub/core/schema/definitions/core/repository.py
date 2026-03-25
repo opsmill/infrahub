@@ -285,6 +285,14 @@ core_generic_repository = GenericSchema(
             order_weight=11000,
         ),
         Rel(
+            name="ai_checks",
+            peer=InfrahubKind.CHECKDEFINITIONAI,
+            identifier="ai_check_definition__repository",
+            optional=True,
+            cardinality=Cardinality.MANY,
+            order_weight=11500,
+        ),
+        Rel(
             name="generators",
             peer=InfrahubKind.GENERATORDEFINITION,
             identifier="generator_definition__repository",
