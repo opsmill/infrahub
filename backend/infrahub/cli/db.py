@@ -148,13 +148,19 @@ async def do_migrate(
 
     if verbose:
         await migrate_database(
-            db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None),
+            db=db,
+            migrations=migrations,
+            initialize=True,
+            update_graph_version=(migration_number is None),
             verbose=verbose,
         )
     else:
         with suppress_internal_logs():
             await migrate_database(
-                db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None),
+                db=db,
+                migrations=migrations,
+                initialize=True,
+                update_graph_version=(migration_number is None),
                 verbose=verbose,
             )
 
@@ -492,7 +498,9 @@ async def detect_migration_to_run(
     for migration in migrations:
         migration_number_display = migration.minimum_version + 1
         migration_type = _get_migration_type_name(migration)
-        console.log(f"  {migration_number_display:03d}  {_get_migration_display_name(migration):<50s} ({migration_type})")
+        console.log(
+            f"  {migration_number_display:03d}  {_get_migration_display_name(migration):<50s} ({migration_type})"
+        )
     return migrations
 
 
