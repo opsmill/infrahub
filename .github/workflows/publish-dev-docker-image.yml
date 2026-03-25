@@ -43,7 +43,7 @@ jobs:
         id: short_ref
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}

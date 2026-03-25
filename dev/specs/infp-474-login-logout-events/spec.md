@@ -26,7 +26,6 @@ A security auditor or administrator needs to review who logged in and out of Inf
 
 ### Edge Cases
 
-- What happens when a user's session is administratively invalidated (forced logout)? A logout event is emitted attributed to the account being logged out, distinguishing it from a user-initiated logout.
 - What happens when a user logs in and immediately logs out within the same second? Both events are recorded with accurate timestamps and the same session identifier.
 - How does the system handle a logout request for an already-expired or non-existent session? No logout event is emitted if no valid session exists to invalidate.
 - What happens if event emission fails after a successful login? The authentication itself succeeds; event emission failure does not prevent login. The event may be absent from the audit trail.
@@ -39,16 +38,15 @@ A security auditor or administrator needs to review who logged in and out of Inf
 - **FR-001**: System MUST emit a login event for every successful interactive authentication via password, OAuth2, or OIDC.
 - **FR-002**: Successful login events MUST include: account identifier, authentication method (password/OAuth2/OIDC), session identifier, and timestamp.
 - **FR-003**: System MUST emit a logout event when a user explicitly initiates a logout.
-- **FR-004**: Logout events MUST include: account identifier, session identifier, logout type (`user_initiated` or `admin_forced`), and timestamp.
+- **FR-004**: Logout events MUST include: account identifier, session identifier, logout type, and timestamp.
 - **FR-005**: Authentication events (`infrahub.account.*`) MUST be queryable via the existing activity event interface, filterable by account identifier, event type, and time range — and accessible only to users with admin role.
 - **FR-006**: API key authentication (per-request, non-interactive) MUST NOT generate login or logout events.
 - **FR-007**: Automatic session expiry (session times out without explicit user action) MUST NOT generate a logout event.
-- **FR-008**: System MUST emit a logout event with `logout_type="admin_forced"` when an administrator invalidates a user's session via the API or GraphQL interface.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Login Event**: Records a successful authentication — account identifier, authentication method, session identifier, timestamp, and optional group/role context.
-- **Logout Event**: Records a session termination — account identifier, session identifier, timestamp, and logout type (`user_initiated` or `admin_forced`).
+- **Logout Event**: Records a session termination — account identifier, session identifier, timestamp, and logout type
 - **Session Reference**: A unique identifier that links a login event to its corresponding logout event, enabling session duration analysis.
 
 ## Success Criteria *(mandatory)*
@@ -64,7 +62,6 @@ A security auditor or administrator needs to review who logged in and out of Inf
 
 ### Session 2026-03-24
 
-- Q: Should the system emit a logout event when an administrator invalidates a user's session? → A: Yes — emit `AccountLoggedOutEvent` with `logout_type="admin_forced"` when an admin invalidates a session.
 - Q: Should `client_ip` and `user_agent` be stored as-is or anonymized? → A: Store as-is; no anonymization required for this internal tool.
 - Q: What is the retention policy for authentication events? → A: Same as all other activity events in the platform — no special retention configuration required.
 - Q: Who can query `infrahub.account.*` events? → A: Admin users only. Non-admin users must not be able to query authentication events.
@@ -73,7 +70,7 @@ A security auditor or administrator needs to review who logged in and out of Inf
 
 - The existing activity event system and its query interface are in place and functioning.
 - "Interactive authentication" is defined as password login, OAuth2 callback, and OIDC callback — not API key per-request verification.
-- "Explicit logout" is defined as either a user-initiated logout action or an administrator-forced session invalidation — not automatic session expiry.
+- "Explicit logout" is defined as a user-initiated logout action.
 - Event storage retention follows the same policy as all other activity events in the system. No special retention configuration is required.
 - `client_ip` and `user_agent` are stored as-is in event payloads. No anonymization is required; Infrahub is an internal infrastructure tool where audit completeness takes precedence.
 - Access to `infrahub.account.*` events is restricted to admin users. The admin role check is enforced at the query layer, consistent with how other privileged data is protected in Infrahub.

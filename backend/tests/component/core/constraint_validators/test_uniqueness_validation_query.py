@@ -14,11 +14,11 @@ from infrahub.database import InfrahubDatabase
 
 async def test_query_uniqueness_no_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_yaris_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     query = await UniquenessValidationQuery.init(
@@ -34,7 +34,7 @@ async def test_query_uniqueness_no_violations(
 
 
 async def test_query_uniqueness_one_attr_violation(
-    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
+    db: InfrahubDatabase, car_accord_main: Node, car_prius_main: Node, branch: Branch, default_branch: Branch
 ) -> None:
     query_request = NodeUniquenessQueryRequestValued(
         kind="TestCar",
@@ -60,8 +60,8 @@ async def test_query_uniqueness_one_attr_violation(
 
 async def test_query_uniqueness_deleted_node_ignored(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -80,8 +80,8 @@ async def test_query_uniqueness_deleted_node_ignored(
 
 async def test_query_uniqueness_get_latest_update(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -100,10 +100,10 @@ async def test_query_uniqueness_get_latest_update(
 
 async def test_query_uniqueness_multiple_attribute_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    car_volt_main,
-    car_camry_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_volt_main: Node,
+    car_camry_main: Node,
     branch: Branch,
     default_branch: Branch,
 ) -> None:
@@ -127,11 +127,11 @@ async def test_query_uniqueness_multiple_attribute_violations(
 
 async def test_query_relationship_uniqueness_no_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    person_jane_main,
-    person_john_main,
-    person_albert_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
+    person_albert_main: Node,
     branch: Branch,
 ) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -212,11 +212,11 @@ async def test_query_relationship_uniqueness_no_violations(
 
 async def test_query_relationship_uniqueness_one_violation(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    person_jane_main,
-    person_john_main,
-    person_albert_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
+    person_albert_main: Node,
     branch: Branch,
 ) -> None:
     car_accord_branch = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)

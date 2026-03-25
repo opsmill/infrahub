@@ -12,7 +12,7 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query_success(db: InfrahubDatabase, default_branch: Branch, person_john_main) -> None:
+async def test_query_success(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> None:
     car_schema = registry.schema.get(name="TestCar")
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car.new(db=db, name="http://www.accord.com", nbr_seats=5, is_electric=False, owner=person_john_main.id)
@@ -34,7 +34,9 @@ async def test_query_success(db: InfrahubDatabase, default_branch: Branch, perso
     assert len(all_data_paths) == 0
 
 
-async def test_query_failure(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_query_failure(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "IPNetwork"
@@ -78,9 +80,9 @@ async def test_query_failure(db: InfrahubDatabase, default_branch: Branch, car_a
 async def test_query_update_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
     branch: Branch,
 ) -> None:
     car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -175,9 +177,9 @@ async def test_query_update_on_branch_with_too_large_value(
 async def test_query_update_on_branch_with_parameters_violation(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
     branch: Branch,
 ) -> None:
     car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -229,9 +231,9 @@ async def test_query_update_on_branch_with_parameters_violation(
 async def test_query_delete_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
     branch: Branch,
 ) -> None:
     car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -282,9 +284,9 @@ async def test_query_delete_on_branch(
 async def test_validator(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     car = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
