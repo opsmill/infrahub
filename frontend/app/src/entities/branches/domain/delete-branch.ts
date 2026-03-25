@@ -2,12 +2,13 @@ import { deleteBranchFromApi } from "@/entities/branches/api/delete-branch-from-
 
 export type DeleteBranchParams = {
   name: string;
+  deleteFromGit?: boolean;
 };
 
 export type DeleteBranch = (params: DeleteBranchParams) => Promise<string | null>;
 
-export const deleteBranch: DeleteBranch = async ({ name }) => {
-  const { data, errors } = await deleteBranchFromApi({ name });
+export const deleteBranch: DeleteBranch = async ({ name, deleteFromGit }) => {
+  const { data, errors } = await deleteBranchFromApi({ name, deleteFromGit });
 
   if (errors) {
     throw new Error(errors.map((e) => e.message).join("; "));

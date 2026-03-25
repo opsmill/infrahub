@@ -35,9 +35,6 @@ exports[`fix ts error`] = {
     "src/entities/branches/ui/branch-selector.tsx:2882426840": [
       [5, 28, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/branches/ui/branches-table/branches-toolbar.tsx:888562084": [
-      [102, 26, 20, "tsc: Object is possibly \'undefined\'.", "3437489383"]
-    ],
     "src/entities/branches/ui/branches-table/get-branch-table-columns.tsx:2005835156": [
       [44, 44, 6, "tsc: Type \'unknown\' is not assignable to type \'BranchStatus\'.", "2141063537"]
     ],
