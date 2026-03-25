@@ -1,5 +1,5 @@
 from infrahub.core.branch.models import Branch
-from infrahub.core.migrations.graph import Migration049
+from infrahub.core.migrations.graph.m049_remove_is_visible_relationship import Migration049
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.timestamp import current_timestamp
