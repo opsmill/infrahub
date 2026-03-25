@@ -52,6 +52,7 @@ class MigrationInput:
     db: InfrahubDatabase
     at: Timestamp = field(default_factory=Timestamp)
     user_id: str = SYSTEM_USER_ID
+    console: Console = field(default_factory=get_migration_console)
 
 
 class SchemaMigration(BaseModel):
@@ -113,7 +114,9 @@ class SchemaMigration(BaseModel):
     ) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
             result = MigrationResult()
-            txn_migration_input = MigrationInput(db=ts, at=migration_input.at, user_id=migration_input.user_id)
+            txn_migration_input = MigrationInput(
+                db=ts, at=migration_input.at, user_id=migration_input.user_id, console=migration_input.console,
+            )
 
             await self.execute_pre_queries(migration_input=txn_migration_input, result=result, branch=branch)
             queries_to_execute = queries or self.queries
@@ -183,7 +186,7 @@ class GraphMigration(BaseModel):
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
-            txn_migration_input = MigrationInput(db=ts, at=migration_input.at)
+            txn_migration_input = MigrationInput(db=ts, at=migration_input.at, console=migration_input.console)
             return await self.do_execute(migration_input=txn_migration_input)
 
     async def do_execute(self, migration_input: MigrationInput) -> MigrationResult:
