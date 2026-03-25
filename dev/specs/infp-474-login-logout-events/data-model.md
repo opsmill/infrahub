@@ -79,15 +79,6 @@ class AuthResult:
 }
 ```
 
-## `EventType` Constants
-
-Added to `backend/infrahub/core/constants/__init__.py`:
-
-```python
-ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
-ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
-```
-
 ## Session Correlation
 
 The `session_id` field in both `AccountLoggedInEvent` and `AccountLoggedOutEvent` is the UUID of the `RefreshToken` node. This allows administrators to correlate a login event to its corresponding logout event and compute session duration.

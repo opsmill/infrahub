@@ -2,6 +2,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.enum import AttributeEnumChecker, AttributeEnumUpdateValidatorQuery
@@ -10,7 +11,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query_new_choice_value(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     car_schema = registry.schema.get(name="TestCar")
     transmission_attr = car_schema.get_attribute(name="transmission")
@@ -30,7 +31,7 @@ async def test_query_new_choice_value(
 
 
 async def test_query_remove_choice(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     car = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=default_branch)
     car.transmission.value = "manual"
@@ -65,7 +66,7 @@ async def test_query_remove_choice(
 
 
 async def test_query_convert_to_enum(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     car = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=default_branch)
     car.color.value = "#123123"
@@ -88,7 +89,9 @@ async def test_query_convert_to_enum(
     assert len(all_data_paths) == 0
 
 
-async def test_query_update_on_branch(db: InfrahubDatabase, branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_query_update_on_branch(
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     car_accord_main.color.value = "#654654"
     await car_accord_main.save(db=db)
     await branch.rebase(db=db)
@@ -113,7 +116,9 @@ async def test_query_update_on_branch(db: InfrahubDatabase, branch: Branch, car_
     assert len(all_data_paths) == 0
 
 
-async def test_query_delete_on_branch(db: InfrahubDatabase, branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_query_delete_on_branch(
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     car_accord_main.color.value = "#654654"
     await car_accord_main.save(db=db)
     await branch.rebase(db=db)
@@ -138,7 +143,12 @@ async def test_query_delete_on_branch(db: InfrahubDatabase, branch: Branch, car_
 
 
 async def test_validator(
-    db: InfrahubDatabase, branch: Branch, default_branch: Branch, car_accord_main, car_camry_main, car_prius_main
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_prius_main: Node,
 ) -> None:
     await branch.rebase(db=db)
     car = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)

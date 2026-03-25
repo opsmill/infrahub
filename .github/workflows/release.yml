@@ -80,7 +80,7 @@ jobs:
     steps:
       - name: Set docker image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}

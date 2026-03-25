@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Response
 
 from infrahub import config, models
-from infrahub.api.dependencies import get_access_token, get_db, get_permission_manager, get_refresh_token
+from infrahub.api.dependencies import get_access_token, get_db, get_refresh_token
 from infrahub.auth import (
     AccountSession,
     AuthType,
@@ -14,15 +14,12 @@ from infrahub.auth import (
     invalidate_refresh_token,
 )
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import GlobalPermissions
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreGenericAccount, InternalRefreshToken
+from infrahub.core.protocols import CoreGenericAccount
 from infrahub.core.registry import registry
 from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod, LogoutType
 from infrahub.events.models import EventMeta
-from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
-from infrahub.permissions import PermissionManager, define_global_permission_from_branch
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -145,49 +142,3 @@ async def logout(
 
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
-
-
-@router.post("/sessions/{session_id}/invalidate")
-async def invalidate_session(
-    request: Request,
-    session_id: str,
-    db: InfrahubDatabase = Depends(get_db),
-    permission_manager: PermissionManager = Depends(get_permission_manager),
-) -> None:
-    permission_manager.raise_for_permission(
-        permission=define_global_permission_from_branch(
-            permission=GlobalPermissions.MANAGE_ACCOUNTS,
-            branch_name=registry.default_branch,
-        )
-    )
-
-    refresh_token_node = await NodeManager.get_one(id=session_id, db=db, kind=InternalRefreshToken)
-    if not refresh_token_node:
-        raise NodeNotFoundError(node_type="InternalRefreshToken", identifier=session_id)
-
-    account_peers = await refresh_token_node.account.get_peers(db=db, peer_type=CoreGenericAccount)
-    account = next(iter(account_peers.values()), None) if account_peers else None
-    account_id = account.id if account else session_id
-    account_name = account.name.value if account and hasattr(account, "name") else account_id
-
-    await invalidate_refresh_token(db=db, token_id=session_id)
-
-    try:
-        admin_session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=account_id)
-        await emit_auth_event(
-            request=request,
-            db=db,
-            account_id=account_id,
-            account_session=admin_session,
-            event_factory=lambda meta: AccountLoggedOutEvent(
-                meta=meta,
-                account_id=account_id,
-                account_name=account_name,
-                session_id=session_id,
-                logout_type=LogoutType.ADMIN_REVOKED,
-                client_ip=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-            ),
-        )
-    except Exception:
-        log.warning("Failed to emit admin logout event")
