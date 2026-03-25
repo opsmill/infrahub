@@ -98,6 +98,9 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_QUERY_SIZE_LIMIT` | The max number of records to fetch in a single query before performing internal pagination. | integer | 5000 |
 | `INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` | Maximum number of level to search in a hierarchy. | integer | 5 |
 | `INFRAHUB_DB_RETRY_LIMIT` | Maximum number of times a transient issue in a transaction should be retried. | integer | 3 |
+| `INFRAHUB_DB_RETRY_BASE_DELAY` | Base delay in seconds for exponential backoff on transaction retries. | number | 0.1 |
+| `INFRAHUB_DB_RETRY_MAX_DELAY` | Maximum delay in seconds for exponential backoff on transaction retries. | number | 2.0 |
+| `INFRAHUB_DB_RETRY_JITTER_MAX` | Maximum jitter in seconds added to retry delay to avoid thundering herd. | number | 0.1 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | Maximum number of concurrent queries that can run (0 means unlimited). | integer | 0 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
 
