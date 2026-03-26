@@ -1,7 +1,8 @@
+"""Registry for Jinja2-based computed attributes and their dependency graphs."""
+
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
@@ -9,17 +10,7 @@ from pydantic import BaseModel, Field
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath
-
-
-@dataclass
-class PythonDefinition:
-    kind: str
-    attribute: AttributeSchema
-
-    @property
-    def key_name(self) -> str:
-        return f"{self.kind}_{self.attribute.name}"
+    from infrahub.core.schema import NodeSchema, SchemaAttributePath
 
 
 class ComputedAttributeTarget(BaseModel):
@@ -116,52 +107,24 @@ class RegisteredNodeComputedAttribute(BaseModel):
         return list(targets.values())
 
 
-class ComputedAttributes:
+class Jinja2ComputedRegistry:
+    """Tracks Jinja2 computed attribute dependency graphs.
+
+    Maintains a map keyed by the kind of node whose mutation should trigger recomputation.
+    Each entry describes which local fields and relationships act as triggers, and which
+    computed attributes are affected.
+    """
+
     def __init__(
         self,
-        transform_attribute_map: dict[str, list[AttributeSchema]] | None = None,
         jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] | None = None,
     ) -> None:
-        self._computed_python_transform_attribute_map: dict[str, list[AttributeSchema]] = transform_attribute_map or {}
-        self._computed_jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] = jinja2_attribute_map or {}
-        self._defined_from_generic: dict[str, str] = {}
+        self._map: dict[str, RegisteredNodeComputedAttribute] = jinja2_attribute_map or {}
 
-    def duplicate(self) -> ComputedAttributes:
-        return self.__class__(
-            transform_attribute_map=deepcopy(self._computed_python_transform_attribute_map),
-            jinja2_attribute_map=deepcopy(self._computed_jinja2_attribute_map),
-        )
+    def duplicate(self) -> Jinja2ComputedRegistry:
+        return self.__class__(jinja2_attribute_map=deepcopy(self._map))
 
-    def add_python_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
-        if node.kind not in self._computed_python_transform_attribute_map:
-            self._computed_python_transform_attribute_map[node.kind] = []
-        self._computed_python_transform_attribute_map[node.kind].append(attribute)
-
-    def get_kinds_python_attributes(self) -> list[str]:
-        """Return kinds that have Python attributes defined"""
-        return list(self._computed_python_transform_attribute_map.keys())
-
-    def get_python_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:
-        return self._computed_python_transform_attribute_map
-
-    @property
-    def python_attributes_by_transform(self) -> dict[str, list[PythonDefinition]]:
-        computed_attributes: dict[str, list[PythonDefinition]] = {}
-        for kind, attributes in self._computed_python_transform_attribute_map.items():
-            for attribute in attributes:
-                if attribute.computed_attribute and attribute.computed_attribute.transform:
-                    if attribute.computed_attribute.transform not in computed_attributes:
-                        computed_attributes[attribute.computed_attribute.transform] = []
-
-                    computed_attributes[attribute.computed_attribute.transform].append(
-                        PythonDefinition(kind=kind, attribute=attribute)
-                    )
-
-        return computed_attributes
-
-    def register_computed_jinja2(
-        self, node: NodeSchema, attribute: AttributeSchema, schema_path: SchemaAttributePath
-    ) -> None:
+    def register(self, node: NodeSchema, attribute: AttributeSchema, schema_path: SchemaAttributePath) -> None:
         """Register a Jinja2 computed attribute and its dependency graph.
 
         Args:
@@ -177,7 +140,7 @@ class ComputedAttributes:
         # for relationship attributes it's the peer kind.
         key = node.kind if not schema_path.is_type_relationship else schema_path.active_relationship_schema.peer
 
-        trigger_node = self._computed_jinja2_attribute_map.setdefault(key, RegisteredNodeComputedAttribute())
+        trigger_node = self._map.setdefault(key, RegisteredNodeComputedAttribute())
         source_attribute = ComputedAttributeTarget(kind=node.kind, attribute=attribute)
         attr_name = schema_path.active_attribute_schema.name
 
@@ -191,23 +154,11 @@ class ComputedAttributes:
             # Record the relationship on the *peer* entry
             trigger_node.relationships.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
-            # Register on the *owner* entry so that a relationship re-assignment also triggers recomputation.
-            owner_entry = self._computed_jinja2_attribute_map.setdefault(
-                source_attribute.kind, RegisteredNodeComputedAttribute()
-            )
+            # Register on the *owner* entry so that a relationship re-assignment
+            owner_entry = self._map.setdefault(source_attribute.kind, RegisteredNodeComputedAttribute())
             owner_entry.local_fields.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
-    def validate_generic_inheritance(
-        self, node: NodeSchema, attribute: AttributeSchema, generic: GenericSchema
-    ) -> None:
-        attribute_key = f"{node.kind}__{attribute.name}"
-        if duplicate := self._defined_from_generic.get(attribute_key):
-            raise ValueError(
-                f"{node.kind}: {attribute.name!r} is declared as a computed attribute from multiple generics {sorted([duplicate, generic.kind])}"
-            )
-        self._defined_from_generic[attribute_key] = generic.kind
-
-    def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+    def get_impacted_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Return computed Jinja2 attribute targets that need re-evaluation when a node of the given kind is modified.
 
         Args:
@@ -221,15 +172,15 @@ class ComputedAttributes:
             computed value depends on the modified node and may need recomputation. The target kind
             can differ from the input kind when the dependency crosses a relationship.
         """
-        if mapping := self._computed_jinja2_attribute_map.get(kind):
+        if mapping := self._map.get(kind):
             return mapping.get_targets(updates=updates)
 
         return []
 
-    def get_jinja2_target_map(self) -> dict[ComputedAttributeTarget, list[str]]:
+    def get_target_map(self) -> dict[ComputedAttributeTarget, list[str]]:
         mapping: dict[ComputedAttributeTarget, set[str]] = {}
 
-        for node, registered_computed_attribute in self._computed_jinja2_attribute_map.items():
+        for node, registered_computed_attribute in self._map.items():
             for local_fields in registered_computed_attribute.local_fields.values():
                 for local_field in local_fields:
                     if local_field not in mapping:
@@ -238,7 +189,7 @@ class ComputedAttributes:
 
         return {key: list(value) for key, value in mapping.items()}
 
-    def get_jinja2_trigger_nodes(self) -> dict[ComputedAttributeTarget, list[ComputedAttributeTriggerNode]]:
+    def get_trigger_nodes(self) -> dict[ComputedAttributeTarget, list[ComputedAttributeTriggerNode]]:
         """Build a reverse index from computed attribute targets to the node mutations that trigger them.
 
         Example: if InfraDevice.computed_name depends on its own ``name`` and on InfraSite's ``name``
@@ -269,7 +220,7 @@ class ComputedAttributes:
                 trigger.targets_self = True
             return trigger
 
-        for node_kind, registered in self._computed_jinja2_attribute_map.items():
+        for node_kind, registered in self._map.items():
             # Local fields: attributes and relationship names on the trigger node itself
             for local_field, targets in registered.local_fields.items():
                 for target in targets:
