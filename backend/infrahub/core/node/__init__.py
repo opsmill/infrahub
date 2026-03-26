@@ -737,13 +737,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     ) -> None:
         """Recompute local Jinja2 computed attributes whose dependencies were modified.
 
-        Only targets computed attributes that live on this node
-        though their Jinja2 templates may reference relationship peers for input values.
+        Cascades through local chained dependencies: if computed attribute A on this node
+        depends on computed attribute B on the same node, and B was just recomputed, A will
+        also be recomputed. Cross-node cascading is handled by async Prefect automations.
         """
         schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
 
         targets = schema_branch.computed_attributes.get_local_jinja2_targets(
-            kind=self._schema.kind, updates=fields
+            kind=self._schema.kind, updates=fields, cascade=True
         )
         if not targets:
             return
@@ -1042,9 +1043,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Recompute the human-friendly ID if one of its variables was updated
         await self._recompute_hfid(db=db, fields=fields, node_changelog=node_changelog, update_at=update_at)
         # Recompute the display label if one of its variables was updated
-        await self._recompute_display_label(
-            db=db, fields=fields, node_changelog=node_changelog, update_at=update_at
-        )
+        await self._recompute_display_label(db=db, fields=fields, node_changelog=node_changelog, update_at=update_at)
 
         node_changelog.display_label = await self.get_display_label(db=db)
 

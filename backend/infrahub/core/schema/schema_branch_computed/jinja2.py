@@ -190,13 +190,38 @@ class Jinja2ComputedRegistry:
 
         return []
 
-    def get_local_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+    def get_local_targets(
+        self, kind: str, updates: list[str] | None = None, *, cascade: bool = False
+    ) -> list[ComputedAttributeTarget]:
         """Return only self-targeting Jinja2 computed attribute targets for a given kind.
 
-        Filters get_impacted_targets() to targets where target.kind == kind,
-        meaning the computed attribute lives on the same node that was modified (local change).
+        When cascade is True, transitively includes targets that depend on the initially
+        matched targets (e.g. if label depends on name and fqdn depends on label,
+        updating name returns both label and fqdn targets in dependency order).
         """
-        return [target for target in self.get_impacted_targets(kind=kind, updates=updates) if target.kind == kind]
+        targets = [t for t in self.get_impacted_targets(kind=kind, updates=updates) if t.kind == kind]
+        if not cascade:
+            return targets
+
+        processed: set[str] = {t.key_name for t in targets}
+        result = list(targets)
+        pending_attrs = {t.attribute.name for t in targets}
+
+        while pending_attrs:
+            next_targets = [
+                t
+                for t in self.get_impacted_targets(kind=kind, updates=list(pending_attrs))
+                if t.kind == kind and t.key_name not in processed
+            ]
+            # Nothing to recompute means we just ended up going through the local dependencies chain
+            if not next_targets:
+                break
+            for t in next_targets:
+                processed.add(t.key_name)
+                result.append(t)
+            pending_attrs = {t.attribute.name for t in next_targets}
+
+        return result
 
     def get_registered_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
         """Return the registered node entry for a given kind, or None."""

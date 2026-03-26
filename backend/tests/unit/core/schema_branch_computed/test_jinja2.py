@@ -305,8 +305,119 @@ class TestComputedAttributesGetLocalJinja2Targets:
         assert results == []
 
 
+class TestComputedAttributesGetLocalJinja2TargetsCascade:
+    """Tests for cascade=True on get_local_jinja2_targets."""
+
+    def _make_chain_registry(self, make_target: Callable[..., ComputedAttributeTarget]) -> ComputedAttributes:
+        """name -> label -> fqdn chain on a single kind."""
+        label_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
+        return ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "name": [label_target],
+                        "label": [fqdn_target],
+                    },
+                ),
+            },
+        )
+
+    def test_cascade_false_returns_direct_only(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        ca = self._make_chain_registry(make_target)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=False)
+        assert [r.attribute.name for r in results] == ["label"]
+
+    def test_cascade_true_returns_full_chain(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        ca = self._make_chain_registry(make_target)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        assert [r.attribute.name for r in results] == ["label", "fqdn"]
+
+    def test_cascade_respects_dependency_order(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """label must come before fqdn since fqdn depends on label."""
+        ca = self._make_chain_registry(make_target)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        names = [r.attribute.name for r in results]
+        assert names.index("label") < names.index("fqdn")
+
+    def test_cascade_no_chain_returns_same_as_non_cascade(
+        self, make_target: Callable[..., ComputedAttributeTarget]
+    ) -> None:
+        """When there's no chain, cascade=True returns the same as cascade=False."""
+        target = make_target(kind=LOCAL_KIND, attr_name="label")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={"name": [target]},
+                ),
+            },
+        )
+        without = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=False)
+        with_cascade = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        assert [r.attribute.name for r in without] == [r.attribute.name for r in with_cascade]
+
+    def test_cascade_cycle_terminates(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """alpha -> beta -> alpha cycle does not loop forever."""
+        target_alpha = make_target(kind=LOCAL_KIND, attr_name="alpha")
+        target_beta = make_target(kind=LOCAL_KIND, attr_name="beta")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "beta": [target_alpha],
+                        "alpha": [target_beta],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["alpha"], cascade=True)
+        assert {r.attribute.name for r in results} == {"alpha", "beta"}
+
+    def test_cascade_diamond(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """Diamond: name -> label, name -> desc, label -> summary, desc -> summary."""
+        label_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        desc_target = make_target(kind=LOCAL_KIND, attr_name="desc")
+        summary_target = make_target(kind=LOCAL_KIND, attr_name="summary")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "name": [label_target, desc_target],
+                        "label": [summary_target],
+                        "desc": [summary_target],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        names = [r.attribute.name for r in results]
+        # summary appears exactly once despite two paths
+        assert names.count("summary") == 1
+        # summary comes after both label and desc
+        assert names.index("summary") > names.index("label")
+        assert names.index("summary") > names.index("desc")
+
+    def test_cascade_skips_remote_targets(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """Remote targets (different kind) are excluded even with cascade."""
+        local_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        remote_target = make_target(kind=REMOTE_KIND, attr_name="remote_label")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "name": [local_target, remote_target],
+                        "label": [make_target(kind=LOCAL_KIND, attr_name="fqdn")],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        result_kinds = {r.kind for r in results}
+        assert REMOTE_KIND not in result_kinds
+
+
 class TestComputedAttributesGetRegisteredJinja2Node:
-    def test_returns_node(self) -> None:
+    def test_returns_node(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         expected = RegisteredNodeComputedAttribute(
             relationship_peer_attributes={"site": {"name"}, "role": {"label"}},
         )
@@ -317,6 +428,6 @@ class TestComputedAttributesGetRegisteredJinja2Node:
         assert result is expected
         assert result.relationship_fields == {"site": {"name"}, "role": {"label"}}
 
-    def test_returns_none_for_unknown_kind(self) -> None:
+    def test_returns_none_for_unknown_kind(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         ca = ComputedAttributes()
         assert ca.get_registered_jinja2_node("UnknownKind") is None

@@ -166,7 +166,7 @@ async def test_unrelated_attr_change_does_not_trigger_recomputation(
 async def test_chained_jinja2_only_direct_deps_recomputed_inline(
     db: InfrahubDatabase, default_branch: Branch, schema_with_chained_jinja2: None
 ) -> None:
-    """Only direct dependencies are recomputed inline; chained deps are left to the event system."""
+    """Chained computed attributes cascade: name -> label -> fqdn all recomputed inline."""
     server = await Node.init(db=db, schema="TestComputeServer", branch=default_branch)
     await server.new(db=db, name="web01", role="frontend")
     await server.save(db=db)
@@ -174,16 +174,18 @@ async def test_chained_jinja2_only_direct_deps_recomputed_inline(
     assert server.get_attribute("label").value == "web01-frontend"
     assert server.get_attribute("fqdn").value == "web01-frontend.example.com"
 
-    # Update name — label (direct dep of name) recomputes inline,
-    # but fqdn (depends on label, not name) is left for async event cascade.
     server.get_attribute("name").value = "web02"
 
     # Act
     await server.save(db=db, fields=["name"])
 
+    # Assert local computation
     assert server.get_attribute("label").value == "web02-frontend"
-    # fqdn still has old value — it will be updated by the async event path
-    assert server.get_attribute("fqdn").value == "web01-frontend.example.com"
+    assert server.get_attribute("fqdn").value == "web02-frontend.example.com"
+
+    # Assert saved in the database
+    reloaded = await NodeManager.get_one(db=db, id=server.id, branch=default_branch)
+    assert reloaded.get_attribute("fqdn").value == "web02-frontend.example.com"
 
 
 async def test_jinja2_error_handled_gracefully(
