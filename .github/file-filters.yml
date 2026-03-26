@@ -92,6 +92,7 @@ documentation_all:
   - *doc_files
   - *markdown_all
   - *vale_files
+  - *sdk_files
 
 documentation_generated_all:
   - *infrahub_reference_generated
