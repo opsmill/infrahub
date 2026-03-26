@@ -38,6 +38,7 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_http,
     get_installation_type,
     get_log_forwarding_service,
     get_message_bus,
@@ -74,6 +75,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     message_bus = await get_message_bus()
     cache = await get_cache()
     component = await get_component()
+    http_service = get_http()
     log_forwarding = get_log_forwarding_service()
     service = await InfrahubServices.new(
         cache=cache,
@@ -82,6 +84,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         workflow=workflow,
         component=component,
         component_type=component_type,
+        http=http_service,
         log_forwarding=log_forwarding,
     )
     await log_forwarding.start()
