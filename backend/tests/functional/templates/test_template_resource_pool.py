@@ -72,7 +72,7 @@ class TestTemplateResourcePoolCreation(TestInfrahubApp):
                             peer="IpamIPAddress",
                             label="Primary IP Address",
                             cardinality=RelationshipCardinality.ONE,
-                            optional=True,
+                            optional=False,
                         ),
                     ],
                 ),
