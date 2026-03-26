@@ -150,7 +150,7 @@
 
 - **Phase 2**: T001 and T002 are sequential (T002 depends on registry), T003 depends on T001+T002, T004 can start after T001+T002
 - **After Phase 3 (US1)**: US2, US4, and US5 can all run in parallel (they touch different test files and different aspects)
-- **US3**: Can run in parallel with US1 (touches `computed_attribute/models.py`, not `core/node/__init__.py`)
+- **US3**: Can run in parallel with US1 (touches `computed_attribute/gather.py`, not `core/node/__init__.py`)
 - **Phase 8**: T020 and T021 can run in parallel
 
 ---
@@ -160,7 +160,7 @@
 ```bash
 # US1 and US3 can run in parallel (different files):
 # US1 agent: backend/infrahub/core/node/__init__.py (inline recomputation)
-# US3 agent: backend/infrahub/computed_attribute/models.py (trigger suppression)
+# US3 agent: backend/infrahub/computed_attribute/gather.py (trigger placeholders)
 
 # After US1 completes, US2, US4, US5 can run in parallel:
 # US2: extends _recompute_local_jinja2() + relationship tests
