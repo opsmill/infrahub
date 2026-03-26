@@ -72,19 +72,19 @@
 
 ---
 
-## Phase 5: User Story 3 — Remote Changes Continue Via Background Tasks (Priority: P2)
+## Phase 5: User Story 3 — Convert Self-Targeting Triggers to Placeholders (Priority: P2)
 
-**Goal**: Ensure remote changes (peer node attribute updates) still trigger background Prefect tasks for computed attribute recomputation. No regression.
+**Goal**: Convert self-targeting computed attribute triggers to use `_trigger_placeholder` fields (matching the HFID/display label pattern), so they never fire on per-node changes but still exist for schema-change detection. Remote triggers keep real field names and continue firing via Prefect.
 
-**Independent Test**: Update a Site's name; verify Devices referencing that Site have their computed attributes updated via background tasks.
+**Independent Test**: Update a Site's name; verify Devices referencing that Site have their computed attributes updated via background tasks. Verify self-targeting triggers use `_trigger_placeholder`.
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Modify `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` in `backend/infrahub/computed_attribute/models.py` to skip creating Prefect automation triggers for `ComputedAttributeTriggerNode` entries where `targets_self=True` — only create triggers for remote changes (peer node kinds)
-- [ ] T016 [US3] Add unit test in `backend/tests/unit/computed_attribute/test_trigger_definition.py`: verify that trigger definitions for a computed attribute with mixed local+remote dependencies correctly exclude the self-targeting trigger node while preserving the remote trigger node
+- [ ] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
+- [ ] T016 [US3] Add unit test in `backend/tests/unit/computed_attribute/test_trigger_definition.py`: verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
 - [ ] T017 [US3] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
 
-**Checkpoint**: Remote changes work via background tasks. Local changes handled inline. Both paths coexist correctly.
+**Checkpoint**: Self-targeting triggers are placeholders. Remote triggers work via background tasks. Both paths coexist correctly.
 
 ---
 
