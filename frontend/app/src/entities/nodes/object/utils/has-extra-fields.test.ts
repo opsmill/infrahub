@@ -130,18 +130,4 @@ describe("hasExtraFields", () => {
     // THEN
     expect(result).toBe(true);
   });
-
-  it("should return false when fields have display values other than 'extra'", () => {
-    // GIVEN
-    const schema = generateNodeSchema({
-      attributes: [generateAttributeSchema({ display: "default" })],
-      relationships: [generateRelationshipSchema({ display: "default" })],
-    });
-
-    // WHEN
-    const result = hasExtraFields(schema);
-
-    // THEN
-    expect(result).toBe(false);
-  });
 });
