@@ -276,10 +276,11 @@ class Jinja2ComputedRegistry:
         returns both label and fqdn targets in dependency order).
         """
         registered = self._map.get(kind)
-        if not registered or not updates:
-            return [t for t in self.get_impacted_targets(kind=kind, updates=updates) if t.kind == kind]
+        if not registered:
+            return []
 
-        return registered.get_local_targets_in_dependency_order(kind=kind, updates=updates)
+        effective_updates = updates or list(registered.local_fields.keys())
+        return registered.get_local_targets_in_dependency_order(kind=kind, updates=effective_updates)
 
     def get_registered_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
         """Return the registered node entry for a given kind, or None."""

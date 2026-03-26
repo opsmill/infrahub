@@ -14,8 +14,8 @@ LOCAL_KIND = "TestDevice"
 REMOTE_KIND = "TestSite"
 
 
-class TestComputedAttributesGetLocalJinja2TargetsCascade:
-    """Tests for chained dependency resolution in get_local_jinja2_targets."""
+class TestCascadeWithExplicitUpdates:
+    """Tests for chained dependency resolution when updates is a concrete list of field names."""
 
     def _make_chain_registry(self, make_target: Callable[..., ComputedAttributeTarget]) -> ComputedAttributes:
         """name -> label -> fqdn chain on a single kind."""
@@ -234,20 +234,6 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["nonexistent"])
         assert results == []
 
-    def test_empty_updates_list(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """updates=[] is falsy — falls back to returning all local targets."""
-        local_target = make_target(kind=LOCAL_KIND, attr_name="label")
-        ca = ComputedAttributes(
-            jinja2_attribute_map={
-                LOCAL_KIND: RegisteredNodeComputedAttribute(
-                    local_fields={"name": [local_target]},
-                ),
-            },
-        )
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=[])
-        assert len(results) == 1
-        assert results[0].attribute.name == "label"
-
     def test_independent_branches_from_single_update(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """name -> [label, desc], label -> summary, desc -> footer.
 
@@ -320,3 +306,90 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
         assert set(names) == {"aaa", "bbb", "ccc"}
         assert names.index("aaa") < names.index("bbb")
         assert names.index("bbb") < names.index("ccc")
+
+
+class TestCascadeWithFullSave:
+    """Tests for chained dependency resolution when updates is None or empty (full save).
+
+    Regression suite: get_local_jinja2_targets must preserve topological ordering
+    even when no explicit field list is provided.
+    """
+
+    def test_full_save_preserves_dependency_order(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """updates=None must return chained targets in dependency order.
+
+        The local_fields dict is deliberately ordered so that the dependent target (fqdn)
+        appears before its prerequisite (label) in iteration order, exposing any code path
+        that returns targets in raw dict order instead of topological order.
+        """
+        label_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        # fqdn depends on label, but "label" key (which produces fqdn)
+                        # is listed BEFORE "name" key (which produces label),
+                        # so raw dict iteration yields fqdn before label.
+                        "label": [fqdn_target],
+                        "name": [label_target],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=None)
+        names = [r.attribute.name for r in results]
+        assert set(names) == {"label", "fqdn"}
+        assert names.index("label") < names.index("fqdn")
+
+    def test_full_save_skips_remote_targets(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """updates=None must exclude remote targets from local results."""
+        local_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        remote_target = make_target(kind=REMOTE_KIND, attr_name="remote_label")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "name": [local_target, remote_target],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=None)
+        assert len(results) == 1
+        assert results[0].kind == LOCAL_KIND
+
+    def test_full_save_empty_list_preserves_dependency_order(
+        self, make_target: Callable[..., ComputedAttributeTarget]
+    ) -> None:
+        """updates=[] (falsy like None) must also preserve dependency order."""
+        label_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "label": [fqdn_target],
+                        "name": [label_target],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=[])
+        names = [r.attribute.name for r in results]
+        assert set(names) == {"label", "fqdn"}
+        assert names.index("label") < names.index("fqdn")
+
+    def test_full_save_returns_all_local_targets(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """updates=None returns all local targets, not just those reachable from a subset."""
+        local_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={"name": [local_target]},
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=None)
+        assert len(results) == 1
+        assert results[0].attribute.name == "label"
