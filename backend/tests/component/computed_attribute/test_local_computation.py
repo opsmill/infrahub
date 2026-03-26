@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
@@ -152,7 +153,8 @@ async def test_unrelated_attr_change_does_not_trigger_recomputation(
 
     # Save only an unrelated attribute and verify no Jinja2 render occurs
     with patch.object(
-        InfrahubJinja2Template, "render",
+        InfrahubJinja2Template,
+        "render",
         new_callable=AsyncMock,
     ) as mock_render:
         device.get_attribute("description").value = "updated"
@@ -197,7 +199,7 @@ async def test_jinja2_error_handled_gracefully(
     with patch(
         "infrahub.core.node.InfrahubJinja2Template.render",
         new_callable=AsyncMock,
-        side_effect=Exception("Simulated Jinja2 rendering failure"),
+        side_effect=JinjaTemplateError(message="Simulated Jinja2 rendering failure"),
     ):
         widget.get_attribute("name").value = "gear02"
         await widget.save(db=db, fields=["name"])
