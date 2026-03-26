@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import { Link, useLocation, useParams } from "react-router";
 
@@ -12,7 +11,7 @@ import { classNames } from "@/shared/utils/common";
 import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { DiffNodeAttribute } from "./node-attribute";
 import { getNewValue, getPreviousValue } from "./node-property";
@@ -27,7 +26,7 @@ type DiffNodeProps = {
 
 export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProps) => {
   const { "*": branchName } = useParams();
-  const schemaKindName = useAtomValue(schemaKindNameState);
+  const { schema } = useSchema(node.kind);
   const { hash } = useLocation();
   const diffNodeRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +50,14 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
           title={
             <div className="group flex items-center gap-2 py-2 pr-2 text-xs">
               <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
-              <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
+              <Badge variant="white">
+                {schema?.namespace && (
+                  <span className="text-gray-500">
+                    {schema.namespace} <span className="mx-2">›</span>
+                  </span>
+                )}
+                {schema?.label || schema?.name || node.kind}
+              </Badge>
               <Link
                 to={getObjectDetailsUrl(node.kind, node.uuid, [
                   { name: QSP.BRANCH, value: destinationBranch },
