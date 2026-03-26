@@ -188,12 +188,10 @@ class ComputedAttributes:
         if schema_path.is_type_relationship:
             rel_name = schema_path.active_relationship_schema.name
 
-            # Record the relationship on the *peer* entry so get_targets() can
-            # build filter_keys (e.g. "site__ids") to locate affected owner nodes.
+            # Record the relationship on the *peer* entry
             trigger_node.relationships.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
-            # Register on the *owner* entry so that a relationship re-assignment
-            # (e.g. changing which site a device points to) also triggers recomputation.
+            # Register on the *owner* entry so that a relationship re-assignment also triggers recomputation.
             owner_entry = self._computed_jinja2_attribute_map.setdefault(
                 source_attribute.kind, RegisteredNodeComputedAttribute()
             )
