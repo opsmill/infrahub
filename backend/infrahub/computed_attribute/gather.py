@@ -121,17 +121,18 @@ async def gather_trigger_computed_attribute_jinja2(
 
         for computed_attribute, trigger_nodes in mapping.items():
             for trigger_node in trigger_nodes:
+                effective_trigger = trigger_node
                 if trigger_node.targets_self:
                     # Self-targeting triggers use placeholder fields so they never match real
                     # NodeUpdatedEvents. The trigger definition still exists for schema-change
                     # detection in the setup flow. This matches the HFID and display label pattern.
-                    trigger_node = trigger_node.model_copy(
+                    effective_trigger = trigger_node.model_copy(
                         update={"attributes": ["_trigger_placeholder"], "relationships": []}
                     )
                 trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
                     branch=branch_scope,
                     computed_attribute=computed_attribute,
-                    trigger_node=trigger_node,
+                    trigger_node=effective_trigger,
                     branches_out_of_scope=branches_out_of_scope,
                 )
                 triggers.append(trigger)
