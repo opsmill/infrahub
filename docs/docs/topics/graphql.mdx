@@ -259,7 +259,7 @@ When writing GraphQL queries for [transforms](./transformation.mdx), [generators
 
 ### What is a single-target query?
 
-A single-target query is a GraphQL query that targets a **unique node** using either a Human-Friendly ID (HFID) or a unique attribute. This pattern enables Infrahub to identify exactly which objects are affected by a change, allowing it to selectively trigger the necessary action instead of everything.
+A single-target query is a GraphQL query that targets a **unique node** using a unique attribute or ID. This pattern enables Infrahub to identify exactly which objects are affected by a change, allowing it to selectively trigger the necessary action instead of everything.
 
 ### Why is this important?
 
@@ -311,24 +311,6 @@ query DeviceById($device_id: String!) {
     edges {
       node {
         id
-        name {
-          value
-        }
-      }
-    }
-  }
-}
-```
-
-**Using HFID with required variable:**
-
-```graphql
-query DeviceByHFID($device_hfid: String!) {
-  InfraDevice(hfid: [$device_hfid]) {
-    edges {
-      node {
-        id
-        hfid
         name {
           value
         }

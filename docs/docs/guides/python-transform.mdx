@@ -69,7 +69,7 @@ mutation CreateDevice {
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
 :::warning Single-target query requirement
-For proper artifact detection, your query must target a **unique node** using either a Human-Friendly ID (HFID) or a unique attribute. This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all artifacts unnecessarily.
+For proper artifact detection, your query must target a **unique node** using a unique attribute or ID. This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all artifacts unnecessarily.
 
 **Requirements for a valid single-target query:**
 
