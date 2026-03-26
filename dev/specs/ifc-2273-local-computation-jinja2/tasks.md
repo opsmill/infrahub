@@ -30,7 +30,7 @@
 - [ ] T001 Add `relationship_fields` property to `RegisteredNodeComputedAttribute` in `backend/infrahub/core/schema/schema_branch_computed.py` that returns `dict[str, set[str]]` mapping relationship names to peer attribute names needed for Jinja2 template rendering, derived from the relationship entries and their associated `ComputedAttributeTarget.attribute.computed_attribute.jinja2_template` variable paths
 - [ ] T002 Add `get_local_jinja2_targets(kind, updates)` method to `ComputedAttributes` in `backend/infrahub/core/schema/schema_branch_computed.py` that wraps `get_impacted_jinja2_targets()` and filters results to only return `ComputedAttributeTarget` entries where `target.kind == kind` (local changes only)
 - [ ] T003 Extend `Node._collect_extra_filters()` in `backend/infrahub/core/node/__init__.py` to include computed attribute `relationship_fields` from `schema_branch.computed_attributes`, merging them with existing display_label/HFID extra_filters via `_merge_relationship_fields()`, gated by a check that the node has Jinja2 computed attributes and is an update (existing node)
-- [ ] T004 [P] Add unit tests for `relationship_fields` property and `get_local_jinja2_targets()` in `backend/tests/unit/core/schema/test_schema_branch_computed.py` — test local vs remote target filtering, relationship field extraction, and empty/missing cases
+- [ ] T004 [P] Add tests for `relationship_fields` property and `get_local_jinja2_targets()` in `backend/tests/unit/core/schema/test_schema_branch_computed.py` (or `backend/tests/component/` if schema registration dependencies require it) — test local vs remote target filtering, relationship field extraction, and empty/missing cases
 
 **Checkpoint**: Registry and peer loading infrastructure ready. User story implementation can begin.
 
@@ -81,7 +81,7 @@
 ### Implementation for User Story 3
 
 - [ ] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
-- [ ] T016 [US3] Add unit test in `backend/tests/unit/computed_attribute/test_trigger_definition.py`: verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
+- [ ] T016 [US3] Add test in `backend/tests/unit/computed_attribute/test_trigger_definition.py` (or `backend/tests/component/` if needed): verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
 - [ ] T017 [US3] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
 
 **Checkpoint**: Self-targeting triggers are placeholders. Remote triggers work via background tasks. Both paths coexist correctly.
