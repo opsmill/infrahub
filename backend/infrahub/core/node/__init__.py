@@ -743,11 +743,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         """
         schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
 
-        targets = schema_branch.computed_attributes.get_local_jinja2_targets(
-            kind=self._schema.kind, updates=fields
-        )
+        targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind, updates=fields)
         if not targets:
             return
+
+        failed_attributes: set[str] = set()
 
         for target in targets:
             attr_schema = self._schema.get_attribute(name=target.attribute.name)
@@ -755,6 +755,19 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+
+            referenced_variables = jinja_template.get_variables()
+            depends_on_failed = any(var.split("__")[0] in failed_attributes for var in referenced_variables)
+            if depends_on_failed:
+                log.warning(
+                    "Skipping recomputation of Jinja2 attribute due to failed dependency",
+                    node_kind=self._schema.kind,
+                    attribute_name=target.attribute.name,
+                    failed_dependencies=failed_attributes & {var.split("__")[0] for var in referenced_variables},
+                )
+                failed_attributes.add(target.attribute.name)
+                continue
+
             variables = await self._resolve_jinja2_variables(
                 db=db, schema_branch=schema_branch, jinja_template=jinja_template
             )
@@ -768,6 +781,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     attribute_name=target.attribute.name,
                     exc_info=True,
                 )
+                failed_attributes.add(target.attribute.name)
                 continue
 
             attr: BaseAttribute = self.get_attribute(name=target.attribute.name)
