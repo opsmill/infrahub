@@ -1044,7 +1044,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Recompute the human-friendly ID if one of its variables was updated
         await self._recompute_hfid(db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at)
         # Recompute the display label if one of its variables was updated
-        await self._recompute_display_label(db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at)
+        await self._recompute_display_label(
+            db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at
+        )
 
         node_changelog.display_label = await self.get_display_label(db=db)
 

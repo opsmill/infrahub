@@ -115,6 +115,52 @@ class RegisteredNodeComputedAttribute(BaseModel):
 
         return list(targets.values())
 
+    def get_local_targets_in_dependency_order(self, kind: str, updates: list[str]) -> list[ComputedAttributeTarget]:
+        """Walk local_fields wave by wave, returning self-targeting targets in dependency order.
+
+        Starting from the given field names, each wave collects targets triggered by
+        the previous wave's computed attribute names. Within each wave, targets that
+        are dependencies of other wave members are emitted first by deferring
+        dependents to the next iteration.
+        """
+        processed: set[str] = set()
+        result: list[ComputedAttributeTarget] = []
+        pending_fields = set(updates)
+
+        while pending_fields:
+            wave: dict[str, ComputedAttributeTarget] = {}
+            for field_name in pending_fields:
+                for entry in self.local_fields.get(field_name, []):
+                    if entry.kind == kind and entry.key_name not in processed:
+                        processed.add(entry.key_name)
+                        wave[entry.key_name] = entry
+            if not wave:
+                break
+
+            wave_attr_names = {t.attribute.name for t in wave.values()}
+            # Targets whose output triggers another wave member must come first.
+            depended_on = {
+                attr_name
+                for attr_name in wave_attr_names
+                for entry in self.local_fields.get(attr_name, [])
+                if entry.kind == kind and entry.attribute.name in wave_attr_names
+            }
+
+            if not depended_on:
+                # No intra-wave dependencies (or cycle) — emit all
+                result.extend(wave.values())
+                pending_fields = wave_attr_names
+            else:
+                ready = [t for t in wave.values() if t.attribute.name in depended_on]
+                result.extend(ready)
+                pending_fields = {t.attribute.name for t in ready}
+                # Re-allow deferred targets to be picked up in the next wave
+                for key, t in wave.items():
+                    if t.attribute.name not in depended_on:
+                        processed.discard(key)
+
+        return result
+
 
 class Jinja2ComputedRegistry:
     """Tracks Jinja2 computed attribute dependency graphs.
@@ -203,25 +249,11 @@ class Jinja2ComputedRegistry:
         if not cascade:
             return targets
 
-        processed: set[str] = {t.key_name for t in targets}
-        result = list(targets)
-        pending_attrs = {t.attribute.name for t in targets}
+        registered = self._map.get(kind)
+        if not registered or not updates:
+            return targets
 
-        while pending_attrs:
-            next_targets = [
-                t
-                for t in self.get_impacted_targets(kind=kind, updates=pending_attrs)
-                if t.kind == kind and t.key_name not in processed
-            ]
-            # Nothing to recompute means we just ended up going through the local dependencies chain
-            if not next_targets:
-                break
-            for t in next_targets:
-                processed.add(t.key_name)
-                result.append(t)
-            pending_attrs = {t.attribute.name for t in next_targets}
-
-        return result
+        return registered.get_local_targets_in_dependency_order(kind=kind, updates=updates)
 
     def get_registered_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
         """Return the registered node entry for a given kind, or None."""

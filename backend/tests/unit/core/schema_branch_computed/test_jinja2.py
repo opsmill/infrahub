@@ -397,6 +397,26 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
         assert names.index("summary") > names.index("label")
         assert names.index("summary") > names.index("desc")
 
+    def test_cascade_mixed_direct_and_transitive(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """When name triggers both label and fqdn, but fqdn also depends on label,
+        label must be recomputed before fqdn regardless of list order in local_fields."""
+        label_target = make_target(kind=LOCAL_KIND, attr_name="label")
+        fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
+        # fqdn listed BEFORE label in the "name" entry to exercise wrong-order scenario
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "name": [fqdn_target, label_target],
+                        "label": [fqdn_target],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        names = [r.attribute.name for r in results]
+        assert names.index("label") < names.index("fqdn")
+
     def test_cascade_skips_remote_targets(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """Remote targets (different kind) are excluded even with cascade."""
         local_target = make_target(kind=LOCAL_KIND, attr_name="label")
