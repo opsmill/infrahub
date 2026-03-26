@@ -539,7 +539,9 @@ class HTTPSettings(BaseSettings):
         try:
             # Validate that the context can be created, we want to raise this error during application start
             # instead of running into issues later when we first try to use the tls context.
-            TlsContextBuilder.build(insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle)
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
         except ssl.SSLError as exc:
             raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
 
