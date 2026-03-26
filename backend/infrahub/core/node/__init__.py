@@ -446,11 +446,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def handle_object_template(
         self, fields: dict, db: InfrahubDatabase, errors: list, process_pools: bool = True
-    ) -> None:
-        """Fill the `fields` parameters with values from an object template if one is in use."""
+    ) -> set[str]:
+        """Fill the `fields` parameters with values from an object template if one is in use.
+
+        Returns the set of field names that have pending pool allocations (deferred in preview mode).
+        """
         object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
         if not object_template_field:
-            return
+            return set()
 
         try:
             template: CoreObjectTemplate = await registry.manager.find_object(
@@ -471,7 +474,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     }
                 )
             )
-            return
+            return set()
 
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
@@ -484,6 +487,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         for key, value in applied_fields.items():
             if key not in fields:
                 fields[key] = value
+
+        return applier.pool_pending_fields
 
     async def _get_profile_provided_mandatory_fields(
         self, db: InfrahubDatabase, fields: dict[str, Any]
@@ -523,7 +528,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         # Backfill fields with the ones from the template if there's one
-        await self.handle_object_template(fields=fields, db=db, errors=errors, process_pools=process_pools)
+        pool_pending_fields = await self.handle_object_template(
+            fields=fields, db=db, errors=errors, process_pools=process_pools
+        )
 
         if not self._existing:
             (
@@ -532,7 +539,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
 
             for mandatory_attr in self._schema.mandatory_attribute_names:
-                if mandatory_attr not in fields.keys() and mandatory_attr not in self._profile_provided_attrs:
+                if (
+                    mandatory_attr not in fields.keys()
+                    and mandatory_attr not in self._profile_provided_attrs
+                    and mandatory_attr not in pool_pending_fields
+                ):
                     if self._schema.is_node_schema:
                         mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
                         if (
@@ -550,7 +561,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     )
 
             for mandatory_rel in self._schema.mandatory_relationship_names:
-                if mandatory_rel not in fields.keys() and mandatory_rel not in self._profile_provided_rels:
+                if (
+                    mandatory_rel not in fields.keys()
+                    and mandatory_rel not in self._profile_provided_rels
+                    and mandatory_rel not in pool_pending_fields
+                ):
                     errors.append(
                         ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
                     )
@@ -562,7 +577,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
-        errors.extend(await self._process_fields_attributes(fields=fields, db=db, process_pools=process_pools))
+        errors.extend(
+            await self._process_fields_attributes(
+                fields=fields, db=db, process_pools=process_pools, pool_pending_fields=pool_pending_fields
+            )
+        )
 
         if errors:
             raise ValidationError(errors)
@@ -600,7 +619,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return errors
 
     async def _process_fields_attributes(
-        self, fields: dict, db: InfrahubDatabase, process_pools: bool
+        self, fields: dict, db: InfrahubDatabase, process_pools: bool, pool_pending_fields: set[str] | None = None
     ) -> list[ValidationError]:
         errors: list[ValidationError] = []
 
@@ -629,6 +648,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
 
                     if attr_schema.name in self._profile_provided_attrs:
+                        continue
+
+                    if pool_pending_fields and attr_schema.name in pool_pending_fields:
                         continue
 
                     if process_pools or attribute.from_pool is None:
