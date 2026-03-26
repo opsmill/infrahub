@@ -744,7 +744,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
 
         targets = schema_branch.computed_attributes.get_local_jinja2_targets(
-            kind=self._schema.kind, updates=fields, cascade=True
+            kind=self._schema.kind, updates=fields
         )
         if not targets:
             return

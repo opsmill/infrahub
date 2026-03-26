@@ -237,21 +237,17 @@ class Jinja2ComputedRegistry:
         return []
 
     def get_local_targets(
-        self, kind: str, updates: list[str] | None = None, *, cascade: bool = False
+        self, kind: str, updates: list[str] | None = None
     ) -> list[ComputedAttributeTarget]:
         """Return only self-targeting Jinja2 computed attribute targets for a given kind.
 
-        When cascade is True, transitively includes targets that depend on the initially
-        matched targets (e.g. if label depends on name and fqdn depends on label,
-        updating name returns both label and fqdn targets in dependency order).
+        Transitively includes targets that depend on the initially matched targets
+        (e.g. if label depends on name and fqdn depends on label, updating name
+        returns both label and fqdn targets in dependency order).
         """
-        targets = [t for t in self.get_impacted_targets(kind=kind, updates=updates) if t.kind == kind]
-        if not cascade:
-            return targets
-
         registered = self._map.get(kind)
         if not registered or not updates:
-            return targets
+            return [t for t in self.get_impacted_targets(kind=kind, updates=updates) if t.kind == kind]
 
         return registered.get_local_targets_in_dependency_order(kind=kind, updates=updates)
 
