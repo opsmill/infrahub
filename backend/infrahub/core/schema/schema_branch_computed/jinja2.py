@@ -198,11 +198,9 @@ class Jinja2ComputedRegistry:
         """
         return [target for target in self.get_impacted_targets(kind=kind, updates=updates) if target.kind == kind]
 
-    def get_relationship_fields_for_kind(self, kind: str) -> dict[str, set[str]]:
-        """Return relationship_fields for a given node kind, for use by _collect_extra_filters()."""
-        if mapping := self._map.get(kind):
-            return mapping.relationship_fields
-        return {}
+    def get_registered_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
+        """Return the registered node entry for a given kind, or None."""
+        return self._map.get(kind)
 
     def get_target_map(self) -> dict[ComputedAttributeTarget, list[str]]:
         mapping: dict[ComputedAttributeTarget, set[str]] = {}

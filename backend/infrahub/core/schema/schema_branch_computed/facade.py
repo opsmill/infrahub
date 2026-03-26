@@ -16,6 +16,7 @@ from infrahub.core.schema.schema_branch_computed.jinja2 import (
     ComputedAttributeTarget,
     ComputedAttributeTriggerNode,
     Jinja2ComputedRegistry,
+    RegisteredNodeComputedAttribute,
 )
 from infrahub.core.schema.schema_branch_computed.python_transform import PythonDefinition, PythonTransformRegistry
 
@@ -82,9 +83,9 @@ class ComputedAttributes:
     def get_local_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         return self._jinja2.get_local_targets(kind, updates)
 
-    def get_relationship_fields_for_kind(self, kind: str) -> dict[str, set[str]]:
-        """Return relationship_fields for a given node kind, for use by _collect_extra_filters()."""
-        return self._jinja2.get_relationship_fields_for_kind(kind)
+    def get_registered_jinja2_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
+        """Return the registered Jinja2 node entry for a given kind, or None."""
+        return self._jinja2.get_registered_node(kind)
 
     def get_jinja2_target_map(self) -> dict[ComputedAttributeTarget, list[str]]:
         return self._jinja2.get_target_map()
