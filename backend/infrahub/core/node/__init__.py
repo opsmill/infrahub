@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, overload
 
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
@@ -748,31 +749,32 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return
 
         for target in targets:
+            attr_schema = self._schema.get_attribute(name=target.attribute.name)
+            if not attr_schema.computed_attribute or not attr_schema.computed_attribute.jinja2_template:
+                continue
+
+            jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            variables = await self._resolve_jinja2_variables(
+                db=db, schema_branch=schema_branch, jinja_template=jinja_template
+            )
+
             try:
-                attr_schema = self._schema.get_attribute(name=target.attribute.name)
-                if not attr_schema.computed_attribute or not attr_schema.computed_attribute.jinja2_template:
-                    continue
-
-                jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
-                variables = await self._resolve_jinja2_variables(
-                    db=db, schema_branch=schema_branch, jinja_template=jinja_template
-                )
-
                 new_value = await jinja_template.render(variables=variables)
-
-                attr: BaseAttribute = self.get_attribute(name=target.attribute.name)
-                if attr.value != new_value:
-                    attr.value = new_value
-                    updated_attribute = await attr.save(db=db, user_id=user_id, at=update_at)
-                    if updated_attribute:
-                        node_changelog.add_attribute(attribute=updated_attribute)
-            except Exception:
+            except JinjaTemplateError:
                 log.warning(
                     "Failed to recompute Jinja2 attribute",
                     node_kind=self._schema.kind,
                     attribute_name=target.attribute.name,
                     exc_info=True,
                 )
+                continue
+
+            attr: BaseAttribute = self.get_attribute(name=target.attribute.name)
+            if attr.value != new_value:
+                attr.value = new_value
+                updated_attribute = await attr.save(db=db, user_id=user_id, at=update_at)
+                if updated_attribute:
+                    node_changelog.add_attribute(attribute=updated_attribute)
 
     async def _recompute_hfid(
         self,
