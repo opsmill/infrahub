@@ -80,9 +80,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
-- [ ] T016 [US3] Add test in `backend/tests/unit/computed_attribute/test_trigger_definition.py` (or `backend/tests/component/` if needed): verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
-- [ ] T017 [US3] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
+- [x] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
+- [x] T016 [US3] Add test in `backend/tests/unit/computed_attribute/test_trigger_definition.py` (or `backend/tests/component/` if needed): verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
+- [x] T017 [US3] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
 
 **Checkpoint**: Self-targeting triggers are placeholders. Remote triggers work via background tasks. Both paths coexist correctly.
 
