@@ -151,12 +151,20 @@ class RegisteredNodeComputedAttribute(BaseModel):
                 result.extend(wave.values())
                 pending_fields = wave_attr_names
             else:
-                ready = [t for t in wave.values() if t.attribute.name in depended_on]
+                # Identify targets that depend on a prerequisite within this wave;
+                # only those need deferring — independent siblings are safe to emit now.
+                deferred_attrs = {
+                    entry.attribute.name
+                    for attr_name in depended_on
+                    for entry in self.local_fields.get(attr_name, [])
+                    if entry.kind == kind and entry.attribute.name in wave_attr_names
+                }
+                ready = [t for t in wave.values() if t.attribute.name not in deferred_attrs]
                 result.extend(ready)
                 pending_fields = {t.attribute.name for t in ready}
                 # Re-allow deferred targets to be picked up in the next wave
                 for key, t in wave.items():
-                    if t.attribute.name not in depended_on:
+                    if t.attribute.name in deferred_attrs:
                         processed.discard(key)
 
         return result
