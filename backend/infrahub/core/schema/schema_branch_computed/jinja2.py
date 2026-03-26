@@ -52,6 +52,14 @@ class ComputedAttributeTriggerNode(BaseModel):
         return self.attributes + self.relationships
 
 
+class RelationshipDependency(BaseModel):
+    """Groups the two facets of a relationship-based computed attribute dependency:
+    the targets to recompute and the peer attributes needed for template rendering."""
+
+    targets: list[ComputedAttributeTarget] = Field(default_factory=list)
+    peer_attributes: set[str] = Field(default_factory=set)
+
+
 class RegisteredNodeComputedAttribute(BaseModel):
     """Dependency record for a single trigger node kind in the Jinja2 computed attribute registry.
     Each instance describes what should happen when a node of a particular kind is mutated.
@@ -73,19 +81,15 @@ class RegisteredNodeComputedAttribute(BaseModel):
         default_factory=dict,
         description="These are fields local to the modified node, which can include the names of attributes and relationships",
     )
-    relationships: dict[str, list[ComputedAttributeTarget]] = Field(
+    relationship_dependencies: dict[str, RelationshipDependency] = Field(
         default_factory=dict,
-        description="These relationships refer to the name of the relationship as seen from the source node.",
-    )
-    relationship_peer_attributes: dict[str, set[str]] = Field(
-        default_factory=dict,
-        description="Maps relationship names to the set of peer attribute names needed for Jinja2 template rendering.",
+        description="Maps relationship names to their dependency info: targets to recompute and peer attributes needed for rendering.",
     )
 
     @property
     def relationship_fields(self) -> dict[str, set[str]]:
         """Return mapping of relationship names to peer attribute names needed for computed attribute templates."""
-        return {rel: set(attrs) for rel, attrs in self.relationship_peer_attributes.items()}
+        return {rel: dep.peer_attributes for rel, dep in self.relationship_dependencies.items()}
 
     def get_targets(self, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Resolve which ComputedAttributeTargets are affected by changes to this node.
@@ -107,8 +111,8 @@ class RegisteredNodeComputedAttribute(BaseModel):
                 if entry.key_name not in targets:
                     targets[entry.key_name] = entry
 
-        for relationship_name, entries in self.relationships.items():
-            for entry in entries:
+        for relationship_name, dep in self.relationship_dependencies.items():
+            for entry in dep.targets:
                 filter_key = f"{relationship_name}__ids"
                 if entry.key_name in targets and filter_key not in targets[entry.key_name].filter_keys:
                     targets[entry.key_name].filter_keys.append(filter_key)
@@ -234,15 +238,16 @@ class Jinja2ComputedRegistry:
             rel_name = schema_path.active_relationship_schema.name
 
             # Record the relationship on the *peer* entry
-            trigger_node.relationships.setdefault(rel_name, []).append(deepcopy(source_attribute))
+            peer_dep = trigger_node.relationship_dependencies.setdefault(rel_name, RelationshipDependency())
+            peer_dep.targets.append(deepcopy(source_attribute))
 
             # Register on the *owner* entry so that a relationship re-assignment
             owner_entry = self._map.setdefault(source_attribute.kind, RegisteredNodeComputedAttribute())
             owner_entry.local_fields.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
             # Record which peer attributes are needed per relationship
-            peer_attr = schema_path.active_attribute_schema.name
-            owner_entry.relationship_peer_attributes.setdefault(rel_name, set()).add(peer_attr)
+            owner_dep = owner_entry.relationship_dependencies.setdefault(rel_name, RelationshipDependency())
+            owner_dep.peer_attributes.add(schema_path.active_attribute_schema.name)
 
     def get_impacted_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Return computed Jinja2 attribute targets that need re-evaluation when a node of the given kind is modified.
@@ -329,8 +334,8 @@ class Jinja2ComputedRegistry:
                 for target in targets:
                     _ensure_trigger(target, node_kind).attributes.append(local_field)
             # Relationships: the trigger node is a peer reached via this relationship
-            for relationship, targets in registered.relationships.items():
-                for target in targets:
+            for relationship, dep in registered.relationship_dependencies.items():
+                for target in dep.targets:
                     _ensure_trigger(target, node_kind).relationships.append(relationship)
 
         return {target: list(nodes.values()) for target, nodes in working_map.items()}

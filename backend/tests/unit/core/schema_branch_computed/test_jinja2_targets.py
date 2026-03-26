@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.schema.schema_branch_computed import ComputedAttributes
-from infrahub.core.schema.schema_branch_computed.jinja2 import RegisteredNodeComputedAttribute
+from infrahub.core.schema.schema_branch_computed.jinja2 import RegisteredNodeComputedAttribute, RelationshipDependency
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -79,7 +79,10 @@ class TestComputedAttributesGetLocalJinja2Targets:
 class TestComputedAttributesGetRegisteredJinja2Node:
     def test_returns_node(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         expected = RegisteredNodeComputedAttribute(
-            relationship_peer_attributes={"site": {"name"}, "role": {"label"}},
+            relationship_dependencies={
+                "site": RelationshipDependency(peer_attributes={"name"}),
+                "role": RelationshipDependency(peer_attributes={"label"}),
+            },
         )
         ca = ComputedAttributes(
             jinja2_attribute_map={LOCAL_KIND: expected},

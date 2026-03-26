@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.schema.basenode_schema import SchemaAttributePath
 from infrahub.core.schema.schema_branch_computed import ComputedAttributes
-from infrahub.core.schema.schema_branch_computed.jinja2 import RegisteredNodeComputedAttribute
+from infrahub.core.schema.schema_branch_computed.jinja2 import RegisteredNodeComputedAttribute, RelationshipDependency
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -49,7 +49,7 @@ class TestGetJinja2TriggerNodes:
             jinja2_attribute_map={
                 remote_kind: RegisteredNodeComputedAttribute(
                     local_fields={"name": [t]},
-                    relationships={"site": [t]},
+                    relationship_dependencies={"site": RelationshipDependency(targets=[t])},
                 ),
             },
         )
@@ -77,7 +77,7 @@ class TestGetJinja2TriggerNodes:
                 ),
                 remote_kind: RegisteredNodeComputedAttribute(
                     local_fields={"name": [t]},
-                    relationships={"site": [t]},
+                    relationship_dependencies={"site": RelationshipDependency(targets=[t])},
                 ),
             },
         )
@@ -158,7 +158,7 @@ class TestRegisterComputedJinja2:
         registry = computed._jinja2._map
         assert set(registry.keys()) == {"InfraDevice"}
         assert list(registry["InfraDevice"].local_fields.keys()) == ["name"]
-        assert registry["InfraDevice"].relationships == {}
+        assert registry["InfraDevice"].relationship_dependencies == {}
 
         target = registry["InfraDevice"].local_fields["name"][0]
         assert target.kind == "InfraDevice"
@@ -189,15 +189,16 @@ class TestRegisterComputedJinja2:
         assert "InfraSite" in registry
         peer_entry = registry["InfraSite"]
         assert list(peer_entry.local_fields.keys()) == ["name"]
-        assert list(peer_entry.relationships.keys()) == ["site"]
+        assert list(peer_entry.relationship_dependencies.keys()) == ["site"]
         assert peer_entry.local_fields["name"][0].kind == "InfraDevice"
-        assert peer_entry.relationships["site"][0].kind == "InfraDevice"
+        assert peer_entry.relationship_dependencies["site"].targets[0].kind == "InfraDevice"
 
         # Owner entry (InfraDevice): local_fields has the relationship name (for re-assignment triggers)
         assert "InfraDevice" in registry
         owner_entry = registry["InfraDevice"]
         assert list(owner_entry.local_fields.keys()) == ["site"]
-        assert owner_entry.relationships == {}
+        assert owner_entry.relationship_dependencies["site"].targets == []
+        assert owner_entry.relationship_dependencies["site"].peer_attributes == {"name"}
         assert owner_entry.local_fields["site"][0].kind == "InfraDevice"
 
     def test_multiple_registrations_accumulate(
@@ -237,4 +238,4 @@ class TestRegisterComputedJinja2:
         # Peer entry should have the peer attribute and the relationship
         peer = registry["InfraSite"]
         assert list(peer.local_fields.keys()) == ["name"]
-        assert list(peer.relationships.keys()) == ["site"]
+        assert list(peer.relationship_dependencies.keys()) == ["site"]
