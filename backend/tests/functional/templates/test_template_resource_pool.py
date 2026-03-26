@@ -504,7 +504,7 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
                     attributes=[
                         AttributeSchema(name="name", kind="Text", unique=True),
                         AttributeSchema(name="location", kind="Text", optional=True),
-                        AttributeSchema(name="slot_id", kind="Number", optional=True),
+                        AttributeSchema(name="slot_id", kind="Number", optional=False),
                     ],
                 ),
             ],

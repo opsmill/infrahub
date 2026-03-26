@@ -577,7 +577,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
-        errors.extend(await self._process_fields_attributes(fields=fields, db=db, process_pools=process_pools))
+        errors.extend(
+            await self._process_fields_attributes(
+                fields=fields, db=db, process_pools=process_pools, pool_pending_fields=pool_pending_fields
+            )
+        )
 
         if errors:
             raise ValidationError(errors)
@@ -615,7 +619,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return errors
 
     async def _process_fields_attributes(
-        self, fields: dict, db: InfrahubDatabase, process_pools: bool
+        self, fields: dict, db: InfrahubDatabase, process_pools: bool, pool_pending_fields: set[str] | None = None
     ) -> list[ValidationError]:
         errors: list[ValidationError] = []
 
@@ -644,6 +648,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
 
                     if attr_schema.name in self._profile_provided_attrs:
+                        continue
+
+                    if pool_pending_fields and attr_schema.name in pool_pending_fields:
                         continue
 
                     if process_pools or attribute.from_pool is None:
