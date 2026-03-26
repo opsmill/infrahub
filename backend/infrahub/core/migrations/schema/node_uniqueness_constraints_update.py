@@ -36,13 +36,10 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
             return result
 
         for attr in self.new_schema.attributes:
-            if not attr.support_profiles or not attr.optional:
-                continue
+            previous_supports_profiles = self.previous_schema.check_if_attr_supports_profiles(attribute_schema=attr)
+            new_supports_profiles = self.new_schema.check_if_attr_supports_profiles(attribute_schema=attr)
 
-            previous_in_constraint = self.previous_schema.check_attr_in_uniqueness_constraint(attr=attr.name)
-            new_in_constraint = self.new_schema.check_attr_in_uniqueness_constraint(attr=attr.name)
-
-            if previous_in_constraint == new_in_constraint:
+            if previous_supports_profiles == new_supports_profiles:
                 continue
 
             attr_migration = AttributeSchemaMigration(
@@ -58,7 +55,9 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
             )
 
             query_class = (
-                ProfilesAttributeRemoveMigrationQuery if new_in_constraint else ProfilesAttributeAddMigrationQuery
+                ProfilesAttributeRemoveMigrationQuery
+                if not new_supports_profiles
+                else ProfilesAttributeAddMigrationQuery
             )
             attr_result = await attr_migration.execute(
                 migration_input=migration_input, branch=branch, queries=[query_class]
