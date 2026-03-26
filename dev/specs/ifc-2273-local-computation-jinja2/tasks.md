@@ -110,7 +110,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T019 [US5] Add integration test in `backend/tests/functional/computed_attribute/test_local_computation.py`: first create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify no background tasks are spawned for computed attribute updates and all computed values are correct post-update
+- [ ] T019 [US5] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify all computed values are correct post-update (functional tests have no Prefect server, so correct values prove the inline path handled everything)
 
 **Checkpoint**: Bulk update performance validated.
 
