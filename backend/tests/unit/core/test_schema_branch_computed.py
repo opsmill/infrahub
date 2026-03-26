@@ -1,13 +1,15 @@
-from typing import Any
-
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
-from infrahub.core.schema import AttributeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.basenode_schema import SchemaAttributePath
 from infrahub.core.schema.schema_branch_computed import (
     ComputedAttributes,
     ComputedAttributeTarget,
     RegisteredNodeComputedAttribute,
 )
+
+
+def _node(name: str, namespace: str = "Infra") -> NodeSchema:
+    return NodeSchema(name=name, namespace=namespace)
 
 
 def _attr(name: str) -> AttributeSchema:
@@ -22,17 +24,6 @@ def _rel(name: str, peer: str) -> RelationshipSchema:
 
 def _target(kind: str, attr_name: str, filter_keys: list[str] | None = None) -> ComputedAttributeTarget:
     return ComputedAttributeTarget(kind=kind, attribute=_attr(attr_name), filter_keys=filter_keys or [])
-
-
-def _fake_node(kind: str) -> Any:
-    """Create a minimal object with a .kind attribute, sufficient for register_computed_jinja2."""
-
-    class _Node:
-        pass
-
-    node = _Node()
-    node.kind = kind  # type: ignore[attr-defined]
-    return node
 
 
 class TestGetJinja2TriggerNodes:
@@ -167,7 +158,7 @@ class TestRegisterComputedJinja2:
     def test_local_attribute(self) -> None:
         """Registering a local attribute (e.g. {{ name__value }}) creates one entry under the owner kind."""
         computed = ComputedAttributes()
-        node = _fake_node(kind="InfraDevice")
+        node = _node("Device")
         attr = _attr("computed_name")
         path = SchemaAttributePath(attribute_schema=_attr("name"))
 
@@ -185,12 +176,12 @@ class TestRegisterComputedJinja2:
     def test_relationship_attribute(self) -> None:
         """Registering a relationship path (e.g. {{ site__name__value }}) creates entries on both peer and owner."""
         computed = ComputedAttributes()
-        node = _fake_node(kind="InfraDevice")
+        node = _node("Device")
         attr = _attr("computed_name")
         rel = _rel("site", peer="InfraSite")
         path = SchemaAttributePath(
             relationship_schema=rel,
-            related_schema=_fake_node(kind="InfraSite"),
+            related_schema=_node("Site"),
             attribute_schema=_attr("name"),
         )
 
@@ -216,7 +207,7 @@ class TestRegisterComputedJinja2:
     def test_multiple_registrations_accumulate(self) -> None:
         """Calling register twice for the same node builds up the dependency map."""
         computed = ComputedAttributes()
-        node = _fake_node(kind="InfraDevice")
+        node = _node("Device")
         attr = _attr("computed_label")
 
         # First: local attribute "name"
@@ -231,7 +222,7 @@ class TestRegisterComputedJinja2:
             attribute=attr,
             schema_path=SchemaAttributePath(
                 relationship_schema=_rel("site", peer="InfraSite"),
-                related_schema=_fake_node(kind="InfraSite"),
+                related_schema=_node("Site"),
                 attribute_schema=_attr("name"),
             ),
         )
