@@ -102,17 +102,17 @@
 
 ---
 
-## Phase 7: User Story 5 — Bulk Import Performance (Priority: P2)
+## Phase 7: User Story 5 — Bulk Update Performance (Priority: P2)
 
-**Goal**: Bulk import of nodes with computed attributes does not spawn background tasks for local changes.
+**Goal**: Bulk update of existing nodes with computed attributes does not spawn background tasks for local changes.
 
-**Independent Test**: Import 100+ nodes with local computed attributes; verify zero background tasks spawned and all computed values are correct.
+**Independent Test**: Create 100+ nodes, then bulk-update their local attributes; verify zero background tasks spawned for computed attribute recomputation and all computed values are correct.
 
 ### Implementation for User Story 5
 
-- [ ] T019 [US5] Add integration test in `backend/tests/functional/computed_attribute/test_local_computation.py`: bulk-create/update nodes with Jinja2 computed attributes depending on local attributes, verify no background tasks are spawned for local computed attribute updates and all computed values are correct post-import
+- [ ] T019 [US5] Add integration test in `backend/tests/functional/computed_attribute/test_local_computation.py`: first create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify no background tasks are spawned for computed attribute updates and all computed values are correct post-update
 
-**Checkpoint**: Bulk import performance validated.
+**Checkpoint**: Bulk update performance validated.
 
 ---
 

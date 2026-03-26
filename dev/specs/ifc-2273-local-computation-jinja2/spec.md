@@ -68,18 +68,18 @@ When a user updates an attribute that triggers a local computed attribute recomp
 
 ---
 
-### User Story 5 - Bulk Import Performance (Priority: P2)
+### User Story 5 - Bulk Update Performance (Priority: P2)
 
-When a bulk import updates thousands of nodes with computed attributes, the system handles local computed attribute recomputation inline within each mutation rather than spawning thousands of separate background tasks.
+When a bulk update modifies thousands of existing nodes with computed attributes, the system handles local computed attribute recomputation inline within each mutation rather than spawning thousands of separate background tasks.
 
-**Why this priority**: This is the highest-impact performance scenario. Importing 2,000 interfaces currently triggers 2,000 background tasks, each independently querying the database.
+**Why this priority**: This is the highest-impact performance scenario. Updating 2,000 interfaces currently triggers 2,000 background tasks, each independently querying the database.
 
-**Independent Test**: Can be tested by performing a bulk import of nodes with computed attributes and measuring that no background tasks are spawned for local changes, and that total processing time and resource consumption are reduced.
+**Independent Test**: Can be tested by bulk-updating existing nodes with computed attributes and measuring that no background tasks are spawned for local changes, and that total processing time and resource consumption are reduced.
 
 **Acceptance Scenarios**:
 
-1. **Given** a bulk import of 2,000 nodes with Jinja2 computed attributes that depend on local attributes, **When** the import completes, **Then** zero background tasks are spawned for local computed attribute updates.
-2. **Given** the same bulk import, **When** the import completes, **Then** all computed attribute values are correct and immediately visible.
+1. **Given** 2,000 existing nodes with Jinja2 computed attributes that depend on local attributes, **When** a bulk update modifies local attributes on all 2,000 nodes, **Then** zero background tasks are spawned for local computed attribute updates.
+2. **Given** the same bulk update, **When** the update completes, **Then** all computed attribute values are correct and immediately visible.
 
 ---
 
@@ -132,7 +132,7 @@ When a bulk import updates thousands of nodes with computed attributes, the syst
 ### Measurable Outcomes
 
 - **SC-001**: Local attribute or relationship changes that affect computed attributes produce updated computed values in the mutation response with zero background tasks spawned.
-- **SC-002**: Bulk import of 2,000 nodes with local computed attributes completes without spawning background tasks for computed attribute updates, reducing total background task count to zero for local changes.
+- **SC-002**: Bulk update of 2,000 existing nodes with local computed attributes completes without spawning background tasks for computed attribute updates, reducing total background task count to zero for local changes.
 - **SC-003**: Each node mutation that triggers local computed attribute recomputation emits exactly one event/webhook, not two.
 - **SC-004**: Remote changes continue to trigger background recomputation with no behavioral change from current system.
 - **SC-005**: Inline-computed attribute values are identical to values that would have been produced by the existing background task path for the same inputs.
