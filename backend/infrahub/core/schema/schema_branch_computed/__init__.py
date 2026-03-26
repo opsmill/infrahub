@@ -2,8 +2,8 @@
 
 The ``ComputedAttributes`` class delegates to two focused sub-registries:
 
-- :class:`~.schema_branch_computed_python.PythonTransformRegistry` — Python transform-based computed attributes
-- :class:`~.schema_branch_computed_jinja2.Jinja2ComputedRegistry` — Jinja2 template-based computed attributes
+- :class:`~.python_transform.PythonTransformRegistry` — Python transform-based computed attributes
+- :class:`~.jinja2.Jinja2ComputedRegistry` — Jinja2 template-based computed attributes
   with dependency graph tracking
 """
 
@@ -12,22 +12,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
-from infrahub.core.schema.schema_branch_computed_jinja2 import (
+from infrahub.core.schema.schema_branch_computed.jinja2 import (
     ComputedAttributeTarget,
     ComputedAttributeTriggerNode,
     Jinja2ComputedRegistry,
 )
-from infrahub.core.schema.schema_branch_computed_python import PythonDefinition, PythonTransformRegistry
+from infrahub.core.schema.schema_branch_computed.python_transform import PythonDefinition, PythonTransformRegistry
 
 if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath
-
-# Re-export for backwards compatibility
-__all__ = [
-    "ComputedAttributeTarget",
-    "ComputedAttributeTriggerNode",
-    "PythonDefinition",
-]
 
 
 class ComputedAttributes:
