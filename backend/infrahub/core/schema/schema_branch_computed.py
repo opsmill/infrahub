@@ -241,27 +241,44 @@ class ComputedAttributes:
         return {key: list(value) for key, value in mapping.items()}
 
     def get_jinja2_trigger_nodes(self) -> dict[ComputedAttributeTarget, list[ComputedAttributeTriggerNode]]:
-        working_map: dict[ComputedAttributeTarget, dict[str, ComputedAttributeTriggerNode]] = {}
-        for node_kind, registered_computed_attribute in self._computed_jinja2_attribute_map.items():
-            for local_field, computed_attribute_targets in registered_computed_attribute.local_fields.items():
-                for computed_attribute_target in computed_attribute_targets:
-                    if computed_attribute_target not in working_map:
-                        working_map[computed_attribute_target] = {}
-                    if node_kind not in working_map[computed_attribute_target]:
-                        working_map[computed_attribute_target][node_kind] = ComputedAttributeTriggerNode(kind=node_kind)
-                    working_map[computed_attribute_target][node_kind].attributes.append(local_field)
-                    if computed_attribute_target.kind == node_kind:
-                        working_map[computed_attribute_target][node_kind].targets_self = True
-            for relationship, computed_attribute_targets in registered_computed_attribute.relationships.items():
-                for computed_attribute_target in computed_attribute_targets:
-                    if computed_attribute_target not in working_map:
-                        working_map[computed_attribute_target] = {}
-                    if node_kind not in working_map[computed_attribute_target]:
-                        working_map[computed_attribute_target][node_kind] = ComputedAttributeTriggerNode(kind=node_kind)
-                    working_map[computed_attribute_target][node_kind].relationships.append(relationship)
-                    if computed_attribute_target.kind == node_kind:
-                        working_map[computed_attribute_target][node_kind].targets_self = True
+        """Build a reverse index from computed attribute targets to the node mutations that trigger them.
 
-        return {
-            computed_attribute_target: list(nodes.values()) for computed_attribute_target, nodes in working_map.items()
-        }
+        Example: if InfraDevice.computed_name depends on its own ``name`` and on InfraSite's ``name``
+        (via a ``site`` relationship), the result includes::
+
+            ComputedAttributeTarget(kind="InfraDevice", attribute=computed_name) -> [
+                ComputedAttributeTriggerNode(
+                    kind="InfraDevice",
+                    attributes=["name", "site"],  # "site" is here because reassigning the relationship is a local change
+                    targets_self=True,
+                ),
+                ComputedAttributeTriggerNode(
+                    kind="InfraSite",
+                    attributes=["name"],       # the peer attribute referenced in the template
+                    relationships=["site"],    # the relationship used to locate affected InfraDevices
+                    targets_self=False,
+                ),
+            ]
+        """
+        # Intermediate map: target -> {trigger_kind -> trigger_node}
+        working_map: dict[ComputedAttributeTarget, dict[str, ComputedAttributeTriggerNode]] = {}
+
+        def _ensure_trigger(target: ComputedAttributeTarget, kind: str) -> ComputedAttributeTriggerNode:
+            """Get or create the trigger node for a (target, kind) pair."""
+            target_map = working_map.setdefault(target, {})
+            trigger = target_map.setdefault(kind, ComputedAttributeTriggerNode(kind=kind))
+            if target.kind == kind:
+                trigger.targets_self = True
+            return trigger
+
+        for node_kind, registered in self._computed_jinja2_attribute_map.items():
+            # Local fields: attributes and relationship names on the trigger node itself
+            for local_field, targets in registered.local_fields.items():
+                for target in targets:
+                    _ensure_trigger(target, node_kind).attributes.append(local_field)
+            # Relationships: the trigger node is a peer reached via this relationship
+            for relationship, targets in registered.relationships.items():
+                for target in targets:
+                    _ensure_trigger(target, node_kind).relationships.append(relationship)
+
+        return {target: list(nodes.values()) for target, nodes in working_map.items()}
