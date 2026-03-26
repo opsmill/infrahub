@@ -8,10 +8,9 @@ from pydantic import BaseModel, Field
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.registry import registry
-from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
-from infrahub.trigger.constants import NAME_SEPARATOR
+from infrahub.trigger.constants import NAME_SEPARATOR, TRIGGER_PLACEHOLDER_FIELD
 from infrahub.trigger.models import (
     EventTrigger,
     ExecuteWorkflow,

@@ -15,14 +15,20 @@ import pytest
 from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_jinja2
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 from tests.helpers.schema import COLOR, TSHIRT, load_schema
 from tests.helpers.test_app import TestInfrahubApp
-
-from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+
+def _get_match_related_fields(trigger: object) -> list[str]:
+    """Extract match_related fields from a trigger, handling the union type."""
+    match_related = trigger.trigger.match_related  # type: ignore[attr-defined]
+    assert isinstance(match_related, dict)
+    return match_related["infrahub.field.name"]
 
 
 class TestGatherJinja2Triggers(TestInfrahubApp):
@@ -53,9 +59,9 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         assert len(self_triggers) >= 1, "Expected at least one self-targeting trigger"
 
         for trigger in self_triggers:
-            assert trigger.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD], (
-                f"Self-targeting trigger for {trigger.trigger_kind} should use placeholder fields, "
-                f"got {trigger.trigger.match_related['infrahub.field.name']}"
+            fields = _get_match_related_fields(trigger)
+            assert fields == [TRIGGER_PLACEHOLDER_FIELD], (
+                f"Self-targeting trigger for {trigger.trigger_kind} should use placeholder fields, got {fields}"
             )
 
     async def test_remote_trigger_has_real_fields(
@@ -72,7 +78,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         assert len(remote_triggers) >= 1, "Expected at least one remote trigger"
 
         for trigger in remote_triggers:
-            fields = trigger.trigger.match_related["infrahub.field.name"]
+            fields = _get_match_related_fields(trigger)
             assert TRIGGER_PLACEHOLDER_FIELD not in fields, (
                 f"Remote trigger for {trigger.trigger_kind} should NOT use placeholder fields, got {fields}"
             )
@@ -92,7 +98,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         color_triggers = [t for t in triggers if t.trigger_kind == "TestingColor"]
         assert len(color_triggers) == 1, f"Expected exactly 1 TestingColor trigger, got {len(color_triggers)}"
 
-        fields = color_triggers[0].trigger.match_related["infrahub.field.name"]
+        fields = _get_match_related_fields(color_triggers[0])
         assert "name" in fields, f"TestingColor trigger should include 'name' field, got {fields}"
         assert "description" in fields, f"TestingColor trigger should include 'description' field, got {fields}"
 
@@ -122,6 +128,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         # The trigger should match NodeUpdatedEvent for TestingColor
         assert color_trigger.trigger.match["infrahub.node.kind"] == "TestingColor"
         # The trigger should match on the 'name' field being updated
-        assert "name" in color_trigger.trigger.match_related["infrahub.field.name"]
+        fields = _get_match_related_fields(color_trigger)
+        assert "name" in fields
         # The trigger should NOT use placeholder fields
-        assert TRIGGER_PLACEHOLDER_FIELD not in color_trigger.trigger.match_related["infrahub.field.name"]
+        assert TRIGGER_PLACEHOLDER_FIELD not in fields

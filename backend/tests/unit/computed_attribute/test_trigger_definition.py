@@ -78,7 +78,9 @@ class TestGatherSelfTargetingPlaceholder:
             triggers = await gather_trigger_computed_attribute_jinja2.fn()
 
         assert len(triggers) == 1
-        assert triggers[0].trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
+        match_related = triggers[0].trigger.match_related
+        assert isinstance(match_related, dict)
+        assert match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
         assert triggers[0].targets_self is True
 
     @pytest.mark.anyio
@@ -97,7 +99,9 @@ class TestGatherSelfTargetingPlaceholder:
             triggers = await gather_trigger_computed_attribute_jinja2.fn()
 
         assert len(triggers) == 1
-        assert triggers[0].trigger.match_related["infrahub.field.name"] == ["name", "site"]
+        match_related = triggers[0].trigger.match_related
+        assert isinstance(match_related, dict)
+        assert match_related["infrahub.field.name"] == ["name", "site"]
         assert triggers[0].targets_self is False
 
     @pytest.mark.anyio
@@ -121,7 +125,11 @@ class TestGatherSelfTargetingPlaceholder:
         assert len(triggers) == 2
 
         by_kind = {t.trigger_kind: t for t in triggers}
-        assert by_kind["InfraDevice"].trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
+        self_match = by_kind["InfraDevice"].trigger.match_related
+        assert isinstance(self_match, dict)
+        assert self_match["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
         assert by_kind["InfraDevice"].targets_self is True
-        assert by_kind["InfraSite"].trigger.match_related["infrahub.field.name"] == ["name", "site"]
+        remote_match = by_kind["InfraSite"].trigger.match_related
+        assert isinstance(remote_match, dict)
+        assert remote_match["infrahub.field.name"] == ["name", "site"]
         assert by_kind["InfraSite"].targets_self is False

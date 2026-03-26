@@ -8,7 +8,6 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.manager import NodeManager
-from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
@@ -17,6 +16,7 @@ from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,
