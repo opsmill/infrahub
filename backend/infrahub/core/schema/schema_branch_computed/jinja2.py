@@ -128,46 +128,65 @@ class RegisteredNodeComputedAttribute(BaseModel):
         pending_fields = set(updates)
 
         while pending_fields:
-            wave: dict[str, ComputedAttributeTarget] = {}
-            for field_name in pending_fields:
-                for entry in self.local_fields.get(field_name, []):
-                    if entry.kind == kind and entry.key_name not in processed:
-                        processed.add(entry.key_name)
-                        wave[entry.key_name] = entry
+            wave = self._collect_wave(pending_fields, kind, processed)
             if not wave:
                 break
 
-            wave_attr_names = {t.attribute.name for t in wave.values()}
-            # Targets whose output triggers another wave member must come first.
-            depended_on = {
-                attr_name
-                for attr_name in wave_attr_names
-                for entry in self.local_fields.get(attr_name, [])
-                if entry.kind == kind and entry.attribute.name in wave_attr_names
-            }
-
-            if not depended_on:
-                # No intra-wave dependencies (or cycle) — emit all
-                result.extend(wave.values())
-                pending_fields = wave_attr_names
-            else:
-                # Identify targets that depend on a prerequisite within this wave;
-                # only those need deferring — independent siblings are safe to emit now.
-                deferred_attrs = {
-                    entry.attribute.name
-                    for attr_name in depended_on
-                    for entry in self.local_fields.get(attr_name, [])
-                    if entry.kind == kind and entry.attribute.name in wave_attr_names
-                }
-                ready = [t for t in wave.values() if t.attribute.name not in deferred_attrs]
-                result.extend(ready)
-                pending_fields = {t.attribute.name for t in ready}
-                # Re-allow deferred targets to be picked up in the next wave
-                for key, t in wave.items():
-                    if t.attribute.name in deferred_attrs:
-                        processed.discard(key)
+            ready, deferred = self._partition_wave(wave, kind)
+            result.extend(ready)
+            pending_fields = {t.attribute.name for t in ready}
+            processed.difference_update(target.key_name for target in deferred)
 
         return result
+
+    def _collect_wave(
+        self, pending_fields: set[str], kind: str, processed: set[str]
+    ) -> dict[str, ComputedAttributeTarget]:
+        """Gather unprocessed local targets triggered by the given fields.
+
+        Marks collected targets as processed (side effect on ``processed``).
+        """
+        wave: dict[str, ComputedAttributeTarget] = {}
+        for field_name in pending_fields:
+            for entry in self.local_fields.get(field_name, []):
+                if entry.kind == kind and entry.key_name not in processed:
+                    processed.add(entry.key_name)
+                    wave[entry.key_name] = entry
+        return wave
+
+    def _partition_wave(
+        self, wave: dict[str, ComputedAttributeTarget], kind: str
+    ) -> tuple[list[ComputedAttributeTarget], list[ComputedAttributeTarget]]:
+        """Split a wave into (ready, deferred) based on intra-wave dependencies.
+
+        Ready targets have no unresolved prerequisites within the wave.
+        Deferred targets depend on a ready target and must wait for the next iteration.
+        When no intra-wave dependencies exist, all targets are ready.
+        """
+        wave_attr_names = {t.attribute.name for t in wave.values()}
+
+        # Attributes whose output triggers another wave member (prerequisites).
+        prerequisite_attrs = {
+            attr_name
+            for attr_name in wave_attr_names
+            for entry in self.local_fields.get(attr_name, [])
+            if entry.kind == kind and entry.attribute.name in wave_attr_names
+        }
+
+        if not prerequisite_attrs:
+            return list(wave.values()), []
+
+        # Attributes that depend on a prerequisite — only these need deferring.
+        dependent_attrs = {
+            entry.attribute.name
+            for attr_name in prerequisite_attrs
+            for entry in self.local_fields.get(attr_name, [])
+            if entry.kind == kind and entry.attribute.name in wave_attr_names
+        }
+
+        ready = [t for t in wave.values() if t.attribute.name not in dependent_attrs]
+        deferred = [t for t in wave.values() if t.attribute.name in dependent_attrs]
+        return ready, deferred
 
 
 class Jinja2ComputedRegistry:
@@ -244,9 +263,7 @@ class Jinja2ComputedRegistry:
 
         return []
 
-    def get_local_targets(
-        self, kind: str, updates: list[str] | None = None
-    ) -> list[ComputedAttributeTarget]:
+    def get_local_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Return only self-targeting Jinja2 computed attribute targets for a given kind.
 
         Transitively includes targets that depend on the initially matched targets
