@@ -780,7 +780,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def _recompute_hfid(
         self,
         db: InfrahubDatabase,
-        fields: list[str] | None,
+        fields: set[str] | None,
         node_changelog: NodeChangelog,
         update_at: Timestamp,
     ) -> None:
@@ -800,7 +800,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def _recompute_display_label(
         self,
         db: InfrahubDatabase,
-        fields: list[str] | None,
+        fields: set[str] | None,
         node_changelog: NodeChangelog,
         update_at: Timestamp,
     ) -> None:
@@ -1040,7 +1040,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._recompute_local_jinja2(
             db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
         )
-        updated_fields = list(set(fields or []) | set(node_changelog.updated_fields))
+        updated_fields = set(fields or []) | set(node_changelog.updated_fields)
         # Recompute the human-friendly ID if one of its variables was updated
         await self._recompute_hfid(db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at)
         # Recompute the display label if one of its variables was updated

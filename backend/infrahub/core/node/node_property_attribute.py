@@ -46,7 +46,7 @@ class NodePropertyAttribute[T]:
 
         self.analyze_variables()
 
-    def needs_update(self, fields: list[str] | None) -> bool:
+    def needs_update(self, fields: set[str] | None) -> bool:
         """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
         if self._manually_assigned or not fields:
             return True

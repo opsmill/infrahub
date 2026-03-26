@@ -210,7 +210,7 @@ class Jinja2ComputedRegistry:
         while pending_attrs:
             next_targets = [
                 t
-                for t in self.get_impacted_targets(kind=kind, updates=list(pending_attrs))
+                for t in self.get_impacted_targets(kind=kind, updates=pending_attrs)
                 if t.kind == kind and t.key_name not in processed
             ]
             # Nothing to recompute means we just ended up going through the local dependencies chain
