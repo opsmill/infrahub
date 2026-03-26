@@ -21,6 +21,7 @@ import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
+import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -181,6 +182,10 @@ export const ObjectAttributeValue = ({
 }) => {
   if (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false) {
     return "-";
+  }
+
+  if (attributeSchema.name === "utilization" && typeof attributeData.value === "number") {
+    return <ProgressBarChart value={attributeData.value} />;
   }
 
   switch (attributeSchema.kind as AttributeKind) {
