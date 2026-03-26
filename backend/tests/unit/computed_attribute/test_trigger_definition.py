@@ -17,8 +17,7 @@ from infrahub.core.schema.schema_branch_computed import (
     ComputedAttributeTarget,
     ComputedAttributeTriggerNode,
 )
-
-TRIGGER_PLACEHOLDER = "_trigger_placeholder"
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 
 
 def _make_computed_attr(name: str, template: str) -> AttributeSchema:
@@ -73,7 +72,7 @@ class TestSelfTargetingTriggerPlaceholder:
         mock_registry.default_branch = "main"
 
         # Apply the same transformation as gather_trigger_computed_attribute_jinja2()
-        trigger_node = self_trigger.model_copy(update={"attributes": [TRIGGER_PLACEHOLDER], "relationships": []})
+        trigger_node = self_trigger.model_copy(update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []})
 
         definition = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
             branch="main",
@@ -81,7 +80,7 @@ class TestSelfTargetingTriggerPlaceholder:
             trigger_node=trigger_node,
         )
 
-        assert definition.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER]
+        assert definition.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
         assert definition.trigger_kind == "InfraDevice"
         assert definition.targets_self is True
 
@@ -128,7 +127,7 @@ class TestMixedLocalRemoteTriggers:
             effective_trigger = trigger_node
             if trigger_node.targets_self:
                 effective_trigger = trigger_node.model_copy(
-                    update={"attributes": [TRIGGER_PLACEHOLDER], "relationships": []}
+                    update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []}
                 )
             definitions.append(
                 ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
@@ -143,7 +142,7 @@ class TestMixedLocalRemoteTriggers:
         self_def = next(d for d in definitions if d.trigger_kind == "InfraDevice")
         remote_def = next(d for d in definitions if d.trigger_kind == "InfraSite")
 
-        assert self_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER]
+        assert self_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
         assert self_def.targets_self is True
 
         assert remote_def.trigger.match_related["infrahub.field.name"] == ["name", "site"]
@@ -172,7 +171,7 @@ class TestLocalOnlyTrigger:
         )
 
         # Apply placeholder transformation
-        trigger_node = local_trigger.model_copy(update={"attributes": [TRIGGER_PLACEHOLDER], "relationships": []})
+        trigger_node = local_trigger.model_copy(update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []})
 
         definition = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
             branch="main",
@@ -180,7 +179,7 @@ class TestLocalOnlyTrigger:
             trigger_node=trigger_node,
         )
 
-        assert definition.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER]
+        assert definition.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
         assert definition.trigger_kind == "InfraDevice"
         assert definition.targets_self is True
 

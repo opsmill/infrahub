@@ -8,6 +8,7 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.manager import NodeManager
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
@@ -127,7 +128,7 @@ async def gather_trigger_computed_attribute_jinja2(
                     # NodeUpdatedEvents. The trigger definition still exists for schema-change
                     # detection in the setup flow. This matches the HFID and display label pattern.
                     effective_trigger = trigger_node.model_copy(
-                        update={"attributes": ["_trigger_placeholder"], "relationships": []}
+                        update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []}
                     )
                 trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
                     branch=branch_scope,

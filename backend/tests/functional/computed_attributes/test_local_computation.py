@@ -18,11 +18,11 @@ from infrahub.core.schema import SchemaRoot
 from tests.helpers.schema import COLOR, TSHIRT, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
+
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
-TRIGGER_PLACEHOLDER = "_trigger_placeholder"
 
 
 class TestGatherJinja2Triggers(TestInfrahubApp):
@@ -53,7 +53,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         assert len(self_triggers) >= 1, "Expected at least one self-targeting trigger"
 
         for trigger in self_triggers:
-            assert trigger.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER], (
+            assert trigger.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD], (
                 f"Self-targeting trigger for {trigger.trigger_kind} should use placeholder fields, "
                 f"got {trigger.trigger.match_related['infrahub.field.name']}"
             )
@@ -73,7 +73,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
 
         for trigger in remote_triggers:
             fields = trigger.trigger.match_related["infrahub.field.name"]
-            assert TRIGGER_PLACEHOLDER not in fields, (
+            assert TRIGGER_PLACEHOLDER_FIELD not in fields, (
                 f"Remote trigger for {trigger.trigger_kind} should NOT use placeholder fields, got {fields}"
             )
             assert len(fields) > 0, f"Remote trigger for {trigger.trigger_kind} should have real field names"
@@ -124,4 +124,4 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         # The trigger should match on the 'name' field being updated
         assert "name" in color_trigger.trigger.match_related["infrahub.field.name"]
         # The trigger should NOT use placeholder fields
-        assert TRIGGER_PLACEHOLDER not in color_trigger.trigger.match_related["infrahub.field.name"]
+        assert TRIGGER_PLACEHOLDER_FIELD not in color_trigger.trigger.match_related["infrahub.field.name"]
