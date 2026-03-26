@@ -80,10 +80,8 @@ class ComputedAttributes:
     def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         return self._jinja2.get_impacted_targets(kind, updates)
 
-    def get_local_jinja2_targets(
-        self, kind: str, updates: list[str] | None = None, *, cascade: bool = False
-    ) -> list[ComputedAttributeTarget]:
-        return self._jinja2.get_local_targets(kind, updates, cascade=cascade)
+    def get_local_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+        return self._jinja2.get_local_targets(kind, updates)
 
     def get_registered_jinja2_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
         """Return the registered Jinja2 node entry for a given kind, or None."""

@@ -306,7 +306,7 @@ class TestComputedAttributesGetLocalJinja2Targets:
 
 
 class TestComputedAttributesGetLocalJinja2TargetsCascade:
-    """Tests for cascade=True on get_local_jinja2_targets."""
+    """Tests for chained dependency resolution in get_local_jinja2_targets."""
 
     def _make_chain_registry(self, make_target: Callable[..., ComputedAttributeTarget]) -> ComputedAttributes:
         """name -> label -> fqdn chain on a single kind."""
@@ -323,27 +323,20 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
             },
         )
 
-    def test_cascade_false_returns_direct_only(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+    def test_returns_full_chain(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         ca = self._make_chain_registry(make_target)
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=False)
-        assert [r.attribute.name for r in results] == ["label"]
-
-    def test_cascade_true_returns_full_chain(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        ca = self._make_chain_registry(make_target)
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
         assert [r.attribute.name for r in results] == ["label", "fqdn"]
 
-    def test_cascade_respects_dependency_order(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+    def test_respects_dependency_order(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """label must come before fqdn since fqdn depends on label."""
         ca = self._make_chain_registry(make_target)
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
         names = [r.attribute.name for r in results]
         assert names.index("label") < names.index("fqdn")
 
-    def test_cascade_no_chain_returns_same_as_non_cascade(
-        self, make_target: Callable[..., ComputedAttributeTarget]
-    ) -> None:
-        """When there's no chain, cascade=True returns the same as cascade=False."""
+    def test_single_target_no_chain(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """When there's no chain, only the direct target is returned."""
         target = make_target(kind=LOCAL_KIND, attr_name="label")
         ca = ComputedAttributes(
             jinja2_attribute_map={
@@ -352,9 +345,8 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
                 ),
             },
         )
-        without = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=False)
-        with_cascade = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
-        assert [r.attribute.name for r in without] == [r.attribute.name for r in with_cascade]
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
+        assert [r.attribute.name for r in results] == ["label"]
 
     def test_cascade_cycle_terminates(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """alpha -> beta -> alpha cycle does not loop forever."""
@@ -370,7 +362,7 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
                 ),
             },
         )
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["alpha"], cascade=True)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["alpha"])
         assert {r.attribute.name for r in results} == {"alpha", "beta"}
 
     def test_cascade_diamond(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
@@ -389,7 +381,7 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
                 ),
             },
         )
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
         names = [r.attribute.name for r in results]
         # summary appears exactly once despite two paths
         assert names.count("summary") == 1
@@ -413,7 +405,7 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
                 ),
             },
         )
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
         names = [r.attribute.name for r in results]
         assert names.index("label") < names.index("fqdn")
 
@@ -431,7 +423,7 @@ class TestComputedAttributesGetLocalJinja2TargetsCascade:
                 ),
             },
         )
-        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"], cascade=True)
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
         result_kinds = {r.kind for r in results}
         assert REMOTE_KIND not in result_kinds
 
