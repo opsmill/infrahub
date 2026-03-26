@@ -79,6 +79,13 @@ class ComputedAttributes:
     def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         return self._jinja2.get_impacted_targets(kind, updates)
 
+    def get_local_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+        return self._jinja2.get_local_targets(kind, updates)
+
+    def get_relationship_fields_for_kind(self, kind: str) -> dict[str, set[str]]:
+        """Return relationship_fields for a given node kind, for use by _collect_extra_filters()."""
+        return self._jinja2.get_relationship_fields_for_kind(kind)
+
     def get_jinja2_target_map(self) -> dict[ComputedAttributeTarget, list[str]]:
         return self._jinja2.get_target_map()
 

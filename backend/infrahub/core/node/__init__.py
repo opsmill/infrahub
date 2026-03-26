@@ -810,7 +810,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if display_labels := schema_branch.display_labels.get_template_nodes().get(self._schema.kind):
                 definitions.append(display_labels)
 
-        return self._merge_relationship_fields(definitions)
+        extra_filters = self._merge_relationship_fields(definitions)
+
+        # For existing nodes (updates), also include peer attributes needed by Jinja2 computed attribute templates
+        if self._existing:
+            for rel_name, attrs in schema_branch.computed_attributes.get_relationship_fields_for_kind(
+                self._schema.kind
+            ).items():
+                extra_filters.setdefault(rel_name, set()).update(attrs)
+
+        return extra_filters
 
     async def resolve_relationships(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
         schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)

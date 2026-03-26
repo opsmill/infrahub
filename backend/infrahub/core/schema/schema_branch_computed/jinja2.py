@@ -77,6 +77,15 @@ class RegisteredNodeComputedAttribute(BaseModel):
         default_factory=dict,
         description="These relationships refer to the name of the relationship as seen from the source node.",
     )
+    relationship_peer_attributes: dict[str, set[str]] = Field(
+        default_factory=dict,
+        description="Maps relationship names to the set of peer attribute names needed for Jinja2 template rendering.",
+    )
+
+    @property
+    def relationship_fields(self) -> dict[str, set[str]]:
+        """Return mapping of relationship names to peer attribute names needed for computed attribute templates."""
+        return {rel: set(attrs) for rel, attrs in self.relationship_peer_attributes.items()}
 
     def get_targets(self, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Resolve which ComputedAttributeTargets are affected by changes to this node.
@@ -158,6 +167,10 @@ class Jinja2ComputedRegistry:
             owner_entry = self._map.setdefault(source_attribute.kind, RegisteredNodeComputedAttribute())
             owner_entry.local_fields.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
+            # Record which peer attributes are needed per relationship
+            peer_attr = schema_path.active_attribute_schema.name
+            owner_entry.relationship_peer_attributes.setdefault(rel_name, set()).add(peer_attr)
+
     def get_impacted_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Return computed Jinja2 attribute targets that need re-evaluation when a node of the given kind is modified.
 
@@ -176,6 +189,20 @@ class Jinja2ComputedRegistry:
             return mapping.get_targets(updates=updates)
 
         return []
+
+    def get_local_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+        """Return only self-targeting Jinja2 computed attribute targets for a given kind.
+
+        Filters get_impacted_targets() to targets where target.kind == kind,
+        meaning the computed attribute lives on the same node that was modified (local change).
+        """
+        return [target for target in self.get_impacted_targets(kind=kind, updates=updates) if target.kind == kind]
+
+    def get_relationship_fields_for_kind(self, kind: str) -> dict[str, set[str]]:
+        """Return relationship_fields for a given node kind, for use by _collect_extra_filters()."""
+        if mapping := self._map.get(kind):
+            return mapping.relationship_fields
+        return {}
 
     def get_target_map(self) -> dict[ComputedAttributeTarget, list[str]]:
         mapping: dict[ComputedAttributeTarget, set[str]] = {}
