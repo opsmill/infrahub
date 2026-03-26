@@ -64,7 +64,7 @@ When a user updates an attribute that triggers a local computed attribute recomp
 **Acceptance Scenarios**:
 
 1. **Given** a webhook subscription on a node kind with computed attributes, **When** a user updates a local attribute that triggers computed attribute recomputation, **Then** exactly one webhook event is fired containing both the original change and the updated computed attribute.
-2. **Given** a bulk import updating many nodes with computed attributes via local changes, **When** the import completes, **Then** each node produces at most one event (not two separate events per node).
+2. **Given** a bulk update updating many nodes with computed attributes via local changes, **When** the import completes, **Then** each node produces at most one event (not two separate events per node).
 
 ---
 

@@ -9,7 +9,7 @@ After this feature, Jinja2 computed attributes on a node are recalculated **imme
 - **No behavioral change**: Computed attributes work the same way. Users see results faster.
 - **Mutation responses**: Now include the updated computed attribute values immediately (no page refresh needed).
 - **Webhooks**: One event per mutation instead of potentially two (one for the change, one for the computed attribute update).
-- **Bulk imports**: No longer spawn thousands of background tasks for local computed attribute changes.
+- **Bulk updates**: No longer spawn thousands of background tasks for local computed attribute changes.
 
 ## Developer impact
 

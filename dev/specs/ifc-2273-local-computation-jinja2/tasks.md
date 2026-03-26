@@ -165,7 +165,7 @@
 # After US1 completes, US2, US4, US5 can run in parallel:
 # US2: extends _recompute_local_jinja2() + relationship tests
 # US4: event consolidation test
-# US5: bulk import test
+# US5: bulk update test
 ```
 
 ---

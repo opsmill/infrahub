@@ -5,7 +5,7 @@
 
 ## Summary
 
-Optimize Jinja2 computed attribute updates by evaluating "local" changes (attribute or relationship changes on the same node) inline during the update mutation, reusing the existing `_process_macros()` template rendering pattern. Remote changes (peer node attribute changes) continue through Prefect background tasks. This eliminates thousands of unnecessary background tasks during bulk imports and provides immediate computed attribute results in mutation responses.
+Optimize Jinja2 computed attribute updates by evaluating "local" changes (attribute or relationship changes on the same node) inline during the update mutation, reusing the existing `_process_macros()` template rendering pattern. Remote changes (peer node attribute changes) continue through Prefect background tasks. This eliminates thousands of unnecessary background tasks during bulk updates and provides immediate computed attribute results in mutation responses.
 
 ## Technical Context
 
@@ -15,7 +15,7 @@ Optimize Jinja2 computed attribute updates by evaluating "local" changes (attrib
 **Testing**: pytest (unit, component, functional, integration_docker)
 **Target Platform**: Linux server (Docker)
 **Project Type**: Web application (backend-only change)
-**Performance Goals**: Zero background tasks for local computed attribute changes; bulk import of 2,000 nodes must not spawn background tasks for local changes
+**Performance Goals**: Zero background tasks for local computed attribute changes; bulk update of 2,000 nodes must not spawn background tasks for local changes
 **Constraints**: Must produce identical results to existing background task path; must not affect creation path or template instantiation
 **Scale/Scope**: Affects all node kinds with Jinja2 computed attributes across all branches
 
