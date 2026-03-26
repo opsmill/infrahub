@@ -1040,10 +1040,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._recompute_local_jinja2(
             db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
         )
+        updated_fields = list(set(fields or []) | set(node_changelog.updated_fields))
         # Recompute the human-friendly ID if one of its variables was updated
-        await self._recompute_hfid(db=db, fields=fields, node_changelog=node_changelog, update_at=update_at)
+        await self._recompute_hfid(db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at)
         # Recompute the display label if one of its variables was updated
-        await self._recompute_display_label(db=db, fields=fields, node_changelog=node_changelog, update_at=update_at)
+        await self._recompute_display_label(db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at)
 
         node_changelog.display_label = await self.get_display_label(db=db)
 
