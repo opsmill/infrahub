@@ -1,15 +1,18 @@
-"""Tests for Jinja2 computed attribute trigger definitions.
+"""Tests for gather_trigger_computed_attribute_jinja2.
 
-Verifies that self-targeting triggers use _trigger_placeholder fields (matching the
-HFID/display label pattern) while remote triggers preserve their real field names.
+Verifies the placeholder substitution logic: self-targeting triggers get
+_trigger_placeholder fields, remote triggers keep their real field names.
 """
 
+from __future__ import annotations
+
+import logging
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from infrahub.computed_attribute.models import ComputedAttrJinja2TriggerDefinition
+from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_jinja2
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -20,197 +23,105 @@ from infrahub.core.schema.schema_branch_computed import (
 from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 
 
-def _make_computed_attr(name: str, template: str) -> AttributeSchema:
-    return AttributeSchema(
-        name=name,
-        kind="Text",
-        computed_attribute=ComputedAttribute(kind=ComputedAttributeKind.JINJA2, jinja2_template=template),
+def _make_target(kind: str, attr_name: str, template: str, optional: bool = False) -> ComputedAttributeTarget:
+    return ComputedAttributeTarget(
+        kind=kind,
+        attribute=AttributeSchema(
+            name=attr_name,
+            kind="Text",
+            optional=optional,
+            computed_attribute=ComputedAttribute(kind=ComputedAttributeKind.JINJA2, jinja2_template=template),
+        ),
     )
 
 
-def _make_target(kind: str, attr_name: str, template: str) -> ComputedAttributeTarget:
-    return ComputedAttributeTarget(kind=kind, attribute=_make_computed_attr(attr_name, template))
+@pytest.fixture(autouse=True)
+def _patch_prefect_logger() -> Any:
+    with patch(
+        "infrahub.computed_attribute.gather.get_run_logger",
+        return_value=logging.getLogger("test_trigger_definition"),
+    ):
+        yield
 
 
-@pytest.fixture
-def self_trigger() -> ComputedAttributeTriggerNode:
-    """Trigger node for the node itself (e.g. InfraDevice triggers InfraDevice.computed_name)."""
-    return ComputedAttributeTriggerNode(
-        kind="InfraDevice",
-        attributes=["instance", "name"],
-        relationships=[],
-        targets_self=True,
-    )
+def _build_registry_mock(
+    trigger_mapping: dict[ComputedAttributeTarget, list[ComputedAttributeTriggerNode]],
+) -> MagicMock:
+    """Build a mock registry that returns the given trigger mapping for the main branch."""
+    mock_reg = MagicMock()
+    mock_reg.default_branch = "main"
+    mock_reg.get_altered_schema_branches.return_value = []
+
+    schema_branch = MagicMock()
+    schema_branch.computed_attributes.get_jinja2_trigger_nodes.return_value = trigger_mapping
+    mock_reg.schema.get_schema_branch.return_value = schema_branch
+
+    return mock_reg
 
 
-@pytest.fixture
-def remote_trigger() -> ComputedAttributeTriggerNode:
-    """Trigger node for a peer (e.g. InfraSite triggers InfraDevice.computed_name)."""
-    return ComputedAttributeTriggerNode(
-        kind="InfraSite",
-        attributes=["name"],
-        relationships=["site"],
-        targets_self=False,
-    )
+class TestGatherSelfTargetingPlaceholder:
+    """Self-targeting triggers should have their fields replaced with _trigger_placeholder."""
 
-
-@pytest.fixture
-def target() -> ComputedAttributeTarget:
-    return _make_target("InfraDevice", "computed_name", "{{ instance__value }}-{{ site__name__value }}")
-
-
-class TestSelfTargetingTriggerPlaceholder:
-    """Verify that self-targeting triggers get placeholder fields."""
-
-    @patch("infrahub.computed_attribute.models.registry")
-    def test_self_targeting_trigger_uses_placeholder(
-        self,
-        mock_registry: Any,
-        self_trigger: ComputedAttributeTriggerNode,
-        target: ComputedAttributeTarget,
-    ) -> None:
-        mock_registry.default_branch = "main"
-
-        # Apply the same transformation as gather_trigger_computed_attribute_jinja2()
-        trigger_node = self_trigger.model_copy(update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []})
-
-        definition = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-            branch="main",
-            computed_attribute=target,
-            trigger_node=trigger_node,
-        )
-
-        assert definition.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
-        assert definition.trigger_kind == "InfraDevice"
-        assert definition.targets_self is True
-
-    @patch("infrahub.computed_attribute.models.registry")
-    def test_remote_trigger_keeps_real_fields(
-        self,
-        mock_registry: Any,
-        remote_trigger: ComputedAttributeTriggerNode,
-        target: ComputedAttributeTarget,
-    ) -> None:
-        mock_registry.default_branch = "main"
-
-        definition = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-            branch="main",
-            computed_attribute=target,
-            trigger_node=remote_trigger,
-        )
-
-        assert definition.trigger.match_related["infrahub.field.name"] == ["name", "site"]
-        assert definition.trigger_kind == "InfraSite"
-        assert definition.targets_self is False
-
-
-class TestMixedLocalRemoteTriggers:
-    """Verify mixed local+remote dependencies produce correct trigger sets."""
-
-    @patch("infrahub.computed_attribute.models.registry")
-    def test_mixed_dependencies_produce_placeholder_and_real(
-        self,
-        mock_registry: Any,
-        self_trigger: ComputedAttributeTriggerNode,
-        remote_trigger: ComputedAttributeTriggerNode,
-        target: ComputedAttributeTarget,
-    ) -> None:
-        """A computed attribute with both local and remote deps should produce:
-        - One trigger with _trigger_placeholder for the self-targeting kind
-        - One trigger with real field names for the remote kind
-        """
-        mock_registry.default_branch = "main"
-        trigger_nodes = [self_trigger, remote_trigger]
-
-        definitions = []
-        for trigger_node in trigger_nodes:
-            effective_trigger = trigger_node
-            if trigger_node.targets_self:
-                effective_trigger = trigger_node.model_copy(
-                    update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []}
-                )
-            definitions.append(
-                ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-                    branch="main",
-                    computed_attribute=target,
-                    trigger_node=effective_trigger,
-                )
-            )
-
-        assert len(definitions) == 2
-
-        self_def = next(d for d in definitions if d.trigger_kind == "InfraDevice")
-        remote_def = next(d for d in definitions if d.trigger_kind == "InfraSite")
-
-        assert self_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
-        assert self_def.targets_self is True
-
-        assert remote_def.trigger.match_related["infrahub.field.name"] == ["name", "site"]
-        assert remote_def.targets_self is False
-
-
-class TestLocalOnlyTrigger:
-    """Verify a computed attribute with only local dependencies still produces a placeholder trigger."""
-
-    @patch("infrahub.computed_attribute.models.registry")
-    def test_local_only_produces_placeholder_trigger(
-        self,
-        mock_registry: Any,
-    ) -> None:
-        """A computed attribute that only references local attributes (no peer relationships)
-        should still produce one trigger with _trigger_placeholder fields, not zero triggers.
-        """
-        mock_registry.default_branch = "main"
-
+    @pytest.mark.anyio
+    async def test_self_targeting_trigger_gets_placeholder(self) -> None:
         target = _make_target("InfraDevice", "computed_name", "{{ name__value }}-{{ instance__value }}")
-        local_trigger = ComputedAttributeTriggerNode(
-            kind="InfraDevice",
-            attributes=["name", "instance"],
-            relationships=[],
-            targets_self=True,
+        self_trigger = ComputedAttributeTriggerNode(
+            kind="InfraDevice", attributes=["name", "instance"], relationships=[], targets_self=True
         )
 
-        # Apply placeholder transformation
-        trigger_node = local_trigger.model_copy(update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []})
+        mock_reg = _build_registry_mock({target: [self_trigger]})
 
-        definition = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-            branch="main",
-            computed_attribute=target,
-            trigger_node=trigger_node,
+        with (
+            patch("infrahub.computed_attribute.gather.registry", mock_reg),
+            patch("infrahub.computed_attribute.models.registry", mock_reg),
+        ):
+            triggers = await gather_trigger_computed_attribute_jinja2.fn()
+
+        assert len(triggers) == 1
+        assert triggers[0].trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
+        assert triggers[0].targets_self is True
+
+    @pytest.mark.anyio
+    async def test_remote_trigger_keeps_real_fields(self) -> None:
+        target = _make_target("InfraDevice", "computed_name", "{{ site__name__value }}")
+        remote_trigger = ComputedAttributeTriggerNode(
+            kind="InfraSite", attributes=["name"], relationships=["site"], targets_self=False
         )
 
-        assert definition.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
-        assert definition.trigger_kind == "InfraDevice"
-        assert definition.targets_self is True
+        mock_reg = _build_registry_mock({target: [remote_trigger]})
 
+        with (
+            patch("infrahub.computed_attribute.gather.registry", mock_reg),
+            patch("infrahub.computed_attribute.models.registry", mock_reg),
+        ):
+            triggers = await gather_trigger_computed_attribute_jinja2.fn()
 
-class TestRemoteOnlyTrigger:
-    """Verify a computed attribute with only remote dependencies keeps real field names."""
+        assert len(triggers) == 1
+        assert triggers[0].trigger.match_related["infrahub.field.name"] == ["name", "site"]
+        assert triggers[0].targets_self is False
 
-    @patch("infrahub.computed_attribute.models.registry")
-    def test_remote_only_keeps_real_fields(
-        self,
-        mock_registry: Any,
-    ) -> None:
-        mock_registry.default_branch = "main"
-
-        target = _make_target(
-            "InfraDevice",
-            "computed_location",
-            "{{ site__name__value }}",
+    @pytest.mark.anyio
+    async def test_mixed_self_and_remote_triggers(self) -> None:
+        target = _make_target("InfraDevice", "computed_name", "{{ name__value }}-{{ site__name__value }}")
+        self_trigger = ComputedAttributeTriggerNode(
+            kind="InfraDevice", attributes=["name", "instance"], relationships=[], targets_self=True
         )
         remote_trigger = ComputedAttributeTriggerNode(
-            kind="InfraSite",
-            attributes=["name"],
-            relationships=["site"],
-            targets_self=False,
+            kind="InfraSite", attributes=["name"], relationships=["site"], targets_self=False
         )
 
-        definition = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
-            branch="main",
-            computed_attribute=target,
-            trigger_node=remote_trigger,
-        )
+        mock_reg = _build_registry_mock({target: [self_trigger, remote_trigger]})
 
-        assert definition.trigger.match_related["infrahub.field.name"] == ["name", "site"]
-        assert definition.targets_self is False
+        with (
+            patch("infrahub.computed_attribute.gather.registry", mock_reg),
+            patch("infrahub.computed_attribute.models.registry", mock_reg),
+        ):
+            triggers = await gather_trigger_computed_attribute_jinja2.fn()
+
+        assert len(triggers) == 2
+
+        by_kind = {t.trigger_kind: t for t in triggers}
+        assert by_kind["InfraDevice"].trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
+        assert by_kind["InfraDevice"].targets_self is True
+        assert by_kind["InfraSite"].trigger.match_related["infrahub.field.name"] == ["name", "site"]
+        assert by_kind["InfraSite"].targets_self is False
